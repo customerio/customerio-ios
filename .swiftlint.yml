@@ -1,0 +1,14 @@
+# Rules: https://realm.github.io/SwiftLint/rule-directory.html
+
+disabled_rules: # rule identifiers to exclude from running
+  #- line_length
+opt_in_rules: # some rules are only opt-in
+  # - empty_count
+  # Find all the available rules by running:
+  # swiftlint rules
+included: # paths to include during linting. `--path` is ignored if present.
+  - Sources
+excluded: # paths to ignore during linting. Takes precedence over `included`.
+  # - Source/ExcludedFolder
+  # - Source/ExcludedFile.swift
+reporter: "emoji" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)

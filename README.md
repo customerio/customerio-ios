@@ -25,6 +25,15 @@ Follow each section below to get the code running successfully on your machine.
 
 * Feel free to use any text editor that you wish to work on this project. XCode is not required for this project. However, if you wish to use XCode, rick click on the `Package.swift` file in this project > Open with > XCode. XCode will then import this project into XCode. You will be able to compile the code and run tests within XCode. 
 
+* Install git hooks on your machine for performing development tasks: 
+
+```
+$> ./hooks/autohook.sh install
+[Autohook] Scripts installed into .git/hooks
+```
+
+After installing hooks, you will see some output about installing tools. Follow those instructions to install some development tools the hooks use. 
+
 ### Development workflow 
 
 Let's say that you make changes to this project and you want your changes to become part of the project. This is the workflow that we follow to make that happen:
