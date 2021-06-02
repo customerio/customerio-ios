@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.1
 
 /**
  Resources for this file:
@@ -14,14 +14,14 @@ let package = Package(
         .iOS(.v9)
     ],
     products: [
-        .library(name: "SDK", targets: ["SDK"])
+        .library(name: "CIO", targets: ["CIO"])
     ],
     dependencies: [],
     targets: [
-        .target(name: "SDK",
+        .target(name: "CIO",
                 path: "Sources/SDK"),
         .testTarget(name: "SDKTests",
-                    dependencies: ["SDK"],
+                    dependencies: ["CIO"],
                     path: "Tests/SDK")
     ]
 )
