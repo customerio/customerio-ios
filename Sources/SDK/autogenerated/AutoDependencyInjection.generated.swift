@@ -1,9 +1,3 @@
-// Generated using Sourcery 1.4.2 — https://github.com/krzysztofzablocki/Sourcery
-// DO NOT EDIT
-// swiftlint:disable line_length
-// swiftlint:disable variable_name
-// swiftlint:disable force_cast
-
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
@@ -102,7 +96,7 @@ class DI {
     }
 
     var newExampleRepository: ExampleRepository {
-        ExampleRepository()
+        AppExampleRepository()
     }
 
     // ExampleViewModel
@@ -114,6 +108,6 @@ class DI {
     }
 
     var newExampleViewModel: ExampleViewModel {
-        ExampleViewModel(exampleRepository: exampleRepository)
+        AppExampleViewModel(exampleRepository: exampleRepository)
     }
 }
