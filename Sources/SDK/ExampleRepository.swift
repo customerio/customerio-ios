@@ -1,6 +1,11 @@
+
+protocol ExampleRepository: AutoMockable {
+    func callNetwork(_ onComplete: @escaping () -> Void)
+}
+
 // sourcery: InjectRegister = "ExampleRepository"
-class ExampleRepository {
-    func callNetwork(_ onComplete: () -> Void) {
+class AppExampleRepository: ExampleRepository {
+    func callNetwork(_ onComplete: @escaping () -> Void) {
         onComplete()
     }
 }
