@@ -6,7 +6,7 @@ Follow instructions below if you need to increase the versions. Our CI server ma
 
 # Increase Swift version
 
-* ./hooks/pre-commit.sh swiftformat swift version
+* `Makefile` swiftformat swift version
 * Package.swift swift-tools version
 * Remove older swift versions in CI test workflow. 
 * Try deleting `Customer.io.xcodeproj` and see if CI server passes. Older versions of Swift do not require an xcodeproj so it may be deprecated in future versions of Swift. 

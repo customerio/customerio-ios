@@ -10,5 +10,5 @@ if ! [ -x "$(command -v swiftlint)" ]; then
     echo ""
     echo -e "${RED}The easiest way is 'brew install swiftlint'. If you're not on macOS, check out other instructions for installing: https://github.com/realm/SwiftLint#installation"
 else
-    swiftlint lint --strict --fix
+    make lint 
 fi

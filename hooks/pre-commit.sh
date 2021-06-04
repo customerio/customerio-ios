@@ -10,7 +10,5 @@ if ! [ -x "$(command -v swiftformat)" ]; then
     echo ""
     echo -e "${RED}The easiest way is 'brew install swiftformat'. If you're not on macOS, check out other instructions for installing: https://github.com/nicklockwood/SwiftFormat#command-line-tool"
 else
-    # specify swiftversion this way instead of .swift-version to (1) keep project files slim and (2) we can specify the version in a CI server matrix for multiple version testing. 
-    # use the min Swift version that we support/test against. 
-    swiftformat . --swiftversion 5.1
+    make format
 fi
