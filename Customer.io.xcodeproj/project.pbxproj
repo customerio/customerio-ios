@@ -24,6 +24,7 @@
 		F7B3DF672669419D004AE13B /* ExampleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B3DF652669419D004AE13B /* ExampleViewModel.swift */; };
 		F7B3DF682669419D004AE13B /* ExampleRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B3DF662669419D004AE13B /* ExampleRepository.swift */; };
 		F7B3DF6C266941AC004AE13B /* AutoDependencyInjection.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B3DF6B266941AC004AE13B /* AutoDependencyInjection.generated.swift */; };
+		F7B3DF6E266A7972004AE13B /* DITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B3DF6D266A7972004AE13B /* DITests.swift */; };
 		OBJ_23 /* Example.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_8 /* Example.swift */; };
 		OBJ_30 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_6 /* Package.swift */; };
 		OBJ_41 /* ExampleTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* ExampleTest.swift */; };
@@ -53,6 +54,7 @@
 		F7B3DF652669419D004AE13B /* ExampleViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExampleViewModel.swift; sourceTree = "<group>"; };
 		F7B3DF662669419D004AE13B /* ExampleRepository.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExampleRepository.swift; sourceTree = "<group>"; };
 		F7B3DF6B266941AC004AE13B /* AutoDependencyInjection.generated.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoDependencyInjection.generated.swift; sourceTree = "<group>"; };
+		F7B3DF6D266A7972004AE13B /* DITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DITests.swift; sourceTree = "<group>"; };
 		OBJ_10 /* ExampleTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExampleTest.swift; sourceTree = "<group>"; };
 		OBJ_14 /* hooks */ = {isa = PBXFileReference; lastKnownFileType = folder; path = hooks; sourceTree = SOURCE_ROOT; };
 		OBJ_15 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; path = build; sourceTree = SOURCE_ROOT; };
@@ -103,7 +105,7 @@
 			children = (
 				OBJ_6 /* Package.swift */,
 				OBJ_7 /* SDK */,
-				OBJ_9 /* Tests */,
+				OBJ_9 /* SDK Tests */,
 				OBJ_11 /* Products */,
 				OBJ_14 /* hooks */,
 				OBJ_15 /* build */,
@@ -124,12 +126,13 @@
 			path = Sources/SDK;
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_9 /* Tests */ = {
+		OBJ_9 /* SDK Tests */ = {
 			isa = PBXGroup;
 			children = (
 				OBJ_10 /* ExampleTest.swift */,
+				F7B3DF6D266A7972004AE13B /* DITests.swift */,
 			);
-			name = Tests;
+			name = "SDK Tests";
 			path = Tests/SDK;
 			sourceTree = SOURCE_ROOT;
 		};
@@ -236,6 +239,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 0;
 			files = (
+				F7B3DF6E266A7972004AE13B /* DITests.swift in Sources */,
 				OBJ_41 /* ExampleTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
