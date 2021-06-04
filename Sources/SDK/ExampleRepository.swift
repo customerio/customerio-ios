@@ -1,4 +1,3 @@
-
 protocol ExampleRepository: AutoMockable {
     func callNetwork(_ onComplete: @escaping () -> Void)
 }
