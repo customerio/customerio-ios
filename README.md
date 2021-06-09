@@ -1,5 +1,6 @@
 ![min swift version is 5.3](https://img.shields.io/badge/min%20Swift%20version-5.3-orange)
 ![min ios version is 9](https://img.shields.io/badge/min%20iOS%20version-9-blue)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md) 
 
 # Customer.io iOS SDK
 
@@ -19,7 +20,9 @@ Official Customer.io SDK for iOS
 
 Thank you for your interest in wanting to contribute to the project! Let's get your development environment setup so you can get developing.
 
-Follow the instructions in [our development document](docs/dev-notes/DEVELOPMENT.md) to get your development environment setup. 
+To contribute to this project, follow the instructions in [our development document](docs/dev-notes/DEVELOPMENT.md) to get your development environment setup. 
+
+> Note: We value an open, welcoming, diverse, inclusive, and healthy community for this project. All contributors are expected to follow the rules set forward in our [code of conduct](CODE_OF_CONDUCT.md). 
 
 # License
 
