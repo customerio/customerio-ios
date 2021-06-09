@@ -9,4 +9,4 @@ lint:
 # specify swiftversion this way instead of .swift-version to (1) keep project files slim and (2) we can specify the version in a CI server matrix for multiple version testing. 
 # use the min Swift version that we support/test against. 
 format:
-	swiftformat . --swiftversion 5.1 && swiftlint lint --fix
+	swiftformat . --swiftversion 5.3 && swiftlint lint --fix
