@@ -1,5 +1,5 @@
-![min swift version is 5.1](https://img.shields.io/badge/Swift%20version-5.1-orange)
-![min ios version is 9](https://img.shields.io/badge/iOS%20version-9-blue)
+![min swift version is 5.3](https://img.shields.io/badge/min%20Swift%20version-5.3-orange)
+![min ios version is 9](https://img.shields.io/badge/min%20iOS%20version-9-blue)
 
 # Customer.io iOS SDK
 
@@ -26,9 +26,7 @@ Follow each section below to get the code running successfully on your machine.
 
 ### Development getting started
 
-* Open `Customer.io.xcodeproj` in XCode to open project. Newer versions of XCode do not require a `.xcodeproj` and can instead open a SPM project by just opening `Package.swift` into XCode. However, this project includes one to support older versions of Swift (XCode). 
-
-*Note: We do require the use of using XCode as the IDE in this project because we use a `.xcodeproj`. XCode does not automatically add newly created source code files to a `.xcodeproj` so if we had different developers using different IDEs, the XCode users would need to fix the xcode project each time changes were made to the project.*
+* Open `Package.swift` file in XCode to open project. XCode knows how to open SPM projects from this file. Or, open this root directory in your favorite source code editor. 
 
 * Install git hooks on your machine for performing development tasks: 
 
