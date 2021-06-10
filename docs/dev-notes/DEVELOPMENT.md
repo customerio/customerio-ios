@@ -60,8 +60,15 @@ Why do we do it this way?
 When you make a pull request, a team member will merge it for you after...
 * All automated tests pass. If they don't it's your responsibility to fix them. 
 * A team member will review your code. If they have suggestions on how to fix it, you can discuss the suggestions as a team and/or make changes to your code from those suggestions. 
-* Make sure the title of the pull request follows the [conventional commit message](https://gist.github.com/levibostian/71afa00ddc69688afebb215faab48fd7) specification. 
+* The title of the pull request is named following the [conventional commit message](https://gist.github.com/levibostian/71afa00ddc69688afebb215faab48fd7) specification. 
 
 ### Deployment 
 
-///
+Deployment is done automatically via CI server. All that needs to be done is a git tag is created. 
+
+When a pull request is merged into `alpha`, `beta`, or `main` the CI server creates a new git tag with the release. 
+
+To prepare the CI server, do the following steps:
+
+Set the following secret environment variables:
+* `REPO_PUSH_TOKEN` - github personal access token with `repos` access so it can push code to the repository. 
