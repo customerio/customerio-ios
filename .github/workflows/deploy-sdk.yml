@@ -1,0 +1,26 @@
+name: Deploy SDK 
+on:
+  push:
+    branches: [main, beta, alpha]
+
+jobs:
+  deploy-sdk:
+    name: Deploy SDK with tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      # Perform git related tasks inside of semantic-release because `git config user...` is already setup. It's easier to run commands in there with exec plugin.
+      - name: Deploy via semantic release 
+        uses: cycjimmy/semantic-release-action@v2
+        with: 
+          # version numbers below can be in many forms: M, M.m, M.m.p
+          semantic_version: 17
+          extra_plugins: |
+            @semantic-release/commit-analyzer@8
+            @semantic-release/release-notes-generator@9
+            @semantic-release/changelog@5
+            @semantic-release/git@9
+            @semantic-release/github@7
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_PUSH_TOKEN }}
