@@ -50,8 +50,10 @@ import Foundation
  */
 
 enum Dependency: CaseIterable {
-    case exampleRepository
-    case exampleViewModel
+    case sdkConfigManager
+    case jsonAdapter
+    case userDefaults
+    case keyValueStorage
 }
 
 class DI {
@@ -78,8 +80,10 @@ class DI {
      */
     func inject<T>(_ dep: Dependency) -> T {
         switch dep {
-        case .exampleRepository: return exampleRepository as! T
-        case .exampleViewModel: return exampleViewModel as! T
+        case .sdkConfigManager: return sdkConfigManager as! T
+        case .jsonAdapter: return jsonAdapter as! T
+        case .userDefaults: return userDefaults as! T
+        case .keyValueStorage: return keyValueStorage as! T
         }
     }
 
@@ -87,27 +91,47 @@ class DI {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // ExampleRepository
-    var exampleRepository: ExampleRepository {
-        if let overridenDep = overrides[.exampleRepository] {
-            return overridenDep as! ExampleRepository
+    // SdkConfigManager
+    var sdkConfigManager: SdkConfigManager {
+        if let overridenDep = overrides[.sdkConfigManager] {
+            return overridenDep as! SdkConfigManager
         }
-        return newExampleRepository
+        return newSdkConfigManager
     }
 
-    var newExampleRepository: ExampleRepository {
-        AppExampleRepository()
+    var newSdkConfigManager: SdkConfigManager {
+        CIOSdkConfigManager(keyValueStorage: keyValueStorage, jsonAdapter: jsonAdapter)
     }
 
-    // ExampleViewModel
-    var exampleViewModel: ExampleViewModel {
-        if let overridenDep = overrides[.exampleViewModel] {
-            return overridenDep as! ExampleViewModel
+    // JsonAdapter
+    var jsonAdapter: JsonAdapter {
+        if let overridenDep = overrides[.jsonAdapter] {
+            return overridenDep as! JsonAdapter
         }
-        return newExampleViewModel
+        return newJsonAdapter
     }
 
-    var newExampleViewModel: ExampleViewModel {
-        AppExampleViewModel(exampleRepository: exampleRepository)
+    var newJsonAdapter: JsonAdapter {
+        SwiftJsonAdpter()
+    }
+
+    // UserDefaults (custom. property getter provided via extension)
+    var userDefaults: UserDefaults {
+        if let overridenDep = overrides[.userDefaults] {
+            return overridenDep as! UserDefaults
+        }
+        return customUserDefaults
+    }
+
+    // KeyValueStorage
+    var keyValueStorage: KeyValueStorage {
+        if let overridenDep = overrides[.keyValueStorage] {
+            return overridenDep as! KeyValueStorage
+        }
+        return newKeyValueStorage
+    }
+
+    var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage(userDefaults: userDefaults)
     }
 }
