@@ -1,5 +1,7 @@
 // Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
+// swiftlint:disable all
+
 import Foundation
 
 /**
@@ -64,175 +66,218 @@ import Foundation
 class KeyValueStorageMock: KeyValueStorage {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
-    // MARK: - integer
-
-    var integerForKeyCallsCount = 0
-    var integerForKeyCalled: Bool {
-        integerForKeyCallsCount > 0
+    var underlyingSharedSiteId: String!
+    var sharedSiteIdCalled = false
+    var sharedSiteIdGetCalled = false
+    var sharedSiteIdSetCalled = false
+    var sharedSiteId: String {
+        get {
+            mockCalled = true
+            sharedSiteIdCalled = true
+            sharedSiteIdGetCalled = true
+            return underlyingSharedSiteId
+        }
+        set(value) {
+            mockCalled = true
+            sharedSiteIdCalled = true
+            sharedSiteIdSetCalled = true
+            underlyingSharedSiteId = value
+        }
     }
 
-    var integerForKeyReceivedKey: KeyValueStorageKey?
-    var integerForKeyReceivedInvocations: [KeyValueStorageKey] = []
-    var integerForKeyReturnValue: Int?
-    var integerForKeyClosure: ((KeyValueStorageKey) -> Int?)?
+    // MARK: - isEmpty
 
-    func integer(forKey key: KeyValueStorageKey) -> Int? {
+    var isEmptySiteIdCallsCount = 0
+    var isEmptySiteIdCalled: Bool {
+        isEmptySiteIdCallsCount > 0
+    }
+
+    var isEmptySiteIdReceivedSiteId: String?
+    var isEmptySiteIdReceivedInvocations: [String] = []
+    var isEmptySiteIdReturnValue: Bool!
+    var isEmptySiteIdClosure: ((String) -> Bool)?
+
+    func isEmpty(siteId: String) -> Bool {
         mockCalled = true
-        integerForKeyCallsCount += 1
-        integerForKeyReceivedKey = key
-        integerForKeyReceivedInvocations.append(key)
-        return integerForKeyClosure.map { $0(key) } ?? integerForKeyReturnValue
+        isEmptySiteIdCallsCount += 1
+        isEmptySiteIdReceivedSiteId = siteId
+        isEmptySiteIdReceivedInvocations.append(siteId)
+        return isEmptySiteIdClosure.map { $0(siteId) } ?? isEmptySiteIdReturnValue
+    }
+
+    // MARK: - integer
+
+    var integerSiteIdForKeyCallsCount = 0
+    var integerSiteIdForKeyCalled: Bool {
+        integerSiteIdForKeyCallsCount > 0
+    }
+
+    var integerSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var integerSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var integerSiteIdForKeyReturnValue: Int?
+    var integerSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Int?)?
+
+    func integer(siteId: String, forKey key: KeyValueStorageKey) -> Int? {
+        mockCalled = true
+        integerSiteIdForKeyCallsCount += 1
+        integerSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        integerSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return integerSiteIdForKeyClosure.map { $0(siteId, key) } ?? integerSiteIdForKeyReturnValue
     }
 
     // MARK: - setInt
 
-    var setIntForKeyCallsCount = 0
-    var setIntForKeyCalled: Bool {
-        setIntForKeyCallsCount > 0
+    var setIntSiteIdValueForKeyCallsCount = 0
+    var setIntSiteIdValueForKeyCalled: Bool {
+        setIntSiteIdValueForKeyCallsCount > 0
     }
 
-    var setIntForKeyReceivedArguments: (value: Int?, key: KeyValueStorageKey)?
-    var setIntForKeyReceivedInvocations: [(value: Int?, key: KeyValueStorageKey)] = []
-    var setIntForKeyClosure: ((Int?, KeyValueStorageKey) -> Void)?
+    var setIntSiteIdValueForKeyReceivedArguments: (siteId: String, value: Int?, key: KeyValueStorageKey)?
+    var setIntSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Int?, key: KeyValueStorageKey)] = []
+    var setIntSiteIdValueForKeyClosure: ((String, Int?, KeyValueStorageKey) -> Void)?
 
-    func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
+    func setInt(siteId: String, value: Int?, forKey key: KeyValueStorageKey) {
         mockCalled = true
-        setIntForKeyCallsCount += 1
-        setIntForKeyReceivedArguments = (value: value, key: key)
-        setIntForKeyReceivedInvocations.append((value: value, key: key))
-        setIntForKeyClosure?(value, key)
+        setIntSiteIdValueForKeyCallsCount += 1
+        setIntSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setIntSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setIntSiteIdValueForKeyClosure?(siteId, value, key)
     }
 
     // MARK: - double
 
-    var doubleForKeyCallsCount = 0
-    var doubleForKeyCalled: Bool {
-        doubleForKeyCallsCount > 0
+    var doubleSiteIdForKeyCallsCount = 0
+    var doubleSiteIdForKeyCalled: Bool {
+        doubleSiteIdForKeyCallsCount > 0
     }
 
-    var doubleForKeyReceivedKey: KeyValueStorageKey?
-    var doubleForKeyReceivedInvocations: [KeyValueStorageKey] = []
-    var doubleForKeyReturnValue: Double?
-    var doubleForKeyClosure: ((KeyValueStorageKey) -> Double?)?
+    var doubleSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var doubleSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var doubleSiteIdForKeyReturnValue: Double?
+    var doubleSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Double?)?
 
-    func double(forKey key: KeyValueStorageKey) -> Double? {
+    func double(siteId: String, forKey key: KeyValueStorageKey) -> Double? {
         mockCalled = true
-        doubleForKeyCallsCount += 1
-        doubleForKeyReceivedKey = key
-        doubleForKeyReceivedInvocations.append(key)
-        return doubleForKeyClosure.map { $0(key) } ?? doubleForKeyReturnValue
+        doubleSiteIdForKeyCallsCount += 1
+        doubleSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        doubleSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return doubleSiteIdForKeyClosure.map { $0(siteId, key) } ?? doubleSiteIdForKeyReturnValue
     }
 
     // MARK: - setDouble
 
-    var setDoubleForKeyCallsCount = 0
-    var setDoubleForKeyCalled: Bool {
-        setDoubleForKeyCallsCount > 0
+    var setDoubleSiteIdValueForKeyCallsCount = 0
+    var setDoubleSiteIdValueForKeyCalled: Bool {
+        setDoubleSiteIdValueForKeyCallsCount > 0
     }
 
-    var setDoubleForKeyReceivedArguments: (value: Double?, key: KeyValueStorageKey)?
-    var setDoubleForKeyReceivedInvocations: [(value: Double?, key: KeyValueStorageKey)] = []
-    var setDoubleForKeyClosure: ((Double?, KeyValueStorageKey) -> Void)?
+    var setDoubleSiteIdValueForKeyReceivedArguments: (siteId: String, value: Double?, key: KeyValueStorageKey)?
+    var setDoubleSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Double?, key: KeyValueStorageKey)] = []
+    var setDoubleSiteIdValueForKeyClosure: ((String, Double?, KeyValueStorageKey) -> Void)?
 
-    func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
+    func setDouble(siteId: String, value: Double?, forKey key: KeyValueStorageKey) {
         mockCalled = true
-        setDoubleForKeyCallsCount += 1
-        setDoubleForKeyReceivedArguments = (value: value, key: key)
-        setDoubleForKeyReceivedInvocations.append((value: value, key: key))
-        setDoubleForKeyClosure?(value, key)
+        setDoubleSiteIdValueForKeyCallsCount += 1
+        setDoubleSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setDoubleSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setDoubleSiteIdValueForKeyClosure?(siteId, value, key)
     }
 
     // MARK: - string
 
-    var stringForKeyCallsCount = 0
-    var stringForKeyCalled: Bool {
-        stringForKeyCallsCount > 0
+    var stringSiteIdForKeyCallsCount = 0
+    var stringSiteIdForKeyCalled: Bool {
+        stringSiteIdForKeyCallsCount > 0
     }
 
-    var stringForKeyReceivedKey: KeyValueStorageKey?
-    var stringForKeyReceivedInvocations: [KeyValueStorageKey] = []
-    var stringForKeyReturnValue: String?
-    var stringForKeyClosure: ((KeyValueStorageKey) -> String?)?
+    var stringSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var stringSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var stringSiteIdForKeyReturnValue: String?
+    var stringSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> String?)?
 
-    func string(forKey key: KeyValueStorageKey) -> String? {
+    func string(siteId: String, forKey key: KeyValueStorageKey) -> String? {
         mockCalled = true
-        stringForKeyCallsCount += 1
-        stringForKeyReceivedKey = key
-        stringForKeyReceivedInvocations.append(key)
-        return stringForKeyClosure.map { $0(key) } ?? stringForKeyReturnValue
+        stringSiteIdForKeyCallsCount += 1
+        stringSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        stringSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return stringSiteIdForKeyClosure.map { $0(siteId, key) } ?? stringSiteIdForKeyReturnValue
     }
 
     // MARK: - setString
 
-    var setStringForKeyCallsCount = 0
-    var setStringForKeyCalled: Bool {
-        setStringForKeyCallsCount > 0
+    var setStringSiteIdValueForKeyCallsCount = 0
+    var setStringSiteIdValueForKeyCalled: Bool {
+        setStringSiteIdValueForKeyCallsCount > 0
     }
 
-    var setStringForKeyReceivedArguments: (value: String?, key: KeyValueStorageKey)?
-    var setStringForKeyReceivedInvocations: [(value: String?, key: KeyValueStorageKey)] = []
-    var setStringForKeyClosure: ((String?, KeyValueStorageKey) -> Void)?
+    var setStringSiteIdValueForKeyReceivedArguments: (siteId: String, value: String?, key: KeyValueStorageKey)?
+    var setStringSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: String?, key: KeyValueStorageKey)] = []
+    var setStringSiteIdValueForKeyClosure: ((String, String?, KeyValueStorageKey) -> Void)?
 
-    func setString(_ value: String?, forKey key: KeyValueStorageKey) {
+    func setString(siteId: String, value: String?, forKey key: KeyValueStorageKey) {
         mockCalled = true
-        setStringForKeyCallsCount += 1
-        setStringForKeyReceivedArguments = (value: value, key: key)
-        setStringForKeyReceivedInvocations.append((value: value, key: key))
-        setStringForKeyClosure?(value, key)
+        setStringSiteIdValueForKeyCallsCount += 1
+        setStringSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setStringSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setStringSiteIdValueForKeyClosure?(siteId, value, key)
     }
 
     // MARK: - date
 
-    var dateForKeyCallsCount = 0
-    var dateForKeyCalled: Bool {
-        dateForKeyCallsCount > 0
+    var dateSiteIdForKeyCallsCount = 0
+    var dateSiteIdForKeyCalled: Bool {
+        dateSiteIdForKeyCallsCount > 0
     }
 
-    var dateForKeyReceivedKey: KeyValueStorageKey?
-    var dateForKeyReceivedInvocations: [KeyValueStorageKey] = []
-    var dateForKeyReturnValue: Date?
-    var dateForKeyClosure: ((KeyValueStorageKey) -> Date?)?
+    var dateSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var dateSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var dateSiteIdForKeyReturnValue: Date?
+    var dateSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Date?)?
 
-    func date(forKey key: KeyValueStorageKey) -> Date? {
+    func date(siteId: String, forKey key: KeyValueStorageKey) -> Date? {
         mockCalled = true
-        dateForKeyCallsCount += 1
-        dateForKeyReceivedKey = key
-        dateForKeyReceivedInvocations.append(key)
-        return dateForKeyClosure.map { $0(key) } ?? dateForKeyReturnValue
+        dateSiteIdForKeyCallsCount += 1
+        dateSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        dateSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return dateSiteIdForKeyClosure.map { $0(siteId, key) } ?? dateSiteIdForKeyReturnValue
     }
 
     // MARK: - setDate
 
-    var setDateForKeyCallsCount = 0
-    var setDateForKeyCalled: Bool {
-        setDateForKeyCallsCount > 0
+    var setDateSiteIdValueForKeyCallsCount = 0
+    var setDateSiteIdValueForKeyCalled: Bool {
+        setDateSiteIdValueForKeyCallsCount > 0
     }
 
-    var setDateForKeyReceivedArguments: (value: Date?, key: KeyValueStorageKey)?
-    var setDateForKeyReceivedInvocations: [(value: Date?, key: KeyValueStorageKey)] = []
-    var setDateForKeyClosure: ((Date?, KeyValueStorageKey) -> Void)?
+    var setDateSiteIdValueForKeyReceivedArguments: (siteId: String, value: Date?, key: KeyValueStorageKey)?
+    var setDateSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Date?, key: KeyValueStorageKey)] = []
+    var setDateSiteIdValueForKeyClosure: ((String, Date?, KeyValueStorageKey) -> Void)?
 
-    func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
+    func setDate(siteId: String, value: Date?, forKey key: KeyValueStorageKey) {
         mockCalled = true
-        setDateForKeyCallsCount += 1
-        setDateForKeyReceivedArguments = (value: value, key: key)
-        setDateForKeyReceivedInvocations.append((value: value, key: key))
-        setDateForKeyClosure?(value, key)
+        setDateSiteIdValueForKeyCallsCount += 1
+        setDateSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setDateSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setDateSiteIdValueForKeyClosure?(siteId, value, key)
     }
 
     // MARK: - deleteAll
 
-    var deleteAllCallsCount = 0
-    var deleteAllCalled: Bool {
-        deleteAllCallsCount > 0
+    var deleteAllSiteIdCallsCount = 0
+    var deleteAllSiteIdCalled: Bool {
+        deleteAllSiteIdCallsCount > 0
     }
 
-    var deleteAllClosure: (() -> Void)?
+    var deleteAllSiteIdReceivedSiteId: String?
+    var deleteAllSiteIdReceivedInvocations: [String] = []
+    var deleteAllSiteIdClosure: ((String) -> Void)?
 
-    func deleteAll() {
+    func deleteAll(siteId: String) {
         mockCalled = true
-        deleteAllCallsCount += 1
-        deleteAllClosure?()
+        deleteAllSiteIdCallsCount += 1
+        deleteAllSiteIdReceivedSiteId = siteId
+        deleteAllSiteIdReceivedInvocations.append(siteId)
+        deleteAllSiteIdClosure?(siteId)
     }
 }
 

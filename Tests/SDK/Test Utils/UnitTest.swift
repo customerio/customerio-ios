@@ -3,13 +3,14 @@ import Foundation
 import XCTest
 
 class UnitTest: XCTestCase {
+    /**
+     Handy objects tests might need to use
+     */
+    let jsonAdapter = DI.shared.jsonAdapter
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
-    var keyValueStorage: KeyValueStorage!
-    private let userDefaults = DI.shared.userDefaults
+    let keyValueStorage = DI.shared.keyValueStorage
 
     override func setUp() {
-        keyValueStorage = UserDefaultsKeyValueStorage(userDefaults: userDefaults)
-
         deleteAll()
 
         super.setUp()
@@ -24,11 +25,17 @@ class UnitTest: XCTestCase {
     }
 
     func deleteAll() {
-        deleteUserDefaults()
+        deleteKeyValueStorage()
     }
 
-    // It's important you only do this in the tests code, not the SDK code. We do *not* want to delete userdefault values for the customer's app by accident.
-    private func deleteUserDefaults() {
-        userDefaults.dictionaryRepresentation().keys.forEach { userDefaults.removeObject(forKey: $0) }
+    /**
+     Although key value storage is separated by siteId, we want to delete
+     common siteId's that we know about.
+     */
+    func deleteKeyValueStorage() {
+        // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
+        // let's delete the data for each test.
+        UserDefaults.standard.deleteAll()
+        keyValueStorage.deleteAll(siteId: keyValueStorage.sharedSiteId)
     }
 }

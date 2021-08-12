@@ -1,7 +1,6 @@
 // Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
-// swiftlint:disable variable_name
-// swiftlint:disable trailing_newline
+// swiftlint:disable all
 
 import Foundation
 
@@ -33,27 +32,35 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
 extension SdkConfig {
     static let siteIdLens = Lens<SdkConfig, String>(get: { $0.siteId },
                                                     set: { siteId, existing in
-                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey, regionCode: existing.regionCode)
+                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey, region: existing.region, devMode: existing.devMode)
                                                     })
     static let apiKeyLens = Lens<SdkConfig, String>(get: { $0.apiKey },
                                                     set: { apiKey, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey, regionCode: existing.regionCode)
+                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey, region: existing.region, devMode: existing.devMode)
                                                     })
-    static let regionCodeLens = Lens<SdkConfig, String>(get: { $0.regionCode },
-                                                        set: { regionCode, existing in
-                                                            SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, regionCode: regionCode)
-                                                        })
+    static let regionLens = Lens<SdkConfig, Region>(get: { $0.region },
+                                                    set: { region, existing in
+                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: region, devMode: existing.devMode)
+                                                    })
+    static let devModeLens = Lens<SdkConfig, Bool>(get: { $0.devMode },
+                                                   set: { devMode, existing in
+                                                       SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: existing.region, devMode: devMode)
+                                                   })
 
     // Convenient set functions to edit a property of the immutable object
     func siteIdSet(_ siteId: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, regionCode: regionCode)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
     }
 
     func apiKeySet(_ apiKey: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, regionCode: regionCode)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
     }
 
-    func regionCodeSet(_ regionCode: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, regionCode: regionCode)
+    func regionSet(_ region: Region) -> SdkConfig {
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
+    }
+
+    func devModeSet(_ devMode: Bool) -> SdkConfig {
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
     }
 }

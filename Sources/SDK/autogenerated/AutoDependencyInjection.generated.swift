@@ -1,3 +1,7 @@
+// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// DO NOT EDIT
+// swiftlint:disable all
+
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
@@ -52,7 +56,6 @@ import Foundation
 enum Dependency: CaseIterable {
     case sdkConfigManager
     case jsonAdapter
-    case userDefaults
     case keyValueStorage
 }
 
@@ -82,7 +85,6 @@ class DI {
         switch dep {
         case .sdkConfigManager: return sdkConfigManager as! T
         case .jsonAdapter: return jsonAdapter as! T
-        case .userDefaults: return userDefaults as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
     }
@@ -115,14 +117,6 @@ class DI {
         SwiftJsonAdpter()
     }
 
-    // UserDefaults (custom. property getter provided via extension)
-    var userDefaults: UserDefaults {
-        if let overridenDep = overrides[.userDefaults] {
-            return overridenDep as! UserDefaults
-        }
-        return customUserDefaults
-    }
-
     // KeyValueStorage
     var keyValueStorage: KeyValueStorage {
         if let overridenDep = overrides[.keyValueStorage] {
@@ -132,6 +126,6 @@ class DI {
     }
 
     var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(userDefaults: userDefaults)
+        UserDefaultsKeyValueStorage()
     }
 }

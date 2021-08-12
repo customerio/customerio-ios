@@ -8,7 +8,7 @@ internal protocol SdkConfigManager: AutoMockable {
 
 // sourcery: InjectRegister = "SdkConfigManager"
 internal class CIOSdkConfigManager: SdkConfigManager {
-    private let keyValueStorage: KeyValueStorage
+    private var keyValueStorage: KeyValueStorage
     private let jsonAdapter: JsonAdapter
 
     internal init(keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter) {
@@ -17,23 +17,26 @@ internal class CIOSdkConfigManager: SdkConfigManager {
     }
 
     func load(siteId: String) -> SdkConfig? {
-        guard let configString = keyValueStorage.string(forKey: .siteIdConfig(siteId: siteId)) else {
+        // try to load the required params
+        // else, return nil as we don't have enough information to perform any action in the SDK.
+        guard let apiKey = keyValueStorage.string(siteId: siteId, forKey: .apiKey),
+              let regionCode = keyValueStorage.string(siteId: siteId, forKey: .regionCode),
+              let region = Region(rawValue: regionCode)
+        else {
             return nil
         }
 
-        let sdkConfig: SdkConfig = try! jsonAdapter.fromJson(configString.data)
-
-        return sdkConfig
+        return SdkConfig(siteId: siteId,
+                         apiKey: apiKey,
+                         region: region)
     }
 
     func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
-        // Default config settings get set here.
-        SdkConfig(siteId: siteId, apiKey: apiKey, regionCode: region.code) // devMode: false)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
     }
 
     func save(siteId: String, config: SdkConfig) {
-        let configString = try! jsonAdapter.toJson(config).string
-
-        keyValueStorage.setString(configString, forKey: .siteIdConfig(siteId: siteId))
+        keyValueStorage.setString(siteId: siteId, value: config.apiKey, forKey: .apiKey)
+        keyValueStorage.setString(siteId: siteId, value: config.region.code, forKey: .regionCode)
     }
 }
