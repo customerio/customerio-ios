@@ -4,6 +4,36 @@
 
 import Foundation
 
+/**
+ ######################################################
+ Documentation
+ ######################################################
+
+ This automatically generated file you are viewing is to modify immutable objects in a convenient way.
+
+ * What do you mean modify immutable objects? https://apiumhub.com/tech-blog-barcelona/lenses-swift-immutability-objects/
+
+ * How do I use this?
+
+ ```
+ // Add `AutoLenses` protocol to struct.
+ struct Foo: AutoLenses {
+   // properties be `let` to be immutable
+   let bar: String
+   let bar2: Bool
+ }
+
+ var foo = Foo(bar: "X", bar2: true)
+ // Now, we want to modify `foo.bar` but it's immutable. How do I modify `bar` without having to do something messy like...
+ Foo(bar: "new value", bar2: oldInstance.bar2)
+ ...to leave my other properties alone?
+
+ foo = foo.setBar("new value")
+ // Now, `foo` is set to the brand new instanced of `Foo` while copying over all other values of `Foo` from the old instance.
+ ```
+
+ */
+
 infix operator *~: MultiplicationPrecedence
 infix operator |>: AdditionPrecedence
 
@@ -32,35 +62,27 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
 extension SdkConfig {
     static let siteIdLens = Lens<SdkConfig, String>(get: { $0.siteId },
                                                     set: { siteId, existing in
-                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey, region: existing.region, devMode: existing.devMode)
+                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey, region: existing.region)
                                                     })
     static let apiKeyLens = Lens<SdkConfig, String>(get: { $0.apiKey },
                                                     set: { apiKey, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey, region: existing.region, devMode: existing.devMode)
+                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey, region: existing.region)
                                                     })
     static let regionLens = Lens<SdkConfig, Region>(get: { $0.region },
                                                     set: { region, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: region, devMode: existing.devMode)
+                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: region)
                                                     })
-    static let devModeLens = Lens<SdkConfig, Bool>(get: { $0.devMode },
-                                                   set: { devMode, existing in
-                                                       SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: existing.region, devMode: devMode)
-                                                   })
 
     // Convenient set functions to edit a property of the immutable object
     func siteIdSet(_ siteId: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
     }
 
     func apiKeySet(_ apiKey: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
     }
 
     func regionSet(_ region: Region) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
-    }
-
-    func devModeSet(_ devMode: Bool) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region, devMode: devMode)
+        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
     }
 }

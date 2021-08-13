@@ -1,5 +1,6 @@
 import Foundation
 
+// disabling lint rule to allow 2 letter enum names: US, EU, etc.
 // swiftlint:disable identifier_name
 /**
  Region that your Customer.io Workspace is located in.
@@ -23,6 +24,7 @@ public enum Region: String, Equatable {
  Welcome to the Customer.io iOS SDK!
 
  This class is where you begin to use the SDK.
+ You must have an instance of `CustomerIO` to use the features of the SDK.
 
  To get an instance, you have 2 options:
  1. Use the already provided singleton shared instance: `CustomerIO.instance`.
@@ -30,7 +32,7 @@ public enum Region: String, Equatable {
 
  2. Create your own instance: `CustomerIO(siteId: "XXX", apiKey: "XXX", region: Region.US)`
  This method is recommended for code bases containing
- automated tests, dependency injection, or sending data to multiple workspaces.
+ automated tests, dependency injection, or sending data to multiple Workspaces.
  */
 public class CustomerIO {
     /**
@@ -45,7 +47,7 @@ public class CustomerIO {
     private var configStore: SdkConfigStore = DI.shared.inject(.sdkConfigStore)
 
     /**
-     init for tests
+     init for testing
      */
     internal init(keyValueStorage: KeyValueStorage, configStore: SdkConfigStore) {
         self.keyValueStorage = keyValueStorage
@@ -67,7 +69,7 @@ public class CustomerIO {
      Create an instance of `CustomerIO`.
 
      This is the recommended method for code bases containing
-     automated tests, dependency injection, or sending data to multiple workspaces.
+     automated tests, dependency injection, or sending data to multiple Workspaces.
      */
     public init(siteId: String, apiKey: String, region: Region) {
         setConfig(siteId: siteId, apiKey: apiKey, region: region)

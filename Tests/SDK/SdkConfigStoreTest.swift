@@ -47,8 +47,7 @@ class SdkConfigStoreTest: UnitTest {
         let givenSiteId = String.random
         let expected = SdkConfig(siteId: givenSiteId,
                                  apiKey: String.random,
-                                 region: Region.EU,
-                                 devMode: false)
+                                 region: Region.EU)
 
         keyValueStorageMock.stringSiteIdForKeyClosure = { _, key in
             switch key {

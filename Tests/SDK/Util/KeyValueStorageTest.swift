@@ -19,7 +19,7 @@ class KeyValueStorageTests: UnitTest {
     func test_givenDifferentSites_expectDataSavedSeparatedFromEachOther() {
         let siteId1 = String.random
         let siteId2 = String.random
-        // site3 is UserDefaults.standard
+        // site3 is UserDefaults.standard. We test this because a customer app might be using it.
 
         let value = "value-here-for-testing"
         let nextSetValue = "next-set-value"
