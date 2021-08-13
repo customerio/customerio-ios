@@ -85,26 +85,6 @@ class KeyValueStorageMock: KeyValueStorage {
         }
     }
 
-    // MARK: - isEmpty
-
-    var isEmptySiteIdCallsCount = 0
-    var isEmptySiteIdCalled: Bool {
-        isEmptySiteIdCallsCount > 0
-    }
-
-    var isEmptySiteIdReceivedSiteId: String?
-    var isEmptySiteIdReceivedInvocations: [String] = []
-    var isEmptySiteIdReturnValue: Bool!
-    var isEmptySiteIdClosure: ((String) -> Bool)?
-
-    func isEmpty(siteId: String) -> Bool {
-        mockCalled = true
-        isEmptySiteIdCallsCount += 1
-        isEmptySiteIdReceivedSiteId = siteId
-        isEmptySiteIdReceivedInvocations.append(siteId)
-        return isEmptySiteIdClosure.map { $0(siteId) } ?? isEmptySiteIdReturnValue
-    }
-
     // MARK: - integer
 
     var integerSiteIdForKeyCallsCount = 0

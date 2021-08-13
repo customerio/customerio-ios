@@ -9,11 +9,9 @@ internal protocol SdkConfigManager: AutoMockable {
 // sourcery: InjectRegister = "SdkConfigManager"
 internal class CIOSdkConfigManager: SdkConfigManager {
     private var keyValueStorage: KeyValueStorage
-    private let jsonAdapter: JsonAdapter
 
-    internal init(keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter) {
+    internal init(keyValueStorage: KeyValueStorage) {
         self.keyValueStorage = keyValueStorage
-        self.jsonAdapter = jsonAdapter
     }
 
     func load(siteId: String) -> SdkConfig? {

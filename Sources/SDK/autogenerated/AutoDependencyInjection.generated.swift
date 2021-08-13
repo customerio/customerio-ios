@@ -55,7 +55,6 @@ import Foundation
 
 enum Dependency: CaseIterable {
     case sdkConfigManager
-    case jsonAdapter
     case keyValueStorage
 }
 
@@ -84,7 +83,6 @@ class DI {
     func inject<T>(_ dep: Dependency) -> T {
         switch dep {
         case .sdkConfigManager: return sdkConfigManager as! T
-        case .jsonAdapter: return jsonAdapter as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
     }
@@ -102,19 +100,7 @@ class DI {
     }
 
     var newSdkConfigManager: SdkConfigManager {
-        CIOSdkConfigManager(keyValueStorage: keyValueStorage, jsonAdapter: jsonAdapter)
-    }
-
-    // JsonAdapter
-    var jsonAdapter: JsonAdapter {
-        if let overridenDep = overrides[.jsonAdapter] {
-            return overridenDep as! JsonAdapter
-        }
-        return newJsonAdapter
-    }
-
-    var newJsonAdapter: JsonAdapter {
-        SwiftJsonAdpter()
+        CIOSdkConfigManager(keyValueStorage: keyValueStorage)
     }
 
     // KeyValueStorage

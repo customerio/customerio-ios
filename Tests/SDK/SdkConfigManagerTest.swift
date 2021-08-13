@@ -12,8 +12,9 @@ class SdkConfigManagerTest: UnitTest {
         super.setUp()
 
         keyValueStorageMock = KeyValueStorageMock()
-        manager = CIOSdkConfigManager(keyValueStorage: keyValueStorageMock, jsonAdapter: jsonAdapter)
-        integrationManager = CIOSdkConfigManager(keyValueStorage: keyValueStorage, jsonAdapter: jsonAdapter)
+
+        manager = CIOSdkConfigManager(keyValueStorage: keyValueStorageMock)
+        integrationManager = CIOSdkConfigManager(keyValueStorage: keyValueStorage)
     }
 
     // MARK: load

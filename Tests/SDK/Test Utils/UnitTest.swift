@@ -6,7 +6,6 @@ class UnitTest: XCTestCase {
     /**
      Handy objects tests might need to use
      */
-    let jsonAdapter = DI.shared.jsonAdapter
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
     let keyValueStorage = DI.shared.keyValueStorage
 
