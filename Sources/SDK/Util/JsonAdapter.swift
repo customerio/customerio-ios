@@ -4,13 +4,13 @@ internal enum JsonAdpter {
     static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.iso8601)
+        decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
 
     static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .formatted(DateFormatter.iso8601)
+        encoder.dateEncodingStrategy = .secondsSince1970
         return encoder
     }
 
