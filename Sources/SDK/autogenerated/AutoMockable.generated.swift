@@ -261,7 +261,7 @@ class KeyValueStorageMock: KeyValueStorage {
     }
 }
 
-class SdkConfigManagerMock: SdkConfigManager {
+class SdkConfigStoreMock: SdkConfigStore {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
     // MARK: - load

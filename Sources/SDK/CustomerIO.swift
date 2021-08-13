@@ -17,14 +17,14 @@ public class CustomerIO {
 
     @Atomic internal var config: SdkConfig?
     private var keyValueStorage: KeyValueStorage = DI.shared.inject(.keyValueStorage)
-    private var configManager: SdkConfigManager = DI.shared.inject(.sdkConfigManager)
+    private var configStore: SdkConfigStore = DI.shared.inject(.sdkConfigStore)
 
     /**
      init for tests
      */
-    internal init(keyValueStorage: KeyValueStorage, configManager: SdkConfigManager) {
+    internal init(keyValueStorage: KeyValueStorage, configStore: SdkConfigStore) {
         self.keyValueStorage = keyValueStorage
-        self.configManager = configManager
+        self.configStore = configStore
     }
 
     /**
@@ -32,7 +32,7 @@ public class CustomerIO {
      */
     internal init() {
         if let siteId = keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .sharedInstanceSiteId) {
-            self.config = configManager.load(siteId: siteId)
+            self.config = configStore.load(siteId: siteId)
         }
     }
 
@@ -51,12 +51,12 @@ public class CustomerIO {
     }
 
     internal func setConfig(siteId: String, apiKey: String, region: Region) {
-        var config = configManager.load(siteId: siteId)
-            ?? configManager.create(siteId: siteId, apiKey: apiKey, region: region)
+        var config = configStore.load(siteId: siteId)
+            ?? configStore.create(siteId: siteId, apiKey: apiKey, region: region)
 
         config = config.apiKeySet(apiKey).regionSet(region)
 
         self.config = config
-        configManager.save(siteId: siteId, config: config)
+        configStore.save(siteId: siteId, config: config)
     }
 }

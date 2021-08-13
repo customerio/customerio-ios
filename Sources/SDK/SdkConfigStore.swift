@@ -1,13 +1,13 @@
 import Foundation
 
-internal protocol SdkConfigManager: AutoMockable {
+internal protocol SdkConfigStore: AutoMockable {
     func load(siteId: String) -> SdkConfig?
     func create(siteId: String, apiKey: String, region: Region) -> SdkConfig
     func save(siteId: String, config: SdkConfig)
 }
 
-// sourcery: InjectRegister = "SdkConfigManager"
-internal class CIOSdkConfigManager: SdkConfigManager {
+// sourcery: InjectRegister = "SdkConfigStore"
+internal class CIOSdkConfigStore: SdkConfigStore {
     private var keyValueStorage: KeyValueStorage
 
     internal init(keyValueStorage: KeyValueStorage) {

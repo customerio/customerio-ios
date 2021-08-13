@@ -54,7 +54,7 @@ import Foundation
  */
 
 enum Dependency: CaseIterable {
-    case sdkConfigManager
+    case sdkConfigStore
     case keyValueStorage
 }
 
@@ -82,7 +82,7 @@ class DI {
      */
     func inject<T>(_ dep: Dependency) -> T {
         switch dep {
-        case .sdkConfigManager: return sdkConfigManager as! T
+        case .sdkConfigStore: return sdkConfigStore as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
     }
@@ -91,16 +91,16 @@ class DI {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // SdkConfigManager
-    var sdkConfigManager: SdkConfigManager {
-        if let overridenDep = overrides[.sdkConfigManager] {
-            return overridenDep as! SdkConfigManager
+    // SdkConfigStore
+    var sdkConfigStore: SdkConfigStore {
+        if let overridenDep = overrides[.sdkConfigStore] {
+            return overridenDep as! SdkConfigStore
         }
-        return newSdkConfigManager
+        return newSdkConfigStore
     }
 
-    var newSdkConfigManager: SdkConfigManager {
-        CIOSdkConfigManager(keyValueStorage: keyValueStorage)
+    var newSdkConfigStore: SdkConfigStore {
+        CIOSdkConfigStore(keyValueStorage: keyValueStorage)
     }
 
     // KeyValueStorage

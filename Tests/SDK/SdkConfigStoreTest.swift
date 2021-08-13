@@ -2,19 +2,19 @@
 import Foundation
 import XCTest
 
-class SdkConfigManagerTest: UnitTest {
+class SdkConfigStoreTest: UnitTest {
     var keyValueStorageMock: KeyValueStorageMock!
 
-    var manager: SdkConfigManager!
-    var integrationManager: SdkConfigManager!
+    var store: SdkConfigStore!
+    var integrationStore: SdkConfigStore!
 
     override func setUp() {
         super.setUp()
 
         keyValueStorageMock = KeyValueStorageMock()
 
-        manager = CIOSdkConfigManager(keyValueStorage: keyValueStorageMock)
-        integrationManager = CIOSdkConfigManager(keyValueStorage: keyValueStorage)
+        store = CIOSdkConfigStore(keyValueStorage: keyValueStorageMock)
+        integrationStore = CIOSdkConfigStore(keyValueStorage: keyValueStorage)
     }
 
     // MARK: load
@@ -23,7 +23,7 @@ class SdkConfigManagerTest: UnitTest {
         let givenSiteId = String.random
         keyValueStorageMock.stringSiteIdForKeyReturnValue = nil
 
-        let actual = manager.load(siteId: givenSiteId)
+        let actual = store.load(siteId: givenSiteId)
 
         XCTAssertNil(actual)
     }
@@ -38,7 +38,7 @@ class SdkConfigManagerTest: UnitTest {
             }
         }
 
-        let actual = manager.load(siteId: givenSiteId)
+        let actual = store.load(siteId: givenSiteId)
 
         XCTAssertNil(actual)
     }
@@ -58,7 +58,7 @@ class SdkConfigManagerTest: UnitTest {
             }
         }
 
-        let actual = manager.load(siteId: givenSiteId)!
+        let actual = store.load(siteId: givenSiteId)!
 
         XCTAssertEqual(actual, expected)
     }
@@ -71,7 +71,7 @@ class SdkConfigManagerTest: UnitTest {
                                  apiKey: String.random,
                                  region: Region.EU)
 
-        let actual = manager.create(siteId: givenSiteId, apiKey: expected.apiKey, region: expected.region)
+        let actual = store.create(siteId: givenSiteId, apiKey: expected.apiKey, region: expected.region)
 
         XCTAssertEqual(actual, expected)
     }
@@ -80,19 +80,19 @@ class SdkConfigManagerTest: UnitTest {
 
     func test_create_load_expectNilBecauseDidNotSave() {
         let givenSiteId = String.random
-        _ = integrationManager.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
+        _ = integrationStore.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
 
-        let actual = integrationManager.load(siteId: givenSiteId)
+        let actual = integrationStore.load(siteId: givenSiteId)
 
         XCTAssertNil(actual)
     }
 
     func test_create_save_load_expectConfigSameThroughProcess() {
         let givenSiteId = String.random
-        let createdConfig = integrationManager.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
-        integrationManager.save(siteId: givenSiteId, config: createdConfig)
+        let createdConfig = integrationStore.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
+        integrationStore.save(siteId: givenSiteId, config: createdConfig)
 
-        let actual = integrationManager.load(siteId: givenSiteId)
+        let actual = integrationStore.load(siteId: givenSiteId)
 
         XCTAssertNotNil(actual)
         XCTAssertEqual(actual, createdConfig)
