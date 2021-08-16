@@ -1,3 +1,7 @@
+// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// DO NOT EDIT
+// swiftlint:disable all
+
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
@@ -50,8 +54,8 @@ import Foundation
  */
 
 enum Dependency: CaseIterable {
-    case exampleRepository
-    case exampleViewModel
+    case sdkConfigStore
+    case keyValueStorage
 }
 
 class DI {
@@ -78,8 +82,8 @@ class DI {
      */
     func inject<T>(_ dep: Dependency) -> T {
         switch dep {
-        case .exampleRepository: return exampleRepository as! T
-        case .exampleViewModel: return exampleViewModel as! T
+        case .sdkConfigStore: return sdkConfigStore as! T
+        case .keyValueStorage: return keyValueStorage as! T
         }
     }
 
@@ -87,27 +91,27 @@ class DI {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // ExampleRepository
-    var exampleRepository: ExampleRepository {
-        if let overridenDep = overrides[.exampleRepository] {
-            return overridenDep as! ExampleRepository
+    // SdkConfigStore
+    var sdkConfigStore: SdkConfigStore {
+        if let overridenDep = overrides[.sdkConfigStore] {
+            return overridenDep as! SdkConfigStore
         }
-        return newExampleRepository
+        return newSdkConfigStore
     }
 
-    var newExampleRepository: ExampleRepository {
-        AppExampleRepository()
+    var newSdkConfigStore: SdkConfigStore {
+        CIOSdkConfigStore(keyValueStorage: keyValueStorage)
     }
 
-    // ExampleViewModel
-    var exampleViewModel: ExampleViewModel {
-        if let overridenDep = overrides[.exampleViewModel] {
-            return overridenDep as! ExampleViewModel
+    // KeyValueStorage
+    var keyValueStorage: KeyValueStorage {
+        if let overridenDep = overrides[.keyValueStorage] {
+            return overridenDep as! KeyValueStorage
         }
-        return newExampleViewModel
+        return newKeyValueStorage
     }
 
-    var newExampleViewModel: ExampleViewModel {
-        AppExampleViewModel(exampleRepository: exampleRepository)
+    var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage()
     }
 }

@@ -1,5 +1,7 @@
-// Generated using Sourcery 1.4.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
+// swiftlint:disable all
+
 import Foundation
 
 /**
@@ -61,48 +63,265 @@ import Foundation
 
  */
 
-class ExampleRepositoryMock: ExampleRepository {
+class KeyValueStorageMock: KeyValueStorage {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
-    // MARK: - callNetwork
-
-    var callNetworkCallsCount = 0
-    var callNetworkCalled: Bool {
-        callNetworkCallsCount > 0
+    var underlyingSharedSiteId: String!
+    var sharedSiteIdCalled = false
+    var sharedSiteIdGetCalled = false
+    var sharedSiteIdSetCalled = false
+    var sharedSiteId: String {
+        get {
+            mockCalled = true
+            sharedSiteIdCalled = true
+            sharedSiteIdGetCalled = true
+            return underlyingSharedSiteId
+        }
+        set(value) {
+            mockCalled = true
+            sharedSiteIdCalled = true
+            sharedSiteIdSetCalled = true
+            underlyingSharedSiteId = value
+        }
     }
 
-    var callNetworkReceivedOnComplete: (() -> Void)?
-    var callNetworkReceivedInvocations: [() -> Void] = []
-    var callNetworkClosure: ((@escaping () -> Void) -> Void)?
+    // MARK: - integer
 
-    func callNetwork(_ onComplete: @escaping () -> Void) {
+    var integerSiteIdForKeyCallsCount = 0
+    var integerSiteIdForKeyCalled: Bool {
+        integerSiteIdForKeyCallsCount > 0
+    }
+
+    var integerSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var integerSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var integerSiteIdForKeyReturnValue: Int?
+    var integerSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Int?)?
+
+    func integer(siteId: String, forKey key: KeyValueStorageKey) -> Int? {
         mockCalled = true
-        callNetworkCallsCount += 1
-        callNetworkReceivedOnComplete = onComplete
-        callNetworkReceivedInvocations.append(onComplete)
-        callNetworkClosure?(onComplete)
+        integerSiteIdForKeyCallsCount += 1
+        integerSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        integerSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return integerSiteIdForKeyClosure.map { $0(siteId, key) } ?? integerSiteIdForKeyReturnValue
+    }
+
+    // MARK: - setInt
+
+    var setIntSiteIdValueForKeyCallsCount = 0
+    var setIntSiteIdValueForKeyCalled: Bool {
+        setIntSiteIdValueForKeyCallsCount > 0
+    }
+
+    var setIntSiteIdValueForKeyReceivedArguments: (siteId: String, value: Int?, key: KeyValueStorageKey)?
+    var setIntSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Int?, key: KeyValueStorageKey)] = []
+    var setIntSiteIdValueForKeyClosure: ((String, Int?, KeyValueStorageKey) -> Void)?
+
+    func setInt(siteId: String, value: Int?, forKey key: KeyValueStorageKey) {
+        mockCalled = true
+        setIntSiteIdValueForKeyCallsCount += 1
+        setIntSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setIntSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setIntSiteIdValueForKeyClosure?(siteId, value, key)
+    }
+
+    // MARK: - double
+
+    var doubleSiteIdForKeyCallsCount = 0
+    var doubleSiteIdForKeyCalled: Bool {
+        doubleSiteIdForKeyCallsCount > 0
+    }
+
+    var doubleSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var doubleSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var doubleSiteIdForKeyReturnValue: Double?
+    var doubleSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Double?)?
+
+    func double(siteId: String, forKey key: KeyValueStorageKey) -> Double? {
+        mockCalled = true
+        doubleSiteIdForKeyCallsCount += 1
+        doubleSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        doubleSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return doubleSiteIdForKeyClosure.map { $0(siteId, key) } ?? doubleSiteIdForKeyReturnValue
+    }
+
+    // MARK: - setDouble
+
+    var setDoubleSiteIdValueForKeyCallsCount = 0
+    var setDoubleSiteIdValueForKeyCalled: Bool {
+        setDoubleSiteIdValueForKeyCallsCount > 0
+    }
+
+    var setDoubleSiteIdValueForKeyReceivedArguments: (siteId: String, value: Double?, key: KeyValueStorageKey)?
+    var setDoubleSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Double?, key: KeyValueStorageKey)] = []
+    var setDoubleSiteIdValueForKeyClosure: ((String, Double?, KeyValueStorageKey) -> Void)?
+
+    func setDouble(siteId: String, value: Double?, forKey key: KeyValueStorageKey) {
+        mockCalled = true
+        setDoubleSiteIdValueForKeyCallsCount += 1
+        setDoubleSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setDoubleSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setDoubleSiteIdValueForKeyClosure?(siteId, value, key)
+    }
+
+    // MARK: - string
+
+    var stringSiteIdForKeyCallsCount = 0
+    var stringSiteIdForKeyCalled: Bool {
+        stringSiteIdForKeyCallsCount > 0
+    }
+
+    var stringSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var stringSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var stringSiteIdForKeyReturnValue: String?
+    var stringSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> String?)?
+
+    func string(siteId: String, forKey key: KeyValueStorageKey) -> String? {
+        mockCalled = true
+        stringSiteIdForKeyCallsCount += 1
+        stringSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        stringSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return stringSiteIdForKeyClosure.map { $0(siteId, key) } ?? stringSiteIdForKeyReturnValue
+    }
+
+    // MARK: - setString
+
+    var setStringSiteIdValueForKeyCallsCount = 0
+    var setStringSiteIdValueForKeyCalled: Bool {
+        setStringSiteIdValueForKeyCallsCount > 0
+    }
+
+    var setStringSiteIdValueForKeyReceivedArguments: (siteId: String, value: String?, key: KeyValueStorageKey)?
+    var setStringSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: String?, key: KeyValueStorageKey)] = []
+    var setStringSiteIdValueForKeyClosure: ((String, String?, KeyValueStorageKey) -> Void)?
+
+    func setString(siteId: String, value: String?, forKey key: KeyValueStorageKey) {
+        mockCalled = true
+        setStringSiteIdValueForKeyCallsCount += 1
+        setStringSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setStringSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setStringSiteIdValueForKeyClosure?(siteId, value, key)
+    }
+
+    // MARK: - date
+
+    var dateSiteIdForKeyCallsCount = 0
+    var dateSiteIdForKeyCalled: Bool {
+        dateSiteIdForKeyCallsCount > 0
+    }
+
+    var dateSiteIdForKeyReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    var dateSiteIdForKeyReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    var dateSiteIdForKeyReturnValue: Date?
+    var dateSiteIdForKeyClosure: ((String, KeyValueStorageKey) -> Date?)?
+
+    func date(siteId: String, forKey key: KeyValueStorageKey) -> Date? {
+        mockCalled = true
+        dateSiteIdForKeyCallsCount += 1
+        dateSiteIdForKeyReceivedArguments = (siteId: siteId, key: key)
+        dateSiteIdForKeyReceivedInvocations.append((siteId: siteId, key: key))
+        return dateSiteIdForKeyClosure.map { $0(siteId, key) } ?? dateSiteIdForKeyReturnValue
+    }
+
+    // MARK: - setDate
+
+    var setDateSiteIdValueForKeyCallsCount = 0
+    var setDateSiteIdValueForKeyCalled: Bool {
+        setDateSiteIdValueForKeyCallsCount > 0
+    }
+
+    var setDateSiteIdValueForKeyReceivedArguments: (siteId: String, value: Date?, key: KeyValueStorageKey)?
+    var setDateSiteIdValueForKeyReceivedInvocations: [(siteId: String, value: Date?, key: KeyValueStorageKey)] = []
+    var setDateSiteIdValueForKeyClosure: ((String, Date?, KeyValueStorageKey) -> Void)?
+
+    func setDate(siteId: String, value: Date?, forKey key: KeyValueStorageKey) {
+        mockCalled = true
+        setDateSiteIdValueForKeyCallsCount += 1
+        setDateSiteIdValueForKeyReceivedArguments = (siteId: siteId, value: value, key: key)
+        setDateSiteIdValueForKeyReceivedInvocations.append((siteId: siteId, value: value, key: key))
+        setDateSiteIdValueForKeyClosure?(siteId, value, key)
+    }
+
+    // MARK: - deleteAll
+
+    var deleteAllSiteIdCallsCount = 0
+    var deleteAllSiteIdCalled: Bool {
+        deleteAllSiteIdCallsCount > 0
+    }
+
+    var deleteAllSiteIdReceivedSiteId: String?
+    var deleteAllSiteIdReceivedInvocations: [String] = []
+    var deleteAllSiteIdClosure: ((String) -> Void)?
+
+    func deleteAll(siteId: String) {
+        mockCalled = true
+        deleteAllSiteIdCallsCount += 1
+        deleteAllSiteIdReceivedSiteId = siteId
+        deleteAllSiteIdReceivedInvocations.append(siteId)
+        deleteAllSiteIdClosure?(siteId)
     }
 }
 
-class ExampleViewModelMock: ExampleViewModel {
+class SdkConfigStoreMock: SdkConfigStore {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
-    // MARK: - callNetwork
+    var sharedInstanceSiteId: String?
 
-    var callNetworkCallsCount = 0
-    var callNetworkCalled: Bool {
-        callNetworkCallsCount > 0
+    // MARK: - load
+
+    var loadSiteIdCallsCount = 0
+    var loadSiteIdCalled: Bool {
+        loadSiteIdCallsCount > 0
     }
 
-    var callNetworkReceivedOnComplete: (() -> Void)?
-    var callNetworkReceivedInvocations: [() -> Void] = []
-    var callNetworkClosure: ((@escaping () -> Void) -> Void)?
+    var loadSiteIdReceivedSiteId: String?
+    var loadSiteIdReceivedInvocations: [String] = []
+    var loadSiteIdReturnValue: SdkConfig?
+    var loadSiteIdClosure: ((String) -> SdkConfig?)?
 
-    func callNetwork(_ onComplete: @escaping () -> Void) {
+    func load(siteId: String) -> SdkConfig? {
         mockCalled = true
-        callNetworkCallsCount += 1
-        callNetworkReceivedOnComplete = onComplete
-        callNetworkReceivedInvocations.append(onComplete)
-        callNetworkClosure?(onComplete)
+        loadSiteIdCallsCount += 1
+        loadSiteIdReceivedSiteId = siteId
+        loadSiteIdReceivedInvocations.append(siteId)
+        return loadSiteIdClosure.map { $0(siteId) } ?? loadSiteIdReturnValue
+    }
+
+    // MARK: - create
+
+    var createSiteIdApiKeyRegionCallsCount = 0
+    var createSiteIdApiKeyRegionCalled: Bool {
+        createSiteIdApiKeyRegionCallsCount > 0
+    }
+
+    var createSiteIdApiKeyRegionReceivedArguments: (siteId: String, apiKey: String, region: Region)?
+    var createSiteIdApiKeyRegionReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
+    var createSiteIdApiKeyRegionReturnValue: SdkConfig!
+    var createSiteIdApiKeyRegionClosure: ((String, String, Region) -> SdkConfig)?
+
+    func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
+        mockCalled = true
+        createSiteIdApiKeyRegionCallsCount += 1
+        createSiteIdApiKeyRegionReceivedArguments = (siteId: siteId, apiKey: apiKey, region: region)
+        createSiteIdApiKeyRegionReceivedInvocations.append((siteId: siteId, apiKey: apiKey, region: region))
+        return createSiteIdApiKeyRegionClosure.map { $0(siteId, apiKey, region) } ?? createSiteIdApiKeyRegionReturnValue
+    }
+
+    // MARK: - save
+
+    var saveSiteIdConfigCallsCount = 0
+    var saveSiteIdConfigCalled: Bool {
+        saveSiteIdConfigCallsCount > 0
+    }
+
+    var saveSiteIdConfigReceivedArguments: (siteId: String, config: SdkConfig)?
+    var saveSiteIdConfigReceivedInvocations: [(siteId: String, config: SdkConfig)] = []
+    var saveSiteIdConfigClosure: ((String, SdkConfig) -> Void)?
+
+    func save(siteId: String, config: SdkConfig) {
+        mockCalled = true
+        saveSiteIdConfigCallsCount += 1
+        saveSiteIdConfigReceivedArguments = (siteId: siteId, config: config)
+        saveSiteIdConfigReceivedInvocations.append((siteId: siteId, config: config))
+        saveSiteIdConfigClosure?(siteId, config)
     }
 }

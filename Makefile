@@ -10,3 +10,9 @@ lint:
 # use the min Swift version that we support/test against. 
 format:
 	swiftformat . --swiftversion 5.3 && swiftlint lint --fix
+
+# Check what code has not yet had documentation written for it. 
+# Jazzy is a great tool that generates docs, yes, but also tells you what public facing code is missing docs. 
+# This command will simply show you the output of the undocumented code of jazzy. It's not the most human-readable but it will do for now. 
+check-undocumented:
+	jazzy --module CIO --swift-build-tool spm --output /tmp/CIO-SDK-jazzy > /dev/null 2>&1 && cat /tmp/CIO-SDK-jazzy/undocumented.json 
