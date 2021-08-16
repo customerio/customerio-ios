@@ -35,6 +35,6 @@ internal class CIOSdkConfigStore: SdkConfigStore {
 
     func save(siteId: String, config: SdkConfig) {
         keyValueStorage.setString(siteId: siteId, value: config.apiKey, forKey: .apiKey)
-        keyValueStorage.setString(siteId: siteId, value: config.region.code, forKey: .regionCode)
+        keyValueStorage.setString(siteId: siteId, value: config.region.rawValue, forKey: .regionCode)
     }
 }

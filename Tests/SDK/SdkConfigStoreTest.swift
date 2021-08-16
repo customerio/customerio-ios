@@ -52,7 +52,7 @@ class SdkConfigStoreTest: UnitTest {
         keyValueStorageMock.stringSiteIdForKeyClosure = { _, key in
             switch key {
             case .apiKey: return expected.apiKey
-            case .regionCode: return expected.region.code
+            case .regionCode: return expected.region.rawValue
             default: return nil
             }
         }
