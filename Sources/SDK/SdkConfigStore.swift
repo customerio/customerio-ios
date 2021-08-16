@@ -20,7 +20,8 @@ internal class CIOSdkConfigStore: SdkConfigStore {
             keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .sharedInstanceSiteId)
         }
         set {
-            keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newValue, forKey: .sharedInstanceSiteId)
+            keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newValue,
+                                      forKey: .sharedInstanceSiteId)
         }
     }
 
