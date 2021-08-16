@@ -17,6 +17,19 @@ class SdkConfigStoreTest: UnitTest {
         integrationStore = CIOSdkConfigStore(keyValueStorage: keyValueStorage)
     }
 
+    // MARK: sharedInstanceSiteId
+
+    func test_sharedInstanceSiteId_givenSet_expectSaveInCorrectStorageLocation() {
+        let givenSiteId = String.random
+        keyValueStorageMock.underlyingSharedSiteId = givenSiteId
+
+        store.sharedInstanceSiteId = givenSiteId
+
+        let actual = keyValueStorageMock.setStringSiteIdValueForKeyReceivedArguments?.siteId
+
+        XCTAssertEqual(actual, givenSiteId)
+    }
+
     // MARK: load
 
     func test_load_givenNewSiteId_expectNil() {
@@ -95,5 +108,14 @@ class SdkConfigStoreTest: UnitTest {
 
         XCTAssertNotNil(actual)
         XCTAssertEqual(actual, createdConfig)
+    }
+
+    func test_sharedInstanceSiteId_expectWriteAndReadSameValue() {
+        let givenSharedSiteId = String.random
+
+        integrationStore.sharedInstanceSiteId = givenSharedSiteId
+        let actual = integrationStore.sharedInstanceSiteId
+
+        XCTAssertEqual(givenSharedSiteId, actual)
     }
 }

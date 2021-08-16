@@ -1,6 +1,7 @@
 import Foundation
 
 internal protocol SdkConfigStore: AutoMockable {
+    var sharedInstanceSiteId: String? { get set }
     func load(siteId: String) -> SdkConfig?
     func create(siteId: String, apiKey: String, region: Region) -> SdkConfig
     func save(siteId: String, config: SdkConfig)
@@ -12,6 +13,15 @@ internal class CIOSdkConfigStore: SdkConfigStore {
 
     internal init(keyValueStorage: KeyValueStorage) {
         self.keyValueStorage = keyValueStorage
+    }
+
+    var sharedInstanceSiteId: String? {
+        get {
+            keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .sharedInstanceSiteId)
+        }
+        set {
+            keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newValue, forKey: .sharedInstanceSiteId)
+        }
     }
 
     func load(siteId: String) -> SdkConfig? {

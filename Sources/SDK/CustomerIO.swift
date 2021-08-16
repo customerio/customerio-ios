@@ -39,14 +39,12 @@ public class CustomerIO {
     @Atomic public private(set) static var instance = CustomerIO()
 
     @Atomic internal var config: SdkConfig?
-    private var keyValueStorage: KeyValueStorage = DI.shared.inject(.keyValueStorage)
     private var configStore: SdkConfigStore = DI.shared.inject(.sdkConfigStore)
 
     /**
      init for testing
      */
-    internal init(keyValueStorage: KeyValueStorage, configStore: SdkConfigStore) {
-        self.keyValueStorage = keyValueStorage
+    internal init(configStore: SdkConfigStore) {
         self.configStore = configStore
     }
 
@@ -56,7 +54,7 @@ public class CustomerIO {
      Try loading the configuration previously saved for the singleton instance.
      */
     internal init() {
-        if let siteId = keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .sharedInstanceSiteId) {
+        if let siteId = configStore.sharedInstanceSiteId {
             self.config = configStore.load(siteId: siteId)
         }
     }
@@ -78,8 +76,7 @@ public class CustomerIO {
     public static func config(siteId: String, apiKey: String, region: Region) {
         Self.instance.setConfig(siteId: siteId, apiKey: apiKey, region: region)
 
-        let keyValueStorage = Self.instance.keyValueStorage
-        keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: siteId, forKey: .sharedInstanceSiteId)
+        Self.instance.configStore.sharedInstanceSiteId = siteId
     }
 
     internal func setConfig(siteId: String, apiKey: String, region: Region) {

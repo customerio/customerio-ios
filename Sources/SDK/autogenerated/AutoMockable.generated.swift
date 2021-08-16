@@ -264,6 +264,8 @@ class KeyValueStorageMock: KeyValueStorage {
 class SdkConfigStoreMock: SdkConfigStore {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
+    var sharedInstanceSiteId: String?
+
     // MARK: - load
 
     var loadSiteIdCallsCount = 0
