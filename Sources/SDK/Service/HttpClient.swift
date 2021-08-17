@@ -3,7 +3,12 @@ import Foundation
 typealias HttpHeaders = [String: String]
 
 internal protocol HttpClient: AutoMockable {
-    func request(_ endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)
+    func request(
+        _ endpoint: HttpEndpoint,
+        headers: HttpHeaders?,
+        body: Data?,
+        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
+    )
 }
 
 internal class CIOHttpClient: HttpClient {
@@ -28,9 +33,14 @@ internal class CIOHttpClient: HttpClient {
         self.session.finishTasksAndInvalidate()
     }
 
-    func request(_ endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
+    func request(
+        _ endpoint: HttpEndpoint,
+        headers: HttpHeaders?,
+        body: Data?,
+        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
+    ) {
         guard let url = httpRequestRunner.getUrl(endpoint: endpoint, region: region) else {
-            onComplete(Result.failure(HttpRequestError.UrlConstruction(url: endpoint.getUrlString(region))))
+            onComplete(Result.failure(HttpRequestError.urlConstruction(endpoint.getUrlString(region))))
             return
         }
 
@@ -38,12 +48,12 @@ internal class CIOHttpClient: HttpClient {
 
         httpRequestRunner.request(requestParams) { data, response, error in
             if let error = error {
-                onComplete(Result.failure(HttpRequestError.UnderlyingError(error: error)))
+                onComplete(Result.failure(HttpRequestError.underlyingError(error)))
                 return
             }
 
             guard let response = response else {
-                onComplete(Result.failure(HttpRequestError.NoResponse))
+                onComplete(Result.failure(HttpRequestError.noResponse))
                 return
             }
 
@@ -51,16 +61,16 @@ internal class CIOHttpClient: HttpClient {
             guard statusCode < 300 else {
                 switch statusCode {
                 case 401:
-                    onComplete(Result.failure(HttpRequestError.Unauthorized))
+                    onComplete(Result.failure(HttpRequestError.unauthorized))
                 default:
-                    onComplete(Result.failure(HttpRequestError.UnsuccessfulStatusCode(code: statusCode)))
+                    onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(statusCode)))
                 }
 
                 return
             }
 
             guard let data = data else {
-                onComplete(Result.failure(HttpRequestError.NoResponse))
+                onComplete(Result.failure(HttpRequestError.noResponse))
                 return
             }
 
@@ -72,12 +82,13 @@ internal class CIOHttpClient: HttpClient {
 extension CIOHttpClient {
     static func getSession(siteId: String, apiKey: String) -> URLSession {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
+        let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
         urlSessionConfig.allowsCellularAccess = true
         urlSessionConfig.timeoutIntervalForResource = 30
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
-                                                  "Authorization": "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))",
+                                                  "Authorization": basicAuthHeaderString,
                                                   "User-Agent": "CustomerIO-SDK-iOS-/\(SdkVersion.version)"]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)

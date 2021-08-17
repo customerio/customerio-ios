@@ -27,7 +27,7 @@ class HttpClientTest: UnitTest {
             XCTAssertFalse(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .UrlConstruction = result.error! else {
+            guard case .urlConstruction = result.error! else {
                 XCTFail()
                 return
             }
@@ -40,7 +40,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenErrorDuringRequest_expectError() {
         let givenError = URLError(.notConnectedToInternet)
-        let expected = HttpRequestError.UnderlyingError(error: givenError)
+        let expected = HttpRequestError.underlyingError(givenError)
 
         requestRunnerMock.requestClosure = { _, onComplete in
             onComplete(nil, nil, givenError)
@@ -51,7 +51,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .UnderlyingError(let actual) = result.error! else {
+            guard case .underlyingError(let actual) = result.error! else {
                 XCTFail()
                 return
             }
@@ -74,7 +74,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .NoResponse = result.error! else {
+            guard case .noResponse = result.error! else {
                 XCTFail()
                 return
             }
@@ -95,7 +95,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .NoResponse = result.error! else {
+            guard case .noResponse = result.error! else {
                 XCTFail()
                 return
             }
@@ -116,7 +116,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .Unauthorized = result.error! else {
+            guard case .unauthorized = result.error! else {
                 XCTFail()
                 return
             }
@@ -129,10 +129,12 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.UnsuccessfulStatusCode(code: expectedCode)
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode)
 
         requestRunnerMock.requestClosure = { _, onComplete in
-            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil), nil)
+            onComplete(nil,
+                       HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil),
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -140,7 +142,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .UnsuccessfulStatusCode(let actualCode) = result.error!, let actualError = result.error else {
+            guard case .unsuccessfulStatusCode(let actualCode) = result.error!, let actualError = result.error else {
                 XCTFail()
                 return
             }
@@ -158,7 +160,8 @@ class HttpClientTest: UnitTest {
         let expected = #"{ "message": "Success!" }"#.data!
 
         requestRunnerMock.requestClosure = { _, onComplete in
-            onComplete(expected, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), nil)
+            onComplete(expected, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")

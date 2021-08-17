@@ -8,6 +8,6 @@ class RegionTest: UnitTest {
     }
 
     func test_trackingUrl_givenEU_expectCorrectUrl() {
-        XCTAssertEqual(Region.EU.trackingUrl, "https://track-eu.customer.io/api/v1/")
+        XCTAssertEqual(Region.EU.trackingUrl, "https://track-eu.customer.io/api/v1")
     }
 }

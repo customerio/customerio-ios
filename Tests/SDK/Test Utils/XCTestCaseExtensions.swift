@@ -6,7 +6,12 @@ extension XCTestCase {
         waitForExpectations(timeout: 0.5, handler: nil)
     }
 
-    func waitForExpectations(for expectations: [XCTestExpectation], enforceOrder: Bool = false, file _: StaticString = #file, line _: UInt = #line) {
+    func waitForExpectations(
+        for expectations: [XCTestExpectation],
+        enforceOrder: Bool = false,
+        file _: StaticString = #file,
+        line _: UInt = #line
+    ) {
         wait(for: expectations, timeout: 0.5, enforceOrder: enforceOrder)
     }
 

@@ -34,7 +34,8 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
 }
 
 /**
- Using struct to avoid having a request function with lots of parameters. This makes a request function easier to mock in tests.
+ Using struct to avoid having a request function with lots of parameters.
+ This makes a request function easier to mock in tests.
  */
 internal struct RequestParams {
     let method: String

@@ -73,15 +73,25 @@ class HttpClientMock: HttpClient {
         requestHeadersBodyOnCompleteCallsCount > 0
     }
 
-    var requestHeadersBodyOnCompleteReceivedArguments: (endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: (Result<Data, HttpRequestError>) -> Void)?
-    var requestHeadersBodyOnCompleteReceivedInvocations: [(endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
-    var requestHeadersBodyOnCompleteClosure: ((HttpEndpoint, HttpHeaders?, Data?, @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
+    var requestHeadersBodyOnCompleteReceivedArguments: (endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+                                                        onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    var requestHeadersBodyOnCompleteReceivedInvocations: [(endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+                                                           onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    var requestHeadersBodyOnCompleteClosure: ((HttpEndpoint, HttpHeaders?, Data?,
+                                               @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
-    func request(_ endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
+    func request(
+        _ endpoint: HttpEndpoint,
+        headers: HttpHeaders?,
+        body: Data?,
+        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
+    ) {
         mockCalled = true
         requestHeadersBodyOnCompleteCallsCount += 1
-        requestHeadersBodyOnCompleteReceivedArguments = (endpoint: endpoint, headers: headers, body: body, onComplete: onComplete)
-        requestHeadersBodyOnCompleteReceivedInvocations.append((endpoint: endpoint, headers: headers, body: body, onComplete: onComplete))
+        requestHeadersBodyOnCompleteReceivedArguments = (endpoint: endpoint, headers: headers, body: body,
+                                                         onComplete: onComplete)
+        requestHeadersBodyOnCompleteReceivedInvocations
+            .append((endpoint: endpoint, headers: headers, body: body, onComplete: onComplete))
         requestHeadersBodyOnCompleteClosure?(endpoint, headers, body, onComplete)
     }
 }
@@ -117,7 +127,8 @@ class HttpRequestRunnerMock: HttpRequestRunner {
     }
 
     var requestReceivedArguments: (params: RequestParams, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
-    var requestReceivedInvocations: [(params: RequestParams, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    var requestReceivedInvocations: [(params: RequestParams, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] =
+        []
     var requestClosure: ((RequestParams, @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
     func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
@@ -329,6 +340,8 @@ class KeyValueStorageMock: KeyValueStorage {
 
 class SdkConfigStoreMock: SdkConfigStore {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
+
+    var sharedInstanceSiteId: String?
 
     // MARK: - load
 

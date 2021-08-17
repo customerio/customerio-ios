@@ -62,15 +62,18 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
 extension SdkConfig {
     static let siteIdLens = Lens<SdkConfig, String>(get: { $0.siteId },
                                                     set: { siteId, existing in
-                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey, region: existing.region)
+                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey,
+                                                                  region: existing.region)
                                                     })
     static let apiKeyLens = Lens<SdkConfig, String>(get: { $0.apiKey },
                                                     set: { apiKey, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey, region: existing.region)
+                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey,
+                                                                  region: existing.region)
                                                     })
     static let regionLens = Lens<SdkConfig, Region>(get: { $0.region },
                                                     set: { region, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey, region: region)
+                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey,
+                                                                  region: region)
                                                     })
 
     // Convenient set functions to edit a property of the immutable object
