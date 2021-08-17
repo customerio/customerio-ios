@@ -9,13 +9,9 @@ import Foundation
  */
 public enum Region: String, Equatable {
     /// The United States (US) data center
-    case US = "us"
+    case US
     /// The European Union (EU) data center
-    case EU = "eu"
-
-    internal var code: String {
-        rawValue
-    }
+    case EU
 
     internal var subdomainSuffix: String {
         switch self {
