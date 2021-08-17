@@ -18,28 +18,30 @@ public class CustomerIO {
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
 
-     Note: Don't forget to call `CustomerIO.config(siteId: "XXX", apiKey: "XXX", region: Region.US)` before using this!
+     Note: Don't forget to call `CustomerIO.initialize(siteId: "XXX", apiKey: "XXX", region: Region.US)` before using this!
      */
     @Atomic public private(set) static var instance = CustomerIO()
 
-    @Atomic internal var config: SdkConfig?
-    private var configStore: SdkConfigStore = DI.shared.inject(.sdkConfigStore)
+    @Atomic internal var sdkConfig = SdkConfig()
+    @Atomic internal var credentials: SdkCredentials?
+    private var credentialsStore: SdkCredentialsStore = DI.shared.inject(.sdkCredentialsStore)
 
     /**
      init for testing
      */
-    internal init(configStore: SdkConfigStore) {
-        self.configStore = configStore
+    internal init(credentialsStore: SdkCredentialsStore, sdkConfig: SdkConfig) {
+        self.credentialsStore = credentialsStore
+        self.sdkConfig = sdkConfig
     }
 
     /**
      Constructor for singleton, only.
 
-     Try loading the configuration previously saved for the singleton instance.
+     Try loading the credentials previously saved for the singleton instance.
      */
     internal init() {
-        if let siteId = configStore.sharedInstanceSiteId {
-            self.config = configStore.load(siteId: siteId)
+        if let siteId = credentialsStore.sharedInstanceSiteId {
+            self.credentials = credentialsStore.load(siteId: siteId)
         }
     }
 
@@ -50,26 +52,42 @@ public class CustomerIO {
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
     public init(siteId: String, apiKey: String, region: Region) {
-        setConfig(siteId: siteId, apiKey: apiKey, region: region)
+        setCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
     /**
-     Configure the shared `instance` of `CustomerIO`.
+     Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    public static func config(siteId: String, apiKey: String, region: Region) {
-        Self.instance.setConfig(siteId: siteId, apiKey: apiKey, region: region)
+    public static func initialize(siteId: String, apiKey: String, region: Region) {
+        Self.instance.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
-        Self.instance.configStore.sharedInstanceSiteId = siteId
+        Self.instance.credentialsStore.sharedInstanceSiteId = siteId
     }
 
-    internal func setConfig(siteId: String, apiKey: String, region: Region) {
-        var config = configStore.load(siteId: siteId)
-            ?? configStore.create(siteId: siteId, apiKey: apiKey, region: region)
+    internal func setCredentials(siteId: String, apiKey: String, region: Region) {
+        var credentials = credentialsStore.load(siteId: siteId)
+            ?? credentialsStore.create(siteId: siteId, apiKey: apiKey, region: region)
 
-        config = config.apiKeySet(apiKey).regionSet(region)
+        credentials = credentials.apiKeySet(apiKey).regionSet(region)
 
-        self.config = config
-        configStore.save(siteId: siteId, config: config)
+        self.credentials = credentials
+        credentialsStore.save(siteId: siteId, credentials: credentials)
+    }
+
+    public static func config(_ handler: (SdkConfig) -> Void) {
+        let configToModify = instance.sdkConfig
+
+        handler(configToModify)
+
+        instance.sdkConfig = configToModify
+    }
+
+    public func config(_ handler: (SdkConfig) -> Void) {
+        let configToModify = sdkConfig
+
+        handler(configToModify)
+
+        sdkConfig = configToModify
     }
 }

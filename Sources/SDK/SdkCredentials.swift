@@ -31,8 +31,12 @@ public enum Region: String, Equatable {
 
 // swiftlint:enable identifier_name
 
-internal struct SdkConfig: AutoLenses, Equatable {
+internal struct SdkCredentials: AutoLenses, Equatable {
     let siteId: String
     let apiKey: String
     let region: Region
+}
+
+public struct SdkConfig {
+    var onUnhandledError: ((Error) -> Void)?
 }

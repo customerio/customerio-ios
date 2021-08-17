@@ -23,9 +23,9 @@ internal class CIOHttpClient: HttpClient {
         self.region = region
     }
 
-    init(config: SdkConfig) {
-        self.session = Self.getSession(siteId: config.siteId, apiKey: config.apiKey)
-        self.region = config.region
+    init(credentials: SdkCredentials) {
+        self.session = Self.getSession(siteId: credentials.siteId, apiKey: credentials.apiKey)
+        self.region = credentials.region
         self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
     }
 

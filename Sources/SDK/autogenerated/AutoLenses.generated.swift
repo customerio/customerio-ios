@@ -59,33 +59,33 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
 }
 
-extension SdkConfig {
-    static let siteIdLens = Lens<SdkConfig, String>(get: { $0.siteId },
-                                                    set: { siteId, existing in
-                                                        SdkConfig(siteId: siteId, apiKey: existing.apiKey,
-                                                                  region: existing.region)
-                                                    })
-    static let apiKeyLens = Lens<SdkConfig, String>(get: { $0.apiKey },
-                                                    set: { apiKey, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: apiKey,
-                                                                  region: existing.region)
-                                                    })
-    static let regionLens = Lens<SdkConfig, Region>(get: { $0.region },
-                                                    set: { region, existing in
-                                                        SdkConfig(siteId: existing.siteId, apiKey: existing.apiKey,
-                                                                  region: region)
-                                                    })
+extension SdkCredentials {
+    static let siteIdLens = Lens<SdkCredentials, String>(get: { $0.siteId },
+                                                         set: { siteId, existing in
+                                                             SdkCredentials(siteId: siteId, apiKey: existing.apiKey,
+                                                                            region: existing.region)
+                                                         })
+    static let apiKeyLens = Lens<SdkCredentials, String>(get: { $0.apiKey },
+                                                         set: { apiKey, existing in
+                                                             SdkCredentials(siteId: existing.siteId, apiKey: apiKey,
+                                                                            region: existing.region)
+                                                         })
+    static let regionLens = Lens<SdkCredentials, Region>(get: { $0.region },
+                                                         set: { region, existing in
+                                                             SdkCredentials(siteId: existing.siteId,
+                                                                            apiKey: existing.apiKey, region: region)
+                                                         })
 
     // Convenient set functions to edit a property of the immutable object
-    func siteIdSet(_ siteId: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
+    func siteIdSet(_ siteId: String) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
-    func apiKeySet(_ apiKey: String) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
+    func apiKeySet(_ apiKey: String) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
-    func regionSet(_ region: Region) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
+    func regionSet(_ region: Region) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 }
