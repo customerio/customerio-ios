@@ -18,11 +18,11 @@ public class CustomerIO {
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
 
-     Note: Don't forget to call `CustomerIO.initialize(siteId: "XXX", apiKey: "XXX", region: Region.US)` before using this!
+     Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
     @Atomic public private(set) static var instance = CustomerIO()
 
-    @Atomic internal var sdkConfig = SdkConfig()
+    @Atomic internal var sdkConfig: SdkConfig
     @Atomic internal var credentials: SdkCredentials?
     private var credentialsStore: SdkCredentialsStore = DI.shared.inject(.sdkCredentialsStore)
 
@@ -43,6 +43,16 @@ public class CustomerIO {
         if let siteId = credentialsStore.sharedInstanceSiteId {
             self.credentials = credentialsStore.load(siteId: siteId)
         }
+
+        self.sdkConfig = SdkConfig()
+    }
+
+    /**
+     Make testing the singleton `instance` possible.
+     Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
+     */
+    internal static func resetSharedInstance() {
+        Self.instance = CustomerIO()
     }
 
     /**
@@ -52,6 +62,7 @@ public class CustomerIO {
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
     public init(siteId: String, apiKey: String, region: Region) {
+        self.sdkConfig = Self.instance.sdkConfig
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
@@ -75,18 +86,48 @@ public class CustomerIO {
         credentialsStore.save(siteId: siteId, credentials: credentials)
     }
 
-    public static func config(_ handler: (SdkConfig) -> Void) {
-        let configToModify = instance.sdkConfig
+    /**
+     Configure the Customer.io SDK.
 
-        handler(configToModify)
+     This will configure the singleton shared instance of the CustomerIO class. It will also be the defafult
+     configuration for all future non-singleton instances of the CustomerIO class.
+
+     Example use:
+     ```
+     CustomerIO.config {
+       $0.onUnhandledError = { error in
+         // log the error to fix
+       }
+     }
+     ```
+     */
+    public static func config(_ handler: (inout SdkConfig) -> Void) {
+        var configToModify = instance.sdkConfig
+
+        handler(&configToModify)
 
         instance.sdkConfig = configToModify
     }
 
-    public func config(_ handler: (SdkConfig) -> Void) {
-        let configToModify = sdkConfig
+    /**
+     Configure the Customer.io SDK.
 
-        handler(configToModify)
+     This will configure the given non-singleton instance of CustomerIO.
+     Cofiguration changes will only impact this 1 instance of the CustomerIO class.
+
+     Example use:
+     ```
+     CustomerIO.config {
+       $0.onUnhandledError = { error in
+         // log the error to fix
+       }
+     }
+     ```
+     */
+    public func config(_ handler: (inout SdkConfig) -> Void) {
+        var configToModify = sdkConfig
+
+        handler(&configToModify)
 
         sdkConfig = configToModify
     }

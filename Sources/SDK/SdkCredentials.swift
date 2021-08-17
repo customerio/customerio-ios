@@ -36,7 +36,3 @@ internal struct SdkCredentials: AutoLenses, Equatable {
     let apiKey: String
     let region: Region
 }
-
-public struct SdkConfig {
-    var onUnhandledError: ((Error) -> Void)?
-}

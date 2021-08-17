@@ -31,6 +31,7 @@ class UnitTest: XCTestCase {
 
     func deleteAll() {
         deleteKeyValueStorage()
+        CustomerIO.resetSharedInstance()
     }
 
     /**

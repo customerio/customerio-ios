@@ -3,15 +3,13 @@ import Foundation
 import XCTest
 
 class CustomerIOTest: UnitTest {
-    // MARK: singleton, shared instance integration testing
+    // MARK: credentials
 
-    func test_shared_givenNotInitialized_expectNotLoadCredentialsOnInit() {
-        let instance = CustomerIO()
-
-        XCTAssertNil(instance.credentials)
+    func test_sharedInstance_givenNotInitialized_expectNotLoadCredentialsOnInit() {
+        XCTAssertNil(CustomerIO.instance.credentials)
     }
 
-    func test_shared_givenInitializeBefore_expectLoadCredentialsOnInit() {
+    func test_sharedInstance_givenInitializeBefore_expectLoadCredentialsOnInit() {
         let givenSiteId = String.random
 
         // First, set the credentials on the shared instance
@@ -28,32 +26,28 @@ class CustomerIOTest: UnitTest {
         XCTAssertEqual(instance.credentials?.siteId, givenSiteId)
     }
 
-    func test_shared_givenInitSeparateInstance_expectSeparateCredentials() {
+    func test_sharedInstance_givenInitSeparateInstance_expectSeparateCredentials() {
         let givenSiteIdSharedInstance = String.random
         let givenSiteIdNewInstance = String.random
 
-        let sharedInstance = CustomerIO()
-        sharedInstance.setCredentials(siteId: givenSiteIdSharedInstance, apiKey: String.random, region: Region.US)
+        CustomerIO.instance.setCredentials(siteId: givenSiteIdSharedInstance, apiKey: String.random, region: Region.US)
         let newInstance = CustomerIO(siteId: givenSiteIdNewInstance, apiKey: String.random, region: Region.EU)
 
-        XCTAssertNotNil(sharedInstance.credentials)
+        XCTAssertNotNil(CustomerIO.instance.credentials)
         XCTAssertNotNil(newInstance.credentials)
 
-        XCTAssertEqual(sharedInstance.credentials?.siteId, givenSiteIdSharedInstance)
+        XCTAssertEqual(CustomerIO.instance.credentials?.siteId, givenSiteIdSharedInstance)
         XCTAssertEqual(newInstance.credentials?.siteId, givenSiteIdNewInstance)
 
-        XCTAssertNotEqual(sharedInstance.credentials?.apiKey, newInstance.credentials?.apiKey)
+        XCTAssertNotEqual(CustomerIO.instance.credentials?.apiKey, newInstance.credentials?.apiKey)
     }
 
-    // MARK: non-shared singleton instance integration testing
-
-    func test_instance_expectInitializedInstance() {
+    func test_newInstance_expectInitializedInstance() {
         let givenSiteId = String.random
 
         let actual = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
         XCTAssertNotNil(actual.credentials)
-
         XCTAssertEqual(actual.credentials?.siteId, givenSiteId)
     }
 
@@ -67,5 +61,64 @@ class CustomerIOTest: UnitTest {
         }
 
         XCTAssertNotNil(actual.credentials)
+    }
+
+    // MARK: config
+
+    func test_config_expectNotNilOnInit() {
+        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
+
+        XCTAssertNotNil(CustomerIO.instance.sdkConfig)
+        XCTAssertNotNil(instance.sdkConfig)
+    }
+
+    func test_config_sharedInstance_givenModifyConfig_expectSetConfigOnInstance() {
+        XCTAssertNil(CustomerIO.instance.sdkConfig.onUnhandledError)
+
+        CustomerIO.config {
+            $0.onUnhandledError = { _ in }
+        }
+
+        XCTAssertNotNil(CustomerIO.instance.sdkConfig.onUnhandledError)
+    }
+
+    func test_config_expectSharedInstanceConfigStartingValueForModifyingConfig() {
+        CustomerIO.config {
+            $0.onUnhandledError = { _ in }
+        }
+
+        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
+        XCTAssertNotNil(instance.sdkConfig.onUnhandledError)
+
+        instance.config { actual in
+            XCTAssertNotNil(actual.onUnhandledError)
+        }
+    }
+
+    func test_config_givenMultipleInstances_expectDifferentConfig() {
+        let instance1 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
+        let instance2 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
+
+        XCTAssertNil(instance1.sdkConfig.onUnhandledError)
+        XCTAssertNil(instance2.sdkConfig.onUnhandledError)
+
+        instance1.config {
+            $0.onUnhandledError = { _ in }
+        }
+
+        XCTAssertNotNil(instance1.sdkConfig.onUnhandledError)
+        XCTAssertNil(instance2.sdkConfig.onUnhandledError)
+    }
+
+    func test_config_givenAccessMultipleThreads_expectSameValue() {
+        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
+
+        DispatchQueue.global(qos: .background).sync {
+            instance.config {
+                $0.onUnhandledError = { _ in }
+            }
+        }
+
+        XCTAssertNotNil(instance.sdkConfig.onUnhandledError)
     }
 }
