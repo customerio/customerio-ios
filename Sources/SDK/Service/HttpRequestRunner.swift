@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /**
  Exists to be able to mock http requests so we can test our HttpClient's response handling logic.

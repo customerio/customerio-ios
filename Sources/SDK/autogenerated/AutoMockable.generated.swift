@@ -3,6 +3,9 @@
 // swiftlint:disable all
 
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /**
  ######################################################
