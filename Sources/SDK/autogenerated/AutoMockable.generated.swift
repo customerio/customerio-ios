@@ -3,6 +3,9 @@
 // swiftlint:disable all
 
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /**
  ######################################################
@@ -62,6 +65,83 @@ import Foundation
  ```
 
  */
+
+class HttpClientMock: HttpClient {
+    var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
+
+    // MARK: - request
+
+    var requestHeadersBodyOnCompleteCallsCount = 0
+    var requestHeadersBodyOnCompleteCalled: Bool {
+        requestHeadersBodyOnCompleteCallsCount > 0
+    }
+
+    var requestHeadersBodyOnCompleteReceivedArguments: (endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+                                                        onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    var requestHeadersBodyOnCompleteReceivedInvocations: [(endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+                                                           onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    var requestHeadersBodyOnCompleteClosure: ((HttpEndpoint, HttpHeaders?, Data?,
+                                               @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
+
+    func request(
+        _ endpoint: HttpEndpoint,
+        headers: HttpHeaders?,
+        body: Data?,
+        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
+    ) {
+        mockCalled = true
+        requestHeadersBodyOnCompleteCallsCount += 1
+        requestHeadersBodyOnCompleteReceivedArguments = (endpoint: endpoint, headers: headers, body: body,
+                                                         onComplete: onComplete)
+        requestHeadersBodyOnCompleteReceivedInvocations
+            .append((endpoint: endpoint, headers: headers, body: body, onComplete: onComplete))
+        requestHeadersBodyOnCompleteClosure?(endpoint, headers, body, onComplete)
+    }
+}
+
+class HttpRequestRunnerMock: HttpRequestRunner {
+    var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
+
+    // MARK: - getUrl
+
+    var getUrlEndpointRegionCallsCount = 0
+    var getUrlEndpointRegionCalled: Bool {
+        getUrlEndpointRegionCallsCount > 0
+    }
+
+    var getUrlEndpointRegionReceivedArguments: (endpoint: HttpEndpoint, region: Region)?
+    var getUrlEndpointRegionReceivedInvocations: [(endpoint: HttpEndpoint, region: Region)] = []
+    var getUrlEndpointRegionReturnValue: URL?
+    var getUrlEndpointRegionClosure: ((HttpEndpoint, Region) -> URL?)?
+
+    func getUrl(endpoint: HttpEndpoint, region: Region) -> URL? {
+        mockCalled = true
+        getUrlEndpointRegionCallsCount += 1
+        getUrlEndpointRegionReceivedArguments = (endpoint: endpoint, region: region)
+        getUrlEndpointRegionReceivedInvocations.append((endpoint: endpoint, region: region))
+        return getUrlEndpointRegionClosure.map { $0(endpoint, region) } ?? getUrlEndpointRegionReturnValue
+    }
+
+    // MARK: - request
+
+    var requestCallsCount = 0
+    var requestCalled: Bool {
+        requestCallsCount > 0
+    }
+
+    var requestReceivedArguments: (params: RequestParams, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    var requestReceivedInvocations: [(params: RequestParams, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] =
+        []
+    var requestClosure: ((RequestParams, @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
+
+    func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
+        mockCalled = true
+        requestCallsCount += 1
+        requestReceivedArguments = (params: params, onComplete: onComplete)
+        requestReceivedInvocations.append((params: params, onComplete: onComplete))
+        requestClosure?(params, onComplete)
+    }
+}
 
 class KeyValueStorageMock: KeyValueStorage {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
