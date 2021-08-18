@@ -44,6 +44,6 @@ internal extension HttpEndpoint {
  Each endpoint in `HttpEndpoint` knows what base API that it needs. That is where
  the full URL including path is constructed.
  */
-internal struct HttpBaseUrls {
+internal struct HttpBaseUrls: Equatable {
     let trackingApi: String
 }

@@ -63,6 +63,7 @@ public class CustomerIO {
      */
     public init(siteId: String, apiKey: String, region: Region) {
         self.sdkConfig = Self.instance.sdkConfig
+
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
@@ -76,6 +77,9 @@ public class CustomerIO {
         Self.instance.credentialsStore.sharedInstanceSiteId = siteId
     }
 
+    /**
+     Sets credentials on shared or non-shared instance.
+     */
     internal func setCredentials(siteId: String, apiKey: String, region: Region) {
         var credentials = credentialsStore.load(siteId: siteId)
             ?? credentialsStore.create(siteId: siteId, apiKey: apiKey, region: region)
@@ -105,12 +109,7 @@ public class CustomerIO {
      ```
      */
     public static func config(_ handler: (inout SdkConfig) -> Void) {
-        var configToModify = instance.sdkConfig
-
-        handler(&configToModify)
-        configToModify = instance.setDefaultValuesSdkConfig(config: configToModify)
-
-        instance.sdkConfig = configToModify
+        instance.config(handler)
     }
 
     /**
@@ -137,7 +136,7 @@ public class CustomerIO {
         sdkConfig = configToModify
     }
 
-    private func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {
+    internal func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {
         var config = config
 
         // if tracking API not set in the configuration, set to default production value.
