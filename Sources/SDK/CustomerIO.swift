@@ -96,7 +96,7 @@ public class CustomerIO {
     /**
      Configure the Customer.io SDK.
 
-     This will configure the singleton shared instance of the CustomerIO class. It will also be the defafult
+     This will configure the singleton shared instance of the CustomerIO class. It will also be the default
      configuration for all future non-singleton instances of the CustomerIO class.
 
      Example use:
