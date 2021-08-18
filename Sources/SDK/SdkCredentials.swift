@@ -9,23 +9,15 @@ import Foundation
  */
 public enum Region: String, Equatable {
     /// The United States (US) data center
-    case US = "us"
+    case US
     /// The European Union (EU) data center
-    case EU = "eu"
+    case EU
 
-    internal var code: String {
-        rawValue
-    }
-
-    internal var subdomainSuffix: String {
+    internal var productionTrackingUrl: String {
         switch self {
-        case .US: return ""
-        case .EU: return "-eu"
+        case .US: return "https://track.customer.io/api/v1"
+        case .EU: return "https://track-eu.customer.io/api/v1"
         }
-    }
-
-    internal var trackingUrl: String {
-        "https://track\(subdomainSuffix).customer.io/api/v1"
     }
 }
 

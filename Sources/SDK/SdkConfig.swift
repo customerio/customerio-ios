@@ -6,8 +6,13 @@ import Foundation
  */
 public struct SdkConfig {
     /**
-     Callback function called when an error occurs in the SDK.
-     It's recommended to log the errors and report them to Cutomer.io support.
+     Base URL to use for the Customer.io track API. You will more then likely not modify this value.
+
+     If you override this value, `Region` set when initializing the SDK will be ignored.
      */
-    var onUnhandledError: ((Error) -> Void)?
+    var trackingApiUrl: String = ""
+
+    internal var httpBaseUrls: HttpBaseUrls {
+        HttpBaseUrls(trackingApi: trackingApiUrl)
+    }
 }

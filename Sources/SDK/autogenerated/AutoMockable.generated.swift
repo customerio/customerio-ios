@@ -104,22 +104,22 @@ class HttpRequestRunnerMock: HttpRequestRunner {
 
     // MARK: - getUrl
 
-    var getUrlEndpointRegionCallsCount = 0
-    var getUrlEndpointRegionCalled: Bool {
-        getUrlEndpointRegionCallsCount > 0
+    var getUrlEndpointBaseUrlsCallsCount = 0
+    var getUrlEndpointBaseUrlsCalled: Bool {
+        getUrlEndpointBaseUrlsCallsCount > 0
     }
 
-    var getUrlEndpointRegionReceivedArguments: (endpoint: HttpEndpoint, region: Region)?
-    var getUrlEndpointRegionReceivedInvocations: [(endpoint: HttpEndpoint, region: Region)] = []
-    var getUrlEndpointRegionReturnValue: URL?
-    var getUrlEndpointRegionClosure: ((HttpEndpoint, Region) -> URL?)?
+    var getUrlEndpointBaseUrlsReceivedArguments: (endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)?
+    var getUrlEndpointBaseUrlsReceivedInvocations: [(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)] = []
+    var getUrlEndpointBaseUrlsReturnValue: URL?
+    var getUrlEndpointBaseUrlsClosure: ((HttpEndpoint, HttpBaseUrls) -> URL?)?
 
-    func getUrl(endpoint: HttpEndpoint, region: Region) -> URL? {
+    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
         mockCalled = true
-        getUrlEndpointRegionCallsCount += 1
-        getUrlEndpointRegionReceivedArguments = (endpoint: endpoint, region: region)
-        getUrlEndpointRegionReceivedInvocations.append((endpoint: endpoint, region: region))
-        return getUrlEndpointRegionClosure.map { $0(endpoint, region) } ?? getUrlEndpointRegionReturnValue
+        getUrlEndpointBaseUrlsCallsCount += 1
+        getUrlEndpointBaseUrlsReceivedArguments = (endpoint: endpoint, baseUrls: baseUrls)
+        getUrlEndpointBaseUrlsReceivedInvocations.append((endpoint: endpoint, baseUrls: baseUrls))
+        return getUrlEndpointBaseUrlsClosure.map { $0(endpoint, baseUrls) } ?? getUrlEndpointBaseUrlsReturnValue
     }
 
     // MARK: - request

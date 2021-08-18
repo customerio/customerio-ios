@@ -73,25 +73,25 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_config_sharedInstance_givenModifyConfig_expectSetConfigOnInstance() {
-        XCTAssertNil(CustomerIO.instance.sdkConfig.onUnhandledError)
+        XCTAssertNil(CustomerIO.instance.sdkConfig.trackingApiUrl)
 
         CustomerIO.config {
-            $0.onUnhandledError = { _ in }
+            $0.trackingApiUrl = ""
         }
 
-        XCTAssertNotNil(CustomerIO.instance.sdkConfig.onUnhandledError)
+        XCTAssertNotNil(CustomerIO.instance.sdkConfig.trackingApiUrl)
     }
 
     func test_config_expectSharedInstanceConfigStartingValueForModifyingConfig() {
         CustomerIO.config {
-            $0.onUnhandledError = { _ in }
+            $0.trackingApiUrl = ""
         }
 
         let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-        XCTAssertNotNil(instance.sdkConfig.onUnhandledError)
+        XCTAssertNotNil(instance.sdkConfig.trackingApiUrl)
 
         instance.config { actual in
-            XCTAssertNotNil(actual.onUnhandledError)
+            XCTAssertNotNil(actual.trackingApiUrl)
         }
     }
 
@@ -99,15 +99,15 @@ class CustomerIOTest: UnitTest {
         let instance1 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
         let instance2 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
 
-        XCTAssertNil(instance1.sdkConfig.onUnhandledError)
-        XCTAssertNil(instance2.sdkConfig.onUnhandledError)
+        XCTAssertNil(instance1.sdkConfig.trackingApiUrl)
+        XCTAssertNil(instance2.sdkConfig.trackingApiUrl)
 
         instance1.config {
-            $0.onUnhandledError = { _ in }
+            $0.trackingApiUrl = ""
         }
 
-        XCTAssertNotNil(instance1.sdkConfig.onUnhandledError)
-        XCTAssertNil(instance2.sdkConfig.onUnhandledError)
+        XCTAssertNotNil(instance1.sdkConfig.trackingApiUrl)
+        XCTAssertNil(instance2.sdkConfig.trackingApiUrl)
     }
 
     func test_config_givenAccessMultipleThreads_expectSameValue() {
@@ -115,10 +115,10 @@ class CustomerIOTest: UnitTest {
 
         DispatchQueue.global(qos: .background).sync {
             instance.config {
-                $0.onUnhandledError = { _ in }
+                $0.trackingApiUrl = ""
             }
         }
 
-        XCTAssertNotNil(instance.sdkConfig.onUnhandledError)
+        XCTAssertNotNil(instance.sdkConfig.trackingApiUrl)
     }
 }

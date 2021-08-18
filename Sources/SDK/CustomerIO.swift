@@ -84,6 +84,9 @@ public class CustomerIO {
 
         self.credentials = credentials
         credentialsStore.save(siteId: siteId, credentials: credentials)
+
+        // Some default values of the SDK configuration may depend on credentials. Reset default values.
+        sdkConfig = setDefaultValuesSdkConfig(config: sdkConfig)
     }
 
     /**
@@ -105,6 +108,7 @@ public class CustomerIO {
         var configToModify = instance.sdkConfig
 
         handler(&configToModify)
+        configToModify = instance.setDefaultValuesSdkConfig(config: configToModify)
 
         instance.sdkConfig = configToModify
     }
@@ -128,7 +132,19 @@ public class CustomerIO {
         var configToModify = sdkConfig
 
         handler(&configToModify)
+        configToModify = setDefaultValuesSdkConfig(config: configToModify)
 
         sdkConfig = configToModify
+    }
+
+    private func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {
+        var config = config
+
+        // if tracking API not set in the configuration, set to default production value.
+        if config.trackingApiUrl.isEmpty, let credentials = self.credentials {
+            config.trackingApiUrl = credentials.region.productionTrackingUrl
+        }
+
+        return config
     }
 }
