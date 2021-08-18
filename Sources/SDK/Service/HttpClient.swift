@@ -16,19 +16,19 @@ internal protocol HttpClient: AutoMockable {
 
 internal class CIOHttpClient: HttpClient {
     private let session: URLSession
-    private let region: Region
+    private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
 
     /// for testing
-    init(httpRequestRunner: HttpRequestRunner, region: Region) {
+    init(httpRequestRunner: HttpRequestRunner) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: "fake-site-id", apiKey: "fake-api-key")
-        self.region = region
+        self.baseUrls = HttpBaseUrls(trackingApi: "fake-url")
     }
 
-    init(config: SdkConfig) {
-        self.session = Self.getSession(siteId: config.siteId, apiKey: config.apiKey)
-        self.region = config.region
+    init(credentials: SdkCredentials, config: SdkConfig) {
+        self.session = Self.getSession(siteId: credentials.siteId, apiKey: credentials.apiKey)
+        self.baseUrls = config.httpBaseUrls
         self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
     }
 
@@ -42,8 +42,8 @@ internal class CIOHttpClient: HttpClient {
         body: Data?,
         onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
     ) {
-        guard let url = httpRequestRunner.getUrl(endpoint: endpoint, region: region) else {
-            onComplete(Result.failure(HttpRequestError.urlConstruction(endpoint.getUrlString(region))))
+        guard let url = httpRequestRunner.getUrl(endpoint: endpoint, baseUrls: baseUrls) else {
+            onComplete(Result.failure(HttpRequestError.urlConstruction(endpoint.getUrlString(baseUrls: baseUrls))))
             return
         }
 

@@ -2,19 +2,19 @@
 import Foundation
 import XCTest
 
-class SdkConfigStoreTest: UnitTest {
+class SdkCredentialsStoreTest: UnitTest {
     var keyValueStorageMock: KeyValueStorageMock!
 
-    var store: SdkConfigStore!
-    var integrationStore: SdkConfigStore!
+    var store: SdkCredentialsStore!
+    var integrationStore: SdkCredentialsStore!
 
     override func setUp() {
         super.setUp()
 
         keyValueStorageMock = KeyValueStorageMock()
 
-        store = CIOSdkConfigStore(keyValueStorage: keyValueStorageMock)
-        integrationStore = CIOSdkConfigStore(keyValueStorage: keyValueStorage)
+        store = CIOSdkCredentialsStore(keyValueStorage: keyValueStorageMock)
+        integrationStore = CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
     }
 
     // MARK: sharedInstanceSiteId
@@ -56,11 +56,11 @@ class SdkConfigStoreTest: UnitTest {
         XCTAssertNil(actual)
     }
 
-    func test_load_givenExistingSiteId_givenExistingConfig_expectConfig() {
+    func test_load_givenExistingSiteId_givenExistingCredentials_expectCredentials() {
         let givenSiteId = String.random
-        let expected = SdkConfig(siteId: givenSiteId,
-                                 apiKey: String.random,
-                                 region: Region.EU)
+        let expected = SdkCredentials(siteId: givenSiteId,
+                                      apiKey: String.random,
+                                      region: Region.EU)
 
         keyValueStorageMock.stringSiteIdForKeyClosure = { _, key in
             switch key {
@@ -77,11 +77,11 @@ class SdkConfigStoreTest: UnitTest {
 
     // MARK: create
 
-    func test_create_expectConfigEqualsParameters() {
+    func test_create_expectCredentialsEqualsParameters() {
         let givenSiteId = String.random
-        let expected = SdkConfig(siteId: givenSiteId,
-                                 apiKey: String.random,
-                                 region: Region.EU)
+        let expected = SdkCredentials(siteId: givenSiteId,
+                                      apiKey: String.random,
+                                      region: Region.EU)
 
         let actual = store.create(siteId: givenSiteId, apiKey: expected.apiKey, region: expected.region)
 
@@ -99,15 +99,15 @@ class SdkConfigStoreTest: UnitTest {
         XCTAssertNil(actual)
     }
 
-    func test_create_save_load_expectConfigSameThroughProcess() {
+    func test_create_save_load_expectCredentialsSameThroughProcess() {
         let givenSiteId = String.random
-        let createdConfig = integrationStore.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
-        integrationStore.save(siteId: givenSiteId, config: createdConfig)
+        let createdCredentials = integrationStore.create(siteId: givenSiteId, apiKey: String.random, region: Region.US)
+        integrationStore.save(siteId: givenSiteId, credentials: createdCredentials)
 
         let actual = integrationStore.load(siteId: givenSiteId)
 
         XCTAssertNotNil(actual)
-        XCTAssertEqual(actual, createdConfig)
+        XCTAssertEqual(actual, createdCredentials)
     }
 
     func test_sharedInstanceSiteId_expectWriteAndReadSameValue() {

@@ -7,7 +7,7 @@ import FoundationNetworking
  Exists to be able to mock http requests so we can test our HttpClient's response handling logic.
  */
 internal protocol HttpRequestRunner: AutoMockable {
-    func getUrl(endpoint: HttpEndpoint, region: Region) -> URL?
+    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL?
     func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)
 }
 
@@ -18,8 +18,8 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         self.session = session
     }
 
-    func getUrl(endpoint: HttpEndpoint, region: Region) -> URL? {
-        endpoint.getUrl(region)
+    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
+        endpoint.getUrl(baseUrls: baseUrls)
     }
 
     func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {

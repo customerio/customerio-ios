@@ -36,7 +36,11 @@ class HttpRequestRunnerTest: UnitTest {
         let endpoint = HttpEndpoint.findAccountRegion
 
         let expectComplete = expectation(description: "Expect to complete")
-        let requestParams = RequestParams(method: endpoint.method, url: endpoint.getUrl(Region.US)!, headers: nil,
+        let requestParams = RequestParams(method: endpoint.method,
+                                          url: endpoint
+                                              .getUrl(baseUrls: HttpBaseUrls(trackingApi: Region.US
+                                                      .productionTrackingUrl))!,
+                                          headers: nil,
                                           body: nil)
         runner.request(requestParams) { data, response, error in
             print(response!)

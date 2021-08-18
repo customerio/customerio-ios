@@ -2,12 +2,13 @@
 import Foundation
 import XCTest
 
-class RegionTest: UnitTest {
-    func test_trackingUrl_givenUS_expectCorrectUrl() {
-        XCTAssertEqual(Region.US.trackingUrl, "https://track.customer.io/api/v1")
-    }
+class SdkConfigTest: UnitTest {
+    func test_httpBaseUrl_givenUrls_expectGetCorrectlyMappedValues() {
+        let givenTrackingUrl = String.random
+        let expected = HttpBaseUrls(trackingApi: givenTrackingUrl)
 
-    func test_trackingUrl_givenEU_expectCorrectUrl() {
-        XCTAssertEqual(Region.EU.trackingUrl, "https://track-eu.customer.io/api/v1")
+        let actual = SdkConfig(trackingApiUrl: givenTrackingUrl).httpBaseUrls
+
+        XCTAssertEqual(actual, expected)
     }
 }

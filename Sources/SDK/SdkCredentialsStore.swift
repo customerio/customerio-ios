@@ -1,14 +1,14 @@
 import Foundation
 
-internal protocol SdkConfigStore: AutoMockable {
+internal protocol SdkCredentialsStore: AutoMockable {
     var sharedInstanceSiteId: String? { get set }
-    func load(siteId: String) -> SdkConfig?
-    func create(siteId: String, apiKey: String, region: Region) -> SdkConfig
-    func save(siteId: String, config: SdkConfig)
+    func load(siteId: String) -> SdkCredentials?
+    func create(siteId: String, apiKey: String, region: Region) -> SdkCredentials
+    func save(siteId: String, credentials: SdkCredentials)
 }
 
-// sourcery: InjectRegister = "SdkConfigStore"
-internal class CIOSdkConfigStore: SdkConfigStore {
+// sourcery: InjectRegister = "SdkCredentialsStore"
+internal class CIOSdkCredentialsStore: SdkCredentialsStore {
     private var keyValueStorage: KeyValueStorage
 
     internal init(keyValueStorage: KeyValueStorage) {
@@ -25,7 +25,7 @@ internal class CIOSdkConfigStore: SdkConfigStore {
         }
     }
 
-    func load(siteId: String) -> SdkConfig? {
+    func load(siteId: String) -> SdkCredentials? {
         // try to load the required params
         // else, return nil as we don't have enough information to perform any action in the SDK.
         guard let apiKey = keyValueStorage.string(siteId: siteId, forKey: .apiKey),
@@ -35,17 +35,17 @@ internal class CIOSdkConfigStore: SdkConfigStore {
             return nil
         }
 
-        return SdkConfig(siteId: siteId,
-                         apiKey: apiKey,
-                         region: region)
+        return SdkCredentials(siteId: siteId,
+                              apiKey: apiKey,
+                              region: region)
     }
 
-    func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
-        SdkConfig(siteId: siteId, apiKey: apiKey, region: region)
+    func create(siteId: String, apiKey: String, region: Region) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
 
-    func save(siteId: String, config: SdkConfig) {
-        keyValueStorage.setString(siteId: siteId, value: config.apiKey, forKey: .apiKey)
-        keyValueStorage.setString(siteId: siteId, value: config.region.rawValue, forKey: .regionCode)
+    func save(siteId: String, credentials: SdkCredentials) {
+        keyValueStorage.setString(siteId: siteId, value: credentials.apiKey, forKey: .apiKey)
+        keyValueStorage.setString(siteId: siteId, value: credentials.region.rawValue, forKey: .regionCode)
     }
 }

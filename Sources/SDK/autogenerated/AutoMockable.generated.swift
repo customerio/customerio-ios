@@ -104,22 +104,22 @@ class HttpRequestRunnerMock: HttpRequestRunner {
 
     // MARK: - getUrl
 
-    var getUrlEndpointRegionCallsCount = 0
-    var getUrlEndpointRegionCalled: Bool {
-        getUrlEndpointRegionCallsCount > 0
+    var getUrlEndpointBaseUrlsCallsCount = 0
+    var getUrlEndpointBaseUrlsCalled: Bool {
+        getUrlEndpointBaseUrlsCallsCount > 0
     }
 
-    var getUrlEndpointRegionReceivedArguments: (endpoint: HttpEndpoint, region: Region)?
-    var getUrlEndpointRegionReceivedInvocations: [(endpoint: HttpEndpoint, region: Region)] = []
-    var getUrlEndpointRegionReturnValue: URL?
-    var getUrlEndpointRegionClosure: ((HttpEndpoint, Region) -> URL?)?
+    var getUrlEndpointBaseUrlsReceivedArguments: (endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)?
+    var getUrlEndpointBaseUrlsReceivedInvocations: [(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)] = []
+    var getUrlEndpointBaseUrlsReturnValue: URL?
+    var getUrlEndpointBaseUrlsClosure: ((HttpEndpoint, HttpBaseUrls) -> URL?)?
 
-    func getUrl(endpoint: HttpEndpoint, region: Region) -> URL? {
+    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
         mockCalled = true
-        getUrlEndpointRegionCallsCount += 1
-        getUrlEndpointRegionReceivedArguments = (endpoint: endpoint, region: region)
-        getUrlEndpointRegionReceivedInvocations.append((endpoint: endpoint, region: region))
-        return getUrlEndpointRegionClosure.map { $0(endpoint, region) } ?? getUrlEndpointRegionReturnValue
+        getUrlEndpointBaseUrlsCallsCount += 1
+        getUrlEndpointBaseUrlsReceivedArguments = (endpoint: endpoint, baseUrls: baseUrls)
+        getUrlEndpointBaseUrlsReceivedInvocations.append((endpoint: endpoint, baseUrls: baseUrls))
+        return getUrlEndpointBaseUrlsClosure.map { $0(endpoint, baseUrls) } ?? getUrlEndpointBaseUrlsReturnValue
     }
 
     // MARK: - request
@@ -341,7 +341,7 @@ class KeyValueStorageMock: KeyValueStorage {
     }
 }
 
-class SdkConfigStoreMock: SdkConfigStore {
+class SdkCredentialsStoreMock: SdkCredentialsStore {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 
     var sharedInstanceSiteId: String?
@@ -355,10 +355,10 @@ class SdkConfigStoreMock: SdkConfigStore {
 
     var loadSiteIdReceivedSiteId: String?
     var loadSiteIdReceivedInvocations: [String] = []
-    var loadSiteIdReturnValue: SdkConfig?
-    var loadSiteIdClosure: ((String) -> SdkConfig?)?
+    var loadSiteIdReturnValue: SdkCredentials?
+    var loadSiteIdClosure: ((String) -> SdkCredentials?)?
 
-    func load(siteId: String) -> SdkConfig? {
+    func load(siteId: String) -> SdkCredentials? {
         mockCalled = true
         loadSiteIdCallsCount += 1
         loadSiteIdReceivedSiteId = siteId
@@ -375,10 +375,10 @@ class SdkConfigStoreMock: SdkConfigStore {
 
     var createSiteIdApiKeyRegionReceivedArguments: (siteId: String, apiKey: String, region: Region)?
     var createSiteIdApiKeyRegionReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
-    var createSiteIdApiKeyRegionReturnValue: SdkConfig!
-    var createSiteIdApiKeyRegionClosure: ((String, String, Region) -> SdkConfig)?
+    var createSiteIdApiKeyRegionReturnValue: SdkCredentials!
+    var createSiteIdApiKeyRegionClosure: ((String, String, Region) -> SdkCredentials)?
 
-    func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
+    func create(siteId: String, apiKey: String, region: Region) -> SdkCredentials {
         mockCalled = true
         createSiteIdApiKeyRegionCallsCount += 1
         createSiteIdApiKeyRegionReceivedArguments = (siteId: siteId, apiKey: apiKey, region: region)
@@ -388,20 +388,20 @@ class SdkConfigStoreMock: SdkConfigStore {
 
     // MARK: - save
 
-    var saveSiteIdConfigCallsCount = 0
-    var saveSiteIdConfigCalled: Bool {
-        saveSiteIdConfigCallsCount > 0
+    var saveSiteIdCredentialsCallsCount = 0
+    var saveSiteIdCredentialsCalled: Bool {
+        saveSiteIdCredentialsCallsCount > 0
     }
 
-    var saveSiteIdConfigReceivedArguments: (siteId: String, config: SdkConfig)?
-    var saveSiteIdConfigReceivedInvocations: [(siteId: String, config: SdkConfig)] = []
-    var saveSiteIdConfigClosure: ((String, SdkConfig) -> Void)?
+    var saveSiteIdCredentialsReceivedArguments: (siteId: String, credentials: SdkCredentials)?
+    var saveSiteIdCredentialsReceivedInvocations: [(siteId: String, credentials: SdkCredentials)] = []
+    var saveSiteIdCredentialsClosure: ((String, SdkCredentials) -> Void)?
 
-    func save(siteId: String, config: SdkConfig) {
+    func save(siteId: String, credentials: SdkCredentials) {
         mockCalled = true
-        saveSiteIdConfigCallsCount += 1
-        saveSiteIdConfigReceivedArguments = (siteId: siteId, config: config)
-        saveSiteIdConfigReceivedInvocations.append((siteId: siteId, config: config))
-        saveSiteIdConfigClosure?(siteId, config)
+        saveSiteIdCredentialsCallsCount += 1
+        saveSiteIdCredentialsReceivedArguments = (siteId: siteId, credentials: credentials)
+        saveSiteIdCredentialsReceivedInvocations.append((siteId: siteId, credentials: credentials))
+        saveSiteIdCredentialsClosure?(siteId, credentials)
     }
 }
