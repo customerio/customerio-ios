@@ -102,9 +102,7 @@ public class CustomerIO {
      Example use:
      ```
      CustomerIO.config {
-       $0.onUnhandledError = { error in
-         // log the error to fix
-       }
+       $0.trackingApiUrl = "https://example.com"
      }
      ```
      */
@@ -121,9 +119,7 @@ public class CustomerIO {
      Example use:
      ```
      CustomerIO.config {
-       $0.onUnhandledError = { error in
-         // log the error to fix
-       }
+       $0.trackingApiUrl = "https://example.com"
      }
      ```
      */
@@ -139,7 +135,6 @@ public class CustomerIO {
     internal func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {
         var config = config
 
-        // if tracking API not set in the configuration, set to default production value.
         if config.trackingApiUrl.isEmpty, let credentials = self.credentials {
             config.trackingApiUrl = credentials.region.productionTrackingUrl
         }
