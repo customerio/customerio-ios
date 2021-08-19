@@ -15,7 +15,6 @@ let package = Package(
     ],
     products: [ // externally visible products for clients to install. 
         .library(name: "CioMessagingPushAPN", targets: ["MessagingPushAPN"]),
-        .library(name: "CioTracking", targets: ["Tracking"])
     ],
     dependencies: [],
     targets: [
@@ -41,13 +40,5 @@ let package = Package(
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["MessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN"),
-        
-        // Tracking
-        .target(name: "Tracking",
-                dependencies: ["Common"],
-                path: "Sources/Tracking"),
-        .testTarget(name: "TrackingTests",
-                    dependencies: ["Tracking", "SharedTests"],
-                    path: "Tests/Tracking"),
     ]
 )
