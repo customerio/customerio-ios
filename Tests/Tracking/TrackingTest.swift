@@ -3,9 +3,8 @@ import Foundation
 @testable import SharedTests
 import XCTest
 
-class VersionTest: XCTestCase {
-    func test_versionValidSemanticVersion() {
-        // regex: https://regexr.com/63gj6
+class TrackingTest: UnitTest {
+    func test_givenX_expectY() {
         XCTAssertTrue(SdkVersion.version.matches(regex: #"(\d+)\.(\d+)\.(\d+)(-alpha|-beta)*"#))
     }
 }

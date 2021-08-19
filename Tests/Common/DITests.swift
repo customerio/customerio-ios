@@ -1,5 +1,6 @@
 @testable import Common
 import Foundation
+@testable import SharedTests
 import XCTest
 
 class DiTests: XCTestCase {
