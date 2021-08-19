@@ -13,15 +13,30 @@ let package = Package(
     platforms: [
         .iOS(.v9)
     ],
-    products: [
-        .library(name: "CIO", targets: ["CIO"])
+    products: [ // externally visible products for clients to install. 
+        .library(name: "CioMessagingPushAPN", targets: ["MessagingPushAPN"])
     ],
     dependencies: [],
     targets: [
-        .target(name: "CIO",
-                path: "Sources/SDK"),
-        .testTarget(name: "SDKTests",
-                    dependencies: ["CIO"],
-                    path: "Tests/SDK")
+        // Common 
+        .target(name: "Common",
+                path: "Sources/Common"),
+        .testTarget(name: "CommonTests",
+                    dependencies: ["Common"],
+                    path: "Tests/Common"),
+        // Messaging Push 
+        .target(name: "MessagingPush",
+                dependencies: ["Common"],
+                path: "Sources/MessagingPush"),
+        .testTarget(name: "MessagingPushTests",
+                    dependencies: ["MessagingPush"],
+                    path: "Tests/MessagingPush"),
+
+        .target(name: "MessagingPushAPN",
+                dependencies: ["MessagingPush"],
+                path: "Sources/MessagingPushAPN"),
+        .testTarget(name: "MessagingPushAPNTests",
+                    dependencies: ["MessagingPushAPN"],
+                    path: "Tests/MessagingPushAPN")
     ]
 )
