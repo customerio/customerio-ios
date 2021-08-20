@@ -53,7 +53,7 @@ DI.shared.resetOverrides()
 */
 
 {# enum that contains list of all dependencies in our app. This allows automated unit testing against our dependency graph. #}
-enum Dependency: CaseIterable {
+public enum Dependency: CaseIterable {
     {# types.all to support classes, enums, structs, custom injecting, etc. #}
     {% for dep in types.all where dep|annotated:"InjectRegister" %}
     case {{ dep.annotations["InjectRegister"]|lowerFirstLetter }}
@@ -75,7 +75,7 @@ var {{ class|lowerFirstLetter }}: {{ class }} {
 }
 {% endmacro %}
 
-class DI {
+public class DI {
     {# Singleton DI graph #}
     static var shared: DI = DI()
     {# Override a dependency. Used in testing, only #}

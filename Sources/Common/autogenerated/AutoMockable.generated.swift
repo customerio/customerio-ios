@@ -143,6 +143,48 @@ class HttpRequestRunnerMock: HttpRequestRunner {
     }
 }
 
+class IdentifyRepositoryMock: IdentifyRepository {
+    var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
+
+    // MARK: - addOrUpdateCustomer
+
+    var addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteCallsCount = 0
+    var addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteCalled: Bool {
+        addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteCallsCount > 0
+    }
+
+    var addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteReceivedArguments: (identifier: String, email: String?,
+                                                                                 createdAt: Date,
+                                                                                 onComplete: (Result<Void, Error>)
+                                                                                     -> Void)?
+    var addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteReceivedInvocations: [(identifier: String, email: String?,
+                                                                                    createdAt: Date,
+                                                                                    onComplete: (Result<Void, Error>)
+                                                                                        -> Void)] = []
+    var addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteClosure: ((
+        String,
+        String?,
+        Date,
+        @escaping (Result<Void, Error>) -> Void
+    ) -> Void)?
+
+    func addOrUpdateCustomer(
+        identifier: String,
+        email: String?,
+        createdAt: Date,
+        onComplete: @escaping (Result<Void, Error>) -> Void
+    ) {
+        mockCalled = true
+        addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteCallsCount += 1
+        addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteReceivedArguments = (identifier: identifier, email: email,
+                                                                                  createdAt: createdAt,
+                                                                                  onComplete: onComplete)
+        addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteReceivedInvocations
+            .append((identifier: identifier, email: email, createdAt: createdAt, onComplete: onComplete))
+        addOrUpdateCustomerIdentifierEmailCreatedAtOnCompleteClosure?(identifier, email, createdAt, onComplete)
+    }
+}
+
 class KeyValueStorageMock: KeyValueStorage {
     var mockCalled: Bool = false // if *any* interactions done on mock. Sets/gets or methods called.
 

@@ -3,9 +3,9 @@ import Foundation
 import FoundationNetworking
 #endif
 
-typealias HttpHeaders = [String: String]
+public typealias HttpHeaders = [String: String]
 
-internal protocol HttpClient: AutoMockable {
+public protocol HttpClient: AutoMockable {
     func request(
         _ endpoint: HttpEndpoint,
         headers: HttpHeaders?,
@@ -14,7 +14,7 @@ internal protocol HttpClient: AutoMockable {
     )
 }
 
-internal class CIOHttpClient: HttpClient {
+public class CIOHttpClient: HttpClient {
     private let session: URLSession
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
@@ -26,7 +26,7 @@ internal class CIOHttpClient: HttpClient {
         self.baseUrls = HttpBaseUrls(trackingApi: "fake-url")
     }
 
-    init(credentials: SdkCredentials, config: SdkConfig) {
+    public init(credentials: SdkCredentials, config: SdkConfig) {
         self.session = Self.getSession(siteId: credentials.siteId, apiKey: credentials.apiKey)
         self.baseUrls = config.httpBaseUrls
         self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
@@ -36,7 +36,7 @@ internal class CIOHttpClient: HttpClient {
         self.session.finishTasksAndInvalidate()
     }
 
-    func request(
+    public func request(
         _ endpoint: HttpEndpoint,
         headers: HttpHeaders?,
         body: Data?,

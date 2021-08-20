@@ -12,6 +12,8 @@ public enum HttpRequestError: Error {
     case unsuccessfulStatusCode(_ code: Int)
     /// Request was not able to even make a request.
     case noResponse
+    /// Failure creating request body. Check the parameters constructing the body.
+    case failCreatingRequestBody(message: String)
     /// An error happened to prevent the request from happening. Check the `description` to get the underlying error.
     case underlyingError(_ error: Error)
 }
@@ -24,6 +26,7 @@ extension HttpRequestError: CustomStringConvertible {
         case .urlConstruction(let url): return "HTTP URL not a valid URL: \(url)"
         case .unsuccessfulStatusCode(let code): return "Response received, but status code > 300 (\(String(code)))"
         case .noResponse: return "No response was returned from server."
+        case .failCreatingRequestBody(let message): return message
         case .underlyingError(let error): return error.localizedDescription
         }
     }

@@ -53,12 +53,12 @@ import Foundation
 
  */
 
-enum Dependency: CaseIterable {
+public enum Dependency: CaseIterable {
     case sdkCredentialsStore
     case keyValueStorage
 }
 
-class DI {
+public class DI {
     static var shared = DI()
     private var overrides: [Dependency: Any] = [:]
     private init() {}
