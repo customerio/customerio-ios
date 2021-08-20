@@ -24,7 +24,7 @@ public class CustomerIO {
 
     @Atomic public var sdkConfig: SdkConfig
     @Atomic public var credentials: SdkCredentials?
-    private var credentialsStore: SdkCredentialsStore = DI.shared.inject(.sdkCredentialsStore)
+    private var credentialsStore: SdkCredentialsStore = DICommon.shared.sdkCredentialsStore
 
     /**
      init for testing

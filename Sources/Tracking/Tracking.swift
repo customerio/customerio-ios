@@ -39,11 +39,11 @@ public class Tracking {
 
     public init(customerIO: CustomerIO) {
         self.customerIO = customerIO
-        self.keyValueStorage = DI
+        self.keyValueStorage = DICommon.shared.keyValueStorage
     }
 
     public func identify(
-        id: String,
+        identifier: String,
         onComplete: @escaping (Result<Void, Error>) -> Void,
         email: String? = nil,
         createdAt: Date = Date()
@@ -52,7 +52,7 @@ public class Tracking {
             return onComplete(Result.failure(SdkError.notInitialized))
         }
 
-        identifyRepository.addOrUpdateCustomer(identifier: id, email: email, createdAt: createdAt) { result in
+        identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email, createdAt: createdAt) { result in
             switch result {
             case .success:
                 // save the information to key/value storage
@@ -64,3 +64,12 @@ public class Tracking {
         }
     }
 }
+
+/**
+ The automatically generated dependency injection graph project
+ complains when there isn't at least 1 `case` in the enum.
+
+ This solves that problem by placing a placeholder into the graph until we have a class that makes sense.
+ */
+// sourcery: InjectRegister = "Placeholder"
+internal class Placeholder {}

@@ -31,11 +31,11 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DICommon.shared.offRoadWheels
+     let wheels = DITracking.shared.offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
 
      // you can also use this syntax instead:
-     let wheels: OffRoadWheels = DICommon.shared.inject(.offRoadWheels)
+     let wheels: OffRoadWheels = DITracking.shared.inject(.offRoadWheels)
      // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
  }
  ```
@@ -43,12 +43,12 @@ import Foundation
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DICommon.shared.override(.offRoadWheels, mockOffRoadWheels)
+ DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DICommon.shared.resetOverrides()
+ DITracking.shared.resetOverrides()
  ```
 
  */
@@ -57,21 +57,20 @@ import Foundation
  enum that contains list of all dependencies in our app.
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
-public enum DependencyCommon: CaseIterable {
-    case sdkCredentialsStore
-    case keyValueStorage
+internal enum DependencyTracking: CaseIterable {
+    case placeholder
 }
 
 /**
- Dependency injection graph specifically with dependencies in the Common module.
+ Dependency injection graph specifically with dependencies in the Tracking module.
 
  We must use 1+ different graphs because of the hierarchy of modules in this SDK.
  Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
  in `Common` module can be in the `Tracking` module.
  */
-public class DICommon {
-    public static var shared = DICommon()
-    private var overrides: [DependencyCommon: Any] = [:]
+internal class DITracking {
+    internal static var shared = DITracking()
+    private var overrides: [DependencyTracking: Any] = [:]
     private init() {}
 
     /**
@@ -79,27 +78,26 @@ public class DICommon {
 
      ```
      let mockOffRoadWheels = // make a mock of OffRoadWheels class
-     DICommon.shared.override(.offRoadWheels, mockOffRoadWheels)
+     DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
      ```
      */
-    public func override<Value: Any>(_ dep: DependencyCommon, value: Value, forType type: Value.Type) {
+    internal func override<Value: Any>(_ dep: DependencyTracking, value: Value, forType type: Value.Type) {
         overrides[dep] = value
     }
 
     /**
      Reset overrides. Meant to be used in `tearDown()` of tests.
      */
-    public func resetOverrides() {
+    internal func resetOverrides() {
         overrides = [:]
     }
 
     /**
      Use this generic method of getting a dependency, if you wish.
      */
-    public func inject<T>(_ dep: DependencyCommon) -> T {
+    internal func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
-        case .sdkCredentialsStore: return sdkCredentialsStore as! T
-        case .keyValueStorage: return keyValueStorage as! T
+        case .placeholder: return placeholder as! T
         }
     }
 
@@ -107,27 +105,15 @@ public class DICommon {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // SdkCredentialsStore
-    internal var sdkCredentialsStore: SdkCredentialsStore {
-        if let overridenDep = overrides[.sdkCredentialsStore] {
-            return overridenDep as! SdkCredentialsStore
+    // Placeholder
+    internal var placeholder: Placeholder {
+        if let overridenDep = overrides[.placeholder] {
+            return overridenDep as! Placeholder
         }
-        return newSdkCredentialsStore
+        return newPlaceholder
     }
 
-    private var newSdkCredentialsStore: SdkCredentialsStore {
-        CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
-    }
-
-    // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
-        if let overridenDep = overrides[.keyValueStorage] {
-            return overridenDep as! KeyValueStorage
-        }
-        return newKeyValueStorage
-    }
-
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage()
+    private var newPlaceholder: Placeholder {
+        Placeholder()
     }
 }

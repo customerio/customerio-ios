@@ -12,3 +12,7 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   # - Source/ExcludedFolder
   # - Source/ExcludedFile.swift
 reporter: "emoji" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)
+
+identifier_name:
+  # allow properties to include _ character. You may see private properties be named `_variableName`. 
+  allowed_symbols: ["_"]
