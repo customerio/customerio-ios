@@ -7,9 +7,7 @@ public typealias HttpHeaders = [String: String]
 
 public protocol HttpClient: AutoMockable {
     func request(
-        _ endpoint: HttpEndpoint,
-        headers: HttpHeaders?,
-        body: Data?,
+        _ params: HttpRequestParams,
         onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
     )
 }
@@ -36,20 +34,8 @@ public class CIOHttpClient: HttpClient {
         self.session.finishTasksAndInvalidate()
     }
 
-    public func request(
-        _ endpoint: HttpEndpoint,
-        headers: HttpHeaders?,
-        body: Data?,
-        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
-    ) {
-        guard let url = httpRequestRunner.getUrl(endpoint: endpoint, baseUrls: baseUrls) else {
-            onComplete(Result.failure(HttpRequestError.urlConstruction(endpoint.getUrlString(baseUrls: baseUrls))))
-            return
-        }
-
-        let requestParams = RequestParams(method: endpoint.method, url: url, headers: headers, body: body)
-
-        httpRequestRunner.request(requestParams) { data, response, error in
+    public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
+        httpRequestRunner.request(params, httpBaseUrls: baseUrls) { data, response, error in
             if let error = error {
                 onComplete(Result.failure(HttpRequestError.underlyingError(error)))
                 return

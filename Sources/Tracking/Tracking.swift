@@ -6,6 +6,14 @@ public class Tracking {
 
     private let customerIO: CustomerIO!
 
+    private var credentials: SdkCredentials? {
+        customerIO.credentials
+    }
+
+    private var sdkConfig: SdkConfig {
+        customerIO.sdkConfig
+    }
+
     /**
      Keep a class wide reference to `IdentifyRepository` to keep it in memory as it performs async operations.
      */
@@ -21,9 +29,9 @@ public class Tracking {
     private var identifyRepository: IdentifyRepository? {
         if let _identifyRepository = self._identifyRepository { return _identifyRepository }
 
-        guard let credentials = customerIO.credentials else { return nil }
+        guard let credentials = credentials else { return nil }
 
-        _identifyRepository = CIOIdentifyRepository(credentials: credentials, config: customerIO.sdkConfig)
+        _identifyRepository = CIOIdentifyRepository(credentials: credentials, config: sdkConfig)
 
         return _identifyRepository
     }
@@ -31,10 +39,10 @@ public class Tracking {
     private let keyValueStorage: KeyValueStorage
 
     /// testing init
-    internal init(identifyRepository: IdentifyRepository, keyValueStorage: KeyValueStorage) {
+    internal init(customerIO: CustomerIO?, identifyRepository: IdentifyRepository?, keyValueStorage: KeyValueStorage) {
         self._identifyRepository = identifyRepository
         self.keyValueStorage = keyValueStorage
-        self.customerIO = CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
+        self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
     }
 
     public init(customerIO: CustomerIO) {
@@ -45,19 +53,18 @@ public class Tracking {
     public func identify(
         identifier: String,
         onComplete: @escaping (Result<Void, Error>) -> Void,
-        email: String? = nil,
-        createdAt: Date = Date()
+        email: String? = nil
     ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(SdkError.notInitialized))
         }
 
-        identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email, createdAt: createdAt) { result in
+        identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email) { [weak self] result in
+            guard self != nil else { return }
+
             switch result {
             case .success:
-                // save the information to key/value storage
-
-                break
+                return onComplete(Result.success(()))
             case .failure(let error):
                 return onComplete(Result.failure(error))
             }

@@ -1,6 +1,6 @@
 @testable import Common
 import Foundation
-@testable import SharedTests
+import SharedTests
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -37,18 +37,15 @@ class HttpRequestRunnerTest: UnitTest {
         let endpoint = HttpEndpoint.findAccountRegion
 
         let expectComplete = expectation(description: "Expect to complete")
-        let requestParams = RequestParams(method: endpoint.method,
-                                          url: endpoint
-                                              .getUrl(baseUrls: HttpBaseUrls(trackingApi: Region.US
-                                                      .productionTrackingUrl))!,
-                                          headers: nil,
-                                          body: nil)
-        runner.request(requestParams) { data, response, error in
-            print(response!)
-            print(data!.string!)
+        let requestParams = HttpRequestParams(endpoint: endpoint, headers: nil, body: nil)
+        runner
+            .request(requestParams,
+                     httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US)) { data, response, error in
+                print(response!)
+                print(data!.string!)
 
-            expectComplete.fulfill()
-        }
+                expectComplete.fulfill()
+            }
 
         waitForExpectations()
     }

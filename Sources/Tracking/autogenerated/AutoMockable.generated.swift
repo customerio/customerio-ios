@@ -87,29 +87,26 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?, createdAt: Date,
+    internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?,
                                                         onComplete: (Result<Void, Error>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?, createdAt: Date,
+    internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?,
                                                            onComplete: (Result<Void, Error>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, String?, Date, @escaping (Result<Void, Error>) -> Void) -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, String?, @escaping (Result<Void, Error>) -> Void) -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, createdAt: Date, onComplete: @escaping (Result<Void, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, onComplete: @escaping (Result<Void, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func addOrUpdateCustomer(
         identifier: String,
         email: String?,
-        createdAt: Date,
         onComplete: @escaping (Result<Void, Error>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1
-        addOrUpdateCustomerReceivedArguments = (identifier: identifier, email: email, createdAt: createdAt,
-                                                onComplete: onComplete)
-        addOrUpdateCustomerReceivedInvocations
-            .append((identifier: identifier, email: email, createdAt: createdAt, onComplete: onComplete))
-        addOrUpdateCustomerClosure?(identifier, email, createdAt, onComplete)
+        addOrUpdateCustomerReceivedArguments = (identifier: identifier, email: email, onComplete: onComplete)
+        addOrUpdateCustomerReceivedInvocations.append((identifier: identifier, email: email, onComplete: onComplete))
+        addOrUpdateCustomerClosure?(identifier, email, onComplete)
     }
 }

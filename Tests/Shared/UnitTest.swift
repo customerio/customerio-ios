@@ -8,20 +8,20 @@ import XCTest
 
  We use a base class instead of simply a utility class because we can't access `setup` and `teardown` functions with a util class.
  */
-class UnitTest: XCTestCase {
+open class UnitTest: XCTestCase {
     /**
      Handy objects tests might need to use
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
-    let keyValueStorage = DICommon.shared.keyValueStorage
+    public let keyValueStorage = DICommon.shared.keyValueStorage
 
-    override func setUp() {
+    override open func setUp() {
         deleteAll()
 
         super.setUp()
     }
 
-    override func tearDown() {
+    override open func tearDown() {
         deleteAll()
 
         DICommon.shared.resetOverrides()
