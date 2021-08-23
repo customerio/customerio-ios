@@ -18,13 +18,13 @@ class HttpClientTest: UnitTest {
         requestRunnerMock = HttpRequestRunnerMock()
         client = CIOHttpClient(httpRequestRunner: requestRunnerMock)
 
-        requestRunnerMock.getUrlEndpointBaseUrlsReturnValue = url
+        requestRunnerMock.getUrlReturnValue = url
     }
 
     // MARK: request
 
     func test_request_givenCannotCreateUrl_expectReceiveError_expectRequestNotMade() {
-        requestRunnerMock.getUrlEndpointBaseUrlsReturnValue = nil
+        requestRunnerMock.getUrlReturnValue = nil
 
         let expectComplete = expectation(description: "Expect to complete")
         client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in

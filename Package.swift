@@ -25,6 +25,7 @@ let package = Package(
                     dependencies: ["Common", "SharedTests"],
                     path: "Tests/Common"),
         .target(name: "SharedTests",
+                dependencies: ["Common"],
                 path: "Tests/Shared"),
         // Messaging Push 
         .target(name: "MessagingPush",

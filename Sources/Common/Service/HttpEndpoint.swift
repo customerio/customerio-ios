@@ -1,6 +1,6 @@
 import Foundation
 
-internal enum HttpEndpoint {
+public enum HttpEndpoint {
     case findAccountRegion
     case identifyCustomer(identifier: String)
 
@@ -19,7 +19,7 @@ internal enum HttpEndpoint {
     }
 }
 
-internal extension HttpEndpoint {
+public extension HttpEndpoint {
     func getUrl(baseUrls: HttpBaseUrls) -> URL? {
         URL(string: getUrlString(baseUrls: baseUrls))
     }
@@ -44,6 +44,6 @@ internal extension HttpEndpoint {
  Each endpoint in `HttpEndpoint` knows what base API that it needs. That is where
  the full URL including path is constructed.
  */
-internal struct HttpBaseUrls: Equatable {
+public struct HttpBaseUrls: Equatable {
     let trackingApi: String
 }

@@ -26,7 +26,7 @@ class SdkCredentialsStoreTest: UnitTest {
 
         store.sharedInstanceSiteId = givenSiteId
 
-        let actual = keyValueStorageMock.setStringSiteIdValueForKeyReceivedArguments?.siteId
+        let actual = keyValueStorageMock.setStringReceivedArguments?.siteId
 
         XCTAssertEqual(actual, givenSiteId)
     }
@@ -35,7 +35,7 @@ class SdkCredentialsStoreTest: UnitTest {
 
     func test_load_givenNewSiteId_expectNil() {
         let givenSiteId = String.random
-        keyValueStorageMock.stringSiteIdForKeyReturnValue = nil
+        keyValueStorageMock.stringReturnValue = nil
 
         let actual = store.load(siteId: givenSiteId)
 
@@ -45,7 +45,7 @@ class SdkCredentialsStoreTest: UnitTest {
     func test_load_givenExistingSiteId_givenMissingRequiredField_expectNil() {
         let givenSiteId = String.random
 
-        keyValueStorageMock.stringSiteIdForKeyClosure = { _, key in
+        keyValueStorageMock.stringClosure = { _, key in
             switch key {
             case .apiKey: return String.random
             default: return nil
@@ -63,7 +63,7 @@ class SdkCredentialsStoreTest: UnitTest {
                                       apiKey: String.random,
                                       region: Region.EU)
 
-        keyValueStorageMock.stringSiteIdForKeyClosure = { _, key in
+        keyValueStorageMock.stringClosure = { _, key in
             switch key {
             case .apiKey: return expected.apiKey
             case .regionCode: return expected.region.rawValue
