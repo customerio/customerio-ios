@@ -47,5 +47,24 @@ internal class CIOSdkCredentialsStore: SdkCredentialsStore {
     func save(siteId: String, credentials: SdkCredentials) {
         keyValueStorage.setString(siteId: siteId, value: credentials.apiKey, forKey: .apiKey)
         keyValueStorage.setString(siteId: siteId, value: credentials.region.rawValue, forKey: .regionCode)
+
+        appendSiteId(siteId)
+    }
+
+    /**
+     Save all of the site ids given to the SDK. We are storing this because we may need to iterate all of the
+     site ids in the future so let's capture them now so we have them.
+     */
+    internal func appendSiteId(_ siteId: String) {
+        let existingSiteIds = keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .allSiteIds) ?? ""
+
+        // Must convert String.Substring to String which is why we map()
+        var allSiteIds = Set(existingSiteIds.split(separator: ",").map { String($0) })
+
+        allSiteIds.insert(siteId)
+
+        let newSiteIds = allSiteIds.joined(separator: ",")
+
+        keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newSiteIds, forKey: .allSiteIds)
     }
 }
