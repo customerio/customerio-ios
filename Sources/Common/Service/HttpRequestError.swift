@@ -22,8 +22,8 @@ extension HttpRequestError: CustomStringConvertible, LocalizedError {
         switch self {
         case .unauthorized: return "HTTP request responded with 401. Configure the SDK with valid credentials."
         case .urlConstruction(let url): return "HTTP URL not a valid URL: \(url)"
-        case .unsuccessfulStatusCode(let code,
-                                     let message): return "Response received, but status code = \(String(code)). \(message)"
+        case .unsuccessfulStatusCode(let code, let message):
+            return "Response received, but status code = \(String(code)). \(message)"
         case .noResponse: return "No response was returned from server."
         case .underlyingError(let error): return error.localizedDescription
         }

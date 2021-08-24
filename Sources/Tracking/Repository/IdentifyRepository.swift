@@ -4,7 +4,7 @@ import Foundation
 internal protocol IdentifyRepository: AutoMockable {
     func addOrUpdateCustomer(identifier: String,
                              email: String?,
-                             onComplete: @escaping (Result<Void, Error>) -> Void)
+                             onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -28,10 +28,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     func addOrUpdateCustomer(
         identifier: String,
         email: String?,
-        onComplete: @escaping (Result<Void, Error>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let bodyData = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: email, anonymousId: nil)) else {
-            return onComplete(Result.failure(HttpRequestError.noResponse))
+            return onComplete(Result.failure(.httpError(.noResponse)))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: identifier), headers: nil,
@@ -48,7 +48,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
                     onComplete(Result.success(()))
                 case .failure(let error):
-                    onComplete(Result.failure(error))
+                    onComplete(Result.failure(.httpError(error)))
                 }
             }
     }

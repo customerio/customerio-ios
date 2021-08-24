@@ -4,6 +4,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+{% for importModule in argument.imports|split:":" %}
+import {{ importModule }}
+{% endfor %}
 
 /**
 ######################################################
@@ -81,8 +84,8 @@ class ExampleTest: XCTestCase {
 
 {% macro methodReceivedParameters method %}
     {%if method.parameters.count == 1 %}
-        {% call swiftifyMethodName method %}Received{% for param in method.parameters %}{{ param.name|upperFirstLetter }} = {{ param.name }}{% endfor %}
-        {% call swiftifyMethodName method %}ReceivedInvocations.append({% for param in method.parameters %}{{ param.name }}){% endfor %}
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
     {% else %}
     {% if not method.parameters.count == 0 %}
         {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}: {{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
@@ -124,8 +127,10 @@ class ExampleTest: XCTestCase {
     }
     {% endif %}
     {% if method.parameters.count == 1 %}
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}Received{% for param in method.parameters %}{{ param.name|upperFirstLetter }}: {{ '(' if param.isClosure }}{{ param.typeName.unwrappedTypeName }}{{ ')' if param.isClosure }}?{% endfor %}
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations{% for param in method.parameters %}: [{{ '(' if param.isClosure }}{{ param.typeName.unwrappedTypeName }}{{ ')' if param.isClosure }}{%if param.typeName.isOptional%}?{%endif%}]{% endfor %} = []
+    /// The arguments from the *last* time the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    /// Arguments from *all* of the times that the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
     {% elif not method.parameters.count == 0 %}
     /// The arguments from the *last* time the function was called. 
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
@@ -133,6 +138,7 @@ class ExampleTest: XCTestCase {
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
     {% endif %}
     {% if not method.returnTypeName.isVoid and not method.isInitializer %}
+    /// Value to return from the mocked function. 
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReturnValue: {{ method.returnTypeName }}{{ '!' if not method.isOptionalReturnType }}
     {% endif %}
     {% call methodClosureDeclaration method %}

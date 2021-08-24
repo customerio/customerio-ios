@@ -204,6 +204,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var integerReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var integerReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var integerReturnValue: Int?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -261,6 +262,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var doubleReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var doubleReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var doubleReturnValue: Double?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -318,6 +320,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var stringReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var stringReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var stringReturnValue: String?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -375,6 +378,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var dateReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var dateReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var dateReturnValue: Date?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -428,7 +432,9 @@ public class KeyValueStorageMock: KeyValueStorage {
         deleteAllCallsCount > 0
     }
 
-    public var deleteAllReceivedSiteId: String?
+    /// The arguments from the *last* time the function was called.
+    public var deleteAllReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
     public var deleteAllReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -439,7 +445,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public func deleteAll(siteId: String) {
         mockCalled = true
         deleteAllCallsCount += 1
-        deleteAllReceivedSiteId = siteId
+        deleteAllReceivedArguments = siteId
         deleteAllReceivedInvocations.append(siteId)
         deleteAllClosure?(siteId)
     }
@@ -467,8 +473,11 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
         loadCallsCount > 0
     }
 
-    internal var loadReceivedSiteId: String?
+    /// The arguments from the *last* time the function was called.
+    internal var loadReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
     internal var loadReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
     internal var loadReturnValue: SdkCredentials?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -481,7 +490,7 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     internal func load(siteId: String) -> SdkCredentials? {
         mockCalled = true
         loadCallsCount += 1
-        loadReceivedSiteId = siteId
+        loadReceivedArguments = siteId
         loadReceivedInvocations.append(siteId)
         return loadClosure.map { $0(siteId) } ?? loadReturnValue
     }
@@ -499,6 +508,7 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     internal var createReceivedArguments: (siteId: String, apiKey: String, region: Region)?
     /// Arguments from *all* of the times that the function was called.
     internal var createReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
+    /// Value to return from the mocked function.
     internal var createReturnValue: SdkCredentials!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.

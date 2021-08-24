@@ -26,7 +26,7 @@ class TrackingTest: UnitTest {
         let expect = expectation(description: "Expect to complete identify")
         tracking.identify(identifier: String.random) { result in
             guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = (error as! SdkError) else { return XCTFail() }
+            guard case .notInitialized = error else { return XCTFail() }
 
             XCTAssertFalse(self.identifyRepositoryMock.mockCalled)
 
@@ -57,13 +57,14 @@ class TrackingTest: UnitTest {
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
         identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(.httpError(.unsuccessfulStatusCode(500, message: ""))))
         }
 
         let expect = expectation(description: "Expect to complete identify")
         tracking.identify(identifier: String.random) { result in
             guard case .failure(let error) = result else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = (error as! HttpRequestError) else { return XCTFail() }
+            guard case .httpError(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
 
             expect.fulfill()
         }

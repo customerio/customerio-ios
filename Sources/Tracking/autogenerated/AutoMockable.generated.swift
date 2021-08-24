@@ -6,6 +6,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Common
 
 /**
  ######################################################
@@ -88,20 +89,21 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
 
     /// The arguments from the *last* time the function was called.
     internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?,
-                                                        onComplete: (Result<Void, Error>) -> Void)?
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
     internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?,
-                                                           onComplete: (Result<Void, Error>) -> Void)] = []
+                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, String?, @escaping (Result<Void, Error>) -> Void) -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, String?, @escaping (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, onComplete: @escaping (Result<Void, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func addOrUpdateCustomer(
         identifier: String,
         email: String?,
-        onComplete: @escaping (Result<Void, Error>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1

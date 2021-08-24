@@ -1,7 +1,22 @@
 import Common
 import Foundation
 
+/**
+ Tracking features of the Customer.io SDK!
+
+ With this class, you are able to easily perform actions such as tracking events and customers.
+
+ To use this class, you have 2 options:
+ 1. If you are using the convenient singleton feature of the SDK, you are able to simply
+ call the functions of this class: `Tracking.instance.identify()`
+ 2. Construct a new instance of the `Tracking` class:
+ ```
+ let customerIO = CustomerIO(...)
+ let cioTracking = Tracking(customerIO: customerIO)
+ ```
+ */
 public class Tracking {
+    /// Singleton shared instance of `Tracking`. Use this if you use the singeton instance of the `CustomerIO` class.
     public private(set) static var instance = Tracking(customerIO: CustomerIO.instance)
 
     private let customerIO: CustomerIO!
@@ -45,18 +60,38 @@ public class Tracking {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
     }
 
+    /**
+     Create a new instance of the `Tracking` class.
+
+     - Parameters:
+       - customerIO: Instance of `CustomerIO` class.
+     */
     public init(customerIO: CustomerIO) {
         self.customerIO = customerIO
         self.keyValueStorage = DICommon.shared.keyValueStorage
     }
 
+    /**
+     Identify a customer (aka: Add or update a profile).
+
+     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
+
+     - Parameters:
+       - identifier: ID you want to assign to the customer.
+         This value can be an internal ID that your system uses or an email address.
+         [Learn more](https://customer.io/docs/api/#operation/identify)
+       - onComplete: Asynchronous callback with `Result` of identifying a customer.
+         Check result to see if error or success.
+       - email: Optional email address you want to associate with a profile.
+         If you use an email address as the `identifier` this is not needed.
+     */
     public func identify(
         identifier: String,
-        onComplete: @escaping (Result<Void, Error>) -> Void,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         email: String? = nil
     ) {
         guard let identifyRepository = self.identifyRepository else {
-            return onComplete(Result.failure(SdkError.notInitialized))
+            return onComplete(Result.failure(.notInitialized))
         }
 
         identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email) { [weak self] result in
