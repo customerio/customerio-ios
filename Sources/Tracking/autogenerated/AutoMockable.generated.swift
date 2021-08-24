@@ -111,4 +111,25 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
         addOrUpdateCustomerReceivedInvocations.append((identifier: identifier, email: email, onComplete: onComplete))
         addOrUpdateCustomerClosure?(identifier, email, onComplete)
     }
+
+    // MARK: - removeCustomer
+
+    /// Number of times the function was called.
+    internal var removeCustomerCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var removeCustomerCalled: Bool {
+        removeCustomerCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var removeCustomerClosure: (() -> Void)?
+
+    /// Mocked function for `removeCustomer()`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func removeCustomer() {
+        mockCalled = true
+        removeCustomerCallsCount += 1
+        removeCustomerClosure?()
+    }
 }

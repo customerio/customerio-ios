@@ -5,6 +5,7 @@ internal protocol IdentifyRepository: AutoMockable {
     func addOrUpdateCustomer(identifier: String,
                              email: String?,
                              onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func removeCustomer()
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -51,5 +52,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                     onComplete(Result.failure(.httpError(error)))
                 }
             }
+    }
+
+    func removeCustomer() {
+        keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileId)
+        keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileEmail)
     }
 }

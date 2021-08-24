@@ -90,4 +90,39 @@ class IdentifyRepositoryTest: UnitTest {
 
         waitForExpectations()
     }
+
+    // MARK: removeCustomer
+
+    func test_removeCustomer_givenNeverIdentifiedProfile_expectIgnoreRequest() {
+        integrtionRepository.removeCustomer()
+
+        XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId))
+        XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileEmail))
+    }
+
+    func test_removeCustomer_givenIdentifiedCustomer_expectCustomerRemoved() {
+        let givenIdentifier = String.random
+        let givenEmail = EmailAddress.randomEmail
+
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let expect = expectation(description: "Expect to complete")
+        integrtionRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
+            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
+                           givenIdentifier)
+            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail),
+                           givenEmail)
+
+            self.integrtionRepository.removeCustomer()
+
+            XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
+            XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail))
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
 }
