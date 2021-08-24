@@ -116,7 +116,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode)
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, message: "")
 
         requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil,
@@ -130,7 +130,7 @@ class HttpClientTest: UnitTest {
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .unsuccessfulStatusCode(let actualCode) = result.error!, let actualError = result.error else {
+            guard case .unsuccessfulStatusCode(let actualCode, _) = result.error!, let actualError = result.error else {
                 XCTFail()
                 return
             }

@@ -44,4 +44,8 @@ open class UnitTest: XCTestCase {
         UserDefaults.standard.deleteAll()
         keyValueStorage.deleteAll(siteId: keyValueStorage.sharedSiteId)
     }
+
+    open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
+        waitForExpectations(0.5)
+    }
 }

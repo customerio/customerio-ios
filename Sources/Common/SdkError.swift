@@ -5,7 +5,7 @@ public enum SdkError: Error {
     case notInitialized
 }
 
-extension SdkError: CustomStringConvertible {
+extension SdkError: CustomStringConvertible, LocalizedError {
     /// Custom description for the Error to describe the error that happened.
     public var description: String {
         switch self {

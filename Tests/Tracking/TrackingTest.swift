@@ -57,7 +57,7 @@ class TrackingTest: UnitTest {
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
         identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500)))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
         }
 
         let expect = expectation(description: "Expect to complete identify")

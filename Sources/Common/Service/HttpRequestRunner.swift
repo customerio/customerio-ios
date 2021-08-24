@@ -40,6 +40,16 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         }
 
         session.dataTask(with: request) { data, response, error in
+            /**
+             /// uncomment when running HTTP tests on local machine for debugging
+             print("----------------- HTTP logs start -----------------")
+             print("\(request.httpMethod) - \(request.url?.absoluteString)")
+             print("Request body: \(request.httpBody?.string)")
+             print(data?.string)
+             print(error?.localizedDescription)
+             print("----------------- HTTP logs end   -----------------")
+             */
+
             onComplete(data, response as? HTTPURLResponse, error)
         }.resume()
     }

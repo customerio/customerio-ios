@@ -30,11 +30,9 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         email: String?,
         onComplete: @escaping (Result<Void, Error>) -> Void
     ) {
-        let body = AddUpdateCustomerRequestBody(email: email, anonymousId: nil)
-
-        /// because we control the object `body`, we don't anticipate a way for json encoding to fail
-        // swiftlint:disable:next force_try
-        let bodyData = try! JsonAdapter.toJson(body)
+        guard let bodyData = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: email, anonymousId: nil)) else {
+            return onComplete(Result.failure(HttpRequestError.noResponse))
+        }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: identifier), headers: nil,
                                                       body: bodyData)

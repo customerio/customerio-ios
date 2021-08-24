@@ -52,7 +52,13 @@ public class CIOHttpClient: HttpClient {
                 case 401:
                     onComplete(Result.failure(HttpRequestError.unauthorized))
                 default:
-                    onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(statusCode)))
+                    var errorBodyString: String = data?.string ?? ""
+                    if let data = data, let errorMessageBody: ErrorMessageResponse = JsonAdapter.fromJson(data) {
+                        errorBodyString = errorMessageBody.meta.error
+                    }
+
+                    onComplete(Result
+                        .failure(HttpRequestError.unsuccessfulStatusCode(statusCode, message: errorBodyString)))
                 }
 
                 return

@@ -30,7 +30,7 @@ class IdentifyRepositoryTest: UnitTest {
     func test_addOrUpdateCustomer_expectCallHttpClientWithCorrectParams() {
         let givenIdentifier = String.random
         let givenEmail = EmailAddress.randomEmail
-        let expectedBody = try! JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: givenEmail, anonymousId: nil))
+        let expectedBody = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: givenEmail, anonymousId: nil))!
 
         httpClientMock.requestClosure = { params, onComplete in
             guard case .identifyCustomer(let actualIdentifier) = params.endpoint else { return XCTFail() }
@@ -51,7 +51,7 @@ class IdentifyRepositoryTest: UnitTest {
 
     func test_addOrUpdateCustomer_givenHttpFailure_expectDoNotSaveData_expectGetError() {
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500)))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
         }
 
         let expect = expectation(description: "Expect to complete")
