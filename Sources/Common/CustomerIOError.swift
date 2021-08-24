@@ -1,5 +1,23 @@
 import Foundation
 
+/**
+ Top level error type of the Customer.io SDK.
+ Any error that occurs in the SDK is a `CustomerIOError` so that you can
+ parse the `Error` to find out more about it.
+
+ ```
+ switch error {
+ case .notInitialized:
+   //
+   break
+ case .httpError(let httpError):
+   switch httpError {
+   ...
+   }
+   break
+ }
+ ```
+ */
 public enum CustomerIOError: Error {
     /// SDK has not been initialized yet. Check the docs for `CustomerIO` class.
     case notInitialized

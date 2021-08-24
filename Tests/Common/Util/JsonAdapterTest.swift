@@ -34,4 +34,12 @@ class JsonAdapterTest: UnitTest {
         // make sure property name is camelCase
         let barDate: Date
     }
+
+    func test_fromJson_givenNotValidJsonString_expectGetNil() {
+        let givenJson = #"{"foo": "111"}"#
+
+        let actual: TestCase? = JsonAdapter.fromJson(givenJson.data)
+
+        XCTAssertNil(actual)
+    }
 }

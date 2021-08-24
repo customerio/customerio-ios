@@ -30,6 +30,13 @@ public class Tracking {
     }
 
     /**
+     allow `_` character in property name. It's common to use a `_` in property name for private variables
+     but a refactor in the future will remove the need for this property all together so, just disable
+     the lint rule for now.
+     */
+    // swiftlint:disable identifier_name
+
+    /**
      Keep a class wide reference to `IdentifyRepository` to keep it in memory as it performs async operations.
      */
     private var _identifyRepository: IdentifyRepository?
@@ -50,6 +57,8 @@ public class Tracking {
 
         return _identifyRepository
     }
+
+    // swiftlint:enable identifier_name
 
     private let keyValueStorage: KeyValueStorage
 
