@@ -61,7 +61,7 @@ public class CustomerIO {
      This is the recommended method for code bases containing
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
-    public init(siteId: String, apiKey: String, region: Region) {
+    public init(siteId: String, apiKey: String, region: Region = Region.US) {
         self.sdkConfig = Self.instance.sdkConfig
 
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
@@ -71,7 +71,7 @@ public class CustomerIO {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    public static func initialize(siteId: String, apiKey: String, region: Region) {
+    public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
         Self.instance.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         Self.instance.credentialsStore.sharedInstanceSiteId = siteId
