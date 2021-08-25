@@ -1,9 +1,9 @@
 import Foundation
 import XCTest
 
-extension XCTestCase {
-    func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
-        waitForExpectations(timeout: 0.5, handler: nil)
+public extension XCTestCase {
+    func waitForExpectations(_ timeout: Double, file _: StaticString = #file, line _: UInt = #line) {
+        waitForExpectations(timeout: timeout, handler: nil)
     }
 
     func waitForExpectations(

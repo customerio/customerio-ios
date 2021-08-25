@@ -2,6 +2,7 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
+import Common
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI

@@ -1,7 +1,9 @@
 // swiftlint:disable all
 
-{# If you need to add custom import statements to your generated .swift file, add them below: #}
 import Foundation
+{% for importModule in argument.imports|split:":" %}
+import {{ importModule }}
+{% endfor %}
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
 // Template version 1.0.0

@@ -1,6 +1,6 @@
 @testable import Common
 import Foundation
-@testable import SharedTests
+import SharedTests
 import XCTest
 
 class CustomerIOTest: UnitTest {

@@ -1,6 +1,6 @@
 @testable import Common
 import Foundation
-@testable import SharedTests
+import SharedTests
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -17,41 +17,21 @@ class HttpClientTest: UnitTest {
 
         requestRunnerMock = HttpRequestRunnerMock()
         client = CIOHttpClient(httpRequestRunner: requestRunnerMock)
-
-        requestRunnerMock.getUrlReturnValue = url
     }
 
     // MARK: request
-
-    func test_request_givenCannotCreateUrl_expectReceiveError_expectRequestNotMade() {
-        requestRunnerMock.getUrlReturnValue = nil
-
-        let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
-            XCTAssertFalse(self.requestRunnerMock.requestCalled)
-            XCTAssertNotNil(result.error)
-
-            guard case .urlConstruction = result.error! else {
-                XCTFail()
-                return
-            }
-
-            expectComplete.fulfill()
-        }
-
-        waitForExpectations()
-    }
 
     func test_request_givenErrorDuringRequest_expectError() {
         let givenError = URLError(.notConnectedToInternet)
         let expected = HttpRequestError.underlyingError(givenError)
 
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil, nil, givenError)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
@@ -69,12 +49,13 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoResponse_expectError() {
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(Data(), nil, nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
@@ -90,12 +71,13 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoData_expectError() {
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
@@ -111,12 +93,13 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_given401_expectError() {
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
@@ -133,20 +116,21 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode)
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, message: "")
 
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil,
                        HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil),
                        nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
 
-            guard case .unsuccessfulStatusCode(let actualCode) = result.error!, let actualError = result.error else {
+            guard case .unsuccessfulStatusCode(let actualCode, _) = result.error!, let actualError = result.error else {
                 XCTFail()
                 return
             }
@@ -163,13 +147,14 @@ class HttpClientTest: UnitTest {
     func test_request_givenSuccessfulResponse_expectGetResponseBody() {
         let expected = #"{ "message": "Success!" }"#.data!
 
-        requestRunnerMock.requestClosure = { _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(expected, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
                        nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        client.request(.identifyCustomer(identifier: ""), headers: nil, body: nil) { result in
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNil(result.error)
 

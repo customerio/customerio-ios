@@ -87,29 +87,23 @@ public class HttpClientMock: HttpClient {
     }
 
     /// The arguments from the *last* time the function was called.
-    public var requestReceivedArguments: (endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+    public var requestReceivedArguments: (params: HttpRequestParams,
                                           onComplete: (Result<Data, HttpRequestError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public var requestReceivedInvocations: [(endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?,
+    public var requestReceivedInvocations: [(params: HttpRequestParams,
                                              onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var requestClosure: ((HttpEndpoint, HttpHeaders?, Data?, @escaping (Result<Data, HttpRequestError>) -> Void)
-        -> Void)?
+    public var requestClosure: ((HttpRequestParams, @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ endpoint: HttpEndpoint, headers: HttpHeaders?, body: Data?, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func request(
-        _ endpoint: HttpEndpoint,
-        headers: HttpHeaders?,
-        body: Data?,
-        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
-    ) {
+    /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
         mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (endpoint: endpoint, headers: headers, body: body, onComplete: onComplete)
-        requestReceivedInvocations.append((endpoint: endpoint, headers: headers, body: body, onComplete: onComplete))
-        requestClosure?(endpoint, headers, body, onComplete)
+        requestReceivedArguments = (params: params, onComplete: onComplete)
+        requestReceivedInvocations.append((params: params, onComplete: onComplete))
+        requestClosure?(params, onComplete)
     }
 }
 
@@ -124,36 +118,6 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    // MARK: - getUrl
-
-    /// Number of times the function was called.
-    internal var getUrlCallsCount = 0
-    /// `true` if the function was ever called.
-    internal var getUrlCalled: Bool {
-        getUrlCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    internal var getUrlReceivedArguments: (endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)?
-    /// Arguments from *all* of the times that the function was called.
-    internal var getUrlReceivedInvocations: [(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)] = []
-    internal var getUrlReturnValue: URL?
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `getUrlReturnValue`
-     */
-    internal var getUrlClosure: ((HttpEndpoint, HttpBaseUrls) -> URL?)?
-
-    /// Mocked function for `getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
-        mockCalled = true
-        getUrlCallsCount += 1
-        getUrlReceivedArguments = (endpoint: endpoint, baseUrls: baseUrls)
-        getUrlReceivedInvocations.append((endpoint: endpoint, baseUrls: baseUrls))
-        return getUrlClosure.map { $0(endpoint, baseUrls) } ?? getUrlReturnValue
-    }
-
     // MARK: - request
 
     /// Number of times the function was called.
@@ -164,23 +128,28 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var requestReceivedArguments: (params: RequestParams,
+    internal var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
                                             onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal var requestReceivedInvocations: [(params: RequestParams,
+    internal var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
                                                onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var requestClosure: ((RequestParams, @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
+    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls,
+                                   @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
+    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func request(
+        _ params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
+    ) {
         mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (params: params, onComplete: onComplete)
-        requestReceivedInvocations.append((params: params, onComplete: onComplete))
-        requestClosure?(params, onComplete)
+        requestReceivedArguments = (params: params, httpBaseUrls: httpBaseUrls, onComplete: onComplete)
+        requestReceivedInvocations.append((params: params, httpBaseUrls: httpBaseUrls, onComplete: onComplete))
+        requestClosure?(params, httpBaseUrls, onComplete)
     }
 }
 
@@ -235,6 +204,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var integerReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var integerReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var integerReturnValue: Int?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -292,6 +262,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var doubleReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var doubleReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var doubleReturnValue: Double?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -349,6 +320,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var stringReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var stringReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var stringReturnValue: String?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -406,6 +378,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public var dateReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
     public var dateReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    /// Value to return from the mocked function.
     public var dateReturnValue: Date?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -459,7 +432,9 @@ public class KeyValueStorageMock: KeyValueStorage {
         deleteAllCallsCount > 0
     }
 
-    public var deleteAllReceivedSiteId: String?
+    /// The arguments from the *last* time the function was called.
+    public var deleteAllReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
     public var deleteAllReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -470,7 +445,7 @@ public class KeyValueStorageMock: KeyValueStorage {
     public func deleteAll(siteId: String) {
         mockCalled = true
         deleteAllCallsCount += 1
-        deleteAllReceivedSiteId = siteId
+        deleteAllReceivedArguments = siteId
         deleteAllReceivedInvocations.append(siteId)
         deleteAllClosure?(siteId)
     }
@@ -498,8 +473,11 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
         loadCallsCount > 0
     }
 
-    internal var loadReceivedSiteId: String?
+    /// The arguments from the *last* time the function was called.
+    internal var loadReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
     internal var loadReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
     internal var loadReturnValue: SdkCredentials?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
@@ -512,7 +490,7 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     internal func load(siteId: String) -> SdkCredentials? {
         mockCalled = true
         loadCallsCount += 1
-        loadReceivedSiteId = siteId
+        loadReceivedArguments = siteId
         loadReceivedInvocations.append(siteId)
         return loadClosure.map { $0(siteId) } ?? loadReturnValue
     }
@@ -530,6 +508,7 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     internal var createReceivedArguments: (siteId: String, apiKey: String, region: Region)?
     /// Arguments from *all* of the times that the function was called.
     internal var createReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
+    /// Value to return from the mocked function.
     internal var createReturnValue: SdkCredentials!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.

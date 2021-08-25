@@ -46,4 +46,8 @@ public extension HttpEndpoint {
  */
 public struct HttpBaseUrls: Equatable {
     let trackingApi: String
+
+    static func getProduction(region: Region) -> HttpBaseUrls {
+        HttpBaseUrls(trackingApi: region.productionTrackingUrl)
+    }
 }

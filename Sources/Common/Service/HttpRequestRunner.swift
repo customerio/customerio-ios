@@ -7,8 +7,11 @@ import FoundationNetworking
  Exists to be able to mock http requests so we can test our HttpClient's response handling logic.
  */
 internal protocol HttpRequestRunner: AutoMockable {
-    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL?
-    func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)
+    func request(
+        _ params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
+    )
 }
 
 internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
@@ -18,31 +21,40 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         self.session = session
     }
 
-    func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
-        endpoint.getUrl(baseUrls: baseUrls)
-    }
+    func request(
+        _ params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
+    ) {
+        guard let url = getUrl(endpoint: params.endpoint, baseUrls: httpBaseUrls) else {
+            let error = HttpRequestError.urlConstruction(params.endpoint.getUrlString(baseUrls: httpBaseUrls))
+            onComplete(nil, nil, error)
+            return
+        }
 
-    func request(_ params: RequestParams, _ onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
-        var request = URLRequest(url: params.url)
-        request.httpMethod = params.method
+        var request = URLRequest(url: url)
+        request.httpMethod = params.endpoint.method
         request.httpBody = params.body
         params.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
 
         session.dataTask(with: request) { data, response, error in
+            /**
+             /// uncomment when running HTTP tests on local machine for debugging
+             print("----------------- HTTP logs start -----------------")
+             print("\(request.httpMethod) - \(request.url?.absoluteString)")
+             print("Request body: \(request.httpBody?.string)")
+             print(data?.string)
+             print(error?.localizedDescription)
+             print("----------------- HTTP logs end   -----------------")
+             */
+
             onComplete(data, response as? HTTPURLResponse, error)
         }.resume()
     }
-}
 
-/**
- Using struct to avoid having a request function with lots of parameters.
- This makes a request function easier to mock in tests.
- */
-internal struct RequestParams {
-    let method: String
-    let url: URL
-    let headers: HttpHeaders?
-    let body: Data?
+    private func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
+        endpoint.getUrl(baseUrls: baseUrls)
+    }
 }

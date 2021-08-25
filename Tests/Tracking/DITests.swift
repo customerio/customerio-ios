@@ -1,6 +1,6 @@
 @testable import Common
 import Foundation
-@testable import SharedTests
+import SharedTests
 @testable import Tracking
 import XCTest
 

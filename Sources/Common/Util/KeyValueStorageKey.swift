@@ -7,4 +7,6 @@ public enum KeyValueStorageKey: String {
     case sharedInstanceSiteId
     case apiKey
     case regionCode
+    case identifiedProfileId
+    case identifiedProfileEmail
 }

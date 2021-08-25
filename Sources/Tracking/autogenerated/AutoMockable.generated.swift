@@ -6,6 +6,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Common
 
 /**
  ######################################################
@@ -87,29 +88,48 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?, createdAt: Date,
-                                                        onComplete: (Result<Void, Error>) -> Void)?
+    internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?, createdAt: Date,
-                                                           onComplete: (Result<Void, Error>) -> Void)] = []
+    internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?,
+                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, String?, Date, @escaping (Result<Void, Error>) -> Void) -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, String?, @escaping (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, createdAt: Date, onComplete: @escaping (Result<Void, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func addOrUpdateCustomer(
         identifier: String,
         email: String?,
-        createdAt: Date,
-        onComplete: @escaping (Result<Void, Error>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1
-        addOrUpdateCustomerReceivedArguments = (identifier: identifier, email: email, createdAt: createdAt,
-                                                onComplete: onComplete)
-        addOrUpdateCustomerReceivedInvocations
-            .append((identifier: identifier, email: email, createdAt: createdAt, onComplete: onComplete))
-        addOrUpdateCustomerClosure?(identifier, email, createdAt, onComplete)
+        addOrUpdateCustomerReceivedArguments = (identifier: identifier, email: email, onComplete: onComplete)
+        addOrUpdateCustomerReceivedInvocations.append((identifier: identifier, email: email, onComplete: onComplete))
+        addOrUpdateCustomerClosure?(identifier, email, onComplete)
+    }
+
+    // MARK: - removeCustomer
+
+    /// Number of times the function was called.
+    internal var removeCustomerCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var removeCustomerCalled: Bool {
+        removeCustomerCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var removeCustomerClosure: (() -> Void)?
+
+    /// Mocked function for `removeCustomer()`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func removeCustomer() {
+        mockCalled = true
+        removeCustomerCallsCount += 1
+        removeCustomerClosure?()
     }
 }

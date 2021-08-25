@@ -9,24 +9,22 @@ public enum HttpRequestError: Error {
     /// HTTP URL for the request not a valid URL.
     case urlConstruction(_ url: String)
     /// A response came back, but status code > 300 and not handled already (example: 401)
-    case unsuccessfulStatusCode(_ code: Int)
+    case unsuccessfulStatusCode(_ code: Int, message: String)
     /// Request was not able to even make a request.
     case noResponse
-    /// Failure creating request body. Check the parameters constructing the body.
-    case failCreatingRequestBody(message: String)
     /// An error happened to prevent the request from happening. Check the `description` to get the underlying error.
     case underlyingError(_ error: Error)
 }
 
-extension HttpRequestError: CustomStringConvertible {
+extension HttpRequestError: CustomStringConvertible, LocalizedError {
     /// Custom description for the Error to describe the error that happened.
     public var description: String {
         switch self {
         case .unauthorized: return "HTTP request responded with 401. Configure the SDK with valid credentials."
         case .urlConstruction(let url): return "HTTP URL not a valid URL: \(url)"
-        case .unsuccessfulStatusCode(let code): return "Response received, but status code > 300 (\(String(code)))"
+        case .unsuccessfulStatusCode(let code, let message):
+            return "Response received, but status code = \(String(code)). \(message)"
         case .noResponse: return "No response was returned from server."
-        case .failCreatingRequestBody(let message): return message
         case .underlyingError(let error): return error.localizedDescription
         }
     }
