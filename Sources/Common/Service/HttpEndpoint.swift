@@ -3,11 +3,15 @@ import Foundation
 public enum HttpEndpoint {
     case findAccountRegion
     case identifyCustomer(identifier: String)
+    case registerDevice(identifier: String)
+    case deleteDevice(identifier: String, deviceID: String)
 
     var path: String {
         switch self {
         case .findAccountRegion: return "/accounts/region"
         case .identifyCustomer(let identifier): return "/customers/\(identifier)"
+        case .registerDevice(let identifier): return "/customers/\(identifier)/devices"
+        case .deleteDevice(let identifier, let deviceID): return "/customers/\(identifier)/devices/\(deviceID)"
         }
     }
 
@@ -15,6 +19,8 @@ public enum HttpEndpoint {
         switch self {
         case .findAccountRegion: return "GET"
         case .identifyCustomer: return "PUT"
+        case .registerDevice: return "PUT"
+        case .deleteDevice: return "DELETE"
         }
     }
 }
