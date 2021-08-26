@@ -9,42 +9,35 @@
 
 # Customer.io iOS SDK
 
-Official Customer.io SDK for iOS
+**This is a work in progress!** While we're *very* excited about it, it's still in its alpha phase; it is not ready for general availability. If you want to try it out, contact [product@customer.io](mailto:product@customer.io) and we'll help set you up!
 
-**This project is a work in progress and is not yet ready for general availability. If you are interested in being an early user of this SDK for your iOS app, send us a message at `product@customer.io` saying you would like to try out our iOS SDK. We will work with you to get setup!**
+Before you get started, keep in mind:
+1. **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
+2. **The SDK is in its `alpha` phase**. Feel free to try it out, but please understand that we might introduce breaking changes to the API and you may experience bugs. 
 
-Notes:
-1. The SDK has been tested on iOS devices. The SDK may work on other Apple devices such as macOS, tvOS, and watchOS but official support and official testing has not been done on these devices. 
-2. The SDK is in `alpha` phase at the moment. It is available to use but note that the API will have breaking changes introduced and issues may occur. 
+# Get started
 
-# Getting started
+To get started, you need to install and initialize the relevant SDK packages in your project. 
 
-Let's get started using the Customer.io SDK. To do that, we need to install and initialize the SDK into our project. 
-
-### The SDKs
-
-To keep your app size as small as possible, the Customer.io mobile SDK is split into multiple small SDK packages. You should only install what you need for your project. 
-
-Available SDKs to install: 
+To minimize our SDK's impact on your app's size, we split it into packages. You should only install the packages that you need for your project. Right now, we have one package:
 
 * `Tracking` - Tracking features for customers.
 
-Features: 
+With this package, you can: 
 1. [Identify a customer](https://customer.io/docs/identifying-people/) with an ID or email address. 
 
-* `MessagingPushAPN` - Push notification messaging with Apple Push Notification Service (APN). 
+   * `MessagingPushAPN` - Push notification messaging with Apple Push Notification Service (APN).
 
-Features:
-1. [Register a device to receive push notifications via the APN service](https://customer.io/docs/push-getting-started/). 
+1. [Register a device to receive push notifications via APNs](https://customer.io/docs/push-getting-started/). 
 
-*Note: APN is only supported at this time. FCM support on iOS is planned for a future release of the SDK.*
+> **Note**: We only support APN right now. We plan to support FCM on iOS in a future release.
 
-### Install SDK
+## Install the SDK
 
-The Customer.io mobile SDK is available to install with the Swift Package Manager. You can install the SDK via your project's `Package.swift` or through XCode (recommended). 
+You can get our SDK using the Swift Package Manger. You can install it via your project's `Package.swift` or through XCode (recommended). 
 
-1. In XCode, open `File > Swift Packages > Add Package Dependency`. 
-2. When asked to enter package repository URL, copy and paste: `https://github.com/customerio/customerio-ios`. 
+1. In XCode, go to **File** > **Swift Packages** > **Add Package Dependency**. 
+2. In the package repository URL field, enter `https://github.com/customerio/customerio-ios`. 
 
 // TODO add screenshots 
 
@@ -52,13 +45,15 @@ The Customer.io mobile SDK is available to install with the Swift Package Manage
 
 // TODO add screenshot showing what version to select. This can't be done until PR for identify customer merged in. 
 
-### Initialize the SDK
+## Initialize the SDK
 
-In order to use any feature of the Customer.io SDK, you need to initialize the SDK so it knows how to act upon your Workspace. *Note: All calls made sent to the Customer.io SDK will be ignored until you initialize the SDK.*
+Before you can use the Customer.io SDK, you need to initialize it. Any calls that you make to the SDK before you initialize it are ignored. 
 
-To initialize the SDK, you have 2 options:
+There are two ways to initialize the SDK:
 
-1. Singleton, shared instance:
+1. Singleton, shared instance (the easy way):
+
+The shared instance of the SDK is easy to set up. When you use the shared instance, you don't need to manage your own instances of Customer.io SDK classes.
 
 ```swift
 import Cio
@@ -69,15 +64,17 @@ CustomerIO.initialize(siteId: "XXX", apiKey: "YYY")
 CustomerIO.initialize(siteId: "XXX", apiKey: "YYY", region: Region.EU)
 ```
 
-Now, when you want to use any of the features of the SDK, you use the shared instance of the class:
+Then, when you want to use SDK features, you use the shared instance of the class:
 
 ```swift
 Tracking.shared.identifyCustomer(...)
 ```
 
-Using the shared instance of the SDK is for convenience. It requires little setup and you don't need to worry about managing instances of any Customer.io SDK classes. 
+2. Create your own instances (better for automated tests):
 
-2. Create your own instances:
+We recommend that you create your own instances of SDK classes if your project has automated tests. We designed our SDK with first-class support for dependency injection and mocking, which makes it easier to write automated tests. See [testing](#Testing) for more information.
+
+> **Note**: Code samples in this readme use the singleton, shared instance method to call the SDK. These samples will also work with your own instances of SDK classes.
 
 ```swift
 import Cio
@@ -88,7 +85,7 @@ let customerIO = CustomerIO(siteId: "XXX", apiKey: "YYY")
 let customerIO = CustomerIO(siteId: "XXX", apiKey: "YYY", region: Region.EU)
 ```
 
-Now, when you want to use any of the features of the SDK, you use the singleton instance of the CustomerIO SDK:
+Then, when you want to use the SDK, you use the singleton instance of the SDK:
 
 ```swift
 let tracking = Tracking(customerIO: customerIO)
@@ -96,25 +93,27 @@ let tracking = Tracking(customerIO: customerIO)
 tracking.identifyCustomer(...)
 ```
 
-Using your own instances of the SDK classes is recommended for projects with automated tests. The Customer.io SDK has been designed with first-class support for dependency injection and mocking making writing automated tests with Customer.io quick and easy. See the [testing](#Testing) section of these docs to learn more. 
 
-*Note: The code samples in the documentation use the singleton, shared instance method to call the SDK. Know the code samples will also work as expected with your own instance of the SDK classes.*
-
-# Documentation
-
+<!-- 
 ### Messaging push
 
 ...To be completed after feature complete. 
 
 Instructions will include APN setup instructions as well as code to use the SDK feature. 
+-->
 
-## Tracking
+# Tracking
 
-### Identify a customer
+## Identify a customer
 
-Identifying a customer in the SDK will perform a couple of operations:
-1. Add or update a customer profile in your Workspace
-2. Save the customer information on the device and use it for all future calls to the SDK. Example: If you track an event, that event will be registered with the identified customer profile automatically for you. 
+When you identify a customer, you:
+1. Add or update the customer's profile in your workspace.
+2. Save the customer's information on the device. Future calls to the SDK represent the last-identified customer. For example, after you identify a person, any events that you track are automatically associated with that person.
+
+You can only identify one customer at a time. The SDK "remembers" the most recently-identified customer.
+If you identify customer "A", and then call the identify function for customer "B", the SDK "forgets" customer "A" and assumes that customer "B" is the current app user. 
+
+[Learn more about the `Tracking` class][s-tracking].
 
 ```swift
 import Tracking
@@ -136,27 +135,20 @@ Tracking.shared.identifyCustomer(identifier: "989388339", onComplete: { result i
 }, email: "great-customer@cool-website.com")
 ```
 
-Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
-the previously identified profile will be removed. Only the latest identified customer is persisted.
+## Stop identifying a customer
 
-[Learn more about the `Tracking` class][s-tracking]
+This class "forgets" the currently identified customer. When you stop identifying someone, calls to the SDK are no longer associated with the previously-identified person. You might want to stop identifying someone when they log out of your app. 
 
-### Stop identifying a customer
-
-Stop identifying the currently persisted customer. All future calls to the SDK will no longer be associated with the previously identified customer.
+> **Note**: If you simply want to identify a new customer, you don't need to use this call. Simply call `identifyCustomer()` again to identify a new customer and stop identifying the previous one.
 
 ```swift
 // If no profile has been identified yet, this function will ignore your request.
 Tracking.shared.identifyStop()
 ```
 
-*Note: If you simply want to identify a new customer, this function call is optional. Simply call `identifyCustomer()` again to identify the new customer profile over the existing.*
+# Error handling 
 
-## Error handling 
-
-All of the features of the Customer.io SDK return a `CustomerIOError` when there is an error returned to you. This `Error` subclass exists as a convenient way for you to find out more about the error and decide how to handle it. 
-
-Here is an example:
+Whenever there's an error, the SDK returns a `CustomerIOError`. The `Error` subclass helps you understand and handle the error. [Learn more about the `CustomerIOError` class][s-cioerror].
 
 ```swift
 let error: CustomerIOError = ...
@@ -175,15 +167,13 @@ case .underlyingError(let error):
 }
 ```
 
-[Learn more about the `CustomerIOError` class][s-cioerror]
+# Testing 
 
-## Testing 
+We designed the SDK with first-class support for automated testing, making it easy to inject dependencies and perform mocking in your code.
 
-The Customer.io SDK has been designed to provide first-class support for automated testing in your project. This is done by making it quick and easy to perform dependency injection and mocking in your code. 
+## Dependency injection
 
-### Dependency injection
-
-Every class of the SDK has a protocol inherited. The naming is consistent: `NameOfClassInstance`. Example: The tracking class inherits the protocol `TrackingInstance`. 
+Every SDK class has an inherited protocol. Inherited protocols use a consistent naming convention: `NameOfClassInstance`. For example, the tracking class inherits the `TrackingInstance` protocol. 
 
 If you want to inject a class in your project, it could look something like this:
 
@@ -211,13 +201,13 @@ let cioTracking = Tracking(customerIO: customerIOInstance)
 let repository = ProfileRepository(cioTracking: cioTracking)
 ```
 
-### Mocking
+## Mocking
 
-Every class of the SDK has a mock class ready for you to use. That's right, we have generated a collection of mocks for you! 
+Every SDK class has a mock class ready for you to use. That's right, we generated a collection of mocks for you! 
 
-All mock classes are consistently named: `NameOfClassMock`. Example: The tracking class's mock class is `TrackingMock`. 
+Mock classes follow the naming convention: `NameOfClassMock`. For example, the tracking class's mock class is `TrackingMock`. 
 
-Let's see an example test class to see how you would test your `ProfileRepository` class. 
+Here's an example test class showing how you would test your `ProfileRepository` class.
 
 ```swift
 import Foundation
@@ -264,11 +254,9 @@ Mock classes:
 
 # Contributing
 
-Thank you for your interest in wanting to contribute to the project! Let's get your development environment setup so you can get developing.
+Thanks for taking an interest in our project! We welcome your contributions. Check out [our development instructions](docs/dev-notes/DEVELOPMENT.md) to get your environment set up and start contributing.
 
-To contribute to this project, follow the instructions in [our development document](docs/dev-notes/DEVELOPMENT.md) to get your development environment setup. 
-
-> Note: We value an open, welcoming, diverse, inclusive, and healthy community for this project. All contributors are expected to follow the rules set forward in our [code of conduct](CODE_OF_CONDUCT.md). 
+> **Note**: We value an open, welcoming, diverse, inclusive, and healthy community for this project. We expect all  contributors to follow our [code of conduct](CODE_OF_CONDUCT.md). 
 
 # License
 
