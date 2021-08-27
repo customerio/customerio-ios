@@ -1,50 +1,45 @@
-// import Foundation
-//
-/// **
-// Tracking features of the Customer.io SDK!
-//
-// With this class, you are able to easily perform actions such as tracking events and customers.
-//
-// To use this class, you have 2 options:
-// 1. If you are using the convenient singleton feature of the SDK, you are able to simply
-// call the functions of this class: `Tracking.instance.identify()`
-// 2. Construct a new instance of the `Tracking` class:
-// ```
-// let customerIO = CustomerIO(...)
-// let cioTracking = Tracking(customerIO: customerIO)
-// ```
-// */
-// public class Tracking {
-//    /// Singleton shared instance of `Tracking`. Use this if you use the singeton instance of the `CustomerIO` class.
-//    public private(set) static var instance = Tracking(customerIO: CustomerIO.instance)
-//
-//    private let customerIO: CustomerIO!
-//
-//    private var credentials: SdkCredentials? {
-//        customerIO.credentials
-//    }
-//
-//    private var sdkConfig: SdkConfig {
-//        customerIO.sdkConfig
-//    }
-//
-//    /// testing init
-//    internal init(customerIO: CustomerIO?) {
-//        self._identifyRepository = identifyRepository
-//        self.keyValueStorage = keyValueStorage
-//        self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
-//    }
-//
-//    /**
-//     Create a new instance of the `Tracking` class.
-//
-//     - Parameters:
-//       - customerIO: Instance of `CustomerIO` class.
-//     */
-//    public init(customerIO: CustomerIO) {
-//        self.customerIO = customerIO
-//        self.keyValueStorage = DITracking.shared.keyValueStorage
-//    }
-//
-//
-// }
+import Foundation
+
+/**
+ Tracking features of the Customer.io SDK!
+
+ With this class, you are able to easily perform actions such as tracking events and customers.
+
+ To use this class, you have 2 options:
+ 1. If you are using the convenient singleton feature of the SDK, you are able to simply
+ call the functions of this class: `Tracking.instance.identify()`
+ 2. Construct a new instance of the `Tracking` class:
+ ```
+ let customerIO = CustomerIO(...)
+ let cioTracking = Tracking(customerIO: customerIO)
+ ```
+ */
+public class Tracking {
+    /// Singleton shared instance of `Tracking`. Use this if you use the singeton instance of the `CustomerIO` class.
+    public private(set) static var instance = Tracking(customerIO: CustomerIO.instance)
+
+    private let customerIO: CustomerIO!
+
+    private var credentials: SdkCredentials? {
+        customerIO.credentials
+    }
+
+    private var sdkConfig: SdkConfig {
+        customerIO.sdkConfig
+    }
+
+    /// testing init
+    internal init(customerIO: CustomerIO?) {
+        self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
+    }
+
+    /**
+     Create a new instance of the `Tracking` class.
+
+     - Parameters:
+       - customerIO: Instance of `CustomerIO` class.
+     */
+    public init(customerIO: CustomerIO) {
+        self.customerIO = customerIO
+    }
+}
