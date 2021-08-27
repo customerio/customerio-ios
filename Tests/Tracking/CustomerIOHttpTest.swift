@@ -1,7 +1,6 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
-@testable import Tracking
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -15,7 +14,6 @@ import XCTest
 class TrackingHttpTest: HttpTest {
     func test_identify_expectIdentifyProfileInWorkspace() throws {
         guard let customerIO = customerIO else { return try XCTSkipIf(true) }
-        let tracking = Tracking(customerIO: customerIO)
 
         let givenIdentifier = String(Int.random(in: 1000 ..< 9999))
         let givenEmail = EmailAddress.randomEmail
@@ -23,7 +21,7 @@ class TrackingHttpTest: HttpTest {
         print("Identifing profile: \(givenIdentifier), \(givenEmail)")
 
         let expect = expectation(description: "Expect to finsh call")
-        tracking.identify(identifier: givenIdentifier, onComplete: { result in
+        customerIO.identify(identifier: givenIdentifier, onComplete: { result in
             switch result {
             case .failure(let error):
                 print(error.localizedDescription)

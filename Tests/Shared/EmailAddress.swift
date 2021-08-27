@@ -1,4 +1,4 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 
 public typealias EmailAddress = String
