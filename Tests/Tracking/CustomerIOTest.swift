@@ -1,9 +1,22 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest
 
 class CustomerIOTest: UnitTest {
+    private var customerIO: CustomerIO!
+
+    private var identifyRepositoryMock: IdentifyRepositoryMock!
+
+    override func setUp() {
+        super.setUp()
+
+        identifyRepositoryMock = IdentifyRepositoryMock()
+
+        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(),
+                                identifyRepository: identifyRepositoryMock, keyValueStorage: nil)
+    }
+
     // MARK: credentials
 
     func test_sharedInstance_givenNotInitialized_expectNotLoadCredentialsOnInit() {
@@ -155,5 +168,75 @@ class CustomerIOTest: UnitTest {
         let actual = instance.setDefaultValuesSdkConfig(config: instance.sdkConfig)
 
         XCTAssertEqual(actual.trackingApiUrl, givenUrl)
+    }
+
+    // MARK: identify
+
+    func test_identify_givenSdkNotInialized_expectFailureResult() {
+        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: nil,
+                                keyValueStorage: nil)
+
+        let expect = expectation(description: "Expect to complete identify")
+        customerIO.identify(identifier: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .notInitialized = error else { return XCTFail() }
+
+            XCTAssertFalse(self.identifyRepositoryMock.mockCalled)
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    func test_identify_expectCallRepository() {
+        let givenIdentifier = String.random
+        let givenEmail = EmailAddress.randomEmail
+
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualEmail, onComplete in
+            XCTAssertEqual(givenIdentifier, actualIdentifier)
+            XCTAssertEqual(givenEmail, actualEmail)
+
+            onComplete(Result.success(()))
+        }
+
+        let expect = expectation(description: "Expect to complete identify")
+        customerIO.identify(identifier: givenIdentifier, onComplete: { result in
+            expect.fulfill()
+        }, email: givenEmail)
+
+        waitForExpectations()
+    }
+
+    func test_identify_givenFailedAddCustomer_expectFailureResult() {
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
+            onComplete(Result.failure(.httpError(.unsuccessfulStatusCode(500, message: ""))))
+        }
+
+        let expect = expectation(description: "Expect to complete identify")
+        customerIO.identify(identifier: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .httpError(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    func test_identify_givenSuccessfullyAddCustomer_expectSuccessResult() {
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
+            onComplete(Result.success(()))
+        }
+
+        let expect = expectation(description: "Expect to complete identify")
+        customerIO.identify(identifier: String.random) { result in
+            guard case .success = result else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
     }
 }

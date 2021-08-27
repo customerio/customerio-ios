@@ -1,7 +1,6 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
-@testable import Tracking
 import XCTest
 
 class IdentifyRepositoryTest: UnitTest {
@@ -10,7 +9,7 @@ class IdentifyRepositoryTest: UnitTest {
     private var siteId: String!
 
     private var repository: IdentifyRepository!
-    private var integrtionRepository: IdentifyRepository!
+    private var integrationRepository: IdentifyRepository!
 
     override func setUp() {
         super.setUp()
@@ -21,8 +20,8 @@ class IdentifyRepositoryTest: UnitTest {
 
         repository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorageMock,
                                            siteId: siteId)
-        integrtionRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorage,
-                                                     siteId: siteId)
+        integrationRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorage,
+                                                      siteId: siteId)
     }
 
     // MARK: addOrUpdateCustomer
@@ -58,7 +57,7 @@ class IdentifyRepositoryTest: UnitTest {
         repository.addOrUpdateCustomer(identifier: String.random, email: nil) { result in
             guard case .failure(let actualError) = result else { return XCTFail() }
             guard case .httpError(let httpError) = actualError else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
 
             XCTAssertFalse(self.keyValueStorageMock.mockCalled)
 
@@ -77,7 +76,7 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrtionRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
+        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
             guard case .success = result else { return XCTFail() }
 
             XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
@@ -94,7 +93,7 @@ class IdentifyRepositoryTest: UnitTest {
     // MARK: removeCustomer
 
     func test_removeCustomer_givenNeverIdentifiedProfile_expectIgnoreRequest() {
-        integrtionRepository.removeCustomer()
+        integrationRepository.removeCustomer()
 
         XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId))
         XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileEmail))
@@ -109,13 +108,13 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrtionRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
+        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
             XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
                            givenIdentifier)
             XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail),
                            givenEmail)
 
-            self.integrtionRepository.removeCustomer()
+            self.integrationRepository.removeCustomer()
 
             XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
             XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail))

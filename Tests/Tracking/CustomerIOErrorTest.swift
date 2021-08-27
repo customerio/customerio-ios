@@ -1,11 +1,11 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest
 
-class HttpRequestErrorTest: UnitTest {
+class CustomerIOErrorTest: UnitTest {
     func test_expectLocalizedDescrionSameAsDescription() {
-        let givenError = HttpRequestError.noResponse
+        let givenError = CustomerIOError.notInitialized
 
         XCTAssertEqual(givenError.description, givenError.localizedDescription)
     }

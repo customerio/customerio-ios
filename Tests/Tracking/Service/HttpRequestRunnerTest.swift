@@ -1,4 +1,4 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
 #if canImport(FoundationNetworking)

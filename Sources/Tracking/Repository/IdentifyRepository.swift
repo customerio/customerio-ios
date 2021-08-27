@@ -1,4 +1,3 @@
-import Common
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
@@ -23,7 +22,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     init(credentials: SdkCredentials, config: SdkConfig) {
         self.httpClient = CIOHttpClient(credentials: credentials, config: config)
         self.siteId = credentials.siteId
-        self.keyValueStorage = DICommon.shared.keyValueStorage
+        self.keyValueStorage = DITracking.shared.keyValueStorage
     }
 
     func addOrUpdateCustomer(
