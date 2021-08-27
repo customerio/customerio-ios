@@ -11,7 +11,7 @@ open class MessagingPush {
 
     private let customerIO: CustomerIO!
     private let httpClient: HttpClient
-    private var deviceID: String?
+    private let keyValueStorage: KeyValueStorage
 
     private var credentials: SdkCredentials? {
         customerIO.credentials
@@ -20,11 +20,16 @@ open class MessagingPush {
     private var sdkConfig: SdkConfig {
         customerIO.sdkConfig
     }
+    
+    private var deviceToken: String? {
+        self.keyValueStorage.string(siteId: self.credentials!.siteId, forKey: .deviceToken)
+    }
 
     /// testing init
-    internal init(customerIO: CustomerIO?, httpClient: HttpClient) {
+    internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
         self.httpClient = httpClient
+        self.keyValueStorage = keyValueStorage
     }
 
     /**
@@ -36,6 +41,7 @@ open class MessagingPush {
     public init(customerIO: CustomerIO) {
         self.customerIO = customerIO
         self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
+        self.keyValueStorage = DICommon.shared.keyValueStorage
     }
     
     public func registerDeviceToken(deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
@@ -51,9 +57,12 @@ open class MessagingPush {
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
+                guard let self = self else { return }
+
                 switch result {
                 case .success:
                     // XXX: store device token in storage
+                    self.keyValueStorage.setString(siteId: self.credentials!.siteId, value: deviceToken, forKey: .deviceToken)
                     onComplete(Result.success(()))
                 case .failure(let error):
                     onComplete(Result.failure(.httpError(error)))
@@ -66,7 +75,7 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
-        guard let deviceID: String = self.deviceID else {
+        guard let deviceToken: String = self.deviceToken else {
             return onComplete(Result.failure(.notInitialized))
         }
         
@@ -74,7 +83,7 @@ open class MessagingPush {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier!, deviceID: deviceID), headers: nil, body: bodyData)
+        let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier!, deviceToken: deviceToken), headers: nil, body: bodyData)
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
@@ -82,8 +91,8 @@ open class MessagingPush {
 
                 switch result {
                 case .success:
-                    // XXX: clear device token from storage
-                    self.deviceID = nil
+                    self.keyValueStorage.setString(siteId: self.credentials!.siteId, value: nil, forKey: .deviceToken)
+                    self.deviceToken = nil
                     onComplete(Result.success(()))
                 case .failure(let error):
                     onComplete(Result.failure(.httpError(error)))
