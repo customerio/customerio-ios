@@ -5,12 +5,17 @@ internal protocol IdentifyRepository: AutoMockable {
                              email: String?,
                              onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func removeCustomer()
+    var identifier: String? {get}
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
     private let httpClient: HttpClient
     private let keyValueStorage: KeyValueStorage
     private let siteId: String
+    
+    public var identifier: String? {
+        self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId)
+    }
 
     /// for testing
     internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, siteId: String) {

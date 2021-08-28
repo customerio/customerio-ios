@@ -4,14 +4,14 @@ public enum HttpEndpoint {
     case findAccountRegion
     case identifyCustomer(identifier: String)
     case registerDevice(identifier: String)
-    case deleteDevice(identifier: String, deviceID: String)
+    case deleteDevice(identifier: String, deviceToken: String)
 
     var path: String {
         switch self {
         case .findAccountRegion: return "/accounts/region"
         case .identifyCustomer(let identifier): return "/customers/\(identifier)"
         case .registerDevice(let identifier): return "/customers/\(identifier)/devices"
-        case .deleteDevice(let identifier, let deviceID): return "/customers/\(identifier)/devices/\(deviceID)"
+        case .deleteDevice(let identifier, let deviceToken): return "/customers/\(identifier)/devices/\(deviceToken)"
         }
     }
 

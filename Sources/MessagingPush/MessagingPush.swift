@@ -1,4 +1,4 @@
-import Common
+import CioTracking
 import Foundation
 
 /**
@@ -41,7 +41,7 @@ open class MessagingPush {
     public init(customerIO: CustomerIO) {
         self.customerIO = customerIO
         self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
-        self.keyValueStorage = DICommon.shared.keyValueStorage
+        self.keyValueStorage = DITracking.shared.keyValueStorage
     }
     
     public func registerDeviceToken(deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
@@ -49,11 +49,12 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
-        guard let identifier: String? = "fixme" else {
+        
+        guard let identifier = self.customerIO.identifier else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        let httpRequestParameters = HttpRequestParams(endpoint: .registerDevice(identifier: identifier!), headers: nil, body: bodyData)
+        let httpRequestParameters = HttpRequestParams(endpoint: .registerDevice(identifier: identifier), headers: nil, body: bodyData)
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
@@ -79,11 +80,11 @@ open class MessagingPush {
             return onComplete(Result.failure(.notInitialized))
         }
         
-        guard let identifier: String? = "fixme" else {
+        guard let identifier = self.customerIO.identifier else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier!, deviceToken: deviceToken), headers: nil, body: bodyData)
+        let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier, deviceToken: deviceToken), headers: nil, body: bodyData)
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
@@ -92,7 +93,6 @@ open class MessagingPush {
                 switch result {
                 case .success:
                     self.keyValueStorage.setString(siteId: self.credentials!.siteId, value: nil, forKey: .deviceToken)
-                    self.deviceToken = nil
                     onComplete(Result.success(()))
                 case .failure(let error):
                     onComplete(Result.failure(.httpError(error)))

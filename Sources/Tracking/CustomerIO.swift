@@ -24,6 +24,10 @@ public class CustomerIO {
 
     @Atomic public var sdkConfig: SdkConfig
     @Atomic public var credentials: SdkCredentials?
+    
+    public var identifier: String? {
+        self.identifyRepository?.identifier
+    }
 
     private var credentialsStore: SdkCredentialsStore = DITracking.shared.sdkCredentialsStore
     private var keyValueStorage: KeyValueStorage = DITracking.shared.keyValueStorage

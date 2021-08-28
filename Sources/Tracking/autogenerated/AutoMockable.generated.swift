@@ -172,6 +172,10 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     internal var addOrUpdateCustomerCalled: Bool {
         addOrUpdateCustomerCallsCount > 0
     }
+    
+    public var identifier: String? {
+        nil
+    }
 
     /// The arguments from the *last* time the function was called.
     internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?,
