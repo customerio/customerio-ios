@@ -62,7 +62,6 @@ open class MessagingPush {
 
                 switch result {
                 case .success:
-                    // XXX: store device token in storage
                     self.keyValueStorage.setString(siteId: self.credentials!.siteId, value: deviceToken, forKey: .deviceToken)
                     onComplete(Result.success(()))
                 case .failure(let error):
