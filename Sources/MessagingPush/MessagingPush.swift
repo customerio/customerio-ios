@@ -49,7 +49,6 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
-        
         guard let identifier = self.customerIO.identifier else {
             return onComplete(Result.failure(.notInitialized))
         }
