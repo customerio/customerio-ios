@@ -56,7 +56,7 @@ class IdentifyRepositoryTest: UnitTest {
         let expect = expectation(description: "Expect to complete")
         repository.addOrUpdateCustomer(identifier: String.random, email: nil) { result in
             guard case .failure(let actualError) = result else { return XCTFail() }
-            guard case .httpError(let httpError) = actualError else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
             guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
 
             XCTAssertFalse(self.keyValueStorageMock.mockCalled)

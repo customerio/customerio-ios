@@ -210,13 +210,13 @@ class CustomerIOTest: UnitTest {
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
         identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
-            onComplete(Result.failure(.httpError(.unsuccessfulStatusCode(500, message: ""))))
+            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
         }
 
         let expect = expectation(description: "Expect to complete identify")
         customerIO.identify(identifier: String.random) { result in
             guard case .failure(let error) = result else { return XCTFail() }
-            guard case .httpError(let httpError) = error else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
             guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
 
             expect.fulfill()

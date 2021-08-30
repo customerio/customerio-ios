@@ -206,7 +206,7 @@ public class CustomerIO {
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
      - onComplete: Asynchronous callback with `Result` of identifying a customer.
-     Check result to see if error or success.
+     Check result to see if error or success. Callback called on main thread.
      - email: Optional email address you want to associate with a profile.
      If you use an email address as the `identifier` this is not needed.
      */
@@ -220,13 +220,15 @@ public class CustomerIO {
         }
 
         identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email) { [weak self] result in
-            guard self != nil else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard self != nil else { return }
 
-            switch result {
-            case .success:
-                return onComplete(Result.success(()))
-            case .failure(let error):
-                return onComplete(Result.failure(error))
+                switch result {
+                case .success:
+                    return onComplete(Result.success(()))
+                case .failure(let error):
+                    return onComplete(Result.failure(error))
+                }
             }
         }
     }
