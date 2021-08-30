@@ -1,5 +1,7 @@
 import Foundation
 
+public protocol TrackingInstance: AutoMockable {}
+
 /**
  Tracking features of the Customer.io SDK!
 
@@ -14,7 +16,7 @@ import Foundation
  let cioTracking = Tracking(customerIO: customerIO)
  ```
  */
-public class Tracking {
+public class Tracking: TrackingInstance {
     /// Singleton shared instance of `Tracking`. Use this if you use the singeton instance of the `CustomerIO` class.
     public private(set) static var instance = Tracking(customerIO: CustomerIO.instance)
 

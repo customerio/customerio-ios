@@ -21,6 +21,9 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         self.session = session
     }
 
+    /**
+     Note: When mocking request, open JSON file, convert to `Data`.
+     */
     func request(
         _ params: HttpRequestParams,
         httpBaseUrls: HttpBaseUrls,

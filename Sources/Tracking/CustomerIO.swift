@@ -1,5 +1,10 @@
 import Foundation
 
+public protocol CustomerIOInstance: AutoMockable {
+    func identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, email: String?)
+    func identifyStop()
+}
+
 /**
  Welcome to the Customer.io iOS SDK!
 
@@ -14,7 +19,7 @@ import Foundation
  This method is recommended for code bases containing
  automated tests, dependency injection, or sending data to multiple Workspaces.
  */
-public class CustomerIO {
+public class CustomerIO: CustomerIOInstance {
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
 
