@@ -1,11 +1,13 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
+    func setIdentifier(identifier: String)
     func addOrUpdateCustomer(identifier: String,
                              email: String?,
                              onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func removeCustomer()
     var identifier: String? {get}
+   
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -48,7 +50,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
                 switch result {
                 case .success:
-                    self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
+                    self.setIdentifier(identifier: identifier)
                     self.keyValueStorage.setString(siteId: self.siteId, value: email, forKey: .identifiedProfileEmail)
 
                     onComplete(Result.success(()))
@@ -56,6 +58,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                     onComplete(Result.failure(.httpError(error)))
                 }
             }
+    }
+    
+    func setIdentifier(identifier: String) {
+        self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
     }
 
     func removeCustomer() {

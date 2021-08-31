@@ -21,7 +21,7 @@ open class MessagingPush {
         customerIO.sdkConfig
     }
     
-    private var deviceToken: String? {
+    public var deviceToken: String? {
         self.keyValueStorage.string(siteId: self.credentials!.siteId, forKey: .deviceToken)
     }
 
@@ -49,6 +49,10 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
+        guard let creds = self.credentials else {
+            return onComplete(Result.failure(.notInitialized))
+        }
+        
         guard let identifier = self.customerIO.identifier else {
             return onComplete(Result.failure(.notInitialized))
         }
@@ -61,7 +65,7 @@ open class MessagingPush {
 
                 switch result {
                 case .success:
-                    self.keyValueStorage.setString(siteId: self.credentials!.siteId, value: deviceToken, forKey: .deviceToken)
+                    self.keyValueStorage.setString(siteId: creds.siteId, value: deviceToken, forKey: .deviceToken)
                     onComplete(Result.success(()))
                 case .failure(let error):
                     onComplete(Result.failure(.httpError(error)))

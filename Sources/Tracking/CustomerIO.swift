@@ -234,6 +234,17 @@ public class CustomerIO {
             }
         }
     }
+    
+    /**
+     Set the active identifier without calling the customer.io API
+    **/
+    public func setIdentifier(identifier: String,  onComplete: @escaping (Result<Void, CustomerIOError>) -> Void){
+        guard let identifyRepository = self.identifyRepository else {
+            return onComplete(Result.failure(.notInitialized))
+        }
+        
+        identifyRepository.setIdentifier(identifier: identifier)
+    }
 
     /**
      Stop identifying the currently persisted customer. All future calls to the SDK will no longer
