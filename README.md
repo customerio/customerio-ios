@@ -34,7 +34,7 @@ With this package, you can:
 
 ## Install the SDK
 
-You can get our SDK using the Swift Package Manger. You can install it via your project's `Package.swift` or through XCode (recommended). 
+You can get our SDK using the Swift Package Manger and install it via your project's `Package.swift` or through XCode (recommended). 
 
 1. In XCode, go to **File** > **Swift Packages** > **Add Package Dependency**. 
 2. In the package repository URL field, enter `https://github.com/customerio/customerio-ios`. 
