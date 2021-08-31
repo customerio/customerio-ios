@@ -22,6 +22,17 @@ open class MessagingPush {
     
     public var deviceToken: Data?
 
+        
+    // XXX: The original definition would've had this handle token registration
+    // but we need some way to handle errors
+//    private var _deviceToken: Data?
+//    public var deviceToken: Data? {
+//        get { return _deviceToken }
+//        set {
+//           <register token & save in _deviceToken here
+//        }
+//    }
+
     /// testing init
     internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
@@ -73,12 +84,12 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
-        guard let deviceToken = self.deviceToken else {
-            return onComplete(Result.failure(.notInitialized))
+        guard let identifier = self.customerIO.identifier else {
+            return onComplete(Result.failure(.noCustomerIdentified))
         }
         
-        guard let identifier = self.customerIO.identifier else {
-            return onComplete(Result.failure(.notInitialized))
+        guard let deviceToken = self.deviceToken else {
+            return onComplete(Result.failure(.deviceNotRegistered))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier, deviceToken: deviceToken), headers: nil, body: bodyData)

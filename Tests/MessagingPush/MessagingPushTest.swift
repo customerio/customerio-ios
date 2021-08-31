@@ -29,10 +29,9 @@ class MessagingPushTest: UnitTest {
     // MARK: registerDevice
 
     func test_registerDeviceToken_expectFailIfNotIdentified() {
-        let token = Data(String.random.utf8)
-        
+ 
         let expect = expectation(description: "Expect to fail to register device token")
-        self.messagingPush.registerDeviceToken(deviceToken: token) { result in
+        self.messagingPush.registerDeviceToken(deviceToken: Data(String.random.utf8)) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .notInitialized = error else { return XCTFail() }
             expect.fulfill()
@@ -56,15 +55,19 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.success(Data()))
         }
         
-        let token = Data(String.random.utf8)
+        let actualToken = Data(String.random.utf8)
         
         let expect = expectation(description: "Expect to persist token")
-        self.messagingPush.registerDeviceToken(deviceToken: token) { result in
+        self.messagingPush.registerDeviceToken(deviceToken: actualToken) { result in
             guard case .success = result else { return XCTFail() }
-            
-            XCTAssertNotNil(self.messagingPush.deviceToken)
             expect.fulfill()
         }
+        
+        guard let storedToken = self.messagingPush.deviceToken else {
+            return XCTFail()
+        }
+        
+        XCTAssertEqual(storedToken, actualToken)
 
         waitForExpectations()
     }
