@@ -2,13 +2,13 @@ import Foundation
 
 // Standard device structure
 internal struct Device: Codable {
-    let id: String
+    let token: Data
     let platform = "ios"
     let lastUsed: Date
     
     enum CodingKeys: String, CodingKey {
-        case platform = "ios"
-        case id
+        case platform
+        case token = "id"
         case lastUsed
     }
 }

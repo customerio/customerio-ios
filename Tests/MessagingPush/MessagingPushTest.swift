@@ -29,7 +29,7 @@ class MessagingPushTest: UnitTest {
     // MARK: registerDevice
 
     func test_registerDeviceToken_expectFailIfNotIdentified() {
-        let token = String.random
+        let token = Data(String.random.utf8)
         
         let expect = expectation(description: "Expect to fail to register device token")
         self.messagingPush.registerDeviceToken(deviceToken: token) { result in
@@ -56,7 +56,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.success(Data()))
         }
         
-        let token = String.random
+        let token = Data(String.random.utf8)
         
         let expect = expectation(description: "Expect to persist token")
         self.messagingPush.registerDeviceToken(deviceToken: token) { result in
