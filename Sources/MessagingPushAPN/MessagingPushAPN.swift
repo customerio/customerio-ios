@@ -1,23 +1,21 @@
 import Foundation
-import UIKit
 import CioTracking
 import CioMessagingPush
 
 /**
- Swift code goes into this module that is specific to APN push notification messaging.
+ MessagingPush extension to support APN push notification messaging.
   */
 public extension MessagingPush {
     
-    func registerForRemoteNotifications(){
-        UIApplication.shared.registerForRemoteNotifications()
-    }
-    
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         self.registerDeviceToken(deviceToken: deviceToken, onComplete:onComplete)
       }
 
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+    func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         // Print to XCode logs the error
+        if self.deviceToken != nil {
+            self.deleteDeviceToken(onComplete: onComplete)
+        }
     }
 }
 

@@ -50,6 +50,14 @@ open class MessagingPush {
         self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
     }
     
+    deinit{
+        // XXX: handle deinit case where we want to delete the token
+    }
+    
+    /**
+     Register a new device token with Customer.io, associated with the current active customer. If there
+     is no active customer, this will fail to register the device
+     */
     public func registerDeviceToken(deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: Device(token: deviceToken, lastUsed: Date()))) else {
             return onComplete(Result.failure(.httpError(.noResponse)))
@@ -79,6 +87,9 @@ open class MessagingPush {
             }
     }
     
+    /**
+     Delete the currently registered device token
+     */
     public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         guard let bodyData = JsonAdapter.toJson(DeleteDeviceRequest()) else {
             return onComplete(Result.failure(.httpError(.noResponse)))

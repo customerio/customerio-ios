@@ -5,7 +5,7 @@ import SharedTests
 import XCTest
 
 class MessagingPushTest: UnitTest {
-    private var customerIO: CustomerIO!
+    private var mockCustomerIO: CustomerIO!
     private var messagingPush: MessagingPush!
 
     private var identifyRepositoryMock: IdentifyRepositoryMock!
@@ -18,12 +18,12 @@ class MessagingPushTest: UnitTest {
         httpClientMock = HttpClientMock()
         identifyRepositoryMock = IdentifyRepositoryMock()
 
-        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: identifyRepositoryMock,
+        mockCustomerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: identifyRepositoryMock,
                                 keyValueStorage: nil)
         
-        customerIO.setCredentials(siteId: String.random, apiKey: String.random, region: Region.EU)
+        mockCustomerIO.setCredentials(siteId: String.random, apiKey: String.random, region: Region.EU)
         
-        messagingPush = MessagingPush(customerIO: customerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage)
+        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage)
     }
 
     // MARK: registerDevice
@@ -46,9 +46,9 @@ class MessagingPushTest: UnitTest {
             self.identifyRepositoryMock.identifier = identifier
         }
         
-        customerIO.setIdentifier(identifier: String.random, onComplete: { result in
+        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
             guard case .success = result else { return XCTFail() }
-            XCTAssertNotNil(self.customerIO.identifier)
+            XCTAssertNotNil(self.mockCustomerIO.identifier)
         })
         
         httpClientMock.requestClosure = { params, onComplete in
@@ -70,5 +70,42 @@ class MessagingPushTest: UnitTest {
         XCTAssertEqual(storedToken, actualToken)
 
         waitForExpectations()
+    }
+    
+    func test_deleteDeviceToken_givenHttpSuccess_expectClearToken() {
+        
+        identifyRepositoryMock.setIdentifierClosure = { identifier in
+            self.identifyRepositoryMock.identifier = identifier
+        }
+        
+        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
+            guard case .success = result else { return XCTFail() }
+            XCTAssertNotNil(self.mockCustomerIO.identifier)
+        })
+        
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+        
+        self.messagingPush.deviceToken = Data(String.random.utf8)
+        
+        let expect = expectation(description: "Expect to persist token")
+        self.messagingPush.deleteDeviceToken() { result in
+            print(result)
+            guard case .success = result else { return XCTFail() }
+            expect.fulfill()
+        }
+        
+        XCTAssertNil(self.messagingPush.deviceToken)
+
+        waitForExpectations()
+    }
+    
+    func test_givenNilObject_expectDeinit() {
+      var messagingPush: MessagingPush? = MessagingPush(customerIO: mockCustomerIO)
+
+      messagingPush = nil
+
+        XCTAssertNil(messagingPush)
     }
 }
