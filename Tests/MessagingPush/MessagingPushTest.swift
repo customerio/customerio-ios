@@ -72,6 +72,48 @@ class MessagingPushTest: UnitTest {
         waitForExpectations()
     }
     
+    func test_deleteDeviceToken_expectFailIfNotIdentified() {
+                
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+        
+        let expect = expectation(description: "Expect to fail to delete device token")
+        self.messagingPush.deleteDeviceToken() { result in
+            print(result)
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .noCustomerIdentified = error else { return XCTFail() }
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+    
+    func test_deleteDeviceToken_expectFailIfNoToken() {
+        
+        identifyRepositoryMock.setIdentifierClosure = { identifier in
+            self.identifyRepositoryMock.identifier = identifier
+        }
+        
+        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
+            guard case .success = result else { return XCTFail() }
+            XCTAssertNotNil(self.mockCustomerIO.identifier)
+        })
+                
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+        
+        let expect = expectation(description: "Expect to fail to delete device token")
+        self.messagingPush.deleteDeviceToken() { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .deviceNotRegistered = error else { return XCTFail() }
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+    
     func test_deleteDeviceToken_givenHttpSuccess_expectClearToken() {
         
         identifyRepositoryMock.setIdentifierClosure = { identifier in
@@ -89,9 +131,8 @@ class MessagingPushTest: UnitTest {
         
         self.messagingPush.deviceToken = Data(String.random.utf8)
         
-        let expect = expectation(description: "Expect to persist token")
+        let expect = expectation(description: "Expect to clear token in memory")
         self.messagingPush.deleteDeviceToken() { result in
-            print(result)
             guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
