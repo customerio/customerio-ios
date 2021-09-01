@@ -26,7 +26,7 @@ class MessagingPushTest: UnitTest {
         messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage)
     }
 
-    // MARK: registerDevice
+    // MARK: registerDeviceToken
 
     func test_registerDeviceToken_expectFailIfNotIdentified() {
  
@@ -71,6 +71,8 @@ class MessagingPushTest: UnitTest {
 
         waitForExpectations()
     }
+    
+    // MARK: deleteDeviceToken
     
     func test_deleteDeviceToken_expectFailIfNotIdentified() {
                 
@@ -141,6 +143,8 @@ class MessagingPushTest: UnitTest {
 
         waitForExpectations()
     }
+    
+    // MARK: deinit
     
     func test_givenNilObject_expectDeinit() {
       var messagingPush: MessagingPush? = MessagingPush(customerIO: mockCustomerIO)
