@@ -20,7 +20,7 @@ import FoundationNetworking
 
  ```
  protocol FriendsRepository {
-     func acceptFriendRequest(_ onComplete: @escaping () -> Void)
+     func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
  }
 
  class AppFriendsRepository: FriendsRepository {
@@ -32,7 +32,17 @@ import FoundationNetworking
 
  ```
  protocol FriendsRepository: AutoMockable {
+     func acceptFriendRequest<Attributes: Encodable>(
+         // sourcery:Type=Encodable
+         attributes: Attributes,
+         _ onComplete: @escaping () -> Void)
+ }
  ```
+
+ > Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would
+ fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`.
+ Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case.
+ It will require a cast in the test function code, however.
 
  3. Run the command `make generate` on your machine. The new mock should be added to this file.
 
@@ -77,43 +87,74 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
+    // MARK: - identify<RequestBody: Encodable>
+
+    /// Number of times the function was called.
+    public private(set) var identifyBodyCallsCount = 0
+    /// `true` if the function was ever called.
+    public var identifyBodyCalled: Bool {
+        identifyBodyCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var identifyBodyReceivedArguments: (identifier: String, body: AnyEncodable,
+                                                            onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var identifyBodyReceivedInvocations: [(identifier: String, body: AnyEncodable,
+                                                               onComplete: (Result<Void, CustomerIOError>) -> Void)] =
+        []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var identifyBodyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify<RequestBody: Encodable>(
+        identifier: String,
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        mockCalled = true
+        identifyBodyCallsCount += 1
+        identifyBodyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete)
+        identifyBodyReceivedInvocations
+            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete))
+        identifyBodyClosure?(identifier, AnyEncodable(body), onComplete)
+    }
+
     // MARK: - identify
 
     /// Number of times the function was called.
-    public var identifyCallsCount = 0
+    public private(set) var identifyCallsCount = 0
     /// `true` if the function was ever called.
     public var identifyCalled: Bool {
         identifyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var identifyReceivedArguments: (identifier: String, onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                           email: String?)?
+    public private(set) var identifyReceivedArguments: (identifier: String,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public var identifyReceivedInvocations: [(identifier: String, onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                              email: String?)] = []
+    public private(set) var identifyReceivedInvocations: [(identifier: String,
+                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyClosure: ((String, @escaping (Result<Void, CustomerIOError>) -> Void, String?) -> Void)?
+    public var identifyClosure: ((String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, email: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identify(
-        identifier: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        email: String?
-    ) {
+    /// Mocked function for `identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         mockCalled = true
         identifyCallsCount += 1
-        identifyReceivedArguments = (identifier: identifier, onComplete: onComplete, email: email)
-        identifyReceivedInvocations.append((identifier: identifier, onComplete: onComplete, email: email))
-        identifyClosure?(identifier, onComplete, email)
+        identifyReceivedArguments = (identifier: identifier, onComplete: onComplete)
+        identifyReceivedInvocations.append((identifier: identifier, onComplete: onComplete))
+        identifyClosure?(identifier, onComplete)
     }
 
     // MARK: - identifyStop
 
     /// Number of times the function was called.
-    public var identifyStopCallsCount = 0
+    public private(set) var identifyStopCallsCount = 0
     /// `true` if the function was ever called.
     public var identifyStopCalled: Bool {
         identifyStopCallsCount > 0
@@ -146,22 +187,22 @@ public class HttpClientMock: HttpClient {
     // MARK: - request
 
     /// Number of times the function was called.
-    public var requestCallsCount = 0
+    public private(set) var requestCallsCount = 0
     /// `true` if the function was ever called.
     public var requestCalled: Bool {
         requestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var requestReceivedArguments: (params: HttpRequestParams,
-                                          onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    public private(set) var requestReceivedArguments: (params: HttpRequestParams,
+                                                       onComplete: (Result<Data, HttpRequestError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public var requestReceivedInvocations: [(params: HttpRequestParams,
-                                             onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams,
+                                                          onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var requestClosure: ((HttpRequestParams, @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
+    public var requestClosure: ((HttpRequestParams, (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
     /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -187,23 +228,22 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
     // MARK: - request
 
     /// Number of times the function was called.
-    internal var requestCallsCount = 0
+    internal private(set) var requestCallsCount = 0
     /// `true` if the function was ever called.
     internal var requestCalled: Bool {
         requestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
-                                            onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    internal private(set) var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
-                                               onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    internal private(set) var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                            onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls,
-                                   @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
+    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls, (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
     /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func request(
@@ -230,44 +270,47 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    // MARK: - addOrUpdateCustomer
+    // MARK: - addOrUpdateCustomer<RequestBody: Encodable>
 
     /// Number of times the function was called.
-    internal var addOrUpdateCustomerCallsCount = 0
+    internal private(set) var addOrUpdateCustomerCallsCount = 0
     /// `true` if the function was ever called.
     internal var addOrUpdateCustomerCalled: Bool {
         addOrUpdateCustomerCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var addOrUpdateCustomerReceivedArguments: (identifier: String, email: String?,
-                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    internal private(set) var addOrUpdateCustomerReceivedArguments: (identifier: String, body: AnyEncodable,
+                                                                     onComplete: (Result<Void, CustomerIOError>)
+                                                                         -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal var addOrUpdateCustomerReceivedInvocations: [(identifier: String, email: String?,
-                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    internal private(set) var addOrUpdateCustomerReceivedInvocations: [(identifier: String, body: AnyEncodable,
+                                                                        onComplete: (Result<Void, CustomerIOError>)
+                                                                            -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, String?, @escaping (Result<Void, CustomerIOError>) -> Void)
-        -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer(identifier: String, email: String?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func addOrUpdateCustomer(
+    /// Mocked function for `addOrUpdateCustomer<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
-        email: String?,
+        body: RequestBody,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1
-        addOrUpdateCustomerReceivedArguments = (identifier: identifier, email: email, onComplete: onComplete)
-        addOrUpdateCustomerReceivedInvocations.append((identifier: identifier, email: email, onComplete: onComplete))
-        addOrUpdateCustomerClosure?(identifier, email, onComplete)
+        addOrUpdateCustomerReceivedArguments = (identifier: identifier, body: AnyEncodable(body),
+                                                onComplete: onComplete)
+        addOrUpdateCustomerReceivedInvocations
+            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete))
+        addOrUpdateCustomerClosure?(identifier, AnyEncodable(body), onComplete)
     }
 
     // MARK: - removeCustomer
 
     /// Number of times the function was called.
-    internal var removeCustomerCallsCount = 0
+    internal private(set) var removeCustomerCallsCount = 0
     /// `true` if the function was ever called.
     internal var removeCustomerCalled: Bool {
         removeCustomerCallsCount > 0
@@ -327,16 +370,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - integer
 
     /// Number of times the function was called.
-    public var integerCallsCount = 0
+    public private(set) var integerCallsCount = 0
     /// `true` if the function was ever called.
     public var integerCalled: Bool {
         integerCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var integerReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    public private(set) var integerReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var integerReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    public private(set) var integerReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
     /// Value to return from the mocked function.
     public var integerReturnValue: Int?
     /**
@@ -358,16 +401,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - setInt
 
     /// Number of times the function was called.
-    public var setIntCallsCount = 0
+    public private(set) var setIntCallsCount = 0
     /// `true` if the function was ever called.
     public var setIntCalled: Bool {
         setIntCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var setIntReceivedArguments: (siteId: String, value: Int?, key: KeyValueStorageKey)?
+    public private(set) var setIntReceivedArguments: (siteId: String, value: Int?, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var setIntReceivedInvocations: [(siteId: String, value: Int?, key: KeyValueStorageKey)] = []
+    public private(set) var setIntReceivedInvocations: [(siteId: String, value: Int?, key: KeyValueStorageKey)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -385,16 +428,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - double
 
     /// Number of times the function was called.
-    public var doubleCallsCount = 0
+    public private(set) var doubleCallsCount = 0
     /// `true` if the function was ever called.
     public var doubleCalled: Bool {
         doubleCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var doubleReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    public private(set) var doubleReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var doubleReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    public private(set) var doubleReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
     /// Value to return from the mocked function.
     public var doubleReturnValue: Double?
     /**
@@ -416,16 +459,17 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - setDouble
 
     /// Number of times the function was called.
-    public var setDoubleCallsCount = 0
+    public private(set) var setDoubleCallsCount = 0
     /// `true` if the function was ever called.
     public var setDoubleCalled: Bool {
         setDoubleCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var setDoubleReceivedArguments: (siteId: String, value: Double?, key: KeyValueStorageKey)?
+    public private(set) var setDoubleReceivedArguments: (siteId: String, value: Double?, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var setDoubleReceivedInvocations: [(siteId: String, value: Double?, key: KeyValueStorageKey)] = []
+    public private(set) var setDoubleReceivedInvocations: [(siteId: String, value: Double?, key: KeyValueStorageKey)] =
+        []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -443,16 +487,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - string
 
     /// Number of times the function was called.
-    public var stringCallsCount = 0
+    public private(set) var stringCallsCount = 0
     /// `true` if the function was ever called.
     public var stringCalled: Bool {
         stringCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var stringReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    public private(set) var stringReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var stringReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    public private(set) var stringReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
     /// Value to return from the mocked function.
     public var stringReturnValue: String?
     /**
@@ -474,16 +518,17 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - setString
 
     /// Number of times the function was called.
-    public var setStringCallsCount = 0
+    public private(set) var setStringCallsCount = 0
     /// `true` if the function was ever called.
     public var setStringCalled: Bool {
         setStringCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var setStringReceivedArguments: (siteId: String, value: String?, key: KeyValueStorageKey)?
+    public private(set) var setStringReceivedArguments: (siteId: String, value: String?, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var setStringReceivedInvocations: [(siteId: String, value: String?, key: KeyValueStorageKey)] = []
+    public private(set) var setStringReceivedInvocations: [(siteId: String, value: String?, key: KeyValueStorageKey)] =
+        []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -501,16 +546,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - date
 
     /// Number of times the function was called.
-    public var dateCallsCount = 0
+    public private(set) var dateCallsCount = 0
     /// `true` if the function was ever called.
     public var dateCalled: Bool {
         dateCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var dateReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
+    public private(set) var dateReceivedArguments: (siteId: String, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var dateReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
+    public private(set) var dateReceivedInvocations: [(siteId: String, key: KeyValueStorageKey)] = []
     /// Value to return from the mocked function.
     public var dateReturnValue: Date?
     /**
@@ -532,16 +577,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - setDate
 
     /// Number of times the function was called.
-    public var setDateCallsCount = 0
+    public private(set) var setDateCallsCount = 0
     /// `true` if the function was ever called.
     public var setDateCalled: Bool {
         setDateCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var setDateReceivedArguments: (siteId: String, value: Date?, key: KeyValueStorageKey)?
+    public private(set) var setDateReceivedArguments: (siteId: String, value: Date?, key: KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public var setDateReceivedInvocations: [(siteId: String, value: Date?, key: KeyValueStorageKey)] = []
+    public private(set) var setDateReceivedInvocations: [(siteId: String, value: Date?, key: KeyValueStorageKey)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -559,16 +604,16 @@ public class KeyValueStorageMock: KeyValueStorage {
     // MARK: - deleteAll
 
     /// Number of times the function was called.
-    public var deleteAllCallsCount = 0
+    public private(set) var deleteAllCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteAllCalled: Bool {
         deleteAllCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public var deleteAllReceivedArguments: (String)?
+    public private(set) var deleteAllReceivedArguments: (String)?
     /// Arguments from *all* of the times that the function was called.
-    public var deleteAllReceivedInvocations: [String] = []
+    public private(set) var deleteAllReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -600,16 +645,16 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     // MARK: - load
 
     /// Number of times the function was called.
-    internal var loadCallsCount = 0
+    internal private(set) var loadCallsCount = 0
     /// `true` if the function was ever called.
     internal var loadCalled: Bool {
         loadCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var loadReceivedArguments: (String)?
+    internal private(set) var loadReceivedArguments: (String)?
     /// Arguments from *all* of the times that the function was called.
-    internal var loadReceivedInvocations: [String] = []
+    internal private(set) var loadReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     internal var loadReturnValue: SdkCredentials?
     /**
@@ -631,16 +676,16 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     // MARK: - create
 
     /// Number of times the function was called.
-    internal var createCallsCount = 0
+    internal private(set) var createCallsCount = 0
     /// `true` if the function was ever called.
     internal var createCalled: Bool {
         createCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var createReceivedArguments: (siteId: String, apiKey: String, region: Region)?
+    internal private(set) var createReceivedArguments: (siteId: String, apiKey: String, region: Region)?
     /// Arguments from *all* of the times that the function was called.
-    internal var createReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
+    internal private(set) var createReceivedInvocations: [(siteId: String, apiKey: String, region: Region)] = []
     /// Value to return from the mocked function.
     internal var createReturnValue: SdkCredentials!
     /**
@@ -662,16 +707,16 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore {
     // MARK: - save
 
     /// Number of times the function was called.
-    internal var saveCallsCount = 0
+    internal private(set) var saveCallsCount = 0
     /// `true` if the function was ever called.
     internal var saveCalled: Bool {
         saveCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal var saveReceivedArguments: (siteId: String, credentials: SdkCredentials)?
+    internal private(set) var saveReceivedArguments: (siteId: String, credentials: SdkCredentials)?
     /// Arguments from *all* of the times that the function was called.
-    internal var saveReceivedInvocations: [(siteId: String, credentials: SdkCredentials)] = []
+    internal private(set) var saveReceivedInvocations: [(siteId: String, credentials: SdkCredentials)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */

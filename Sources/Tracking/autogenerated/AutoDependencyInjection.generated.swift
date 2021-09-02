@@ -59,6 +59,8 @@ import Foundation
  */
 public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
+    case logger
+    case jsonAdapter
     case keyValueStorage
 }
 
@@ -99,6 +101,8 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
+        case .logger: return logger as! T
+        case .jsonAdapter: return jsonAdapter as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
     }
@@ -117,6 +121,30 @@ public class DITracking {
 
     private var newSdkCredentialsStore: SdkCredentialsStore {
         CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
+    }
+
+    // Logger
+    public var logger: Logger {
+        if let overridenDep = overrides[.logger] {
+            return overridenDep as! Logger
+        }
+        return newLogger
+    }
+
+    private var newLogger: Logger {
+        ConsoleLogger()
+    }
+
+    // JsonAdapter
+    public var jsonAdapter: JsonAdapter {
+        if let overridenDep = overrides[.jsonAdapter] {
+            return overridenDep as! JsonAdapter
+        }
+        return newJsonAdapter
+    }
+
+    private var newJsonAdapter: JsonAdapter {
+        JsonAdapter(log: logger)
     }
 
     // KeyValueStorage

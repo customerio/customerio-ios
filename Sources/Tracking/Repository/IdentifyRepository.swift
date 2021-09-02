@@ -1,21 +1,27 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
-    func addOrUpdateCustomer(identifier: String,
-                             email: String?,
-                             onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func addOrUpdateCustomer<RequestBody: Encodable>(
+        identifier: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(body)"
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
     func removeCustomer()
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
     private let httpClient: HttpClient
     private let keyValueStorage: KeyValueStorage
+    private let jsonAdapter: JsonAdapter
     private let siteId: String
 
     /// for testing
-    internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, siteId: String) {
+    internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter, siteId: String) {
         self.httpClient = httpClient
         self.keyValueStorage = keyValueStorage
+        self.jsonAdapter = jsonAdapter
         self.siteId = siteId
     }
 
@@ -23,14 +29,15 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         self.httpClient = CIOHttpClient(credentials: credentials, config: config)
         self.siteId = credentials.siteId
         self.keyValueStorage = DITracking.shared.keyValueStorage
+        self.jsonAdapter = DITracking.shared.jsonAdapter
     }
 
-    func addOrUpdateCustomer(
+    func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
-        email: String?,
+        body: RequestBody,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let bodyData = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: email, anonymousId: nil)) else {
+        guard let bodyData = jsonAdapter.toJson(body) else {
             return onComplete(Result.failure(.http(.noResponse)))
         }
 
@@ -44,7 +51,6 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                 switch result {
                 case .success:
                     self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
-                    self.keyValueStorage.setString(siteId: self.siteId, value: email, forKey: .identifiedProfileEmail)
 
                     onComplete(Result.success(()))
                 case .failure(let error):
@@ -55,6 +61,5 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
     func removeCustomer() {
         keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileId)
-        keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileEmail)
     }
 }

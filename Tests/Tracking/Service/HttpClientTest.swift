@@ -16,7 +16,7 @@ class HttpClientTest: UnitTest {
         super.setUp()
 
         requestRunnerMock = HttpRequestRunnerMock()
-        client = CIOHttpClient(httpRequestRunner: requestRunnerMock)
+        client = CIOHttpClient(httpRequestRunner: requestRunnerMock, jsonAdapter: jsonAdapter)
     }
 
     // MARK: request

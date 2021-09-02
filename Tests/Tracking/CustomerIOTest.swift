@@ -172,12 +172,20 @@ class CustomerIOTest: UnitTest {
 
     // MARK: identify
 
+    // testing `identify()` with request body. Will make an integration test for all `identify()` functions
+    // but copy/paste identify unit tests not needed since only 1 function has logic in it.
+    //
+    // NOTE: At this time, the `CustomerIOHttpTest` is that integration test. After refactoring the code
+    // to make the DI graph work as intended and the http request runner is in the graph we can make
+    // integration tests with a mocked request runner.
+
     func test_identify_givenSdkNotInialized_expectFailureResult() {
         customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: nil,
                                 keyValueStorage: nil)
+        let givenBody = IdentifyRequestBody.random()
 
         let expect = expectation(description: "Expect to complete identify")
-        customerIO.identify(identifier: String.random) { result in
+        customerIO.identify(identifier: String.random, body: givenBody) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .notInitialized = error else { return XCTFail() }
 
@@ -191,19 +199,19 @@ class CustomerIOTest: UnitTest {
 
     func test_identify_expectCallRepository() {
         let givenIdentifier = String.random
-        let givenEmail = EmailAddress.randomEmail
+        let givenBody = IdentifyRequestBody.random()
 
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualEmail, onComplete in
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualBody, onComplete in
             XCTAssertEqual(givenIdentifier, actualIdentifier)
-            XCTAssertEqual(givenEmail, actualEmail)
+            XCTAssertEqual(givenBody, actualBody.value as! IdentifyRequestBody)
 
             onComplete(Result.success(()))
         }
 
         let expect = expectation(description: "Expect to complete identify")
-        customerIO.identify(identifier: givenIdentifier, onComplete: { result in
+        customerIO.identify(identifier: givenIdentifier, body: givenBody) { result in
             expect.fulfill()
-        }, email: givenEmail)
+        }
 
         waitForExpectations()
     }
@@ -214,7 +222,15 @@ class CustomerIOTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete identify")
+        expect.expectedFulfillmentCount = 2
         customerIO.identify(identifier: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .http(let httpError) = error else { return XCTFail() }
             guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
@@ -231,7 +247,13 @@ class CustomerIOTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete identify")
+        expect.expectedFulfillmentCount = 2
         customerIO.identify(identifier: String.random) { result in
+            guard case .success = result else { return XCTFail() }
+
+            expect.fulfill()
+        }
+        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
             guard case .success = result else { return XCTFail() }
 
             expect.fulfill()

@@ -1,7 +1,18 @@
 import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
-    func identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, email: String?)
+    // sourcery:Name=identifyBody
+    func identify<RequestBody: Encodable>(
+        identifier: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(body)"
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
+    func identify(
+        identifier: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
     func identifyStop()
 }
 
@@ -215,16 +226,16 @@ public class CustomerIO: CustomerIOInstance {
      - email: Optional email address you want to associate with a profile.
      If you use an email address as the `identifier` this is not needed.
      */
-    public func identify(
+    public func identify<RequestBody: Encodable>(
         identifier: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        email: String? = nil
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email) { [weak self] result in
+        identifyRepository.addOrUpdateCustomer(identifier: identifier, body: body) { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard self != nil else { return }
 
@@ -236,6 +247,10 @@ public class CustomerIO: CustomerIOInstance {
                 }
             }
         }
+    }
+
+    public func identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+        identify(identifier: identifier, body: EmptyRequestBody(), onComplete: onComplete)
     }
 
     /**

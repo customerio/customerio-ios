@@ -3,19 +3,26 @@ import Foundation
 /**
  Convert between Swift structs and JSON strings and vice-versa.
  */
-public enum JsonAdapter {
-    static var decoder: JSONDecoder {
+// sourcery: InjectRegister = "JsonAdapter"
+public class JsonAdapter {
+    var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
 
-    static var encoder: JSONEncoder {
+    var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         encoder.dateEncodingStrategy = .secondsSince1970
         return encoder
+    }
+
+    private let log: Logger
+
+    init(log: Logger) {
+        self.log = log
     }
 
     /**
@@ -29,21 +36,41 @@ public enum JsonAdapter {
      expect to get an error. If we need this functionality, perhaps we should create a 2nd set of
      methods to this class that `throw` so you choose which function to use?
      */
-    public static func fromJson<T: Decodable>(_ json: Data) -> T? {
+    public func fromJson<T: Decodable>(_ json: Data) -> T? {
         do {
             let value = try decoder.decode(T.self, from: json)
             return value
+        } catch DecodingError.keyNotFound(let key, let context) {
+            self.log
+                .error("Decode key not found. Key: \(key), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+        } catch DecodingError.valueNotFound(let type, let context) {
+            self.log
+                .error("Decode non-optional value not found. Value: \(type), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+        } catch DecodingError.typeMismatch(let type, let context) {
+            self.log
+                .error("Decode type did not match payload. Type: \(type), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+        } catch DecodingError.dataCorrupted(let context) {
+            self.log
+                .error("Decode data corrupted. Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
         } catch {
-            return nil
+            log
+                .error("Generic decide error. \(error.localizedDescription), json: \(json.string ?? "(error getting json string)")")
         }
+
+        return nil
     }
 
-    public static func toJson<T: Encodable>(_ obj: T) -> Data? {
+    public func toJson<T: Encodable>(_ obj: T) -> Data? {
         do {
             let value = try encoder.encode(obj)
             return value
+        } catch EncodingError.invalidValue(let value, let context) {
+            self.log
+                .error("Encoding could not encode value. \(value), Json path: \(context.codingPath), object: \(obj)")
         } catch {
-            return nil
+            log.error("Generic encode error. \(error.localizedDescription), object: \(obj)")
         }
+
+        return nil
     }
 }

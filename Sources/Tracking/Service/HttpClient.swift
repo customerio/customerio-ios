@@ -16,18 +16,21 @@ public class CIOHttpClient: HttpClient {
     private let session: URLSession
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
+    private let jsonAdapter: JsonAdapter
 
     /// for testing
-    init(httpRequestRunner: HttpRequestRunner) {
+    init(httpRequestRunner: HttpRequestRunner, jsonAdapter: JsonAdapter) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: "fake-site-id", apiKey: "fake-api-key")
         self.baseUrls = HttpBaseUrls(trackingApi: "fake-url")
+        self.jsonAdapter = jsonAdapter
     }
 
     public init(credentials: SdkCredentials, config: SdkConfig) {
         self.session = Self.getSession(siteId: credentials.siteId, apiKey: credentials.apiKey)
         self.baseUrls = config.httpBaseUrls
         self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
+        self.jsonAdapter = DITracking.shared.jsonAdapter
     }
 
     deinit {
@@ -35,7 +38,9 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
-        httpRequestRunner.request(params, httpBaseUrls: baseUrls) { data, response, error in
+        httpRequestRunner.request(params, httpBaseUrls: baseUrls) { [weak self] data, response, error in
+            guard let self = self else { return }
+
             if let error = error {
                 onComplete(Result.failure(HttpRequestError.underlyingError(error)))
                 return
@@ -53,7 +58,7 @@ public class CIOHttpClient: HttpClient {
                     onComplete(Result.failure(HttpRequestError.unauthorized))
                 default:
                     var errorBodyString: String = data?.string ?? ""
-                    if let data = data, let errorMessageBody: ErrorMessageResponse = JsonAdapter.fromJson(data) {
+                    if let data = data, let errorMessageBody: ErrorMessageResponse = self.jsonAdapter.fromJson(data) {
                         errorBodyString = errorMessageBody.meta.error
                     }
 
@@ -84,7 +89,7 @@ extension CIOHttpClient {
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": "CustomerIO-SDK-iOS-/\(SdkVersion.version)"]
+                                                  "User-Agent": "CustomerIO-SDK-iOS/\(SdkVersion.version)"]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
