@@ -31,15 +31,14 @@ class IdentifyRepositoryTest: UnitTest {
     func test_addOrUpdateCustomer_expectCallHttpClientWithCorrectParams() {
         let givenIdentifier = String.random
         let givenBody = IdentifyRequestBody.random()
-        let expectedBody = jsonAdapter.toJson(givenBody)!
 
         httpClientMock.requestClosure = { params, onComplete in
             guard case .identifyCustomer(let actualIdentifier) = params.endpoint else { return XCTFail() }
+            let actualBody: IdentifyRequestBody = self.jsonAdapter.fromJson(params.body!)!
             XCTAssertEqual(actualIdentifier, givenIdentifier)
+            XCTAssertEqual(givenBody, actualBody)
 
-            XCTAssertEqual(params.body, expectedBody)
-
-            onComplete(Result.success(expectedBody))
+            onComplete(Result.success(params.body!))
         }
 
         let expect = expectation(description: "Expect to complete")

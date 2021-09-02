@@ -2,6 +2,29 @@ import Foundation
 
 /**
  Convert between Swift structs and JSON strings and vice-versa.
+
+ Note: When writing tests to check that JSON is equal to other JSON, you need to
+ compare the 2 by it's decoded Object, not `Data` or `String` value of the JSON.
+ ```
+ let expectedJsonBody = jsonAdapter.toJson(expectedObject)
+
+ /// this will fail because the JSON keys sort order is random, not sorted.
+ XCAssertEqual(expectedJsonBody, actualJsonBody)
+ ```
+ An easy fix for this is set `outputFormatting = .sortedKeys` on `JSONEncoder` but
+ that is only available >= iOS 11. I don't like having tests that pass or fail depending
+ on what iOS version we are testing against so having our CI tests only run on >= iOS 11
+ is not a good solution there.
+
+ Instead, you will just need to transition your JSON back into an object and compare
+ the objects:
+ ```
+ let expectedObject: Foo = ...
+ let actualObject: Foo = jsonAdapter.fromJson(jsonData!)!
+
+ /// this compared values of the objects so it will pass.
+ XCAssertEqual(expectedObject, actualObject)
+ ```
  */
 // sourcery: InjectRegister = "JsonAdapter"
 public class JsonAdapter {
@@ -37,24 +60,39 @@ public class JsonAdapter {
      methods to this class that `throw` so you choose which function to use?
      */
     public func fromJson<T: Decodable>(_ json: Data) -> T? {
+        var errorStringToLog: String?
+
         do {
             let value = try decoder.decode(T.self, from: json)
             return value
         } catch DecodingError.keyNotFound(let key, let context) {
-            self.log
-                .error("Decode key not found. Key: \(key), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+            errorStringToLog = """
+            Decode key not found. Key: \(key),
+            Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")
+            """
         } catch DecodingError.valueNotFound(let type, let context) {
-            self.log
-                .error("Decode non-optional value not found. Value: \(type), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+            errorStringToLog = """
+            Decode non-optional value not found. Value: \(type), Json path: \(context.codingPath), json: \(json
+                .string ?? "(error getting json string)")
+            """
         } catch DecodingError.typeMismatch(let type, let context) {
-            self.log
-                .error("Decode type did not match payload. Type: \(type), Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+            errorStringToLog = """
+            Decode type did not match payload. Type: \(type), Json path: \(context.codingPath), json: \(json
+                .string ?? "(error getting json string)")
+            """
         } catch DecodingError.dataCorrupted(let context) {
-            self.log
-                .error("Decode data corrupted. Json path: \(context.codingPath), json: \(json.string ?? "(error getting json string)")")
+            errorStringToLog = """
+            Decode data corrupted. Json path: \(context.codingPath), json: \(json
+                .string ?? "(error getting json string)")
+            """
         } catch {
-            log
-                .error("Generic decide error. \(error.localizedDescription), json: \(json.string ?? "(error getting json string)")")
+            errorStringToLog = """
+            Generic decide error. \(error.localizedDescription), json: \(json.string ?? "(error getting json string)")
+            """
+        }
+
+        if let errorStringToLog = errorStringToLog {
+            log.error(errorStringToLog)
         }
 
         return nil

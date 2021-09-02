@@ -1,8 +1,8 @@
 @testable import CioTracking
 import Foundation
 
-/// request body object for identifying customer
-public struct IdentifyRequestBody: Encodable, Equatable {
+/// Example request body object for identifying customer
+public struct IdentifyRequestBody: Codable, Equatable {
     var email: String?
     /// test nested data
     var name: Name
