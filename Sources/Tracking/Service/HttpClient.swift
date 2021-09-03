@@ -84,6 +84,8 @@ public class CIOHttpClient: HttpClient {
         switch urlError.code {
         case .notConnectedToInternet, .networkConnectionLost, .timedOut:
             return .noOrBadNetwork(urlError)
+        case .cancelled:
+            return .cancelled
         default: return nil
         }
     }
