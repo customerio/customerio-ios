@@ -8,7 +8,6 @@ import XCTest
 
 class HttpClientTest: UnitTest {
     private var requestRunnerMock: HttpRequestRunnerMock!
-    private var httpErrorUtilMock: HttpErrorUtilMock!
     private var client: HttpClient!
 
     private let url = URL(string: "https://customer.io")!
@@ -17,17 +16,13 @@ class HttpClientTest: UnitTest {
         super.setUp()
 
         requestRunnerMock = HttpRequestRunnerMock()
-        httpErrorUtilMock = HttpErrorUtilMock()
-        client = CIOHttpClient(httpRequestRunner: requestRunnerMock, jsonAdapter: jsonAdapter,
-                               httpErrorUtil: httpErrorUtilMock)
+        client = CIOHttpClient(httpRequestRunner: requestRunnerMock, jsonAdapter: jsonAdapter)
     }
 
     // MARK: request
 
     func test_request_givenErrorDuringRequest_expectError() {
         let givenError = URLError(.notConnectedToInternet)
-        httpErrorUtilMock.isIgnorableReturnValue = false
-        httpErrorUtilMock.isHttpErrorReturnValue = .noResponse(givenError)
 
         requestRunnerMock.requestClosure = { _, _, onComplete in
             onComplete(nil, nil, givenError)
@@ -37,8 +32,8 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noResponse(let actualUrlError) = result.error! else { return XCTFail() }
-            guard case .notConnectedToInternet = actualUrlError!.code else { return XCTFail() }
+            guard case .noOrBadNetwork(let actualError) = result.error! else { return XCTFail() }
+            guard case .notConnectedToInternet = actualError.code else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -55,12 +50,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            XCTAssertNotNil(result.error)
-
-            guard case .noResponse = result.error! else {
-                XCTFail()
-                return
-            }
+            guard case .noRequestMade = result.error! else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -77,12 +67,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            XCTAssertNotNil(result.error)
-
-            guard case .noResponse = result.error! else {
-                XCTFail()
-                return
-            }
+            guard case .noRequestMade = result.error! else { return XCTFail() }
 
             expectComplete.fulfill()
         }
