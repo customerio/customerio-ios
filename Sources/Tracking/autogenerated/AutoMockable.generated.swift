@@ -98,57 +98,33 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
 
     /// The arguments from the *last* time the function was called.
     public private(set) var identifyBodyReceivedArguments: (identifier: String, body: AnyEncodable,
-                                                            onComplete: (Result<Void, CustomerIOError>) -> Void)?
+                                                            onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                            jsonEncoder: JSONEncoder?)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var identifyBodyReceivedInvocations: [(identifier: String, body: AnyEncodable,
-                                                               onComplete: (Result<Void, CustomerIOError>) -> Void)] =
-        []
+                                                               onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                               jsonEncoder: JSONEncoder?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyBodyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var identifyBodyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?)
+        -> Void)?
 
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder?
     ) {
         mockCalled = true
         identifyBodyCallsCount += 1
-        identifyBodyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete)
+        identifyBodyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
+                                         jsonEncoder: jsonEncoder)
         identifyBodyReceivedInvocations
-            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete))
-        identifyBodyClosure?(identifier, AnyEncodable(body), onComplete)
-    }
-
-    // MARK: - identify
-
-    /// Number of times the function was called.
-    public private(set) var identifyCallsCount = 0
-    /// `true` if the function was ever called.
-    public var identifyCalled: Bool {
-        identifyCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var identifyReceivedArguments: (identifier: String,
-                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyReceivedInvocations: [(identifier: String,
-                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var identifyClosure: ((String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
-
-    /// Mocked function for `identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identify(identifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        mockCalled = true
-        identifyCallsCount += 1
-        identifyReceivedArguments = (identifier: identifier, onComplete: onComplete)
-        identifyReceivedInvocations.append((identifier: identifier, onComplete: onComplete))
-        identifyClosure?(identifier, onComplete)
+            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
+                     jsonEncoder: jsonEncoder))
+        identifyBodyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
     }
 
     // MARK: - identifyStop
@@ -281,30 +257,35 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
 
     /// The arguments from the *last* time the function was called.
     internal private(set) var addOrUpdateCustomerReceivedArguments: (identifier: String, body: AnyEncodable,
+                                                                     jsonEncoder: JSONEncoder?,
                                                                      onComplete: (Result<Void, CustomerIOError>)
                                                                          -> Void)?
     /// Arguments from *all* of the times that the function was called.
     internal private(set) var addOrUpdateCustomerReceivedInvocations: [(identifier: String, body: AnyEncodable,
+                                                                        jsonEncoder: JSONEncoder?,
                                                                         onComplete: (Result<Void, CustomerIOError>)
                                                                             -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, AnyEncodable, JSONEncoder?,
+                                               (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `addOrUpdateCustomer<RequestBody: Encodable>(identifier: String, body: RequestBody, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
+        jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1
         addOrUpdateCustomerReceivedArguments = (identifier: identifier, body: AnyEncodable(body),
-                                                onComplete: onComplete)
+                                                jsonEncoder: jsonEncoder, onComplete: onComplete)
         addOrUpdateCustomerReceivedInvocations
-            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete))
-        addOrUpdateCustomerClosure?(identifier, AnyEncodable(body), onComplete)
+            .append((identifier: identifier, body: AnyEncodable(body), jsonEncoder: jsonEncoder,
+                     onComplete: onComplete))
+        addOrUpdateCustomerClosure?(identifier, AnyEncodable(body), jsonEncoder, onComplete)
     }
 
     // MARK: - removeCustomer

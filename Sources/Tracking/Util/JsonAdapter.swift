@@ -59,11 +59,11 @@ public class JsonAdapter {
      expect to get an error. If we need this functionality, perhaps we should create a 2nd set of
      methods to this class that `throw` so you choose which function to use?
      */
-    public func fromJson<T: Decodable>(_ json: Data) -> T? {
+    public func fromJson<T: Decodable>(_ json: Data, decoder override: JSONDecoder? = nil) -> T? {
         var errorStringToLog: String?
 
         do {
-            let value = try decoder.decode(T.self, from: json)
+            let value = try (override ?? decoder).decode(T.self, from: json)
             return value
         } catch DecodingError.keyNotFound(let key, let context) {
             errorStringToLog = """
@@ -98,9 +98,9 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toJson<T: Encodable>(_ obj: T) -> Data? {
+    public func toJson<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil) -> Data? {
         do {
-            let value = try encoder.encode(obj)
+            let value = try (override ?? encoder).encode(obj)
             return value
         } catch EncodingError.invalidValue(let value, let context) {
             self.log

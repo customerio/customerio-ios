@@ -24,7 +24,7 @@ class CustomerIOMockTest: UnitTest {
         let givenBody = ExampleIdentifyRequestBody(firstName: givenFirstName)
 
         /// Must call `identify()` `onComplete` handler or `expectToComplete` will not be fulfilled.
-        cioMock.identifyBodyClosure = { _, _, onComplete in
+        cioMock.identifyBodyClosure = { _, _, onComplete, _ in
             /// Return a successful result...
             onComplete(Result.success(()))
 

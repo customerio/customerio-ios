@@ -6,6 +6,7 @@ internal protocol IdentifyRepository: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody,
+        jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
     func removeCustomer()
@@ -35,9 +36,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
+        jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let bodyData = jsonAdapter.toJson(body) else {
+        guard let bodyData = jsonAdapter.toJson(body, encoder: jsonEncoder) else {
             return onComplete(Result.failure(.http(.noResponse)))
         }
 

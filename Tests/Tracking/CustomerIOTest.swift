@@ -201,7 +201,7 @@ class CustomerIOTest: UnitTest {
         let givenIdentifier = String.random
         let givenBody = IdentifyRequestBody.random()
 
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualBody, onComplete in
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualBody, _, onComplete in
             XCTAssertEqual(givenIdentifier, actualIdentifier)
             XCTAssertEqual(givenBody, actualBody.value as! IdentifyRequestBody)
 
@@ -217,7 +217,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
             onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
         }
 
@@ -242,7 +242,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_identify_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, onComplete in
+        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
             onComplete(Result.success(()))
         }
 

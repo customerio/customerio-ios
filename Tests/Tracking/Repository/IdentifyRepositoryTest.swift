@@ -42,7 +42,7 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        repository.addOrUpdateCustomer(identifier: givenIdentifier, body: givenBody) { _ in
+        repository.addOrUpdateCustomer(identifier: givenIdentifier, body: givenBody, jsonEncoder: nil) { _ in
             expect.fulfill()
         }
 
@@ -55,7 +55,7 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        repository.addOrUpdateCustomer(identifier: String.random, body: ["": ""]) { result in
+        repository.addOrUpdateCustomer(identifier: String.random, body: ["": ""], jsonEncoder: nil) { result in
             guard case .failure(let actualError) = result else { return XCTFail() }
             guard case .http(let httpError) = actualError else { return XCTFail() }
             guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
@@ -76,16 +76,41 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""]) { result in
-            guard case .success = result else { return XCTFail() }
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
+                guard case .success = result else { return XCTFail() }
 
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                           givenIdentifier)
+                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
+                               givenIdentifier)
 
+                expect.fulfill()
+            }
+
+        waitForExpectations()
+    }
+
+    func test_addOrUpdateCustomer_givenCustomJsonEncoder_expectUseJsonEncoder() {
+        let givenEncoder = JSONEncoder() // uses camelCase as our test
+        let givenBody = Foo(firstName: "Dana")
+        let expected = #"{"firstName":"Dana"}"#
+
+        struct Foo: Codable {
+            let firstName: String
+        }
+
+        httpClientMock.requestClosure = { _, onComplete in onComplete(Result.success(Data())) }
+
+        let expect = expectation(description: "Expect to complete")
+        integrationRepository.addOrUpdateCustomer(identifier: String.random, body: givenBody,
+                                                  jsonEncoder: givenEncoder) { result in
             expect.fulfill()
         }
 
         waitForExpectations()
+
+        XCTAssertNotEqual(jsonAdapter.toJson(givenBody)?.string,
+                          expected) // make sure our custom JSONEncoder is different then SDK's
+        XCTAssertEqual(httpClientMock.requestReceivedArguments?.params.body?.string, expected)
     }
 
     // MARK: removeCustomer
@@ -104,16 +129,17 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""]) { result in
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                           givenIdentifier)
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
+                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
+                               givenIdentifier)
 
-            self.integrationRepository.removeCustomer()
+                self.integrationRepository.removeCustomer()
 
-            XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
+                XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
 
-            expect.fulfill()
-        }
+                expect.fulfill()
+            }
 
         waitForExpectations()
     }
