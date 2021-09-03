@@ -40,7 +40,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let bodyData = jsonAdapter.toJson(body, encoder: jsonEncoder) else {
-            return onComplete(Result.failure(.http(.noResponse)))
+            return onComplete(.failure(.http(.noResponse(nil))))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: identifier), headers: nil,

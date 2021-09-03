@@ -59,6 +59,7 @@ import Foundation
  */
 public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
+    case httpErrorUtil
     case logger
     case jsonAdapter
     case keyValueStorage
@@ -101,6 +102,7 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
+        case .httpErrorUtil: return httpErrorUtil as! T
         case .logger: return logger as! T
         case .jsonAdapter: return jsonAdapter as! T
         case .keyValueStorage: return keyValueStorage as! T
@@ -121,6 +123,18 @@ public class DITracking {
 
     private var newSdkCredentialsStore: SdkCredentialsStore {
         CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
+    }
+
+    // HttpErrorUtil
+    internal var httpErrorUtil: HttpErrorUtil {
+        if let overridenDep = overrides[.httpErrorUtil] {
+            return overridenDep as! HttpErrorUtil
+        }
+        return newHttpErrorUtil
+    }
+
+    private var newHttpErrorUtil: HttpErrorUtil {
+        CioHttpErrorUtil()
     }
 
     // Logger

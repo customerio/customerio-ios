@@ -17,13 +17,15 @@ public class CIOHttpClient: HttpClient {
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
+    private let httpErrorUtil: HttpErrorUtil
 
     /// for testing
-    init(httpRequestRunner: HttpRequestRunner, jsonAdapter: JsonAdapter) {
+    init(httpRequestRunner: HttpRequestRunner, jsonAdapter: JsonAdapter, httpErrorUtil: HttpErrorUtil) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: "fake-site-id", apiKey: "fake-api-key")
         self.baseUrls = HttpBaseUrls(trackingApi: "fake-url")
         self.jsonAdapter = jsonAdapter
+        self.httpErrorUtil = httpErrorUtil
     }
 
     public init(credentials: SdkCredentials, config: SdkConfig) {
@@ -31,6 +33,7 @@ public class CIOHttpClient: HttpClient {
         self.baseUrls = config.httpBaseUrls
         self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
         self.jsonAdapter = DITracking.shared.jsonAdapter
+        self.httpErrorUtil = DITracking.shared.httpErrorUtil
     }
 
     deinit {
@@ -42,39 +45,42 @@ public class CIOHttpClient: HttpClient {
             guard let self = self else { return }
 
             if let error = error {
-                onComplete(Result.failure(HttpRequestError.underlyingError(error)))
-                return
+                if self.httpErrorUtil.isIgnorable(error) {
+                    return // do not call onComplete() because the error is ignorable
+                }
+                if let error = self.httpErrorUtil.isHttpError(error) {
+                    return onComplete(.failure(error))
+                }
+
+                return onComplete(.failure(.underlyingError(error)))
             }
 
             guard let response = response else {
-                onComplete(Result.failure(HttpRequestError.noResponse))
-                return
+                return onComplete(.failure(.noResponse(nil)))
             }
 
             let statusCode = response.statusCode
             guard statusCode < 300 else {
                 switch statusCode {
                 case 401:
-                    onComplete(Result.failure(HttpRequestError.unauthorized))
+                    onComplete(.failure(.unauthorized))
                 default:
                     var errorBodyString: String = data?.string ?? ""
                     if let data = data, let errorMessageBody: ErrorMessageResponse = self.jsonAdapter.fromJson(data) {
                         errorBodyString = errorMessageBody.meta.error
                     }
 
-                    onComplete(Result
-                        .failure(HttpRequestError.unsuccessfulStatusCode(statusCode, message: errorBodyString)))
+                    onComplete(.failure(.unsuccessfulStatusCode(statusCode, message: errorBodyString)))
                 }
 
                 return
             }
 
             guard let data = data else {
-                onComplete(Result.failure(HttpRequestError.noResponse))
-                return
+                return onComplete(.failure(.noResponse(nil)))
             }
 
-            onComplete(Result.success(data))
+            onComplete(.success(data))
         }
     }
 }

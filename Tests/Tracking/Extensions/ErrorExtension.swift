@@ -5,7 +5,7 @@ import XCTest
 
 class ErrorExtensionTest: UnitTest {
     func test_localizedDescription_expectGetDescription() {
-        let givenError = HttpRequestError.noResponse
+        let givenError = HttpRequestError.noResponse(nil)
         let expected = givenError.description
 
         let actual = givenError.localizedDescription
