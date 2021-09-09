@@ -31,7 +31,7 @@ class MessagingPushTest: UnitTest {
     func test_registerDeviceToken_expectFailIfNotIdentified() {
  
         let expect = expectation(description: "Expect to fail to register device token")
-        self.messagingPush.registerDeviceToken(deviceToken: Data(String.random.utf8)) { result in
+        self.messagingPush.registerDeviceToken(deviceToken: String.random.data!) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .notInitialized = error else { return XCTFail() }
             expect.fulfill()
@@ -55,7 +55,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.success(Data()))
         }
         
-        let actualToken = Data(String.random.utf8)
+        let actualToken = String.random.data!
         
         let expect = expectation(description: "Expect to persist token")
         self.messagingPush.registerDeviceToken(deviceToken: actualToken) { result in
@@ -82,7 +82,6 @@ class MessagingPushTest: UnitTest {
         
         let expect = expectation(description: "Expect to fail to delete device token")
         self.messagingPush.deleteDeviceToken() { result in
-            print(result)
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .noCustomerIdentified = error else { return XCTFail() }
             expect.fulfill()
@@ -131,7 +130,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.success(Data()))
         }
         
-        self.messagingPush.deviceToken = Data(String.random.utf8)
+        self.messagingPush.deviceToken = String.random.data!
         
         let expect = expectation(description: "Expect to clear token in memory")
         self.messagingPush.deleteDeviceToken() { result in

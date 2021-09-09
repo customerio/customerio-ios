@@ -9,5 +9,4 @@ public enum KeyValueStorageKey: String {
     case regionCode
     case identifiedProfileId
     case identifiedProfileEmail
-    case deviceToken
 }

@@ -20,7 +20,7 @@ open class MessagingPush {
         customerIO.sdkConfig
     }
     
-    public var deviceToken: Data?
+    @Atomic public var deviceToken: Data?
 
 
     /// testing init
@@ -49,7 +49,7 @@ open class MessagingPush {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: Device(token: deviceToken, lastUsed: Date()))) else {
+        guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: Device(token: deviceToken.utf8, lastUsed: Date()))) else {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
