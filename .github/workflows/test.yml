@@ -23,12 +23,15 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: ${{ matrix.xcode }}
+    # If running tests fails, sometimes it's because of scheme name is wrong. This gives us all available schemes. 
+    - name: Get XCode schemes (xcode ${{ matrix.xcode }})
+      run: xcrun xcodebuild -list
 
     # run command made with help from `fastlane scan`. Running `scan` will output the command that it uses to run tests that you can use for help constructing test command. 
-    # `-scheme` name found by running: `xcrun xcodebuild -list`
+    # `-scheme` name found by running: `xcrun xcodebuild -list` (or, see output of workflow run)
     # `-destination` chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
     - name: Run tests (xcode ${{ matrix.xcode }})
-      run: xcrun xcodebuild -scheme Customer.io -destination 'platform=iOS Simulator,name=iPhone 8' build test | xcpretty  --report html --output 'test-report.html' --report junit --output 'test-report.xml'
+      run: xcrun xcodebuild -scheme Customer.io-Package -destination 'platform=iOS Simulator,name=iPhone 8' build test | xcpretty  --report html --output 'test-report.html' --report junit --output 'test-report.xml'
 
     - name: Upload test report 
       uses: actions/upload-artifact@v2
