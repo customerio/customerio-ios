@@ -13,15 +13,39 @@ let package = Package(
     platforms: [
         .iOS(.v9)
     ],
-    products: [
-        .library(name: "CIO", targets: ["CIO"])
+    products: [ // externally visible products for clients to install. 
+        // library name is the name given when installing the SDK. 
+        // target name is the name used for `import X`
+        .library(name: "Tracking", targets: ["CioTracking"]),
+        .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     ],
     dependencies: [],
     targets: [
-        .target(name: "CIO",
-                path: "Sources/SDK"),
-        .testTarget(name: "SDKTests",
-                    dependencies: ["CIO"],
-                    path: "Tests/SDK")
+        // Tracking
+        .target(name: "CioTracking",
+                path: "Sources/Tracking"),
+        .testTarget(name: "TrackingTests",
+                    dependencies: ["CioTracking", "SharedTests"],
+                    path: "Tests/Tracking"),
+            
+        // shared code dependency that other test targets use. 
+        .target(name: "SharedTests", 
+                dependencies: ["CioTracking"],
+                path: "Tests/Shared"),
+                
+        // Messaging Push 
+        .target(name: "CioMessagingPush",
+                dependencies: ["CioTracking"],
+                path: "Sources/MessagingPush"),
+        .testTarget(name: "MessagingPushTests",
+                    dependencies: ["CioMessagingPush", "SharedTests"],
+                    path: "Tests/MessagingPush"),
+
+        .target(name: "CioMessagingPushAPN",
+                dependencies: ["CioMessagingPush"],
+                path: "Sources/MessagingPushAPN"),
+        .testTarget(name: "MessagingPushAPNTests",
+                    dependencies: ["CioMessagingPushAPN", "SharedTests"],
+                    path: "Tests/MessagingPushAPN"),
     ]
 )
