@@ -12,10 +12,7 @@ public extension MessagingPush {
       }
 
     func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        // Print to XCode logs the error
-        if self.deviceToken != nil {
-            self.deleteDeviceToken(onComplete: onComplete)
-        }
+        self.deleteDeviceToken(onComplete: onComplete)
     }
 }
 

@@ -22,16 +22,6 @@ open class MessagingPush {
     
     public var deviceToken: Data?
 
-        
-    // XXX: The original definition would've had this handle token registration
-    // but we need some way to handle errors
-//    private var _deviceToken: Data?
-//    public var deviceToken: Data? {
-//        get { return _deviceToken }
-//        set {
-//           <register token & save in _deviceToken here
-//        }
-//    }
 
     /// testing init
     internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage) {
@@ -58,7 +48,7 @@ open class MessagingPush {
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
      */
-    public func registerDeviceToken(deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    public func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: Device(token: deviceToken, lastUsed: Date()))) else {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
@@ -96,11 +86,13 @@ open class MessagingPush {
         }
         
         guard let identifier = self.customerIO.identifier else {
-            return onComplete(Result.failure(.noCustomerIdentified))
+            // no customer identified, we can't remove the token from them
+            return onComplete(Result.success(()))
         }
         
         guard let deviceToken = self.deviceToken else {
-            return onComplete(Result.failure(.deviceNotRegistered))
+            // no device token, delete has already happened or is not needed
+            return onComplete(Result.success(()))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .deleteDevice(identifier: identifier, deviceToken: deviceToken), headers: nil, body: bodyData)
