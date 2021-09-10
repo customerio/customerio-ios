@@ -26,7 +26,7 @@ public class CustomerIO {
     @Atomic public var credentials: SdkCredentials?
     
     public var identifier: String? {
-        self.identifyRepository?.identifier
+        return self.identifyRepository?.identifier
     }
 
     private var credentialsStore: SdkCredentialsStore = DITracking.shared.sdkCredentialsStore
@@ -233,17 +233,6 @@ public class CustomerIO {
                 return onComplete(Result.failure(error))
             }
         }
-    }
-    
-    /**
-     Set the active identifier without calling the customer.io API
-    **/
-    public func setIdentifier(identifier: String,  onComplete: @escaping (Result<Void, CustomerIOError>) -> Void){
-        guard let identifyRepository = self.identifyRepository else {
-            return onComplete(Result.failure(.notInitialized))
-        }
-        
-        identifyRepository.setIdentifier(identifier: identifier)
     }
 
     /**

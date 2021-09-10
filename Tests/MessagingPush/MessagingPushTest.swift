@@ -28,12 +28,12 @@ class MessagingPushTest: UnitTest {
 
     // MARK: registerDeviceToken
 
-    func test_registerDeviceToken_expectFailIfNotIdentified() {
+    func test_registerDeviceToken_expectFailIfNoCustomerIdentified() {
  
         let expect = expectation(description: "Expect to fail to register device token")
-        self.messagingPush.registerDeviceToken(deviceToken: String.random.data!) { result in
+        self.messagingPush.registerDeviceToken(String.random.data!) { result in
             guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = error else { return XCTFail() }
+            guard case .noCustomerIdentified = error else { return XCTFail() }
             expect.fulfill()
         }
         
@@ -41,15 +41,8 @@ class MessagingPushTest: UnitTest {
     }
     
     func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
+
         
-        identifyRepositoryMock.setIdentifierClosure = { identifier in
-            self.identifyRepositoryMock.identifier = identifier
-        }
-        
-        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
-            guard case .success = result else { return XCTFail() }
-            XCTAssertNotNil(self.mockCustomerIO.identifier)
-        })
         
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
@@ -58,7 +51,7 @@ class MessagingPushTest: UnitTest {
         let actualToken = String.random.data!
         
         let expect = expectation(description: "Expect to persist token")
-        self.messagingPush.registerDeviceToken(deviceToken: actualToken) { result in
+        self.messagingPush.registerDeviceToken(actualToken) { result in
             guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
@@ -74,41 +67,36 @@ class MessagingPushTest: UnitTest {
     
     // MARK: deleteDeviceToken
     
-    func test_deleteDeviceToken_expectFailIfNotIdentified() {
+    func test_deleteDeviceToken_expectSuccessIfNotIdentified() {
                 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
         
-        let expect = expectation(description: "Expect to fail to delete device token")
+        let expect = expectation(description: "Expect delete to succeed if there is no identified customer")
         self.messagingPush.deleteDeviceToken() { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .noCustomerIdentified = error else { return XCTFail() }
+            guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
 
         waitForExpectations()
     }
     
-    func test_deleteDeviceToken_expectFailIfNoToken() {
+    func test_deleteDeviceToken_expectSuccessIfNoToken() {
         
         identifyRepositoryMock.setIdentifierClosure = { identifier in
             self.identifyRepositoryMock.identifier = identifier
         }
         
-        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
-            guard case .success = result else { return XCTFail() }
-            XCTAssertNotNil(self.mockCustomerIO.identifier)
-        })
+        identifyRepositoryMock.setIdentifier(identifier: String.random)
                 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
         
-        let expect = expectation(description: "Expect to fail to delete device token")
+        let expect = expectation(description: "Expect delete to succeed if there is not token")
         self.messagingPush.deleteDeviceToken() { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .deviceNotRegistered = error else { return XCTFail() }
+            guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
 
@@ -116,15 +104,6 @@ class MessagingPushTest: UnitTest {
     }
     
     func test_deleteDeviceToken_givenHttpSuccess_expectClearToken() {
-        
-        identifyRepositoryMock.setIdentifierClosure = { identifier in
-            self.identifyRepositoryMock.identifier = identifier
-        }
-        
-        mockCustomerIO.setIdentifier(identifier: String.random, onComplete: { result in
-            guard case .success = result else { return XCTFail() }
-            XCTAssertNotNil(self.mockCustomerIO.identifier)
-        })
         
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))

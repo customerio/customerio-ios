@@ -43,13 +43,14 @@ open class MessagingPush {
     deinit{
         // XXX: handle deinit case where we want to delete the token
     }
-    
+ 
     /**
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: Device(token: deviceToken.utf8, lastUsed: Date()))) else {
+        let device = Device(token: String(decoding: deviceToken, as: UTF8.self), lastUsed: Date())
+        guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
@@ -58,7 +59,7 @@ open class MessagingPush {
         }
         
         guard let identifier = self.customerIO.identifier else {
-            return onComplete(Result.failure(.notInitialized))
+            return onComplete(Result.failure(.noCustomerIdentified))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .registerDevice(identifier: identifier), headers: nil, body: bodyData)
@@ -85,13 +86,14 @@ open class MessagingPush {
             return onComplete(Result.failure(.httpError(.noResponse)))
         }
         
-        guard let identifier = self.customerIO.identifier else {
-            // no customer identified, we can't remove the token from them
+        guard let deviceToken = self.deviceToken else {
+            // no device token, delete has already happened or is not needed
             return onComplete(Result.success(()))
         }
         
-        guard let deviceToken = self.deviceToken else {
-            // no device token, delete has already happened or is not needed
+        guard let identifier = self.customerIO.identifier else {
+            // no customer identified, we can safely clear the device token
+            self.deviceToken = nil
             return onComplete(Result.success(()))
         }
 
