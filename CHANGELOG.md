@@ -1,3 +1,10 @@
+# [1.0.0-alpha.4](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.3...1.0.0-alpha.4) (2021-09-10)
+
+
+### Bug Fixes
+
+* rename stop identify function ([#31](https://github.com/customerio/customerio-ios/issues/31)) ([d97e931](https://github.com/customerio/customerio-ios/commit/d97e931fa7a001e7a58658471244dcfc1494a386))
+
 # [1.0.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.2...1.0.0-alpha.3) (2021-09-10)
 
 
