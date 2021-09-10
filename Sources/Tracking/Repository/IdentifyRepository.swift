@@ -10,7 +10,7 @@ internal protocol IdentifyRepository: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
     func removeCustomer()
-    var identifier: String? {get}
+    var identifier: String? { get }
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -18,9 +18,9 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     private let keyValueStorage: KeyValueStorage
     private let jsonAdapter: JsonAdapter
     private let siteId: String
-    
+
     public var identifier: String? {
-        self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId)
+        keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId)
     }
 
     /// for testing

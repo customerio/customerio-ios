@@ -19,4 +19,5 @@ format:
 # Jazzy is a great tool that generates docs, yes, but also tells you what public facing code is missing docs. 
 # This command will simply show you the output of the undocumented code of jazzy. It's not the most human-readable but it will do for now. 
 check-undocumented:
-	jazzy --module CioTracking --swift-build-tool spm --output /tmp/CIO-SDK-jazzy > /dev/null 2>&1 && cat /tmp/CIO-SDK-jazzy/undocumented.json
+	jazzy --module CioTracking --swift-build-tool spm --output /tmp/CioTrackingDocs > /dev/null 2>&1 && cat /tmp/CioTrackingDocs/undocumented.json
+	jazzy --module CioMessagingPush --swift-build-tool spm --output /tmp/CioMessagingPushDocs > /dev/null 2>&1 && cat /tmp/CioMessagingPushDocs/undocumented.json

@@ -90,9 +90,9 @@ public class CustomerIO: CustomerIOInstance {
 
     @Atomic public var sdkConfig: SdkConfig
     @Atomic public var credentials: SdkCredentials?
-    
+
     public var identifier: String? {
-        return self.identifyRepository?.identifier
+        identifyRepository?.identifier
     }
 
     private var credentialsStore: SdkCredentialsStore = DITracking.shared.sdkCredentialsStore
