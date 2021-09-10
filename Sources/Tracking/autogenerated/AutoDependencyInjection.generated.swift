@@ -59,6 +59,8 @@ DITracking.shared.resetOverrides()
  */
 public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
+    case logger
+    case jsonAdapter
     case keyValueStorage
 }
 
@@ -101,6 +103,8 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {                            
         switch dep {
             case .sdkCredentialsStore: return self.sdkCredentialsStore as! T 
+            case .logger: return self.logger as! T 
+            case .jsonAdapter: return self.jsonAdapter as! T 
             case .keyValueStorage: return self.keyValueStorage as! T 
         }
     }
@@ -118,6 +122,26 @@ public class DITracking {
     }
     private var newSdkCredentialsStore: SdkCredentialsStore {    
         return CIOSdkCredentialsStore(keyValueStorage: self.keyValueStorage)
+    }
+    // Logger
+    public var logger: Logger {    
+        if let overridenDep = self.overrides[.logger] {
+            return overridenDep as! Logger
+        }
+        return self.newLogger
+    }
+    private var newLogger: Logger {    
+        return ConsoleLogger()
+    }
+    // JsonAdapter
+    public var jsonAdapter: JsonAdapter {    
+        if let overridenDep = self.overrides[.jsonAdapter] {
+            return overridenDep as! JsonAdapter
+        }
+        return self.newJsonAdapter
+    }
+    private var newJsonAdapter: JsonAdapter {    
+        return JsonAdapter(log: self.logger)
     }
     // KeyValueStorage
     public var keyValueStorage: KeyValueStorage {    

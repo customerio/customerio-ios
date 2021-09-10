@@ -21,7 +21,7 @@ This automatically generated file you are viewing contains mock classes that you
 
 ```
 protocol FriendsRepository {
-    func acceptFriendRequest(_ onComplete: @escaping () -> Void)
+    func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
 }
 
 class AppFriendsRepository: FriendsRepository {
@@ -33,7 +33,17 @@ class AppFriendsRepository: FriendsRepository {
 
 ```
 protocol FriendsRepository: AutoMockable {
+    func acceptFriendRequest<Attributes: Encodable>(
+        // sourcery:Type=Encodable
+        attributes: Attributes, 
+        _ onComplete: @escaping () -> Void)
+}
 ```
+
+> Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would 
+fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`. 
+Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case. 
+It will require a cast in the test function code, however. 
 
 3. Run the command `make generate` on your machine. The new mock should be added to this file. 
 
@@ -70,7 +80,16 @@ class ExampleTest: XCTestCase {
 
 */
 
-{% macro swiftifyMethodName method %}{% set methodName %}{{ method.shortName }}{% endset %}{% if method|annotated:"Name" %}{% set methodName %}{{ method.annotations["Name"] }}{% endset %}{% endif %}{{ methodName | replace:"(","_" | replace:")","" | replace:":","_" | replace:"`","" | snakeToCamelCase | lowerFirstWord }}{% endmacro %}
+{% macro swiftifyMethodName method %}{% if method|annotated:"Name" %}{{ method.annotations["Name"] }}{% else %}{{ method.callName | replace:"(","_" | replace:")","" | replace:":","_" | replace:"`","" | snakeToCamelCase | lowerFirstWord }}{% endif %}{% endmacro %}
+
+{# Input: method parameter. Output: `ParameterType`, `@escaping ParamType`. Automatically get the info needed or override with `Type=ParamType` annotation (used when using generics) #}
+{% macro parameterTypeName param %}{% if param.typeAttributes.escaping %}{{ param.unwrappedTypeName }}{% elif param|annotated:"Type" %}{{ param.annotations["Type"] }}{% else %}{{ param.typeName }}{% endif %}{% endmacro %}
+
+{# Input: method parameter. Output: value set for annotation  `TypeCast`. Your chance to cast the parameter to whatever you need it to in mocked method body. #}
+{# Example: `// sourcery: TypeCast="as! Foo"` #}
+{# Example: `// sourcery: TypeCast="Foo(parameterName)"` #}
+{# Used to get generated code to compile because with generics, sometimes a cast is required. #}
+{% macro parameterValueWithCast param %}{% if param|annotated:"TypeCast" %}{{ param.annotations["TypeCast"] }}{% else %}{{ param.name }}{% endif %}{% endmacro %}
 
 {% macro methodThrowableErrorDeclaration method %}
     var {% call swiftifyMethodName method %}ThrowableError: Error?
@@ -88,8 +107,8 @@ class ExampleTest: XCTestCase {
         {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
     {% else %}
     {% if not method.parameters.count == 0 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}: {{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
-        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}: {{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endfor %}))
     {% endif %}
     {% endif %}
 {% endmacro %}
@@ -107,10 +126,10 @@ class ExampleTest: XCTestCase {
      then the mock will attempt to return the value for `{% call swiftifyMethodName method %}ReturnValue`
      {% endif %}
      */
-    {{ type.accessLevel }} var {% call methodClosureName method %}: (({% for param in method.parameters %}{{ param.typeName }}{% if not forloop.last %}, {% endif %}{% endfor %}) {% if method.throws %}throws {% endif %}-> {% if method.isInitializer %}Void{% else %}{% call closureReturnTypeName method %}{% endif %})?
+    {{ type.accessLevel }} var {% call methodClosureName method %}: (({% for param in method.parameters %}{% call parameterTypeName param %}{% if not forloop.last %}, {% endif %}{% endfor %}) {% if method.throws %}throws {% endif %}-> {% if method.isInitializer %}Void{% else %}{% call closureReturnTypeName method %}{% endif %})?
 {% endmacro %}
 
-{% macro methodClosureCallParameters method %}{% for param in method.parameters %}{{ param.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endmacro %}
+{% macro methodClosureCallParameters method %}{% for param in method.parameters %}{% call parameterValueWithCast param %}{% if not forloop.last %}, {% endif %}{% endfor %}{% endmacro %}
 
 {% macro mockMethod method %}
     // MARK: - {{ method.shortName }}
@@ -120,7 +139,7 @@ class ExampleTest: XCTestCase {
     {% endif %}
     {% if not method.isInitializer %}       
     /// Number of times the function was called.  
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}CallsCount = 0
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}CallsCount = 0
     /// `true` if the function was ever called. 
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}Called: Bool {
         return {% call swiftifyMethodName method %}CallsCount > 0
@@ -128,14 +147,14 @@ class ExampleTest: XCTestCase {
     {% endif %}
     {% if method.parameters.count == 1 %}
     /// The arguments from the *last* time the function was called. 
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
     /// Arguments from *all* of the times that the function was called. 
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
     {% elif not method.parameters.count == 0 %}
     /// The arguments from the *last* time the function was called. 
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param %}{{ ', ' if not forloop.last }}{% endfor %})?
     /// Arguments from *all* of the times that the function was called. 
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param %}{{ ', ' if not forloop.last }}{% endfor %})] = []
     {% endif %}
     {% if not method.returnTypeName.isVoid and not method.isInitializer %}
     /// Value to return from the mocked function. 

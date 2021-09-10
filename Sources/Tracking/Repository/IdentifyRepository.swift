@@ -1,28 +1,28 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
-    func setIdentifier(identifier: String)
-    func addOrUpdateCustomer(identifier: String,
-                             email: String?,
-                             onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func addOrUpdateCustomer<RequestBody: Encodable>(
+        identifier: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(body)"
+        body: RequestBody,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
     func removeCustomer()
-    var identifier: String? {get}
-   
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
     private let httpClient: HttpClient
     private let keyValueStorage: KeyValueStorage
+    private let jsonAdapter: JsonAdapter
     private let siteId: String
-    
-    public var identifier: String? {
-        self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId)
-    }
 
     /// for testing
-    internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, siteId: String) {
+    internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter, siteId: String) {
         self.httpClient = httpClient
         self.keyValueStorage = keyValueStorage
+        self.jsonAdapter = jsonAdapter
         self.siteId = siteId
     }
 
@@ -30,15 +30,17 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         self.httpClient = CIOHttpClient(credentials: credentials, config: config)
         self.siteId = credentials.siteId
         self.keyValueStorage = DITracking.shared.keyValueStorage
+        self.jsonAdapter = DITracking.shared.jsonAdapter
     }
 
-    func addOrUpdateCustomer(
+    func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
-        email: String?,
+        body: RequestBody,
+        jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let bodyData = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: email, anonymousId: nil)) else {
-            return onComplete(Result.failure(.httpError(.noResponse)))
+        guard let bodyData = jsonAdapter.toJson(body, encoder: jsonEncoder) else {
+            return onComplete(.failure(.http(.noRequestMade(nil))))
         }
 
         let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: identifier), headers: nil,
@@ -50,22 +52,16 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
                 switch result {
                 case .success:
-                    self.setIdentifier(identifier: identifier)
-                    self.keyValueStorage.setString(siteId: self.siteId, value: email, forKey: .identifiedProfileEmail)
+                    self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
 
                     onComplete(Result.success(()))
                 case .failure(let error):
-                    onComplete(Result.failure(.httpError(error)))
+                    onComplete(Result.failure(.http(error)))
                 }
             }
-    }
-    
-    func setIdentifier(identifier: String) {
-        self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
     }
 
     func removeCustomer() {
         keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileId)
-        keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileEmail)
     }
 }

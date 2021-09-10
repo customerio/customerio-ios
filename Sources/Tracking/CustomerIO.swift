@@ -1,5 +1,71 @@
 import Foundation
 
+public protocol CustomerIOInstance: AutoMockable {
+    // sourcery:Name=identifyBody
+    func identify<RequestBody: Encodable>(
+        identifier: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(body)"
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder?
+    )
+    func identifyStop()
+}
+
+public extension CustomerIOInstance {
+    /**
+     Identify a customer (aka: Add or update a profile).
+
+     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
+
+     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
+     the previously identified profile will be removed. Only the latest identified customer is persisted.
+
+     - Parameters:
+     - identifier: ID you want to assign to the customer.
+     This value can be an internal ID that your system uses or an email address.
+     [Learn more](https://customer.io/docs/api/#operation/identify)
+     - onComplete: Asynchronous callback with `Result` of identifying a customer.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
+     */
+    func identify(
+        identifier: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        identify(identifier: identifier, body: EmptyRequestBody(), onComplete: onComplete, jsonEncoder: jsonEncoder)
+    }
+
+    /**
+     Identify a customer (aka: Add or update a profile).
+
+     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
+
+     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
+     the previously identified profile will be removed. Only the latest identified customer is persisted.
+
+     - Parameters:
+     - identifier: ID you want to assign to the customer.
+     This value can be an internal ID that your system uses or an email address.
+     [Learn more](https://customer.io/docs/api/#operation/identify)
+     - onComplete: Asynchronous callback with `Result` of identifying a customer.
+     Check result to see if error or success. Callback called on main thread.
+     - email: Optional email address you want to associate with a profile.
+     If you use an email address as the `identifier` this is not needed.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
+     */
+    func identify<RequestBody: Encodable>(
+        identifier: String,
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
+    }
+}
+
 /**
  Welcome to the Customer.io iOS SDK!
 
@@ -14,7 +80,7 @@ import Foundation
  This method is recommended for code bases containing
  automated tests, dependency injection, or sending data to multiple Workspaces.
  */
-public class CustomerIO {
+public class CustomerIO: CustomerIOInstance {
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
 
@@ -114,7 +180,7 @@ public class CustomerIO {
      This is the recommended method for code bases containing
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
-    public init(siteId: String, apiKey: String, region: Region) {
+    public init(siteId: String, apiKey: String, region: Region = Region.US) {
         self.sdkConfig = Self.instance.sdkConfig
 
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
@@ -124,7 +190,7 @@ public class CustomerIO {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    public static func initialize(siteId: String, apiKey: String, region: Region) {
+    public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
         Self.instance.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         Self.instance.credentialsStore.sharedInstanceSiteId = siteId
@@ -209,30 +275,34 @@ public class CustomerIO {
      - identifier: ID you want to assign to the customer.
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
+     - body: Request body of identifying profile. Use to define user attributes.
      - onComplete: Asynchronous callback with `Result` of identifying a customer.
-     Check result to see if error or success.
-     - email: Optional email address you want to associate with a profile.
-     If you use an email address as the `identifier` this is not needed.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
      */
-    public func identify(
+    public func identify<RequestBody: Encodable>(
         identifier: String,
+        body: RequestBody,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        email: String? = nil
+        jsonEncoder: JSONEncoder? = nil
     ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        identifyRepository.addOrUpdateCustomer(identifier: identifier, email: email) { [weak self] result in
-            guard self != nil else { return }
+        identifyRepository
+            .addOrUpdateCustomer(identifier: identifier, body: body, jsonEncoder: jsonEncoder) { [weak self] result in
+                DispatchQueue.main.async { [weak self] in
+                    guard self != nil else { return }
 
-            switch result {
-            case .success:
-                return onComplete(Result.success(()))
-            case .failure(let error):
-                return onComplete(Result.failure(error))
+                    switch result {
+                    case .success:
+                        return onComplete(Result.success(()))
+                    case .failure(let error):
+                        return onComplete(Result.failure(error))
+                    }
+                }
             }
-        }
     }
 
     /**

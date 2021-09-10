@@ -10,10 +10,12 @@ public enum HttpRequestError: Error {
     case urlConstruction(_ url: String)
     /// A response came back, but status code > 300 and not handled already (example: 401)
     case unsuccessfulStatusCode(_ code: Int, message: String)
-    /// Request was not able to even make a request.
-    case noResponse
-    /// An error happened to prevent the request from happening. Check the `description` to get the underlying error.
-    case underlyingError(_ error: Error)
+    /// No Internet connection or bad network connection
+    case noOrBadNetwork(_ urlError: URLError)
+    /// Request was not able to get a response from server. Maybe no network connection?
+    case noRequestMade(_ error: Error?)
+    /// Request was cancelled.
+    case cancelled
 }
 
 extension HttpRequestError: CustomStringConvertible, LocalizedError {
@@ -24,8 +26,10 @@ extension HttpRequestError: CustomStringConvertible, LocalizedError {
         case .urlConstruction(let url): return "HTTP URL not a valid URL: \(url)"
         case .unsuccessfulStatusCode(let code, let message):
             return "Response received, but status code = \(String(code)). \(message)"
-        case .noResponse: return "No response was returned from server."
-        case .underlyingError(let error): return error.localizedDescription
+        case .noOrBadNetwork: return "No Internet connection or bad network connection."
+        case .noRequestMade(let error): return error?
+            .localizedDescription ?? "No request was able to be made to server."
+        case .cancelled: return "Request was cancelled"
         }
     }
 }

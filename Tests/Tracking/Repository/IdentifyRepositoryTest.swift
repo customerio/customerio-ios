@@ -19,8 +19,10 @@ class IdentifyRepositoryTest: UnitTest {
         siteId = String.random
 
         repository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorageMock,
+                                           jsonAdapter: jsonAdapter,
                                            siteId: siteId)
         integrationRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorage,
+                                                      jsonAdapter: jsonAdapter,
                                                       siteId: siteId)
     }
 
@@ -28,20 +30,19 @@ class IdentifyRepositoryTest: UnitTest {
 
     func test_addOrUpdateCustomer_expectCallHttpClientWithCorrectParams() {
         let givenIdentifier = String.random
-        let givenEmail = EmailAddress.randomEmail
-        let expectedBody = JsonAdapter.toJson(AddUpdateCustomerRequestBody(email: givenEmail, anonymousId: nil))!
+        let givenBody = IdentifyRequestBody.random()
 
         httpClientMock.requestClosure = { params, onComplete in
             guard case .identifyCustomer(let actualIdentifier) = params.endpoint else { return XCTFail() }
+            let actualBody: IdentifyRequestBody = self.jsonAdapter.fromJson(params.body!)!
             XCTAssertEqual(actualIdentifier, givenIdentifier)
+            XCTAssertEqual(givenBody, actualBody)
 
-            XCTAssertEqual(params.body, expectedBody)
-
-            onComplete(Result.success(expectedBody))
+            onComplete(Result.success(params.body!))
         }
 
         let expect = expectation(description: "Expect to complete")
-        repository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { _ in
+        repository.addOrUpdateCustomer(identifier: givenIdentifier, body: givenBody, jsonEncoder: nil) { _ in
             expect.fulfill()
         }
 
@@ -54,9 +55,9 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         let expect = expectation(description: "Expect to complete")
-        repository.addOrUpdateCustomer(identifier: String.random, email: nil) { result in
+        repository.addOrUpdateCustomer(identifier: String.random, body: ["": ""], jsonEncoder: nil) { result in
             guard case .failure(let actualError) = result else { return XCTFail() }
-            guard case .httpError(let httpError) = actualError else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
             guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
 
             XCTAssertFalse(self.keyValueStorageMock.mockCalled)
@@ -69,25 +70,47 @@ class IdentifyRepositoryTest: UnitTest {
 
     func test_addOrUpdateCustomer_givenHttpSuccess_expectSaveExpectedData() {
         let givenIdentifier = String.random
-        let givenEmail = EmailAddress.randomEmail
 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
-            guard case .success = result else { return XCTFail() }
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
+                guard case .success = result else { return XCTFail() }
 
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                           givenIdentifier)
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail),
-                           givenEmail)
+                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
+                               givenIdentifier)
 
+                expect.fulfill()
+            }
+
+        waitForExpectations()
+    }
+
+    func test_addOrUpdateCustomer_givenCustomJsonEncoder_expectUseJsonEncoder() {
+        let givenEncoder = JSONEncoder() // uses camelCase as our test
+        let givenBody = Foo(firstName: "Dana")
+        let expected = #"{"firstName":"Dana"}"#
+
+        struct Foo: Codable {
+            let firstName: String
+        }
+
+        httpClientMock.requestClosure = { _, onComplete in onComplete(Result.success(Data())) }
+
+        let expect = expectation(description: "Expect to complete")
+        integrationRepository.addOrUpdateCustomer(identifier: String.random, body: givenBody,
+                                                  jsonEncoder: givenEncoder) { result in
             expect.fulfill()
         }
 
         waitForExpectations()
+
+        XCTAssertNotEqual(jsonAdapter.toJson(givenBody)?.string,
+                          expected) // make sure our custom JSONEncoder is different then SDK's
+        XCTAssertEqual(httpClientMock.requestReceivedArguments?.params.body?.string, expected)
     }
 
     // MARK: removeCustomer
@@ -96,31 +119,27 @@ class IdentifyRepositoryTest: UnitTest {
         integrationRepository.removeCustomer()
 
         XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId))
-        XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileEmail))
     }
 
     func test_removeCustomer_givenIdentifiedCustomer_expectCustomerRemoved() {
         let givenIdentifier = String.random
-        let givenEmail = EmailAddress.randomEmail
 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
 
         let expect = expectation(description: "Expect to complete")
-        integrationRepository.addOrUpdateCustomer(identifier: givenIdentifier, email: givenEmail) { result in
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                           givenIdentifier)
-            XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail),
-                           givenEmail)
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
+                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
+                               givenIdentifier)
 
-            self.integrationRepository.removeCustomer()
+                self.integrationRepository.removeCustomer()
 
-            XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
-            XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileEmail))
+                XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
 
-            expect.fulfill()
-        }
+                expect.fulfill()
+            }
 
         waitForExpectations()
     }

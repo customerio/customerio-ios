@@ -16,7 +16,7 @@ class JsonAdapterTest: UnitTest {
         let given = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
         let expected = #"{"bar_date":1629743524}"#
 
-        let actual = JsonAdapter.toJson(given)!.string!
+        let actual = jsonAdapter.toJson(given)!.string!
 
         XCTAssertEqual(actual, expected)
     }
@@ -25,7 +25,7 @@ class JsonAdapterTest: UnitTest {
         let givenString = #"{"bar_date":1629743524}"#
         let expected = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
 
-        let actual: TestCase = JsonAdapter.fromJson(givenString.data)!
+        let actual: TestCase = jsonAdapter.fromJson(givenString.data)!
 
         XCTAssertEqual(actual, expected)
     }
@@ -38,7 +38,7 @@ class JsonAdapterTest: UnitTest {
     func test_fromJson_givenNotValidJsonString_expectGetNil() {
         let givenJson = #"{"foo": "111"}"#
 
-        let actual: TestCase? = JsonAdapter.fromJson(givenJson.data)
+        let actual: TestCase? = jsonAdapter.fromJson(givenJson.data)
 
         XCTAssertNil(actual)
     }

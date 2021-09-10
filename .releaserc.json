@@ -8,6 +8,9 @@
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",        
+        ["@semantic-release/exec", {
+            "verifyReleaseCmd": "./update_version.sh ${nextRelease.version} Sources/Tracking/Version.swift"
+        }],
         ["@semantic-release/changelog",{
             "changelogFile": "CHANGELOG.md"
         }],
