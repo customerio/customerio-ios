@@ -1,3 +1,17 @@
+# [1.0.0-alpha.4](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.3...1.0.0-alpha.4) (2021-09-10)
+
+
+### Bug Fixes
+
+* rename stop identify function ([#31](https://github.com/customerio/customerio-ios/issues/31)) ([d97e931](https://github.com/customerio/customerio-ios/commit/d97e931fa7a001e7a58658471244dcfc1494a386))
+
+# [1.0.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.2...1.0.0-alpha.3) (2021-09-10)
+
+
+### Features
+
+* save all siteids registered with SDK ([#30](https://github.com/customerio/customerio-ios/issues/30)) ([95db6dc](https://github.com/customerio/customerio-ios/commit/95db6dc9462a892f8c46d083be85a97dde1e0b76))
+
 # [1.0.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.1...1.0.0-alpha.2) (2021-09-09)
 
 

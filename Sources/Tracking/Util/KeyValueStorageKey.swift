@@ -8,4 +8,5 @@ public enum KeyValueStorageKey: String {
     case apiKey
     case regionCode
     case identifiedProfileId
+    case allSiteIds
 }

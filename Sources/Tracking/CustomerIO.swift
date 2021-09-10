@@ -10,7 +10,7 @@ public protocol CustomerIOInstance: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder?
     )
-    func identifyStop()
+    func clearIdentify()
 }
 
 public extension CustomerIOInstance {
@@ -314,7 +314,7 @@ public class CustomerIO: CustomerIOInstance {
 
      If no profile has been identified yet, this function will ignore your request.
      */
-    public func identifyStop() {
+    public func clearIdentify() {
         guard let identifyRepository = self.identifyRepository else {
             return
         }

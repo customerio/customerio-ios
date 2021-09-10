@@ -18,4 +18,16 @@ public extension XCTestCase {
     func getEnvironmentVariable(_ key: String) -> String? {
         ProcessInfo.processInfo.environment[key]
     }
+
+    func XCTAssertEqualEither<T: Equatable>(_ expected: [T], actual: T, file: StaticString = #file,
+                                            line: UInt = #line)
+    {
+        let matches = expected.contains { value in
+            value == actual
+        }
+
+        if !matches {
+            XCTFail("\(actual) does not equal any of: \(expected)", file: file, line: line)
+        }
+    }
 }
