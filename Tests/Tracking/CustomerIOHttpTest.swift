@@ -12,6 +12,7 @@ import XCTest
  These tests are meant to run on your local machine, not CI server.
  */
 class TrackingHttpTest: HttpTest {
+
     func test_identify_expectIdentifyProfileUsingOnlyId() throws {
         guard let customerIO = customerIO else { return try XCTSkipIf(true) }
 

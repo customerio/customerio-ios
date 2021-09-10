@@ -253,6 +253,7 @@ class CustomerIOTest: UnitTest {
 
             expect.fulfill()
         }
+
         customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
             guard case .success = result else { return XCTFail() }
 
