@@ -127,25 +127,25 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         identifyBodyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
     }
 
-    // MARK: - identifyStop
+    // MARK: - clearIdentify
 
     /// Number of times the function was called.
-    public private(set) var identifyStopCallsCount = 0
+    public private(set) var clearIdentifyCallsCount = 0
     /// `true` if the function was ever called.
-    public var identifyStopCalled: Bool {
-        identifyStopCallsCount > 0
+    public var clearIdentifyCalled: Bool {
+        clearIdentifyCallsCount > 0
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyStopClosure: (() -> Void)?
+    public var clearIdentifyClosure: (() -> Void)?
 
-    /// Mocked function for `identifyStop()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identifyStop() {
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func clearIdentify() {
         mockCalled = true
-        identifyStopCallsCount += 1
-        identifyStopClosure?()
+        clearIdentifyCallsCount += 1
+        clearIdentifyClosure?()
     }
 }
 
