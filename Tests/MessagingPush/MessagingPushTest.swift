@@ -8,7 +8,7 @@ class MessagingPushTest: UnitTest {
     private var mockCustomerIO: CustomerIO!
     private var messagingPush: MessagingPush!
 
-    private var identifyRepositoryMock: IdentifyRepositoryMock!
+    private var identifyRepositoryMock: IdentifyRepository!
     
     private var httpClientMock: HttpClientMock!
 
@@ -18,12 +18,13 @@ class MessagingPushTest: UnitTest {
         httpClientMock = HttpClientMock()
         identifyRepositoryMock = IdentifyRepositoryMock()
 
-        mockCustomerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: identifyRepositoryMock,
-                                keyValueStorage: nil)
+        mockCustomerIO = CustomerIO(credentialsStore: SdkCredentialsStoreMock(), sdkConfig: SdkConfig(), identifyRepository: identifyRepositoryMock, keyValueStorage: nil)
         
-        mockCustomerIO.setCredentials(siteId: String.random, apiKey: String.random, region: Region.EU)
+        mockCustomerIO.credentials = SdkCredentials(siteId: String.random,
+                                         apiKey: String.random,
+                                         region: Region.EU)
         
-        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage, jsonAdapter: jsonAdapter)
+        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
     }
 
     // MARK: registerDeviceToken
@@ -41,22 +42,38 @@ class MessagingPushTest: UnitTest {
     }
     
     func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
-
-        // XXX: fixme
         
+        let identifyRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage, jsonAdapter: jsonAdapter, siteId: String.random)
+        let cio = CustomerIO(credentialsStore: SdkCredentialsStoreMock(), sdkConfig: SdkConfig(), identifyRepository: identifyRepository, keyValueStorage: nil)
+        
+        cio.credentials = SdkCredentials(siteId: String.random,
+                                         apiKey: String.random,
+                                         region: Region.EU)
+    
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
         
+        let identifier: String? = String.random
+
+    
+        cio.identify(identifier: identifier!) { result in
+            guard case .success = result else { print(result); return XCTFail() }
+            XCTAssertEqual(cio.identifier, identifier)
+        }
+        
+        let push = MessagingPush(customerIO: cio, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
+        
+
         let actualToken = String.random.data!
         
         let expect = expectation(description: "Expect to persist token")
-        self.messagingPush.registerDeviceToken(actualToken) { result in
+        push.registerDeviceToken(actualToken) { result in
             guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
         
-        guard let storedToken = self.messagingPush.deviceToken else {
+        guard let storedToken = push.deviceToken else {
             return XCTFail()
         }
         

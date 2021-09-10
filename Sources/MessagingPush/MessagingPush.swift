@@ -9,23 +9,15 @@ open class MessagingPush {
     
     public private(set) static var instance = MessagingPush(customerIO: CustomerIO.instance)
 
-    private let customerIO: CustomerIO!
+    public let customerIO: CustomerIO!
     private let httpClient: HttpClient
     private let jsonAdapter: JsonAdapter
-
-    private var credentials: SdkCredentials? {
-        customerIO.credentials
-    }
-
-    private var sdkConfig: SdkConfig {
-        customerIO.sdkConfig
-    }
     
     @Atomic public var deviceToken: Data?
 
 
     /// testing init
-    internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter) {
+    internal init(customerIO: CustomerIO?, httpClient: HttpClient, jsonAdapter: JsonAdapter) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
         self.httpClient = httpClient
         self.jsonAdapter = jsonAdapter
@@ -57,7 +49,7 @@ open class MessagingPush {
             return onComplete(.failure(.http(.noRequestMade(nil))))
         }
         
-        if self.credentials == nil {
+        if self.customerIO.credentials == nil {
             return onComplete(Result.failure(.notInitialized))
         }
         
