@@ -1,3 +1,10 @@
+# [1.0.0-alpha.5](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.4...1.0.0-alpha.5) (2021-09-10)
+
+
+### Features
+
+* register/delete device tokens ([#26](https://github.com/customerio/customerio-ios/issues/26)) ([d0ddc07](https://github.com/customerio/customerio-ios/commit/d0ddc07c6b2c25e1168be47e61821e78f5c158a5))
+
 # [1.0.0-alpha.4](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.3...1.0.0-alpha.4) (2021-09-10)
 
 
