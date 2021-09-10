@@ -12,11 +12,3 @@ if ! [ -x "$(command -v swiftlint)" ]; then
 else
     make lint || true 
 fi
-
-if ! [ -x "$(command -v jazzy)" ]; then
-    echo -e "${YELLOW}If you would like to see what code you have not yet written reference docs for, uou need to install the program 'jazzy' on your machine to continue."
-    echo ""
-    echo -e "${YELLOW}The easiest way is 'gem install jazzy'. Else, check out other instructions for installing: https://github.com/realm/jazzy/#installation"
-else
-    make check-undocumented || true
-fi
