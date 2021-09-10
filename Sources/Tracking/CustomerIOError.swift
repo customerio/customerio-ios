@@ -21,6 +21,8 @@ import Foundation
 public enum CustomerIOError: Error {
     /// SDK has not been initialized yet. Check the docs for `CustomerIO` class.
     case notInitialized
+    /// Customer has not yet been identified. Check the `identify` method on the `CustomerIO` class
+    case noCustomerIdentified
     /// Error occurred while performing a HTTP request. Parse the embedded error.
     case http(_ error: HttpRequestError)
     /// An error occurred. That's all that we know. Check the embedded error to learn more.
@@ -32,6 +34,7 @@ extension CustomerIOError: CustomStringConvertible, LocalizedError {
     public var description: String {
         switch self {
         case .notInitialized: return "SDK has not been initialized yet. Check the docs about initializing the SDK."
+        case .noCustomerIdentified: return "Customer has not yet been identified."
         case .http(let error): return error.description
         case .underlying(let error): return error.localizedDescription
         }

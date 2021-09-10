@@ -23,7 +23,7 @@ class MessagingPushTest: UnitTest {
         
         mockCustomerIO.setCredentials(siteId: String.random, apiKey: String.random, region: Region.EU)
         
-        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage)
+        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage, jsonAdapter: jsonAdapter)
     }
 
     // MARK: registerDeviceToken
@@ -42,7 +42,7 @@ class MessagingPushTest: UnitTest {
     
     func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
 
-        
+        // XXX: fixme
         
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
@@ -67,7 +67,7 @@ class MessagingPushTest: UnitTest {
     
     // MARK: deleteDeviceToken
     
-    func test_deleteDeviceToken_expectSuccessIfNotIdentified() {
+    func test_deleteDeviceToken_expectSuccessIfNoToken() {
                 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
@@ -82,13 +82,9 @@ class MessagingPushTest: UnitTest {
         waitForExpectations()
     }
     
-    func test_deleteDeviceToken_expectSuccessIfNoToken() {
+    func test_deleteDeviceToken_expectSuccessIfNotIdentified() {
         
-        identifyRepositoryMock.setIdentifierClosure = { identifier in
-            self.identifyRepositoryMock.identifier = identifier
-        }
-        
-        identifyRepositoryMock.setIdentifier(identifier: String.random)
+        // XXX: todo
                 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))

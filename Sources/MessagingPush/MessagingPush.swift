@@ -11,6 +11,7 @@ open class MessagingPush {
 
     private let customerIO: CustomerIO!
     private let httpClient: HttpClient
+    private let jsonAdapter: JsonAdapter
 
     private var credentials: SdkCredentials? {
         customerIO.credentials
@@ -24,9 +25,10 @@ open class MessagingPush {
 
 
     /// testing init
-    internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage) {
+    internal init(customerIO: CustomerIO?, httpClient: HttpClient, keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
         self.httpClient = httpClient
+        self.jsonAdapter = jsonAdapter
     }
 
     /**
@@ -38,6 +40,7 @@ open class MessagingPush {
     public init(customerIO: CustomerIO) {
         self.customerIO = customerIO
         self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
+        self.jsonAdapter = DITracking.shared.jsonAdapter
     }
     
     deinit{
@@ -50,8 +53,8 @@ open class MessagingPush {
      */
     public func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         let device = Device(token: String(decoding: deviceToken, as: UTF8.self), lastUsed: Date())
-        guard let bodyData = JsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
-            return onComplete(Result.failure(.httpError(.noResponse)))
+        guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
+            return onComplete(.failure(.http(.noRequestMade(nil))))
         }
         
         if self.credentials == nil {
@@ -73,7 +76,7 @@ open class MessagingPush {
                     self.deviceToken = deviceToken
                     onComplete(Result.success(()))
                 case .failure(let error):
-                    onComplete(Result.failure(.httpError(error)))
+                    onComplete(Result.failure(.http(error)))
                 }
             }
     }
@@ -82,8 +85,8 @@ open class MessagingPush {
      Delete the currently registered device token
      */
     public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let bodyData = JsonAdapter.toJson(DeleteDeviceRequest()) else {
-            return onComplete(Result.failure(.httpError(.noResponse)))
+        guard let bodyData = jsonAdapter.toJson(DeleteDeviceRequest()) else {
+            return onComplete(.failure(.http(.noRequestMade(nil))))
         }
         
         guard let deviceToken = self.deviceToken else {
@@ -108,7 +111,7 @@ open class MessagingPush {
                     self.deviceToken = nil
                     onComplete(Result.success(()))
                 case .failure(let error):
-                    onComplete(Result.failure(.httpError(error)))
+                    onComplete(Result.failure(.http(error)))
                 }
             }
     }
