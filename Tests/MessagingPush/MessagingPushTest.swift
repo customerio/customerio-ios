@@ -26,23 +26,8 @@ class MessagingPushTest: UnitTest {
         
         messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
     }
-
-    // MARK: registerDeviceToken
-
-    func test_registerDeviceToken_expectFailIfNoCustomerIdentified() {
- 
-        let expect = expectation(description: "Expect to fail to register device token")
-        self.messagingPush.registerDeviceToken(String.random.data!) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .noCustomerIdentified = error else { return XCTFail() }
-            expect.fulfill()
-        }
-        
-        waitForExpectations()
-    }
     
-    func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
-        
+    private func pushSetup() -> MessagingPush{
         let identifyRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: DITracking.shared.keyValueStorage, jsonAdapter: jsonAdapter, siteId: String.random)
         let cio = CustomerIO(credentialsStore: SdkCredentialsStoreMock(), sdkConfig: SdkConfig(), identifyRepository: identifyRepository, keyValueStorage: nil)
         
@@ -58,12 +43,32 @@ class MessagingPushTest: UnitTest {
 
     
         cio.identify(identifier: identifier!) { result in
-            guard case .success = result else { print(result); return XCTFail() }
+            guard case .success = result else {  return XCTFail() }
             XCTAssertEqual(cio.identifier, identifier)
         }
         
-        let push = MessagingPush(customerIO: cio, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
+        return MessagingPush(customerIO: cio, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
+    }
+
+    // MARK: registerDeviceToken
+
+    func test_registerDeviceToken_expectFailIfNoCustomerIdentified() {
+ 
+        let expect = expectation(description: "Expect to fail to register device token")
+        self.messagingPush.registerDeviceToken(String.random.data!) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .noCustomerIdentified = error else { return XCTFail() }
+            expect.fulfill()
+        }
         
+        waitForExpectations()
+        
+        XCTAssertFalse(httpClientMock.requestCalled)
+    }
+    
+    func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
+        
+        let push = pushSetup()
 
         let actualToken = String.random.data!
         
@@ -80,6 +85,32 @@ class MessagingPushTest: UnitTest {
         XCTAssertEqual(storedToken, actualToken)
 
         waitForExpectations()
+        
+        XCTAssertTrue(httpClientMock.requestCalled)
+    }
+    
+    func test_registerDeviceToken_givenHttpFailure_expectNilDeviceToken() {
+        
+        let push = pushSetup()
+        
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+        }
+
+        let actualToken = String.random.data!
+        
+        let expect = expectation(description: "Expect to persist token")
+        push.registerDeviceToken(actualToken) { result in
+            guard case .failure(let actualError) = result else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
+            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
+            expect.fulfill()
+        }
+    
+        waitForExpectations()
+        
+        XCTAssertNil(push.deviceToken)
+        XCTAssertTrue(httpClientMock.requestCalled)
     }
     
     // MARK: deleteDeviceToken
@@ -97,12 +128,12 @@ class MessagingPushTest: UnitTest {
         }
 
         waitForExpectations()
+        
+        XCTAssertFalse(httpClientMock.requestCalled)
     }
     
     func test_deleteDeviceToken_expectSuccessIfNotIdentified() {
-        
-        // XXX: todo
-                
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
@@ -114,25 +145,56 @@ class MessagingPushTest: UnitTest {
         }
 
         waitForExpectations()
+        
+        XCTAssertFalse(httpClientMock.requestCalled)
     }
     
     func test_deleteDeviceToken_givenHttpSuccess_expectClearToken() {
+        
+        let push = pushSetup()
         
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
         
-        self.messagingPush.deviceToken = String.random.data!
+        push.deviceToken = String.random.data!
         
         let expect = expectation(description: "Expect to clear token in memory")
-        self.messagingPush.deleteDeviceToken() { result in
+        push.deleteDeviceToken() { result in
             guard case .success = result else { return XCTFail() }
             expect.fulfill()
         }
         
-        XCTAssertNil(self.messagingPush.deviceToken)
+        XCTAssertNil(push.deviceToken)
 
         waitForExpectations()
+        
+        XCTAssertTrue(httpClientMock.requestCalled)
+    }
+    
+    func test_deleteDeviceToken_givenHttpFailure_expectTokenNotCleared() {
+        
+        let push = pushSetup()
+        
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+        }
+        
+        push.deviceToken = String.random.data!
+        
+        let expect = expectation(description: "Expect request to fail")
+        push.deleteDeviceToken() { result in
+            guard case .failure(let actualError) = result else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
+            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
+            expect.fulfill()
+        }
+        
+        XCTAssertNotNil(push.deviceToken)
+
+        waitForExpectations()
+        
+        XCTAssertTrue(httpClientMock.requestCalled)
     }
     
     // MARK: deinit
