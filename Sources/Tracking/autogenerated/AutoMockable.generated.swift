@@ -239,6 +239,7 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
     internal var mockCalled: Bool = false // 
 
+    internal var identifier: String?
 
     // MARK: - addOrUpdateCustomer<RequestBody: Encodable>
 
