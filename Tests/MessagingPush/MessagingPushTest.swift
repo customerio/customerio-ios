@@ -190,10 +190,9 @@ class MessagingPushTest: UnitTest {
             expect.fulfill()
         }
         
-        XCTAssertNotNil(push.deviceToken)
-
         waitForExpectations()
         
+        XCTAssertNotNil(push.deviceToken)
         XCTAssertTrue(httpClientMock.requestCalled)
     }
     
