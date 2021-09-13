@@ -37,13 +37,10 @@ open class MessagingPush {
         self.jsonAdapter = DITracking.shared.jsonAdapter
         self.eventBus = DITracking.shared.eventBus
 
-        self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) { event in
-            switch event {
-            case .identifiedCustomer: break
-                //            if let deviceToken = self.deviceToken {
-                // register device token with customer.
-                //            }
-            }
+        self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) {
+//            if let deviceToken = self.deviceToken {
+            // register device token with customer.
+//            }
         }
     }
 

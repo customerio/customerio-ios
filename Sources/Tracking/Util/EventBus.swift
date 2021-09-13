@@ -1,6 +1,6 @@
 import Foundation
 
-public typealias EventBusEventListener = (EventBusEvent) -> Void
+public typealias EventBusEventListener = () -> Void
 public typealias EventBusListenerReference = NSObjectProtocol
 
 /**
@@ -62,12 +62,8 @@ public class CioNotificationCenter: NotificationCenter, EventBus {
     /// `addObserver` copies the lambda and returns a reference for you. Because it uses a reference we can
     /// override the lambda in this class without messing up the `unregister` to reference the passed in lambda.
     public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> EventBusListenerReference {
-        addObserver(forName: NSNotification.Name(event.name), object: nil, queue: nil) { notification in
-            guard let event = EventBusEvent.from(name: notification.name.rawValue) else {
-                return
-            }
-
-            listener(event)
+        addObserver(forName: NSNotification.Name(event.name), object: nil, queue: nil) { _ in
+            listener()
         }
     }
 }
