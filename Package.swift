@@ -18,6 +18,7 @@ let package = Package(
         // target name is the name used for `import X`
         .library(name: "Tracking", targets: ["CioTracking"]),
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
+        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     ],
     dependencies: [],
     targets: [
@@ -47,5 +48,11 @@ let package = Package(
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN"),
+        .target(name: "CioMessagingPushFCM",
+                dependencies: ["CioMessagingPush"],
+                path: "Sources/MessagingPushFCM"),
+        .testTarget(name: "MessagingPushFCMTests",
+                    dependencies: ["CioMessagingPushFCM", "SharedTests"],
+                    path: "Tests/MessagingPushFCM"),
     ]
 )
