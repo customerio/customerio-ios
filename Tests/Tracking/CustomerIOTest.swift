@@ -20,7 +20,7 @@ class CustomerIOTest: UnitTest {
     // MARK: credentials
 
     func test_sharedInstance_givenNotInitialized_expectNotLoadCredentialsOnInit() {
-        XCTAssertNil(CustomerIO.instance.credentials)
+        XCTAssertNil(CustomerIO.shared.credentials)
     }
 
     func test_sharedInstance_givenInitializeBefore_expectLoadCredentialsOnInit() {
@@ -44,16 +44,16 @@ class CustomerIOTest: UnitTest {
         let givenSiteIdSharedInstance = String.random
         let givenSiteIdNewInstance = String.random
 
-        CustomerIO.instance.setCredentials(siteId: givenSiteIdSharedInstance, apiKey: String.random, region: Region.US)
+        CustomerIO.shared.setCredentials(siteId: givenSiteIdSharedInstance, apiKey: String.random, region: Region.US)
         let newInstance = CustomerIO(siteId: givenSiteIdNewInstance, apiKey: String.random, region: Region.EU)
 
-        XCTAssertNotNil(CustomerIO.instance.credentials)
+        XCTAssertNotNil(CustomerIO.shared.credentials)
         XCTAssertNotNil(newInstance.credentials)
 
-        XCTAssertEqual(CustomerIO.instance.credentials?.siteId, givenSiteIdSharedInstance)
+        XCTAssertEqual(CustomerIO.shared.credentials?.siteId, givenSiteIdSharedInstance)
         XCTAssertEqual(newInstance.credentials?.siteId, givenSiteIdNewInstance)
 
-        XCTAssertNotEqual(CustomerIO.instance.credentials?.apiKey, newInstance.credentials?.apiKey)
+        XCTAssertNotEqual(CustomerIO.shared.credentials?.apiKey, newInstance.credentials?.apiKey)
     }
 
     func test_newInstance_expectInitializedInstance() {
@@ -82,20 +82,20 @@ class CustomerIOTest: UnitTest {
     func test_config_expectNotNilOnInit() {
         let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
 
-        XCTAssertNotNil(CustomerIO.instance.sdkConfig)
+        XCTAssertNotNil(CustomerIO.shared.sdkConfig)
         XCTAssertNotNil(instance.sdkConfig)
     }
 
     func test_config_sharedInstance_givenModifyConfig_expectSetConfigOnInstance() {
         let givenTrackingApiUrl = String.random
 
-        XCTAssertNotEqual(CustomerIO.instance.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
+        XCTAssertNotEqual(CustomerIO.shared.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
 
         CustomerIO.config {
             $0.trackingApiUrl = givenTrackingApiUrl
         }
 
-        XCTAssertEqual(CustomerIO.instance.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
+        XCTAssertEqual(CustomerIO.shared.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
     }
 
     func test_config_expectSharedInstanceConfigStartingValueForModifyingConfig() {

@@ -6,7 +6,7 @@ import Foundation
  So, performing an HTTP request to the API with a device token goes here.
   */
 open class MessagingPush {
-    public private(set) static var instance = MessagingPush(customerIO: CustomerIO.instance)
+    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
 
     public let customerIO: CustomerIO!
     private let httpClient: HttpClient

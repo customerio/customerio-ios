@@ -1,3 +1,10 @@
+# [1.0.0-alpha.6](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.5...1.0.0-alpha.6) (2021-09-13)
+
+
+### Bug Fixes
+
+* rename singletons instance to shared ([#34](https://github.com/customerio/customerio-ios/issues/34)) ([3bf1384](https://github.com/customerio/customerio-ios/commit/3bf1384ce9b2d4a8551bb353c1b0e6ce195378df))
+
 # [1.0.0-alpha.5](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.4...1.0.0-alpha.5) (2021-09-10)
 
 
