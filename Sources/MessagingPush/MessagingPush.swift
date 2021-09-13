@@ -10,8 +10,9 @@ public protocol MessagingPushInstance: AutoMockable {
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
  So, performing an HTTP request to the API with a device token goes here.
   */
+
 public class MessagingPush: MessagingPushInstance {
-    public private(set) static var instance = MessagingPush(customerIO: CustomerIO.instance)
+    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.instance)
 
     public let customerIO: CustomerIO!
     private let httpClient: HttpClient
