@@ -1,8 +1,7 @@
 import Foundation
 
-@objc public protocol EventBusEventListener: AnyObject {
-    func eventBus(event: EventBusEvent)
-}
+public typealias EventBusEventListener = (EventBusEvent) -> Void
+public typealias EventBusListenerReference = NSObjectProtocol
 
 /**
  Event bus for the SDK to be notified of events of the SDK.
@@ -18,12 +17,24 @@ import Foundation
  */
 public protocol EventBus: AutoMockable {
     func post(_ event: EventBusEvent)
-    func register(_ listener: EventBusEventListener, event: EventBusEvent)
-    func unregister(_ listener: EventBusEventListener)
+    func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> EventBusListenerReference
+    func unregister(_ listener: EventBusListenerReference?)
 }
 
-@objc public enum EventBusEvent: Int {
+public enum EventBusEvent: Int, CaseIterable {
     case identifiedCustomer
+
+    static func from(name: String) -> EventBusEvent? {
+        var returnEvent: EventBusEvent?
+
+        allCases.forEach { event in
+            if event.name == name {
+                returnEvent = event
+            }
+        }
+
+        return returnEvent
+    }
 
     var name: String {
         switch self {
@@ -42,12 +53,21 @@ public class CioNotificationCenter: NotificationCenter, EventBus {
         post(name: NSNotification.Name(event.name), object: nil, userInfo: nil)
     }
 
-    public func unregister(_ listener: EventBusEventListener) {
-        removeObserver(listener)
+    public func unregister(_ listener: EventBusListenerReference?) {
+        if let listener = listener {
+            removeObserver(listener)
+        }
     }
 
-    public func register(_ listener: EventBusEventListener, event: EventBusEvent) {
-        addObserver(listener, selector: #selector(listener.eventBus(event:)), name: NSNotification.Name(event.name),
-                    object: nil)
+    /// `addObserver` copies the lambda and returns a reference for you. Because it uses a reference we can
+    /// override the lambda in this class without messing up the `unregister` to reference the passed in lambda.
+    public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> EventBusListenerReference {
+        addObserver(forName: NSNotification.Name(event.name), object: nil, queue: nil) { notification in
+            guard let event = EventBusEvent.from(name: notification.name.rawValue) else {
+                return
+            }
+
+            listener(event)
+        }
     }
 }

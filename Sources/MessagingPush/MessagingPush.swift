@@ -13,6 +13,8 @@ open class MessagingPush {
     private let jsonAdapter: JsonAdapter
     private let eventBus: EventBus
 
+    private var identifyCustomerEventBusCallback: NSObjectProtocol?
+
     @Atomic public var deviceToken: Data?
 
     /// testing init
@@ -35,12 +37,20 @@ open class MessagingPush {
         self.jsonAdapter = DITracking.shared.jsonAdapter
         self.eventBus = DITracking.shared.eventBus
 
-        eventBus.register(self, event: .identifiedCustomer)
+        self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) { event in
+            switch event {
+            case .identifiedCustomer: break
+                //            if let deviceToken = self.deviceToken {
+                // register device token with customer.
+                //            }
+            }
+        }
     }
 
     deinit {
         // XXX: handle deinit case where we want to delete the token
-        self.eventBus.unregister(self)
+
+        self.eventBus.unregister(identifyCustomerEventBusCallback)
     }
 
     /**
@@ -114,16 +124,5 @@ open class MessagingPush {
                     onComplete(Result.failure(.http(error)))
                 }
             }
-    }
-}
-
-extension MessagingPush: EventBusEventListener {
-    public func eventBus(event: EventBusEvent) {
-        switch event {
-        case .identifiedCustomer: break
-//            if let deviceToken = self.deviceToken {
-            // register device token with customer.
-//            }
-        }
     }
 }
