@@ -339,10 +339,6 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
  See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class IdentifyRepositoryMock: IdentifyRepository {
-    func trackEvent<RequestBody>(name: String, data: RequestBody, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) where RequestBody : Encodable {
-        return
-    }
-    
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
