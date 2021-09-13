@@ -97,9 +97,8 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         let httpRequestParameters = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: identifier), headers: nil,
                                                       body: bodyData)
         
-        
         httpClient
-            .request(httpRequestParameters) { [weak self] result in
+            .request(httpRequestParameters) { result in
                 switch result {
                 case .success:
                     onComplete(Result.success(()))

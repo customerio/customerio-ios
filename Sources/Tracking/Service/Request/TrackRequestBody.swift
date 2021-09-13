@@ -1,9 +1,9 @@
 import Foundation
 
 /// https://customer.io/docs/api/#operation/track
-internal struct TrackRequestBody: Encodable {
+internal struct TrackRequestBody<T: Encodable>: Encodable {
     let name: String
-    let data: Encodable
+    let data: T
     let timestamp: Date? = nil
     
     enum CodingKeys: String, CodingKey {
