@@ -4,7 +4,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-{% for importModule in argument.imports|split:"-" %}
+{% for importModule in argument.imports|split:":" %}
 import {{ importModule }}
 {% endfor %}
 

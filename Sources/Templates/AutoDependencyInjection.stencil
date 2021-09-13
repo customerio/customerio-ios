@@ -1,7 +1,7 @@
 // swiftlint:disable all
 
 import Foundation
-{% for importModule in argument.imports|split:"-" %}
+{% for importModule in argument.imports|split:":" %}
 import {{ importModule }}
 {% endfor %}
 

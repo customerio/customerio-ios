@@ -24,7 +24,7 @@ class CustomerIOMockTest: UnitTest {
         let givenBody = ExampleIdentifyRequestBody(firstName: givenFirstName)
 
         /// Must call `identify()` `onComplete` handler or `expectToComplete` will not be fulfilled.
-        cioMock.identifyBodyClosure = { _, _, onComplete, _ in
+        cioMock.identifyClosure = { _, _, onComplete, _ in
             /// Return a successful result...
             onComplete(Result.success(()))
 
@@ -42,11 +42,11 @@ class CustomerIOMockTest: UnitTest {
         waitForExpectations(0.3)
 
         /// You can now check the Customer.io mock to see if it behaved as you wished.
-        XCTAssertTrue(cioMock.identifyBodyCalled)
+        XCTAssertTrue(cioMock.identifyCalled)
 
         /// You can receive the generic `body` that was sent to the Customer.io `identify()` call.
         /// Because of Swift generics, you must get the `.value` and cast it:
-        let actualBody: ExampleIdentifyRequestBody = cioMock.identifyBodyReceivedArguments?.body
+        let actualBody: ExampleIdentifyRequestBody = cioMock.identifyReceivedArguments?.body
             .value as! ExampleIdentifyRequestBody
         /// Now, you can run checks against the `body` that was actually passed to `identify()`.
         XCTAssertEqual(actualBody.firstName, givenBody.firstName)

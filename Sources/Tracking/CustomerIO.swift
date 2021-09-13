@@ -1,7 +1,7 @@
 import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
-    // sourcery:Name=identifyBody
+    // sourcery:Name=identify
     func identify<RequestBody: Encodable>(
         identifier: String,
         // sourcery:Type=AnyEncodable

@@ -90,25 +90,24 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
     // MARK: - identify<RequestBody: Encodable>
 
     /// Number of times the function was called.
-    public private(set) var identifyBodyCallsCount = 0
+    public private(set) var identifyCallsCount = 0
     /// `true` if the function was ever called.
-    public var identifyBodyCalled: Bool {
-        identifyBodyCallsCount > 0
+    public var identifyCalled: Bool {
+        identifyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var identifyBodyReceivedArguments: (identifier: String, body: AnyEncodable,
-                                                            onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                                            jsonEncoder: JSONEncoder?)?
+    public private(set) var identifyReceivedArguments: (identifier: String, body: AnyEncodable,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                        jsonEncoder: JSONEncoder?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyBodyReceivedInvocations: [(identifier: String, body: AnyEncodable,
-                                                               onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                                               jsonEncoder: JSONEncoder?)] = []
+    public private(set) var identifyReceivedInvocations: [(identifier: String, body: AnyEncodable,
+                                                           onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                           jsonEncoder: JSONEncoder?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyBodyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?)
-        -> Void)?
+    public var identifyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?) -> Void)?
 
     /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify<RequestBody: Encodable>(
@@ -118,13 +117,13 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         jsonEncoder: JSONEncoder?
     ) {
         mockCalled = true
-        identifyBodyCallsCount += 1
-        identifyBodyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
-                                         jsonEncoder: jsonEncoder)
-        identifyBodyReceivedInvocations
+        identifyCallsCount += 1
+        identifyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
+                                     jsonEncoder: jsonEncoder)
+        identifyReceivedInvocations
             .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
                      jsonEncoder: jsonEncoder))
-        identifyBodyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
+        identifyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
     }
 
     // MARK: - clearIdentify
