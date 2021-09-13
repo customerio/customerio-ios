@@ -1,11 +1,17 @@
 import CioTracking
 import Foundation
 
+public protocol MessagingPushInstance: AutoMockable {
+    func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+}
+
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
  So, performing an HTTP request to the API with a device token goes here.
   */
-open class MessagingPush {
+
+public class MessagingPush: MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
 
     public let customerIO: CustomerIO!
@@ -110,3 +116,6 @@ open class MessagingPush {
             }
     }
 }
+
+// sourcery: InjectRegister = "DiPlaceholder"
+internal class DiPlaceholder {}
