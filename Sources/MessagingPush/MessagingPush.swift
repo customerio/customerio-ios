@@ -12,7 +12,7 @@ public protocol MessagingPushInstance: AutoMockable {
   */
 
 public class MessagingPush: MessagingPushInstance {
-    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.instance)
+    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
 
     public let customerIO: CustomerIO!
     private let httpClient: HttpClient
