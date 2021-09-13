@@ -126,6 +126,44 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         identifyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
     }
 
+    // MARK: - track<RequestBody: Encodable>
+
+    /// Number of times the function was called.
+    public private(set) var trackCallsCount = 0
+    /// `true` if the function was ever called.
+    public var trackCalled: Bool {
+        trackCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable,
+                                                     onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                     jsonEncoder: JSONEncoder?)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void,
+                                                        jsonEncoder: JSONEncoder?)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var trackClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?) -> Void)?
+
+    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func track<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder?
+    ) {
+        mockCalled = true
+        trackCallsCount += 1
+        trackReceivedArguments = (name: name, data: AnyEncodable(data), onComplete: onComplete,
+                                  jsonEncoder: jsonEncoder)
+        trackReceivedInvocations
+            .append((name: name, data: AnyEncodable(data), onComplete: onComplete, jsonEncoder: jsonEncoder))
+        trackClosure?(name, AnyEncodable(data), onComplete, jsonEncoder)
+    }
+
     // MARK: - clearIdentify
 
     /// Number of times the function was called.
@@ -200,16 +238,16 @@ public class EventBusMock: EventBus {
     /// Arguments from *all* of the times that the function was called.
     public private(set) var registerReceivedInvocations: [(event: EventBusEvent, listener: EventBusEventListener)] = []
     /// Value to return from the mocked function.
-    public var registerReturnValue: NSObjectProtocol!
+    public var registerReturnValue: EventBusListenerReference!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `registerReturnValue`
      */
-    public var registerClosure: ((EventBusEvent, EventBusEventListener) -> NSObjectProtocol)?
+    public var registerClosure: ((EventBusEvent, EventBusEventListener) -> EventBusListenerReference)?
 
     /// Mocked function for `register(event: EventBusEvent, listener: @escaping EventBusEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> NSObjectProtocol {
+    public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> EventBusListenerReference {
         mockCalled = true
         registerCallsCount += 1
         registerReceivedArguments = (event: event, listener: listener)
@@ -227,16 +265,16 @@ public class EventBusMock: EventBus {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var unregisterReceivedArguments: (NSObjectProtocol?)?
+    public private(set) var unregisterReceivedArguments: (EventBusListenerReference?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var unregisterReceivedInvocations: [NSObjectProtocol?] = []
+    public private(set) var unregisterReceivedInvocations: [EventBusListenerReference?] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var unregisterClosure: ((NSObjectProtocol?) -> Void)?
+    public var unregisterClosure: ((EventBusListenerReference?) -> Void)?
 
-    /// Mocked function for `unregister(_ listener: NSObjectProtocol?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func unregister(_ listener: NSObjectProtocol?) {
+    /// Mocked function for `unregister(_ listener: EventBusListenerReference?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func unregister(_ listener: EventBusListenerReference?) {
         mockCalled = true
         unregisterCallsCount += 1
         unregisterReceivedArguments = listener
@@ -405,6 +443,45 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
         mockCalled = true
         removeCustomerCallsCount += 1
         removeCustomerClosure?()
+    }
+
+    // MARK: - trackEvent<RequestBody: Encodable>
+
+    /// Number of times the function was called.
+    internal private(set) var trackEventCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var trackEventCalled: Bool {
+        trackEventCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var trackEventReceivedArguments: (name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?,
+                                                            onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var trackEventReceivedInvocations: [(name: String, data: AnyEncodable,
+                                                               jsonEncoder: JSONEncoder?,
+                                                               onComplete: (Result<Void, CustomerIOError>) -> Void)] =
+        []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var trackEventClosure: ((String, AnyEncodable, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
+
+    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func trackEvent<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        mockCalled = true
+        trackEventCallsCount += 1
+        trackEventReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder,
+                                       onComplete: onComplete)
+        trackEventReceivedInvocations
+            .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
+        trackEventClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
     }
 }
 

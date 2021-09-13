@@ -10,6 +10,16 @@ public protocol CustomerIOInstance: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder?
     )
+
+    // sourcery:Name=track
+    func track<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder?
+    )
     func clearIdentify()
 }
 
@@ -321,8 +331,7 @@ public class CustomerIO: CustomerIOInstance {
 
         identifyRepository.removeCustomer()
     }
-    
-    
+
     /**
      Track an event
 
