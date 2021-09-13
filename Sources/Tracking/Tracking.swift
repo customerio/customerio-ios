@@ -18,7 +18,7 @@ public protocol TrackingInstance: AutoMockable {}
  */
 public class Tracking: TrackingInstance {
     /// Singleton shared instance of `Tracking`. Use this if you use the singeton instance of the `CustomerIO` class.
-    public private(set) static var instance = Tracking(customerIO: CustomerIO.instance)
+    @Atomic public private(set) static var shared = Tracking(customerIO: CustomerIO.shared)
 
     private let customerIO: CustomerIO!
 

@@ -86,7 +86,7 @@ public class CustomerIO: CustomerIOInstance {
 
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
-    @Atomic public private(set) static var instance = CustomerIO()
+    @Atomic public private(set) static var shared = CustomerIO()
 
     @Atomic public var sdkConfig: SdkConfig
     @Atomic public var credentials: SdkCredentials?
@@ -140,7 +140,7 @@ public class CustomerIO: CustomerIOInstance {
      Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
      */
     internal static func resetSharedInstance() {
-        Self.instance = CustomerIO()
+        Self.shared = CustomerIO()
     }
 
     /**
@@ -181,7 +181,7 @@ public class CustomerIO: CustomerIOInstance {
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
     public init(siteId: String, apiKey: String, region: Region = Region.US) {
-        self.sdkConfig = Self.instance.sdkConfig
+        self.sdkConfig = Self.shared.sdkConfig
 
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
     }
@@ -191,9 +191,9 @@ public class CustomerIO: CustomerIOInstance {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
-        Self.instance.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
+        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
-        Self.instance.credentialsStore.sharedInstanceSiteId = siteId
+        Self.shared.credentialsStore.sharedInstanceSiteId = siteId
     }
 
     /**
@@ -228,7 +228,7 @@ public class CustomerIO: CustomerIOInstance {
      ```
      */
     public static func config(_ handler: (inout SdkConfig) -> Void) {
-        instance.config(handler)
+        shared.config(handler)
     }
 
     /**
