@@ -321,4 +321,42 @@ public class CustomerIO: CustomerIOInstance {
 
         identifyRepository.removeCustomer()
     }
+    
+    
+    /**
+     Track an event
+
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+
+     - Parameters:
+     - name: Name of the event you want to track.
+     - data: Optional event body data
+     - onComplete: Asynchronous callback with `Result` of tracking an event.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
+     */
+    public func track<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        guard let identifyRepository = self.identifyRepository else {
+            return onComplete(Result.failure(.notInitialized))
+        }
+
+        identifyRepository
+            .trackEvent(name: name, data: data, jsonEncoder: jsonEncoder) { [weak self] result in
+                DispatchQueue.main.async { [weak self] in
+                    guard self != nil else { return }
+
+                    switch result {
+                    case .success:
+                        return onComplete(Result.success(()))
+                    case .failure(let error):
+                        return onComplete(Result.failure(error))
+                    }
+                }
+            }
+    }
 }
