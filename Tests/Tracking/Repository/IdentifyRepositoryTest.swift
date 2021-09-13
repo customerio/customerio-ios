@@ -6,6 +6,7 @@ import XCTest
 class IdentifyRepositoryTest: UnitTest {
     private var httpClientMock: HttpClientMock!
     private var keyValueStorageMock: KeyValueStorageMock!
+    private var eventBusMock: EventBusMock!
     private var siteId: String!
 
     private var repository: IdentifyRepository!
@@ -16,14 +17,17 @@ class IdentifyRepositoryTest: UnitTest {
 
         httpClientMock = HttpClientMock()
         keyValueStorageMock = KeyValueStorageMock()
+        eventBusMock = EventBusMock()
         siteId = String.random
 
         repository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorageMock,
                                            jsonAdapter: jsonAdapter,
-                                           siteId: siteId)
+                                           siteId: siteId,
+                                           eventBus: eventBusMock)
         integrationRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorage,
                                                       jsonAdapter: jsonAdapter,
-                                                      siteId: siteId)
+                                                      siteId: siteId,
+                                                      eventBus: eventBusMock)
     }
 
     // MARK: addOrUpdateCustomer

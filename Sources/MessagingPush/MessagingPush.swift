@@ -11,14 +11,16 @@ open class MessagingPush {
     public let customerIO: CustomerIO!
     private let httpClient: HttpClient
     private let jsonAdapter: JsonAdapter
+    private let eventBus: EventBus
 
     @Atomic public var deviceToken: Data?
 
     /// testing init
-    internal init(customerIO: CustomerIO?, httpClient: HttpClient, jsonAdapter: JsonAdapter) {
+    internal init(customerIO: CustomerIO?, httpClient: HttpClient, jsonAdapter: JsonAdapter, eventBus: EventBus) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
         self.httpClient = httpClient
         self.jsonAdapter = jsonAdapter
+        self.eventBus = eventBus
     }
 
     /**
@@ -31,10 +33,14 @@ open class MessagingPush {
         self.customerIO = customerIO
         self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
         self.jsonAdapter = DITracking.shared.jsonAdapter
+        self.eventBus = DITracking.shared.eventBus
+
+        eventBus.register(self, event: .identifiedCustomer)
     }
 
     deinit {
         // XXX: handle deinit case where we want to delete the token
+        self.eventBus.unregister(self)
     }
 
     /**
@@ -108,5 +114,16 @@ open class MessagingPush {
                     onComplete(Result.failure(.http(error)))
                 }
             }
+    }
+}
+
+extension MessagingPush: EventBusEventListener {
+    public func eventBus(event: EventBusEvent) {
+        switch event {
+        case .identifiedCustomer: break
+//            if let deviceToken = self.deviceToken {
+            // register device token with customer.
+//            }
+        }
     }
 }

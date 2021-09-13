@@ -9,6 +9,7 @@ class MessagingPushTest: UnitTest {
     private var messagingPush: MessagingPush!
 
     private var identifyRepositoryMock: IdentifyRepository!
+    private var eventBusMock: EventBusMock!
 
     private var httpClientMock: HttpClientMock!
 
@@ -17,6 +18,7 @@ class MessagingPushTest: UnitTest {
 
         httpClientMock = HttpClientMock()
         identifyRepositoryMock = IdentifyRepositoryMock()
+        eventBusMock = EventBusMock()
 
         mockCustomerIO = CustomerIO(credentialsStore: SdkCredentialsStoreMock(), sdkConfig: SdkConfig(),
                                     identifyRepository: identifyRepositoryMock, keyValueStorage: nil)
@@ -25,13 +27,15 @@ class MessagingPushTest: UnitTest {
                                                     apiKey: String.random,
                                                     region: Region.EU)
 
-        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
+        messagingPush = MessagingPush(customerIO: mockCustomerIO, httpClient: httpClientMock, jsonAdapter: jsonAdapter,
+                                      eventBus: eventBusMock)
     }
 
     private func pushSetup() -> MessagingPush {
         let identifyRepository = CIOIdentifyRepository(httpClient: httpClientMock,
                                                        keyValueStorage: DITracking.shared.keyValueStorage,
-                                                       jsonAdapter: jsonAdapter, siteId: String.random)
+                                                       jsonAdapter: jsonAdapter, siteId: String.random,
+                                                       eventBus: EventBusMock())
         let cio = CustomerIO(credentialsStore: SdkCredentialsStoreMock(), sdkConfig: SdkConfig(),
                              identifyRepository: identifyRepository, keyValueStorage: nil)
 
@@ -50,7 +54,8 @@ class MessagingPushTest: UnitTest {
             XCTAssertEqual(cio.identifier, identifier)
         }
 
-        return MessagingPush(customerIO: cio, httpClient: httpClientMock, jsonAdapter: jsonAdapter)
+        return MessagingPush(customerIO: cio, httpClient: httpClientMock, jsonAdapter: jsonAdapter,
+                             eventBus: eventBusMock)
     }
 
     // MARK: registerDeviceToken
