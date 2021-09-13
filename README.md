@@ -14,21 +14,21 @@
 
 Before you get started, keep in mind:
 1. **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
-2. **The SDK is in its `alpha` phase**. Feel free to try it out, but please understand that we will more than likely introduce breaking changes to the API and may experience bugs. 
+2. **The SDK is in its `alpha` phase**. Feel free to try it out, but please understand that we will likely introduce breaking changes to the API and may experience bugs. 
 
 # Get started
 
 To get started, you need to install and initialize the relevant SDK packages in your project. 
 
-To minimize our SDK's impact on your app's size, we offer multiple separate SDKs for you to install. You should only install the packages that you need for your project. 
+To minimize our SDK's impact on your app's size, we offer multiple, separate SDKs. You should only install the packages that you need for your project. 
 
-> Tip: Check out our [sample iOS app, Remote Habits](https://github.com/customerio/RemoteHabits-iOS), to get a real-world example of how to use our SDK. 
+> Tip: Check out our [sample iOS app, Remote Habits](https://github.com/customerio/RemoteHabits-iOS), for a real-world example of how to use our SDK. 
 
 ## Install the SDK
 
-Use the Swift Package Manger to install our SDKs into your project. To do this, follow these instructions:
+Use the Swift Package Manger to install our SDKs into your project.
 
-1. In Xcode, navigate to **File** > **Swift Packages** > **Add Package Dependency**
+1. In Xcode, go to **File** > **Swift Packages** > **Add Package Dependency**
 
 2. In the window that appears, enter the iOS SDK's GitHub repository: 
 
@@ -36,11 +36,11 @@ Use the Swift Package Manger to install our SDKs into your project. To do this, 
    https://github.com/customerio/customerio-ios.git
    ```
 
-3. Select the version that you want to install. During this time where the SDK is in alpha stage of development, we recommend that you install *an exact* version of the SDK instead of indicating a range. This will avoid you automatically upgrading to a newer alpha version and possibly installing breaking changes on your code base. 
+3. Select the version that you want to install. While the SDK is its alpha stage, we recommend that you install *an exact* version of the SDK instead of indicating a range. This prevents you from automatically upgrading to a newer alpha version and possibly installing breaking changes on your code base. 
 
    ![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version.jpg)
 
-4. Lastly, choose the SDK products that you would like to install. You can start with selecting `Tracking` for now and selecting others later if you need them. 
+4. Lastly, choose the SDK products that you want to install. You can start by selecting `Tracking` for now and adding others later if you need them. 
 
 ![](docs/img/xcode_spm_select_sdks.jpeg)
 
@@ -48,7 +48,7 @@ Use the Swift Package Manger to install our SDKs into your project. To do this, 
 
 Before you can use the Customer.io SDK, you need to initialize it. Any calls that you make to the SDK before you initialize it are ignored. 
 
-There are two ways to initialize the SDK and it all depends on how you decide to use the SDK:
+There are two ways to initialize the SDK. The method you use depends on how you want to use the SDK:
 
 1. Singleton, shared instance (the quick and easy way):
 
@@ -107,7 +107,7 @@ messagingPush.application(...)
 
 When you identify a customer, you:
 1. Add or update the customer's profile in your workspace.
-2. Save the customer's information on the device. Future calls to the SDK are linked to the last-identified customer. For example, after you identify a person, any events that you track are automatically associated with that profile.
+2. Save the customer's information on the device. Future calls to the SDK are linked to the last-identified customer. For example, after you identify a person, any events that you track are automatically associated with that person.
 
 You can only identify one customer at a time. The SDK "remembers" the most recently-identified customer.
 If you identify customer "A", and then call the identify function for customer "B", the SDK "forgets" customer "A" and assumes that customer "B" is the current app user. 
@@ -151,7 +151,7 @@ CustomerIO.shared.identify(identifier: "989388339", body: IdentifyRequestBody(fi
 // More complex example: https://github.com/customerio/customerio-ios/blob/1.0.0-alpha.5/Tests/Shared/IdentifyRequestBody.swift
 ```
 
-> Tip: See the section on [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
+> Tip: See [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
 
 ## Stop identifying a customer
 
@@ -165,13 +165,13 @@ In your app you may need to stop identifying a profile in the Customer.io SDK. T
 CustomerIO.shared.clearIdentify()
 ```
 
-# Push notification messaging 
+# Send Push notifications 
 
 Want to send push notification messages to your customer's devices? Great!
 
-> Note: At this time, the Customer.io SDK only supports APN push but FCM is actively being worked on. 
+> Note: At this time, the Customer.io SDK only supports APN push, but we're actively working on FCM support. 
 
-### Getting started 
+## Getting started 
 
 1. Install the SDK `MessagingPushAPN` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
 
@@ -219,8 +219,8 @@ Want to send push notification messages to your customer's devices? Great!
    }
    ```
 
-4. When you add a device token, it is not useful until you associate that device token with a profile in your Customer.io Workspace. Check out the documentation on [identifying a profile](#Identify-a-customer) to learn how to do this and make sure your device token is added to a profile. You can identify a profile before or after registering a device token with the Customer.io SDK. The SDK will automatically add and remove the device token from the profile when you identify and stop identifying a profile with the SDK. 
-5. You should now be able to see a device token in your Customer.io Workspace for that identified profile. You can now send a simple push notification using the Customer.io push notification editor. If you would like to use images, action buttons, or deep links this will require custom code from your team to receive the push notification and display this. 
+4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
+5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
 
 # Error handling 
 
