@@ -17,6 +17,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     private let httpClient: HttpClient
     private let keyValueStorage: KeyValueStorage
     private let jsonAdapter: JsonAdapter
+    private let eventBus: EventBus
     private let siteId: String
 
     public var identifier: String? {
@@ -24,11 +25,18 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     }
 
     /// for testing
-    internal init(httpClient: HttpClient, keyValueStorage: KeyValueStorage, jsonAdapter: JsonAdapter, siteId: String) {
+    internal init(
+        httpClient: HttpClient,
+        keyValueStorage: KeyValueStorage,
+        jsonAdapter: JsonAdapter,
+        siteId: String,
+        eventBus: EventBus
+    ) {
         self.httpClient = httpClient
         self.keyValueStorage = keyValueStorage
         self.jsonAdapter = jsonAdapter
         self.siteId = siteId
+        self.eventBus = eventBus
     }
 
     init(credentials: SdkCredentials, config: SdkConfig) {
@@ -36,6 +44,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         self.siteId = credentials.siteId
         self.keyValueStorage = DITracking.shared.keyValueStorage
         self.jsonAdapter = DITracking.shared.jsonAdapter
+        self.eventBus = DITracking.shared.eventBus
     }
 
     func addOrUpdateCustomer<RequestBody: Encodable>(
@@ -58,6 +67,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                 switch result {
                 case .success:
                     self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
+                    self.eventBus.post(.identifiedCustomer)
 
                     onComplete(Result.success(()))
                 case .failure(let error):
