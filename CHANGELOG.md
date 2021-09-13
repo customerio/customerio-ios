@@ -1,3 +1,10 @@
+# [1.0.0-alpha.7](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.6...1.0.0-alpha.7) (2021-09-13)
+
+
+### Features
+
+* create mocks for push messaging ([#35](https://github.com/customerio/customerio-ios/issues/35)) ([b2c5d62](https://github.com/customerio/customerio-ios/commit/b2c5d6221434e9c559bf818790c48d31decf7f77))
+
 # [1.0.0-alpha.6](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.5...1.0.0-alpha.6) (2021-09-13)
 
 
