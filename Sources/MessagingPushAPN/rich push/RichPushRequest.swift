@@ -16,9 +16,7 @@ internal class RichPushRequest {
     ) {
         self.payload = payload
         self.completionHandler = completionHandler
-        self
-            .pushContent = PushContent(notificationContent: request.content
-                .mutableCopy() as! UNMutableNotificationContent)
+        self.pushContent = PushContent(notificationContent: request.content)
 
         start()
     }

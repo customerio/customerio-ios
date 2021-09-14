@@ -32,7 +32,7 @@ public class PushContent {
     public private(set) var notificationContent: UNNotificationContent
 
     public init(notificationContent: UNNotificationContent) {
-        self.mutableContent = notificationContent as? UNMutableNotificationContent
+        self.mutableContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
         self.notificationContent = notificationContent
         self.title = notificationContent.title
         self.body = notificationContent.body
