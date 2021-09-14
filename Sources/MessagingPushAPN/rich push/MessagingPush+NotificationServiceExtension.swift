@@ -15,14 +15,17 @@ public extension MessagingPush {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        // check if this request is one of Cio.
-        // save content handler
-        // save
+        guard let parsedRequest = RichPushProcessor.process(request) else {
+            return false
+        }
+
+        RichPushRequestHandler.shared.startRequest(request, payload: parsedRequest, completionHandler: contentHandler)
+
+        return true
     }
 
     func serviceExtensionTimeWillExpire() {
-        // get all pending requests for extension and get it done! call completion handler.
-        // so, i'll need a singleton handler for all didReceive requests because of this function.
+        RichPushRequestHandler.shared.stopAll()
     }
 }
 #endif

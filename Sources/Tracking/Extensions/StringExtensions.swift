@@ -1,8 +1,12 @@
 import Foundation
 
-internal extension String {
+public extension String {
     var data: Data! {
         data(using: .utf8)
+    }
+
+    var url: URL? {
+        URL(string: self)
     }
 
     static var abcLetters: String {

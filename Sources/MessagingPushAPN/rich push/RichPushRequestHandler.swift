@@ -1,12 +1,38 @@
+import CioTracking
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
+@available(iOS 10.0, *)
 internal class RichPushRequestHandler {
-    private(set) let shared = RichPushRequestHandler()
+    static let shared = RichPushRequestHandler()
+
+    @Atomic private var requests: [String: RichPushRequest] = [:]
 
     private init() {}
 
-    func startRequest(_ request: UNNotificationRequest, completionHandler: @escaping (UNNotificationContent) -> Void) {}
+    func startRequest(
+        _ request: UNNotificationRequest,
+        payload: RichPushPayload,
+        completionHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        let requestId = request.identifier
+
+        let existingRequest = requests[requestId]
+        if existingRequest != nil { return }
+
+        let newRequest = RichPushRequest(payload: payload, request: request, completionHandler: completionHandler)
+        requests[requestId] = newRequest
+    }
+
+    func stopAll() {
+        requests.forEach { item in
+            let request = item.value
+
+            request.finishImmediately()
+        }
+
+        requests = [:]
+    }
 }
 #endif
