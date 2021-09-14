@@ -3,7 +3,7 @@ import Foundation
 /// https://customer.io/docs/api/#operation/track
 internal struct TrackRequestBody<T: Encodable>: Encodable {
     let name: String
-    let data: T
+    let data: T?
     let timestamp: Date? = nil
 
     enum CodingKeys: String, CodingKey {
@@ -15,7 +15,9 @@ internal struct TrackRequestBody<T: Encodable>: Encodable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
-        try container.encode(data, forKey: .data)
+        if data != nil {
+            try container.encode(data, forKey: .data)
+        }
         if timestamp != nil {
             try container.encode(timestamp, forKey: .timestamp)
         }

@@ -136,32 +136,35 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable,
-                                                     onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                                     jsonEncoder: JSONEncoder?)?
+    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable, timestamp: Date?,
+                                                     jsonEncoder: JSONEncoder?,
+                                                     onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable,
-                                                        onComplete: (Result<Void, CustomerIOError>) -> Void,
-                                                        jsonEncoder: JSONEncoder?)] = []
+    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable, timestamp: Date?,
+                                                        jsonEncoder: JSONEncoder?,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var trackClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?) -> Void)?
+    public var trackClosure: ((String, AnyEncodable, Date?, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
 
-    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?, timestamp: Date?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder?
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         trackCallsCount += 1
-        trackReceivedArguments = (name: name, data: AnyEncodable(data), onComplete: onComplete,
-                                  jsonEncoder: jsonEncoder)
+        trackReceivedArguments = (name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+                                  onComplete: onComplete)
         trackReceivedInvocations
-            .append((name: name, data: AnyEncodable(data), onComplete: onComplete, jsonEncoder: jsonEncoder))
-        trackClosure?(name, AnyEncodable(data), onComplete, jsonEncoder)
+            .append((name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+                     onComplete: onComplete))
+        trackClosure?(name, AnyEncodable(data), timestamp, jsonEncoder, onComplete)
     }
 
     // MARK: - clearIdentify
@@ -468,10 +471,10 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     internal var trackEventClosure: ((String, AnyEncodable, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
         -> Void)?
 
-    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func trackEvent<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
+        data: RequestBody?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {

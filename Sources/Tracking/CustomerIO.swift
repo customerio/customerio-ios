@@ -16,9 +16,10 @@ public protocol CustomerIOInstance: AutoMockable {
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder?
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
     func clearIdentify()
 }
@@ -73,6 +74,14 @@ public extension CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil
     ) {
         identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
+    }
+
+    func track(
+        name: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        track(name: name, data: EmptyRequestBody(), timestamp: nil, jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 }
 
@@ -347,8 +356,9 @@ public class CustomerIO: CustomerIOInstance {
     public func track<RequestBody: Encodable>(
         name: String,
         data: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder? = nil
+        timestamp: Date? = Date(),
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))

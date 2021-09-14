@@ -17,7 +17,7 @@ internal protocol IdentifyRepository: AutoMockable {
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody,
+        data: RequestBody?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
@@ -92,7 +92,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
     func trackEvent<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
+        data: RequestBody?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
