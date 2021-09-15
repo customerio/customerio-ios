@@ -80,14 +80,16 @@ public class MessagingPush: MessagingPushInstance {
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
-                guard let self = self else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
 
-                switch result {
-                case .success:
-                    self.deviceToken = deviceToken
-                    onComplete(Result.success(()))
-                case .failure(let error):
-                    onComplete(Result.failure(.http(error)))
+                    switch result {
+                    case .success:
+                        self.deviceToken = deviceToken
+                        onComplete(Result.success(()))
+                    case .failure(let error):
+                        onComplete(Result.failure(.http(error)))
+                    }
                 }
             }
     }
@@ -118,14 +120,16 @@ public class MessagingPush: MessagingPushInstance {
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
-                guard let self = self else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
 
-                switch result {
-                case .success:
-                    self.deviceToken = nil
-                    onComplete(Result.success(()))
-                case .failure(let error):
-                    onComplete(Result.failure(.http(error)))
+                    switch result {
+                    case .success:
+                        self.deviceToken = nil
+                        onComplete(Result.success(()))
+                    case .failure(let error):
+                        onComplete(Result.failure(.http(error)))
+                    }
                 }
             }
     }
