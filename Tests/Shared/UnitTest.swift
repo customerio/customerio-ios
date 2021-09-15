@@ -1,4 +1,4 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import XCTest
 
@@ -13,7 +13,11 @@ open class UnitTest: XCTestCase {
      Handy objects tests might need to use
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
-    public let keyValueStorage = DICommon.shared.keyValueStorage
+    public let keyValueStorage = DITracking.shared.keyValueStorage
+    public let log: ConsoleLogger = DITracking.shared.logger as! ConsoleLogger
+    public var jsonAdapter: JsonAdapter {
+        JsonAdapter(log: log)
+    }
 
     override open func setUp() {
         deleteAll()
@@ -24,7 +28,7 @@ open class UnitTest: XCTestCase {
     override open func tearDown() {
         deleteAll()
 
-        DICommon.shared.resetOverrides()
+        DITracking.shared.resetOverrides()
 
         super.tearDown()
     }

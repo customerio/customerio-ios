@@ -1,7 +1,6 @@
-@testable import Common
+@testable import CioTracking
 import Foundation
 import SharedTests
-@testable import Tracking
 import XCTest
 
 class DiTrackingTests: XCTestCase {

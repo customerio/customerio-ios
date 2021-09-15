@@ -2,7 +2,6 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import Common
 import Foundation
 
 /**
@@ -58,4 +57,35 @@ func |> <A, B>(x: A, f: (A) -> B) -> B {
 
 func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
+}
+
+extension SdkCredentials {
+    static let siteIdLens = Lens<SdkCredentials, String>(get: { $0.siteId },
+                                                         set: { siteId, existing in
+                                                             SdkCredentials(siteId: siteId, apiKey: existing.apiKey,
+                                                                            region: existing.region)
+                                                         })
+    static let apiKeyLens = Lens<SdkCredentials, String>(get: { $0.apiKey },
+                                                         set: { apiKey, existing in
+                                                             SdkCredentials(siteId: existing.siteId, apiKey: apiKey,
+                                                                            region: existing.region)
+                                                         })
+    static let regionLens = Lens<SdkCredentials, Region>(get: { $0.region },
+                                                         set: { region, existing in
+                                                             SdkCredentials(siteId: existing.siteId,
+                                                                            apiKey: existing.apiKey, region: region)
+                                                         })
+
+    // Convenient set functions to edit a property of the immutable object
+    func siteIdSet(_ siteId: String) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
+    }
+
+    func apiKeySet(_ apiKey: String) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
+    }
+
+    func regionSet(_ region: Region) -> SdkCredentials {
+        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
+    }
 }

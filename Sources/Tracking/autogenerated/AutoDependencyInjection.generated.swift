@@ -2,7 +2,6 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import Common
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
@@ -58,8 +57,12 @@ import Foundation
  enum that contains list of all dependencies in our app.
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
-internal enum DependencyTracking: CaseIterable {
-    case placeholder
+public enum DependencyTracking: CaseIterable {
+    case sdkCredentialsStore
+    case eventBus
+    case logger
+    case jsonAdapter
+    case keyValueStorage
 }
 
 /**
@@ -69,8 +72,8 @@ internal enum DependencyTracking: CaseIterable {
  Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
  in `Common` module can be in the `Tracking` module.
  */
-internal class DITracking {
-    internal static var shared = DITracking()
+public class DITracking {
+    public static var shared = DITracking()
     private var overrides: [DependencyTracking: Any] = [:]
     private init() {}
 
@@ -82,23 +85,27 @@ internal class DITracking {
      DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
      ```
      */
-    internal func override<Value: Any>(_ dep: DependencyTracking, value: Value, forType type: Value.Type) {
+    public func override<Value: Any>(_ dep: DependencyTracking, value: Value, forType type: Value.Type) {
         overrides[dep] = value
     }
 
     /**
      Reset overrides. Meant to be used in `tearDown()` of tests.
      */
-    internal func resetOverrides() {
+    public func resetOverrides() {
         overrides = [:]
     }
 
     /**
      Use this generic method of getting a dependency, if you wish.
      */
-    internal func inject<T>(_ dep: DependencyTracking) -> T {
+    public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
-        case .placeholder: return placeholder as! T
+        case .sdkCredentialsStore: return sdkCredentialsStore as! T
+        case .eventBus: return eventBus as! T
+        case .logger: return logger as! T
+        case .jsonAdapter: return jsonAdapter as! T
+        case .keyValueStorage: return keyValueStorage as! T
         }
     }
 
@@ -106,15 +113,63 @@ internal class DITracking {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // Placeholder
-    internal var placeholder: Placeholder {
-        if let overridenDep = overrides[.placeholder] {
-            return overridenDep as! Placeholder
+    // SdkCredentialsStore
+    internal var sdkCredentialsStore: SdkCredentialsStore {
+        if let overridenDep = overrides[.sdkCredentialsStore] {
+            return overridenDep as! SdkCredentialsStore
         }
-        return newPlaceholder
+        return newSdkCredentialsStore
     }
 
-    private var newPlaceholder: Placeholder {
-        Placeholder()
+    private var newSdkCredentialsStore: SdkCredentialsStore {
+        CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
+    }
+
+    // EventBus
+    public var eventBus: EventBus {
+        if let overridenDep = overrides[.eventBus] {
+            return overridenDep as! EventBus
+        }
+        return newEventBus
+    }
+
+    private var newEventBus: EventBus {
+        CioNotificationCenter()
+    }
+
+    // Logger
+    public var logger: Logger {
+        if let overridenDep = overrides[.logger] {
+            return overridenDep as! Logger
+        }
+        return newLogger
+    }
+
+    private var newLogger: Logger {
+        ConsoleLogger()
+    }
+
+    // JsonAdapter
+    public var jsonAdapter: JsonAdapter {
+        if let overridenDep = overrides[.jsonAdapter] {
+            return overridenDep as! JsonAdapter
+        }
+        return newJsonAdapter
+    }
+
+    private var newJsonAdapter: JsonAdapter {
+        JsonAdapter(log: logger)
+    }
+
+    // KeyValueStorage
+    public var keyValueStorage: KeyValueStorage {
+        if let overridenDep = overrides[.keyValueStorage] {
+            return overridenDep as! KeyValueStorage
+        }
+        return newKeyValueStorage
+    }
+
+    private var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage()
     }
 }

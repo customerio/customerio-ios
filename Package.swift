@@ -14,41 +14,38 @@ let package = Package(
         .iOS(.v9)
     ],
     products: [ // externally visible products for clients to install. 
-        .library(name: "CioMessagingPushAPN", targets: ["MessagingPushAPN"]),
-        .library(name: "CioTracking", targets: ["Tracking"])
+        // library name is the name given when installing the SDK. 
+        // target name is the name used for `import X`
+        .library(name: "Tracking", targets: ["CioTracking"]),
+        .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     ],
     dependencies: [],
     targets: [
-        // Common 
-        .target(name: "Common",
-                path: "Sources/Common"),
-        .testTarget(name: "CommonTests",
-                    dependencies: ["Common", "SharedTests"],
-                    path: "Tests/Common"),
-        .target(name: "SharedTests",
-                dependencies: ["Common"],
-                path: "Tests/Shared"),
-        // Messaging Push 
-        .target(name: "MessagingPush",
-                dependencies: ["Common"],
-                path: "Sources/MessagingPush"),
-        .testTarget(name: "MessagingPushTests",
-                    dependencies: ["MessagingPush", "SharedTests"],
-                    path: "Tests/MessagingPush"),
-
-        .target(name: "MessagingPushAPN",
-                dependencies: ["MessagingPush"],
-                path: "Sources/MessagingPushAPN"),
-        .testTarget(name: "MessagingPushAPNTests",
-                    dependencies: ["MessagingPushAPN", "SharedTests"],
-                    path: "Tests/MessagingPushAPN"),
-        
         // Tracking
-        .target(name: "Tracking",
-                dependencies: ["Common"],
+        .target(name: "CioTracking",
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
-                    dependencies: ["Tracking", "SharedTests"],
+                    dependencies: ["CioTracking", "SharedTests"],
                     path: "Tests/Tracking"),
+            
+        // shared code dependency that other test targets use. 
+        .target(name: "SharedTests", 
+                dependencies: ["CioTracking"],
+                path: "Tests/Shared"),
+                
+        // Messaging Push 
+        .target(name: "CioMessagingPush",
+                dependencies: ["CioTracking"],
+                path: "Sources/MessagingPush"),
+        .testTarget(name: "MessagingPushTests",
+                    dependencies: ["CioMessagingPush", "SharedTests"],
+                    path: "Tests/MessagingPush"),
+
+        .target(name: "CioMessagingPushAPN",
+                dependencies: ["CioMessagingPush"],
+                path: "Sources/MessagingPushAPN"),
+        .testTarget(name: "MessagingPushAPNTests",
+                    dependencies: ["CioMessagingPushAPN", "SharedTests"],
+                    path: "Tests/MessagingPushAPN"),
     ]
 )
