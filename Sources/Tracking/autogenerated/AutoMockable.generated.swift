@@ -200,16 +200,16 @@ public class EventBusMock: EventBus {
     /// Arguments from *all* of the times that the function was called.
     public private(set) var registerReceivedInvocations: [(event: EventBusEvent, listener: EventBusEventListener)] = []
     /// Value to return from the mocked function.
-    public var registerReturnValue: NSObjectProtocol!
+    public var registerReturnValue: EventBusListenerReference!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `registerReturnValue`
      */
-    public var registerClosure: ((EventBusEvent, EventBusEventListener) -> NSObjectProtocol)?
+    public var registerClosure: ((EventBusEvent, EventBusEventListener) -> EventBusListenerReference)?
 
     /// Mocked function for `register(event: EventBusEvent, listener: @escaping EventBusEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> NSObjectProtocol {
+    public func register(event: EventBusEvent, listener: @escaping EventBusEventListener) -> EventBusListenerReference {
         mockCalled = true
         registerCallsCount += 1
         registerReceivedArguments = (event: event, listener: listener)
@@ -227,16 +227,16 @@ public class EventBusMock: EventBus {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var unregisterReceivedArguments: (NSObjectProtocol?)?
+    public private(set) var unregisterReceivedArguments: (EventBusListenerReference?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var unregisterReceivedInvocations: [NSObjectProtocol?] = []
+    public private(set) var unregisterReceivedInvocations: [EventBusListenerReference?] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var unregisterClosure: ((NSObjectProtocol?) -> Void)?
+    public var unregisterClosure: ((EventBusListenerReference?) -> Void)?
 
-    /// Mocked function for `unregister(_ listener: NSObjectProtocol?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func unregister(_ listener: NSObjectProtocol?) {
+    /// Mocked function for `unregister(_ listener: EventBusListenerReference?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func unregister(_ listener: EventBusListenerReference?) {
         mockCalled = true
         unregisterCallsCount += 1
         unregisterReceivedArguments = listener
