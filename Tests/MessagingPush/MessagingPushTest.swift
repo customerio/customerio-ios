@@ -84,14 +84,10 @@ class MessagingPushTest: UnitTest {
             expect.fulfill()
         }
 
-        guard let storedToken = push.deviceToken else {
-            return XCTFail()
-        }
-
-        XCTAssertEqual(storedToken, actualToken)
-
         waitForExpectations()
 
+        guard let storedToken = push.deviceToken else { return XCTFail() }
+        XCTAssertEqual(storedToken, actualToken)
         XCTAssertTrue(httpClientMock.requestCalled)
     }
 
@@ -167,10 +163,9 @@ class MessagingPushTest: UnitTest {
             expect.fulfill()
         }
 
-        XCTAssertNil(push.deviceToken)
-
         waitForExpectations()
 
+        XCTAssertNil(push.deviceToken)
         XCTAssertTrue(httpClientMock.requestCalled)
     }
 
