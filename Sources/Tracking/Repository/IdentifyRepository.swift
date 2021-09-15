@@ -105,7 +105,12 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let identifier = self.identifier else {
-            // XXX: once we have a queue these will instead be optionally backgrounded and trigger when a customer gets identified
+            // XXX: these could actually do one of
+            // - fail
+            // - send as anonymous events
+            // - enqueue until a customer is identified
+            // choosing to have them fail while we don't have a bg queue & while we discuss
+            // plans for anonymous / pre-identify activity
             return onComplete(.failure(.noCustomerIdentified))
         }
 
