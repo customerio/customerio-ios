@@ -1,3 +1,10 @@
+# [1.0.0-alpha.8](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.7...1.0.0-alpha.8) (2021-09-15)
+
+
+### Bug Fixes
+
+* convert APN device token to string ([#39](https://github.com/customerio/customerio-ios/issues/39)) ([1f64a13](https://github.com/customerio/customerio-ios/commit/1f64a13467966f077642745d9f60a168113bdbff))
+
 # [1.0.0-alpha.7](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.6...1.0.0-alpha.7) (2021-09-13)
 
 

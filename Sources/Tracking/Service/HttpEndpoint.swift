@@ -4,7 +4,7 @@ public enum HttpEndpoint {
     case findAccountRegion
     case identifyCustomer(identifier: String)
     case registerDevice(identifier: String)
-    case deleteDevice(identifier: String, deviceToken: Data)
+    case deleteDevice(identifier: String, deviceToken: String)
 
     var path: String {
         switch self {
