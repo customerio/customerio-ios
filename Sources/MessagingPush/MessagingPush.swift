@@ -62,7 +62,7 @@ public class MessagingPush: MessagingPushInstance {
      */
     public func registerDeviceToken(_ deviceToken: Data,
                                     onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let device = Device(token: String(decoding: deviceToken, as: UTF8.self), lastUsed: Date())
+        let device = Device(token: String(apnDeviceToken: deviceToken), lastUsed: Date())
         guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
             return onComplete(.failure(.http(.noRequestMade(nil))))
         }
@@ -80,14 +80,16 @@ public class MessagingPush: MessagingPushInstance {
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
-                guard let self = self else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
 
-                switch result {
-                case .success:
-                    self.deviceToken = deviceToken
-                    onComplete(Result.success(()))
-                case .failure(let error):
-                    onComplete(Result.failure(.http(error)))
+                    switch result {
+                    case .success:
+                        self.deviceToken = deviceToken
+                        onComplete(Result.success(()))
+                    case .failure(let error):
+                        onComplete(Result.failure(.http(error)))
+                    }
                 }
             }
     }
@@ -117,14 +119,16 @@ public class MessagingPush: MessagingPushInstance {
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in
-                guard let self = self else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
 
-                switch result {
-                case .success:
-                    self.deviceToken = nil
-                    onComplete(Result.success(()))
-                case .failure(let error):
-                    onComplete(Result.failure(.http(error)))
+                    switch result {
+                    case .success:
+                        self.deviceToken = nil
+                        onComplete(Result.success(()))
+                    case .failure(let error):
+                        onComplete(Result.failure(.http(error)))
+                    }
                 }
             }
     }

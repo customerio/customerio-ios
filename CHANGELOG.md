@@ -1,3 +1,17 @@
+# [1.0.0-alpha.9](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.8...1.0.0-alpha.9) (2021-09-15)
+
+
+### Bug Fixes
+
+* call callback on main thread APN tokens ([#40](https://github.com/customerio/customerio-ios/issues/40)) ([982ce9d](https://github.com/customerio/customerio-ios/commit/982ce9d9a8277d72d3fa49c66537a0a6f5b6401a))
+
+# [1.0.0-alpha.8](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.7...1.0.0-alpha.8) (2021-09-15)
+
+
+### Bug Fixes
+
+* convert APN device token to string ([#39](https://github.com/customerio/customerio-ios/issues/39)) ([1f64a13](https://github.com/customerio/customerio-ios/commit/1f64a13467966f077642745d9f60a168113bdbff))
+
 # [1.0.0-alpha.7](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.6...1.0.0-alpha.7) (2021-09-13)
 
 
