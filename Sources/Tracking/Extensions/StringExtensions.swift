@@ -1,6 +1,12 @@
 import Foundation
 
 public extension String {
+    init(apnDeviceToken: Data) {
+        /// Convert `Data` to `String` for APN device token.
+        /// [Reference](https://nshipster.com/apns-device-tokens/)
+        self = apnDeviceToken.map { String(format: "%02x", $0) }.joined()
+    }
+
     var data: Data! {
         data(using: .utf8)
     }

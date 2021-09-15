@@ -62,7 +62,7 @@ public class MessagingPush: MessagingPushInstance {
      */
     public func registerDeviceToken(_ deviceToken: Data,
                                     onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let device = Device(token: String(decoding: deviceToken, as: UTF8.self), lastUsed: Date())
+        let device = Device(token: String(apnDeviceToken: deviceToken), lastUsed: Date())
         guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
             return onComplete(.failure(.http(.noRequestMade(nil))))
         }
