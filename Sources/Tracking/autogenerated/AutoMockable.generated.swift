@@ -458,33 +458,61 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var trackEventReceivedArguments: (name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?,
+    internal private(set) var trackEventReceivedArguments: (name: String, data: AnyEncodable, timestamp: Date?,
+                                                            jsonEncoder: JSONEncoder?,
                                                             onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var trackEventReceivedInvocations: [(name: String, data: AnyEncodable,
+    internal private(set) var trackEventReceivedInvocations: [(name: String, data: AnyEncodable, timestamp: Date?,
                                                                jsonEncoder: JSONEncoder?,
                                                                onComplete: (Result<Void, CustomerIOError>) -> Void)] =
         []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var trackEventClosure: ((String, AnyEncodable, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
-        -> Void)?
+    internal var trackEventClosure: ((String, AnyEncodable, Date?, JSONEncoder?,
+                                      (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody?, timestamp: Date?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func trackEvent<RequestBody: Encodable>(
         name: String,
         data: RequestBody?,
+        timestamp: Date?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         trackEventCallsCount += 1
-        trackEventReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder,
-                                       onComplete: onComplete)
+        trackEventReceivedArguments = (name: name, data: AnyEncodable(data), timestamp: timestamp,
+                                       jsonEncoder: jsonEncoder, onComplete: onComplete)
         trackEventReceivedInvocations
-            .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
-        trackEventClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
+            .append((name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+                     onComplete: onComplete))
+        trackEventClosure?(name, AnyEncodable(data), timestamp, jsonEncoder, onComplete)
+    }
+
+    // MARK: - getIdentifier
+
+    /// Number of times the function was called.
+    internal private(set) var getIdentifierCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var getIdentifierCalled: Bool {
+        getIdentifierCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    internal var getIdentifierReturnValue: String?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getIdentifierReturnValue`
+     */
+    internal var getIdentifierClosure: (() -> String?)?
+
+    /// Mocked function for `getIdentifier()`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func getIdentifier() -> String? {
+        mockCalled = true
+        getIdentifierCallsCount += 1
+        return getIdentifierClosure.map { $0() } ?? getIdentifierReturnValue
     }
 }
 

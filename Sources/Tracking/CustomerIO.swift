@@ -356,7 +356,7 @@ public class CustomerIO: CustomerIOInstance {
     public func track<RequestBody: Encodable>(
         name: String,
         data: RequestBody,
-        timestamp: Date? = Date(),
+        timestamp: Date? = nil,
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
@@ -365,7 +365,7 @@ public class CustomerIO: CustomerIOInstance {
         }
 
         identifyRepository
-            .trackEvent(name: name, data: data, jsonEncoder: jsonEncoder) { [weak self] result in
+            .trackEvent(name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder) { [weak self] result in
                 DispatchQueue.main.async { [weak self] in
                     guard self != nil else { return }
 

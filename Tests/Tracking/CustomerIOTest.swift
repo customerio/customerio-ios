@@ -286,7 +286,7 @@ class CustomerIOTest: UnitTest {
         let givenEventName = String.random
         let givenEventData = TrackEventData.random()
 
-        identifyRepositoryMock.trackEventClosure = { actualEventName, actualEventData, _, onComplete in
+        identifyRepositoryMock.trackEventClosure = { actualEventName, actualEventData, _, _, onComplete in
             XCTAssertEqual(givenEventName, actualEventName)
             XCTAssertEqual(givenEventData, actualEventData.value as! TrackEventData)
 
@@ -302,7 +302,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_track_givenFailedTrackEvent_expectFailureResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, onComplete in
+        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
             onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
         }
 
@@ -327,7 +327,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_track_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, onComplete in
+        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
             onComplete(Result.success(()))
         }
 

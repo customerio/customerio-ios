@@ -147,4 +147,125 @@ class IdentifyRepositoryTest: UnitTest {
 
         waitForExpectations()
     }
+
+    // MARK: trackEvent
+
+    func test_trackEvent_expectCallHttpClientWithCorrectParamsNoBody() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let givenIdentifier = String.random
+
+        let expect = expectation(description: "Expect to complete")
+        expect.expectedFulfillmentCount = 2
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
+                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
+                expect.fulfill()
+            }
+
+        let givenEventName = String.random
+        let expectedBody = "{\"name\":\"\(givenEventName)\"}".data
+
+        httpClientMock.requestClosure = { params, onComplete in
+            guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
+
+            XCTAssertEqual(actualIdentifier, givenIdentifier)
+            XCTAssertEqual(params.body!, expectedBody)
+
+            onComplete(Result.success(params.body!))
+        }
+
+        integrationRepository.trackEvent(name: givenEventName, data: EmptyRequestBody(), timestamp: nil,
+                                         jsonEncoder: nil) { _ in
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        integrationRepository.removeCustomer()
+    }
+
+    func test_trackEvent_expectCallHttpClientWithBody() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let givenIdentifier = String.random
+
+        let expect = expectation(description: "Expect to complete")
+        expect.expectedFulfillmentCount = 2
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
+                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
+                expect.fulfill()
+            }
+
+        let givenEventName = String.random
+        let givenEventData = TrackEventData.random()
+        let serializedEventData = jsonAdapter.toJson(givenEventData)?.string
+        let expectedBody = "{\"name\":\"\(givenEventName)\",\"data\":\(serializedEventData!)}"
+
+        httpClientMock.requestClosure = { params, onComplete in
+            guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
+
+            XCTAssertEqual(actualIdentifier, givenIdentifier)
+            XCTAssertEqual(params.body!, expectedBody.data)
+
+            onComplete(Result.success(params.body!))
+        }
+
+        integrationRepository
+            .trackEvent(name: givenEventName, data: givenEventData, timestamp: nil, jsonEncoder: nil) { _ in
+                expect.fulfill()
+            }
+
+        waitForExpectations()
+
+        integrationRepository.removeCustomer()
+    }
+
+    func test_trackEvent_expectCallHttpClientWithFullParams() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let givenIdentifier = String.random
+
+        let expect = expectation(description: "Expect to complete")
+        expect.expectedFulfillmentCount = 2
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
+                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
+                expect.fulfill()
+            }
+
+        let givenEventName = String.random
+        let givenEventData = TrackEventData.random()
+        let serializedEventData = jsonAdapter.toJson(givenEventData)?.string
+
+        let givenTimestamp = Date(timeIntervalSince1970: 1631731924)
+
+        let expectedBody =
+            "{\"name\":\"\(givenEventName)\",\"data\":\(serializedEventData!),\"timestamp\":1631731924}"
+
+        httpClientMock.requestClosure = { params, onComplete in
+            guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
+
+            XCTAssertEqual(actualIdentifier, givenIdentifier)
+            XCTAssertEqual(params.body!, expectedBody.data)
+
+            onComplete(Result.success(params.body!))
+        }
+
+        integrationRepository.trackEvent(name: givenEventName, data: givenEventData, timestamp: givenTimestamp,
+                                         jsonEncoder: nil) { _ in
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        integrationRepository.removeCustomer()
+    }
 }

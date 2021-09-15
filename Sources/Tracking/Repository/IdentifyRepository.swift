@@ -18,9 +18,12 @@ internal protocol IdentifyRepository: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: RequestBody?,
+        timestamp: Date?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
+
+    func getIdentifier() -> String?
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -31,6 +34,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     private let siteId: String
 
     public var identifier: String? {
+        getIdentifier()
+    }
+
+    public func getIdentifier() -> String? {
         keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId)
     }
 
@@ -93,6 +100,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     func trackEvent<RequestBody: Encodable>(
         name: String,
         data: RequestBody?,
+        timestamp: Date? = nil,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
@@ -101,7 +109,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
             return onComplete(.failure(.noCustomerIdentified))
         }
 
-        let trackRequest = TrackRequestBody(name: name, data: data)
+        let trackRequest = TrackRequestBody(name: name, data: data, timestamp: timestamp)
 
         guard let bodyData = jsonAdapter.toJson(trackRequest, encoder: jsonEncoder) else {
             return onComplete(.failure(.http(.noRequestMade(nil))))
