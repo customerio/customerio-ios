@@ -268,4 +268,55 @@ class IdentifyRepositoryTest: UnitTest {
 
         integrationRepository.removeCustomer()
     }
+
+    func test_trackEvent_givenNoIdentifiedCustomer_ExpectFailure() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let expect = expectation(description: "Expect to complete")
+
+        integrationRepository.trackEvent(name: String.random, data: EmptyRequestBody(), timestamp: nil,
+                                         jsonEncoder: nil) { result in
+            guard case .failure(let actualError) = result else { return XCTFail() }
+            guard case .noCustomerIdentified = actualError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    func test_trackEvent_givenHttpFailure_expectGetError() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let givenIdentifier = String.random
+
+        let expect = expectation(description: "Expect to complete")
+        expect.expectedFulfillmentCount = 2
+        integrationRepository
+            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
+                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
+                expect.fulfill()
+            }
+
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+        }
+
+        integrationRepository.trackEvent(name: String.random, data: EmptyRequestBody(), timestamp: nil,
+                                         jsonEncoder: nil) { result in
+            guard case .failure(let actualError) = result else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
+            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        integrationRepository.removeCustomer()
+    }
 }

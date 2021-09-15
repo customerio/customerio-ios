@@ -105,7 +105,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let identifier = self.identifier else {
-            // XXX: we could queue these up instead and trigger when a customer gets identified
+            // XXX: once we have a queue these will instead be optionally backgrounded and trigger when a customer gets identified
             return onComplete(.failure(.noCustomerIdentified))
         }
 
