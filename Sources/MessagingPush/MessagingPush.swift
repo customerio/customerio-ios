@@ -114,7 +114,8 @@ public class MessagingPush: MessagingPushInstance {
         }
 
         let httpRequestParameters =
-            HttpRequestParams(endpoint: .deleteDevice(identifier: identifier, deviceToken: deviceToken),
+            HttpRequestParams(endpoint: .deleteDevice(identifier: identifier,
+                                                      deviceToken: String(apnDeviceToken: deviceToken)),
                               headers: nil, body: bodyData)
 
         httpClient

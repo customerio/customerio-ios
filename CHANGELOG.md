@@ -1,3 +1,10 @@
+# [1.0.0-alpha.10](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.9...1.0.0-alpha.10) (2021-09-15)
+
+
+### Bug Fixes
+
+* remove apn device token profile request body ([#41](https://github.com/customerio/customerio-ios/issues/41)) ([61946c4](https://github.com/customerio/customerio-ios/commit/61946c4dea617561891188aa537277cc67af35ae))
+
 # [1.0.0-alpha.9](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.8...1.0.0-alpha.9) (2021-09-15)
 
 
