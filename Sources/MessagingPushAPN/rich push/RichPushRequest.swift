@@ -23,10 +23,14 @@ internal class RichPushRequest {
 
     func start() {
         pushContent.deepLink = payload.deepLink
+
+        finishImmediately()
     }
 
     func finishImmediately() {
-        completionHandler(pushContent.notificationContent)
+        if let notificationContent = pushContent.notificationContent {
+            completionHandler(notificationContent)
+        }
     }
 }
 #endif
