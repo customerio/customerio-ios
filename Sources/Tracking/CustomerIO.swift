@@ -17,7 +17,6 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: RequestBody?,
-        timestamp: Date?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
@@ -78,10 +77,10 @@ public extension CustomerIOInstance {
 
     func track(
         name: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder? = nil
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        track(name: name, data: EmptyRequestBody(), timestamp: nil, jsonEncoder: jsonEncoder, onComplete: onComplete)
+        track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 }
 
@@ -356,16 +355,16 @@ public class CustomerIO: CustomerIOInstance {
     public func track<RequestBody: Encodable>(
         name: String,
         data: RequestBody,
-        timestamp: Date? = nil,
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))
         }
-
+        
+        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
         identifyRepository
-            .trackEvent(name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder) { [weak self] result in
+            .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
                 DispatchQueue.main.async { [weak self] in
                     guard self != nil else { return }
 

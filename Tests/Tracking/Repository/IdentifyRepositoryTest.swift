@@ -30,6 +30,11 @@ class IdentifyRepositoryTest: UnitTest {
                                                       eventBus: eventBusMock)
     }
 
+    override func tearDown() {
+        super.tearDown()
+        integrationRepository.removeCustomer()
+    }
+
     // MARK: addOrUpdateCustomer
 
     func test_addOrUpdateCustomer_expectCallHttpClientWithCorrectParams() {
@@ -150,7 +155,7 @@ class IdentifyRepositoryTest: UnitTest {
 
     // MARK: trackEvent
 
-    func test_trackEvent_expectCallHttpClientWithCorrectParamsNoBody() {
+    func test_trackEvent_expectCallHttpClientWithEmptyBodyNilTimestamp() {
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
@@ -166,13 +171,15 @@ class IdentifyRepositoryTest: UnitTest {
             }
 
         let givenEventName = String.random
-        let expectedBody = "{\"name\":\"\(givenEventName)\"}".data
-
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            XCTAssertEqual(params.body!, expectedBody)
+            
+            let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
+            XCTAssertEqual(actualBody.name, givenEventName)
+            XCTAssertEqual(actualBody.data, TrackEventData.blank())
+            XCTAssertNil(actualBody.timestamp)
 
             onComplete(Result.success(params.body!))
         }
@@ -184,10 +191,10 @@ class IdentifyRepositoryTest: UnitTest {
 
         waitForExpectations()
 
-        integrationRepository.removeCustomer()
+        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
     }
 
-    func test_trackEvent_expectCallHttpClientWithBody() {
+    func test_trackEvent_expectCallHttpClientWithBodyAndNilTimestamp() {
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
@@ -204,14 +211,16 @@ class IdentifyRepositoryTest: UnitTest {
 
         let givenEventName = String.random
         let givenEventData = TrackEventData.random()
-        let serializedEventData = jsonAdapter.toJson(givenEventData)?.string
-        let expectedBody = "{\"name\":\"\(givenEventName)\",\"data\":\(serializedEventData!)}"
 
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            XCTAssertEqual(params.body!, expectedBody.data)
+            
+            let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
+            XCTAssertEqual(actualBody.name, givenEventName)
+            XCTAssertEqual(actualBody.data, givenEventData)
+            XCTAssertNil(actualBody.timestamp)
 
             onComplete(Result.success(params.body!))
         }
@@ -223,10 +232,10 @@ class IdentifyRepositoryTest: UnitTest {
 
         waitForExpectations()
 
-        integrationRepository.removeCustomer()
+        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
     }
 
-    func test_trackEvent_expectCallHttpClientWithFullParams() {
+    func test_trackEvent_expectCallHttpClientWithBodyAndTimestamp() {
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
@@ -243,18 +252,18 @@ class IdentifyRepositoryTest: UnitTest {
 
         let givenEventName = String.random
         let givenEventData = TrackEventData.random()
-        let serializedEventData = jsonAdapter.toJson(givenEventData)?.string
 
         let givenTimestamp = Date(timeIntervalSince1970: 1631731924)
-
-        let expectedBody =
-            "{\"name\":\"\(givenEventName)\",\"data\":\(serializedEventData!),\"timestamp\":1631731924}"
 
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            XCTAssertEqual(params.body!, expectedBody.data)
+            
+            let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
+            XCTAssertEqual(actualBody.name, givenEventName)
+            XCTAssertEqual(actualBody.data, givenEventData)
+            XCTAssertEqual(actualBody.timestamp, givenTimestamp)
 
             onComplete(Result.success(params.body!))
         }
@@ -266,7 +275,7 @@ class IdentifyRepositoryTest: UnitTest {
 
         waitForExpectations()
 
-        integrationRepository.removeCustomer()
+        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
     }
 
     func test_trackEvent_givenNoIdentifiedCustomer_ExpectFailure() {
@@ -316,7 +325,5 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         waitForExpectations()
-
-        integrationRepository.removeCustomer()
     }
 }

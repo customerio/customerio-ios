@@ -100,7 +100,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     func trackEvent<RequestBody: Encodable>(
         name: String,
         data: RequestBody?,
-        timestamp: Date? = nil,
+        timestamp: Date?,
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {

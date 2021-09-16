@@ -299,6 +299,8 @@ class CustomerIOTest: UnitTest {
         }
 
         waitForExpectations()
+
+        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 1)
     }
 
     func test_track_givenFailedTrackEvent_expectFailureResult() {
@@ -346,5 +348,7 @@ class CustomerIOTest: UnitTest {
         }
 
         waitForExpectations()
+
+        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
     }
 }
