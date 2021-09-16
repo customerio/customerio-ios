@@ -17,9 +17,11 @@ public extension MessagingPush {
     ) -> Bool {
         guard let parsedRequest = RichPushProcessor.process(request) else {
             // push is not sent by CIO. Therefore, end early.
+            print("push not sent by CIO. End early")
             return false
         }
 
+        print("Push sent by CIO. starting request now")
         RichPushRequestHandler.shared.startRequest(request, payload: parsedRequest, completionHandler: contentHandler)
 
         return true

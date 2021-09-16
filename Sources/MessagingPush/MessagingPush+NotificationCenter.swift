@@ -15,11 +15,15 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
+        print("notification came in")
         let pushContent = PushContent(notificationContent: response.notification.request.content)
+        print("parsed content \(pushContent)")
 
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
+            print("push action found")
             if let deepLinkurl = pushContent.deepLink {
+                print("opening URL")
                 UIApplication.shared.open(url: deepLinkurl)
 
                 completionHandler()

@@ -22,6 +22,8 @@ internal class RichPushRequest {
     }
 
     func start() {
+        print("Populating request from payload \(payload)")
+
         pushContent.deepLink = payload.deepLink
 
         finishImmediately()

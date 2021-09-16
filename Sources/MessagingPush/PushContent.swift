@@ -47,6 +47,8 @@ public class PushContent {
         mutableNotificationContent?.title = title
         mutableNotificationContent?.body = body
         mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink
+
+        print("modified push content \(self)")
     }
 
     enum UserInfoKey: String {
