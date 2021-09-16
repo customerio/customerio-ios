@@ -28,15 +28,14 @@ public class PushContent {
         }
     }
 
-    public var notificationContent: UNMutableNotificationContent? {
-        didSet {
-            modifyNotificationContent()
-        }
+    private let mutableNotificationContent: UNMutableNotificationContent?
+    public var notificationContent: UNNotificationContent? {
+        mutableNotificationContent
     }
 
     // Used when modifying push content before showing and for parsing after displaying.
     public init(notificationContent: UNNotificationContent) {
-        self.notificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
+        self.mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
 
         // For parsing after displaying, populate based off of content known now.
         self.title = notificationContent.title
@@ -45,9 +44,9 @@ public class PushContent {
     }
 
     private func modifyNotificationContent() {
-        notificationContent?.title = title
-        notificationContent?.body = body
-        notificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink
+        mutableNotificationContent?.title = title
+        mutableNotificationContent?.body = body
+        mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink
     }
 
     enum UserInfoKey: String {

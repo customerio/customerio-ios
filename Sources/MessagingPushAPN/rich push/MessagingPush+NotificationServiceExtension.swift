@@ -16,6 +16,7 @@ public extension MessagingPush {
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
         guard let parsedRequest = RichPushProcessor.process(request) else {
+            // push is not sent by CIO. Therefore, end early.
             return false
         }
 
