@@ -28,10 +28,7 @@ public class PushContent {
         }
     }
 
-    private let mutableNotificationContent: UNMutableNotificationContent?
-    public var notificationContent: UNNotificationContent? {
-        mutableNotificationContent
-    }
+    public let mutableNotificationContent: UNMutableNotificationContent?
 
     // Used when modifying push content before showing and for parsing after displaying.
     public init(notificationContent: UNNotificationContent) {
@@ -47,8 +44,6 @@ public class PushContent {
         mutableNotificationContent?.title = title
         mutableNotificationContent?.body = body
         mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink
-
-        print("modified push content \(self)")
     }
 
     enum UserInfoKey: String {
