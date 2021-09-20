@@ -11,7 +11,7 @@ import PackageDescription
 let package = Package(
     name: "Customer.io",
     platforms: [
-        .iOS(.v11)
+        .iOS(.v9)
     ],
     products: [ // externally visible products for clients to install. 
         // library name is the name given when installing the SDK. 
@@ -20,12 +20,7 @@ let package = Package(
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     ],
-    dependencies: [
-        .package(name: "Firebase",
-                   url: "https://github.com/firebase/firebase-ios-sdk.git",
-                   from: "8.0.0")
-
-    ],
+    dependencies: [],
     targets: [
         // Tracking
         .target(name: "CioTracking",
@@ -54,7 +49,7 @@ let package = Package(
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN"),
         .target(name: "CioMessagingPushFCM",
-                dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
+                dependencies: ["CioMessagingPush"],
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
