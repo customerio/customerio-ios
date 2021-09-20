@@ -43,7 +43,7 @@ public class PushContent {
     private func modifyNotificationContent() {
         mutableNotificationContent?.title = title
         mutableNotificationContent?.body = body
-        mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink
+        mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink?.absoluteString
     }
 
     enum UserInfoKey: String {
