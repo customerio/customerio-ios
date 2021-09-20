@@ -30,24 +30,35 @@ public class PushContent {
 
     public let mutableNotificationContent: UNMutableNotificationContent?
 
+    public static func parse(notificationContent: UNNotificationContent) -> PushContent? {
+        let raw = notificationContent.userInfo
+
+        guard let cio = raw["CIO"] as? [AnyHashable: Any], let cioPush = cio["push"] as? [AnyHashable: Any] else {
+            // Not a push sent by Customer.io
+            return nil
+        }
+
+        return PushContent(notificationContent: notificationContent, cio: cio, cioPush: cioPush)
+    }
+
     // Used when modifying push content before showing and for parsing after displaying.
-    public init(notificationContent: UNNotificationContent) {
+    public init(notificationContent: UNNotificationContent, cio: [AnyHashable: Any], cioPush: [AnyHashable: Any]) {
         self.mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
 
         // For parsing after displaying, populate based off of content known now.
         self.title = notificationContent.title
         self.body = notificationContent.body
-        self.deepLink = (notificationContent.userInfo[UserInfoKey.deepLink.rawValue] as? String)?.url
+        self.deepLink = (cioPush["link"] as? String)?.url
     }
 
     private func modifyNotificationContent() {
         mutableNotificationContent?.title = title
         mutableNotificationContent?.body = body
-        mutableNotificationContent?.userInfo[UserInfoKey.deepLink.rawValue] = deepLink?.absoluteString
-    }
 
-    enum UserInfoKey: String {
-        case deepLink
+        let cioMutableContent = mutableNotificationContent?.userInfo["CIO"] as? [AnyHashable: Any]
+        var cioPushMutableContent = cioMutableContent?["push"] as? [AnyHashable: Any]
+
+        cioPushMutableContent?["link"] = deepLink?.absoluteString
     }
 }
 #endif

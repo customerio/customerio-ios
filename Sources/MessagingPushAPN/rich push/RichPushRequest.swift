@@ -5,24 +5,20 @@ import UserNotifications
 
 @available(iOS 10.0, *)
 internal class RichPushRequest {
-    private let payload: RichPushPayload
     private let completionHandler: (UNNotificationContent) -> Void
     private let pushContent: PushContent
 
     init(
-        payload: RichPushPayload,
+        pushContent: PushContent,
         request: UNNotificationRequest,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
-        self.payload = payload
         self.completionHandler = completionHandler
-        self.pushContent = PushContent(notificationContent: request.content)
-
-        start()
+        self.pushContent = pushContent
     }
 
     func start() {
-        pushContent.deepLink = payload.deepLink
+        // no async operations or modifications to the notification to do. Therefore, let's just finish.
 
         finishImmediately()
     }

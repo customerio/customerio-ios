@@ -3,6 +3,9 @@ import Foundation
 import UIKit
 import UserNotifications
 
+/**
+ For rich push handling. Methods to call when a rich push UI is interacted with.
+ */
 public extension MessagingPush {
     /**
      A push notification was interacted with.
@@ -15,7 +18,9 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        let pushContent = PushContent(notificationContent: response.notification.request.content)
+        guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content) else {
+            return false
+        }
 
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
@@ -38,7 +43,7 @@ public extension MessagingPush {
      [Learn more](https://developer.apple.com/documentation/swiftui/view/onopenurl(perform:))
      */
     func onOpenURL(_ url: URL) {
-        // A deep link pressed. See if it's one that a CIO notification pressed and track it.
+        // XXX: A deep link pressed. See if it's one that a CIO notification pressed and track it.
     }
 
     /**
@@ -47,7 +52,7 @@ public extension MessagingPush {
      [Learn more](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1623112-application)
      */
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) {
-        // A deep link pressed. See if it's one that a CIO notification pressed and track it.
+        // XXX: A deep link pressed. See if it's one that a CIO notification pressed and track it.
     }
 }
 #endif

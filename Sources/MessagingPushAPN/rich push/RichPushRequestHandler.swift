@@ -1,3 +1,4 @@
+import CioMessagingPush
 import CioTracking
 import Foundation
 #if canImport(UserNotifications)
@@ -13,7 +14,7 @@ internal class RichPushRequestHandler {
 
     func startRequest(
         _ request: UNNotificationRequest,
-        payload: RichPushPayload,
+        content: PushContent,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
         let requestId = request.identifier
@@ -21,8 +22,10 @@ internal class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        let newRequest = RichPushRequest(payload: payload, request: request, completionHandler: completionHandler)
+        let newRequest = RichPushRequest(pushContent: content, request: request, completionHandler: completionHandler)
         requests[requestId] = newRequest
+
+        newRequest.start()
     }
 
     func stopAll() {

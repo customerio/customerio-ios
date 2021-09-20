@@ -3,6 +3,9 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
+/**
+ Functions called in app's Notification Service target.
+ */
 @available(iOS 10.0, *)
 public extension MessagingPush {
     /**
@@ -15,16 +18,20 @@ public extension MessagingPush {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        guard let parsedRequest = RichPushProcessor.process(request) else {
+        guard let pushContent = PushContent.parse(notificationContent: request.content) else {
             // push is not sent by CIO. Therefore, end early.
             return false
         }
 
-        RichPushRequestHandler.shared.startRequest(request, payload: parsedRequest, completionHandler: contentHandler)
+        RichPushRequestHandler.shared.startRequest(request, content: pushContent, completionHandler: contentHandler)
 
         return true
     }
 
+    /**
+     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+     Stop all network requests and modifying and show the push for what it looks like now.
+     */
     func serviceExtensionTimeWillExpire() {
         RichPushRequestHandler.shared.stopAll()
     }
