@@ -262,4 +262,93 @@ class CustomerIOTest: UnitTest {
 
         waitForExpectations()
     }
+
+    // MARK: track
+
+    func test_track_givenSdkNotInialized_expectFailureResult() {
+        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: nil,
+                                keyValueStorage: nil)
+
+        let expect = expectation(description: "Expect to complete track")
+        customerIO.track(name: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .notInitialized = error else { return XCTFail() }
+
+            XCTAssertFalse(self.identifyRepositoryMock.mockCalled)
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    func test_track_expectCallRepository() {
+        let givenEventName = String.random
+        let givenEventData = TrackEventData.random()
+
+        identifyRepositoryMock.trackEventClosure = { actualEventName, actualEventData, _, _, onComplete in
+            XCTAssertEqual(givenEventName, actualEventName)
+            XCTAssertEqual(givenEventData, actualEventData.value as! TrackEventData)
+
+            onComplete(Result.success(()))
+        }
+
+        let expect = expectation(description: "Expect to complete track")
+        customerIO.track(name: givenEventName, data: givenEventData) { result in
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 1)
+    }
+
+    func test_track_givenFailedTrackEvent_expectFailureResult() {
+        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
+            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
+        }
+
+        let expect = expectation(description: "Expect to complete track")
+        expect.expectedFulfillmentCount = 2
+        customerIO.track(name: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    func test_track_givenSuccessfullyAddCustomer_expectSuccessResult() {
+        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
+            onComplete(Result.success(()))
+        }
+
+        let expect = expectation(description: "Expect to complete identify")
+        expect.expectedFulfillmentCount = 2
+        customerIO.track(name: String.random) { result in
+            guard case .success = result else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
+            guard case .success = result else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
+    }
 }

@@ -1,3 +1,10 @@
+# [1.0.0-alpha.11](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.10...1.0.0-alpha.11) (2021-09-20)
+
+
+### Features
+
+* event tracking ([#42](https://github.com/customerio/customerio-ios/issues/42)) ([be768bb](https://github.com/customerio/customerio-ios/commit/be768bbb32680ac0ca8dce098f62720394965f85))
+
 # [1.0.0-alpha.10](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.9...1.0.0-alpha.10) (2021-09-15)
 
 
