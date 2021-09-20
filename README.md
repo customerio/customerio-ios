@@ -153,6 +153,32 @@ CustomerIO.shared.identify(identifier: "989388339", body: IdentifyRequestBody(fi
 
 > Tip: See [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
 
+## Track a custom event
+
+Once you've identified a customer, you can use the `track` method to capture customer activity and send it Customer.io, optionally supplying event data with your request
+
+```swift
+import CioTracking
+
+// Events can just be specified by name
+CustomerIO.shared.track(name: "logged_in")
+
+// Or with a `data` parameter
+CustomerIO.shared.track(name: "enabled_feature", data: ["id": "shopping", "version": "0.1.2"])
+
+// The parameter `data` accepts any `Encodable` object that generates a hash, this could be
+
+// 1. A dictionary:
+CustomerIO.shared.track(name: "purchase", data: ["product": "socks", "price": 23.45])
+
+// 2. A custom `Encodable` type:
+struct Purchase: Encodable {
+  let product: String
+  let price: Double
+}
+CustomerIO.shared.track(name: "purchase", data: Purchase(product: "socks", price: 23.45))
+```
+
 ## Stop identifying a customer
 
 In your app you may need to stop identifying a profile in the Customer.io SDK. There are 2 ways to do that:
