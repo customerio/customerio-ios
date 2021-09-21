@@ -160,16 +160,33 @@ Once you've identified a customer, you can use the `track` method to capture cus
 ```swift
 import CioTracking
 
-// Events can just be specified by name
-CustomerIO.shared.track(name: "logged_in")
+// - name: the name of the event to track
+// - data: (Optional) The event body to send as an Encodable object. If not specified it will default to `{}`
+// - jsonEncoder: (Optional) Custom `JSONEncoder` that you want to use to encode the `body` parameter. 
+// default: https://github.com/customerio/customerio-ios/blob/1.0.0-alpha.5/Sources/Tracking/Util/JsonAdapter.swift#L38-L43
+// - onComplete: Asynchronous callback with the result of the SDK attempting to identify the profile. 
+CustomerIO.shared.track(name: "logged_in", data: ["ip": "127.0.0.1"]){ [weak self] result in
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
 
-// Or with a `data` parameter
-CustomerIO.shared.track(name: "enabled_feature", data: ["id": "shopping", "version": "0.1.2"])
+    switch result {
+    case .success: 
+      // Successfully tracked an event in your workspace!
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
 
-// The parameter `data` accepts any `Encodable` object that generates a hash, this could be
+// The `data` parameter can be optionally skipped
+CustomerIO.shared.track(name: "played_game")
+
+// If specified the `data` accepts any `Encodable` object that generates a hash, this could be:
 
 // 1. A dictionary:
-CustomerIO.shared.track(name: "purchase", data: ["product": "socks", "price": 23.45])
+let data = ["product": "socks", "price": "23.45"]
+CustomerIO.shared.track(name: "purchase", data: data)
 
 // 2. A custom `Encodable` type:
 struct Purchase: Encodable {
