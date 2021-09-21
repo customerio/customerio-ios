@@ -153,6 +153,49 @@ CustomerIO.shared.identify(identifier: "989388339", body: IdentifyRequestBody(fi
 
 > Tip: See [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
 
+## Track a custom event
+
+Once you've identified a customer, you can use the `track` method to capture customer activity and send it Customer.io, optionally supplying event data with your request
+
+```swift
+import CioTracking
+
+// - name: the name of the event to track
+// - data: (Optional) The event body to send as an Encodable object. If not specified it will default to `{}`
+// - jsonEncoder: (Optional) Custom `JSONEncoder` that you want to use to encode the `body` parameter. 
+// default: https://github.com/customerio/customerio-ios/blob/1.0.0-alpha.5/Sources/Tracking/Util/JsonAdapter.swift#L38-L43
+// - onComplete: Asynchronous callback with the result of the SDK attempting to identify the profile. 
+CustomerIO.shared.track(name: "logged_in", data: ["ip": "127.0.0.1"]){ [weak self] result in
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
+
+    switch result {
+    case .success: 
+      // Successfully tracked an event in your workspace!
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
+
+// The `data` parameter can be optionally skipped
+CustomerIO.shared.track(name: "played_game")
+
+// If specified the `data` accepts any `Encodable` object that generates a hash, this could be:
+
+// 1. A dictionary:
+let data = ["product": "socks", "price": "23.45"]
+CustomerIO.shared.track(name: "purchase", data: data)
+
+// 2. A custom `Encodable` type:
+struct Purchase: Encodable {
+  let product: String
+  let price: Double
+}
+CustomerIO.shared.track(name: "purchase", data: Purchase(product: "socks", price: 23.45))
+```
+
 ## Stop identifying a customer
 
 In your app you may need to stop identifying a profile in the Customer.io SDK. There are 2 ways to do that:
@@ -175,16 +218,31 @@ Want to send push notification messages to your customer's devices? Great!
 
 1. Install the SDK `MessagingPushAPN` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
 
-2. Setup the APN service and receive a device token from APN. 
+2. Setup the APN service by enabling Push Notifications in XCode under App > Capabilities.
 
-   // TODO add instructions on how to do this. 
-
-3. In your `AppDelegate` class, call the Customer.io SDK:
+3. After initializing the SDK, register for remote push to receive a device token from APN. Then, call the Customer.io SDK to add the token to the user profile:
 
    ```swift
    import CioMessagingPushAPN
    
    class AppDelegate: NSObject, UIApplicationDelegate {
+   
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY")
+
+        // You can optionally provide a Region to set the Region for your Workspace:
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU)
+
+        // It's good practice to always register for remote push when the app starts.
+        // This asserts that the Customer.io SDK always has a valid APN device token to use.
+        UIApplication.shared.registerForRemoteNotifications()
+
+        return true
+     }
+     
      func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
        MessagingPush.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken) { [weak self] result in 
          // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
@@ -220,6 +278,7 @@ Want to send push notification messages to your customer's devices? Great!
    ```
 
 4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
+
 5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
 
 # Error handling 

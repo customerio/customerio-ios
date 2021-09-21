@@ -62,7 +62,7 @@ class MessagingPushTest: UnitTest {
 
     func test_registerDeviceToken_expectFailIfNoCustomerIdentified() {
         let expect = expectation(description: "Expect to fail to register device token")
-        messagingPush.registerDeviceToken(String.random.data!) { result in
+        messagingPush.registerDeviceToken(String.random) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .noCustomerIdentified = error else { return XCTFail() }
             expect.fulfill()
@@ -76,7 +76,7 @@ class MessagingPushTest: UnitTest {
     func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
         let push = pushSetup()
 
-        let actualToken = String.random.data!
+        let actualToken = String.random
 
         let expect = expectation(description: "Expect to persist token")
         push.registerDeviceToken(actualToken) { result in
@@ -98,7 +98,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
         }
 
-        let actualToken = String.random.data!
+        let actualToken = String.random
 
         let expect = expectation(description: "Expect to persist token")
         push.registerDeviceToken(actualToken) { result in
@@ -155,7 +155,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.success(Data()))
         }
 
-        push.deviceToken = String.random.data!
+        push.deviceToken = String.random
 
         let expect = expectation(description: "Expect to clear token in memory")
         push.deleteDeviceToken { result in
@@ -176,7 +176,7 @@ class MessagingPushTest: UnitTest {
             onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
         }
 
-        push.deviceToken = String.random.data!
+        push.deviceToken = String.random
 
         let expect = expectation(description: "Expect request to fail")
         push.deleteDeviceToken { result in

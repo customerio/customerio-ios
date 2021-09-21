@@ -2,7 +2,7 @@ import CioTracking
 import Foundation
 
 public protocol MessagingPushInstance: AutoMockable {
-    func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func registerDeviceToken(_ deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func trackMetric(
         deliveryID: String,
@@ -27,7 +27,7 @@ public class MessagingPush: MessagingPushInstance {
 
     private var identifyCustomerEventBusCallback: NSObjectProtocol?
 
-    @Atomic public var deviceToken: Data?
+    @Atomic public var deviceToken: String?
 
     /// testing init
     internal init(customerIO: CustomerIO?, httpClient: HttpClient, jsonAdapter: JsonAdapter, eventBus: EventBus) {
@@ -66,9 +66,9 @@ public class MessagingPush: MessagingPushInstance {
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
      */
-    public func registerDeviceToken(_ deviceToken: Data,
+    public func registerDeviceToken(_ deviceToken: String,
                                     onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let device = Device(token: String(apnDeviceToken: deviceToken), lastUsed: Date())
+        let device = Device(token: deviceToken, lastUsed: Date())
         guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
             return onComplete(.failure(.http(.noRequestMade(nil))))
         }
@@ -121,7 +121,7 @@ public class MessagingPush: MessagingPushInstance {
 
         let httpRequestParameters =
             HttpRequestParams(endpoint: .deleteDevice(identifier: identifier,
-                                                      deviceToken: String(apnDeviceToken: deviceToken)),
+                                                      deviceToken: deviceToken),
                               headers: nil, body: bodyData)
 
         httpClient
