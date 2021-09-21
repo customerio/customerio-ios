@@ -4,7 +4,7 @@ import Foundation
 
 public protocol MessagingPushFCMInstance: AutoMockable {
     // sourcery:Name=didReceiveRegistrationToken
-    func application(
+    func messaging(
         _ messaging: Any,
         didReceiveRegistrationToken fcmToken: String?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
