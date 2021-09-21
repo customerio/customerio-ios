@@ -14,7 +14,7 @@ public extension TrackEventData {
                        count: Int.random(in: 1 ... 10),
                        price: Int.random(in: 10 ... 100))
     }
-    
+
     static func blank() -> TrackEventData {
         TrackEventData(product: nil, count: nil, price: nil)
     }
