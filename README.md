@@ -175,7 +175,7 @@ Want to send push notification messages to your customer's devices? Great!
 
 1. Install the SDK `MessagingPushAPN` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
 
-2. Enable the APN service by opening the project editor, navigating to the Capabilities tab, and toggling Push Notifications to "ON".
+2. Setup the APN service by enabling Push Notifications in XCode under App > Capabilities.
 
 3. After initializing the SDK, register for remote push to receive a device token from APN. Then, call the Customer.io SDK to add the token to the user profile:
 
