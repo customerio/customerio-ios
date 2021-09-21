@@ -153,6 +153,49 @@ CustomerIO.shared.identify(identifier: "989388339", body: IdentifyRequestBody(fi
 
 > Tip: See [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
 
+## Track a custom event
+
+Once you've identified a customer, you can use the `track` method to capture customer activity and send it Customer.io, optionally supplying event data with your request
+
+```swift
+import CioTracking
+
+// - name: the name of the event to track
+// - data: (Optional) The event body to send as an Encodable object. If not specified it will default to `{}`
+// - jsonEncoder: (Optional) Custom `JSONEncoder` that you want to use to encode the `body` parameter. 
+// default: https://github.com/customerio/customerio-ios/blob/1.0.0-alpha.5/Sources/Tracking/Util/JsonAdapter.swift#L38-L43
+// - onComplete: Asynchronous callback with the result of the SDK attempting to identify the profile. 
+CustomerIO.shared.track(name: "logged_in", data: ["ip": "127.0.0.1"]){ [weak self] result in
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
+
+    switch result {
+    case .success: 
+      // Successfully tracked an event in your workspace!
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
+
+// The `data` parameter can be optionally skipped
+CustomerIO.shared.track(name: "played_game")
+
+// If specified the `data` accepts any `Encodable` object that generates a hash, this could be:
+
+// 1. A dictionary:
+let data = ["product": "socks", "price": "23.45"]
+CustomerIO.shared.track(name: "purchase", data: data)
+
+// 2. A custom `Encodable` type:
+struct Purchase: Encodable {
+  let product: String
+  let price: Double
+}
+CustomerIO.shared.track(name: "purchase", data: Purchase(product: "socks", price: 23.45))
+```
+
 ## Stop identifying a customer
 
 In your app you may need to stop identifying a profile in the Customer.io SDK. There are 2 ways to do that:
