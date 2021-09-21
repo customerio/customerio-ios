@@ -4,6 +4,12 @@ import Foundation
 public protocol MessagingPushInstance: AutoMockable {
     func registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func trackMetric(
+        deliveryID: String,
+        event: Metric,
+        deviceToken: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 }
 
 /**
@@ -126,6 +132,38 @@ public class MessagingPush: MessagingPushInstance {
                     switch result {
                     case .success:
                         self.deviceToken = nil
+                        onComplete(Result.success(()))
+                    case .failure(let error):
+                        onComplete(Result.failure(.http(error)))
+                    }
+                }
+            }
+    }
+
+    /**
+        Track a push metric
+     */
+    public func trackMetric(
+        deliveryID: String,
+        event: Metric,
+        deviceToken: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        let request = MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken, timestamp: Date())
+
+        guard let bodyData = jsonAdapter.toJson(request) else {
+            return onComplete(.failure(.http(.noRequestMade(nil))))
+        }
+
+        let httpRequestParameters =
+            HttpRequestParams(endpoint: .pushMetrics,
+                              headers: nil, body: bodyData)
+
+        httpClient
+            .request(httpRequestParameters) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
                         onComplete(Result.success(()))
                     case .failure(let error):
                         onComplete(Result.failure(.http(error)))

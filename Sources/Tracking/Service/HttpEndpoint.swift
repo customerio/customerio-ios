@@ -6,6 +6,7 @@ public enum HttpEndpoint {
     case registerDevice(identifier: String)
     case deleteDevice(identifier: String, deviceToken: String)
     case trackCustomerEvent(identifier: String)
+    case pushMetrics
 
     var path: String {
         switch self {
@@ -14,6 +15,7 @@ public enum HttpEndpoint {
         case .registerDevice(let identifier): return "/customers/\(identifier)/devices"
         case .deleteDevice(let identifier, let deviceToken): return "/customers/\(identifier)/devices/\(deviceToken)"
         case .trackCustomerEvent(let identifier): return "/customers/\(identifier)/events"
+        case .pushMetrics: return "/push/events"
         }
     }
 
@@ -24,6 +26,7 @@ public enum HttpEndpoint {
         case .registerDevice: return "PUT"
         case .deleteDevice: return "DELETE"
         case .trackCustomerEvent: return "POST"
+        case .pushMetrics: return "POST"
         }
     }
 }
