@@ -1,3 +1,10 @@
+# [1.0.0-alpha.12](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.11...1.0.0-alpha.12) (2021-09-21)
+
+
+### Features
+
+* register device token with FCM ([#46](https://github.com/customerio/customerio-ios/issues/46)) ([f6a87e0](https://github.com/customerio/customerio-ios/commit/f6a87e0e889b9fdac2c8093a8f4fb4f5f0e9ea2a))
+
 # [1.0.0-alpha.11](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.10...1.0.0-alpha.11) (2021-09-20)
 
 
