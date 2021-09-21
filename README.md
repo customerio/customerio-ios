@@ -177,7 +177,7 @@ Want to send push notification messages to your customer's devices? Great!
 
 2. Setup the APN service and receive a device token from APN. 
 
-   // TODO add instructions on how to do this. 
+[Follow steps 1 and 2 from this document](https://customer.io/docs/push-developer-guide/#ios-app-setup) and then proceed with SDK setup below.    
 
 3. In your `AppDelegate` class, call the Customer.io SDK:
 
