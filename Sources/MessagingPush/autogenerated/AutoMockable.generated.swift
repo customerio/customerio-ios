@@ -98,21 +98,22 @@ public class MessagingPushInstanceMock: MessagingPushInstance {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: (deviceToken: Data,
+    public private(set) var registerDeviceTokenReceivedArguments: (deviceToken: String,
                                                                    onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [(deviceToken: Data,
+    public private(set) var registerDeviceTokenReceivedInvocations: [(deviceToken: String,
                                                                       onComplete: (Result<Void, CustomerIOError>)
                                                                           -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var registerDeviceTokenClosure: ((Data, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var registerDeviceTokenClosure: ((String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(_ deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func registerDeviceToken(_ deviceToken: Data,
-                                    onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
-    {
+    /// Mocked function for `registerDeviceToken(_ deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerDeviceToken(
+        _ deviceToken: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
         registerDeviceTokenReceivedArguments = (deviceToken: deviceToken, onComplete: onComplete)

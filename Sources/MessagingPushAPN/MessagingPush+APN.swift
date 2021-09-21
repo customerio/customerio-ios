@@ -27,7 +27,7 @@ public extension MessagingPush {
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        registerDeviceToken(deviceToken, onComplete: onComplete)
+        registerDeviceToken(String(apnDeviceToken: deviceToken), onComplete: onComplete)
     }
 
     func application(
