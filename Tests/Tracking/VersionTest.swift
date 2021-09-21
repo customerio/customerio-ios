@@ -6,6 +6,6 @@ import XCTest
 class VersionTest: XCTestCase {
     func test_versionValidSemanticVersion() {
         // regex: https://regexr.com/65mpt
-        XCTAssertTrue(SdkVersion.version.matches(regex: #"(\d+)\.(\d+)\.(\d+)(-alpha|-beta)*(\.\d)*"#))
+        XCTAssertTrue(SdkVersion.version.matches(regex: #"(\d)+\.(\d)+\.(\d)+(-alpha|-beta)*(\.\d)*"#))
     }
 }
