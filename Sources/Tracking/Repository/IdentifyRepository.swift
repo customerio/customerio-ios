@@ -1,6 +1,8 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
+    var identifier: String? { get }
+
     func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
         // sourcery:Type=AnyEncodable
@@ -10,7 +12,18 @@ internal protocol IdentifyRepository: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
     func removeCustomer()
-    var identifier: String? { get }
+
+    func trackEvent<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
+
+    func getIdentifier() -> String?
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -21,6 +34,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     private let siteId: String
 
     public var identifier: String? {
+        getIdentifier()
+    }
+
+    public func getIdentifier() -> String? {
         keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId)
     }
 
@@ -78,5 +95,43 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
     func removeCustomer() {
         keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileId)
+    }
+
+    func trackEvent<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let identifier = self.identifier else {
+            // XXX: these could actually do one of
+            // - fail
+            // - send as anonymous events
+            // - enqueue until a customer is identified
+            // choosing to have them fail while we don't have a bg queue & while we discuss
+            // plans for anonymous / pre-identify activity
+            return onComplete(.failure(.noCustomerIdentified))
+        }
+
+        let trackRequest = TrackRequestBody(name: name, data: data, timestamp: timestamp)
+
+        guard let bodyData = jsonAdapter.toJson(trackRequest, encoder: jsonEncoder) else {
+            return onComplete(.failure(.http(.noRequestMade(nil))))
+        }
+
+        let httpRequestParameters = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: identifier),
+                                                      headers: nil,
+                                                      body: bodyData)
+
+        httpClient
+            .request(httpRequestParameters) { result in
+                switch result {
+                case .success:
+                    onComplete(Result.success(()))
+                case .failure(let error):
+                    onComplete(Result.failure(.http(error)))
+                }
+            }
     }
 }
