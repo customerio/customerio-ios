@@ -175,7 +175,7 @@ class IdentifyRepositoryTest: UnitTest {
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            
+
             let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
             XCTAssertEqual(actualBody.name, givenEventName)
             XCTAssertEqual(actualBody.data, TrackEventData.blank())
@@ -216,7 +216,7 @@ class IdentifyRepositoryTest: UnitTest {
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            
+
             let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
             XCTAssertEqual(actualBody.name, givenEventName)
             XCTAssertEqual(actualBody.data, givenEventData)
@@ -259,7 +259,7 @@ class IdentifyRepositoryTest: UnitTest {
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
             XCTAssertEqual(actualIdentifier, givenIdentifier)
-            
+
             let actualBody: TrackRequestDecodable = self.jsonAdapter.fromJson(params.body!)!
             XCTAssertEqual(actualBody.name, givenEventName)
             XCTAssertEqual(actualBody.data, givenEventData)

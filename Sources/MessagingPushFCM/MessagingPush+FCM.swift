@@ -2,11 +2,11 @@ import CioMessagingPush
 import CioTracking
 import Foundation
 
-public protocol MessagingPushAPNInstance: AutoMockable {
-    // sourcery:Name=didRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data,
+public protocol MessagingPushFCMInstance: AutoMockable {
+    // sourcery:Name=didReceiveRegistrationToken
+    func messaging(
+        _ messaging: Any,
+        didReceiveRegistrationToken fcmToken: String?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
 
@@ -19,15 +19,18 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 /**
- MessagingPush extension to support APN push notification messaging.
+ MessagingPush extension to support FCM push notification messaging.
   */
 public extension MessagingPush {
-    func application(
-        _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data,
+    func messaging(
+        _ messaging: Any,
+        didReceiveRegistrationToken fcmToken: String?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        registerDeviceToken(String(apnDeviceToken: deviceToken), onComplete: onComplete)
+        guard let deviceToken = fcmToken else {
+            return onComplete(Result.success(()))
+        }
+        registerDeviceToken(deviceToken, onComplete: onComplete)
     }
 
     func application(

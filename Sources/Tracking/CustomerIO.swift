@@ -361,7 +361,7 @@ public class CustomerIO: CustomerIOInstance {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))
         }
-        
+
         // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
         identifyRepository
             .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
