@@ -11,7 +11,7 @@ import PackageDescription
 let package = Package(
     name: "Customer.io",
     platforms: [
-        .iOS(.v9)
+        .iOS(.v13)
     ],
     products: [ // externally visible products for clients to install. 
         // library name is the name given when installing the SDK. 

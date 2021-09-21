@@ -6,7 +6,6 @@ import UserNotifications
 /**
  Functions called in app's Notification Service target.
  */
-@available(iOS 10.0, *)
 public extension MessagingPush {
     /**
      - returns:

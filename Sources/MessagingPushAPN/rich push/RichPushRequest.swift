@@ -3,7 +3,6 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
-@available(iOS 10.0, *)
 internal class RichPushRequest {
     private let completionHandler: (UNNotificationContent) -> Void
     private let pushContent: PushContent

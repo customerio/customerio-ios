@@ -12,7 +12,6 @@ public extension MessagingPush {
 
      - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.
      */
-    @available(iOS 10.0, *)
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

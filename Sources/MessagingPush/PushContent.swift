@@ -8,7 +8,6 @@ import UserNotifications
  Meant to be used by the SDK to set/get the push content but also designed for SDK user to further modify the push
  if they wish.
  */
-@available(iOS 10.0, *)
 public class PushContent {
     public var title: String {
         didSet {

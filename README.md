@@ -1,5 +1,5 @@
 ![min swift version is 5.3](https://img.shields.io/badge/min%20Swift%20version-5.3-orange)
-![min ios version is 9](https://img.shields.io/badge/min%20iOS%20version-9-blue)
+![min ios version is 13](https://img.shields.io/badge/min%20iOS%20version-13-blue)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md) 
 
 # Customer.io iOS SDK

@@ -4,7 +4,6 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
-@available(iOS 10.0, *)
 internal class RichPushRequestHandler {
     static let shared = RichPushRequestHandler()
 
