@@ -59,7 +59,9 @@ import Foundation
  enum that contains list of all dependencies in our app.
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
-internal enum DependencyMessagingPushFCM: CaseIterable {}
+internal enum DependencyMessagingPushFCM: CaseIterable {
+    case diPlaceholder
+}
 
 /**
  Dependency injection graph specifically with dependencies in the MessagingPushFCM module.
@@ -96,10 +98,24 @@ internal class DIMessagingPushFCM {
      Use this generic method of getting a dependency, if you wish.
      */
     internal func inject<T>(_ dep: DependencyMessagingPushFCM) -> T {
-        switch dep {}
+        switch dep {
+        case .diPlaceholder: return diPlaceholder as! T
+        }
     }
 
     /**
      Use the property accessors below to inject pre-typed dependencies.
      */
+
+    // DiPlaceholder
+    internal var diPlaceholder: DiPlaceholder {
+        if let overridenDep = overrides[.diPlaceholder] {
+            return overridenDep as! DiPlaceholder
+        }
+        return newDiPlaceholder
+    }
+
+    private var newDiPlaceholder: DiPlaceholder {
+        DiPlaceholder()
+    }
 }

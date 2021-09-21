@@ -41,3 +41,6 @@ public extension MessagingPush {
         deleteDeviceToken(onComplete: onComplete)
     }
 }
+
+// sourcery: InjectRegister = "DiPlaceholder"
+internal class DiPlaceholder {}
