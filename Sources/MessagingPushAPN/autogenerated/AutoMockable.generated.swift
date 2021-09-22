@@ -89,6 +89,40 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
+    // MARK: - registerDeviceToken
+
+    /// Number of times the function was called.
+    public private(set) var registerAPNDeviceTokenCallsCount = 0
+    /// `true` if the function was ever called.
+    public var registerAPNDeviceTokenCalled: Bool {
+        registerAPNDeviceTokenCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var registerAPNDeviceTokenReceivedArguments: (apnDeviceToken: Data,
+                                                                      onComplete: (Result<Void, CustomerIOError>)
+                                                                          -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var registerAPNDeviceTokenReceivedInvocations: [(apnDeviceToken: Data,
+                                                                         onComplete: (Result<Void, CustomerIOError>)
+                                                                             -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var registerAPNDeviceTokenClosure: ((Data, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+
+    /// Mocked function for `registerDeviceToken(apnDeviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerDeviceToken(
+        apnDeviceToken: Data,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        mockCalled = true
+        registerAPNDeviceTokenCallsCount += 1
+        registerAPNDeviceTokenReceivedArguments = (apnDeviceToken: apnDeviceToken, onComplete: onComplete)
+        registerAPNDeviceTokenReceivedInvocations.append((apnDeviceToken: apnDeviceToken, onComplete: onComplete))
+        registerAPNDeviceTokenClosure?(apnDeviceToken, onComplete)
+    }
+
     // MARK: - application
 
     /// Number of times the function was called.
