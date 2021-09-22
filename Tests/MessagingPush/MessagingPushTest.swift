@@ -192,6 +192,42 @@ class MessagingPushTest: UnitTest {
         XCTAssertTrue(httpClientMock.requestCalled)
     }
 
+    // MARK: trackMetric
+
+    func test_trackMetric_givenHttpSuccess_expectSuccess() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.success(Data()))
+        }
+
+        let expect = expectation(description: "Expect trackMetric to succeed")
+        messagingPush.trackMetric(deliveryID: String.random, event: .delivered, deviceToken: String.random) { result in
+            guard case .success = result else { return XCTFail() }
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertTrue(httpClientMock.requestCalled)
+    }
+
+    func test_trackMetric_givenHttpFailure_expectFailure() {
+        httpClientMock.requestClosure = { params, onComplete in
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+        }
+
+        let expect = expectation(description: "Expect trackMetric to fail")
+        messagingPush.trackMetric(deliveryID: String.random, event: .delivered, deviceToken: String.random) { result in
+            guard case .failure(let actualError) = result else { return XCTFail() }
+            guard case .http(let httpError) = actualError else { return XCTFail() }
+            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertTrue(httpClientMock.requestCalled)
+    }
+
     // MARK: deinit
 
     func test_givenNilObject_expectDeinit() {
