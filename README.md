@@ -208,7 +208,7 @@ In your app you may need to stop identifying a profile in the Customer.io SDK. T
 CustomerIO.shared.clearIdentify()
 ```
 
-# Send Push notifications 
+# Push notifications 
 
 Want to send push notification messages to your customer's devices? Great!
 
@@ -280,6 +280,168 @@ Want to send push notification messages to your customer's devices? Great!
 4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
 
 5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
+
+
+
+## Rich push
+
+Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
+
+> Note: At this time, the Customer.io SDK works with deep links, only. If you want to do something like showing an image in a push notifications, you need to add custom code to do that. It's recommended to still use the SDK as it will be much easier. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
+
+> Note: Follow the instructions above for setting up APN push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
+
+1. Create a Notification Service Extension in Xcode.  `File > New > Target`. Then, select `Notification Service Extension` in the iOS section. Answer all of the questions to finish the process. 
+
+2. You should now see a new file added to your Xcode project. The file is probably named `NotificationService` and looks similar to this:
+
+   ```swift
+   import UserNotifications
+   
+   class NotificationService: UNNotificationServiceExtension {
+   
+       override func didReceive(
+           _ request: UNNotificationRequest,
+           withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+       ) {
+   
+       }
+   
+       override func serviceExtensionTimeWillExpire() {
+   
+       }
+   }
+   ```
+
+3. Modify this file by calling the appropriate Customer.io functions:
+
+   ```swift
+   import CioMessagingPush
+   import CioMessagingPushAPN
+   import UserNotifications
+   
+   class NotificationService: UNNotificationServiceExtension {
+   
+       override func didReceive(
+           _ request: UNNotificationRequest,
+           withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+       ) {
+           // For simple apps that only use Customer.io for sending rich push messages,
+           // This 1 line of code is all that you need!
+           MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+   
+           /**
+            // If you use more service then Customer.io for sending rich push messages,
+            // you can check if the SDK handled the rich push for you. If it did not, you
+            // know that the push was *not* sent by Customer.io and you can try another way.
+            let handled = MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+            if !handled {
+                // Rich push was *not* sent by Customer.io. Handle the rish push in another way.
+            }
+            // If you need to expand the functionality of the Customer.io SDK to 
+            // show an image in your push, for example, you can set your own completion handler.
+            MessagingPush.shared.didReceive(request) { notificationContent in
+                if let mutableContent = notificationContent.mutableCopy() as? UNMutableNotificationContent {
+                    // Modify the push notification like adding an image to the push!
+                }
+                contentHandler(notificationContent)
+            }
+             */
+       }
+   
+       override func serviceExtensionTimeWillExpire() {
+           MessagingPush.shared.serviceExtensionTimeWillExpire()
+       }
+   }
+   ```
+
+4. Technically, you are complete and Customer.io is now able to display rich push notifications in your app. If you want to enable deep links in your rich push notification, read the [Deep links](#deep-links) section below.
+
+   It's time to send yourself a push in Customer.io. Send a *Custom Payload* using this template:
+
+   ```json
+   {
+       "CIO": {
+           "push": {
+               "link": "remote-habits://deep?message=hello&message2=world"
+           }
+       },
+       "aps": {
+           "mutable-content": 1,
+           "alert": {
+               "title": "Title of your push goes here!",
+               "body": "Body of your push goes here!"
+           }
+       }
+   }
+   ```
+
+Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
+
+## Deep links
+
+After you have followed the setup instructions for [setting up rich push notifications](#rich-push) you can enable deep links in rich push notifications. 
+
+1. Modify your `AppDelegate` with the following information:
+
+   ```swift
+   import CioMessagingPushAPN
+   import CioTracking
+   import Foundation
+   import UIKit
+   
+   class AppDelegate: NSObject, UIApplicationDelegate {
+       func application(
+           _ application: UIApplication,
+           didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+       ) -> Bool {
+           CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.US)
+   
+           // Must call this function in order for `UNUserNotificationCenterDelegate` functions
+           // to be called.
+           UNUserNotificationCenter.current().delegate = self
+   
+           // It's good practice to always register for remote push when the app starts.
+           // This asserts that the Customer.io SDK always has a valid APN device token to use.
+           UIApplication.shared.registerForRemoteNotifications()
+   
+           return true
+       }
+   }
+   
+   extension AppDelegate: UNUserNotificationCenterDelegate {
+       func userNotificationCenter(
+           _ center: UNUserNotificationCenter,
+           didReceive response: UNNotificationResponse,
+           withCompletionHandler completionHandler: @escaping () -> Void
+       ) {
+           let handled = MessagingPush.shared.userNotificationCenter(center, didReceive: response,
+                                                                 withCompletionHandler: completionHandler)
+   
+           // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
+           // completion handler. If the SDK did handle it, it called the completion handler for you.
+           if !handled {
+               completionHandler()
+           }
+       }
+   
+       // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
+       // the completion handler.
+       @available(iOS 10.0, *)
+       func userNotificationCenter(
+           _ center: UNUserNotificationCenter,
+           willPresent notification: UNNotification,
+           withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+       ) {
+           completionHandler([.list, .banner, .badge, .sound])
+       }
+   }
+   ```
+
+2. Great! Now when a push notification is touched that should launch a deep link, the Customer.io SDK will open the deep link URL for you. 
+3. Lastly, you need to setup deep linking in your app. You have 2 methods to do this. 
+   1. **Universal Links**. TODO link to set this up. 
+   2. **App scheme**. TODO link to setup this up. 
 
 # Error handling 
 
