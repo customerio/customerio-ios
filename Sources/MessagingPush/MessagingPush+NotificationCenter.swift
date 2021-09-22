@@ -35,23 +35,5 @@ public extension MessagingPush {
 
         return false
     }
-
-    /**
-     SwiftUI app's way to open deep links opening up an app.
-
-     [Learn more](https://developer.apple.com/documentation/swiftui/view/onopenurl(perform:))
-     */
-    func onOpenURL(_ url: URL) {
-        // XXX: A deep link pressed. See if it's one that a CIO notification pressed and track it.
-    }
-
-    /**
-     UIKit's way to open deep links opening up an app.
-
-     [Learn more](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1623112-application)
-     */
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) {
-        // XXX: A deep link pressed. See if it's one that a CIO notification pressed and track it.
-    }
 }
 #endif

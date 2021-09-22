@@ -28,10 +28,8 @@ internal class RichPushRequestHandler {
     }
 
     func stopAll() {
-        requests.forEach { item in
-            let request = item.value
-
-            request.finishImmediately()
+        requests.forEach {
+            $0.value.finishImmediately()
         }
 
         requests = [:]
