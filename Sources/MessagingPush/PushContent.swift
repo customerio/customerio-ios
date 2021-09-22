@@ -27,6 +27,25 @@ public class PushContent {
         }
     }
 
+    public var image: URL? {
+        didSet {
+            modifyNotificationContent()
+        }
+    }
+
+    public func addImage(localFilePath: URL) {
+        guard let imageAttachment = try? UNNotificationAttachment(identifier: "image.jpg", url: localFilePath,
+                                                                  options: nil)
+        else {
+            return
+        }
+
+        var existingAttachments = mutableNotificationContent?.attachments ?? []
+        existingAttachments.append(imageAttachment)
+
+        mutableNotificationContent?.attachments = existingAttachments
+    }
+
     public let mutableNotificationContent: UNMutableNotificationContent?
 
     public static func parse(notificationContent: UNNotificationContent) -> PushContent? {
@@ -48,6 +67,7 @@ public class PushContent {
         self.title = notificationContent.title
         self.body = notificationContent.body
         self.deepLink = (cioPush["link"] as? String)?.url
+        self.image = (cioPush["image"] as? String)?.url
     }
 
     private func modifyNotificationContent() {
@@ -58,6 +78,7 @@ public class PushContent {
         var cioPushMutableContent = cioMutableContent?["push"] as? [AnyHashable: Any]
 
         cioPushMutableContent?["link"] = deepLink?.absoluteString
+        cioPushMutableContent?["image"] = image?.absoluteString
     }
 }
 #endif

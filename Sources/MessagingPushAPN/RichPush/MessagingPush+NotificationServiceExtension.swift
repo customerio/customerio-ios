@@ -22,7 +22,8 @@ public extension MessagingPush {
             return false
         }
 
-        RichPushRequestHandler.shared.startRequest(request, content: pushContent, completionHandler: contentHandler)
+        RichPushRequestHandler.shared.startRequest(request, content: pushContent, customerIO: customerIO,
+                                                   completionHandler: contentHandler)
 
         return true
     }

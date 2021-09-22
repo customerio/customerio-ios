@@ -10,6 +10,8 @@ public protocol HttpClient: AutoMockable {
         _ params: HttpRequestParams,
         onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
     )
+    func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)
+    func cancel(finishTasks: Bool)
 }
 
 public class CIOHttpClient: HttpClient {
@@ -35,6 +37,10 @@ public class CIOHttpClient: HttpClient {
 
     deinit {
         self.session.finishTasksAndInvalidate()
+    }
+
+    public func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
+        httpRequestRunner.downloadFile(url: url, onComplete: onComplete)
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -76,6 +82,10 @@ public class CIOHttpClient: HttpClient {
 
             onComplete(.success(data))
         }
+    }
+
+    public func cancel(finishTasks: Bool) {
+        session.invalidateAndCancel()
     }
 
     private func isUrlError(_ error: Error) -> HttpRequestError? {

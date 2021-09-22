@@ -320,6 +320,60 @@ public class HttpClientMock: HttpClient {
         requestReceivedInvocations.append((params: params, onComplete: onComplete))
         requestClosure?(params, onComplete)
     }
+
+    // MARK: - downloadFile
+
+    /// Number of times the function was called.
+    public private(set) var downloadFileCallsCount = 0
+    /// `true` if the function was ever called.
+    public var downloadFileCalled: Bool {
+        downloadFileCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var downloadFileReceivedArguments: (url: URL, onComplete: (URL?) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var downloadFileReceivedInvocations: [(url: URL, onComplete: (URL?) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var downloadFileClosure: ((URL, (URL?) -> Void) -> Void)?
+
+    /// Mocked function for `downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
+        mockCalled = true
+        downloadFileCallsCount += 1
+        downloadFileReceivedArguments = (url: url, onComplete: onComplete)
+        downloadFileReceivedInvocations.append((url: url, onComplete: onComplete))
+        downloadFileClosure?(url, onComplete)
+    }
+
+    // MARK: - cancel
+
+    /// Number of times the function was called.
+    public private(set) var cancelCallsCount = 0
+    /// `true` if the function was ever called.
+    public var cancelCalled: Bool {
+        cancelCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var cancelReceivedArguments: (Bool)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var cancelReceivedInvocations: [Bool] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var cancelClosure: ((Bool) -> Void)?
+
+    /// Mocked function for `cancel(finishTasks: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func cancel(finishTasks: Bool) {
+        mockCalled = true
+        cancelCallsCount += 1
+        cancelReceivedArguments = finishTasks
+        cancelReceivedInvocations.append(finishTasks)
+        cancelClosure?(finishTasks)
+    }
 }
 
 /**
@@ -364,6 +418,33 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
         requestReceivedArguments = (params: params, httpBaseUrls: httpBaseUrls, onComplete: onComplete)
         requestReceivedInvocations.append((params: params, httpBaseUrls: httpBaseUrls, onComplete: onComplete))
         requestClosure?(params, httpBaseUrls, onComplete)
+    }
+
+    // MARK: - downloadFile
+
+    /// Number of times the function was called.
+    internal private(set) var downloadFileCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var downloadFileCalled: Bool {
+        downloadFileCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var downloadFileReceivedArguments: (url: URL, onComplete: (URL?) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var downloadFileReceivedInvocations: [(url: URL, onComplete: (URL?) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var downloadFileClosure: ((URL, (URL?) -> Void) -> Void)?
+
+    /// Mocked function for `downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
+        mockCalled = true
+        downloadFileCallsCount += 1
+        downloadFileReceivedArguments = (url: url, onComplete: onComplete)
+        downloadFileReceivedInvocations.append((url: url, onComplete: onComplete))
+        downloadFileClosure?(url, onComplete)
     }
 }
 

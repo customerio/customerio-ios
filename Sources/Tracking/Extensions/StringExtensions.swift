@@ -7,6 +7,15 @@ public extension String {
         self = apnDeviceToken.map { String(format: "%02x", $0) }.joined()
     }
 
+    /// Given: https://customer.io/image.jpg => jpg
+    var fileExtension: String? {
+        guard let extensionSubstring = split(separator: ".").last else {
+            return nil
+        }
+
+        return String(extensionSubstring)
+    }
+
     var data: Data! {
         data(using: .utf8)
     }
