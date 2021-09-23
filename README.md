@@ -285,7 +285,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
 
-> Note: At this time, the Customer.io SDK works with deep links, only. If you want to do something like showing an image in a push notifications, you need to add custom code to do that. It's recommended to still use the SDK as it will be much easier. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
+> Note: At this time, the Customer.io SDK works with deep links and images, only. If you want to do something like showing action buttons in a push notifications, you need to add custom code to do that. It's recommended to still use the SDK as it will be much easier. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
 
 > Note: Follow the instructions above for setting up APN push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
 
@@ -338,10 +338,10 @@ class NotificationService: UNNotificationServiceExtension {
         // If you need to expand the functionality of the Customer.io SDK to 
             // If you need to expand the functionality of the Customer.io SDK to 
         // If you need to expand the functionality of the Customer.io SDK to 
-        // show an image in your push, for example, you can set your own completion handler.
+        // show action buttons in your push, for example, you can set your own completion handler.
         MessagingPush.shared.didReceive(request) { notificationContent in
             if let mutableContent = notificationContent.mutableCopy() as? UNMutableNotificationContent {
-                // Modify the push notification like adding an image to the push!
+                // Modify the push notification like adding action buttons!
             }
             contentHandler(notificationContent)
         }
@@ -353,7 +353,9 @@ class NotificationService: UNNotificationServiceExtension {
 }
 ```
 
-4. Technically, you are complete and Customer.io is now able to display rich push notifications in your app. If you want to enable deep links in your rich push notification, read the [Deep links](#deep-links) section below.
+4. Technically, you are complete and Customer.io is now able to display rich push notifications in your app such as displaying an image.
+
+However, if you want to enable deep links in your rich push notification, read the [Deep links](#deep-links) section below.
 
 It's time to send yourself a push in Customer.io. Send a *Custom Payload* using this template:
 
@@ -361,7 +363,8 @@ It's time to send yourself a push in Customer.io. Send a *Custom Payload* using 
 {
     "CIO": {
         "push": {
-            "link": "remote-habits://deep?message=hello&message2=world"
+            "link": "remote-habits://deep?message=hello&message2=world",
+            "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fpawsindoorssouthend.com%2Fwp-content%2Fuploads%2F2020%2F04%2Ftips-for-choosing-doggy-day-care.jpg"
         }
     },
     "aps": {
@@ -375,6 +378,7 @@ It's time to send yourself a push in Customer.io. Send a *Custom Payload* using 
 ```
 
 Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
+Modify the `image` to a URL pointing to an image to display in the push notification.
 
 ## Deep links
 
