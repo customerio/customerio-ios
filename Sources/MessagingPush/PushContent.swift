@@ -81,6 +81,7 @@ public class PushContent {
         self.jsonAdapter = jsonAdapter
     }
 }
+#endif
 
 struct CioPushPayload: Codable {
     let push: Push
@@ -89,4 +90,3 @@ struct CioPushPayload: Codable {
         let link: String?
     }
 }
-#endif
