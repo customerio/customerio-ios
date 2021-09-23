@@ -44,7 +44,8 @@ public class PushContent {
     }
 
     public func addImage(localFilePath: URL) {
-        guard let imageAttachment = try? UNNotificationAttachment(identifier: "image.jpg", url: localFilePath,
+        guard let fileName = localFilePath.absoluteString.fileName,
+              let imageAttachment = try? UNNotificationAttachment(identifier: fileName, url: localFilePath,
                                                                   options: nil)
         else {
             return

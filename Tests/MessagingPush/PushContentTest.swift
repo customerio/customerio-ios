@@ -47,6 +47,35 @@ class PushContentTest: UnitTest {
         XCTAssertEqual(actual.deepLink!, givenLink.url!)
     }
 
+    // MARK: addImage
+
+    func test_addImage_givenMultipleImages_expectAddAll() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
+
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 1)
+
+        pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
+
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 2)
+    }
+
+    func test_addImage_givenImage_expectUseFilenameOfImage() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        let givenImageUrl = "https://customer.io/\(String.random).jpg".url!
+
+        pushContent.addImage(localFilePath: givenImageUrl)
+
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments[0].identifier,
+                       givenImageUrl.absoluteString.fileName)
+    }
+
     // MARK: property setters/getters
 
     func test_title_givenSet_expectGetSameValue() {
@@ -88,6 +117,19 @@ class PushContentTest: UnitTest {
         pushContent.deepLink = given
 
         XCTAssertEqual(given, pushContent.deepLink)
+    }
+
+    func test_image_givenSet_expectGetSameValue() {
+        let given = "https://\(String.random).jpg".url
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        XCTAssertNotEqual(given, pushContent.image)
+
+        pushContent.image = given
+
+        XCTAssertEqual(given, pushContent.image)
     }
 }
 #endif

@@ -63,4 +63,32 @@ class StringExtensionsTest: UnitTest {
 
         XCTAssertTrue(actual)
     }
+
+    // MARK: fileExtension
+
+    func test_fileExtension_givenUrlWithoutExtension_expectNil() {
+        XCTAssertNil("http://customer.io/about".fileExtension)
+    }
+
+    func test_fileExtension_givenUrlWithQueryParams_expectExtension() {
+        XCTAssertEqual("http://customer.io/about.jpg?param1=foo&param2=bar".fileExtension, "jpg")
+    }
+
+    func test_fileExtension_givenUrlWithoutQueryParams_expectExtension() {
+        XCTAssertEqual("http://customer.io/image.jpg".fileExtension, "jpg")
+    }
+
+    // MARK: fileName
+
+    func test_fileName_givenUrlWithoutExtension_expectNameWithoutExtension() {
+        XCTAssertEqual("http://customer.io/about".fileName, "about")
+    }
+
+    func test_fileName_givenUrlWithQueryParams_expectExtension() {
+        XCTAssertEqual("http://customer.io/about.jpg?param1=foo&param2=bar".fileName, "about.jpg")
+    }
+
+    func test_fileName_givenUrlWithoutQueryParams_expectExtension() {
+        XCTAssertEqual("http://customer.io/image.jpg".fileName, "image.jpg")
+    }
 }
