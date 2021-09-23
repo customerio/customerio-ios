@@ -8,54 +8,54 @@ import Foundation
 // Template version 1.0.0
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions. 
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code? 
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph: 
-    let wheels = DITracking.shared.offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase. 
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DITracking.shared.offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
 
-    // you can also use this syntax instead:
-    let wheels: OffRoadWheels = DITracking.shared.inject(.offRoadWheels)
-    // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app. 
-}
-```
+     // you can also use this syntax instead:
+     let wheels: OffRoadWheels = DITracking.shared.inject(.offRoadWheels)
+     // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
+ }
+ ```
 
-5. How do I use this graph in my test suite? 
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class 
-DITracking.shared.override(.offRoadWheels, mockOffRoadWheels) 
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DITracking.shared.resetOverrides()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DITracking.shared.resetOverrides()
+ ```
 
-*/
+ */
 
-/** 
- enum that contains list of all dependencies in our app. 
- This allows automated unit testing against our dependency graph + ability to override nodes in graph. 
+/**
+ enum that contains list of all dependencies in our app.
+ This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
@@ -65,104 +65,111 @@ public enum DependencyTracking: CaseIterable {
     case keyValueStorage
 }
 
-
 /**
- Dependency injection graph specifically with dependencies in the Tracking module. 
+ Dependency injection graph specifically with dependencies in the Tracking module.
 
- We must use 1+ different graphs because of the hierarchy of modules in this SDK. 
- Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes 
- in `Common` module can be in the `Tracking` module. 
+ We must use 1+ different graphs because of the hierarchy of modules in this SDK.
+ Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
+ in `Common` module can be in the `Tracking` module.
  */
 public class DITracking {
-    public static var shared: DITracking = DITracking()
+    public static var shared = DITracking()
     private var overrides: [DependencyTracking: Any] = [:]
-    private init() {
-    }
+    private init() {}
 
     /**
-    Designed to be used only in test classes to override dependencies. 
+     Designed to be used only in test classes to override dependencies.
 
-    ```
-    let mockOffRoadWheels = // make a mock of OffRoadWheels class 
-    DITracking.shared.override(.offRoadWheels, mockOffRoadWheels) 
-    ```
-    */
+     ```
+     let mockOffRoadWheels = // make a mock of OffRoadWheels class
+     DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
+     ```
+     */
     public func override<Value: Any>(_ dep: DependencyTracking, value: Value, forType type: Value.Type) {
-        overrides[dep] = value 
+        overrides[dep] = value
     }
 
     /**
-    Reset overrides. Meant to be used in `tearDown()` of tests. 
-    */
-    public func resetOverrides() {        
+     Reset overrides. Meant to be used in `tearDown()` of tests.
+     */
+    public func resetOverrides() {
         overrides = [:]
     }
 
     /**
-    Use this generic method of getting a dependency, if you wish. 
-    */
-    public func inject<T>(_ dep: DependencyTracking) -> T {                            
+     Use this generic method of getting a dependency, if you wish.
+     */
+    public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
-            case .sdkCredentialsStore: return self.sdkCredentialsStore as! T 
-            case .eventBus: return self.eventBus as! T 
-            case .logger: return self.logger as! T 
-            case .jsonAdapter: return self.jsonAdapter as! T 
-            case .keyValueStorage: return self.keyValueStorage as! T 
+        case .sdkCredentialsStore: return sdkCredentialsStore as! T
+        case .eventBus: return eventBus as! T
+        case .logger: return logger as! T
+        case .jsonAdapter: return jsonAdapter as! T
+        case .keyValueStorage: return keyValueStorage as! T
         }
     }
 
     /**
-    Use the property accessors below to inject pre-typed dependencies. 
-    */
+     Use the property accessors below to inject pre-typed dependencies.
+     */
 
     // SdkCredentialsStore
-    internal var sdkCredentialsStore: SdkCredentialsStore {    
-        if let overridenDep = self.overrides[.sdkCredentialsStore] {
+    internal var sdkCredentialsStore: SdkCredentialsStore {
+        if let overridenDep = overrides[.sdkCredentialsStore] {
             return overridenDep as! SdkCredentialsStore
         }
-        return self.newSdkCredentialsStore
+        return newSdkCredentialsStore
     }
-    private var newSdkCredentialsStore: SdkCredentialsStore {    
-        return CIOSdkCredentialsStore(keyValueStorage: self.keyValueStorage)
+
+    private var newSdkCredentialsStore: SdkCredentialsStore {
+        CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
     }
+
     // EventBus
-    public var eventBus: EventBus {    
-        if let overridenDep = self.overrides[.eventBus] {
+    public var eventBus: EventBus {
+        if let overridenDep = overrides[.eventBus] {
             return overridenDep as! EventBus
         }
-        return self.newEventBus
+        return newEventBus
     }
-    private var newEventBus: EventBus {    
-        return CioNotificationCenter()
+
+    private var newEventBus: EventBus {
+        CioNotificationCenter()
     }
+
     // Logger
-    public var logger: Logger {    
-        if let overridenDep = self.overrides[.logger] {
+    public var logger: Logger {
+        if let overridenDep = overrides[.logger] {
             return overridenDep as! Logger
         }
-        return self.newLogger
+        return newLogger
     }
-    private var newLogger: Logger {    
-        return ConsoleLogger()
+
+    private var newLogger: Logger {
+        ConsoleLogger()
     }
+
     // JsonAdapter
-    public var jsonAdapter: JsonAdapter {    
-        if let overridenDep = self.overrides[.jsonAdapter] {
+    public var jsonAdapter: JsonAdapter {
+        if let overridenDep = overrides[.jsonAdapter] {
             return overridenDep as! JsonAdapter
         }
-        return self.newJsonAdapter
+        return newJsonAdapter
     }
-    private var newJsonAdapter: JsonAdapter {    
-        return JsonAdapter(log: self.logger)
+
+    private var newJsonAdapter: JsonAdapter {
+        JsonAdapter(log: logger)
     }
+
     // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {    
-        if let overridenDep = self.overrides[.keyValueStorage] {
+    public var keyValueStorage: KeyValueStorage {
+        if let overridenDep = overrides[.keyValueStorage] {
             return overridenDep as! KeyValueStorage
         }
-        return self.newKeyValueStorage
+        return newKeyValueStorage
     }
-    private var newKeyValueStorage: KeyValueStorage {    
-        return UserDefaultsKeyValueStorage()
+
+    private var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage()
     }
 }
