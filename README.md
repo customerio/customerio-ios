@@ -437,7 +437,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 ```
 
 2. Great! Now when a push notification is touched that should launch a deep link, the Customer.io SDK will open the deep link URL for you. 
-3. Lastly, you need to setup deep linking in your app. You have 2 methods to do this. 
+3. Lastly, you need to setup deep linking in your app. You have 2 methods to do this. Pick one or do both if you wish! 
 
 * **Universal Links**. Universal links are great if you want to open up your mobile app instead of web browser when your customer navigates to a webpage of your website. However, Universal Links do take more time to setup. Follow [this guide on how to setup Universal Links in your app](https://developer.apple.com/documentation/xcode/supporting-universal-links-in-your-app). 
 
