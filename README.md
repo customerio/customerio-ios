@@ -32,13 +32,13 @@ Use the Swift Package Manger to install our SDKs into your project.
 
 2. In the window that appears, enter the iOS SDK's GitHub repository: 
 
-   ```
-   https://github.com/customerio/customerio-ios.git
-   ```
+```
+https://github.com/customerio/customerio-ios.git
+```
 
 3. Select the version that you want to install. While the SDK is its alpha stage, we recommend that you install *an exact* version of the SDK instead of indicating a range. This prevents you from automatically upgrading to a newer alpha version and possibly installing breaking changes on your code base. 
 
-   ![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version.jpg)
+![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version.jpg)
 
 4. Lastly, choose the SDK products that you want to install. You can start by selecting `Tracking` for now and adding others later if you need them. 
 
@@ -153,6 +153,49 @@ CustomerIO.shared.identify(identifier: "989388339", body: IdentifyRequestBody(fi
 
 > Tip: See [Error handling](#Error-handling) to learn more about how to parse the `CustomerIOError`. 
 
+## Track a custom event
+
+Once you've identified a customer, you can use the `track` method to capture customer activity and send it Customer.io, optionally supplying event data with your request
+
+```swift
+import CioTracking
+
+// - name: the name of the event to track
+// - data: (Optional) The event body to send as an Encodable object. If not specified it will default to `{}`
+// - jsonEncoder: (Optional) Custom `JSONEncoder` that you want to use to encode the `body` parameter. 
+// default: https://github.com/customerio/customerio-ios/blob/1.0.0-alpha.5/Sources/Tracking/Util/JsonAdapter.swift#L38-L43
+// - onComplete: Asynchronous callback with the result of the SDK attempting to identify the profile. 
+CustomerIO.shared.track(name: "logged_in", data: ["ip": "127.0.0.1"]){ [weak self] result in
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
+
+    switch result {
+    case .success: 
+      // Successfully tracked an event in your workspace!
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
+
+// The `data` parameter can be optionally skipped
+CustomerIO.shared.track(name: "played_game")
+
+// If specified the `data` accepts any `Encodable` object that generates a hash, this could be:
+
+// 1. A dictionary:
+let data = ["product": "socks", "price": "23.45"]
+CustomerIO.shared.track(name: "purchase", data: data)
+
+// 2. A custom `Encodable` type:
+struct Purchase: Encodable {
+  let product: String
+  let price: Double
+}
+CustomerIO.shared.track(name: "purchase", data: Purchase(product: "socks", price: 23.45))
+```
+
 ## Stop identifying a customer
 
 In your app you may need to stop identifying a profile in the Customer.io SDK. There are 2 ways to do that:
@@ -165,7 +208,7 @@ In your app you may need to stop identifying a profile in the Customer.io SDK. T
 CustomerIO.shared.clearIdentify()
 ```
 
-# Send Push notifications 
+# Push notifications 
 
 Want to send push notification messages to your customer's devices? Great!
 
@@ -175,17 +218,32 @@ Want to send push notification messages to your customer's devices? Great!
 
 1. Install the SDK `MessagingPushAPN` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
 
-2. Setup the APN service and receive a device token from APN. 
+2. Setup the APN service by enabling Push Notifications in XCode under App > Capabilities.
 
-   // TODO add instructions on how to do this. 
+3. After initializing the SDK, register for remote push to receive a device token from APN. Then, call the Customer.io SDK to add the token to the user profile:
 
-3. In your `AppDelegate` class, call the Customer.io SDK:
-
-   ```swift
-   import CioMessagingPushAPN
+```swift
+import CioMessagingPushAPN
    
-   class AppDelegate: NSObject, UIApplicationDelegate {
-     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+class AppDelegate: NSObject, UIApplicationDelegate {
+   
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY")
+
+        // You can optionally provide a Region to set the Region for your Workspace:
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU)
+
+        // It's good practice to always register for remote push when the app starts.
+        // This asserts that the Customer.io SDK always has a valid APN device token to use.
+        UIApplication.shared.registerForRemoteNotifications()
+
+        return true
+    }
+     
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
        MessagingPush.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken) { [weak self] result in 
          // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
          guard let self = self else { return }
@@ -216,11 +274,178 @@ Want to send push notification messages to your customer's devices? Great!
          }
        }
      }
-   }
-   ```
+}
+```
 
 4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
+
 5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
+
+## Rich push
+
+Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
+
+> Note: At this time, the Customer.io SDK works with deep links, only. If you want to do something like showing an image in a push notifications, you need to add custom code to do that. It's recommended to still use the SDK as it will be much easier. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
+
+> Note: Follow the instructions above for setting up APN push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
+
+1. Create a Notification Service Extension in Xcode.  `File > New > Target`. Then, select `Notification Service Extension` in the iOS section. Answer all of the questions to finish the process. 
+
+2. You should now see a new file added to your Xcode project. The file is probably named `NotificationService` and looks similar to this:
+
+```swift
+import UserNotifications
+   
+class NotificationService: UNNotificationServiceExtension {
+   
+    override func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+   
+    }
+   
+    override func serviceExtensionTimeWillExpire() {
+   
+    }
+}
+```
+
+3. Modify this file by calling the appropriate Customer.io functions:
+
+```swift
+import CioMessagingPush
+import CioMessagingPushAPN
+import UserNotifications
+   
+class NotificationService: UNNotificationServiceExtension {
+   
+    override func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        // For simple apps that only use Customer.io for sending rich push messages,
+        // This 1 line of code is all that you need!
+        MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+   
+        // If you use another service other than Customer.io for sending rich push messages,
+        // you can check if the SDK handled the rich push for you. If it did not, you
+        // know that the push was *not* sent by Customer.io and you can try another way.
+        let handled = MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+        if !handled {
+            // Rich push was *not* sent by Customer.io. Handle the rish push in another way.
+        }
+        // If you need to expand the functionality of the Customer.io SDK to 
+            // If you need to expand the functionality of the Customer.io SDK to 
+        // If you need to expand the functionality of the Customer.io SDK to 
+        // show an image in your push, for example, you can set your own completion handler.
+        MessagingPush.shared.didReceive(request) { notificationContent in
+            if let mutableContent = notificationContent.mutableCopy() as? UNMutableNotificationContent {
+                // Modify the push notification like adding an image to the push!
+            }
+            contentHandler(notificationContent)
+        }
+    }
+   
+    override func serviceExtensionTimeWillExpire() {
+        MessagingPush.shared.serviceExtensionTimeWillExpire()
+    }
+}
+```
+
+4. Technically, you are complete and Customer.io is now able to display rich push notifications in your app. If you want to enable deep links in your rich push notification, read the [Deep links](#deep-links) section below.
+
+It's time to send yourself a push in Customer.io. Send a *Custom Payload* using this template:
+
+```json
+{
+    "CIO": {
+        "push": {
+            "link": "remote-habits://deep?message=hello&message2=world"
+        }
+    },
+    "aps": {
+        "mutable-content": 1,
+        "alert": {
+            "title": "Title of your push goes here!",
+            "body": "Body of your push goes here!"
+        }
+    }
+}
+```
+
+Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
+
+## Deep links
+
+After you have followed the setup instructions for [setting up rich push notifications](#rich-push) you can enable deep links in rich push notifications. 
+
+1. Modify your `AppDelegate` with the following information:
+
+```swift
+import CioMessagingPushAPN
+import CioTracking
+import Foundation
+import UIKit
+   
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.US)
+   
+        // Must call this function in order for `UNUserNotificationCenterDelegate` functions
+        // to be called.
+        UNUserNotificationCenter.current().delegate = self
+   
+        // It's good practice to always register for remote push when the app starts.
+        // This asserts that the Customer.io SDK always has a valid APN device token to use.
+        UIApplication.shared.registerForRemoteNotifications()
+   
+        return true
+    }
+}
+   
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let handled = MessagingPush.shared.userNotificationCenter(center, didReceive: response,
+                                                                 withCompletionHandler: completionHandler)
+   
+        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
+        // completion handler. If the SDK did handle it, it called the completion handler for you.
+        if !handled {
+            completionHandler()
+        }
+    }
+   
+    // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
+    // the completion handler.
+    @available(iOS 10.0, *)
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.list, .banner, .badge, .sound])
+    }
+}
+```
+
+2. Great! Now when a push notification is touched that should launch a deep link, the Customer.io SDK will open the deep link URL for you. 
+3. Lastly, you need to setup deep linking in your app. You have 2 methods to do this. Pick one or do both if you wish! 
+
+* **Universal Links**. Universal links are great if you want to open up your mobile app instead of web browser when your customer navigates to a webpage of your website. However, Universal Links do take more time to setup. Follow [this guide on how to setup Universal Links in your app](https://developer.apple.com/documentation/xcode/supporting-universal-links-in-your-app). 
+
+* **App scheme**. App scheme deep links are quick and easy to setup. However, they do not work if the mobile app is not installed which is where Universal Links are better. To enable App scheme deep links, follow these steps:
+1. Open your Xcode project and go to your project's settings. `Select your app Target > Info tab > URL Types dropdown > click + sign` to create a new URL Type. 
+![visual of the typed instructions in the sentence above to create a new URL type](docs/img/xcode_appscheme_urltypes.jpeg)
+2. Enter a unique value for your app for URL Schemes. 
+![visual of the typed instructions in the sentence above to enter a unique value for URL scheme](docs/img/xcode_appscheme_makeurltype.jpeg)
 
 # Error handling 
 
@@ -341,3 +566,4 @@ Thanks for taking an interest in our project! We welcome your contributions. Che
 # License
 
 [MIT](LICENSE)
+
