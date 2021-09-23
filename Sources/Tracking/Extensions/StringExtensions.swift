@@ -11,6 +11,10 @@ public extension String {
         data(using: .utf8)
     }
 
+    var url: URL? {
+        URL(string: self)
+    }
+
     static var abcLetters: String {
         "abcdefghijklmnopqrstuvwxyz"
     }
