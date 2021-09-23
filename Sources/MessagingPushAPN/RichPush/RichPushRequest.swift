@@ -40,9 +40,7 @@ internal class RichPushRequest {
     func finishImmediately() {
         httpClient.cancel(finishTasks: false)
 
-        if let notificationContent = pushContent.mutableNotificationContent {
-            completionHandler(notificationContent)
-        }
+        completionHandler(pushContent.mutableNotificationContent)
     }
 }
 #endif

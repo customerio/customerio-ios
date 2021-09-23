@@ -1,4 +1,5 @@
 import CioMessagingPush
+import CioTracking
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -17,7 +18,9 @@ public extension MessagingPush {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        guard let pushContent = PushContent.parse(notificationContent: request.content) else {
+        guard let pushContent = PushContent.parse(notificationContent: request.content,
+                                                  jsonAdapter: DITracking.shared.jsonAdapter)
+        else {
             // push is not sent by CIO. Therefore, end early.
             return false
         }

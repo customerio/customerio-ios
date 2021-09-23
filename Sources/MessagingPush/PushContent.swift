@@ -1,35 +1,45 @@
+import CioTracking
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
 /**
- The content of a push notification. Single source of truth for getting and setting properties of a push notification.
-
- Meant to be used by the SDK to set/get the push content but also designed for SDK user to further modify the push
- if they wish.
+ The content of a push notification. Single source of truth for getting properties of a push notification.
  */
 public class PushContent {
     public var title: String {
-        didSet {
-            modifyNotificationContent()
+        get {
+            mutableNotificationContent.title
+        }
+        set {
+            mutableNotificationContent.title = newValue
         }
     }
 
     public var body: String {
-        didSet {
-            modifyNotificationContent()
+        get {
+            mutableNotificationContent.body
+        }
+        set {
+            mutableNotificationContent.body = newValue
         }
     }
 
     public var deepLink: URL? {
-        didSet {
-            modifyNotificationContent()
+        get {
+            cio.push.link?.url
+        }
+        set {
+            cioPush = cioPush.linkSet(newValue?.absoluteString)
         }
     }
 
     public var image: URL? {
-        didSet {
-            modifyNotificationContent()
+        get {
+            cio.push.image?.url
+        }
+        set {
+            cioPush = cioPush.imageSet(newValue?.absoluteString)
         }
     }
 
@@ -40,45 +50,66 @@ public class PushContent {
             return
         }
 
-        var existingAttachments = mutableNotificationContent?.attachments ?? []
+        var existingAttachments = mutableNotificationContent.attachments
         existingAttachments.append(imageAttachment)
 
-        mutableNotificationContent?.attachments = existingAttachments
+        mutableNotificationContent.attachments = existingAttachments
     }
 
-    public let mutableNotificationContent: UNMutableNotificationContent?
+    private var cio: CioPushPayload {
+        get {
+            // Disable swiftlint rule because this class can't initialize without this being valid +
+            // setter wont set unless a valid Object is created.
+            // swiftlint:disable:next force_cast
+            jsonAdapter.fromDictionary(mutableNotificationContent.userInfo["CIO"] as! [AnyHashable: Any])!
+        }
+        set {
+            // assert we have a valid payload before we set it as the new value
+            guard let newUserInfo = jsonAdapter.toDictionary(newValue) else {
+                return
+            }
+            mutableNotificationContent.userInfo["CIO"] = newUserInfo
+        }
+    }
 
-    public static func parse(notificationContent: UNNotificationContent) -> PushContent? {
+    private var cioPush: CioPushPayload.Push {
+        get {
+            cio.push
+        }
+        set {
+            cio = CioPushPayload(push: newValue)
+        }
+    }
+
+    private let jsonAdapter: JsonAdapter
+    public let mutableNotificationContent: UNMutableNotificationContent
+
+    public static func parse(notificationContent: UNNotificationContent, jsonAdapter: JsonAdapter) -> PushContent? {
         let raw = notificationContent.userInfo
 
-        guard let cio = raw["CIO"] as? [AnyHashable: Any], let cioPush = cio["push"] as? [AnyHashable: Any] else {
-            // Not a push sent by Customer.io
+        guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],
+              let _: CioPushPayload = jsonAdapter.fromDictionary(cioUserInfo),
+              let mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
+        else {
             return nil
         }
 
-        return PushContent(notificationContent: notificationContent, cio: cio, cioPush: cioPush)
+        return PushContent(mutableNotificationContent: mutableNotificationContent, jsonAdapter: jsonAdapter)
     }
 
     // Used when modifying push content before showing and for parsing after displaying.
-    public init(notificationContent: UNNotificationContent, cio: [AnyHashable: Any], cioPush: [AnyHashable: Any]) {
-        self.mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
-
-        // For parsing after displaying, populate based off of content known now.
-        self.title = notificationContent.title
-        self.body = notificationContent.body
-        self.deepLink = (cioPush["link"] as? String)?.url
-        self.image = (cioPush["image"] as? String)?.url
-    }
-
-    private func modifyNotificationContent() {
-        mutableNotificationContent?.title = title
-        mutableNotificationContent?.body = body
-
-        let cioMutableContent = mutableNotificationContent?.userInfo["CIO"] as? [AnyHashable: Any]
-        var cioPushMutableContent = cioMutableContent?["push"] as? [AnyHashable: Any]
-
-        cioPushMutableContent?["link"] = deepLink?.absoluteString
-        cioPushMutableContent?["image"] = image?.absoluteString
+    private init(mutableNotificationContent: UNMutableNotificationContent, jsonAdapter: JsonAdapter) {
+        self.mutableNotificationContent = mutableNotificationContent
+        self.jsonAdapter = jsonAdapter
     }
 }
 #endif
+
+struct CioPushPayload: Codable {
+    let push: Push
+
+    struct Push: Codable, AutoLenses {
+        let link: String?
+        let image: String?
+    }
+}
