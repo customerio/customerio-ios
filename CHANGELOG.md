@@ -1,3 +1,11 @@
+# [1.0.0-alpha.13](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.12...1.0.0-alpha.13) (2021-09-23)
+
+
+### Features
+
+* rich push deep links ([#45](https://github.com/customerio/customerio-ios/issues/45)) ([fe21cc8](https://github.com/customerio/customerio-ios/commit/fe21cc87e7146c01df96fbda858e7bd69a6851cb))
+* track push events ([#47](https://github.com/customerio/customerio-ios/issues/47)) ([a37e60e](https://github.com/customerio/customerio-ios/commit/a37e60ef390e8cb9c4693c08ae21221186fe8dd2))
+
 # [1.0.0-alpha.13](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.12...1.0.0-alpha.13) (2021-09-22)
 
 
