@@ -34,22 +34,28 @@ public class PushContent {
         }
     }
 
-    private var cio: Cio {
+    private var cio: CioPushPayload {
         get {
+            // Disable swiftlint rule because this class can't initialize without this being valid +
+            // setter wont set unless a valid Object is created.
+            // swiftlint:disable:next force_cast
             jsonAdapter.fromDictionary(mutableNotificationContent.userInfo["CIO"] as! [AnyHashable: Any])!
         }
         set {
-            let newUserInfo = jsonAdapter.toDictionary(newValue)
+            // assert we have a valid payload before we set it as the new value
+            guard let newUserInfo = jsonAdapter.toDictionary(newValue) else {
+                return
+            }
             mutableNotificationContent.userInfo["CIO"] = newUserInfo
         }
     }
 
-    private var cioPush: Cio.Push {
+    private var cioPush: CioPushPayload.Push {
         get {
             cio.push
         }
         set {
-            cio = Cio(push: newValue)
+            cio = CioPushPayload(push: newValue)
         }
     }
 
@@ -59,7 +65,8 @@ public class PushContent {
     public static func parse(notificationContent: UNNotificationContent, jsonAdapter: JsonAdapter) -> PushContent? {
         let raw = notificationContent.userInfo
 
-        guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any], let _: Cio = jsonAdapter.fromDictionary(cioUserInfo),
+        guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],
+              let _: CioPushPayload = jsonAdapter.fromDictionary(cioUserInfo),
               let mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
         else {
             return nil
@@ -73,13 +80,13 @@ public class PushContent {
         self.mutableNotificationContent = mutableNotificationContent
         self.jsonAdapter = jsonAdapter
     }
+}
 
-    struct Cio: Codable {
-        let push: Push
+struct CioPushPayload: Codable {
+    let push: Push
 
-        struct Push: Codable, AutoLenses {
-            let link: String?
-        }
+    struct Push: Codable, AutoLenses {
+        let link: String?
     }
 }
 #endif

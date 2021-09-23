@@ -67,7 +67,7 @@ public class JsonAdapter {
         }
 
         do {
-            return try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) as? [AnyHashable: Any]
+            return try JSONSerialization.jsonObject(with: data, options: []) as? [AnyHashable: Any]
         } catch {
             log.error("\(error.localizedDescription), object: \(obj)")
         }

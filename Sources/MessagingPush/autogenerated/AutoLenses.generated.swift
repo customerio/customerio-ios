@@ -60,14 +60,14 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
 }
 
-extension PushContent.Cio.Push {
-    static let linkLens = Lens<PushContent.Cio.Push, String?>(get: { $0.link },
-                                                              set: { link, existing in
-                                                                  PushContent.Cio.Push(link: link)
-                                                              })
+extension CioPushPayload.Push {
+    static let linkLens = Lens<CioPushPayload.Push, String?>(get: { $0.link },
+                                                             set: { link, existing in
+                                                                 CioPushPayload.Push(link: link)
+                                                             })
 
     // Convenient set functions to edit a property of the immutable object
-    func linkSet(_ link: String?) -> PushContent.Cio.Push {
-        PushContent.Cio.Push(link: link)
+    func linkSet(_ link: String?) -> CioPushPayload.Push {
+        CioPushPayload.Push(link: link)
     }
 }
