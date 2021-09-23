@@ -25,9 +25,7 @@ internal class RichPushRequest {
     func finishImmediately() {
         // XXX: stop async operations and finish the rich push request.
 
-        if let notificationContent = pushContent.mutableNotificationContent {
-            completionHandler(notificationContent)
-        }
+        completionHandler(pushContent.mutableNotificationContent)
     }
 }
 #endif

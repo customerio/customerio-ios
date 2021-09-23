@@ -48,6 +48,33 @@ public class JsonAdapter {
         self.log = log
     }
 
+    public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any],
+                                             decoder override: JSONDecoder? = nil) -> T? {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: dictionary)
+
+            return fromJson(jsonData, decoder: decoder)
+        } catch {
+            log.error("\(error.localizedDescription), dictionary: \(dictionary)")
+        }
+
+        return nil
+    }
+
+    public func toDictionary<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil) -> [AnyHashable: Any]? {
+        guard let data = toJson(obj, encoder: encoder) else {
+            return nil
+        }
+
+        do {
+            return try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) as? [AnyHashable: Any]
+        } catch {
+            log.error("\(error.localizedDescription), object: \(obj)")
+        }
+
+        return nil
+    }
+
     /**
      Returns optional to be more convenient then try/catch all over the code base.
 
@@ -87,7 +114,7 @@ public class JsonAdapter {
             """
         } catch {
             errorStringToLog = """
-            Generic decide error. \(error.localizedDescription), json: \(json.string ?? "(error getting json string)")
+            Generic decode error. \(error.localizedDescription), json: \(json.string ?? "(error getting json string)")
             """
         }
 

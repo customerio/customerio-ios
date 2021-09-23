@@ -42,4 +42,81 @@ class JsonAdapterTest: UnitTest {
 
         XCTAssertNil(actual)
     }
+
+    // MARK: fromDictionary
+
+    func test_fromDictionary_givenDictionaryMatchingObject_expectObject() {
+        struct Person: Codable, Equatable {
+            let firstName: String
+        }
+
+        let given = ["firstName": "Dana"]
+        let expected = Person(firstName: "Dana")
+
+        let actual: Person = jsonAdapter.fromDictionary(given)!
+
+        XCTAssertEqual(expected, actual)
+    }
+
+    func test_fromDictionary_givenDictionaryNotMatchingObject_expectNil() {
+        struct Person: Codable, Equatable {
+            let firstName: String
+        }
+
+        let given = ["lastName": "Dana", "email": "you@you.com"]
+
+        let actual: Person? = jsonAdapter.fromDictionary(given)
+
+        XCTAssertNil(actual)
+    }
+
+    func test_fromDictionary_givenDictionaryWithNesting_expectObject() {
+        struct Person: Codable, Equatable {
+            let name: Name
+
+            struct Name: Codable, Equatable {
+                let first: String
+                let last: String
+            }
+        }
+
+        let given = ["name": ["first": "Dana", "last": "Green"]]
+        let expected = Person(name: Person.Name(first: "Dana", last: "Green"))
+
+        let actual: Person = jsonAdapter.fromDictionary(given)!
+
+        XCTAssertEqual(expected, actual)
+    }
+
+    // MARK: toDictionary
+
+    func test_toDictionary_givenObjectWithNesting_expectDictionary() {
+        struct Person: Codable, Equatable {
+            let name: Name
+
+            struct Name: Codable, Equatable {
+                let first: String
+            }
+        }
+
+        let given = Person(name: Person.Name(first: "Dana"))
+        let expected: [String: [String: String]] = ["name": ["first": "Dana"]]
+
+        let actual = jsonAdapter.toDictionary(given) as? [String: [String: String]]
+
+        XCTAssertEqual(expected, actual)
+    }
+
+    func test_toDictionary_givenObject_expectDictionary() {
+        struct Person: Codable, Equatable {
+            let name: String
+        }
+
+        let given = Person(name: "Dana")
+        let expected: [String: String] = ["name": "Dana"]
+
+        let actual = jsonAdapter.toDictionary(given) as? [String: String]
+
+        XCTAssertEqual(expected, actual)
+    }
 }

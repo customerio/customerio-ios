@@ -1,5 +1,6 @@
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
+import CioTracking
 import UIKit
 import UserNotifications
 
@@ -17,7 +18,9 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content) else {
+        guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
+                                                  jsonAdapter: DITracking.shared.jsonAdapter)
+        else {
             return false
         }
 
