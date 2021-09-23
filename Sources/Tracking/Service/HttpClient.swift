@@ -36,7 +36,7 @@ public class CIOHttpClient: HttpClient {
     }
 
     deinit {
-        self.session.finishTasksAndInvalidate()
+        self.cancel(finishTasks: true)
     }
 
     public func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
@@ -85,7 +85,11 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func cancel(finishTasks: Bool) {
-        session.invalidateAndCancel()
+        if finishTasks {
+            session.finishTasksAndInvalidate()
+        } else {
+            session.invalidateAndCancel()
+        }
     }
 
     private func isUrlError(_ error: Error) -> HttpRequestError? {
