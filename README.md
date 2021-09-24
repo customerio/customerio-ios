@@ -357,7 +357,9 @@ class NotificationService: UNNotificationServiceExtension {
 
 However, if you want to enable deep links in your rich push notification, read the [Deep links](#deep-links) section below.
 
-It's time to send yourself a push in Customer.io. Send a *Custom Payload* using this template:
+It's time to send yourself a push in Customer.io. 
+* Send a push in the Customer.io web app with a *Custom Payload*. 
+* If using APN, select the iOS tab and use the following template:
 
 ```json
 {
@@ -377,8 +379,35 @@ It's time to send yourself a push in Customer.io. Send a *Custom Payload* using 
 }
 ```
 
-Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
-Modify the `image` to the URL of an image you want to display in the push notification. It's important that the image URL starts with `https://` and *not* `http://` or the image may not be displayed. 
+Or, if using FCM on iOS, select the Android tab and use the following template:
+
+```json
+{
+    "message": {
+        "apns": {
+            "payload": {
+                "CIO": {
+                    "push": {
+                        "link": "remote-habits://deep?message=hello&message2=world",
+                        "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fpawsindoorssouthend.com%2Fwp-content%2Fuploads%2F2020%2F04%2Ftips-for-choosing-doggy-day-care.jpg"
+                    }
+                },
+                "aps": {
+                    "mutable-content": 1,
+                    "alert": {
+                        "title": "Title of your push goes here!",
+                        "body": "Body of your push goes here!"
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+With both of the templates:
+* Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
+* Modify the `image` to the URL of an image you want to display in the push notification. It's important that the image URL starts with `https://` and *not* `http://` or the image may not be displayed. 
 
 ## Deep links
 
