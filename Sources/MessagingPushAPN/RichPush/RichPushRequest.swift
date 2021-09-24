@@ -26,7 +26,7 @@ internal class RichPushRequest {
             return finishImmediately()
         }
 
-        httpClient.downloadFile(url: image) { [weak self] localFilePath in
+        httpClient.downloadFile(url: image, fileType: .richPushImage) { [weak self] localFilePath in
             guard let self = self else { return }
 
             if let localFilePath = localFilePath {

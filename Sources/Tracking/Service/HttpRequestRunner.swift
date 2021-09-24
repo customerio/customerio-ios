@@ -12,7 +12,7 @@ internal protocol HttpRequestRunner: AutoMockable {
         httpBaseUrls: HttpBaseUrls,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     )
-    func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)
+    func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)
 }
 
 internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
@@ -58,16 +58,16 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         }.resume()
     }
 
-    public func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
-        guard let documentsDirectoryURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-        else { return }
+    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
+        let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
 
         session.downloadTask(with: url) { tempLocation, response, _ in
             guard let tempLocation = tempLocation, let uniqueFileName = response?.suggestedFilename else {
                 return onComplete(nil)
             }
 
-            let destinationURL = documentsDirectoryURL.appendingPathComponent(uniqueFileName)
+            let destinationURL = directoryURL
+                .appendingPathComponent(uniqueFileName)
 
             do {
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)

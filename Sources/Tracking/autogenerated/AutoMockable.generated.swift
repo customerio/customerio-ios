@@ -331,21 +331,23 @@ public class HttpClientMock: HttpClient {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var downloadFileReceivedArguments: (url: URL, onComplete: (URL?) -> Void)?
+    public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType,
+                                                            onComplete: (URL?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var downloadFileReceivedInvocations: [(url: URL, onComplete: (URL?) -> Void)] = []
+    public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
+                                                               onComplete: (URL?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var downloadFileClosure: ((URL, (URL?) -> Void) -> Void)?
+    public var downloadFileClosure: ((URL, DownloadFileType, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
         mockCalled = true
         downloadFileCallsCount += 1
-        downloadFileReceivedArguments = (url: url, onComplete: onComplete)
-        downloadFileReceivedInvocations.append((url: url, onComplete: onComplete))
-        downloadFileClosure?(url, onComplete)
+        downloadFileReceivedArguments = (url: url, fileType: fileType, onComplete: onComplete)
+        downloadFileReceivedInvocations.append((url: url, fileType: fileType, onComplete: onComplete))
+        downloadFileClosure?(url, fileType, onComplete)
     }
 
     // MARK: - cancel
@@ -430,21 +432,23 @@ internal class HttpRequestRunnerMock: HttpRequestRunner {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var downloadFileReceivedArguments: (url: URL, onComplete: (URL?) -> Void)?
+    internal private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType,
+                                                              onComplete: (URL?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var downloadFileReceivedInvocations: [(url: URL, onComplete: (URL?) -> Void)] = []
+    internal private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
+                                                                 onComplete: (URL?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var downloadFileClosure: ((URL, (URL?) -> Void) -> Void)?
+    internal var downloadFileClosure: ((URL, DownloadFileType, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func downloadFile(url: URL, onComplete: @escaping (URL?) -> Void) {
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
         mockCalled = true
         downloadFileCallsCount += 1
-        downloadFileReceivedArguments = (url: url, onComplete: onComplete)
-        downloadFileReceivedInvocations.append((url: url, onComplete: onComplete))
-        downloadFileClosure?(url, onComplete)
+        downloadFileReceivedArguments = (url: url, fileType: fileType, onComplete: onComplete)
+        downloadFileReceivedInvocations.append((url: url, fileType: fileType, onComplete: onComplete))
+        downloadFileClosure?(url, fileType, onComplete)
     }
 }
 
