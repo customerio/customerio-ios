@@ -25,6 +25,9 @@ public extension MessagingPush {
         }
 
         switch response.actionIdentifier {
+        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
+            cleanup(pushContent: pushContent)
+
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
@@ -37,7 +40,7 @@ public extension MessagingPush {
 
                 return true
             }
-        case UNNotificationDismissActionIdentifier: // dismissed means delivered
+        case UNNotificationDismissActionIdentifier:
             if customerIO.sdkConfig.autoTrackPushEvents {
                 trackMetric(notificationContent: response.notification.request.content, event: .delivered, jsonAdapter: DITracking.shared.jsonAdapter)
             }
@@ -46,7 +49,7 @@ public extension MessagingPush {
 
         return false
     }
-    
+
     func trackMetric(notificationContent: UNNotificationContent, event: Metric, jsonAdapter: JsonAdapter){
         
         guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
@@ -58,7 +61,14 @@ public extension MessagingPush {
         }
         
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken) { result in
-            
+        }
+    }
+
+    private func cleanup(pushContent: PushContent) {
+        pushContent.cioAttachments.forEach { attachment in
+            let localFilePath = attachment.url
+
+            try? FileManager.default.removeItem(at: localFilePath)
         }
     }
 }

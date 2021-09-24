@@ -1,3 +1,10 @@
+# [1.0.0-alpha.14](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.13...1.0.0-alpha.14) (2021-09-24)
+
+
+### Features
+
+* rich push images ([#59](https://github.com/customerio/customerio-ios/issues/59)) ([03fc284](https://github.com/customerio/customerio-ios/commit/03fc284f09bb79db53dbc42d78c39acd1204843e))
+
 # [1.0.0-alpha.13](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.12...1.0.0-alpha.13) (2021-09-23)
 
 

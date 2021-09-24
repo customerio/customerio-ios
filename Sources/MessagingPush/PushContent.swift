@@ -7,6 +7,8 @@ import UserNotifications
  The content of a push notification. Single source of truth for getting properties of a push notification.
  */
 public class PushContent {
+    public static let cioAttachmentsPrefix = "cio_sdk_"
+
     public var title: String {
         get {
             mutableNotificationContent.title
@@ -32,6 +34,34 @@ public class PushContent {
         set {
             cioPush = cioPush.linkSet(newValue?.absoluteString)
         }
+    }
+
+    public var image: URL? {
+        get {
+            cio.push.image?.url
+        }
+        set {
+            cioPush = cioPush.imageSet(newValue?.absoluteString)
+        }
+    }
+
+    public var cioAttachments: [UNNotificationAttachment] {
+        mutableNotificationContent.attachments.filter { $0.identifier.starts(with: Self.cioAttachmentsPrefix) }
+    }
+
+    public func addImage(localFilePath: URL) {
+        guard let imageAttachment =
+            try? UNNotificationAttachment(identifier: "\(Self.cioAttachmentsPrefix)\(String.random)",
+                                          url: localFilePath,
+                                          options: nil)
+        else {
+            return
+        }
+
+        var existingAttachments = mutableNotificationContent.attachments
+        existingAttachments.append(imageAttachment)
+
+        mutableNotificationContent.attachments = existingAttachments
     }
 
     private var cio: CioPushPayload {
@@ -88,5 +118,6 @@ struct CioPushPayload: Codable {
 
     struct Push: Codable, AutoLenses {
         let link: String?
+        let image: String?
     }
 }

@@ -29,7 +29,8 @@ public extension MessagingPush {
             trackMetric(notificationContent: request.content, event: .opened, jsonAdapter: DITracking.shared.jsonAdapter)
         }
 
-        RichPushRequestHandler.shared.startRequest(request, content: pushContent, completionHandler: contentHandler)
+        RichPushRequestHandler.shared.startRequest(request, content: pushContent, customerIO: customerIO,
+                                                   completionHandler: contentHandler)
 
         return true
     }
