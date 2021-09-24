@@ -10,6 +10,11 @@ public protocol MessagingPushInstance: AutoMockable {
         deviceToken: String,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
+    func trackMetric(
+        notificationContent: UNNotificationContent,
+        event: Metric,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 }
 
 /**
@@ -171,8 +176,12 @@ public class MessagingPush: MessagingPushInstance {
                 }
             }
     }
-    
-    public func trackMetric(notificationContent: UNNotificationContent, event: Metric, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+
+    public func trackMetric(
+        notificationContent: UNNotificationContent,
+        event: Metric,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
         guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
             onComplete(Result.success(()))
             return

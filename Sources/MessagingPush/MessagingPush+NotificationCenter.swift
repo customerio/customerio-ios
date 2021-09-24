@@ -22,7 +22,7 @@ public extension MessagingPush {
         case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
             if customerIO.sdkConfig.autoTrackPushEvents {
                 trackMetric(notificationContent: response.notification.request.content, event: .delivered,
-                            jsonAdapter: DITracking.shared.jsonAdapter) { result in
+                            jsonAdapter: DITracking.shared.jsonAdapter) { _ in
                     // XXX: pending background queue so that this can get retried instead of discarding the result
                 }
             }
@@ -46,7 +46,7 @@ public extension MessagingPush {
 
                 if customerIO.sdkConfig.autoTrackPushEvents {
                     trackMetric(notificationContent: response.notification.request.content, event: .opened,
-                                jsonAdapter: DITracking.shared.jsonAdapter) { result in
+                                jsonAdapter: DITracking.shared.jsonAdapter) { _ in
                         // XXX: pending background queue so that this can get retried instead of discarding the result
                     }
                 }

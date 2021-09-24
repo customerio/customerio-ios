@@ -20,7 +20,7 @@ public extension MessagingPush {
     ) -> Bool {
         if customerIO.sdkConfig.autoTrackPushEvents {
             trackMetric(notificationContent: request.content, event: .delivered,
-                        jsonAdapter: DITracking.shared.jsonAdapter) { result in
+                        jsonAdapter: DITracking.shared.jsonAdapter) { _ in
                 // XXX: pending background queue so that this can get retried instead of discarding the result
             }
         }
