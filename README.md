@@ -281,6 +281,33 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
 
+## Tracking push metrics
+
+When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. To send these events you can 
+
+```swift
+
+func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        MessagingPush.shared.trackMetric(notificationContent: response.notification.request.content, event: .delivered) { [weak self] result in 
+            // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+            guard let self = self else { return }
+      
+            switch result {
+            case .success: 
+              // Metric successfully tracked
+              break 
+            case .failure(let customerIOError):
+              // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+              break 
+            }
+        }
+    }
+```
+
 ## Rich push
 
 Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
