@@ -283,7 +283,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 ## Tracking push metrics
 
-When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. 
+When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. More information about these metrics can be found by [visiting our push developer guide](https://customer.io/docs/push-developer-guide).
 
 If you're using a version of iOS that supports `UserNotifications` you can track metrics using our `UNNotificationContent` helper
 ```swift
