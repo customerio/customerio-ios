@@ -183,38 +183,4 @@ public class MessagingPushInstanceMock: MessagingPushInstance {
             .append((deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete))
         trackMetricClosure?(deliveryID, event, deviceToken, onComplete)
     }
-
-    // MARK: - trackMetric
-
-    /// Number of times the function was called.
-    public private(set) var trackMetricCallsCount = 0
-    /// `true` if the function was ever called.
-    public var trackMetricCalled: Bool {
-        trackMetricCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var trackMetricReceivedArguments: (notificationContent: UNNotificationContent, event: Metric,
-                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(notificationContent: UNNotificationContent, event: Metric,
-                                                              onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var trackMetricClosure: ((UNNotificationContent, Metric, (Result<Void, CustomerIOError>) -> Void) -> Void)?
-
-    /// Mocked function for `trackMetric(notificationContent: UNNotificationContent, event: Metric, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func trackMetric(
-        notificationContent: UNNotificationContent,
-        event: Metric,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
-        mockCalled = true
-        trackMetricCallsCount += 1
-        trackMetricReceivedArguments = (notificationContent: notificationContent, event: event, onComplete: onComplete)
-        trackMetricReceivedInvocations
-            .append((notificationContent: notificationContent, event: event, onComplete: onComplete))
-        trackMetricClosure?(notificationContent, event, onComplete)
-    }
 }

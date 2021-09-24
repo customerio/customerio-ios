@@ -21,8 +21,7 @@ public extension MessagingPush {
         switch response.actionIdentifier {
         case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
             if customerIO.sdkConfig.autoTrackPushEvents {
-                trackMetric(notificationContent: response.notification.request.content, event: .delivered,
-                            jsonAdapter: DITracking.shared.jsonAdapter) { _ in
+                trackMetric(notificationContent: response.notification.request.content, event: .delivered) { _ in
                     // XXX: pending background queue so that this can get retried instead of discarding the result
                 }
             }
@@ -45,8 +44,7 @@ public extension MessagingPush {
                 UIApplication.shared.open(url: deepLinkurl)
 
                 if customerIO.sdkConfig.autoTrackPushEvents {
-                    trackMetric(notificationContent: response.notification.request.content, event: .opened,
-                                jsonAdapter: DITracking.shared.jsonAdapter) { _ in
+                    trackMetric(notificationContent: response.notification.request.content, event: .opened) { _ in
                         // XXX: pending background queue so that this can get retried instead of discarding the result
                     }
                 }
@@ -59,6 +57,24 @@ public extension MessagingPush {
         }
 
         return false
+    }
+
+    func trackMetric(
+        notificationContent: UNNotificationContent,
+        event: Metric,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
+            onComplete(Result.success(()))
+            return
+        }
+
+        guard let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+            onComplete(Result.success(()))
+            return
+        }
+
+        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete)
     }
 
     private func cleanup(pushContent: PushContent) {
