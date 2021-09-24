@@ -285,6 +285,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. More information about these metrics can be found by [visiting our push developer guide](https://customer.io/docs/push-developer-guide).
 
+If you have already configured [rich push notifications](#rich-push) then our SDK will, by default, automatically track `opened` and `delivered` events for push notifications originating from Customer.io. If you would like to disable this behaviour you can do so by calling `configure` on either the shared or your initialized CustomerIO instance:
+
+```swift
+CustomerIO.config {
+  $0.autoTrackPushEvents = false
+}
+```
+
+
 If you're using a version of iOS that supports `UserNotifications` you can track metrics using our `UNNotificationContent` helper
 ```swift
 
@@ -312,11 +321,9 @@ func userNotificationCenter(
 otherwise you should extract the `CIO-Delivery-ID` and `CIO-Delivery-Token` parameters directly:
 
 ```swift
-guard let deliveryID: String = userInfo["CIO-Delivery-ID"] as? String else {
-    return
-}
-
-guard let deviceToken: String = userInfo["CIO-Delivery-Token"] as? String else {
+guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
+          let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+    // not a push notification delivered by Customer.io
     return
 }
 
