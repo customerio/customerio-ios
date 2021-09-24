@@ -28,15 +28,38 @@ public extension MessagingPush {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
-
+                
+                if customerIO.sdkConfig.autoTrackPushEvents {
+                    trackMetric(notificationContent: response.notification.request.content, event: .opened, jsonAdapter: DITracking.shared.jsonAdapter)
+                }
+                
                 completionHandler()
 
                 return true
+            }
+        case UNNotificationDismissActionIdentifier: // dismissed means delivered
+            if customerIO.sdkConfig.autoTrackPushEvents {
+                trackMetric(notificationContent: response.notification.request.content, event: .delivered, jsonAdapter: DITracking.shared.jsonAdapter)
             }
         default: break
         }
 
         return false
+    }
+    
+    func trackMetric(notificationContent: UNNotificationContent, event: Metric, jsonAdapter: JsonAdapter){
+        
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
+            return
+        }
+        
+        guard let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+            return
+        }
+        
+        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken) { result in
+            
+        }
     }
 }
 #endif

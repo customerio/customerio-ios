@@ -24,6 +24,10 @@ public extension MessagingPush {
             // push is not sent by CIO. Therefore, end early.
             return false
         }
+        
+        if customerIO.sdkConfig.autoTrackPushEvents {
+            trackMetric(notificationContent: request.content, event: .opened, jsonAdapter: DITracking.shared.jsonAdapter)
+        }
 
         RichPushRequestHandler.shared.startRequest(request, content: pushContent, completionHandler: contentHandler)
 
