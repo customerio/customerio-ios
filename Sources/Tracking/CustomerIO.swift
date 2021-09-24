@@ -20,6 +20,17 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
+
+    // sourcery:Name=trackScreen
+    func trackScreen<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
+
     func clearIdentify()
 }
 
@@ -81,6 +92,14 @@ public extension CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
+
+    func trackScreen(
+        name: String,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        trackScreen(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 }
 
@@ -358,23 +377,61 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
+        trackEvent(isScreenTracking: false, name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
+
+    /**
+     Track a screen view
+
+     [Learn more](https://customer.io/docs/api/#operation/track) about events in Customer.io
+
+     - Parameters:
+     - name: Name of the Screen viewed you want to track.
+     - data: Optional event body data
+     - onComplete: Asynchronous callback with `Result` of tracking an event.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
+     */
+    public func trackScreen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        trackEvent(isScreenTracking: true, name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
+
+    private func trackEvent<RequestBody: Encodable>(
+        isScreenTracking: Bool,
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
         guard let identifyRepository = self.identifyRepository else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
-        identifyRepository
-            .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
+        let trackOnComplete: (Result<Void, CustomerIOError>) -> Void = { [weak self] result in
+            DispatchQueue.main.async { [weak self] in
+                guard self != nil else { return }
 
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
+                switch result {
+                case .success:
+                    return onComplete(Result.success(()))
+                case .failure(let error):
+                    return onComplete(Result.failure(error))
                 }
             }
+        }
+
+        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
+        if isScreenTracking {
+            identifyRepository.trackScreenView(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder,
+                                               onComplete: trackOnComplete)
+        } else {
+            identifyRepository.trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder,
+                                          onComplete: trackOnComplete)
+        }
     }
 }
