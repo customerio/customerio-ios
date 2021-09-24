@@ -70,6 +70,8 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
                 .appendingPathComponent(uniqueFileName)
 
             do {
+                try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true,
+                                                        attributes: nil)
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
             } catch {
                 return onComplete(nil)
