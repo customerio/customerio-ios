@@ -378,7 +378,7 @@ It's time to send yourself a push in Customer.io. Send a *Custom Payload* using 
 ```
 
 Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
-Modify the `image` to a URL pointing to an image to display in the push notification.
+Modify the `image` to a URL pointing to an image to display in the push notification. It's important that the image URL starts with `https://` and *not* `http://` or the image may not be displayed. 
 
 ## Deep links
 
