@@ -212,9 +212,9 @@ CustomerIO.shared.clearIdentify()
 
 Want to send push notification messages to your customer's devices? Great!
 
-> Note: At this time, the Customer.io SDK only supports APN push, but we're actively working on FCM support. 
+The Customer.io SDK supports sending push notifications via APN or FCM. 
 
-## Getting started 
+## Getting started APN
 
 1. Install the SDK `MessagingPushAPN` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
 
@@ -279,7 +279,69 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
 
-5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links you'll need to implement custom code in your app. 
+5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links follow the instructions for [Rich push](#rich-push). 
+
+## Getting Started FCM 
+
+1. Install the SDK `MessagingPushFCM` using Swift Package Manager. Follow the [Install the SDK](#install-the-sdk) instructions to learn more. 
+
+2. Follow the instructions to [setup FCM on iOS](https://firebase.google.com/docs/cloud-messaging/ios/client) into your app. 
+
+3. After initializing the SDK, register for remote push to receive a device token from APN. Then, call the Customer.io SDK to add the token to the user profile:
+
+```swift
+import CioMessagingPushFCM
+import CioTracking
+import Firebase
+import FirebaseMessaging
+import Foundation
+import UIKit
+
+class AppDelegateFCM: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        FirebaseApp.configure() // run first so crashes are caught before all other initialization.
+        // If you have decided to use the shared singleton method of using the Customer.io SDK,
+        // initialize the SDK here in the `AppDelegate`.
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.US)
+
+        // Set FCM messaging delegate
+        Messaging.messaging().delegate = self
+
+        // It's good practice to always register for remote push when the app starts.
+        // This asserts that the Customer.io SDK always has a valid APN device token to use.
+        UIApplication.shared.registerForRemoteNotifications()
+
+        return true
+    }
+}
+
+extension AppDelegateFCM: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let fcmToken = fcmToken else { return }
+        
+        MessagingPush.shared.messaging(messaging, didReceiveRegistrationToken: fcmToken) { result in
+            // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+            guard let self = self else { return }
+   
+            switch result {
+            case .success: 
+                // Device token successfully removed from profile!
+                break 
+            case .failure(let customerIOError):
+                // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+                break 
+            }
+        }
+    }
+}
+```
+
+4. [Identify a customer](#Identify-a-customer) if you have not already. When you add a device token, it is not useful until you associate that device token with a person. You can identify a person before or after you register a device token with the Customer.io SDK. The SDK automatically adds and removes the device token from the customer profile when you identify and stop identifying a person with the SDK. 
+
+5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links follow the instructions for [Rich push](#rich-push). 
 
 ## Rich push
 
@@ -287,7 +349,7 @@ Interested in doing more with your push notification? Showing an image? Opening 
 
 > Note: At this time, the Customer.io SDK only works with deep links and images. If you want to do something like showing action buttons in a push notifications, you need to add custom code to do that. It's recommended that you use the SDK as it is much easier to extend than writing your own code from scratch. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
 
-> Note: Follow the instructions above for setting up APN push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
+> Note: Follow the instructions above for setting up APN or FCM push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
 
 1. Create a Notification Service Extension in Xcode.  `File > New > Target`. Then, select `Notification Service Extension` in the iOS section. Answer all of the questions to finish the process. 
 
