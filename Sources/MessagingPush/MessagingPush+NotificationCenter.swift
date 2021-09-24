@@ -18,9 +18,21 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
+        switch response.actionIdentifier {
+        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
+            if customerIO.sdkConfig.autoTrackPushEvents {
+                trackMetric(notificationContent: response.notification.request.content, event: .delivered,
+                            jsonAdapter: DITracking.shared.jsonAdapter) { result in
+                    // XXX: pending background queue so that this can get retried instead of discarding the result
+                }
+            }
+        default: break
+        }
+
         guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
                                                   jsonAdapter: DITracking.shared.jsonAdapter)
         else {
+            // push does not contain a CIO rich payload, so end early
             return false
         }
 
@@ -31,38 +43,22 @@ public extension MessagingPush {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
-                
+
                 if customerIO.sdkConfig.autoTrackPushEvents {
-                    trackMetric(notificationContent: response.notification.request.content, event: .opened, jsonAdapter: DITracking.shared.jsonAdapter)
+                    trackMetric(notificationContent: response.notification.request.content, event: .opened,
+                                jsonAdapter: DITracking.shared.jsonAdapter) { result in
+                        // XXX: pending background queue so that this can get retried instead of discarding the result
+                    }
                 }
-                
+
                 completionHandler()
 
                 return true
-            }
-        case UNNotificationDismissActionIdentifier:
-            if customerIO.sdkConfig.autoTrackPushEvents {
-                trackMetric(notificationContent: response.notification.request.content, event: .delivered, jsonAdapter: DITracking.shared.jsonAdapter)
             }
         default: break
         }
 
         return false
-    }
-
-    func trackMetric(notificationContent: UNNotificationContent, event: Metric, jsonAdapter: JsonAdapter){
-        
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
-            return
-        }
-        
-        guard let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
-            return
-        }
-        
-        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken) { result in
-            // XXX: pending background queue so that this can get retried instead of discarding the result
-        }
     }
 
     private func cleanup(pushContent: PushContent) {

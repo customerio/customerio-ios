@@ -11,7 +11,7 @@ public struct SdkConfig {
      If you override this value, `Region` set when initializing the SDK will be ignored.
      */
     var trackingApiUrl: String = ""
-    
+
     /**
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
      for push notifications sent by Customer.io
