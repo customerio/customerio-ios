@@ -359,7 +359,7 @@ However, if you want to enable deep links in your rich push notification, read t
 
 It's time to send yourself a push in Customer.io. 
 * Send a push in the Customer.io web app with a *Custom Payload*. 
-* If using APN, select the iOS tab and use the following template:
+* If using APN, use the following template:
 
 ```json
 {
@@ -379,7 +379,7 @@ It's time to send yourself a push in Customer.io.
 }
 ```
 
-Or, if using FCM on iOS, select the Android tab and use the following template:
+If using FCM, use the following template:
 
 ```json
 {
@@ -404,6 +404,8 @@ Or, if using FCM on iOS, select the Android tab and use the following template:
     }
 }
 ```
+
+> Tip: [See our doc](https://customer.io/docs/push-custom-payloads/#getting-started-with-custom-payloads) if you are unsure how to use custom payloads for sending push notifications. 
 
 With both of the templates:
 * Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
