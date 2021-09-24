@@ -285,7 +285,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
 
-> Note: At this time, the Customer.io SDK works with deep links and images, only. If you want to do something like showing action buttons in a push notifications, you need to add custom code to do that. It's recommended to still use the SDK as it will be much easier. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
+> Note: At this time, the Customer.io SDK only works with deep links and images. If you want to do something like showing action buttons in a push notifications, you need to add custom code to do that. It's recommended that you use the SDK as it is much easier to extend than writing your own code from scratch. Read below for tips on how to extend the functionality of the SDK with features we do not yet support. 
 
 > Note: Follow the instructions above for setting up APN push notifications. It's recommended that you do not move forward with these steps until you can send yourself a [test push notification](https://customer.io/docs/push-getting-started/#sending-a-single-test-message) successfully. 
 
@@ -378,7 +378,7 @@ It's time to send yourself a push in Customer.io. Send a *Custom Payload* using 
 ```
 
 Modify the `link` to the deep link URL that you want to open when the push notification is touched. 
-Modify the `image` to a URL pointing to an image to display in the push notification. It's important that the image URL starts with `https://` and *not* `http://` or the image may not be displayed. 
+Modify the `image` to the URL of an image you want to display in the push notification. It's important that the image URL starts with `https://` and *not* `http://` or the image may not be displayed. 
 
 ## Deep links
 
