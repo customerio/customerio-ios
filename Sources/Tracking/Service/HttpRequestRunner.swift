@@ -12,6 +12,7 @@ internal protocol HttpRequestRunner: AutoMockable {
         httpBaseUrls: HttpBaseUrls,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     )
+    func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)
 }
 
 internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
@@ -54,6 +55,32 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
              */
 
             onComplete(data, response as? HTTPURLResponse, error)
+        }.resume()
+    }
+
+    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
+        let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
+
+        session.downloadTask(with: url) { tempLocation, response, _ in
+            guard let tempLocation = tempLocation, let uniqueFileName = response?.suggestedFilename else {
+                return onComplete(nil)
+            }
+
+            let destinationURL = directoryURL
+                .appendingPathComponent(uniqueFileName)
+
+            do {
+                // confirm that directories all created because we may have created a new sub-directory
+                try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true,
+                                                        attributes: nil)
+                try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
+            } catch {
+                // XXX: log error when error handling for the customer enabled
+
+                return onComplete(nil)
+            }
+
+            onComplete(destinationURL)
         }.resume()
     }
 

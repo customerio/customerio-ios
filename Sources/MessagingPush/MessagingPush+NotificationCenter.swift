@@ -25,6 +25,9 @@ public extension MessagingPush {
         }
 
         switch response.actionIdentifier {
+        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
+            cleanup(pushContent: pushContent)
+
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
@@ -37,6 +40,14 @@ public extension MessagingPush {
         }
 
         return false
+    }
+
+    private func cleanup(pushContent: PushContent) {
+        pushContent.cioAttachments.forEach { attachment in
+            let localFilePath = attachment.url
+
+            try? FileManager.default.removeItem(at: localFilePath)
+        }
     }
 }
 #endif

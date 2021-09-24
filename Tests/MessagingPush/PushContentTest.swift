@@ -47,6 +47,48 @@ class PushContentTest: UnitTest {
         XCTAssertEqual(actual.deepLink!, givenLink.url!)
     }
 
+    // MARK: addImage
+
+    func test_addImage_givenMultipleImages_expectAddAll() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
+
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 1)
+
+        pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
+
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 2)
+    }
+
+    func test_addImage_givenAddImage_expectGetImageFromAttachmentsProperty() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
+
+        XCTAssertEqual(pushContent.cioAttachments.count, 1)
+    }
+
+    // MARK: cioAttachments
+
+    func test_cioAttachments_givenCioImageAndNonCioAttachment_expectOnlyGetCioAttachments() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        content.attachments = [
+            try! UNNotificationAttachment(identifier: "non-cio-attachment", url: "file:///foo.jpg".url!, options: nil),
+            try! UNNotificationAttachment(identifier: "\(PushContent.cioAttachmentsPrefix)\(String.random)",
+                                          url: "file:///foo.jpg".url!, options: nil)
+        ]
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        XCTAssertEqual(pushContent.cioAttachments.count, 1)
+        XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 2)
+    }
+
     // MARK: property setters/getters
 
     func test_title_givenSet_expectGetSameValue() {
@@ -88,6 +130,19 @@ class PushContentTest: UnitTest {
         pushContent.deepLink = given
 
         XCTAssertEqual(given, pushContent.deepLink)
+    }
+
+    func test_image_givenSet_expectGetSameValue() {
+        let given = "https://\(String.random).jpg".url
+        let content = UNMutableNotificationContent()
+        content.userInfo = validCioPushContent
+        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+
+        XCTAssertNotEqual(given, pushContent.image)
+
+        pushContent.image = given
+
+        XCTAssertEqual(given, pushContent.image)
     }
 }
 #endif
