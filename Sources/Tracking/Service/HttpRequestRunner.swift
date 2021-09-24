@@ -70,10 +70,13 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
                 .appendingPathComponent(uniqueFileName)
 
             do {
+                // confirm that directories all created because we may have created a new sub-directory
                 try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true,
                                                         attributes: nil)
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
             } catch {
+                // XXX: log error when error handling for the customer enabled
+
                 return onComplete(nil)
             }
 
