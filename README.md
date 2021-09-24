@@ -283,8 +283,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 ## Tracking push metrics
 
-When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. To send these events you can 
+When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. 
 
+If you're using a version of iOS that supports `UserNotifications` you can track metrics using our `UNNotificationContent` helper
 ```swift
 
 func userNotificationCenter(
@@ -306,6 +307,32 @@ func userNotificationCenter(
             }
         }
     }
+```
+
+otherwise you should extract the `CIO-Delivery-ID` and `CIO-Delivery-Token` parameters directly:
+
+```swift
+guard let deliveryID: String = userInfo["CIO-Delivery-ID"] as? String else {
+    return
+}
+
+guard let deviceToken: String = userInfo["CIO-Delivery-Token"] as? String else {
+    return
+}
+
+MessagingPush.shared.trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken){ [weak self] result in 
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
+
+    switch result {
+    case .success: 
+      // Metric successfully tracked
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
 ```
 
 ## Rich push
