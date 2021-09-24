@@ -283,9 +283,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 ## Tracking push metrics
 
-When handling push messages from Customer.io, you may want to have your app report back device-side metrics for message interaction. Customer.io supports three of these metrics: `delivered`, `opened`, and `converted`. More information about these metrics can be found by [visiting our push developer guide](https://customer.io/docs/push-developer-guide).
+When handling push messages from Customer.io, you may want to have your app report back device-side metrics when people interact with your messages. Customer.io supports three device-side metrics: `delivered`, `opened`, and `converted`. You can find more information about these metrics [in our push developer guide](https://customer.io/docs/push-developer-guide).
 
-If you have already configured [rich push notifications](#rich-push) then our SDK will, by default, automatically track `opened` and `delivered` events for push notifications originating from Customer.io. If you would like to disable this behaviour you can do so by calling `configure` on either the shared or your initialized CustomerIO instance:
+If you already configured [rich push notifications](#rich-push), then our SDK will automatically track `opened` and `delivered` events by default for push notifications originating from Customer.io. If you want to disable this behaviour, you can call `configure` on your initialized CustomerIO instance or the shared instance:
 
 ```swift
 CustomerIO.config {
@@ -294,7 +294,7 @@ CustomerIO.config {
 ```
 
 
-If you're using a version of iOS that supports `UserNotifications` you can track metrics using our `UNNotificationContent` helper
+If you're using a version of iOS that supports `UserNotifications`, you can track metrics using our `UNNotificationContent` helper
 ```swift
 
 func userNotificationCenter(
