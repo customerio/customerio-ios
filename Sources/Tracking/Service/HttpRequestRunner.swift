@@ -62,15 +62,9 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         guard let documentsDirectoryURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
         else { return }
 
-        session.downloadTask(with: url) { tempLocation, _, _ in
-            guard let tempLocation = tempLocation else {
+        session.downloadTask(with: url) { tempLocation, response, _ in
+            guard let tempLocation = tempLocation, let uniqueFileName = response?.suggestedFilename else {
                 return onComplete(nil)
-            }
-
-            // note make sure that the file name below is unique to not overwrite previous file.
-            var uniqueFileName = String.random
-            if let fileExtension = url.absoluteString.fileExtension {
-                uniqueFileName += ".\(fileExtension)"
             }
 
             let destinationURL = documentsDirectoryURL.appendingPathComponent(uniqueFileName)

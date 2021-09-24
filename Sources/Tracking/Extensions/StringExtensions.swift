@@ -7,23 +7,6 @@ public extension String {
         self = apnDeviceToken.map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Given: https://customer.io/image.jpg => jpg
-    /// Given: https://customer.io/image.jpg?query_param=foo => jpg
-    var fileExtension: String? {
-        guard let value = url?.pathExtension else { return nil }
-        if value.isEmpty {
-            return nil
-        }
-
-        return value
-    }
-
-    /// Given: https://customer.io/image.jpg => image.jpg
-    /// Given: https://customer.io/image.jpg?query_param=foo => image.jpg
-    var fileName: String? {
-        url?.pathComponents.last
-    }
-
     var data: Data! {
         data(using: .utf8)
     }

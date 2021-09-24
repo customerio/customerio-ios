@@ -63,19 +63,6 @@ class PushContentTest: UnitTest {
         XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 2)
     }
 
-    func test_addImage_givenImage_expectUseFilenameOfImage() {
-        let content = UNMutableNotificationContent()
-        content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
-
-        let givenImageUrl = "https://customer.io/\(String.random).jpg".url!
-
-        pushContent.addImage(localFilePath: givenImageUrl)
-
-        XCTAssertEqual(pushContent.mutableNotificationContent.attachments[0].identifier,
-                       givenImageUrl.absoluteString.fileName)
-    }
-
     // MARK: property setters/getters
 
     func test_title_givenSet_expectGetSameValue() {
