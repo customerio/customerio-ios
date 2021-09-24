@@ -26,7 +26,7 @@ public extension MessagingPush {
         }
         
         if customerIO.sdkConfig.autoTrackPushEvents {
-            trackMetric(notificationContent: request.content, event: .opened, jsonAdapter: DITracking.shared.jsonAdapter)
+            trackMetric(notificationContent: request.content, event: .delivered, jsonAdapter: DITracking.shared.jsonAdapter)
         }
 
         RichPushRequestHandler.shared.startRequest(request, content: pushContent, customerIO: customerIO,

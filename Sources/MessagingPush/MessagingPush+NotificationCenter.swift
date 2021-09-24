@@ -61,6 +61,7 @@ public extension MessagingPush {
         }
         
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken) { result in
+            // XXX: pending background queue so that this can get retried instead of discarding the result
         }
     }
 
