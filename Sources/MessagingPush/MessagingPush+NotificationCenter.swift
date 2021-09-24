@@ -64,14 +64,9 @@ public extension MessagingPush {
         event: Metric,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String else {
-            onComplete(Result.success(()))
-            return
-        }
-
-        guard let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
-            onComplete(Result.success(()))
-            return
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
+                  let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+            return onComplete(Result.success(()))
         }
 
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete)
