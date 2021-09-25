@@ -18,9 +18,20 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
+        switch response.actionIdentifier {
+        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
+            if customerIO.sdkConfig.autoTrackPushEvents {
+                trackMetric(notificationContent: response.notification.request.content, event: .delivered) { _ in
+                    // XXX: pending background queue so that this can get retried instead of discarding the result
+                }
+            }
+        default: break
+        }
+
         guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
                                                   jsonAdapter: DITracking.shared.jsonAdapter)
         else {
+            // push does not contain a CIO rich payload, so end early
             return false
         }
 
@@ -32,6 +43,12 @@ public extension MessagingPush {
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
 
+                if customerIO.sdkConfig.autoTrackPushEvents {
+                    trackMetric(notificationContent: response.notification.request.content, event: .opened) { _ in
+                        // XXX: pending background queue so that this can get retried instead of discarding the result
+                    }
+                }
+
                 completionHandler()
 
                 return true
@@ -40,6 +57,19 @@ public extension MessagingPush {
         }
 
         return false
+    }
+
+    func trackMetric(
+        notificationContent: UNNotificationContent,
+        event: Metric,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
+                  let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+            return onComplete(Result.success(()))
+        }
+
+        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete)
     }
 
     private func cleanup(pushContent: PushContent) {
