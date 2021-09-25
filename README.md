@@ -343,6 +343,67 @@ extension AppDelegateFCM: MessagingDelegate {
 
 5. You should now be able to see a device token in your Customer.io Workspace for the identified person. You can send a simple push notification using the Customer.io push notification editor. If you want to use images, action buttons, or deep links follow the instructions for [Rich push](#rich-push). 
 
+## Tracking push metrics
+
+When handling push messages from Customer.io, you may want to have your app report back device-side metrics when people interact with your messages. Customer.io supports three device-side metrics: `delivered`, `opened`, and `converted`. You can find more information about these metrics [in our push developer guide](https://customer.io/docs/push-developer-guide).
+
+If you already configured [rich push notifications](#rich-push), then our SDK will automatically track `opened` and `delivered` events by default for push notifications originating from Customer.io. If you want to disable this behaviour, you can call `configure` on your initialized CustomerIO instance or the shared instance:
+
+```swift
+CustomerIO.config {
+  $0.autoTrackPushEvents = false
+}
+```
+
+
+If you're using a version of iOS that supports `UserNotifications`, you can track metrics using our `UNNotificationContent` helper
+```swift
+
+func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        MessagingPush.shared.trackMetric(notificationContent: response.notification.request.content, event: .delivered) { [weak self] result in 
+            // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+            guard let self = self else { return }
+      
+            switch result {
+            case .success: 
+              // Metric successfully tracked
+              break 
+            case .failure(let customerIOError):
+              // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+              break 
+            }
+        }
+    }
+```
+
+otherwise you should extract the `CIO-Delivery-ID` and `CIO-Delivery-Token` parameters directly:
+
+```swift
+guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
+          let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+    // not a push notification delivered by Customer.io
+    return
+}
+
+MessagingPush.shared.trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken){ [weak self] result in 
+    // It's recommended to use `[weak self]` in the callback but your app's use cases may be unique. 
+    guard let self = self else { return }
+
+    switch result {
+    case .success: 
+      // Metric successfully tracked
+      break 
+    case .failure(let customerIOError):
+      // Error occurred. It's recommended you parse the `customerIOError` to learn more about the error.
+      break 
+    }
+}
+```
+
 ## Rich push
 
 Interested in doing more with your push notification? Showing an image? Opening a deep link when a push is touched? That's what we call *rich push* notifications. Let's get into how to send them. 
