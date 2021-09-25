@@ -1,3 +1,10 @@
+# [1.0.0-alpha.15](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.14...1.0.0-alpha.15) (2021-09-25)
+
+
+### Features
+
+* automatic push events ([#63](https://github.com/customerio/customerio-ios/issues/63)) ([cf81b23](https://github.com/customerio/customerio-ios/commit/cf81b2381993d7108ee7b860d4221c929a98d5d7))
+
 # [1.0.0-alpha.14](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.13...1.0.0-alpha.14) (2021-09-24)
 
 
