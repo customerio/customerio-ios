@@ -182,6 +182,27 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         clearIdentifyCallsCount += 1
         clearIdentifyClosure?()
     }
+
+    // MARK: - setupScreenViewTracking
+
+    /// Number of times the function was called.
+    public private(set) var setupScreenViewTrackingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var setupScreenViewTrackingCalled: Bool {
+        setupScreenViewTrackingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var setupScreenViewTrackingClosure: (() -> Void)?
+
+    /// Mocked function for `setupScreenViewTracking()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setupScreenViewTracking() {
+        mockCalled = true
+        setupScreenViewTrackingCallsCount += 1
+        setupScreenViewTrackingClosure?()
+    }
 }
 
 /**

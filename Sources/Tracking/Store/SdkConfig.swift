@@ -18,6 +18,12 @@ public struct SdkConfig {
      */
     public var autoTrackPushEvents: Bool = true
 
+    /**
+     Automatic tracking of screen views will generate `screen`-type events on every screen transition within
+        your application. If you would prefer to handle these yourself, disable this feature
+     */
+    public var autoTrackScreenViews: Bool = true
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }

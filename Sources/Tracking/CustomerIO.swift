@@ -21,6 +21,8 @@ public protocol CustomerIOInstance: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
     func clearIdentify()
+
+    func setupScreenViewTracking()
 }
 
 public extension CustomerIOInstance {
@@ -150,6 +152,10 @@ public class CustomerIO: CustomerIOInstance {
            let existingCredentials = credentialsStore.load(siteId: siteId) {
             self.credentials = existingCredentials
             self._identifyRepository = CIOIdentifyRepository(credentials: existingCredentials, config: newSdkConfig)
+        }
+
+        if sdkConfig.autoTrackScreenViews {
+            setupScreenViewTracking()
         }
     }
 
