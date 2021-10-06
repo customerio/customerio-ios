@@ -20,22 +20,8 @@ public protocol MessagingPushInstance: AutoMockable {
 public class MessagingPush: MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
 
-    public let customerIO: CustomerIO!
-    private let httpClient: HttpClient
-    private let jsonAdapter: JsonAdapter
-    private let eventBus: EventBus
-
-    private var identifyCustomerEventBusCallback: NSObjectProtocol?
-
-    @Atomic public var deviceToken: String?
-
-    /// testing init
-    internal init(customerIO: CustomerIO?, httpClient: HttpClient, jsonAdapter: JsonAdapter, eventBus: EventBus) {
-        self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)
-        self.httpClient = httpClient
-        self.jsonAdapter = jsonAdapter
-        self.eventBus = eventBus
-    }
+    public let customerIO: CustomerIOInstance!
+    internal var implementation: MessagingPushImplementation?
 
     /**
      Create a new instance of the `MessagingPush` class.
@@ -43,23 +29,11 @@ public class MessagingPush: MessagingPushInstance {
      - Parameters:
        - customerIO: Instance of `CustomerIO` class.
      */
-    public init(customerIO: CustomerIO) {
+    public init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
-        self.httpClient = CIOHttpClient(credentials: customerIO.credentials!, config: customerIO.sdkConfig)
-        self.jsonAdapter = DITracking.shared.jsonAdapter
-        self.eventBus = DITracking.shared.eventBus
-
-        self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) {
-//            if let deviceToken = self.deviceToken {
-            // register device token with customer.
-//            }
+        if let siteId = customerIO.siteId {
+            self.implementation = MessagingPushImplementation(siteId: siteId)
         }
-    }
-
-    deinit {
-        // XXX: handle deinit case where we want to delete the token
-
-        self.eventBus.unregister(identifyCustomerEventBusCallback)
     }
 
     /**
@@ -68,76 +42,22 @@ public class MessagingPush: MessagingPushInstance {
      */
     public func registerDeviceToken(_ deviceToken: String,
                                     onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let device = Device(token: deviceToken, lastUsed: Date())
-        guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
-        }
-
-        if customerIO.credentials == nil {
+        guard let implementation = self.implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        guard let identifier = customerIO.identifier else {
-            return onComplete(Result.failure(.noCustomerIdentified))
-        }
-
-        let httpRequestParameters = HttpRequestParams(endpoint: .registerDevice(identifier: identifier), headers: nil,
-                                                      body: bodyData)
-
-        httpClient
-            .request(httpRequestParameters) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    switch result {
-                    case .success:
-                        self.deviceToken = deviceToken
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+        implementation.registerDeviceToken(deviceToken, onComplete: onComplete)
     }
 
     /**
      Delete the currently registered device token
      */
     public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let bodyData = jsonAdapter.toJson(DeleteDeviceRequest()) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
+        guard let implementation = self.implementation else {
+            return onComplete(Result.failure(.notInitialized))
         }
 
-        guard let deviceToken = self.deviceToken else {
-            // no device token, delete has already happened or is not needed
-            return onComplete(Result.success(()))
-        }
-
-        guard let identifier = customerIO.identifier else {
-            // no customer identified, we can safely clear the device token
-            self.deviceToken = nil
-            return onComplete(Result.success(()))
-        }
-
-        let httpRequestParameters =
-            HttpRequestParams(endpoint: .deleteDevice(identifier: identifier,
-                                                      deviceToken: deviceToken),
-                              headers: nil, body: bodyData)
-
-        httpClient
-            .request(httpRequestParameters) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    switch result {
-                    case .success:
-                        self.deviceToken = nil
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+        implementation.deleteDeviceToken(onComplete: onComplete)
     }
 
     /**
@@ -149,27 +69,12 @@ public class MessagingPush: MessagingPushInstance {
         deviceToken: String,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        let request = MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken, timestamp: Date())
-
-        guard let bodyData = jsonAdapter.toJson(request) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
+        guard let implementation = self.implementation else {
+            return onComplete(Result.failure(.notInitialized))
         }
 
-        let httpRequestParameters =
-            HttpRequestParams(endpoint: .pushMetrics,
-                              headers: nil, body: bodyData)
-
-        httpClient
-            .request(httpRequestParameters) { result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success:
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+        implementation.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
+                                   onComplete: onComplete)
     }
 }
 

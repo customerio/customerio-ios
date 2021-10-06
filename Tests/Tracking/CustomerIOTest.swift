@@ -4,56 +4,53 @@ import SharedTests
 import XCTest
 
 class CustomerIOTest: UnitTest {
-    private var customerIO: CustomerIO!
+    private let globalDataStore = CioGlobalDataStore()
 
-    private var identifyRepositoryMock: IdentifyRepositoryMock!
+    // MARK: init
 
-    override func setUp() {
-        super.setUp()
+    func test_init_setCredentials_expectAppendSiteId() {
+        let sharedGivenSiteId = String.random
+        let instanceGivenSiteId = String.random
 
-        identifyRepositoryMock = IdentifyRepositoryMock()
+        CustomerIO.initialize(siteId: sharedGivenSiteId, apiKey: String.random, region: Region.EU)
+        XCTAssertEqual(CustomerIO.shared.globalData.siteIds, [sharedGivenSiteId])
 
-        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(),
-                                identifyRepository: identifyRepositoryMock, keyValueStorage: nil)
+        _ = CustomerIO(siteId: instanceGivenSiteId, apiKey: String.random)
+
+        XCTAssertEqualEither([
+            [sharedGivenSiteId, instanceGivenSiteId],
+            [instanceGivenSiteId, sharedGivenSiteId]
+        ], actual: CustomerIO.shared.globalData.siteIds)
     }
 
-    // MARK: credentials
+    func test_sharedInstance_expectImplementationLoadedAfterInitialize() {
+        XCTAssertNil(CustomerIO.shared.implementation)
 
-    func test_sharedInstance_givenNotInitialized_expectNotLoadCredentialsOnInit() {
-        XCTAssertNil(CustomerIO.shared.credentials)
+        CustomerIO.initialize(siteId: String.random, apiKey: String.random, region: Region.EU)
+
+        XCTAssertNotNil(CustomerIO.shared.implementation)
+    }
+
+    func test_sharedInstance_givenSharedInstanceSiteIdSet_givenCredentialsNotYet_expectImplementationNotLoaded() {
+        globalDataStore.sharedInstanceSiteId = String.random
+
+        _ = CustomerIO()
+
+        XCTAssertNil(CustomerIO.shared.implementation)
     }
 
     func test_sharedInstance_givenInitializeBefore_expectLoadCredentialsOnInit() {
         let givenSiteId = String.random
 
+        XCTAssertNil(CustomerIO.shared.implementation)
+
         // First, set the credentials on the shared instance
         CustomerIO.initialize(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
-        // next, create an instance of the shared instance and see if credentials loads
-        var instance: CustomerIO!
-        instance = CustomerIO()
-        XCTAssertNotNil(instance.credentials)
-        instance = nil // try to remove instance from memory simulating app removed from memory
-        XCTAssertNil(instance)
+        CustomerIO.resetSharedInstance()
+        _ = CustomerIO()
 
-        instance = CustomerIO()
-        XCTAssertNotNil(instance.credentials)
-        XCTAssertEqual(instance.credentials?.siteId, givenSiteId)
-    }
-
-    func test_sharedInstance_givenInitSeparateInstance_expectSeparateCredentials() {
-        let givenSiteIdSharedInstance = String.random
-        let givenSiteIdNewInstance = String.random
-
-        CustomerIO.shared.setCredentials(siteId: givenSiteIdSharedInstance, apiKey: String.random, region: Region.US)
-        let newInstance = CustomerIO(siteId: givenSiteIdNewInstance, apiKey: String.random, region: Region.EU)
-
-        XCTAssertNotNil(CustomerIO.shared.credentials)
-        XCTAssertNotNil(newInstance.credentials)
-
-        XCTAssertEqual(CustomerIO.shared.credentials?.siteId, givenSiteIdSharedInstance)
-        XCTAssertEqual(newInstance.credentials?.siteId, givenSiteIdNewInstance)
-
-        XCTAssertNotEqual(CustomerIO.shared.credentials?.apiKey, newInstance.credentials?.apiKey)
+        XCTAssertNotNil(CustomerIO.shared.implementation)
+        XCTAssertEqual(CustomerIO.shared.siteId, givenSiteId)
     }
 
     func test_newInstance_expectInitializedInstance() {
@@ -61,201 +58,19 @@ class CustomerIOTest: UnitTest {
 
         let actual = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
-        XCTAssertNotNil(actual.credentials)
-        XCTAssertEqual(actual.credentials?.siteId, givenSiteId)
-    }
-
-    func test_init_givenAccessMultipleThreads_expectSameValues() {
-        let givenSiteId = String.random
-
-        let actual = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
-
-        DispatchQueue.global(qos: .background).sync {
-            XCTAssertNotNil(actual.credentials)
-        }
-
-        XCTAssertNotNil(actual.credentials)
-    }
-
-    // MARK: config
-
-    func test_config_expectNotNilOnInit() {
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-
-        XCTAssertNotNil(CustomerIO.shared.sdkConfig)
-        XCTAssertNotNil(instance.sdkConfig)
-    }
-
-    func test_config_sharedInstance_givenModifyConfig_expectSetConfigOnInstance() {
-        let givenTrackingApiUrl = String.random
-
-        XCTAssertNotEqual(CustomerIO.shared.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
-
-        CustomerIO.config {
-            $0.trackingApiUrl = givenTrackingApiUrl
-        }
-
-        XCTAssertEqual(CustomerIO.shared.sdkConfig.trackingApiUrl, givenTrackingApiUrl)
-    }
-
-    func test_config_expectSharedInstanceConfigStartingValueForModifyingConfig() {
-        let givenUrl = String.random
-
-        CustomerIO.config {
-            $0.trackingApiUrl = givenUrl
-        }
-
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-        XCTAssertEqual(instance.sdkConfig.trackingApiUrl, givenUrl)
-
-        instance.config { actual in
-            XCTAssertEqual(actual.trackingApiUrl, givenUrl)
-        }
-    }
-
-    func test_config_givenMultipleInstances_expectDifferentConfig() {
-        let instance1 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-        let instance2 = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-
-        XCTAssertEqual(instance1.sdkConfig.trackingApiUrl, instance2.sdkConfig.trackingApiUrl)
-
-        instance1.config {
-            $0.trackingApiUrl = String.random
-        }
-
-        XCTAssertNotEqual(instance1.sdkConfig.trackingApiUrl, instance2.sdkConfig.trackingApiUrl)
-    }
-
-    func test_config_givenAccessMultipleThreads_expectSameValue() {
-        let givenUrl = String.random
-
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.US)
-
-        DispatchQueue.global(qos: .background).sync {
-            instance.config {
-                $0.trackingApiUrl = givenUrl
-            }
-        }
-
-        XCTAssertEqual(instance.sdkConfig.trackingApiUrl, givenUrl)
-    }
-
-    func test_config_givenSetConfig_expectSetDefaultValuesOnConfig() {
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.EU)
-
-        // Call config but don't set anything to see if default values get set
-        instance.config { _ in }
-
-        XCTAssertEqual(instance.sdkConfig.trackingApiUrl, Region.EU.productionTrackingUrl)
-    }
-
-    // MARK: setDefaultValuesSdkConfig
-
-    func test_setDefaultValuesSdkConfig_givenUnmodifiedConfigObject_expectSetDefaultValuesOnConfig() {
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.EU)
-        let unmodifiedSdkConfig = instance.sdkConfig
-
-        let actual = instance.setDefaultValuesSdkConfig(config: unmodifiedSdkConfig)
-
-        XCTAssertEqual(actual.trackingApiUrl, Region.EU.productionTrackingUrl)
-    }
-
-    func test_setDefaultValuesSdkConfig_givenModifiedTrackingApiUrl_expectDoNotChangeIt() {
-        let givenUrl = String.random
-        let instance = CustomerIO(siteId: String.random, apiKey: String.random, region: Region.EU)
-        instance.sdkConfig.trackingApiUrl = givenUrl
-
-        let actual = instance.setDefaultValuesSdkConfig(config: instance.sdkConfig)
-
-        XCTAssertEqual(actual.trackingApiUrl, givenUrl)
+        XCTAssertNotNil(actual.implementation)
+        XCTAssertEqual(actual.siteId, givenSiteId)
     }
 
     // MARK: identify
 
-    // testing `identify()` with request body. Will make an integration test for all `identify()` functions
-    // but copy/paste identify unit tests not needed since only 1 function has logic in it.
-    //
-    // NOTE: At this time, the `CustomerIOHttpTest` is that integration test. After refactoring the code
-    // to make the DI graph work as intended and the http request runner is in the graph we can make
-    // integration tests with a mocked request runner.
-
     func test_identify_givenSdkNotInialized_expectFailureResult() {
-        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: nil,
-                                keyValueStorage: nil)
         let givenBody = IdentifyRequestBody.random()
 
         let expect = expectation(description: "Expect to complete identify")
-        customerIO.identify(identifier: String.random, body: givenBody) { result in
+        CustomerIO.shared.identify(identifier: String.random, body: givenBody) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .notInitialized = error else { return XCTFail() }
-
-            XCTAssertFalse(self.identifyRepositoryMock.mockCalled)
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    func test_identify_expectCallRepository() {
-        let givenIdentifier = String.random
-        let givenBody = IdentifyRequestBody.random()
-
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualBody, _, onComplete in
-            XCTAssertEqual(givenIdentifier, actualIdentifier)
-            XCTAssertEqual(givenBody, actualBody.value as! IdentifyRequestBody)
-
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        customerIO.identify(identifier: givenIdentifier, body: givenBody) { result in
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    func test_identify_givenFailedAddCustomer_expectFailureResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.identify(identifier: String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
-
-            expect.fulfill()
-        }
-        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    func test_identify_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.identify(identifier: String.random) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
-            guard case .success = result else { return XCTFail() }
 
             expect.fulfill()
         }
@@ -266,89 +81,24 @@ class CustomerIOTest: UnitTest {
     // MARK: track
 
     func test_track_givenSdkNotInialized_expectFailureResult() {
-        customerIO = CustomerIO(credentialsStore: nil, sdkConfig: SdkConfig(), identifyRepository: nil,
-                                keyValueStorage: nil)
-
         let expect = expectation(description: "Expect to complete track")
-        customerIO.track(name: String.random) { result in
+        CustomerIO.shared.track(name: String.random) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .notInitialized = error else { return XCTFail() }
 
-            XCTAssertFalse(self.identifyRepositoryMock.mockCalled)
-
             expect.fulfill()
         }
 
         waitForExpectations()
     }
 
-    func test_track_expectCallRepository() {
-        let givenEventName = String.random
-        let givenEventData = TrackEventData.random()
+    // MARK: deinit
 
-        identifyRepositoryMock.trackEventClosure = { actualEventName, actualEventData, _, _, onComplete in
-            XCTAssertEqual(givenEventName, actualEventName)
-            XCTAssertEqual(givenEventData, actualEventData.value as! TrackEventData)
+    func test_givenNilObject_expectDeinit() {
+        var cio: CustomerIO? = CustomerIO(siteId: String.random, apiKey: String.random)
 
-            onComplete(Result.success(()))
-        }
+        cio = nil
 
-        let expect = expectation(description: "Expect to complete track")
-        customerIO.track(name: givenEventName, data: givenEventData) { result in
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 1)
-    }
-
-    func test_track_givenFailedTrackEvent_expectFailureResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
-        }
-
-        let expect = expectation(description: "Expect to complete track")
-        expect.expectedFulfillmentCount = 2
-        customerIO.track(name: String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
-
-            expect.fulfill()
-        }
-        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    func test_track_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.track(name: String.random) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
+        XCTAssertNil(cio)
     }
 }

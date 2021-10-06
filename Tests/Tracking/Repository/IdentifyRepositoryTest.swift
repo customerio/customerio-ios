@@ -5,9 +5,9 @@ import XCTest
 
 class IdentifyRepositoryTest: UnitTest {
     private var httpClientMock: HttpClientMock!
-    private var keyValueStorageMock: KeyValueStorageMock!
     private var eventBusMock: EventBusMock!
     private var siteId: String!
+    private var profileStoreMock: ProfileStoreMock!
 
     private var repository: IdentifyRepository!
     private var integrationRepository: IdentifyRepository!
@@ -16,18 +16,16 @@ class IdentifyRepositoryTest: UnitTest {
         super.setUp()
 
         httpClientMock = HttpClientMock()
-        keyValueStorageMock = KeyValueStorageMock()
         eventBusMock = EventBusMock()
+        profileStoreMock = ProfileStoreMock()
         siteId = String.random
 
-        repository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorageMock,
-                                           jsonAdapter: jsonAdapter,
-                                           siteId: siteId,
-                                           eventBus: eventBusMock)
-        integrationRepository = CIOIdentifyRepository(httpClient: httpClientMock, keyValueStorage: keyValueStorage,
+        repository = CIOIdentifyRepository(siteId: siteId, httpClient: httpClientMock, jsonAdapter: jsonAdapter,
+                                           eventBus: eventBusMock, profileStore: profileStoreMock)
+        integrationRepository = CIOIdentifyRepository(siteId: siteId,
+                                                      httpClient: httpClientMock,
                                                       jsonAdapter: jsonAdapter,
-                                                      siteId: siteId,
-                                                      eventBus: eventBusMock)
+                                                      eventBus: eventBusMock, profileStore: profileStore)
     }
 
     override func tearDown() {
@@ -69,7 +67,7 @@ class IdentifyRepositoryTest: UnitTest {
             guard case .http(let httpError) = actualError else { return XCTFail() }
             guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
 
-            XCTAssertFalse(self.keyValueStorageMock.mockCalled)
+            XCTAssertNil(self.profileStoreMock.identifier)
 
             expect.fulfill()
         }
@@ -89,8 +87,7 @@ class IdentifyRepositoryTest: UnitTest {
             .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
                 guard case .success = result else { return XCTFail() }
 
-                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                               givenIdentifier)
+                XCTAssertEqual(self.profileStore.identifier, givenIdentifier)
 
                 expect.fulfill()
             }
@@ -110,8 +107,8 @@ class IdentifyRepositoryTest: UnitTest {
         httpClientMock.requestClosure = { _, onComplete in onComplete(Result.success(Data())) }
 
         let expect = expectation(description: "Expect to complete")
-        integrationRepository.addOrUpdateCustomer(identifier: String.random, body: givenBody,
-                                                  jsonEncoder: givenEncoder) { result in
+        repository.addOrUpdateCustomer(identifier: String.random, body: givenBody,
+                                       jsonEncoder: givenEncoder) { result in
             expect.fulfill()
         }
 
@@ -127,7 +124,7 @@ class IdentifyRepositoryTest: UnitTest {
     func test_removeCustomer_givenNeverIdentifiedProfile_expectIgnoreRequest() {
         integrationRepository.removeCustomer()
 
-        XCTAssertNil(keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId))
+        XCTAssertNil(profileStoreMock.identifier)
     }
 
     func test_removeCustomer_givenIdentifiedCustomer_expectCustomerRemoved() {
@@ -140,12 +137,11 @@ class IdentifyRepositoryTest: UnitTest {
         let expect = expectation(description: "Expect to complete")
         integrationRepository
             .addOrUpdateCustomer(identifier: givenIdentifier, body: ["": ""], jsonEncoder: nil) { result in
-                XCTAssertEqual(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId),
-                               givenIdentifier)
+                XCTAssertEqual(self.profileStore.identifier, givenIdentifier)
 
                 self.integrationRepository.removeCustomer()
 
-                XCTAssertNil(self.keyValueStorage.string(siteId: self.siteId, forKey: .identifiedProfileId))
+                XCTAssertNil(self.profileStoreMock.identifier)
 
                 expect.fulfill()
             }
@@ -156,21 +152,15 @@ class IdentifyRepositoryTest: UnitTest {
     // MARK: trackEvent
 
     func test_trackEvent_expectCallHttpClientWithEmptyBodyNilTimestamp() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        let givenEventName = String.random
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
 
-        let givenIdentifier = String.random
-
         let expect = expectation(description: "Expect to complete")
-        expect.expectedFulfillmentCount = 2
-        integrationRepository
-            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
-                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
-                expect.fulfill()
-            }
-
-        let givenEventName = String.random
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
@@ -184,34 +174,27 @@ class IdentifyRepositoryTest: UnitTest {
             onComplete(Result.success(params.body!))
         }
 
-        integrationRepository.trackEvent(name: givenEventName, data: EmptyRequestBody(), timestamp: nil,
-                                         jsonEncoder: nil) { _ in
+        repository.trackEvent(name: givenEventName, data: EmptyRequestBody(), timestamp: nil,
+                              jsonEncoder: nil) { _ in
             expect.fulfill()
         }
 
         waitForExpectations()
 
-        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
+        XCTAssertEqual(httpClientMock.requestCallsCount, 1)
     }
 
     func test_trackEvent_expectCallHttpClientWithBodyAndNilTimestamp() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        let givenEventName = String.random
+        let givenEventData = TrackEventData.random()
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
 
-        let givenIdentifier = String.random
-
         let expect = expectation(description: "Expect to complete")
-        expect.expectedFulfillmentCount = 2
-        integrationRepository
-            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
-                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
-                expect.fulfill()
-            }
-
-        let givenEventName = String.random
-        let givenEventData = TrackEventData.random()
-
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
@@ -225,36 +208,28 @@ class IdentifyRepositoryTest: UnitTest {
             onComplete(Result.success(params.body!))
         }
 
-        integrationRepository
+        repository
             .trackEvent(name: givenEventName, data: givenEventData, timestamp: nil, jsonEncoder: nil) { _ in
                 expect.fulfill()
             }
 
         waitForExpectations()
 
-        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
+        XCTAssertEqual(httpClientMock.requestCallsCount, 1)
     }
 
     func test_trackEvent_expectCallHttpClientWithBodyAndTimestamp() {
+        let givenEventName = String.random
+        let givenEventData = TrackEventData.random()
+        let givenTimestamp = Date(timeIntervalSince1970: 1631731924)
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
 
-        let givenIdentifier = String.random
-
         let expect = expectation(description: "Expect to complete")
-        expect.expectedFulfillmentCount = 2
-        integrationRepository
-            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
-                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
-                expect.fulfill()
-            }
-
-        let givenEventName = String.random
-        let givenEventData = TrackEventData.random()
-
-        let givenTimestamp = Date(timeIntervalSince1970: 1631731924)
-
         httpClientMock.requestClosure = { params, onComplete in
             guard case .trackCustomerEvent(let actualIdentifier) = params.endpoint else { return XCTFail() }
 
@@ -268,17 +243,19 @@ class IdentifyRepositoryTest: UnitTest {
             onComplete(Result.success(params.body!))
         }
 
-        integrationRepository.trackEvent(name: givenEventName, data: givenEventData, timestamp: givenTimestamp,
-                                         jsonEncoder: nil) { _ in
+        repository.trackEvent(name: givenEventName, data: givenEventData, timestamp: givenTimestamp,
+                              jsonEncoder: nil) { _ in
             expect.fulfill()
         }
 
         waitForExpectations()
 
-        XCTAssertEqual(httpClientMock.requestCallsCount, 2)
+        XCTAssertEqual(httpClientMock.requestCallsCount, 1)
     }
 
     func test_trackEvent_givenNoIdentifiedCustomer_ExpectFailure() {
+        profileStoreMock.identifier = nil
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
@@ -297,26 +274,20 @@ class IdentifyRepositoryTest: UnitTest {
     }
 
     func test_trackEvent_givenHttpFailure_expectGetError() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.success(Data()))
         }
-
-        let givenIdentifier = String.random
-
-        let expect = expectation(description: "Expect to complete")
-        expect.expectedFulfillmentCount = 2
-        integrationRepository
-            .addOrUpdateCustomer(identifier: givenIdentifier, body: EmptyRequestBody(), jsonEncoder: nil) { result in
-                XCTAssertEqual(self.integrationRepository.identifier, givenIdentifier)
-                expect.fulfill()
-            }
 
         httpClientMock.requestClosure = { params, onComplete in
             onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
         }
 
-        integrationRepository.trackEvent(name: String.random, data: EmptyRequestBody(), timestamp: nil,
-                                         jsonEncoder: nil) { result in
+        let expect = expectation(description: "Expect to complete")
+        repository.trackEvent(name: String.random, data: EmptyRequestBody(), timestamp: nil,
+                              jsonEncoder: nil) { result in
             guard case .failure(let actualError) = result else { return XCTFail() }
             guard case .http(let httpError) = actualError else { return XCTFail() }
             guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }

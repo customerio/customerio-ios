@@ -70,9 +70,34 @@ public enum DependencyMessagingPush: CaseIterable {
  in `Common` module can be in the `Tracking` module.
  */
 public class DIMessagingPush {
-    public static var shared = DIMessagingPush()
     private var overrides: [DependencyMessagingPush: Any] = [:]
-    private init() {}
+
+    internal let siteId: SiteId
+    internal init(siteId: String) {
+        self.siteId = siteId
+    }
+
+    // Used for tests
+    public convenience init() {
+        self.init(siteId: "test-identifier")
+    }
+
+    class Store {
+        var instances: [String: DIMessagingPush] = [:]
+        func getInstance(siteId: String) -> DIMessagingPush {
+            if let existingInstance = instances[siteId] {
+                return existingInstance
+            }
+            let newInstance = DIMessagingPush(siteId: siteId)
+            instances[siteId] = newInstance
+            return newInstance
+        }
+    }
+
+    @Atomic internal static var store = Store()
+    public static func getInstance(siteId: String) -> DIMessagingPush {
+        Self.store.getInstance(siteId: siteId)
+    }
 
     /**
      Designed to be used only in test classes to override dependencies.

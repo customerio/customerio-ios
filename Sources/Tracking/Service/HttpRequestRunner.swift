@@ -10,24 +10,21 @@ internal protocol HttpRequestRunner: AutoMockable {
     func request(
         _ params: HttpRequestParams,
         httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     )
-    func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)
+    func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)
 }
 
+// sourcery: InjectRegister = "HttpRequestRunner"
 internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
-    private let session: URLSession
-
-    init(session: URLSession) {
-        self.session = session
-    }
-
     /**
      Note: When mocking request, open JSON file, convert to `Data`.
      */
     func request(
         _ params: HttpRequestParams,
         httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     ) {
         guard let url = getUrl(endpoint: params.endpoint, baseUrls: httpBaseUrls) else {
@@ -58,7 +55,12 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         }.resume()
     }
 
-    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
+    public func downloadFile(
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: @escaping (URL?) -> Void
+    ) {
         let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
 
         session.downloadTask(with: url) { tempLocation, response, _ in

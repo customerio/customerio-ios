@@ -14,7 +14,7 @@ import XCTest
  */
 class HttpRequestRunnerTest: HttpTest {
     func test_getAccountRegion() throws {
-        guard let runner = runner else { return try XCTSkipIf(true) }
+        guard let runner = runner, let session = session else { return try XCTSkipIf(true) }
 
         let endpoint = HttpEndpoint.findAccountRegion
 
@@ -22,7 +22,8 @@ class HttpRequestRunnerTest: HttpTest {
         let requestParams = HttpRequestParams(endpoint: endpoint, headers: nil, body: nil)
         runner
             .request(requestParams,
-                     httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US)) { data, response, error in
+                     httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US),
+                     session: session) { data, response, error in
                 print(response!)
                 print(data!.string!)
 

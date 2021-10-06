@@ -13,8 +13,23 @@ open class UnitTest: XCTestCase {
      Handy objects tests might need to use
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
-    public let keyValueStorage = DITracking.shared.keyValueStorage
-    public let log: ConsoleLogger = DITracking.shared.logger as! ConsoleLogger
+    public let testSiteId = "testing"
+    public var diGraph: DITracking {
+        DITracking.getInstance(siteId: testSiteId)
+    }
+
+    public var keyValueStorage: KeyValueStorage {
+        diGraph.keyValueStorage
+    }
+
+    public var profileStore: ProfileStore {
+        diGraph.profileStore
+    }
+
+    public var log: ConsoleLogger {
+        diGraph.logger as! ConsoleLogger
+    }
+
     public var jsonAdapter: JsonAdapter {
         JsonAdapter(log: log)
     }
@@ -28,7 +43,7 @@ open class UnitTest: XCTestCase {
     override open func tearDown() {
         deleteAll()
 
-        DITracking.shared.resetOverrides()
+        diGraph.resetOverrides()
 
         super.tearDown()
     }
@@ -36,6 +51,7 @@ open class UnitTest: XCTestCase {
     func deleteAll() {
         deleteKeyValueStorage()
         CustomerIO.resetSharedInstance()
+        CioGlobalDataStore().keyValueStorage.deleteAll()
     }
 
     /**
@@ -46,7 +62,7 @@ open class UnitTest: XCTestCase {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
-        keyValueStorage.deleteAll(siteId: keyValueStorage.sharedSiteId)
+        keyValueStorage.deleteAll()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

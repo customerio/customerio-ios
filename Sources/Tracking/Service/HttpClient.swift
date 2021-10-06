@@ -14,25 +14,24 @@ public protocol HttpClient: AutoMockable {
     func cancel(finishTasks: Bool)
 }
 
+// sourcery: InjectRegister = "HttpClient"
 public class CIOHttpClient: HttpClient {
     private let session: URLSession
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
 
-    /// for testing
-    init(httpRequestRunner: HttpRequestRunner, jsonAdapter: JsonAdapter) {
+    init(
+        siteId: SiteId,
+        sdkCredentialsStore: SdkCredentialsStore,
+        configStore: SdkConfigStore,
+        jsonAdapter: JsonAdapter,
+        httpRequestRunner: HttpRequestRunner
+    ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(siteId: "fake-site-id", apiKey: "fake-api-key")
-        self.baseUrls = HttpBaseUrls(trackingApi: "fake-url")
+        self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey)
+        self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
-    }
-
-    public init(credentials: SdkCredentials, config: SdkConfig) {
-        self.session = Self.getSession(siteId: credentials.siteId, apiKey: credentials.apiKey)
-        self.baseUrls = config.httpBaseUrls
-        self.httpRequestRunner = UrlRequestHttpRequestRunner(session: session)
-        self.jsonAdapter = DITracking.shared.jsonAdapter
     }
 
     deinit {
@@ -40,48 +39,50 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        httpRequestRunner.downloadFile(url: url, fileType: fileType, onComplete: onComplete)
+        httpRequestRunner.downloadFile(url: url, fileType: fileType, session: session, onComplete: onComplete)
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
-        httpRequestRunner.request(params, httpBaseUrls: baseUrls) { [weak self] data, response, error in
-            guard let self = self else { return }
+        httpRequestRunner
+            .request(params, httpBaseUrls: baseUrls, session: session) { [weak self] data, response, error in
+                guard let self = self else { return }
 
-            if let error = error {
-                if let error = self.isUrlError(error) {
-                    return onComplete(.failure(error))
-                }
-
-                return onComplete(.failure(.noRequestMade(error)))
-            }
-
-            guard let response = response else {
-                return onComplete(.failure(.noRequestMade(nil)))
-            }
-
-            let statusCode = response.statusCode
-            guard statusCode < 300 else {
-                switch statusCode {
-                case 401:
-                    onComplete(.failure(.unauthorized))
-                default:
-                    var errorBodyString: String = data?.string ?? ""
-                    if let data = data, let errorMessageBody: ErrorMessageResponse = self.jsonAdapter.fromJson(data) {
-                        errorBodyString = errorMessageBody.meta.error
+                if let error = error {
+                    if let error = self.isUrlError(error) {
+                        return onComplete(.failure(error))
                     }
 
-                    onComplete(.failure(.unsuccessfulStatusCode(statusCode, message: errorBodyString)))
+                    return onComplete(.failure(.noRequestMade(error)))
                 }
 
-                return
-            }
+                guard let response = response else {
+                    return onComplete(.failure(.noRequestMade(nil)))
+                }
 
-            guard let data = data else {
-                return onComplete(.failure(.noRequestMade(nil)))
-            }
+                let statusCode = response.statusCode
+                guard statusCode < 300 else {
+                    switch statusCode {
+                    case 401:
+                        onComplete(.failure(.unauthorized))
+                    default:
+                        var errorBodyString: String = data?.string ?? ""
+                        if let data = data,
+                           let errorMessageBody: ErrorMessageResponse = self.jsonAdapter.fromJson(data) {
+                            errorBodyString = errorMessageBody.meta.error
+                        }
 
-            onComplete(.success(data))
-        }
+                        onComplete(.failure(.unsuccessfulStatusCode(statusCode, message: errorBodyString)))
+                    }
+
+                    return
+                }
+
+                guard let data = data else {
+                    return onComplete(.failure(.noRequestMade(nil)))
+                }
+
+                onComplete(.success(data))
+            }
     }
 
     public func cancel(finishTasks: Bool) {
