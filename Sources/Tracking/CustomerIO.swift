@@ -11,6 +11,8 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?
     )
 
+    func clearIdentify()
+
     // sourcery:Name=track
     func track<RequestBody: Encodable>(
         name: String,
@@ -20,7 +22,16 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-    func clearIdentify()
+
+    // sourcery:Name=screenView
+    func screen<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 
     func setupScreenViewTracking()
 }
@@ -371,6 +382,44 @@ public class CustomerIO: CustomerIOInstance {
         // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
         identifyRepository
             .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
+                DispatchQueue.main.async { [weak self] in
+                    guard self != nil else { return }
+
+                    switch result {
+                    case .success:
+                        return onComplete(Result.success(()))
+                    case .failure(let error):
+                        return onComplete(Result.failure(error))
+                    }
+                }
+            }
+    }
+
+    /**
+     Track a a screen view
+
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+
+     - Parameters:
+     - name: Name of the currently active screen. When automatically tracked, we use the name of the controller without any `ViewController` substrings
+     - data: Optional event body data
+     - onComplete: Asynchronous callback with `Result` of tracking an event.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
+     */
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let identifyRepository = self.identifyRepository else {
+            return onComplete(Result.failure(.notInitialized))
+        }
+
+        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
+        identifyRepository
+            .screen(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
                 DispatchQueue.main.async { [weak self] in
                     guard self != nil else { return }
 

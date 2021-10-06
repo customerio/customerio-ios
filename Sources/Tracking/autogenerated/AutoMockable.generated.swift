@@ -126,6 +126,27 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         identifyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
     }
 
+    // MARK: - clearIdentify
+
+    /// Number of times the function was called.
+    public private(set) var clearIdentifyCallsCount = 0
+    /// `true` if the function was ever called.
+    public var clearIdentifyCalled: Bool {
+        clearIdentifyCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var clearIdentifyClosure: (() -> Void)?
+
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func clearIdentify() {
+        mockCalled = true
+        clearIdentifyCallsCount += 1
+        clearIdentifyClosure?()
+    }
+
     // MARK: - track<RequestBody: Encodable>
 
     /// Number of times the function was called.
@@ -162,25 +183,42 @@ public class CustomerIOInstanceMock: CustomerIOInstance {
         trackClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
     }
 
-    // MARK: - clearIdentify
+    // MARK: - screen<RequestBody: Encodable>
 
     /// Number of times the function was called.
-    public private(set) var clearIdentifyCallsCount = 0
+    public private(set) var screenViewCallsCount = 0
     /// `true` if the function was ever called.
-    public var clearIdentifyCalled: Bool {
-        clearIdentifyCallsCount > 0
+    public var screenViewCalled: Bool {
+        screenViewCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    public private(set) var screenViewReceivedArguments: (name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?,
+                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var screenViewReceivedInvocations: [(name: String, data: AnyEncodable,
+                                                             jsonEncoder: JSONEncoder?,
+                                                             onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var clearIdentifyClosure: (() -> Void)?
+    public var screenViewClosure: ((String, AnyEncodable, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func clearIdentify() {
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
         mockCalled = true
-        clearIdentifyCallsCount += 1
-        clearIdentifyClosure?()
+        screenViewCallsCount += 1
+        screenViewReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder,
+                                       onComplete: onComplete)
+        screenViewReceivedInvocations
+            .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
+        screenViewClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
     }
 
     // MARK: - setupScreenViewTracking
@@ -589,6 +627,47 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
             .append((name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
                      onComplete: onComplete))
         trackEventClosure?(name, AnyEncodable(data), timestamp, jsonEncoder, onComplete)
+    }
+
+    // MARK: - screen<RequestBody: Encodable>
+
+    /// Number of times the function was called.
+    internal private(set) var screenCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var screenCalled: Bool {
+        screenCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var screenReceivedArguments: (name: String, data: AnyEncodable, timestamp: Date?,
+                                                        jsonEncoder: JSONEncoder?,
+                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var screenReceivedInvocations: [(name: String, data: AnyEncodable, timestamp: Date?,
+                                                           jsonEncoder: JSONEncoder?,
+                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var screenClosure: ((String, AnyEncodable, Date?, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
+
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?, timestamp: Date?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        mockCalled = true
+        screenCallsCount += 1
+        screenReceivedArguments = (name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+                                   onComplete: onComplete)
+        screenReceivedInvocations
+            .append((name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+                     onComplete: onComplete))
+        screenClosure?(name, AnyEncodable(data), timestamp, jsonEncoder, onComplete)
     }
 
     // MARK: - getIdentifier
