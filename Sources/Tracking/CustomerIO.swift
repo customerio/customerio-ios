@@ -269,6 +269,16 @@ public class CustomerIO: CustomerIOInstance {
         configToModify = setDefaultValuesSdkConfig(config: configToModify)
 
         sdkConfig = configToModify
+        
+        guard let identifyRepository = self.identifyRepository else {
+            return
+        }
+
+        if sdkConfig.enablePreLoginTracking {
+            identifyRepository.identifyLoggedOutCustomer()
+        } else {
+            identifyRepository.clearLoggedOutCustomer()
+        }
     }
 
     internal func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {

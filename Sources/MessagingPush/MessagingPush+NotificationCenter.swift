@@ -64,8 +64,9 @@ public extension MessagingPush {
         event: Metric,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
-                  let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
+              let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
+        else {
             return onComplete(Result.success(()))
         }
 

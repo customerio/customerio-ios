@@ -24,6 +24,14 @@ internal protocol IdentifyRepository: AutoMockable {
     )
 
     func getIdentifier() -> String?
+
+    func identifyLoggedOutCustomer()
+    func clearLoggedOutCustomer()
+
+    func mergeLoggedOutCustomer(
+        mergeToIdentifier: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 }
 
 internal class CIOIdentifyRepository: IdentifyRepository {
@@ -38,7 +46,8 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     }
 
     public func getIdentifier() -> String? {
-        keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId)
+        keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId) ?? keyValueStorage
+            .string(siteId: siteId, forKey: .loggedOutProfileId)
     }
 
     /// for testing
@@ -133,5 +142,62 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                     onComplete(Result.failure(.http(error)))
                 }
             }
+    }
+
+    func identifyLoggedOutCustomer() {
+        if identifier != nil {
+            return
+        }
+
+        let randomIdentifier = String.random
+
+        let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: randomIdentifier),
+                                                      headers: nil, body: nil)
+
+        httpClient
+            .request(httpRequestParameters) { [weak self] result in
+                guard let self = self else { return }
+
+                switch result {
+                case .success:
+                    self.keyValueStorage.setString(siteId: self.siteId, value: randomIdentifier,
+                                                   forKey: .loggedOutProfileId)
+                case .failure(let error):
+                    // XXX: queue a retry
+                    print("failed", error)
+                }
+            }
+    }
+
+    func mergeLoggedOutCustomer(
+        mergeToIdentifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let loggedOutIdentifier = keyValueStorage.string(siteId: siteId, forKey: .loggedOutProfileId) else {
+            return
+        }
+
+        let requestBody = MergeCustomerRequestBody(primary: mergeToIdentifier, secondary: loggedOutIdentifier)
+
+        let httpRequestParameters = HttpRequestParams(endpoint: .mergeCustomers,
+                                                      headers: nil, body: requestBody)
+
+        httpClient
+            .request(httpRequestParameters) { [weak self] result in
+                guard let self = self else { return }
+
+                switch result {
+                case .success:
+                    self.keyValueStorage.setString(siteId: self.siteId, value: mergeToIdentifier,
+                                                   forKey: .identifiedProfileId)
+                    self.clearLoggedOutCustomer()
+                    onComplete(Result.success(()))
+                case .failure(let error):
+                    onComplete(Result.failure(.http(error)))
+                }
+            }
+    }
+
+    func clearLoggedOutCustomer() {
+        keyValueStorage.delete(siteId: siteId, forKey: .loggedOutProfileId)
     }
 }
