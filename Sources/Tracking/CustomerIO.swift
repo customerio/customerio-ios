@@ -175,11 +175,13 @@ public class CustomerIO: CustomerIOInstance {
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
 
         // Some default values of the SDK configuration may depend on credentials. Reset default values.
-        var config = diGraph.sdkConfigStore.config
+        var configStore = diGraph.sdkConfigStore
+        var config = configStore.config
 
         if config.trackingApiUrl.isEmpty {
             config.trackingApiUrl = region.productionTrackingUrl
         }
+        configStore.config = config
 
         globalData.appendSiteId(siteId)
     }

@@ -62,6 +62,16 @@ class CustomerIOTest: UnitTest {
         XCTAssertEqual(actual.siteId, givenSiteId)
     }
 
+    func test_initializeSdk_givenNoConfig_expectSetDefaultConfigOptions() {
+        let givenSiteId = String.random
+
+        _ = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
+
+        let config = DITracking.getInstance(siteId: givenSiteId).sdkConfigStore.config
+
+        XCTAssertEqual(config.trackingApiUrl, Region.EU.productionTrackingUrl)
+    }
+
     // MARK: identify
 
     func test_identify_givenSdkNotInialized_expectFailureResult() {
