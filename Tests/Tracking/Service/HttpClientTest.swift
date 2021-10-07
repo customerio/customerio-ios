@@ -109,10 +109,10 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, apiMessage: "")
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, apiMessage: "invalid id")
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil,
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
                        HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil),
                        nil)
         }
