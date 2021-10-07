@@ -17,10 +17,10 @@ public extension MessagingPush {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
+    ) -> Bool {
         guard let siteId = customerIO.siteId else {
             completionHandler()
-            return
+            return false
         }
 
         let diGraph = DITracking.getInstance(siteId: siteId)
@@ -41,7 +41,7 @@ public extension MessagingPush {
                                                   jsonAdapter: jsonAdapter)
         else {
             // push does not contain a CIO rich payload, so end early
-            return
+            return false
         }
 
         switch response.actionIdentifier {
@@ -60,10 +60,12 @@ public extension MessagingPush {
 
                 completionHandler()
 
-                return
+                return true
             }
         default: break
         }
+
+        return false
     }
 
     func trackMetric(
