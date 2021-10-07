@@ -58,7 +58,7 @@ class IdentifyRepositoryTest: UnitTest {
 
     func test_addOrUpdateCustomer_givenHttpFailure_expectDoNotSaveData_expectGetError() {
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
         }
 
         let expect = expectation(description: "Expect to complete")
@@ -282,7 +282,7 @@ class IdentifyRepositoryTest: UnitTest {
         }
 
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
         }
 
         let expect = expectation(description: "Expect to complete")

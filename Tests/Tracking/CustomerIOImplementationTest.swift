@@ -61,7 +61,7 @@ class CustomerIOImplementationTest: UnitTest {
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
         identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
+            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
         }
 
         let expect = expectation(description: "Expect to complete identify")
@@ -131,7 +131,7 @@ class CustomerIOImplementationTest: UnitTest {
 
     func test_track_givenFailedTrackEvent_expectFailureResult() {
         identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, message: ""))))
+            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
         }
 
         let expect = expectation(description: "Expect to complete track")

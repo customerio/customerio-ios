@@ -77,7 +77,7 @@ class MessagingPushImplementationTest: UnitTest {
         profileStoreMock.identifier = String.random
 
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
         }
 
         let actualToken = String.random
@@ -159,7 +159,7 @@ class MessagingPushImplementationTest: UnitTest {
         messagingPush.deviceToken = String.random
 
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
         }
 
         let expect = expectation(description: "Expect request to fail")
@@ -196,7 +196,7 @@ class MessagingPushImplementationTest: UnitTest {
 
     func test_trackMetric_givenHttpFailure_expectFailure() {
         httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, message: "")))
+            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
         }
 
         let expect = expectation(description: "Expect trackMetric to fail")

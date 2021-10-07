@@ -109,7 +109,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, message: "")
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, apiMessage: "")
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(nil,
