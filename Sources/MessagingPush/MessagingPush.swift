@@ -31,6 +31,7 @@ public class MessagingPush: MessagingPushInstance {
      */
     public init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
+        // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {
             self.implementation = MessagingPushImplementation(siteId: siteId)
         }
