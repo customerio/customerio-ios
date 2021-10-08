@@ -129,6 +129,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
             return onComplete(Result.success(()))
         }
 
+        // XXX: not quite sure that our String.random will be sufficient, need to double check
         let randomIdentifier = String.random
 
         let httpRequestParameters = HttpRequestParams(endpoint: .identifyCustomer(identifier: randomIdentifier),
