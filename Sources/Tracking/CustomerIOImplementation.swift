@@ -59,7 +59,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         handler(&configToModify)
 
         sdkConfigStore.config = configToModify
-
+        
+        // XXX: not 100% on whether this is the place to do it, but does keep things somewhat tidy
         if configToModify.enablePreLoginTracking {
             identifyRepository.identifyLoggedOutCustomer { _ in
                 // XXX: handle this with the global handler
