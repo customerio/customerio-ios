@@ -5,14 +5,14 @@ import UIKit
 public extension CustomerIO {
     func setupScreenViewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
-        let selector2 = #selector(CustomerIO._swizzled_viewDidAppear(_:))
+        let selector2 = #selector(CustomerIO._swizzled_UIKit_viewDidAppear(_:))
         let originalMethod = class_getInstanceMethod(UIViewController.self, selector1)!
         let swizzleMethod = class_getInstanceMethod(UIViewController.self, selector2)!
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 
-    @objc dynamic func _swizzled_viewDidAppear(_ animated: Bool) {
-        _swizzled_viewDidAppear(animated)
+    @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
+        _swizzled_UIKit_viewDidAppear(animated)
 
         guard let delegate = UIApplication.shared.delegate else {
             return
@@ -39,9 +39,7 @@ public extension CustomerIO {
             }
         }
 
-        // XXX: how best to pass through the customerIO instance
-        // XXX: switch to screen view when available
-        screen(name: name, data: ScreenViewBody()) { result in
+        self.screen(name: name, data: ScreenViewBody()) { result in
             print(result)
         }
     }
