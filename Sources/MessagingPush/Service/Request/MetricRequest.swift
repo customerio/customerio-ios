@@ -16,7 +16,7 @@ internal struct MetricRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case deliveryID = "delivery_id"
         case event
-        case deviceToken = "token"
+        case deviceToken = "device_id"
         case timestamp
     }
 }

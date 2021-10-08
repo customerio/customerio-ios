@@ -10,11 +10,12 @@ public enum HttpEndpoint {
 
     var path: String {
         switch self {
-        case .findAccountRegion: return "/accounts/region"
-        case .identifyCustomer(let identifier): return "/customers/\(identifier)"
-        case .registerDevice(let identifier): return "/customers/\(identifier)/devices"
-        case .deleteDevice(let identifier, let deviceToken): return "/customers/\(identifier)/devices/\(deviceToken)"
-        case .trackCustomerEvent(let identifier): return "/customers/\(identifier)/events"
+        case .findAccountRegion: return "/api/v1/accounts/region"
+        case .identifyCustomer(let identifier): return "/api/v1/customers/\(identifier)"
+        case .registerDevice(let identifier): return "/api/v1/customers/\(identifier)/devices"
+        case .deleteDevice(let identifier,
+                           let deviceToken): return "/api/v1/customers/\(identifier)/devices/\(deviceToken)"
+        case .trackCustomerEvent(let identifier): return "/api/v1/customers/\(identifier)/events"
         case .pushMetrics: return "/push/events"
         }
     }

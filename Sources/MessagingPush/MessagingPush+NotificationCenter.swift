@@ -27,16 +27,19 @@ public extension MessagingPush {
         let sdkConfig = diGraph.sdkConfigStore.config
         let jsonAdapter = diGraph.jsonAdapter
 
-        switch response.actionIdentifier {
-        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
-            if sdkConfig.autoTrackPushEvents {
-                trackMetric(notificationContent: response.notification.request.content, event: .delivered) { _ in
-                    // XXX: pending background queue so that this can get retried instead of discarding the result
-                }
+        if sdkConfig.autoTrackPushEvents {
+            var pushMetric = Metric.delivered
+
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+                pushMetric = Metric.opened
             }
-        default: break
+
+            trackMetric(notificationContent: response.notification.request.content, event: pushMetric) { _ in
+                // XXX: pending background queue so that this can get retried instead of discarding the result
+            }
         }
 
+        // Time to handle rich push notifications.
         guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
                                                   jsonAdapter: jsonAdapter)
         else {
@@ -51,12 +54,6 @@ public extension MessagingPush {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
-
-                if sdkConfig.autoTrackPushEvents {
-                    trackMetric(notificationContent: response.notification.request.content, event: .opened) { _ in
-                        // XXX: pending background queue so that this can get retried instead of discarding the result
-                    }
-                }
 
                 completionHandler()
 

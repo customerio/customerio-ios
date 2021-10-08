@@ -38,7 +38,14 @@ public class JsonAdapter {
     var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        encoder.dateEncodingStrategy = .secondsSince1970
+        // We are using custom date encoding because if there are milliseconds in Date object,
+        // the default `secondsSince1970` will give a unix time with a decimal. The
+        // Customer.io API does not accept timestamps with a decimal value unix time.
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            let seconds = Int(date.timeIntervalSince1970)
+            try container.encode(seconds)
+        }
         return encoder
     }
 

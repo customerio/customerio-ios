@@ -10,7 +10,7 @@ class JsonAdapterTest: UnitTest {
      Value got from getting the current epoch time (seconds since 1970)
      https://www.epochconverter.com/
      */
-    private let givenSecondsSince1970: TimeInterval = 1629743524
+    private let givenSecondsSince1970: TimeInterval = 1629743524.100
 
     func test_snakeCase_givenObjectInCamelCase_expectJsonStringSnakeCase() {
         let given = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
@@ -22,7 +22,7 @@ class JsonAdapterTest: UnitTest {
     }
 
     func test_snakeCase_givenStringInSnakeCase_expectObjectInCamelCase() {
-        let givenString = #"{"bar_date":1629743524}"#
+        let givenString = #"{"bar_date":1629743524.100}"#
         let expected = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
 
         let actual: TestCase = jsonAdapter.fromJson(givenString.data)!
