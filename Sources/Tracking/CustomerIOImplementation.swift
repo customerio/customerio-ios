@@ -59,7 +59,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         handler(&configToModify)
 
         sdkConfigStore.config = configToModify
-        
+
         // XXX: not 100% on whether this is the place to do it, but does keep things somewhat tidy
         if configToModify.enablePreLoginTracking {
             identifyRepository.identifyLoggedOutCustomer { _ in
@@ -83,7 +83,15 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
                     switch result {
                     case .success:
-                        return onComplete(Result.success(()))
+
+                        guard self!.diGraph.sdkConfigStore.config.enablePreLoginTracking else {
+                            return onComplete(Result.success(()))
+                        }
+
+                        // XXX: with self being weak I think this isn't where this goes
+                        return self!.identifyRepository.mergeLoggedOutCustomer(mergeToIdentifier: identifier,
+                                                                               jsonEncoder: jsonEncoder,
+                                                                               onComplete: onComplete)
                     case .failure(let error):
                         return onComplete(Result.failure(error))
                     }
