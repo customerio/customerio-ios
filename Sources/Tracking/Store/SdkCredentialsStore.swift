@@ -1,70 +1,54 @@
 import Foundation
 
 internal protocol SdkCredentialsStore: AutoMockable {
-    var sharedInstanceSiteId: String? { get set }
-    func load(siteId: String) -> SdkCredentials?
-    func create(siteId: String, apiKey: String, region: Region) -> SdkCredentials
-    func save(siteId: String, credentials: SdkCredentials)
+    var credentials: SdkCredentials { get set }
+    func load() -> SdkCredentials?
 }
 
 // sourcery: InjectRegister = "SdkCredentialsStore"
 internal class CIOSdkCredentialsStore: SdkCredentialsStore {
     private var keyValueStorage: KeyValueStorage
 
+    // there is always a chance of credentials being nil since they are persisted in storage
+    // and that storage can be deleted at any time. therefore, use a cache to always have
+    // a value we can count on.
+    @Atomic internal var cache: SdkCredentials?
+
     internal init(keyValueStorage: KeyValueStorage) {
         self.keyValueStorage = keyValueStorage
     }
 
-    var sharedInstanceSiteId: String? {
+    var credentials: SdkCredentials {
         get {
-            keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .sharedInstanceSiteId)
+            cache ?? load()!
         }
         set {
-            keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newValue,
-                                      forKey: .sharedInstanceSiteId)
+            save(newValue)
         }
     }
 
-    func load(siteId: String) -> SdkCredentials? {
+    @discardableResult
+    func load() -> SdkCredentials? {
         // try to load the required params
         // else, return nil as we don't have enough information to perform any action in the SDK.
-        guard let apiKey = keyValueStorage.string(siteId: siteId, forKey: .apiKey),
-              let regionCode = keyValueStorage.string(siteId: siteId, forKey: .regionCode),
+        guard let apiKey = keyValueStorage.string(.apiKey),
+              let regionCode = keyValueStorage.string(.regionCode),
               let region = Region(rawValue: regionCode)
         else {
             return nil
         }
 
-        return SdkCredentials(siteId: siteId,
-                              apiKey: apiKey,
-                              region: region)
+        cache = SdkCredentials(apiKey: apiKey,
+                               region: region)
+
+        return cache
     }
 
-    func create(siteId: String, apiKey: String, region: Region) -> SdkCredentials {
-        SdkCredentials(siteId: siteId, apiKey: apiKey, region: region)
-    }
+    func save(_ credentials: SdkCredentials) {
+        keyValueStorage.setString(credentials.apiKey, forKey: .apiKey)
+        keyValueStorage.setString(credentials.region.rawValue, forKey: .regionCode)
 
-    func save(siteId: String, credentials: SdkCredentials) {
-        keyValueStorage.setString(siteId: siteId, value: credentials.apiKey, forKey: .apiKey)
-        keyValueStorage.setString(siteId: siteId, value: credentials.region.rawValue, forKey: .regionCode)
-
-        appendSiteId(siteId)
-    }
-
-    /**
-     Save all of the site ids given to the SDK. We are storing this because we may need to iterate all of the
-     site ids in the future so let's capture them now so we have them.
-     */
-    internal func appendSiteId(_ siteId: String) {
-        let existingSiteIds = keyValueStorage.string(siteId: keyValueStorage.sharedSiteId, forKey: .allSiteIds) ?? ""
-
-        // Must convert String.Substring to String which is why we map()
-        var allSiteIds = Set(existingSiteIds.split(separator: ",").map { String($0) })
-
-        allSiteIds.insert(siteId)
-
-        let newSiteIds = allSiteIds.joined(separator: ",")
-
-        keyValueStorage.setString(siteId: keyValueStorage.sharedSiteId, value: newSiteIds, forKey: .allSiteIds)
+        // to set the cache with new value
+        load()
     }
 }

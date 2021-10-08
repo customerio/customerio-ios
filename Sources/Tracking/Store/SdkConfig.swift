@@ -22,3 +22,13 @@ public struct SdkConfig {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
 }
+
+public protocol SdkConfigStore: AutoMockable {
+    var config: SdkConfig { get set }
+}
+
+// sourcery: InjectRegister = "SdkConfigStore"
+// sourcery: InjectSingleton
+public class InMemorySdkConfigStore: SdkConfigStore {
+    @Atomic public var config = SdkConfig()
+}

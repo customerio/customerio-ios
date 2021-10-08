@@ -18,9 +18,18 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
+        guard let siteId = customerIO.siteId else {
+            completionHandler()
+            return false
+        }
+
+        let diGraph = DITracking.getInstance(siteId: siteId)
+        let sdkConfig = diGraph.sdkConfigStore.config
+        let jsonAdapter = diGraph.jsonAdapter
+
         switch response.actionIdentifier {
         case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
-            if customerIO.sdkConfig.autoTrackPushEvents {
+            if sdkConfig.autoTrackPushEvents {
                 trackMetric(notificationContent: response.notification.request.content, event: .delivered) { _ in
                     // XXX: pending background queue so that this can get retried instead of discarding the result
                 }
@@ -29,7 +38,7 @@ public extension MessagingPush {
         }
 
         guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
-                                                  jsonAdapter: DITracking.shared.jsonAdapter)
+                                                  jsonAdapter: jsonAdapter)
         else {
             // push does not contain a CIO rich payload, so end early
             return false
@@ -43,7 +52,7 @@ public extension MessagingPush {
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
 
-                if customerIO.sdkConfig.autoTrackPushEvents {
+                if sdkConfig.autoTrackPushEvents {
                     trackMetric(notificationContent: response.notification.request.content, event: .opened) { _ in
                         // XXX: pending background queue so that this can get retried instead of discarding the result
                     }
@@ -64,8 +73,9 @@ public extension MessagingPush {
         event: Metric,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String, 
-                  let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String else {
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
+              let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
+        else {
             return onComplete(Result.success(()))
         }
 
