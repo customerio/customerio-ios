@@ -590,16 +590,23 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
         identifyLoggedOutCustomerCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var identifyLoggedOutCustomerReceivedArguments: ((Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var identifyLoggedOutCustomerReceivedInvocations: [(Result<Void, CustomerIOError>) -> Void] =
+        []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var identifyLoggedOutCustomerClosure: (() -> Void)?
+    internal var identifyLoggedOutCustomerClosure: (((Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `identifyLoggedOutCustomer()`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func identifyLoggedOutCustomer() {
+    /// Mocked function for `identifyLoggedOutCustomer(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func identifyLoggedOutCustomer(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         mockCalled = true
         identifyLoggedOutCustomerCallsCount += 1
-        identifyLoggedOutCustomerClosure?()
+        identifyLoggedOutCustomerReceivedArguments = onComplete
+        identifyLoggedOutCustomerReceivedInvocations.append(onComplete)
+        identifyLoggedOutCustomerClosure?(onComplete)
     }
 
     // MARK: - clearLoggedOutCustomer

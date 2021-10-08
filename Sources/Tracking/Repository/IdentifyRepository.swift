@@ -21,7 +21,7 @@ internal protocol IdentifyRepository: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
 
-    func identifyLoggedOutCustomer()
+    func identifyLoggedOutCustomer(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
     func clearLoggedOutCustomer()
 
     func mergeLoggedOutCustomer(
@@ -124,9 +124,9 @@ internal class CIOIdentifyRepository: IdentifyRepository {
             }
     }
 
-    func identifyLoggedOutCustomer() {
+    func identifyLoggedOutCustomer(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         if profileStore.identifier != nil {
-            return
+            return onComplete(Result.success(()))
         }
 
         let randomIdentifier = String.random
@@ -141,9 +141,9 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                 switch result {
                 case .success:
                     self.profileStore.loggedOutIdentifier = randomIdentifier
+                    return onComplete(Result.success(()))
                 case .failure(let error):
-                    // XXX: queue a retry
-                    print("failed", error)
+                    return onComplete(Result.failure(.http(error)))
                 }
             }
     }

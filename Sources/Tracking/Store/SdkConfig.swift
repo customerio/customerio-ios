@@ -23,7 +23,7 @@ public struct SdkConfig {
      create a person in Customer.io prior to your initial `identify` call, which will then allow you to send
      pushes through Customer.io to users even if they are not logged in or signed up
      */
-    public var enablePreLoginTracking: Bool = false // XXX: need an actual name for the feature
+    public var enablePreLoginTracking: Bool = false // XXX: decide on name for feature
 
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
