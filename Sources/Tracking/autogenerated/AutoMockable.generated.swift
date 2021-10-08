@@ -634,27 +634,33 @@ internal class IdentifyRepositoryMock: IdentifyRepository {
 
     /// The arguments from the *last* time the function was called.
     internal private(set) var mergeLoggedOutCustomerReceivedArguments: (mergeToIdentifier: String,
+                                                                        jsonEncoder: JSONEncoder?,
                                                                         onComplete: (Result<Void, CustomerIOError>)
                                                                             -> Void)?
     /// Arguments from *all* of the times that the function was called.
     internal private(set) var mergeLoggedOutCustomerReceivedInvocations: [(mergeToIdentifier: String,
+                                                                           jsonEncoder: JSONEncoder?,
                                                                            onComplete: (Result<Void, CustomerIOError>)
                                                                                -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var mergeLoggedOutCustomerClosure: ((String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    internal var mergeLoggedOutCustomerClosure: ((String, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void)
+        -> Void)?
 
-    /// Mocked function for `mergeLoggedOutCustomer(mergeToIdentifier: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `mergeLoggedOutCustomer(mergeToIdentifier: String, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func mergeLoggedOutCustomer(
         mergeToIdentifier: String,
+        jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         mergeLoggedOutCustomerCallsCount += 1
-        mergeLoggedOutCustomerReceivedArguments = (mergeToIdentifier: mergeToIdentifier, onComplete: onComplete)
-        mergeLoggedOutCustomerReceivedInvocations.append((mergeToIdentifier: mergeToIdentifier, onComplete: onComplete))
-        mergeLoggedOutCustomerClosure?(mergeToIdentifier, onComplete)
+        mergeLoggedOutCustomerReceivedArguments = (mergeToIdentifier: mergeToIdentifier, jsonEncoder: jsonEncoder,
+                                                   onComplete: onComplete)
+        mergeLoggedOutCustomerReceivedInvocations
+            .append((mergeToIdentifier: mergeToIdentifier, jsonEncoder: jsonEncoder, onComplete: onComplete))
+        mergeLoggedOutCustomerClosure?(mergeToIdentifier, jsonEncoder, onComplete)
     }
 }
 
@@ -911,23 +917,21 @@ public class KeyValueStorageMock: KeyValueStorage {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteReceivedArguments: (forKey: UnknownTypeSoAddTypeAttributionToVariable,
-                                                      key: KeyValueStorageKey)?
+    public private(set) var deleteReceivedArguments: (KeyValueStorageKey)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteReceivedInvocations: [(forKey: UnknownTypeSoAddTypeAttributionToVariable,
-                                                         key: KeyValueStorageKey)] = []
+    public private(set) var deleteReceivedInvocations: [KeyValueStorageKey] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var deleteClosure: ((UnknownTypeSoAddTypeAttributionToVariable, KeyValueStorageKey) -> Void)?
+    public var deleteClosure: ((KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `delete(_ forKey: UnknownTypeSoAddTypeAttributionToVariable, key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func delete(_ forKey: UnknownTypeSoAddTypeAttributionToVariable, key: KeyValueStorageKey) {
+    /// Mocked function for `delete(forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func delete(forKey key: KeyValueStorageKey) {
         mockCalled = true
         deleteCallsCount += 1
-        deleteReceivedArguments = (forKey: forKey, key: key)
-        deleteReceivedInvocations.append((forKey: forKey, key: key))
-        deleteClosure?(forKey, key)
+        deleteReceivedArguments = key
+        deleteReceivedInvocations.append(key)
+        deleteClosure?(key)
     }
 
     // MARK: - deleteAll
@@ -964,6 +968,28 @@ public class ProfileStoreMock: ProfileStore {
     public var mockCalled: Bool = false //
 
     public var identifier: String?
+    public var loggedOutIdentifier: String?
+
+    // MARK: - clearLoggedOutIdentifier
+
+    /// Number of times the function was called.
+    public private(set) var clearLoggedOutIdentifierCallsCount = 0
+    /// `true` if the function was ever called.
+    public var clearLoggedOutIdentifierCalled: Bool {
+        clearLoggedOutIdentifierCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var clearLoggedOutIdentifierClosure: (() -> Void)?
+
+    /// Mocked function for `clearLoggedOutIdentifier()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func clearLoggedOutIdentifier() {
+        mockCalled = true
+        clearLoggedOutIdentifierCallsCount += 1
+        clearLoggedOutIdentifierClosure?()
+    }
 }
 
 /**

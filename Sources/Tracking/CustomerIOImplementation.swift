@@ -60,7 +60,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         sdkConfigStore.config = configToModify
 
-        if sdkConfigStore.enablePreLoginTracking {
+        if configToModify.enablePreLoginTracking {
             identifyRepository.identifyLoggedOutCustomer()
         } else {
             identifyRepository.clearLoggedOutCustomer()

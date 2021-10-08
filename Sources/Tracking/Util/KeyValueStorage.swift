@@ -12,7 +12,7 @@ public protocol KeyValueStorage: AutoMockable {
     func setString(_ value: String?, forKey key: KeyValueStorageKey)
     func date(_ key: KeyValueStorageKey) -> Date?
     func setDate(_ value: Date?, forKey key: KeyValueStorageKey)
-    func delete(_ forKey key: KeyValueStorageKey)
+    func delete(forKey key: KeyValueStorageKey)
     func deleteAll()
 }
 
@@ -81,8 +81,8 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
         getUserDefaults()?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
     }
 
-    public func delete(siteId: String, forKey key: KeyValueStorageKey) {
-        getUserDefaults(siteId: siteId)?.removeObject(forKey: key.rawValue)
+    public func delete(forKey key: KeyValueStorageKey) {
+        getUserDefaults()?.removeObject(forKey: key.rawValue)
     }
 
     public func deleteAll() {
