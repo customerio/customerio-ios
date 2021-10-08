@@ -18,18 +18,30 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        switch response.actionIdentifier {
-        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
-            if customerIO.sdkConfig.autoTrackPushEvents {
-                trackMetric(notificationContent: response.notification.request.content, event: .delivered) { _ in
-                    // XXX: pending background queue so that this can get retried instead of discarding the result
-                }
-            }
-        default: break
+        guard let siteId = customerIO.siteId else {
+            completionHandler()
+            return false
         }
 
+        let diGraph = DITracking.getInstance(siteId: siteId)
+        let sdkConfig = diGraph.sdkConfigStore.config
+        let jsonAdapter = diGraph.jsonAdapter
+
+        if sdkConfig.autoTrackPushEvents {
+            var pushMetric = Metric.delivered
+
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+                pushMetric = Metric.opened
+            }
+
+            trackMetric(notificationContent: response.notification.request.content, event: pushMetric) { _ in
+                // XXX: pending background queue so that this can get retried instead of discarding the result
+            }
+        }
+
+        // Time to handle rich push notifications.
         guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
-                                                  jsonAdapter: DITracking.shared.jsonAdapter)
+                                                  jsonAdapter: jsonAdapter)
         else {
             // push does not contain a CIO rich payload, so end early
             return false
@@ -42,12 +54,6 @@ public extension MessagingPush {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
-
-                if customerIO.sdkConfig.autoTrackPushEvents {
-                    trackMetric(notificationContent: response.notification.request.content, event: .opened) { _ in
-                        // XXX: pending background queue so that this can get retried instead of discarding the result
-                    }
-                }
 
                 completionHandler()
 

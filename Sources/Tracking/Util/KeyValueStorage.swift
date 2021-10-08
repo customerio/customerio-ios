@@ -4,18 +4,16 @@ import Foundation
  Stores data in key/value pairs.
  */
 public protocol KeyValueStorage: AutoMockable {
-    var sharedSiteId: String { get }
-
-    func integer(siteId: String, forKey key: KeyValueStorageKey) -> Int?
-    func setInt(siteId: String, value: Int?, forKey key: KeyValueStorageKey)
-    func double(siteId: String, forKey key: KeyValueStorageKey) -> Double?
-    func setDouble(siteId: String, value: Double?, forKey key: KeyValueStorageKey)
-    func string(siteId: String, forKey key: KeyValueStorageKey) -> String?
-    func setString(siteId: String, value: String?, forKey key: KeyValueStorageKey)
-    func date(siteId: String, forKey key: KeyValueStorageKey) -> Date?
-    func setDate(siteId: String, value: Date?, forKey key: KeyValueStorageKey)
-    func delete(siteId: String, forKey key: KeyValueStorageKey)
-    func deleteAll(siteId: String)
+    func integer(_ key: KeyValueStorageKey) -> Int?
+    func setInt(_ value: Int?, forKey key: KeyValueStorageKey)
+    func double(_ key: KeyValueStorageKey) -> Double?
+    func setDouble(_ value: Double?, forKey key: KeyValueStorageKey)
+    func string(_ key: KeyValueStorageKey) -> String?
+    func setString(_ value: String?, forKey key: KeyValueStorageKey)
+    func date(_ key: KeyValueStorageKey) -> Date?
+    func setDate(_ value: Date?, forKey key: KeyValueStorageKey)
+    func delete(_ forKey key: KeyValueStorageKey)
+    func deleteAll()
 }
 
 /**
@@ -23,8 +21,10 @@ public protocol KeyValueStorage: AutoMockable {
  */
 // sourcery: InjectRegister = "KeyValueStorage"
 public class UserDefaultsKeyValueStorage: KeyValueStorage {
-    public var sharedSiteId: String {
-        "shared"
+    private let siteId: String
+
+    init(siteId: SiteId) {
+        self.siteId = siteId
     }
 
     /**
@@ -34,7 +34,7 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
      We also need to have 1 set of UserPreferences that all workspaces of an app share.
      For these moments, use `sharedSiteId` as the `siteId` parameter.
      */
-    private func getUserDefaults(siteId: String) -> UserDefaults? {
+    private func getUserDefaults() -> UserDefaults? {
         var appUniqueIdentifier = ""
         if let appBundleId = DeviceMetricsGrabber.appBundleId {
             appUniqueIdentifier = ".\(appBundleId)"
@@ -43,49 +43,49 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
         return UserDefaults(suiteName: "io.customer.sdk\(appUniqueIdentifier).\(siteId)")
     }
 
-    public func integer(siteId: String, forKey key: KeyValueStorageKey) -> Int? {
-        let value = getUserDefaults(siteId: siteId)?.integer(forKey: key.rawValue)
+    public func integer(_ key: KeyValueStorageKey) -> Int? {
+        let value = getUserDefaults()?.integer(forKey: key.rawValue)
         return value == 0 ? nil : value
     }
 
-    public func setInt(siteId: String, value: Int?, forKey key: KeyValueStorageKey) {
-        getUserDefaults(siteId: siteId)?.set(value, forKey: key.rawValue)
+    public func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
+        getUserDefaults()?.set(value, forKey: key.rawValue)
     }
 
-    public func double(siteId: String, forKey key: KeyValueStorageKey) -> Double? {
-        let value = getUserDefaults(siteId: siteId)?.double(forKey: key.rawValue)
+    public func double(_ key: KeyValueStorageKey) -> Double? {
+        let value = getUserDefaults()?.double(forKey: key.rawValue)
         return value == 0 ? nil : value
     }
 
-    public func setDouble(siteId: String, value: Double?, forKey key: KeyValueStorageKey) {
-        getUserDefaults(siteId: siteId)?.set(value, forKey: key.rawValue)
+    public func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
+        getUserDefaults()?.set(value, forKey: key.rawValue)
     }
 
-    public func string(siteId: String, forKey key: KeyValueStorageKey) -> String? {
-        getUserDefaults(siteId: siteId)?.string(forKey: key.rawValue)
+    public func string(_ key: KeyValueStorageKey) -> String? {
+        getUserDefaults()?.string(forKey: key.rawValue)
     }
 
-    public func setString(siteId: String, value: String?, forKey key: KeyValueStorageKey) {
-        getUserDefaults(siteId: siteId)?.set(value, forKey: key.rawValue)
+    public func setString(_ value: String?, forKey key: KeyValueStorageKey) {
+        getUserDefaults()?.set(value, forKey: key.rawValue)
     }
 
-    public func date(siteId: String, forKey key: KeyValueStorageKey) -> Date? {
-        guard let millis = getUserDefaults(siteId: siteId)?.double(forKey: key.rawValue), millis > 0 else {
+    public func date(_ key: KeyValueStorageKey) -> Date? {
+        guard let millis = getUserDefaults()?.double(forKey: key.rawValue), millis > 0 else {
             return nil
         }
 
         return Date(timeIntervalSince1970: millis)
     }
 
-    public func setDate(siteId: String, value: Date?, forKey key: KeyValueStorageKey) {
-        getUserDefaults(siteId: siteId)?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
+    public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
+        getUserDefaults()?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
     }
 
     public func delete(siteId: String, forKey key: KeyValueStorageKey) {
         getUserDefaults(siteId: siteId)?.removeObject(forKey: key.rawValue)
     }
 
-    public func deleteAll(siteId: String) {
-        getUserDefaults(siteId: siteId)?.deleteAll()
+    public func deleteAll() {
+        getUserDefaults()?.deleteAll()
     }
 }

@@ -22,14 +22,6 @@ public class Tracking: TrackingInstance {
 
     private let customerIO: CustomerIO!
 
-    private var credentials: SdkCredentials? {
-        customerIO.credentials
-    }
-
-    private var sdkConfig: SdkConfig {
-        customerIO.sdkConfig
-    }
-
     /// testing init
     internal init(customerIO: CustomerIO?) {
         self.customerIO = customerIO ?? CustomerIO(siteId: "fake", apiKey: "fake", region: Region.EU)

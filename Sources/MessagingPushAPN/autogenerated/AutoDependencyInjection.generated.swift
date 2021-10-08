@@ -71,9 +71,34 @@ internal enum DependencyMessagingPushAPN: CaseIterable {
  in `Common` module can be in the `Tracking` module.
  */
 internal class DIMessagingPushAPN {
-    internal static var shared = DIMessagingPushAPN()
     private var overrides: [DependencyMessagingPushAPN: Any] = [:]
-    private init() {}
+
+    internal let siteId: SiteId
+    internal init(siteId: String) {
+        self.siteId = siteId
+    }
+
+    // Used for tests
+    public convenience init() {
+        self.init(siteId: "test-identifier")
+    }
+
+    class Store {
+        var instances: [String: DIMessagingPushAPN] = [:]
+        func getInstance(siteId: String) -> DIMessagingPushAPN {
+            if let existingInstance = instances[siteId] {
+                return existingInstance
+            }
+            let newInstance = DIMessagingPushAPN(siteId: siteId)
+            instances[siteId] = newInstance
+            return newInstance
+        }
+    }
+
+    @Atomic internal static var store = Store()
+    public static func getInstance(siteId: String) -> DIMessagingPushAPN {
+        Self.store.getInstance(siteId: siteId)
+    }
 
     /**
      Designed to be used only in test classes to override dependencies.

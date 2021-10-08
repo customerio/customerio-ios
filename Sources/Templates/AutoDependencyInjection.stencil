@@ -67,13 +67,15 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
 
 {# Used to create the property getter to get the dependency from the graph #}
 {# Note: We use this for when an InjectCustom exists because custom requires the use of an extension to add the property to the graph. We don't want the developer to be responsible for returning an override for tests. This function exists as the 1 true way to get a dependency from the graph to be safe to use as it gets overrides. #}
-{% macro overrideGetterProperty class type isCustom %}
-    {{ type.accessLevel }} var {{ class|lowerFirstLetter }}: {{ class }} {    
+{% macro overrideGetterProperty class type isCustom isSingleton %}
+    {{ type.accessLevel }} var {{ class|lowerFirstLetter }}: {{ class }} {  
         if let overridenDep = self.overrides[.{{ class|lowerFirstLetter }}] {
             return overridenDep as! {{ class }}
         }
         {% if isCustom %}
         return self.custom{{ class }}
+        {% elif isSingleton %}
+        return self.shared{{ class }}
         {% else %}
         return self.new{{ class }}
         {% endif %}    
@@ -87,13 +89,39 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
  Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes 
  in `Common` module can be in the `Tracking` module. 
  */
-{{ argument.diAccessLevel }} class DI{{ argument.moduleName }} {
-    {# Singleton DI graph #}
-    {{ argument.diAccessLevel }} static var shared: DI{{ argument.moduleName }} = DI{{ argument.moduleName }}()
+{{ argument.diAccessLevel }} class DI{{ argument.moduleName }} {    
     {# Override a dependency. Used in testing, only #}
     private var overrides: [Dependency{{ argument.moduleName }}: Any] = [:]
+
+    internal let siteId: SiteId
+    internal init(siteId: String) {
+        self.siteId = siteId
+    }
+
+    // Used for tests 
+    public convenience init() {
+        self.init(siteId: "test-identifier")
+    }
     
-    private init() {
+    class Store {
+        var instances: [String: DI{{ argument.moduleName }}] = [:]
+        
+        func getInstance(siteId: String) -> DI{{ argument.moduleName }} {
+            if let existingInstance = self.instances[siteId] {
+                return existingInstance
+            }
+            
+            let newInstance = DI{{ argument.moduleName }}(siteId: siteId)
+            self.instances[siteId] = newInstance
+            
+            return newInstance
+        }
+    }
+    
+    @Atomic internal static var store = Store()
+    
+    public static func getInstance(siteId: String) -> DI{{ argument.moduleName }} {
+        Self.store.getInstance(siteId: siteId)
     }
 
     /**
@@ -136,14 +164,14 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
     
     {% if dep|annotated:"InjectCustom" %}
     // {{ class }} (custom. property getter provided via extension)
-    {% call overrideGetterProperty class dep true %}
+    {% call overrideGetterProperty class dep true false %}
     {% elif dep|annotated:"InjectSingleton" %}    
     // {{ class }} (singleton)
-    {% call overrideGetterProperty class dep false %}
+    {% call overrideGetterProperty class dep false true %}
     {# Use a DispatchQueue to make singleton thread safe #}
     private let _{{ class|lowerFirstLetter }}_queue = DispatchQueue(label: "DI_get_{{ class|lowerFirstLetter }}_queue")
     private var _{{ class|lowerFirstLetter }}_shared: {{ class }}?
-    {{ dep.accessLevel }} var {{ class|lowerFirstLetter }}: {{ class }} {
+    {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
         return _{{ class|lowerFirstLetter }}_queue.sync {
             if let overridenDep = self.overrides[.{{ class|lowerFirstLetter }}] {
                 return overridenDep as! {{ class }}
@@ -158,7 +186,7 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
     }
     {% else %}
     // {{ class }}
-    {% call overrideGetterProperty class dep false %}
+    {% call overrideGetterProperty class dep false false %}
     private var new{{ class }}: {{ class }} {    
         return {{ dep.name}}({% for initializer in dep.initializers %}{% if not initializer.isConvenienceInitializer %}{% for param in initializer.parameters %}{{ param.name }}: self.{{ param.typeName|lowerFirstLetter }}{% if not forloop.last%}, {% endif %}{% endfor %}{% endif %}{% endfor %})
     }

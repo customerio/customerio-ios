@@ -58,10 +58,15 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyTracking: CaseIterable {
+    case httpClient
+    case identifyRepository
     case sdkCredentialsStore
     case eventBus
+    case profileStore
     case logger
+    case sdkConfigStore
     case jsonAdapter
+    case httpRequestRunner
     case keyValueStorage
 }
 
@@ -73,9 +78,34 @@ public enum DependencyTracking: CaseIterable {
  in `Common` module can be in the `Tracking` module.
  */
 public class DITracking {
-    public static var shared = DITracking()
     private var overrides: [DependencyTracking: Any] = [:]
-    private init() {}
+
+    internal let siteId: SiteId
+    internal init(siteId: String) {
+        self.siteId = siteId
+    }
+
+    // Used for tests
+    public convenience init() {
+        self.init(siteId: "test-identifier")
+    }
+
+    class Store {
+        var instances: [String: DITracking] = [:]
+        func getInstance(siteId: String) -> DITracking {
+            if let existingInstance = instances[siteId] {
+                return existingInstance
+            }
+            let newInstance = DITracking(siteId: siteId)
+            instances[siteId] = newInstance
+            return newInstance
+        }
+    }
+
+    @Atomic internal static var store = Store()
+    public static func getInstance(siteId: String) -> DITracking {
+        Self.store.getInstance(siteId: siteId)
+    }
 
     /**
      Designed to be used only in test classes to override dependencies.
@@ -101,10 +131,15 @@ public class DITracking {
      */
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
+        case .httpClient: return httpClient as! T
+        case .identifyRepository: return identifyRepository as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .eventBus: return eventBus as! T
+        case .profileStore: return profileStore as! T
         case .logger: return logger as! T
+        case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
+        case .httpRequestRunner: return httpRequestRunner as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
     }
@@ -112,6 +147,32 @@ public class DITracking {
     /**
      Use the property accessors below to inject pre-typed dependencies.
      */
+
+    // HttpClient
+    public var httpClient: HttpClient {
+        if let overridenDep = overrides[.httpClient] {
+            return overridenDep as! HttpClient
+        }
+        return newHttpClient
+    }
+
+    private var newHttpClient: HttpClient {
+        CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
+                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
+    }
+
+    // IdentifyRepository
+    internal var identifyRepository: IdentifyRepository {
+        if let overridenDep = overrides[.identifyRepository] {
+            return overridenDep as! IdentifyRepository
+        }
+        return newIdentifyRepository
+    }
+
+    private var newIdentifyRepository: IdentifyRepository {
+        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter, eventBus: eventBus,
+                              profileStore: profileStore)
+    }
 
     // SdkCredentialsStore
     internal var sdkCredentialsStore: SdkCredentialsStore {
@@ -137,6 +198,18 @@ public class DITracking {
         CioNotificationCenter()
     }
 
+    // ProfileStore
+    public var profileStore: ProfileStore {
+        if let overridenDep = overrides[.profileStore] {
+            return overridenDep as! ProfileStore
+        }
+        return newProfileStore
+    }
+
+    private var newProfileStore: ProfileStore {
+        CioProfileStore(keyValueStorage: keyValueStorage)
+    }
+
     // Logger
     public var logger: Logger {
         if let overridenDep = overrides[.logger] {
@@ -147,6 +220,31 @@ public class DITracking {
 
     private var newLogger: Logger {
         ConsoleLogger()
+    }
+
+    // SdkConfigStore (singleton)
+    public var sdkConfigStore: SdkConfigStore {
+        if let overridenDep = overrides[.sdkConfigStore] {
+            return overridenDep as! SdkConfigStore
+        }
+        return sharedSdkConfigStore
+    }
+
+    private let _sdkConfigStore_queue = DispatchQueue(label: "DI_get_sdkConfigStore_queue")
+    private var _sdkConfigStore_shared: SdkConfigStore?
+    public var sharedSdkConfigStore: SdkConfigStore {
+        _sdkConfigStore_queue.sync {
+            if let overridenDep = self.overrides[.sdkConfigStore] {
+                return overridenDep as! SdkConfigStore
+            }
+            let res = _sdkConfigStore_shared ?? _get_sdkConfigStore()
+            _sdkConfigStore_shared = res
+            return res
+        }
+    }
+
+    private func _get_sdkConfigStore() -> SdkConfigStore {
+        InMemorySdkConfigStore()
     }
 
     // JsonAdapter
@@ -161,6 +259,18 @@ public class DITracking {
         JsonAdapter(log: logger)
     }
 
+    // HttpRequestRunner
+    internal var httpRequestRunner: HttpRequestRunner {
+        if let overridenDep = overrides[.httpRequestRunner] {
+            return overridenDep as! HttpRequestRunner
+        }
+        return newHttpRequestRunner
+    }
+
+    private var newHttpRequestRunner: HttpRequestRunner {
+        UrlRequestHttpRequestRunner()
+    }
+
     // KeyValueStorage
     public var keyValueStorage: KeyValueStorage {
         if let overridenDep = overrides[.keyValueStorage] {
@@ -170,6 +280,6 @@ public class DITracking {
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage()
+        UserDefaultsKeyValueStorage(siteId: siteId)
     }
 }
