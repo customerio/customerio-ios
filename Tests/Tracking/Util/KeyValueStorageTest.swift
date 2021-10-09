@@ -4,46 +4,50 @@ import SharedTests
 import XCTest
 
 class KeyValueStorageTests: UnitTest {
-    var storage: KeyValueStorage = UserDefaultsKeyValueStorage()
-
     let defaultKey = KeyValueStorageKey.sharedInstanceSiteId
-    let defaultSiteId = "12345"
+    lazy var defaultStorage: KeyValueStorage = {
+        getStorage(siteId: "test")
+    }()
+
+    private func getStorage(siteId: String) -> KeyValueStorage {
+        UserDefaultsKeyValueStorage(siteId: siteId)
+    }
 
     override func setUp() {
         super.setUp()
 
-        storage.deleteAll(siteId: defaultSiteId)
+        defaultStorage.deleteAll()
     }
 
     // MARK: integration tests
 
     func test_givenDifferentSites_expectDataSavedSeparatedFromEachOther() {
-        let siteId1 = String.random
-        let siteId2 = String.random
-        // site3 is UserDefaults.standard. We test this because a customer app might be using it.
+        let storage1 = getStorage(siteId: String.random)
+        let storage2 = getStorage(siteId: String.random)
+        // storage3 is UserDefaults.standard. We test this because a customer app might be using it.
 
         let value = "value-here-for-testing"
         let nextSetValue = "next-set-value"
 
-        storage.setString(siteId: siteId1, value: value, forKey: defaultKey)
-        storage.setString(siteId: siteId2, value: value, forKey: defaultKey)
+        storage1.setString(value, forKey: defaultKey)
+        storage2.setString(value, forKey: defaultKey)
         UserDefaults.standard.set(value, forKey: defaultKey.rawValue)
 
-        XCTAssertEqual(storage.string(siteId: siteId1, forKey: defaultKey), value)
-        XCTAssertEqual(storage.string(siteId: siteId2, forKey: defaultKey), value)
+        XCTAssertEqual(storage1.string(defaultKey), value)
+        XCTAssertEqual(storage2.string(defaultKey), value)
         XCTAssertEqual(UserDefaults.standard.string(forKey: defaultKey.rawValue), value)
 
-        storage.setString(siteId: siteId1, value: nextSetValue, forKey: defaultKey)
+        storage1.setString(nextSetValue, forKey: defaultKey)
 
-        XCTAssertEqual(storage.string(siteId: siteId1, forKey: defaultKey), nextSetValue)
-        XCTAssertEqual(storage.string(siteId: siteId2, forKey: defaultKey), value)
+        XCTAssertEqual(storage1.string(defaultKey), nextSetValue)
+        XCTAssertEqual(storage2.string(defaultKey), value)
         XCTAssertEqual(UserDefaults.standard.string(forKey: defaultKey.rawValue), value)
     }
 
     // MARK: double
 
     func test_double_givenNotSet_expectNil() {
-        let actual = storage.double(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.double(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -51,10 +55,10 @@ class KeyValueStorageTests: UnitTest {
     func test_double_givenSet_expectGetEqualResult() {
         let given: Double = 345566
 
-        storage.setDouble(siteId: defaultSiteId, value: given, forKey: defaultKey)
+        defaultStorage.setDouble(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.double(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.double(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -62,7 +66,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: integer
 
     func test_integer_givenNotSet_expectNil() {
-        let actual = storage.integer(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.integer(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -70,10 +74,10 @@ class KeyValueStorageTests: UnitTest {
     func test_integer_givenSet_expectGetEqualResult() {
         let given: Int = 9968686
 
-        storage.setInt(siteId: defaultSiteId, value: given, forKey: defaultKey)
+        defaultStorage.setInt(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.integer(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.integer(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -81,7 +85,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: date
 
     func test_date_givenNotSet_expectNil() {
-        let actual = storage.date(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.date(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -89,10 +93,10 @@ class KeyValueStorageTests: UnitTest {
     func test_date_givenSet_expectGetEqualResult() {
         let given = Date()
 
-        storage.setDate(siteId: defaultSiteId, value: given, forKey: defaultKey)
+        defaultStorage.setDate(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.date(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.date(defaultKey)
 
         XCTAssertEqual(actual?.timeIntervalSince1970, expected.timeIntervalSince1970)
     }
@@ -100,7 +104,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: string
 
     func test_string_givenNotSet_expectNil() {
-        let actual = storage.string(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.string(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -108,10 +112,10 @@ class KeyValueStorageTests: UnitTest {
     func test_string_givenSet_expectGetEqualResult() {
         let given = String.random(length: 38)
 
-        storage.setString(siteId: defaultSiteId, value: given, forKey: defaultKey)
+        defaultStorage.setString(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.string(siteId: defaultSiteId, forKey: defaultKey)
+        let actual = defaultStorage.string(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -119,37 +123,35 @@ class KeyValueStorageTests: UnitTest {
     // MARK: deleteAll
 
     func test_deleteAll_givenNoDataSaved_expectFunctionRuns() {
-        let siteId = String.random
+        let storage = getStorage(siteId: String.random)
 
-        storage.deleteAll(siteId: siteId)
+        storage.deleteAll()
     }
 
     func test_deleteAll_givenSavedSomeData_expectDeletesAllData() {
-        let siteId = String.random
-
         let value = "value-here-for-testing"
 
-        storage.setString(siteId: siteId, value: value, forKey: defaultKey)
+        defaultStorage.setString(value, forKey: defaultKey)
 
-        XCTAssertEqual(storage.string(siteId: siteId, forKey: defaultKey), value)
+        XCTAssertEqual(defaultStorage.string(defaultKey), value)
 
-        storage.deleteAll(siteId: siteId)
+        defaultStorage.deleteAll()
 
-        XCTAssertNil(storage.string(siteId: siteId, forKey: defaultKey))
+        XCTAssertNil(defaultStorage.string(defaultKey))
     }
 
     func test_deleteAll_givenMultipleSites_expectOnlyDeletesDataFromOneSite() {
-        let siteId1 = String.random
-        let siteId2 = String.random
+        let storage1 = getStorage(siteId: String.random)
+        let storage2 = getStorage(siteId: String.random)
 
         let value = "value-here-for-testing"
 
-        storage.setString(siteId: siteId1, value: value, forKey: defaultKey)
-        storage.setString(siteId: siteId2, value: value, forKey: defaultKey)
+        storage1.setString(value, forKey: defaultKey)
+        storage2.setString(value, forKey: defaultKey)
 
-        storage.deleteAll(siteId: siteId1)
+        storage1.deleteAll()
 
-        XCTAssertNil(storage.string(siteId: siteId1, forKey: defaultKey))
-        XCTAssertEqual(storage.string(siteId: siteId2, forKey: defaultKey), value)
+        XCTAssertNil(storage1.string(defaultKey))
+        XCTAssertEqual(storage2.string(defaultKey), value)
     }
 }

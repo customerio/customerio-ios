@@ -1,3 +1,10 @@
+# [1.0.0-alpha.16](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.15...1.0.0-alpha.16) (2021-10-08)
+
+
+### Bug Fixes
+
+* opened push metrics ([#70](https://github.com/customerio/customerio-ios/issues/70)) ([a277378](https://github.com/customerio/customerio-ios/commit/a2773782811b581d17cc2eb554c321d91c8b6b67))
+
 # [1.0.0-alpha.15](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.14...1.0.0-alpha.15) (2021-09-25)
 
 

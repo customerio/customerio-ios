@@ -8,6 +8,8 @@ import XCTest
 
 class HttpClientTest: UnitTest {
     private var requestRunnerMock: HttpRequestRunnerMock!
+    private var credentialsStoreMock: SdkCredentialsStoreMock!
+    private var configStoreMock: SdkConfigStoreMock!
     private var client: HttpClient!
 
     private let url = URL(string: "https://customer.io")!
@@ -16,7 +18,15 @@ class HttpClientTest: UnitTest {
         super.setUp()
 
         requestRunnerMock = HttpRequestRunnerMock()
-        client = CIOHttpClient(httpRequestRunner: requestRunnerMock, jsonAdapter: jsonAdapter)
+        credentialsStoreMock = SdkCredentialsStoreMock()
+        credentialsStoreMock.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
+
+        configStoreMock = SdkConfigStoreMock()
+        configStoreMock.config = SdkConfig()
+
+        client = CIOHttpClient(siteId: SiteId.random, sdkCredentialsStore: credentialsStoreMock,
+                               configStore: configStoreMock, jsonAdapter: jsonAdapter,
+                               httpRequestRunner: requestRunnerMock)
     }
 
     // MARK: request
@@ -24,7 +34,7 @@ class HttpClientTest: UnitTest {
     func test_request_givenErrorDuringRequest_expectError() {
         let givenError = URLError(.notConnectedToInternet)
 
-        requestRunnerMock.requestClosure = { _, _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(nil, nil, givenError)
         }
 
@@ -42,7 +52,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoResponse_expectError() {
-        requestRunnerMock.requestClosure = { _, _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(Data(), nil, nil)
         }
 
@@ -59,7 +69,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoData_expectError() {
-        requestRunnerMock.requestClosure = { _, _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), nil)
         }
 
@@ -76,7 +86,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_given401_expectError() {
-        requestRunnerMock.requestClosure = { _, _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), nil)
         }
 
@@ -99,10 +109,10 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenUnsuccessfulStatusCode_expectError() {
         let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, message: "")
+        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, apiMessage: "invalid id")
 
-        requestRunnerMock.requestClosure = { _, _, onComplete in
-            onComplete(nil,
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
                        HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil),
                        nil)
         }
@@ -130,7 +140,7 @@ class HttpClientTest: UnitTest {
     func test_request_givenSuccessfulResponse_expectGetResponseBody() {
         let expected = #"{ "message": "Success!" }"#.data!
 
-        requestRunnerMock.requestClosure = { _, _, onComplete in
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(expected, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
                        nil)
         }

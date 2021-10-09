@@ -28,8 +28,8 @@ class HttpEndpointTest: UnitTest {
     }
 
     func test_getUrlString_givenBaseUrlTrailingSlash_expectValidBaseUrl() {
-        let expected = "https://customer.io/api/accounts/region"
-        setHttpBaseUrls(trackingApi: "https://customer.io/api/")
+        let expected = "https://customer.io/api/v1/accounts/region"
+        setHttpBaseUrls(trackingApi: "https://customer.io/")
 
         let actual = defaultEndpoint.getUrlString(baseUrls: httpBaseUrls)
 
@@ -37,8 +37,8 @@ class HttpEndpointTest: UnitTest {
     }
 
     func test_getUrlString_givenBaseUrlNoTrailingSlash_expectValueBaseUrl() {
-        let expected = "https://customer.io/api/accounts/region"
-        setHttpBaseUrls(trackingApi: "https://customer.io/api")
+        let expected = "https://customer.io/api/v1/accounts/region"
+        setHttpBaseUrls(trackingApi: "https://customer.io")
 
         let actual = defaultEndpoint.getUrlString(baseUrls: httpBaseUrls)
 

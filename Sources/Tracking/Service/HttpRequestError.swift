@@ -9,7 +9,7 @@ public enum HttpRequestError: Error {
     /// HTTP URL for the request not a valid URL.
     case urlConstruction(_ url: String)
     /// A response came back, but status code > 300 and not handled already (example: 401)
-    case unsuccessfulStatusCode(_ code: Int, message: String)
+    case unsuccessfulStatusCode(_ code: Int, apiMessage: String?)
     /// No Internet connection or bad network connection
     case noOrBadNetwork(_ urlError: URLError)
     /// Request was not able to get a response from server. Maybe no network connection?
@@ -25,7 +25,9 @@ extension HttpRequestError: CustomStringConvertible, LocalizedError {
         case .unauthorized: return "HTTP request responded with 401. Configure the SDK with valid credentials."
         case .urlConstruction(let url): return "HTTP URL not a valid URL: \(url)"
         case .unsuccessfulStatusCode(let code, let message):
-            return "Response received, but status code = \(String(code)). \(message)"
+            let apiMessage = message ?? "(no helpful message from the API)"
+
+            return "Response received, but status code = \(String(code)). \(apiMessage)"
         case .noOrBadNetwork: return "No Internet connection or bad network connection."
         case .noRequestMade(let error): return error?
             .localizedDescription ?? "No request was able to be made to server."

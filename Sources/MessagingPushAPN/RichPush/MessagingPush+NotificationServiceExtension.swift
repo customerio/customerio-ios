@@ -18,20 +18,29 @@ public extension MessagingPush {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        if customerIO.sdkConfig.autoTrackPushEvents {
+        guard let siteId = customerIO.siteId else {
+            contentHandler(request.content)
+            return false
+        }
+
+        let diGraph = DITracking.getInstance(siteId: siteId)
+        let sdkConfig = diGraph.sdkConfigStore.config
+        let jsonAdapter = diGraph.jsonAdapter
+
+        if sdkConfig.autoTrackPushEvents {
             trackMetric(notificationContent: request.content, event: .delivered) { _ in
                 // XXX: pending background queue so that this can get retried instead of discarding the result
             }
         }
 
         guard let pushContent = PushContent.parse(notificationContent: request.content,
-                                                  jsonAdapter: DITracking.shared.jsonAdapter)
+                                                  jsonAdapter: jsonAdapter)
         else {
             // push does not contain a CIO rich payload, so end early
             return false
         }
 
-        RichPushRequestHandler.shared.startRequest(request, content: pushContent, customerIO: customerIO,
+        RichPushRequestHandler.shared.startRequest(request, content: pushContent, siteId: siteId,
                                                    completionHandler: contentHandler)
 
         return true

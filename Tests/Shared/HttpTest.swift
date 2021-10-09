@@ -18,6 +18,7 @@ import XCTest
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner?
     public var customerIO: CustomerIO?
+    public var session: URLSession?
 
     override open func setUp() {
         super.setUp()
@@ -27,8 +28,9 @@ open class HttpTest: UnitTest {
          we see environment variables set in XCode.
          */
         if let siteId = getEnvironmentVariable("SITE_ID"), let apiKey = getEnvironmentVariable("API_KEY") {
-            runner = UrlRequestHttpRequestRunner(session: CIOHttpClient.getSession(siteId: siteId, apiKey: apiKey))
+            runner = UrlRequestHttpRequestRunner()
             customerIO = CustomerIO(siteId: siteId, apiKey: apiKey, region: Region.US)
+            session = CIOHttpClient.getSession(siteId: siteId, apiKey: apiKey)
         }
     }
 

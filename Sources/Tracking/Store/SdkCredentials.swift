@@ -15,8 +15,8 @@ public enum Region: String, Equatable {
 
     internal var productionTrackingUrl: String {
         switch self {
-        case .US: return "https://track.customer.io/api/v1"
-        case .EU: return "https://track-eu.customer.io/api/v1"
+        case .US: return "https://track.customer.io"
+        case .EU: return "https://track-eu.customer.io"
         }
     }
 }
@@ -24,7 +24,6 @@ public enum Region: String, Equatable {
 // swiftlint:enable identifier_name
 
 public struct SdkCredentials: AutoLenses, Equatable {
-    public let siteId: String
     public let apiKey: String
     public let region: Region
 }

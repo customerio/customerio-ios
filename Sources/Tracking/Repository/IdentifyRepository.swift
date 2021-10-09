@@ -1,8 +1,6 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
-    var identifier: String? { get }
-
     func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
         // sourcery:Type=AnyEncodable
@@ -32,46 +30,28 @@ internal protocol IdentifyRepository: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-
-    func getIdentifier() -> String?
 }
 
+// sourcery: InjectRegister = "IdentifyRepository"
 internal class CIOIdentifyRepository: IdentifyRepository {
     private let httpClient: HttpClient
-    private let keyValueStorage: KeyValueStorage
     private let jsonAdapter: JsonAdapter
     private let eventBus: EventBus
     private let siteId: String
+    private var profileStore: ProfileStore
 
-    public var identifier: String? {
-        getIdentifier()
-    }
-
-    public func getIdentifier() -> String? {
-        keyValueStorage.string(siteId: siteId, forKey: .identifiedProfileId)
-    }
-
-    /// for testing
-    internal init(
+    init(
+        siteId: SiteId,
         httpClient: HttpClient,
-        keyValueStorage: KeyValueStorage,
         jsonAdapter: JsonAdapter,
-        siteId: String,
-        eventBus: EventBus
+        eventBus: EventBus,
+        profileStore: ProfileStore
     ) {
-        self.httpClient = httpClient
-        self.keyValueStorage = keyValueStorage
-        self.jsonAdapter = jsonAdapter
         self.siteId = siteId
+        self.httpClient = httpClient
+        self.jsonAdapter = jsonAdapter
         self.eventBus = eventBus
-    }
-
-    init(credentials: SdkCredentials, config: SdkConfig) {
-        self.httpClient = CIOHttpClient(credentials: credentials, config: config)
-        self.siteId = credentials.siteId
-        self.keyValueStorage = DITracking.shared.keyValueStorage
-        self.jsonAdapter = DITracking.shared.jsonAdapter
-        self.eventBus = DITracking.shared.eventBus
+        self.profileStore = profileStore
     }
 
     func addOrUpdateCustomer<RequestBody: Encodable>(
@@ -93,7 +73,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
 
                 switch result {
                 case .success:
-                    self.keyValueStorage.setString(siteId: self.siteId, value: identifier, forKey: .identifiedProfileId)
+                    self.profileStore.identifier = identifier
                     self.eventBus.post(.identifiedCustomer)
 
                     onComplete(Result.success(()))
@@ -104,7 +84,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     }
 
     func removeCustomer() {
-        keyValueStorage.setString(siteId: siteId, value: nil, forKey: .identifiedProfileId)
+        profileStore.identifier = nil
     }
 
     func trackEvent<RequestBody: Encodable>(
@@ -137,7 +117,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let identifier = self.identifier else {
+        guard let identifier = profileStore.identifier else {
             // XXX: these could actually do one of
             // - fail
             // - send as anonymous events

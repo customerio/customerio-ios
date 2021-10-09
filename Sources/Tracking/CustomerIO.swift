@@ -1,6 +1,8 @@
 import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
+    var siteId: String? { get }
+
     // sourcery:Name=identify
     func identify<RequestBody: Encodable>(
         identifier: String,
@@ -112,6 +114,10 @@ public extension CustomerIOInstance {
  automated tests, dependency injection, or sending data to multiple Workspaces.
  */
 public class CustomerIO: CustomerIOInstance {
+    public var siteId: String? {
+        implementation?.siteId
+    }
+
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
 
@@ -119,36 +125,9 @@ public class CustomerIO: CustomerIOInstance {
      */
     @Atomic public private(set) static var shared = CustomerIO()
 
-    @Atomic public var sdkConfig: SdkConfig
-    @Atomic public var credentials: SdkCredentials?
+    internal var implementation: CustomerIOImplementation?
 
-    public var identifier: String? {
-        identifyRepository?.identifier
-    }
-
-    private var credentialsStore: SdkCredentialsStore = DITracking.shared.sdkCredentialsStore
-    private var keyValueStorage: KeyValueStorage = DITracking.shared.keyValueStorage
-
-    /**
-     init for testing
-
-     Note: Using real key/value storage can be handy in tests. make them optional
-     */
-    internal init(
-        credentialsStore: SdkCredentialsStore?,
-        sdkConfig: SdkConfig,
-        identifyRepository: IdentifyRepository?,
-        keyValueStorage: KeyValueStorage?
-    ) {
-        self._identifyRepository = identifyRepository
-        if let keyValueStorage = keyValueStorage {
-            self.keyValueStorage = keyValueStorage
-        }
-        if let credentialsStore = credentialsStore {
-            self.credentialsStore = credentialsStore
-        }
-        self.sdkConfig = sdkConfig
-    }
+    internal var globalData: GlobalDataStore = CioGlobalDataStore()
 
     /**
      Constructor for singleton, only.
@@ -156,17 +135,14 @@ public class CustomerIO: CustomerIOInstance {
      Try loading the credentials previously saved for the singleton instance.
      */
     internal init() {
-        let newSdkConfig = SdkConfig()
-        self.sdkConfig = newSdkConfig
+        if let siteId = globalData.sharedInstanceSiteId {
+            let diGraph = DITracking.getInstance(siteId: siteId)
+            let credentialsStore = diGraph.sdkCredentialsStore
 
-        if let siteId = credentialsStore.sharedInstanceSiteId,
-           let existingCredentials = credentialsStore.load(siteId: siteId) {
-            self.credentials = existingCredentials
-            self._identifyRepository = CIOIdentifyRepository(credentials: existingCredentials, config: newSdkConfig)
-        }
-
-        if sdkConfig.autoTrackScreenViews {
-            setupScreenViewTracking()
+            // if credentials are not available, we should not set implementation
+            if credentialsStore.load() != nil {
+                self.implementation = CustomerIOImplementation(siteId: siteId)
+            }
         }
     }
 
@@ -179,46 +155,15 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-     allow `_` character in property name. It's common to use a `_` in property name for private variables
-     but a refactor in the future will remove the need for this property all together so, just disable
-     the lint rule for now.
-     */
-    // swiftlint:disable identifier_name
-
-    /**
-     Keep a class wide reference to `IdentifyRepository` to keep it in memory as it performs async operations.
-     */
-    private var _identifyRepository: IdentifyRepository?
-    /**
-     Because the repository can be populated from tests and it depends on the SDK being initialized,
-     there needs to exist logic to provide the `IdentifyRepository` instance to the class.
-
-     If a backgroud queue would exist in the SDK, this code can go away where each function of the class
-     simply adds a task to the queue and the queue will run or not run the operation depending on if
-     the SDK has been initialized.
-     */
-    private var identifyRepository: IdentifyRepository? {
-        if let _identifyRepository = self._identifyRepository { return _identifyRepository }
-
-        guard let credentials = credentials else { return nil }
-
-        _identifyRepository = CIOIdentifyRepository(credentials: credentials, config: sdkConfig)
-
-        return _identifyRepository
-    }
-
-    // swiftlint:enable identifier_name
-
-    /**
      Create an instance of `CustomerIO`.
 
      This is the recommended method for code bases containing
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
     public init(siteId: String, apiKey: String, region: Region = Region.US) {
-        self.sdkConfig = Self.shared.sdkConfig
-
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
+
+        self.implementation = CustomerIOImplementation(siteId: siteId)
     }
 
     /**
@@ -226,27 +171,32 @@ public class CustomerIO: CustomerIOInstance {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
+        Self.shared.globalData.sharedInstanceSiteId = siteId
+
         Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
-        Self.shared.credentialsStore.sharedInstanceSiteId = siteId
+        Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
     }
 
     /**
      Sets credentials on shared or non-shared instance.
      */
     internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        var credentials = credentialsStore.load(siteId: siteId)
-            ?? credentialsStore.create(siteId: siteId, apiKey: apiKey, region: region)
+        let diGraph = DITracking.getInstance(siteId: siteId)
+        var credentialsStore = diGraph.sdkCredentialsStore
 
-        credentials = credentials.apiKeySet(apiKey).regionSet(region)
-
-        self.credentials = credentials
-        credentialsStore.save(siteId: siteId, credentials: credentials)
+        credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
 
         // Some default values of the SDK configuration may depend on credentials. Reset default values.
-        sdkConfig = setDefaultValuesSdkConfig(config: sdkConfig)
+        var configStore = diGraph.sdkConfigStore
+        var config = configStore.config
 
-        _identifyRepository = CIOIdentifyRepository(credentials: credentials, config: sdkConfig)
+        if config.trackingApiUrl.isEmpty {
+            config.trackingApiUrl = region.productionTrackingUrl
+        }
+        configStore.config = config
+
+        globalData.appendSiteId(siteId)
     }
 
     /**
@@ -280,22 +230,7 @@ public class CustomerIO: CustomerIOInstance {
      ```
      */
     public func config(_ handler: (inout SdkConfig) -> Void) {
-        var configToModify = sdkConfig
-
-        handler(&configToModify)
-        configToModify = setDefaultValuesSdkConfig(config: configToModify)
-
-        sdkConfig = configToModify
-    }
-
-    internal func setDefaultValuesSdkConfig(config: SdkConfig) -> SdkConfig {
-        var config = config
-
-        if config.trackingApiUrl.isEmpty, let credentials = self.credentials {
-            config.trackingApiUrl = credentials.region.productionTrackingUrl
-        }
-
-        return config
+        implementation?.config(handler)
     }
 
     /**
@@ -321,23 +256,11 @@ public class CustomerIO: CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let identifyRepository = self.identifyRepository else {
+        guard let implementation = self.implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        identifyRepository
-            .addOrUpdateCustomer(identifier: identifier, body: body, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
-
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
-                }
-            }
+        implementation.identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
     }
 
     /**
@@ -350,11 +273,7 @@ public class CustomerIO: CustomerIOInstance {
      If no profile has been identified yet, this function will ignore your request.
      */
     public func clearIdentify() {
-        guard let identifyRepository = self.identifyRepository else {
-            return
-        }
-
-        identifyRepository.removeCustomer()
+        implementation?.clearIdentify()
     }
 
     /**
@@ -375,24 +294,11 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let identifyRepository = self.identifyRepository else {
+        guard let implementation = self.implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
-        identifyRepository
-            .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
-
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
-                }
-            }
+        implementation.track(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 
     /**
@@ -413,23 +319,18 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let identifyRepository = self.identifyRepository else {
+        guard let implementation = self.implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
-        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
-        identifyRepository
-            .screen(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
+        implementation.screen(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
 
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
-                }
-            }
+    public func setupScreenViewTracking() {
+        guard let implementation = self.implementation else {
+            return
+        }
+
+        implementation.setupScreenViewTracking()
     }
 }

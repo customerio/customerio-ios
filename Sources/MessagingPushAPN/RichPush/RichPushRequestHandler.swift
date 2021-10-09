@@ -14,7 +14,7 @@ internal class RichPushRequestHandler {
     func startRequest(
         _ request: UNNotificationRequest,
         content: PushContent,
-        customerIO: CustomerIO,
+        siteId: SiteId,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
         let requestId = request.identifier
@@ -22,11 +22,8 @@ internal class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        // XXX: After we are able to inject HttpClient using DI graph, this is no longer needed.
-        guard let credentials = customerIO.credentials else {
-            return
-        }
-        let httpClient = CIOHttpClient(credentials: credentials, config: customerIO.sdkConfig)
+        let diGraph = DITracking.getInstance(siteId: siteId)
+        let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(pushContent: content, request: request, httpClient: httpClient,
                                          completionHandler: completionHandler)

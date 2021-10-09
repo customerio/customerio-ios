@@ -2,10 +2,10 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-public extension CustomerIO {
+public extension CustomerIOImplementation {
     func setupScreenViewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
-        let selector2 = #selector(CustomerIO._swizzled_UIKit_viewDidAppear(_:))
+        let selector2 = #selector(CustomerIOImplementation._swizzled_UIKit_viewDidAppear(_:))
         let originalMethod = class_getInstanceMethod(UIViewController.self, selector1)!
         let swizzleMethod = class_getInstanceMethod(UIViewController.self, selector2)!
         method_exchangeImplementations(originalMethod, swizzleMethod)
@@ -39,7 +39,7 @@ public extension CustomerIO {
             }
         }
 
-        self.screen(name: name, data: ScreenViewBody()) { result in
+        screen(name: name, data: ScreenViewBody()) { result in
             print(result)
         }
     }
