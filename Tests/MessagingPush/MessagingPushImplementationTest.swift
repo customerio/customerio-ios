@@ -5,30 +5,22 @@ import SharedTests
 import XCTest
 
 class MessagingPushImplementationTest: UnitTest {
-    private var mockCustomerIO: CustomerIOInstanceMock!
+    private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPushImplementation!
 
-    private var identifyRepositoryMock: IdentifyRepository!
-    private var eventBusMock: EventBusMock!
-    private var httpClientMock: HttpClientMock!
-    private var profileStoreMock: ProfileStoreMock!
+    private var identifyRepositoryMock = IdentifyRepositoryMock()
+    private var eventBusMock = EventBusMock()
+    private var httpClientMock = HttpClientMock()
+    private var profileStoreMock = ProfileStoreMock()
 
     override func setUp() {
         super.setUp()
 
-        httpClientMock = HttpClientMock()
         diGraph.override(.httpClient, value: httpClientMock, forType: HttpClient.self)
-
-        identifyRepositoryMock = IdentifyRepositoryMock()
         diGraph.override(.identifyRepository, value: identifyRepositoryMock, forType: IdentifyRepository.self)
-
-        eventBusMock = EventBusMock()
         diGraph.override(.eventBus, value: eventBusMock, forType: EventBus.self)
-
-        profileStoreMock = ProfileStoreMock()
         diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
 
-        mockCustomerIO = CustomerIOInstanceMock()
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(httpClient: httpClientMock, jsonAdapter: jsonAdapter,

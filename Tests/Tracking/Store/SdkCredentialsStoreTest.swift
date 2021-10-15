@@ -4,15 +4,13 @@ import SharedTests
 import XCTest
 
 class SdkCredentialsStoreTest: UnitTest {
-    var keyValueStorageMock: KeyValueStorageMock!
+    var keyValueStorageMock = KeyValueStorageMock()
 
     var store: CIOSdkCredentialsStore!
     var integrationStore: CIOSdkCredentialsStore!
 
     override func setUp() {
         super.setUp()
-
-        keyValueStorageMock = KeyValueStorageMock()
 
         store = CIOSdkCredentialsStore(keyValueStorage: keyValueStorageMock)
         integrationStore = CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)

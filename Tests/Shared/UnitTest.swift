@@ -41,6 +41,8 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
+        TrackingMocks.shared.resetAll()
+
         deleteAll()
 
         diGraph.resetOverrides()
