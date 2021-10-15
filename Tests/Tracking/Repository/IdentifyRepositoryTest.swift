@@ -4,10 +4,10 @@ import SharedTests
 import XCTest
 
 class IdentifyRepositoryTest: UnitTest {
-    private var httpClientMock: HttpClientMock!
-    private var eventBusMock: EventBusMock!
+    private var httpClientMock = HttpClientMock()
+    private var eventBusMock = EventBusMock()
     private var siteId: String!
-    private var profileStoreMock: ProfileStoreMock!
+    private var profileStoreMock = ProfileStoreMock()
 
     private var repository: IdentifyRepository!
     private var integrationRepository: IdentifyRepository!
@@ -15,9 +15,6 @@ class IdentifyRepositoryTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        httpClientMock = HttpClientMock()
-        eventBusMock = EventBusMock()
-        profileStoreMock = ProfileStoreMock()
         siteId = String.random
 
         repository = CIOIdentifyRepository(siteId: siteId, httpClient: httpClientMock, jsonAdapter: jsonAdapter,

@@ -8,13 +8,12 @@ import XCTest
 ///
 /// Note: In the future we may want to move this code into the Remote Habits app instead.
 class CustomerIOMockTest: UnitTest {
-    private var cioMock: CustomerIOInstanceMock!
+    private var cioMock = CustomerIOInstanceMock()
     private var repository: ExampleRepository!
 
     override func setUp() {
         super.setUp()
 
-        cioMock = CustomerIOInstanceMock()
         repository = ExampleRepository(cio: cioMock)
     }
 

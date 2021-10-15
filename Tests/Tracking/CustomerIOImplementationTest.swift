@@ -6,12 +6,11 @@ import XCTest
 class CustomerIOImplementationTest: UnitTest {
     private var customerIO: CustomerIOImplementation!
 
-    private var identifyRepositoryMock: IdentifyRepositoryMock!
+    private var identifyRepositoryMock = IdentifyRepositoryMock()
 
     override func setUp() {
         super.setUp()
 
-        identifyRepositoryMock = IdentifyRepositoryMock()
         diGraph.override(.identifyRepository, value: identifyRepositoryMock, forType: IdentifyRepository.self)
 
         customerIO = CustomerIOImplementation(siteId: diGraph.siteId)

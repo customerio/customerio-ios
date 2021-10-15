@@ -7,9 +7,9 @@ import FoundationNetworking
 import XCTest
 
 class HttpClientTest: UnitTest {
-    private var requestRunnerMock: HttpRequestRunnerMock!
-    private var credentialsStoreMock: SdkCredentialsStoreMock!
-    private var configStoreMock: SdkConfigStoreMock!
+    private var requestRunnerMock = HttpRequestRunnerMock()
+    private var credentialsStoreMock = SdkCredentialsStoreMock()
+    private var configStoreMock = SdkConfigStoreMock()
     private var client: HttpClient!
 
     private let url = URL(string: "https://customer.io")!
@@ -17,11 +17,8 @@ class HttpClientTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        requestRunnerMock = HttpRequestRunnerMock()
-        credentialsStoreMock = SdkCredentialsStoreMock()
         credentialsStoreMock.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
 
-        configStoreMock = SdkConfigStoreMock()
         configStoreMock.config = SdkConfig()
 
         client = CIOHttpClient(siteId: SiteId.random, sdkCredentialsStore: credentialsStoreMock,
