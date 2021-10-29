@@ -111,12 +111,13 @@ extension CIOHttpClient {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
+        
         urlSessionConfig.allowsCellularAccess = true
         urlSessionConfig.timeoutIntervalForResource = 30
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": "CustomerIO-SDK-iOS/\(SdkVersion.version)"]
+                                                  "User-Agent": getUserAgent()]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -126,5 +127,15 @@ extension CIOHttpClient {
         let encodedRawHeader = rawHeader.data(using: .utf8)!
 
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
+    }
+    
+    static func getUserAgent() -> String {
+        var userAgent = "Customer.io iOS Client/"
+        userAgent += SdkVersion.version
+        userAgent += " (\(DeviceInfo.deviceInfo); \(DeviceInfo.osInfo))"
+        userAgent += " \(DeviceInfo.customerAppName)/"
+        userAgent += DeviceInfo.customerAppVersion
+        
+        return userAgent
     }
 }
