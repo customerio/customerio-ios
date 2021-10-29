@@ -9,3 +9,4 @@ internal enum DeviceInfo {
     static let customerAppName : String = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
     static let customerAppVersion : String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
 }
+#endif
