@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol Logger {
+public protocol Logger: AutoMockable {
     func verbose(_ message: String)
     func debug(_ message: String)
     func info(_ message: String)
