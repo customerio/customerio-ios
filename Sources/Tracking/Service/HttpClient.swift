@@ -132,10 +132,11 @@ extension CIOHttpClient {
     static func getUserAgent() -> String {
         var userAgent = "Customer.io iOS Client/"
         userAgent += SdkVersion.version
+        #if canImport(UIKit)
         userAgent += " (\(DeviceInfo.deviceInfo); \(DeviceInfo.osInfo))"
         userAgent += " \(DeviceInfo.customerAppName)/"
         userAgent += DeviceInfo.customerAppVersion
-        
+        #endif
         return userAgent
     }
 }
