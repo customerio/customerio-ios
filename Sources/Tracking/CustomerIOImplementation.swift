@@ -24,6 +24,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private let diGraph: DITracking
 
     private let identifyRepository: IdentifyRepository
+    private let backgroundQueue: Queue
+    private let jsonAdapter: JsonAdapter
 
     /**
      Constructor for singleton, only.
@@ -36,6 +38,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.diGraph = DITracking.getInstance(siteId: siteId)
 
         self.identifyRepository = diGraph.identifyRepository
+        self.backgroundQueue = diGraph.queue
+        self.jsonAdapter = diGraph.jsonAdapter
     }
 
     /**
@@ -67,19 +71,32 @@ public class CustomerIOImplementation: CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        identifyRepository
-            .addOrUpdateCustomer(identifier: identifier, body: body, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
+        guard let jsonBodyString = jsonAdapter.toJson(body, encoder: jsonEncoder)?.string else {
+            return
+        }
 
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
-                }
-            }
+        let data = jsonAdapter
+            .toJson(IdentifyRepoTaskData(identifier: identifier, requestBodyJsonString: jsonBodyString),
+                    encoder: nil)!
+        backgroundQueue.addTask(type: .identifyProfile, data: data)
+
+        backgroundQueue.run {
+            print("Done running tasks!")
+        }
+
+//        identifyRepository
+//            .addOrUpdateCustomer(identifier: identifier, body: body, jsonEncoder: jsonEncoder) { [weak self] result in
+//                DispatchQueue.main.async { [weak self] in
+//                    guard self != nil else { return }
+//
+//                    switch result {
+//                    case .success:
+//                        return onComplete(Result.success(()))
+//                    case .failure(let error):
+//                        return onComplete(Result.failure(error))
+//                    }
+//                }
+//            }
     }
 
     public func clearIdentify() {

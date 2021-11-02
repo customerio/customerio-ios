@@ -21,14 +21,15 @@ public class CioQueueRunner: QueueRunner {
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, Error>) -> Void) {
         switch task.type {
         case .identifyProfile:
-            guard let taskData: String = jsonAdapter.fromJson(task.data, decoder: nil) else {
+            guard let taskData: IdentifyRepoTaskData = jsonAdapter.fromJson(task.data, decoder: nil) else {
                 logger
                     .error("Not able to convert: \(task.data.string ?? "?string?") to JSON object needed")
                 return onComplete(.success(()))
             }
 
             identifyRepository
-                .addOrUpdateCustomer(identifier: taskData, body: taskData, jsonEncoder: nil) { result in
+                .addOrUpdateCustomer(identifier: taskData.identifier, body: taskData.requestBodyJsonString,
+                                     jsonEncoder: nil) { result in
                     switch result {
                     case .success:
                         return onComplete(Result.success(()))
@@ -38,4 +39,9 @@ public class CioQueueRunner: QueueRunner {
                 }
         }
     }
+}
+
+struct IdentifyRepoTaskData: Codable {
+    let identifier: String
+    let requestBodyJsonString: String
 }
