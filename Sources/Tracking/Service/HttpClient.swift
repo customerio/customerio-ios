@@ -129,6 +129,16 @@ extension CIOHttpClient {
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
     }
     
+    /**
+     * getUserAgent - To get `user-agent` header value. This value depends on SDK version
+     * and device detail such as OS version, device model, customer's app name etc
+     *
+     * In case, UIKit is available then this function returns value in following format :
+     * `Customer.io iOS Client/1.0.0-alpha.16 (iPhone 11 Pro; iOS 14.5) User App/1.0`
+     *
+     * Otherwise will return
+     * `Customer.io iOS Client/1.0.0-alpha.16`
+     */
     static func getUserAgent() -> String {
         var userAgent = "Customer.io iOS Client/"
         userAgent += SdkVersion.version
