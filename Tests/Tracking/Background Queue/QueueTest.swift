@@ -13,7 +13,7 @@ class QueueTest: UnitTest {
     }
 
     func test_addTaskTwice_expectQueueHave2Items() {
-        let givenType = "push event"
+        let givenType = QueueTaskType.identifyProfile
         let givenTaskData = ["push_id": 5]
 
         let actual1 = queue.addTask(type: givenType, data: jsonAdapter.toJson(givenTaskData, encoder: nil)!)

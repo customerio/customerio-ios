@@ -1,3 +1,5 @@
 import Foundation
 
-public typealias QueueTaskType = String
+public enum QueueTaskType: String, Codable {
+    case identifyProfile
+}

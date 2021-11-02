@@ -7,6 +7,7 @@ public protocol QueueStorage: AutoMockable {
     func create(type: QueueTaskType, data: Data) -> Bool
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
+    func delete(storageId: String) -> Bool
 }
 
 // sourcery: InjectRegister = "QueueStorage"
@@ -68,6 +69,17 @@ public class FileManagerQueueStorage: QueueStorage {
         }
 
         return task
+    }
+
+    public func delete(storageId: String) -> Bool {
+        // update inventory first so code that requests the inventory doesn't get the inventory item we are deleting
+        var existingInventory = getInventory()
+        existingInventory.removeAll { $0.taskPersistedId == storageId }
+        let updateInventoryResult = saveInventory(existingInventory)
+
+        if !updateInventoryResult { return false }
+
+        return fileStorage.delete(type: .queueTask, fileId: storageId)
     }
 }
 

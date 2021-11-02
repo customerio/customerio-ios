@@ -64,6 +64,9 @@ public enum DependencyTracking: CaseIterable {
     case eventBus
     case profileStore
     case queue
+    case queueRequestManager
+    case queueRunRequest
+    case queueRunner
     case logger
     case fileStorage
     case queueStorage
@@ -140,6 +143,9 @@ public class DITracking {
         case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
         case .queue: return queue as! T
+        case .queueRequestManager: return queueRequestManager as! T
+        case .queueRunRequest: return queueRunRequest as! T
+        case .queueRunner: return queueRunner as! T
         case .logger: return logger as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
@@ -225,7 +231,57 @@ public class DITracking {
     }
 
     private var newQueue: Queue {
-        CioQueue(siteId: siteId, storage: queueStorage)
+        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest)
+    }
+
+    // QueueRequestManager (singleton)
+    public var queueRequestManager: QueueRequestManager {
+        if let overridenDep = overrides[.queueRequestManager] {
+            return overridenDep as! QueueRequestManager
+        }
+        return sharedQueueRequestManager
+    }
+
+    private let _queueRequestManager_queue = DispatchQueue(label: "DI_get_queueRequestManager_queue")
+    private var _queueRequestManager_shared: QueueRequestManager?
+    public var sharedQueueRequestManager: QueueRequestManager {
+        _queueRequestManager_queue.sync {
+            if let overridenDep = self.overrides[.queueRequestManager] {
+                return overridenDep as! QueueRequestManager
+            }
+            let res = _queueRequestManager_shared ?? _get_queueRequestManager()
+            _queueRequestManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_queueRequestManager() -> QueueRequestManager {
+        CioQueueRequestManager()
+    }
+
+    // QueueRunRequest
+    public var queueRunRequest: QueueRunRequest {
+        if let overridenDep = overrides[.queueRunRequest] {
+            return overridenDep as! QueueRunRequest
+        }
+        return newQueueRunRequest
+    }
+
+    private var newQueueRunRequest: QueueRunRequest {
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManger: queueRequestManager,
+                           logger: logger)
+    }
+
+    // QueueRunner
+    public var queueRunner: QueueRunner {
+        if let overridenDep = overrides[.queueRunner] {
+            return overridenDep as! QueueRunner
+        }
+        return newQueueRunner
+    }
+
+    private var newQueueRunner: QueueRunner {
+        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, identifyRepository: identifyRepository)
     }
 
     // Logger

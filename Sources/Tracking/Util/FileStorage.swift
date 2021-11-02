@@ -5,6 +5,7 @@ public protocol FileStorage: AutoMockable {
     func save(type: FileType, contents: Data, fileId: String?) -> Bool
     /// return `nil` if an error was caught and logged *or* if the file simply doesn't exist
     func get(type: FileType, fileId: String?) -> Data?
+    func delete(type: FileType, fileId: String) -> Bool
 }
 
 public enum FileType {
@@ -90,6 +91,19 @@ public class FileManagerFileStorage: FileStorage {
         } catch {
             logger.error(error.localizedDescription)
             return nil
+        }
+    }
+
+    public func delete(type: FileType, fileId: String) -> Bool {
+        do {
+            guard let urlFileToDelete = try getUrl(type: type, fileId: fileId) else { return false }
+
+            try fileManager.removeItem(at: urlFileToDelete)
+
+            return true
+        } catch {
+            logger.error(error.localizedDescription)
+            return false
         }
     }
 
