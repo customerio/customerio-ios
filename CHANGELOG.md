@@ -1,3 +1,10 @@
+# [1.0.0-alpha.17](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.16...1.0.0-alpha.17) (2021-11-03)
+
+
+### Bug Fixes
+
+* improve user-agent with more detail ([#74](https://github.com/customerio/customerio-ios/issues/74)) ([4301034](https://github.com/customerio/customerio-ios/commit/43010347680d84dfa7d2b782bce18a25b40b8296))
+
 # [1.0.0-alpha.16](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.15...1.0.0-alpha.16) (2021-10-08)
 
 
