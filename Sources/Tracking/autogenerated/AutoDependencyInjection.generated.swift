@@ -63,7 +63,10 @@ public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
     case eventBus
     case profileStore
+    case queue
     case logger
+    case fileStorage
+    case queueStorage
     case sdkConfigStore
     case jsonAdapter
     case httpRequestRunner
@@ -136,7 +139,10 @@ public class DITracking {
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
+        case .queue: return queue as! T
         case .logger: return logger as! T
+        case .fileStorage: return fileStorage as! T
+        case .queueStorage: return queueStorage as! T
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
         case .httpRequestRunner: return httpRequestRunner as! T
@@ -210,6 +216,18 @@ public class DITracking {
         CioProfileStore(keyValueStorage: keyValueStorage)
     }
 
+    // Queue
+    public var queue: Queue {
+        if let overridenDep = overrides[.queue] {
+            return overridenDep as! Queue
+        }
+        return newQueue
+    }
+
+    private var newQueue: Queue {
+        CioQueue(siteId: siteId, storage: queueStorage)
+    }
+
     // Logger
     public var logger: Logger {
         if let overridenDep = overrides[.logger] {
@@ -220,6 +238,30 @@ public class DITracking {
 
     private var newLogger: Logger {
         ConsoleLogger()
+    }
+
+    // FileStorage
+    public var fileStorage: FileStorage {
+        if let overridenDep = overrides[.fileStorage] {
+            return overridenDep as! FileStorage
+        }
+        return newFileStorage
+    }
+
+    private var newFileStorage: FileStorage {
+        FileManagerFileStorage(siteId: siteId, logger: logger)
+    }
+
+    // QueueStorage
+    public var queueStorage: QueueStorage {
+        if let overridenDep = overrides[.queueStorage] {
+            return overridenDep as! QueueStorage
+        }
+        return newQueueStorage
+    }
+
+    private var newQueueStorage: QueueStorage {
+        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter)
     }
 
     // SdkConfigStore (singleton)

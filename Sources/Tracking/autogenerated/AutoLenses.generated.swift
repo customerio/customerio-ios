@@ -59,6 +59,62 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
 }
 
+extension QueueTask {
+    static let storageIdLens = Lens<QueueTask, String>(get: { $0.storageId },
+                                                       set: { storageId, existing in
+                                                           QueueTask(storageId: storageId, type: existing.type,
+                                                                     data: existing.data,
+                                                                     runResults: existing.runResults)
+                                                       })
+    static let typeLens = Lens<QueueTask, QueueTaskType>(get: { $0.type },
+                                                         set: { type, existing in
+                                                             QueueTask(storageId: existing.storageId, type: type,
+                                                                       data: existing.data,
+                                                                       runResults: existing.runResults)
+                                                         })
+    static let dataLens = Lens<QueueTask, Data>(get: { $0.data },
+                                                set: { data, existing in
+                                                    QueueTask(storageId: existing.storageId, type: existing.type,
+                                                              data: data, runResults: existing.runResults)
+                                                })
+    static let runResultsLens = Lens<QueueTask, QueueTaskRunResults>(get: { $0.runResults },
+                                                                     set: { runResults, existing in
+                                                                         QueueTask(storageId: existing.storageId,
+                                                                                   type: existing.type,
+                                                                                   data: existing.data,
+                                                                                   runResults: runResults)
+                                                                     })
+
+    // Convenient set functions to edit a property of the immutable object
+    func storageIdSet(_ storageId: String) -> QueueTask {
+        QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+
+    func typeSet(_ type: QueueTaskType) -> QueueTask {
+        QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+
+    func dataSet(_ data: Data) -> QueueTask {
+        QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+
+    func runResultsSet(_ runResults: QueueTaskRunResults) -> QueueTask {
+        QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+}
+
+extension QueueTaskRunResults {
+    static let totalRunsLens = Lens<QueueTaskRunResults, Int>(get: { $0.totalRuns },
+                                                              set: { totalRuns, existing in
+                                                                  QueueTaskRunResults(totalRuns: totalRuns)
+                                                              })
+
+    // Convenient set functions to edit a property of the immutable object
+    func totalRunsSet(_ totalRuns: Int) -> QueueTaskRunResults {
+        QueueTaskRunResults(totalRuns: totalRuns)
+    }
+}
+
 extension SdkCredentials {
     static let apiKeyLens = Lens<SdkCredentials, String>(get: { $0.apiKey },
                                                          set: { apiKey, existing in
