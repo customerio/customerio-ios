@@ -10,11 +10,11 @@ class QueueStorageTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
+        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
     }
 
-    private func getQueueTaskItem() -> QueueTaskItem {
-        QueueTaskItem(taskPersistedId: String.random, taskType: String.random)
+    private func getQueueTaskItem() -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: String.random, taskType: String.random)
     }
 
     // MARK: getInventory
@@ -65,7 +65,8 @@ class QueueStorageTest: UnitTest {
         let actual = storage.create(type: givenType, data: givenData)
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2) // create task and update inventory
-        XCTAssertTrue(actual)
+        XCTAssertTrue(actual.success)
+        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
     }
 
     func test_create_givenFileStorageDoesNotSaveTask_expectDoNotUpdateInventory_expectFalse() {
@@ -77,7 +78,8 @@ class QueueStorageTest: UnitTest {
         let actual = storage.create(type: givenType, data: givenData)
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call
-        XCTAssertFalse(actual)
+        XCTAssertFalse(actual.success)
+        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
     }
 
     func test_create_givenFileStorageDoesNotUpdateInventory_expectFalse() {
@@ -92,7 +94,8 @@ class QueueStorageTest: UnitTest {
         let actual = storage.create(type: givenType, data: givenData)
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2)
-        XCTAssertFalse(actual)
+        XCTAssertFalse(actual.success)
+        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
     }
 
     // MARK: update

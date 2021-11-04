@@ -15,9 +15,6 @@ public class CioQueue: Queue {
     }
 
     public func addTask(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
-        let addTaskResult = storage.create(type: type, data: data)
-
-        return (success: addTaskResult,
-                queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count))
+        return storage.create(type: type, data: data)
     }
 }

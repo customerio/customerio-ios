@@ -1313,16 +1313,16 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// Value to return from the mocked function.
-    public var getInventoryReturnValue: [QueueTaskItem]!
+    public var getInventoryReturnValue: [QueueTaskMetadata]!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getInventoryReturnValue`
      */
-    public var getInventoryClosure: (() -> [QueueTaskItem])?
+    public var getInventoryClosure: (() -> [QueueTaskMetadata])?
 
     /// Mocked function for `getInventory()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getInventory() -> [QueueTaskItem] {
+    public func getInventory() -> [QueueTaskMetadata] {
         mockCalled = true
         getInventoryCallsCount += 1
         return getInventoryClosure.map { $0() } ?? getInventoryReturnValue
@@ -1338,9 +1338,9 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var saveInventoryReceivedArguments: ([QueueTaskItem])?
+    public private(set) var saveInventoryReceivedArguments: ([QueueTaskMetadata])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var saveInventoryReceivedInvocations: [[QueueTaskItem]] = []
+    public private(set) var saveInventoryReceivedInvocations: [[QueueTaskMetadata]] = []
     /// Value to return from the mocked function.
     public var saveInventoryReturnValue: Bool!
     /**
@@ -1348,10 +1348,10 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `saveInventoryReturnValue`
      */
-    public var saveInventoryClosure: (([QueueTaskItem]) -> Bool)?
+    public var saveInventoryClosure: (([QueueTaskMetadata]) -> Bool)?
 
-    /// Mocked function for `saveInventory(_ inventory: [QueueTaskItem])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func saveInventory(_ inventory: [QueueTaskItem]) -> Bool {
+    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
         mockCalled = true
         saveInventoryCallsCount += 1
         saveInventoryReceivedArguments = inventory
@@ -1373,16 +1373,16 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     /// Arguments from *all* of the times that the function was called.
     public private(set) var createReceivedInvocations: [(type: QueueTaskType, data: Data)] = []
     /// Value to return from the mocked function.
-    public var createReturnValue: Bool!
+    public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((QueueTaskType, Data) -> Bool)?
+    public var createClosure: ((QueueTaskType, Data) -> (success: Bool, queueStatus: QueueStatus))?
 
     /// Mocked function for `create(type: QueueTaskType, data: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func create(type: QueueTaskType, data: Data) -> Bool {
+    public func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
         mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data)

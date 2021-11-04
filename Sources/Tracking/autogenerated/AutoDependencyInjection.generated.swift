@@ -261,7 +261,7 @@ public class DITracking {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter)
+        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter)
     }
 
     // SdkConfigStore (singleton)
