@@ -11,3 +11,10 @@ public struct QueueTask: Codable, AutoLenses, Equatable {
     /// the current run results of the task. keeping track of the history of the task
     let runResults: QueueTaskRunResults
 }
+
+internal extension QueueTask {
+    static var random: QueueTask {
+        QueueTask(storageId: String.random, type: .identifyProfile, data: Data(),
+                  runResults: QueueTaskRunResults(totalRuns: 1))
+    }
+}

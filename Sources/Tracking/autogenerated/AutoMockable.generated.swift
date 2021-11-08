@@ -138,32 +138,22 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
 
     /// The arguments from the *last* time the function was called.
     public private(set) var identifyReceivedArguments: (identifier: String, body: AnyEncodable,
-                                                        onComplete: (Result<Void, CustomerIOError>) -> Void,
                                                         jsonEncoder: JSONEncoder?)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var identifyReceivedInvocations: [(identifier: String, body: AnyEncodable,
-                                                           onComplete: (Result<Void, CustomerIOError>) -> Void,
                                                            jsonEncoder: JSONEncoder?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyClosure: ((String, AnyEncodable, (Result<Void, CustomerIOError>) -> Void, JSONEncoder?) -> Void)?
+    public var identifyClosure: ((String, AnyEncodable, JSONEncoder?) -> Void)?
 
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identify<RequestBody: Encodable>(
-        identifier: String,
-        body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder?
-    ) {
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody, jsonEncoder: JSONEncoder?) {
         mockCalled = true
         identifyCallsCount += 1
-        identifyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
-                                     jsonEncoder: jsonEncoder)
-        identifyReceivedInvocations
-            .append((identifier: identifier, body: AnyEncodable(body), onComplete: onComplete,
-                     jsonEncoder: jsonEncoder))
-        identifyClosure?(identifier, AnyEncodable(body), onComplete, jsonEncoder)
+        identifyReceivedArguments = (identifier: identifier, body: AnyEncodable(body), jsonEncoder: jsonEncoder)
+        identifyReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body), jsonEncoder: jsonEncoder))
+        identifyClosure?(identifier, AnyEncodable(body), jsonEncoder)
     }
 
     // MARK: - track<RequestBody: Encodable>
@@ -176,30 +166,22 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?,
-                                                     onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?,
-                                                        onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable, jsonEncoder: JSONEncoder?)] =
+        []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var trackClosure: ((String, AnyEncodable, JSONEncoder?, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var trackClosure: ((String, AnyEncodable, JSONEncoder?) -> Void)?
 
-    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func track<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody?,
-        jsonEncoder: JSONEncoder?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func track<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?) {
         mockCalled = true
         trackCallsCount += 1
-        trackReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder,
-                                  onComplete: onComplete)
-        trackReceivedInvocations
-            .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
-        trackClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
+        trackReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder)
+        trackReceivedInvocations.append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder))
+        trackClosure?(name, AnyEncodable(data), jsonEncoder)
     }
 
     // MARK: - clearIdentify
@@ -698,13 +680,12 @@ internal class IdentifyRepositoryMock: IdentifyRepository, TrackingMock {
         addOrUpdateCustomerCallsCount = 0
         addOrUpdateCustomerReceivedArguments = nil
         addOrUpdateCustomerReceivedInvocations = []
-        removeCustomerCallsCount = 0
         trackEventCallsCount = 0
         trackEventReceivedArguments = nil
         trackEventReceivedInvocations = []
     }
 
-    // MARK: - addOrUpdateCustomer<RequestBody: Encodable>
+    // MARK: - addOrUpdateCustomer
 
     /// Number of times the function was called.
     internal private(set) var addOrUpdateCustomerCallsCount = 0
@@ -714,60 +695,34 @@ internal class IdentifyRepositoryMock: IdentifyRepository, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var addOrUpdateCustomerReceivedArguments: (identifier: String, body: AnyEncodable,
-                                                                     jsonEncoder: JSONEncoder?,
+    internal private(set) var addOrUpdateCustomerReceivedArguments: (identifier: String, requestBodyString: String?,
                                                                      onComplete: (Result<Void, CustomerIOError>)
                                                                          -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var addOrUpdateCustomerReceivedInvocations: [(identifier: String, body: AnyEncodable,
-                                                                        jsonEncoder: JSONEncoder?,
+    internal private(set) var addOrUpdateCustomerReceivedInvocations: [(identifier: String, requestBodyString: String?,
                                                                         onComplete: (Result<Void, CustomerIOError>)
                                                                             -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var addOrUpdateCustomerClosure: ((String, AnyEncodable, JSONEncoder?,
-                                               (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    internal var addOrUpdateCustomerClosure: ((String, String?, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `addOrUpdateCustomer<RequestBody: Encodable>(identifier: String, body: RequestBody, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func addOrUpdateCustomer<RequestBody: Encodable>(
+    /// Mocked function for `addOrUpdateCustomer(identifier: String, requestBodyString: String?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func addOrUpdateCustomer(
         identifier: String,
-        body: RequestBody,
-        jsonEncoder: JSONEncoder?,
+        requestBodyString: String?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         addOrUpdateCustomerCallsCount += 1
-        addOrUpdateCustomerReceivedArguments = (identifier: identifier, body: AnyEncodable(body),
-                                                jsonEncoder: jsonEncoder, onComplete: onComplete)
+        addOrUpdateCustomerReceivedArguments = (identifier: identifier, requestBodyString: requestBodyString,
+                                                onComplete: onComplete)
         addOrUpdateCustomerReceivedInvocations
-            .append((identifier: identifier, body: AnyEncodable(body), jsonEncoder: jsonEncoder,
-                     onComplete: onComplete))
-        addOrUpdateCustomerClosure?(identifier, AnyEncodable(body), jsonEncoder, onComplete)
+            .append((identifier: identifier, requestBodyString: requestBodyString, onComplete: onComplete))
+        addOrUpdateCustomerClosure?(identifier, requestBodyString, onComplete)
     }
 
-    // MARK: - removeCustomer
-
-    /// Number of times the function was called.
-    internal private(set) var removeCustomerCallsCount = 0
-    /// `true` if the function was ever called.
-    internal var removeCustomerCalled: Bool {
-        removeCustomerCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    internal var removeCustomerClosure: (() -> Void)?
-
-    /// Mocked function for `removeCustomer()`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func removeCustomer() {
-        mockCalled = true
-        removeCustomerCallsCount += 1
-        removeCustomerClosure?()
-    }
-
-    // MARK: - trackEvent<RequestBody: Encodable>
+    // MARK: - trackEvent
 
     /// Number of times the function was called.
     internal private(set) var trackEventCallsCount = 0
@@ -777,36 +732,31 @@ internal class IdentifyRepositoryMock: IdentifyRepository, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var trackEventReceivedArguments: (name: String, data: AnyEncodable, timestamp: Date?,
-                                                            jsonEncoder: JSONEncoder?,
+    internal private(set) var trackEventReceivedArguments: (profileIdentifier: String, requestBodyString: String,
                                                             onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var trackEventReceivedInvocations: [(name: String, data: AnyEncodable, timestamp: Date?,
-                                                               jsonEncoder: JSONEncoder?,
+    internal private(set) var trackEventReceivedInvocations: [(profileIdentifier: String, requestBodyString: String,
                                                                onComplete: (Result<Void, CustomerIOError>) -> Void)] =
         []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var trackEventClosure: ((String, AnyEncodable, Date?, JSONEncoder?,
-                                      (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    internal var trackEventClosure: ((String, String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `trackEvent<RequestBody: Encodable>(name: String, data: RequestBody?, timestamp: Date?, jsonEncoder: JSONEncoder?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func trackEvent<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody?,
-        timestamp: Date?,
-        jsonEncoder: JSONEncoder?,
+    /// Mocked function for `trackEvent(profileIdentifier: String, requestBodyString: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func trackEvent(
+        profileIdentifier: String,
+        requestBodyString: String,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         mockCalled = true
         trackEventCallsCount += 1
-        trackEventReceivedArguments = (name: name, data: AnyEncodable(data), timestamp: timestamp,
-                                       jsonEncoder: jsonEncoder, onComplete: onComplete)
+        trackEventReceivedArguments = (profileIdentifier: profileIdentifier, requestBodyString: requestBodyString,
+                                       onComplete: onComplete)
         trackEventReceivedInvocations
-            .append((name: name, data: AnyEncodable(data), timestamp: timestamp, jsonEncoder: jsonEncoder,
+            .append((profileIdentifier: profileIdentifier, requestBodyString: requestBodyString,
                      onComplete: onComplete))
-        trackEventClosure?(name, AnyEncodable(data), timestamp, jsonEncoder, onComplete)
+        trackEventClosure?(profileIdentifier, requestBodyString, onComplete)
     }
 }
 
@@ -1305,6 +1255,93 @@ public class ProfileStoreMock: ProfileStore, TrackingMock {
 }
 
 /**
+ Class to easily create a mocked version of the `Queue` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class QueueMock: Queue, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        addTaskCallsCount = 0
+        addTaskReceivedArguments = nil
+        addTaskReceivedInvocations = []
+        runCallsCount = 0
+        runReceivedArguments = nil
+        runReceivedInvocations = []
+    }
+
+    // MARK: - addTask<TaskData: Codable>
+
+    /// Number of times the function was called.
+    public private(set) var addTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    public var addTaskCalled: Bool {
+        addTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var addTaskReceivedArguments: (type: QueueTaskType, data: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var addTaskReceivedInvocations: [(type: QueueTaskType, data: AnyEncodable)] = []
+    /// Value to return from the mocked function.
+    public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `addTaskReturnValue`
+     */
+    public var addTaskClosure: ((QueueTaskType, AnyEncodable) -> (success: Bool, queueStatus: QueueStatus))?
+
+    /// Mocked function for `addTask<TaskData: Codable>(type: QueueTaskType, data: TaskData)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: QueueTaskType,
+                                           data: TaskData) -> (success: Bool, queueStatus: QueueStatus)
+    {
+        mockCalled = true
+        addTaskCallsCount += 1
+        addTaskReceivedArguments = (type: type, data: AnyEncodable(data))
+        addTaskReceivedInvocations.append((type: type, data: AnyEncodable(data)))
+        return addTaskClosure.map { $0(type, AnyEncodable(data)) } ?? addTaskReturnValue
+    }
+
+    // MARK: - run
+
+    /// Number of times the function was called.
+    public private(set) var runCallsCount = 0
+    /// `true` if the function was ever called.
+    public var runCalled: Bool {
+        runCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var runReceivedArguments: (() -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var runReceivedInvocations: [() -> Void] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var runClosure: ((() -> Void) -> Void)?
+
+    /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func run(onComplete: @escaping () -> Void) {
+        mockCalled = true
+        runCallsCount += 1
+        runReceivedArguments = onComplete
+        runReceivedInvocations.append(onComplete)
+        runClosure?(onComplete)
+    }
+}
+
+/**
  Class to easily create a mocked version of the `QueueRequestManager` class.
  This class is equipped with functions and properties ready for you to mock!
 
@@ -1465,17 +1502,18 @@ public class QueueRunnerMock: QueueRunner, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var runTaskReceivedArguments: (task: QueueTask, onComplete: (Result<Void, Error>) -> Void)?
+    public private(set) var runTaskReceivedArguments: (task: QueueTask,
+                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask, onComplete: (Result<Void, Error>) -> Void)] =
-        []
+    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
+                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, Error>) -> Void) -> Void)?
+    public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, Error>) -> Void) {
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         mockCalled = true
         runTaskCallsCount += 1
         runTaskReceivedArguments = (task: task, onComplete: onComplete)

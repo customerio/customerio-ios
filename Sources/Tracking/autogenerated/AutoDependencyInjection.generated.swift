@@ -182,8 +182,7 @@ public class DITracking {
     }
 
     private var newIdentifyRepository: IdentifyRepository {
-        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter, eventBus: eventBus,
-                              profileStore: profileStore)
+        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter)
     }
 
     // SdkCredentialsStore
@@ -231,7 +230,8 @@ public class DITracking {
     }
 
     private var newQueue: Queue {
-        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest)
+        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
+                 logger: logger, sdkConfigStore: sdkConfigStore)
     }
 
     // QueueRequestManager (singleton)

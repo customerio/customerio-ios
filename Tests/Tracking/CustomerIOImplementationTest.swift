@@ -6,12 +6,14 @@ import XCTest
 class CustomerIOImplementationTest: UnitTest {
     private var customerIO: CustomerIOImplementation!
 
-    private var identifyRepositoryMock = IdentifyRepositoryMock()
+    private var backgroundQueueMock = QueueMock()
+    private var profileStoreMock = ProfileStoreMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.identifyRepository, value: identifyRepositoryMock, forType: IdentifyRepository.self)
+        diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
+        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
 
         customerIO = CustomerIOImplementation(siteId: diGraph.siteId)
     }
@@ -39,141 +41,62 @@ class CustomerIOImplementationTest: UnitTest {
     // to make the DI graph work as intended and the http request runner is in the graph we can make
     // integration tests with a mocked request runner.
 
-    func test_identify_expectCallRepository() {
+    func test_identify_expectSetNewProfileInDeviceStorage() {
         let givenIdentifier = String.random
-        let givenBody = IdentifyRequestBody.random()
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
 
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { actualIdentifier, actualBody, _, onComplete in
-            XCTAssertEqual(givenIdentifier, actualIdentifier)
-            XCTAssertEqual(givenBody, actualBody.value as! IdentifyRequestBody)
+        XCTAssertNil(profileStoreMock.identifier)
 
-            onComplete(Result.success(()))
-        }
+        customerIO.identify(identifier: givenIdentifier)
 
-        let expect = expectation(description: "Expect to complete identify")
-        customerIO.identify(identifier: givenIdentifier, body: givenBody) { result in
-            expect.fulfill()
-        }
-
-        waitForExpectations()
+        XCTAssertEqual(profileStoreMock.identifier, givenIdentifier)
     }
 
-    func test_identify_givenFailedAddCustomer_expectFailureResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
-        }
+    func test_identify_expectAddTaskBackgroundQueue() {
+        let givenIdentifier = String.random
+        let givenBody = ["first_name": "Dana"]
 
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.identify(identifier: String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
 
-            expect.fulfill()
-        }
-        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+        customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
-            expect.fulfill()
-        }
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .identifyProfile)
 
-        waitForExpectations()
-    }
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data
+            .value as? IdentifyProfileQueueTaskData
 
-    func test_identify_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.identify(identifier: String.random) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        customerIO.identify(identifier: String.random, body: IdentifyRequestBody.random()) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
+        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
+        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, jsonAdapter.toJsonString(givenBody))
     }
 
     // MARK: track
 
-    func test_track_expectCallRepository() {
-        let givenEventName = String.random
-        let givenEventData = TrackEventData.random()
+    func test_track_givenNoProfileIdentified_expectIgnoreRequest() {
+        profileStoreMock.identifier = nil
 
-        identifyRepositoryMock.trackEventClosure = { actualEventName, actualEventData, _, _, onComplete in
-            XCTAssertEqual(givenEventName, actualEventName)
-            XCTAssertEqual(givenEventData, actualEventData.value as! TrackEventData)
+        customerIO.track(name: String.random)
 
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete track")
-        customerIO.track(name: givenEventName, data: givenEventData) { result in
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 1)
+        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
     }
 
-    func test_track_givenFailedTrackEvent_expectFailureResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
-            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
-        }
+    func test_track_expectAddTaskToQueue_expectAssociateEventWithCurrentlyIdentifiedProfile() {
+        let givenIdentifier = String.random
+        let givenData = ["first_name": "Dana"]
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
 
-        let expect = expectation(description: "Expect to complete track")
-        expect.expectedFulfillmentCount = 2
-        customerIO.track(name: String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+        customerIO.track(name: String.random, data: givenData)
 
-            expect.fulfill()
-        }
-        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .http(let httpError) = error else { return XCTFail() }
-            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .trackEvent)
 
-            expect.fulfill()
-        }
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
 
-        waitForExpectations()
-    }
-
-    func test_track_givenSuccessfullyAddCustomer_expectSuccessResult() {
-        identifyRepositoryMock.trackEventClosure = { _, _, _, _, onComplete in
-            onComplete(Result.success(()))
-        }
-
-        let expect = expectation(description: "Expect to complete identify")
-        expect.expectedFulfillmentCount = 2
-        customerIO.track(name: String.random) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        customerIO.track(name: String.random, data: TrackEventData.random()) { result in
-            guard case .success = result else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
+        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
+        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
     }
 }

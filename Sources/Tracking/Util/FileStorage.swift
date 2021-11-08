@@ -2,6 +2,7 @@ import Foundation
 
 public protocol FileStorage: AutoMockable {
     /// return `true` if the save was successful and no errors were caught/logged
+    /// `fileId` - the file name. `nil` if
     func save(type: FileType, contents: Data, fileId: String?) -> Bool
     /// return `nil` if an error was caught and logged *or* if the file simply doesn't exist
     func get(type: FileType, fileId: String?) -> Data?
@@ -32,6 +33,12 @@ public enum FileType {
         switch self {
         case .queueInventory: return "inventory.json"
         default: return nil
+        }
+    }
+
+    var fileExtension: String {
+        switch self {
+        case .queueTask, .queueInventory: return ".json"
         }
     }
 }
@@ -108,20 +115,23 @@ public class FileManagerFileStorage: FileStorage {
     }
 
     internal func getUrl(type: FileType, fileId: String?) throws -> URL? {
-        guard let fileName = fileId ?? type.fileName else { return nil }
+        guard var fileName = type.fileName ?? fileId else { return nil } // let the type be first to define file name
+        fileName = fileName.setLastCharacters(type.fileExtension) // make sure file has extension.
 
         var saveLocationUrl = try fileManager.url(for: type.searchPath, in: .userDomainMask, appropriateFor: nil,
                                                   create: false)
 
+        // put *all* files into our own "io.customer" directory to isolate files.
+        saveLocationUrl = saveLocationUrl.appendingPathComponent("io.customer", isDirectory: true)
         // isolate all directories by their siteId, first
-        saveLocationUrl = saveLocationUrl.appendingPathComponent(siteId)
+        saveLocationUrl = saveLocationUrl.appendingPathComponent(siteId, isDirectory: true)
 
         // get the path and create the directories in case they are not yet made
         saveLocationUrl = type.getDirectoryPath(directoryUrl: saveLocationUrl)
         try fileManager.createDirectory(at: saveLocationUrl, withIntermediateDirectories: true, attributes: nil)
 
         // add file name to the directory path created thus far
-        saveLocationUrl = saveLocationUrl.appendingPathComponent(fileName)
+        saveLocationUrl = saveLocationUrl.appendingPathComponent(fileName, isDirectory: false)
 
         return saveLocationUrl
     }

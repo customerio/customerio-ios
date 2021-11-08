@@ -18,6 +18,13 @@ public struct SdkConfig {
      */
     public var autoTrackPushEvents: Bool = true
 
+    /**
+     Number of tasks in the background queue before the queue begins operating.
+     This is mostly used during development to test configuration is setup. We do not recommend
+     modifying this value because it impacts battery life of mobile device.
+     */
+    public var backgroundQueueMinNumberOfTasks = 10
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }

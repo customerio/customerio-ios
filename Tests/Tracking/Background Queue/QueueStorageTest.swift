@@ -5,12 +5,15 @@ import XCTest
 
 class QueueStorageTest: UnitTest {
     var storage: FileManagerQueueStorage!
+    var implementationStorage: FileManagerQueueStorage!
+
     let fileStorageMock = FileStorageMock()
 
     override func setUp() {
         super.setUp()
 
         storage = FileManagerQueueStorage(fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
+        implementationStorage = FileManagerQueueStorage(fileStorage: diGraph.fileStorage, jsonAdapter: jsonAdapter)
     }
 
     private func getQueueTaskItem() -> QueueTaskItem {
@@ -139,5 +142,23 @@ class QueueStorageTest: UnitTest {
 
         XCTAssertNotNil(actual)
         XCTAssertEqual(actual, givenTask)
+    }
+
+    // MARK: delete
+
+    func test_delete_expectDeleteTaskPreviouslyAdded() {
+        _ = implementationStorage.create(type: .identifyProfile, data: Data())
+
+        var inventory = implementationStorage.getInventory()
+        XCTAssertEqual(inventory.count, 1)
+        let givenStorageId = inventory[0].taskPersistedId
+        XCTAssertNotNil(implementationStorage.get(storageId: givenStorageId))
+
+        let actual = implementationStorage.delete(storageId: givenStorageId)
+
+        XCTAssertTrue(actual)
+        inventory = implementationStorage.getInventory()
+        XCTAssertEqual(inventory.count, 0)
+        XCTAssertNil(implementationStorage.get(storageId: givenStorageId))
     }
 }

@@ -23,9 +23,9 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let diGraph: DITracking
 
-    private let identifyRepository: IdentifyRepository
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
+    private var profileStore: ProfileStore
 
     /**
      Constructor for singleton, only.
@@ -37,9 +37,9 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         self.diGraph = DITracking.getInstance(siteId: siteId)
 
-        self.identifyRepository = diGraph.identifyRepository
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
+        self.profileStore = diGraph.profileStore
     }
 
     /**
@@ -68,60 +68,56 @@ public class CustomerIOImplementation: CustomerIOInstance {
     public func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let jsonBodyString = jsonAdapter.toJson(body, encoder: jsonEncoder)?.string else {
-            return
+        if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
+            // TODO: add to background queue delete device token from currently registered profile.
         }
 
-        let data = jsonAdapter
-            .toJson(IdentifyRepoTaskData(identifier: identifier, requestBodyJsonString: jsonBodyString),
-                    encoder: nil)!
-        backgroundQueue.addTask(type: .identifyProfile, data: data)
+        let jsonBodyString = jsonAdapter.toJsonString(body, encoder: jsonEncoder)
 
-        backgroundQueue.run {
-            print("Done running tasks!")
+        let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
+                                                         attributesJsonString: jsonBodyString)
+        let queueStatus = backgroundQueue.addTask(type: .identifyProfile, data: queueTaskData)
+
+        // don't modify the state of the SDK until we confirm we added a background queue task successfully.
+        if queueStatus.success {
+            profileStore.identifier = identifier
         }
 
-//        identifyRepository
-//            .addOrUpdateCustomer(identifier: identifier, body: body, jsonEncoder: jsonEncoder) { [weak self] result in
-//                DispatchQueue.main.async { [weak self] in
-//                    guard self != nil else { return }
-//
-//                    switch result {
-//                    case .success:
-//                        return onComplete(Result.success(()))
-//                    case .failure(let error):
-//                        return onComplete(Result.failure(error))
-//                    }
-//                }
-//            }
+        // TODO: after background queue fully implemented into the whole SDK (not just Tracking module) I see
+        // this no longer being needed. This is currently the way for other SDKs (modules) in the project at runtime
+        // to get informed about something happening but we plan on instead changing to runtime "hooks" between
+        // the SDKs.
+        // self.eventBus.post(.identifiedCustomer)
     }
 
     public func clearIdentify() {
-        identifyRepository.removeCustomer()
+        profileStore.identifier = nil
     }
 
     public func track<RequestBody: Encodable>(
         name: String,
         data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        jsonEncoder: JSONEncoder? = nil
     ) {
-        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
-        identifyRepository
-            .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard self != nil else { return }
+        guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
+            // XXX: when we have anonymous profiles in SDK,
+            // we can decide to not ignore events when a profile is not logged yet.
+            return
+        }
 
-                    switch result {
-                    case .success:
-                        return onComplete(Result.success(()))
-                    case .failure(let error):
-                        return onComplete(Result.failure(error))
-                    }
-                }
-            }
+        let requestBody = TrackRequestBody(name: name, data: data, timestamp: Date())
+        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: jsonEncoder) else {
+            // XXX: log error for customer to debug their request body
+            return
+        }
+
+        let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
+                                                attributesJsonString: jsonBodyString)
+
+        // ignore if adding task was successful or not.
+        // if not successful, it does not impact the state of the SDK so just ignore it.
+        _ = backgroundQueue.addTask(type: .trackEvent, data: queueData)
     }
 }

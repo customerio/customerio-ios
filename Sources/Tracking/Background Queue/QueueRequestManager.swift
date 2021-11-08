@@ -19,8 +19,8 @@ public protocol QueueRequestManager: AutoMockable {
 // sourcery: InjectRegister = "QueueRequestManager"
 // sourcery: InjectSingleton
 public class CioQueueRequestManager: QueueRequestManager {
-    @Atomic private var isRunningRequest = false
-    @Atomic private var callbacks: [() -> Void] = []
+    @Atomic internal var isRunningRequest = false
+    @Atomic internal var callbacks: [() -> Void] = []
 
     public func requestComplete() {
         let existingCallbacks = callbacks
@@ -34,12 +34,16 @@ public class CioQueueRequestManager: QueueRequestManager {
     }
 
     public func startRequest(onComplete: @escaping () -> Void) -> Bool {
+        let isQueueRunningARequest = isRunningRequest
+
         callbacks.append(onComplete)
 
-        if !isRunningRequest {
+        if !isQueueRunningARequest {
             isRunningRequest = true
         }
 
-        return isRunningRequest
+        // return the isRunningRequest value before modification or we will
+        // *always* return true (since we modify to true or ignore)
+        return isQueueRunningARequest
     }
 }

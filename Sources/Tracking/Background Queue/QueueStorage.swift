@@ -79,6 +79,8 @@ public class FileManagerQueueStorage: QueueStorage {
 
         if !updateInventoryResult { return false }
 
+        // if this fails, we at least deleted the task from inventory so
+        // it will not run again which is the most important thing
         return fileStorage.delete(type: .queueTask, fileId: storageId)
     }
 }
