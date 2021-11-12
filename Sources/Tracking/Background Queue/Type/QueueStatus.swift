@@ -1,7 +1,7 @@
 import Foundation
 
 /// Status of the Queue
-public struct QueueStatus {
+public struct QueueStatus: Equatable {
     /// the identifier of the queue the task was added to
     let queueId: String
     /// the number of tasks in the queue that have not run successfully.

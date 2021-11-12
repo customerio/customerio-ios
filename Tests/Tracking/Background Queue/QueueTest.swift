@@ -27,7 +27,8 @@ class QueueTest: UnitTest {
     // MARK: addTask
 
     func test_addTask_givenFailCreateQueueTask_expectFailStatus() {
-        storageMock.createReturnValue = false
+        storageMock.createReturnValue = (success: false,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
         storageMock.getInventoryReturnValue = []
 
         let actual = queue.addTask(type: .identifyProfile,
@@ -41,8 +42,9 @@ class QueueTest: UnitTest {
         var config = SdkConfig()
         config.backgroundQueueMinNumberOfTasks = 10
         sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = true
-        storageMock.getInventoryReturnValue = [QueueTaskItem.random]
+        storageMock.createReturnValue = (success: true,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
         _ = queue.addTask(type: .identifyProfile,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))
@@ -54,8 +56,9 @@ class QueueTest: UnitTest {
         var config = SdkConfig()
         config.backgroundQueueMinNumberOfTasks = 1
         sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = true
-        storageMock.getInventoryReturnValue = [QueueTaskItem.random]
+        storageMock.createReturnValue = (success: true,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
         _ = queue.addTask(type: .identifyProfile,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))

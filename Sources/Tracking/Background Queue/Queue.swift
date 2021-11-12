@@ -104,11 +104,9 @@ public class CioQueue: Queue {
         }
 
         let addTaskResult = storage.create(type: type, data: data)
+        processQueueStatus(addTaskResult.queueStatus)
 
-        let queueStatus = QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count)
-        processQueueStatus(queueStatus)
-
-        return (success: addTaskResult, queueStatus: queueStatus)
+        return addTaskResult
     }
 
     public func run(onComplete: @escaping () -> Void) {

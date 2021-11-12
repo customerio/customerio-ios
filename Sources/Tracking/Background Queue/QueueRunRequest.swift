@@ -32,7 +32,7 @@ public class CioQueueRunRequest: QueueRunRequest {
         runTasks(query: inventory)
     }
 
-    private func runTasks(query: [QueueTaskItem]) {
+    private func runTasks(query: [QueueTaskMetadata]) {
         let goToNextTask: () -> Void = {
             var newQuery = query
             newQuery.removeFirst()
