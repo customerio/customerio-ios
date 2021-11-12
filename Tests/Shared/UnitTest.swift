@@ -68,7 +68,7 @@ open class UnitTest: XCTestCase {
                                                                 includingPropertiesForKeys: nil,
                                                                 options: .skipsHiddenFiles)
             for fileURL in fileURLs {
-                try! fileManager.removeItem(at: fileURL)
+                try? fileManager.removeItem(at: fileURL)
             }
         }
 
