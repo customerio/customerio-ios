@@ -59,7 +59,6 @@ import Foundation
  */
 public enum DependencyTracking: CaseIterable {
     case httpClient
-    case identifyRepository
     case sdkCredentialsStore
     case eventBus
     case profileStore
@@ -138,7 +137,6 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
         case .httpClient: return httpClient as! T
-        case .identifyRepository: return identifyRepository as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
@@ -171,18 +169,6 @@ public class DITracking {
     private var newHttpClient: HttpClient {
         CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
                       jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
-    }
-
-    // IdentifyRepository
-    internal var identifyRepository: IdentifyRepository {
-        if let overridenDep = overrides[.identifyRepository] {
-            return overridenDep as! IdentifyRepository
-        }
-        return newIdentifyRepository
-    }
-
-    private var newIdentifyRepository: IdentifyRepository {
-        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter)
     }
 
     // SdkCredentialsStore
@@ -281,7 +267,7 @@ public class DITracking {
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, identifyRepository: identifyRepository)
+        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
     }
 
     // Logger
