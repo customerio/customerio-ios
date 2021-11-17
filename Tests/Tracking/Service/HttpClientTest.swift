@@ -167,12 +167,12 @@ class HttpClientTest: UnitTest {
 
         XCTAssertEqual(actual, expected)
     }
-    
+
     func testGetUserAgent() {
         let userAgentValue = CIOHttpClient.getUserAgent()
-        
+
         var expectedUserAgent = "Customer.io iOS Client/\(SdkVersion.version)"
-        
+
         #if canImport(UIKit)
         let deviceModel = UIDevice.deviceModelCode
         let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
@@ -180,7 +180,7 @@ class HttpClientTest: UnitTest {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         expectedUserAgent += " (\(deviceModel); \(osInfo)) \(appName)/\(appVersion)"
         #endif
-        
+
         XCTAssertEqual(userAgentValue, expectedUserAgent)
     }
 }

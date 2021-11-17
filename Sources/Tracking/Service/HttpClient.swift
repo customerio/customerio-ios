@@ -111,7 +111,6 @@ extension CIOHttpClient {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
-        
         urlSessionConfig.allowsCellularAccess = true
         urlSessionConfig.timeoutIntervalForResource = 30
         urlSessionConfig.timeoutIntervalForRequest = 60
@@ -128,7 +127,7 @@ extension CIOHttpClient {
 
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
     }
-    
+
     /**
      * getUserAgent - To get `user-agent` header value. This value depends on SDK version
      * and device detail such as OS version, device model, customer's app name etc
