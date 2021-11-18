@@ -60,6 +60,8 @@ import Foundation
 public enum DependencyTracking: CaseIterable {
     case httpClient
     case sdkCredentialsStore
+    case globalDataStore
+    case hooksManager
     case eventBus
     case profileStore
     case queue
@@ -138,6 +140,8 @@ public class DITracking {
         switch dep {
         case .httpClient: return httpClient as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
+        case .globalDataStore: return globalDataStore as! T
+        case .hooksManager: return hooksManager as! T
         case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
         case .queue: return queue as! T
@@ -181,6 +185,43 @@ public class DITracking {
 
     private var newSdkCredentialsStore: SdkCredentialsStore {
         CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
+    }
+
+    // GlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        if let overridenDep = overrides[.globalDataStore] {
+            return overridenDep as! GlobalDataStore
+        }
+        return newGlobalDataStore
+    }
+
+    private var newGlobalDataStore: GlobalDataStore {
+        CioGlobalDataStore()
+    }
+
+    // HooksManager (singleton)
+    public var hooksManager: HooksManager {
+        if let overridenDep = overrides[.hooksManager] {
+            return overridenDep as! HooksManager
+        }
+        return sharedHooksManager
+    }
+
+    private let _hooksManager_queue = DispatchQueue(label: "DI_get_hooksManager_queue")
+    private var _hooksManager_shared: HooksManager?
+    public var sharedHooksManager: HooksManager {
+        _hooksManager_queue.sync {
+            if let overridenDep = self.overrides[.hooksManager] {
+                return overridenDep as! HooksManager
+            }
+            let res = _hooksManager_shared ?? _get_hooksManager()
+            _hooksManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_hooksManager() -> HooksManager {
+        CioHooksManager()
     }
 
     // EventBus
@@ -267,7 +308,8 @@ public class DITracking {
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
+        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient,
+                       hooksManager: hooksManager)
     }
 
     // Logger

@@ -27,6 +27,8 @@ public enum CustomerIOError: Error {
     case http(_ error: HttpRequestError)
     /// An error occurred. That's all that we know. Check the embedded error to learn more.
     case underlying(_ error: Error)
+    /// Unexpected event happened in the SDK code. These are errors that are good to report to Customer.io support
+    case internalError(message: String)
 }
 
 extension CustomerIOError: CustomStringConvertible, LocalizedError {
@@ -37,6 +39,7 @@ extension CustomerIOError: CustomStringConvertible, LocalizedError {
         case .noCustomerIdentified: return "Customer has not yet been identified."
         case .http(let error): return error.description
         case .underlying(let error): return error.localizedDescription
+        case .internalError(let message): return message
         }
     }
 }

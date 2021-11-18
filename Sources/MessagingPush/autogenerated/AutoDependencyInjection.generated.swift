@@ -59,7 +59,7 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyMessagingPush: CaseIterable {
-    case diPlaceholder
+    case moduleHook
 }
 
 /**
@@ -123,7 +123,7 @@ public class DIMessagingPush {
      */
     public func inject<T>(_ dep: DependencyMessagingPush) -> T {
         switch dep {
-        case .diPlaceholder: return diPlaceholder as! T
+        case .moduleHook: return moduleHook as! T
         }
     }
 
@@ -131,15 +131,15 @@ public class DIMessagingPush {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // DiPlaceholder
-    internal var diPlaceholder: DiPlaceholder {
-        if let overridenDep = overrides[.diPlaceholder] {
-            return overridenDep as! DiPlaceholder
+    // ModuleHook
+    internal var moduleHook: ModuleHook {
+        if let overridenDep = overrides[.moduleHook] {
+            return overridenDep as! ModuleHook
         }
-        return newDiPlaceholder
+        return newModuleHook
     }
 
-    private var newDiPlaceholder: DiPlaceholder {
-        DiPlaceholder()
+    private var newModuleHook: ModuleHook {
+        MessagingPushHook(siteId: siteId, diTracking: dITracking)
     }
 }

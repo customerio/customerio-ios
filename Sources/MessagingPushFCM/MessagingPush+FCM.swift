@@ -6,15 +6,13 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     // sourcery:Name=didReceiveRegistrationToken
     func messaging(
         _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didReceiveRegistrationToken fcmToken: String?
     )
 
     // sourcery:Name=didFailToRegisterForRemoteNotifications
     func application(
         _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didFailToRegisterForRemoteNotificationsWithError error: Error
     )
 }
 
@@ -24,21 +22,19 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 public extension MessagingPush {
     func messaging(
         _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didReceiveRegistrationToken fcmToken: String?
     ) {
         guard let deviceToken = fcmToken else {
-            return onComplete(Result.success(()))
+            return // ignore if token nil
         }
-        registerDeviceToken(deviceToken, onComplete: onComplete)
+        registerDeviceToken(deviceToken)
     }
 
     func application(
         _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        deleteDeviceToken(onComplete: onComplete)
+        deleteDeviceToken()
     }
 }
 

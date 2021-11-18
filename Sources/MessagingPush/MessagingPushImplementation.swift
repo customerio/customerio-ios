@@ -6,17 +6,26 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let jsonAdapter: JsonAdapter
     private let eventBus: EventBus
     private let profileStore: ProfileStore
+    private let backgroundQueue: Queue
+    private var globalDataStore: GlobalDataStore
 
     private var identifyCustomerEventBusCallback: NSObjectProtocol?
 
-    @Atomic public var deviceToken: String?
-
     /// testing init
-    internal init(httpClient: HttpClient, jsonAdapter: JsonAdapter, eventBus: EventBus, profileStore: ProfileStore) {
+    internal init(
+        httpClient: HttpClient,
+        jsonAdapter: JsonAdapter,
+        eventBus: EventBus,
+        profileStore: ProfileStore,
+        backgroundQueue: Queue,
+        globalDataStore: GlobalDataStore
+    ) {
         self.httpClient = httpClient
         self.jsonAdapter = jsonAdapter
         self.eventBus = eventBus
         self.profileStore = profileStore
+        self.backgroundQueue = backgroundQueue
+        self.globalDataStore = globalDataStore
     }
 
     init(siteId: String) {
@@ -26,6 +35,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.eventBus = diGraph.eventBus
         self.profileStore = diGraph.profileStore
+        self.backgroundQueue = diGraph.queue
+        self.globalDataStore = diGraph.globalDataStore
 
         self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) {
             //            if let deviceToken = self.deviceToken {
@@ -44,70 +55,34 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
      */
-    public func registerDeviceToken(_ deviceToken: String,
-                                    onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let device = Device(token: deviceToken, lastUsed: Date())
-        guard let bodyData = jsonAdapter.toJson(RegisterDeviceRequest(device: device)) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
-        }
+    public func registerDeviceToken(_ deviceToken: String) {
+        // save push device token
+        globalDataStore.pushDeviceToken = deviceToken
 
         guard let identifier = profileStore.identifier else {
-            return onComplete(Result.failure(.noCustomerIdentified))
+            return
         }
 
-        let httpRequestParameters = HttpRequestParams(endpoint: .registerDevice(identifier: identifier), headers: nil,
-                                                      body: bodyData)
-
-        httpClient
-            .request(httpRequestParameters) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    switch result {
-                    case .success:
-                        self.deviceToken = deviceToken
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+        _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
+                                    data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
+                                                                                deviceToken: deviceToken,
+                                                                                lastUsed: Date()))
     }
 
     /**
      Delete the currently registered device token
      */
-    public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let deviceToken = self.deviceToken else {
-            // no device token, delete has already happened or is not needed
-            return onComplete(Result.success(()))
+    public func deleteDeviceToken() {
+        let existingDeviceToken = globalDataStore.pushDeviceToken
+        globalDataStore.pushDeviceToken = nil
+
+        guard let existingDeviceToken = existingDeviceToken, let identifiedProfileId = profileStore.identifier else {
+            return // ignore request, no token to delete
         }
 
-        guard let identifier = profileStore.identifier else {
-            // no customer identified, we can safely clear the device token
-            self.deviceToken = nil
-            return onComplete(Result.success(()))
-        }
-
-        let httpRequestParameters =
-            HttpRequestParams(endpoint: .deleteDevice(identifier: identifier,
-                                                      deviceToken: deviceToken),
-                              headers: nil, body: nil)
-
-        httpClient
-            .request(httpRequestParameters) { [weak self] result in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-
-                    switch result {
-                    case .success:
-                        self.deviceToken = nil
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+        _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
+                                    data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
+                                                                              deviceToken: existingDeviceToken))
     }
 
     /**

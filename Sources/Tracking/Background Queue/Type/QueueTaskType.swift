@@ -1,6 +1,6 @@
 import Foundation
 
-public enum QueueTaskType: String, Codable {
+internal enum QueueTaskType: String {
     case identifyProfile
     case trackEvent
 }

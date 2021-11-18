@@ -64,7 +64,7 @@ public protocol Queue: AutoMockable {
      background task (probably a network request).
      */
     func addTask<TaskData: Codable>(
-        type: QueueTaskType,
+        type: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData
@@ -97,7 +97,7 @@ public class CioQueue: Queue {
         self.sdkConfigStore = sdkConfigStore
     }
 
-    public func addTask<T: Codable>(type: QueueTaskType, data: T) -> (success: Bool, queueStatus: QueueStatus) {
+    public func addTask<T: Codable>(type: String, data: T) -> (success: Bool, queueStatus: QueueStatus) {
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {
             return (success: false,
                     queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count))

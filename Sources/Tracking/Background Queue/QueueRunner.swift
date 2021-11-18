@@ -12,65 +12,55 @@ public protocol QueueRunner: AutoMockable {
 }
 
 // sourcery: InjectRegister = "QueueRunner"
-public class CioQueueRunner: QueueRunner {
-    private let jsonAdapter: JsonAdapter
-    private let siteId: SiteId
-    private let logger: Logger
-    private let httpClient: HttpClient
+public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
+    // store hooks in memory so they don't get garbage collected in `runTask`.
+    // a hook instance may need to call completion handler so hold strong reference so it can
+    private let hooks: Hooks
 
-    init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        self.siteId = siteId
-        self.jsonAdapter = jsonAdapter
-        self.logger = logger
-        self.httpClient = httpClient
+    init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
+        self.hooks = hooksManager.hooks
+
+        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
         let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
 
-        switch task.type {
-        case .identifyProfile:
-            guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
-                return onComplete(failureIfDontDecodeTaskData)
+        if let queueTaskType = QueueTaskType(rawValue: task.type) {
+            switch queueTaskType {
+            case .identifyProfile:
+                guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
+                    return onComplete(failureIfDontDecodeTaskData)
+                }
+
+                let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
+                                                   headers: nil, body: taskData.attributesJsonString?.data)
+
+                performHttpRequest(params: httpParams, onComplete: onComplete)
+            case .trackEvent:
+                guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
+                    return onComplete(failureIfDontDecodeTaskData)
+                }
+
+                let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
+                                                   headers: nil, body: taskData.attributesJsonString.data)
+
+                performHttpRequest(params: httpParams, onComplete: onComplete)
+            }
+        } else {
+            var hookHandled = false
+
+            messagingPushSdk?.runQueueTask()
+            inAppMessaging?.runQueuTask()
+
+            hooks.forEach { hook in
+                if hook.runQueueTask(task, onComplete: onComplete) {
+                    hookHandled = true
+                }
             }
 
-            let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
-                                               headers: nil, body: taskData.attributesJsonString?.data)
-
-            performHttpRequest(params: httpParams, onComplete: onComplete)
-        case .trackEvent:
-            guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
-                return onComplete(failureIfDontDecodeTaskData)
-            }
-
-            let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
-                                               headers: nil, body: taskData.attributesJsonString.data)
-
-            performHttpRequest(params: httpParams, onComplete: onComplete)
-        }
-    }
-
-    /// (1) less code for `runTask` function to decode JSON and (2) one place to do error logging if decoding wrong.
-    private func getTaskData<T: Decodable>(_ task: QueueTask, type: T.Type) -> T? {
-        let taskData: T? = jsonAdapter.fromJson(task.data, decoder: nil)
-
-        if taskData == nil {
-            /// log as error because it's a developer error since SDK is who encoded the TaskData in the first place
-            /// we should always be able to decode it without problem.
-            logger.error("Failure decoding: \(task.data.string ?? "()") to \(type)")
-        }
-
-        return taskData
-    }
-
-    private func performHttpRequest(
-        params: HttpRequestParams,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
-        httpClient.request(params) { result in
-            switch result {
-            case .success: onComplete(.success(()))
-            case .failure(let httpError): onComplete(.failure(.http(httpError)))
+            if !hookHandled {
+                onComplete(.failure(.internalError(message: "Task \(task.type) not handled by anything including hooks")))
             }
         }
     }

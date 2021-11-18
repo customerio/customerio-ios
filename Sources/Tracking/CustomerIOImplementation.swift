@@ -26,6 +26,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private var profileStore: ProfileStore
+    private var hooks: Hooks
 
     /**
      Constructor for singleton, only.
@@ -40,6 +41,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
+        self.hooks = diGraph.hooksManager.hooks
     }
 
     /**
@@ -71,18 +73,27 @@ public class CustomerIOImplementation: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil
     ) {
         if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
-            // TODO: add to background queue delete device token from currently registered profile.
+            messagingPush?.deletePushToken()
+
+            hooks.forEach {
+                $0.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                              newIdentifier: identifier)
+            }
         }
 
         let jsonBodyString = jsonAdapter.toJsonString(body, encoder: jsonEncoder)
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
                                                          attributesJsonString: jsonBodyString)
-        let queueStatus = backgroundQueue.addTask(type: .identifyProfile, data: queueTaskData)
+        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue, data: queueTaskData)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         if queueStatus.success {
             profileStore.identifier = identifier
+        }
+
+        hooks.forEach {
+            $0.profileIdentified(identifier: identifier)
         }
 
         // TODO: after background queue fully implemented into the whole SDK (not just Tracking module) I see
@@ -118,6 +129,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         // ignore if adding task was successful or not.
         // if not successful, it does not impact the state of the SDK so just ignore it.
-        _ = backgroundQueue.addTask(type: .trackEvent, data: queueData)
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue, data: queueData)
     }
 }

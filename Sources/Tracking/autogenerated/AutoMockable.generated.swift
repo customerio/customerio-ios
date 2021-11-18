@@ -1189,9 +1189,9 @@ public class QueueMock: Queue, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTaskReceivedArguments: (type: QueueTaskType, data: AnyEncodable)?
+    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTaskReceivedInvocations: [(type: QueueTaskType, data: AnyEncodable)] = []
+    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable)] = []
     /// Value to return from the mocked function.
     public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -1199,12 +1199,10 @@ public class QueueMock: Queue, TrackingMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((QueueTaskType, AnyEncodable) -> (success: Bool, queueStatus: QueueStatus))?
+    public var addTaskClosure: ((String, AnyEncodable) -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `addTask<TaskData: Codable>(type: QueueTaskType, data: TaskData)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTask<TaskData: Codable>(type: QueueTaskType,
-                                           data: TaskData) -> (success: Bool, queueStatus: QueueStatus)
-    {
+    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: String, data: TaskData) -> (success: Bool, queueStatus: QueueStatus) {
         mockCalled = true
         addTaskCallsCount += 1
         addTaskReceivedArguments = (type: type, data: AnyEncodable(data))
@@ -1523,9 +1521,9 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var createReceivedArguments: (type: QueueTaskType, data: Data)?
+    public private(set) var createReceivedArguments: (type: String, data: Data)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var createReceivedInvocations: [(type: QueueTaskType, data: Data)] = []
+    public private(set) var createReceivedInvocations: [(type: String, data: Data)] = []
     /// Value to return from the mocked function.
     public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -1533,10 +1531,10 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((QueueTaskType, Data) -> (success: Bool, queueStatus: QueueStatus))?
+    public var createClosure: ((String, Data) -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `create(type: QueueTaskType, data: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
+    /// Mocked function for `create(type: String, data: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
         mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data)

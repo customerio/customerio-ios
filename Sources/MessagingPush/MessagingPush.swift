@@ -2,8 +2,8 @@ import CioTracking
 import Foundation
 
 public protocol MessagingPushInstance: AutoMockable {
-    func registerDeviceToken(_ deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
-    func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func registerDeviceToken(_ deviceToken: String)
+    func deleteDeviceToken()
     func trackMetric(
         deliveryID: String,
         event: Metric,
@@ -33,6 +33,14 @@ public class MessagingPush: MessagingPushInstance {
         self.customerIO = customerIO
         // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {
+            let diGraph = DIMessagingPush.getInstance(siteId: siteId)
+            let diGraphTracking = DITracking.getInstance(siteId: siteId)
+
+            let hooks = diGraphTracking.hooksManager
+            let moduleHookProvider = MessagingPushModuleHookProvider(diGraph: diGraph)
+
+            hooks.add(key: .messagingPush, provider: moduleHookProvider)
+
             self.implementation = MessagingPushImplementation(siteId: siteId)
         }
     }
@@ -41,24 +49,15 @@ public class MessagingPush: MessagingPushInstance {
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
      */
-    public func registerDeviceToken(_ deviceToken: String,
-                                    onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let implementation = self.implementation else {
-            return onComplete(Result.failure(.notInitialized))
-        }
-
-        implementation.registerDeviceToken(deviceToken, onComplete: onComplete)
+    public func registerDeviceToken(_ deviceToken: String) {
+        implementation?.registerDeviceToken(deviceToken)
     }
 
     /**
      Delete the currently registered device token
      */
-    public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let implementation = self.implementation else {
-            return onComplete(Result.failure(.notInitialized))
-        }
-
-        implementation.deleteDeviceToken(onComplete: onComplete)
+    public func deleteDeviceToken() {
+        implementation?.deleteDeviceToken()
     }
 
     /**
@@ -79,5 +78,8 @@ public class MessagingPush: MessagingPushInstance {
     }
 }
 
-// sourcery: InjectRegister = "DiPlaceholder"
-internal class DiPlaceholder {}
+extension DIMessagingPush {
+    var dITracking: DITracking {
+        DITracking.getInstance(siteId: siteId)
+    }
+}
