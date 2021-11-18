@@ -1,3 +1,10 @@
+# [1.0.0-alpha.18](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.17...1.0.0-alpha.18) (2021-11-18)
+
+
+### Bug Fixes
+
+* deep links previously being ignored ([#79](https://github.com/customerio/customerio-ios/issues/79)) ([2041767](https://github.com/customerio/customerio-ios/commit/204176735a8641a77d58232af1daa4e290ee0ca4))
+
 # [1.0.0-alpha.17](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.16...1.0.0-alpha.17) (2021-11-03)
 
 
