@@ -6,55 +6,18 @@ import Foundation
  `CustomerIO.shared.trackEvent("foo")` where we perform the API call sometime in the future
  and handle errors/retry so customers don't have to.
 
- The queue is designed with the main purpose of performing API calls. Let's show an example of
- how it's recommended you use the queue and how *not* to use the queue.
+ This is done by adding a task type + data that the task type needs to perform
+ the network call later on.
 
- Let's say you're identifying a profile.
- ```
- // recommended use of the background queue
- func identifyProfile(identifier: String, data: Encodable) {
-    // perform all operations here, first before touching the queue
-    keyValueStorage.save(identifier)
-
-    if deviceTokenSavedToDifferentProfile {
-       // it's OK to add tasks to the queue here before we identify the new profile
-       queue.addTask(.deleteDeviceToken, identifier: oldProfileIdentifier)
-       keyValueStorage.delete(deviceToken)
-    }
-
-    // then, add a background queue task
-    queue.addTask(.identifyProfile, identifier: identifier)
- }
-
- // then later on in the code, the background queue task runs
- // *all* of our logic for identifying a new profile.
- func runQueueTask() {
-     httpClient.identifyProfile(newProfileIdentifier
- }
- ```
-
- Not recommended way of using the background queue:
- ```
- func identifyProfile(identifier: String, data: Encodable) {
-    queue.addTask(.identifyProfile, identifier: identifier, oldProfileIdentifier)
- }
-
- // then later on in the code, the background queue task runs
- // *all* of our logic for identifying a new profile.
- func runQueueTask() {
-     let newProfileIdentifier = ...
-
-     keyValueStorage.save(identifier)
-
-     if deviceTokenSavedToDifferentProfile {
-        httpClient.delete(deviceTokenFromOldProfile)
-
-        keyValueStorage.delete(deviceToken)
-     }
-
-     httpClient.identifyProfile(newProfileIdentifier
- }
- ```
+ Best practices of using the queue:
+ 1. When you add tasks to the queue, provide all of the data the task needs
+ to perform the task instead of, for example, reading data at the time of
+ running the task. It's like you're taking a snapshot of the data at that current
+ time when you add a task to the queue.
+ 2. Queue tasks (code executed in the queue runner) should be reserved for
+ performing network code to "sync" the SDK data to the API. Other logic
+ should not be performed in the queue task and should instead happen
+ before the task runs.
  */
 public protocol Queue: AutoMockable {
     /**
