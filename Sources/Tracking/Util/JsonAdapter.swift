@@ -156,9 +156,9 @@ public class JsonAdapter {
 
         let jsonString = data.string
 
-        /// Because we usually use JSON strings in API calls with Codable, empty JSON strings
-        /// don't get decoded into JSON HTTP request bodies. Therefore, we prefer `nil` to
-        /// avoid errors when performing HTTP requests.
+        // Because we usually use JSON strings in API calls with Codable, empty JSON strings
+        // don't get decoded into JSON HTTP request bodies. Therefore, we prefer `nil` to
+        // avoid errors when performing HTTP requests.
         if nilIfEmpty, jsonString == "{}" {
             return nil
         }

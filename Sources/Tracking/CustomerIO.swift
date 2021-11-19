@@ -199,6 +199,8 @@ public class CustomerIO: CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
+        // XXX: notify developer if SDK not initialized yet
+
         implementation?.identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
     }
 
@@ -230,6 +232,8 @@ public class CustomerIO: CustomerIOInstance {
         data: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
+        // XXX: notify developer if SDK not initialized yet
+
         implementation?.track(name: name, data: data, jsonEncoder: jsonEncoder)
     }
 }
