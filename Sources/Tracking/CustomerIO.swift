@@ -29,7 +29,7 @@ public extension CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        identify(identifier: identifier, body: body, jsonEncoder: nil)
+        identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
     }
 
     func identify(
