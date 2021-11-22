@@ -6,8 +6,12 @@ public extension CustomerIOImplementation {
     func setupScreenViewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
         let selector2 = #selector(CustomerIOImplementation._swizzled_UIKit_viewDidAppear(_:))
-        let originalMethod = class_getInstanceMethod(UIViewController.self, selector1)!
-        let swizzleMethod = class_getInstanceMethod(UIViewController.self, selector2)!
+        guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
+            return
+        }
+        guard let swizzleMethod = class_getInstanceMethod(CustomerIOImplementation.self, selector2) else {
+            return
+        }
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 

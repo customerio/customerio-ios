@@ -176,4 +176,52 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
     }
+    
+    // MARK: screen
+    
+    func test_screen_givenFailedScreen_expectFailureResult() {
+        identifyRepositoryMock.screenClosure = { _, _, _, _, onComplete in
+            onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
+        }
+
+        let expect = expectation(description: "Expect to complete screen")
+        expect.expectedFulfillmentCount = 2
+        customerIO.screen(name: String.random) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+        customerIO.screen(name: String.random, data: ScreenViewData.random()) { result in
+            guard case .failure(let error) = result else { return XCTFail() }
+            guard case .http(let httpError) = error else { return XCTFail() }
+            guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
+
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+    }
+    
+    func test_screen_expectCallRepository() {
+        let givenScreenName = String.random
+        let givenData = ScreenViewData.random()
+
+        identifyRepositoryMock.screenClosure = { actualScreenName, actualData, _, _, onComplete in
+            XCTAssertEqual(givenScreenName, actualScreenName)
+            XCTAssertEqual(givenData, actualData.value as! ScreenViewData)
+
+            onComplete(Result.success(()))
+        }
+
+        let expect = expectation(description: "Expect to complete screen")
+        customerIO.screen(name: givenScreenName, data: givenData) { result in
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertEqual(identifyRepositoryMock.screenCallsCount, 1)
+    }
 }
