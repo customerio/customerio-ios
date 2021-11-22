@@ -5,13 +5,11 @@ import SharedTests
 import XCTest
 
 class MessagingPushTest: UnitTest {
-    private var mockCustomerIO: CustomerIOInstanceMock!
+    private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPush!
 
     override func setUp() {
         super.setUp()
-
-        mockCustomerIO = CustomerIOInstanceMock()
 
         messagingPush = MessagingPush(customerIO: mockCustomerIO)
     }

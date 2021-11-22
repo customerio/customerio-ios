@@ -7,9 +7,9 @@ import FoundationNetworking
 import XCTest
 
 class HttpClientTest: UnitTest {
-    private var requestRunnerMock: HttpRequestRunnerMock!
-    private var credentialsStoreMock: SdkCredentialsStoreMock!
-    private var configStoreMock: SdkConfigStoreMock!
+    private var requestRunnerMock = HttpRequestRunnerMock()
+    private var credentialsStoreMock = SdkCredentialsStoreMock()
+    private var configStoreMock = SdkConfigStoreMock()
     private var client: HttpClient!
 
     private let url = URL(string: "https://customer.io")!
@@ -17,11 +17,8 @@ class HttpClientTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        requestRunnerMock = HttpRequestRunnerMock()
-        credentialsStoreMock = SdkCredentialsStoreMock()
         credentialsStoreMock.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
 
-        configStoreMock = SdkConfigStoreMock()
         configStoreMock.config = SdkConfig()
 
         client = CIOHttpClient(siteId: SiteId.random, sdkCredentialsStore: credentialsStoreMock,
@@ -169,5 +166,21 @@ class HttpClientTest: UnitTest {
         let actual = CIOHttpClient.getBasicAuthHeaderString(siteId: givenSiteId, apiKey: givenApiKey)
 
         XCTAssertEqual(actual, expected)
+    }
+
+    func testGetUserAgent() {
+        let userAgentValue = CIOHttpClient.getUserAgent()
+
+        var expectedUserAgent = "Customer.io iOS Client/\(SdkVersion.version)"
+
+        #if canImport(UIKit)
+        let deviceModel = UIDevice.deviceModelCode
+        let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
+        let osInfo = "\(UIDevice().systemName) \(UIDevice().systemVersion)"
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        expectedUserAgent += " (\(deviceModel); \(osInfo)) \(appName)/\(appVersion)"
+        #endif
+
+        XCTAssertEqual(userAgentValue, expectedUserAgent)
     }
 }

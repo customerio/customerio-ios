@@ -47,10 +47,9 @@ public extension MessagingPush {
             return false
         }
 
-        switch response.actionIdentifier {
-        case UNNotificationDismissActionIdentifier, UNNotificationDefaultActionIdentifier:
-            cleanup(pushContent: pushContent)
+        cleanup(pushContent: pushContent)
 
+        switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
                 UIApplication.shared.open(url: deepLinkurl)
