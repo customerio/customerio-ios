@@ -34,9 +34,7 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-
-    func setupScreenViewTracking()
-}
+} 
 
 public extension CustomerIOInstance {
     /**
@@ -330,7 +328,12 @@ public class CustomerIO: CustomerIOInstance {
         guard let implementation = self.implementation else {
             return
         }
+        
+        guard let screenViewImplementation = implementation as? ScreenViewer else {
+            // XXX: warning / error that tracking is not being setup
+            return
+        }
 
-        implementation.setupScreenViewTracking()
+        screenViewImplementation.setupScreenViewTracking()
     }
 }

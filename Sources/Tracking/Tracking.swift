@@ -1,5 +1,10 @@
 import Foundation
 
+
+public protocol ScreenViewer {
+    func setupScreenViewTracking()
+}
+
 public protocol TrackingInstance: AutoMockable {}
 
 /**
