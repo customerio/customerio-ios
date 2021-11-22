@@ -33,11 +33,10 @@ public class MessagingPush: MessagingPushInstance {
         self.customerIO = customerIO
         // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {
-            let diGraph = DIMessagingPush.getInstance(siteId: siteId)
             let diGraphTracking = DITracking.getInstance(siteId: siteId)
 
             let hooks = diGraphTracking.hooksManager
-            let moduleHookProvider = MessagingPushModuleHookProvider(diGraph: diGraph)
+            let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)
 
             hooks.add(key: .messagingPush, provider: moduleHookProvider)
 

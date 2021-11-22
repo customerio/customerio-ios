@@ -26,7 +26,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private var profileStore: ProfileStore
-    private var hooks: Hooks
+    private var hooks: HooksManager
 
     /**
      Constructor for singleton, only.
@@ -41,7 +41,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
-        self.hooks = diGraph.hooksManager.hooks
+        self.hooks = diGraph.hooksManager
     }
 
     /**
@@ -73,11 +73,9 @@ public class CustomerIOImplementation: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil
     ) {
         if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
-            messagingPush?.deletePushToken()
-
-            hooks.forEach {
-                $0.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                              newIdentifier: identifier)
+            hooks.profileIdentifyHooks.forEach { hook in
+                hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                newIdentifier: identifier)
             }
         }
 
@@ -92,8 +90,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
             profileStore.identifier = identifier
         }
 
-        hooks.forEach {
-            $0.profileIdentified(identifier: identifier)
+        hooks.profileIdentifyHooks.forEach { hook in
+            hook.profileIdentified(identifier: identifier)
         }
 
         // TODO: after background queue fully implemented into the whole SDK (not just Tracking module) I see

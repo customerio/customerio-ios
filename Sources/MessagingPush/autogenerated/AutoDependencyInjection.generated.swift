@@ -59,7 +59,9 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyMessagingPush: CaseIterable {
-    case moduleHook
+    case pushDeviceTokenRepository
+    case moduleHookProvider
+    case queueRunnerHook
 }
 
 /**
@@ -123,7 +125,9 @@ public class DIMessagingPush {
      */
     public func inject<T>(_ dep: DependencyMessagingPush) -> T {
         switch dep {
-        case .moduleHook: return moduleHook as! T
+        case .pushDeviceTokenRepository: return pushDeviceTokenRepository as! T
+        case .moduleHookProvider: return moduleHookProvider as! T
+        case .queueRunnerHook: return queueRunnerHook as! T
         }
     }
 
@@ -131,15 +135,39 @@ public class DIMessagingPush {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // ModuleHook
-    internal var moduleHook: ModuleHook {
-        if let overridenDep = overrides[.moduleHook] {
-            return overridenDep as! ModuleHook
+    // PushDeviceTokenRepository
+    internal var pushDeviceTokenRepository: PushDeviceTokenRepository {
+        if let overridenDep = overrides[.pushDeviceTokenRepository] {
+            return overridenDep as! PushDeviceTokenRepository
         }
-        return newModuleHook
+        return newPushDeviceTokenRepository
     }
 
-    private var newModuleHook: ModuleHook {
-        MessagingPushHook(siteId: siteId, diTracking: dITracking)
+    private var newPushDeviceTokenRepository: PushDeviceTokenRepository {
+        CioPushDeviceTokenRepository(diTracking: dITracking)
+    }
+
+    // ModuleHookProvider
+    internal var moduleHookProvider: ModuleHookProvider {
+        if let overridenDep = overrides[.moduleHookProvider] {
+            return overridenDep as! ModuleHookProvider
+        }
+        return newModuleHookProvider
+    }
+
+    private var newModuleHookProvider: ModuleHookProvider {
+        MessagingPushModuleHookProvider(siteId: siteId)
+    }
+
+    // QueueRunnerHook
+    public var queueRunnerHook: QueueRunnerHook {
+        if let overridenDep = overrides[.queueRunnerHook] {
+            return overridenDep as! QueueRunnerHook
+        }
+        return newQueueRunnerHook
+    }
+
+    private var newQueueRunnerHook: QueueRunnerHook {
+        MessagingPushQueueRunner(siteId: siteId, diTracking: dITracking)
     }
 }

@@ -15,10 +15,10 @@ public protocol QueueRunner: AutoMockable {
 public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     // store hooks in memory so they don't get garbage collected in `runTask`.
     // a hook instance may need to call completion handler so hold strong reference so it can
-    private let hooks: Hooks
+    private let hooks: HooksManager
 
     init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
-        self.hooks = hooksManager.hooks
+        self.hooks = hooksManager
 
         super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
     }
@@ -50,11 +50,8 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         } else {
             var hookHandled = false
 
-            messagingPushSdk?.runQueueTask()
-            inAppMessaging?.runQueuTask()
-
-            hooks.forEach { hook in
-                if hook.runQueueTask(task, onComplete: onComplete) {
+            hooks.queueRunnerHooks.forEach { hook in
+                if hook.runTask(task, onComplete: onComplete) {
                     hookHandled = true
                 }
             }

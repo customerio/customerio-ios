@@ -124,8 +124,11 @@ public class CioQueue: Queue {
         if runQueue {
             logger.verbose("Automatically running background queue")
 
-            runRequest.start { [weak self] in
-                self?.logger.verbose("Automatic running background queue completed")
+            // not using [weak self] to assert that the queue will complete and callback once started.
+            // this might keep this class in memory and not get garbage collected once customer is done using it
+            // but it will get released once the queue is done running.
+            runRequest.start {
+                self.logger.verbose("Automatic running background queue completed")
             }
         }
     }

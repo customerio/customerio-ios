@@ -5,9 +5,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let httpClient: HttpClient
     private let jsonAdapter: JsonAdapter
     private let eventBus: EventBus
-    private let profileStore: ProfileStore
-    private let backgroundQueue: Queue
-    private var globalDataStore: GlobalDataStore
+    private let pushDeviceTokenRepository: PushDeviceTokenRepository
 
     private var identifyCustomerEventBusCallback: NSObjectProtocol?
 
@@ -16,27 +14,22 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         httpClient: HttpClient,
         jsonAdapter: JsonAdapter,
         eventBus: EventBus,
-        profileStore: ProfileStore,
-        backgroundQueue: Queue,
-        globalDataStore: GlobalDataStore
+        pushDeviceTokenRepository: PushDeviceTokenRepository
     ) {
         self.httpClient = httpClient
         self.jsonAdapter = jsonAdapter
         self.eventBus = eventBus
-        self.profileStore = profileStore
-        self.backgroundQueue = backgroundQueue
-        self.globalDataStore = globalDataStore
+        self.pushDeviceTokenRepository = pushDeviceTokenRepository
     }
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraphMessaging = DIMessagingPush.getInstance(siteId: siteId)
 
         self.httpClient = diGraph.httpClient
         self.jsonAdapter = diGraph.jsonAdapter
         self.eventBus = diGraph.eventBus
-        self.profileStore = diGraph.profileStore
-        self.backgroundQueue = diGraph.queue
-        self.globalDataStore = diGraph.globalDataStore
+        self.pushDeviceTokenRepository = diGraphMessaging.pushDeviceTokenRepository
 
         self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) {
             //            if let deviceToken = self.deviceToken {
@@ -56,33 +49,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        // save push device token
-        globalDataStore.pushDeviceToken = deviceToken
-
-        guard let identifier = profileStore.identifier else {
-            return
-        }
-
-        _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
-                                    data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
-                                                                                deviceToken: deviceToken,
-                                                                                lastUsed: Date()))
+        pushDeviceTokenRepository.registerDeviceToken(deviceToken)
     }
 
     /**
      Delete the currently registered device token
      */
     public func deleteDeviceToken() {
-        let existingDeviceToken = globalDataStore.pushDeviceToken
-        globalDataStore.pushDeviceToken = nil
-
-        guard let existingDeviceToken = existingDeviceToken, let identifiedProfileId = profileStore.identifier else {
-            return // ignore request, no token to delete
-        }
-
-        _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
-                                    data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
-                                                                              deviceToken: existingDeviceToken))
+        pushDeviceTokenRepository.deleteDeviceToken()
     }
 
     /**
