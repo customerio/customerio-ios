@@ -329,7 +329,7 @@ public class CustomerIO: CustomerIOInstance {
             return
         }
         
-        guard let screenViewImplementation = implementation as? ScreenViewer else {
+        guard let screenViewImplementation = implementation as? CanSwizzleScreenViews else {
             // XXX: warning / error that tracking is not being setup
             return
         }

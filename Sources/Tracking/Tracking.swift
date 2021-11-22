@@ -1,7 +1,7 @@
 import Foundation
 
 
-public protocol ScreenViewer {
+public protocol CanSwizzleScreenViews {
     func setupScreenViewTracking()
 }
 
