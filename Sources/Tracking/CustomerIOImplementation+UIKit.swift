@@ -14,9 +14,9 @@ public extension CustomerIOImplementation {
         }
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
-    
+
     internal func screenViewData() -> ScreenViewData {
-        return ScreenViewData(data: ScreenViewDefaultData())
+        ScreenViewData(data: ScreenViewDefaultData())
     }
 
     @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
@@ -46,9 +46,8 @@ public extension CustomerIOImplementation {
                 name = "Unknown"
             }
         }
-        
 
-        screen(name: name, data: screenViewData()) { result in
+        screen(name: name, data: screenViewData()) { _ in
             // TODO: global error handling of result here
         }
     }

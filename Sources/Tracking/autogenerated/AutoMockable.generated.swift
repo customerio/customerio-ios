@@ -121,10 +121,13 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
+        clearIdentifyCallsCount = 0
         trackCallsCount = 0
         trackReceivedArguments = nil
         trackReceivedInvocations = []
-        clearIdentifyCallsCount = 0
+        screenViewCallsCount = 0
+        screenViewReceivedArguments = nil
+        screenViewReceivedInvocations = []
     }
 
     // MARK: - identify<RequestBody: Encodable>
@@ -259,27 +262,6 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         screenViewReceivedInvocations
             .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
         screenViewClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
-    }
-
-    // MARK: - setupScreenViewTracking
-
-    /// Number of times the function was called.
-    public private(set) var setupScreenViewTrackingCallsCount = 0
-    /// `true` if the function was ever called.
-    public var setupScreenViewTrackingCalled: Bool {
-        setupScreenViewTrackingCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var setupScreenViewTrackingClosure: (() -> Void)?
-
-    /// Mocked function for `setupScreenViewTracking()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func setupScreenViewTracking() {
-        mockCalled = true
-        setupScreenViewTrackingCallsCount += 1
-        setupScreenViewTrackingClosure?()
     }
 }
 
@@ -638,6 +620,9 @@ internal class IdentifyRepositoryMock: IdentifyRepository, TrackingMock {
         trackEventCallsCount = 0
         trackEventReceivedArguments = nil
         trackEventReceivedInvocations = []
+        screenCallsCount = 0
+        screenReceivedArguments = nil
+        screenReceivedInvocations = []
     }
 
     // MARK: - addOrUpdateCustomer<RequestBody: Encodable>

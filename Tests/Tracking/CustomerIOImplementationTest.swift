@@ -176,9 +176,9 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertEqual(identifyRepositoryMock.trackEventCallsCount, 2)
     }
-    
+
     // MARK: screen
-    
+
     func test_screen_givenFailedScreen_expectFailureResult() {
         identifyRepositoryMock.screenClosure = { _, _, _, _, onComplete in
             onComplete(Result.failure(.http(.unsuccessfulStatusCode(500, apiMessage: ""))))
@@ -203,7 +203,7 @@ class CustomerIOImplementationTest: UnitTest {
 
         waitForExpectations()
     }
-    
+
     func test_screen_expectCallRepository() {
         let givenScreenName = String.random
         let givenData = ExampleScreenViewData.random()

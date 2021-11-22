@@ -10,7 +10,7 @@ public struct ExampleScreenViewData: Codable, Equatable {
 public extension ExampleScreenViewData {
     static func random() -> ExampleScreenViewData {
         ExampleScreenViewData(variant: Int.random(in: 1 ... 5),
-                       darkMode: Bool.random())
+                              darkMode: Bool.random())
     }
 
     static func blank() -> ExampleScreenViewData {

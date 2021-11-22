@@ -34,7 +34,7 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-} 
+}
 
 public extension CustomerIOInstance {
     /**
@@ -95,7 +95,7 @@ public extension CustomerIOInstance {
     ) {
         track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
-    
+
     func screen(
         name: String,
         jsonEncoder: JSONEncoder? = nil,
@@ -336,7 +336,7 @@ public class CustomerIO: CustomerIOInstance {
         guard let implementation = self.implementation else {
             return
         }
-        
+
         guard let screenViewImplementation = implementation as? CanSwizzleScreenViews else {
             // XXX: warning / error that tracking is not being setup
             return
