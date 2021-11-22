@@ -43,7 +43,7 @@ public extension CustomerIOImplementation {
             }
         }
 
-        screen(name: name, data: ScreenViewBody()) { result in
+        screen(name: name, data: ScreenViewData()) { result in
             // TODO: global error handling of result here
         }
     }
