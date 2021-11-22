@@ -193,7 +193,7 @@ class CustomerIOImplementationTest: UnitTest {
 
             expect.fulfill()
         }
-        customerIO.screen(name: String.random, data: ScreenViewData.random()) { result in
+        customerIO.screen(name: String.random, data: ExampleScreenViewData.random()) { result in
             guard case .failure(let error) = result else { return XCTFail() }
             guard case .http(let httpError) = error else { return XCTFail() }
             guard case .unsuccessfulStatusCode = httpError else { return XCTFail() }
@@ -206,11 +206,11 @@ class CustomerIOImplementationTest: UnitTest {
     
     func test_screen_expectCallRepository() {
         let givenScreenName = String.random
-        let givenData = ScreenViewData.random()
+        let givenData = ExampleScreenViewData.random()
 
         identifyRepositoryMock.screenClosure = { actualScreenName, actualData, _, _, onComplete in
             XCTAssertEqual(givenScreenName, actualScreenName)
-            XCTAssertEqual(givenData, actualData.value as! ScreenViewData)
+            XCTAssertEqual(givenData, actualData.value as! ExampleScreenViewData)
 
             onComplete(Result.success(()))
         }

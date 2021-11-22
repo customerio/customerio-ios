@@ -94,7 +94,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        trackEvent(type: "event", name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
+        trackEvent(type: .event, name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
                    onComplete: onComplete)
     }
 
@@ -105,12 +105,12 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        trackEvent(type: "screen", name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
+        trackEvent(type: .screen, name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
                    onComplete: onComplete)
     }
 
     func trackEvent<RequestBody: Encodable>(
-        type: String,
+        type: EventType,
         name: String,
         data: RequestBody?,
         timestamp: Date?,
