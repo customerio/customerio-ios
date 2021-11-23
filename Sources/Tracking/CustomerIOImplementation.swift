@@ -138,7 +138,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
             }
     }
 
-    private static func defaultScreenViewBody() -> ScreenViewData {
+    public static func defaultScreenViewBody() -> ScreenViewData {
         ScreenViewData(data: ScreenViewDefaultData())
     }
 }

@@ -136,6 +136,15 @@ public class CustomerIO: CustomerIOInstance {
     internal var implementation: CustomerIOImplementation?
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
+    
+    public var autoScreenViewBody: () -> ScreenViewData {
+        get {
+            self.implementation?.autoScreenViewBody ?? CustomerIOImplementation.defaultScreenViewBody
+        }
+        set {
+            self.implementation?.autoScreenViewBody = newValue
+        }
+    }
 
     /**
      Constructor for singleton, only.
