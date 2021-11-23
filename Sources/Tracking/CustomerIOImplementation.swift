@@ -21,7 +21,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let _siteId: String
 
-    private let diGraph: DITracking
+    private let diGraph: DI
 
     private let identifyRepository: IdentifyRepository
 
@@ -33,7 +33,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        self.diGraph = DITracking.getInstance(siteId: siteId)
+        self.diGraph = DI.getInstance(siteId: siteId)
 
         self.identifyRepository = diGraph.identifyRepository
     }

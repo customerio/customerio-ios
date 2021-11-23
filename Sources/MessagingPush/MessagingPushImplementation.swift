@@ -20,7 +20,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     }
 
     init(siteId: String) {
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DI.getInstance(siteId: siteId)
 
         self.httpClient = diGraph.httpClient
         self.jsonAdapter = diGraph.jsonAdapter

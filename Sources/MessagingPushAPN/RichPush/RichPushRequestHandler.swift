@@ -22,7 +22,7 @@ internal class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DI.getInstance(siteId: siteId)
         let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(pushContent: content, request: request, httpClient: httpClient,

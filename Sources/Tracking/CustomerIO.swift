@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
@@ -123,7 +124,7 @@ public class CustomerIO: CustomerIOInstance {
      */
     internal init() {
         if let siteId = globalData.sharedInstanceSiteId {
-            let diGraph = DITracking.getInstance(siteId: siteId)
+            let diGraph = DI.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore
 
             // if credentials are not available, we should not set implementation
@@ -158,6 +159,7 @@ public class CustomerIO: CustomerIOInstance {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
+        
         Self.shared.globalData.sharedInstanceSiteId = siteId
 
         Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
@@ -169,7 +171,7 @@ public class CustomerIO: CustomerIOInstance {
      Sets credentials on shared or non-shared instance.
      */
     internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DI.getInstance(siteId: siteId)
         var credentialsStore = diGraph.sdkCredentialsStore
 
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
