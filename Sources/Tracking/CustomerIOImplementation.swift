@@ -84,6 +84,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         let queueStatus = backgroundQueue.addTask(type: .identifyProfile, data: queueTaskData)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
+        // XXX: better handle scenario when adding task to queue is not successful
         if queueStatus.success {
             profileStore.identifier = identifier
         }
