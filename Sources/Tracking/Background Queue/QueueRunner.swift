@@ -18,6 +18,8 @@ public class CioQueueRunner: QueueRunner {
     private let logger: Logger
     private let httpClient: HttpClient
 
+    private let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
+
     init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
         self.siteId = siteId
         self.jsonAdapter = jsonAdapter
@@ -26,27 +28,9 @@ public class CioQueueRunner: QueueRunner {
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
-
         switch task.type {
-        case .identifyProfile:
-            guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
-                return onComplete(failureIfDontDecodeTaskData)
-            }
-
-            let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
-                                               headers: nil, body: taskData.attributesJsonString?.data)
-
-            performHttpRequest(params: httpParams, onComplete: onComplete)
-        case .trackEvent:
-            guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
-                return onComplete(failureIfDontDecodeTaskData)
-            }
-
-            let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
-                                               headers: nil, body: taskData.attributesJsonString.data)
-
-            performHttpRequest(params: httpParams, onComplete: onComplete)
+        case .identifyProfile: identify(task, onComplete: onComplete)
+        case .trackEvent: track(task, onComplete: onComplete)
         }
     }
 
@@ -73,5 +57,29 @@ public class CioQueueRunner: QueueRunner {
             case .failure(let httpError): onComplete(.failure(.http(httpError)))
             }
         }
+    }
+}
+
+extension CioQueueRunner {
+    private func identify(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+        guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
+                                           headers: nil, body: taskData.attributesJsonString?.data)
+
+        performHttpRequest(params: httpParams, onComplete: onComplete)
+    }
+
+    private func track(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+        guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
+                                           headers: nil, body: taskData.attributesJsonString.data)
+
+        performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 }

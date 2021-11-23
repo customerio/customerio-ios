@@ -116,8 +116,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
                                                 attributesJsonString: jsonBodyString)
 
-        // ignore if adding task was successful or not.
-        // if not successful, it does not impact the state of the SDK so just ignore it.
+        // XXX: better handle scenario when adding task to queue is not successful
         _ = backgroundQueue.addTask(type: .trackEvent, data: queueData)
     }
 }
