@@ -128,6 +128,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         screenViewCallsCount = 0
         screenViewReceivedArguments = nil
         screenViewReceivedInvocations = []
+        enableAutoScreenviewTrackingCallsCount = 0
     }
 
     // MARK: - identify<RequestBody: Encodable>
@@ -262,6 +263,27 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         screenViewReceivedInvocations
             .append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete))
         screenViewClosure?(name, AnyEncodable(data), jsonEncoder, onComplete)
+    }
+
+    // MARK: - enableAutoScreenviewTracking
+
+    /// Number of times the function was called.
+    public private(set) var enableAutoScreenviewTrackingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var enableAutoScreenviewTrackingCalled: Bool {
+        enableAutoScreenviewTrackingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var enableAutoScreenviewTrackingClosure: (() -> Void)?
+
+    /// Mocked function for `enableAutoScreenviewTracking()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func enableAutoScreenviewTracking() {
+        mockCalled = true
+        enableAutoScreenviewTrackingCallsCount += 1
+        enableAutoScreenviewTrackingClosure?()
     }
 }
 

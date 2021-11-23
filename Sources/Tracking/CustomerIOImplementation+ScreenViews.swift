@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 public extension CustomerIOImplementation {
-    func setupScreenViewTracking() {
+    func enableAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
         let selector2 = #selector(CustomerIOImplementation._swizzled_UIKit_viewDidAppear(_:))
         guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
@@ -13,10 +13,6 @@ public extension CustomerIOImplementation {
             return
         }
         method_exchangeImplementations(originalMethod, swizzleMethod)
-    }
-
-    internal func screenViewData() -> ScreenViewData {
-        ScreenViewData(data: ScreenViewDefaultData())
     }
 
     @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
@@ -47,10 +43,16 @@ public extension CustomerIOImplementation {
             }
         }
 
-        screen(name: name, data: screenViewData()) { _ in
+        screen(name: name, data: autoScreenViewBody()) { _ in
             // TODO: global error handling of result here
         }
     }
 }
 
+#else
+public extension CustomerIOImplementation {
+    func enableAutoScreenviewTracking() {
+        // TODO: log warning that tracking is not available
+    }
+}
 #endif

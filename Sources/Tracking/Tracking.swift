@@ -1,9 +1,5 @@
 import Foundation
 
-public protocol CanSwizzleScreenViews {
-    func setupScreenViewTracking()
-}
-
 public protocol TrackingInstance: AutoMockable {}
 
 /**
