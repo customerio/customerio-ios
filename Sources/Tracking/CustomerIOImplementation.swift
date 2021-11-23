@@ -71,6 +71,9 @@ public class CustomerIOImplementation: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil
     ) {
         if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
+            // Note: Even if this function is called with the same identifier as previously identified,
+            // allow the function request to go through. Maybe the customer simply wants to add more
+            // user attributes to a profile so they call this function multiple times?
             // TODO: add to background queue delete device token from currently registered profile.
         }
 
