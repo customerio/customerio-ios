@@ -20,9 +20,9 @@ public struct SdkConfig {
 
     /**
      Automatic tracking of screen views will generate `screen`-type events on every screen transition within
-        your application. If you would prefer to handle these yourself, disable this feature
+        your application.
      */
-    public var autoTrackScreenViews: Bool = true
+    public var autoTrackScreenViews: Bool = false
 
     /**
      Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
