@@ -102,6 +102,14 @@ class CustomerIOTest: UnitTest {
         waitForExpectations()
     }
 
+    // MARK: enableAutoScreenviewTracking
+
+    #if canImport(UIKit)
+    func test_enableAutoScreenviewTracking_calledWhenUIKitAvailable() {
+        _ = CustomerIO(siteId: String.random, apiKey: String.random)
+    }
+    #endif
+
     // MARK: deinit
 
     func test_givenNilObject_expectDeinit() {

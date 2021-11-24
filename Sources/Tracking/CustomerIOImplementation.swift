@@ -25,7 +25,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let identifyRepository: IdentifyRepository
 
-    public var autoScreenViewBody: () -> ScreenViewData
+    var autoScreenViewBody: (() -> ScreenViewData)?
 
     /**
      Constructor for singleton, only.
@@ -38,8 +38,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.diGraph = DITracking.getInstance(siteId: siteId)
 
         self.identifyRepository = diGraph.identifyRepository
-
-        self.autoScreenViewBody = CustomerIOImplementation.defaultScreenViewBody
     }
 
     /**
@@ -65,7 +63,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         sdkConfigStore.config = configToModify
 
         if sdkConfigStore.config.autoTrackScreenViews {
-            enableAutoScreenviewTracking()
+            setupAutoScreenviewTracking()
         }
     }
 
@@ -136,9 +134,5 @@ public class CustomerIOImplementation: CustomerIOInstance {
                     }
                 }
             }
-    }
-
-    public static func defaultScreenViewBody() -> ScreenViewData {
-        ScreenViewData(data: ScreenViewDefaultData())
     }
 }

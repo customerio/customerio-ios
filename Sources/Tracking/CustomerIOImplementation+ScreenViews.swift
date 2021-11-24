@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 public extension CustomerIOImplementation {
-    func enableAutoScreenviewTracking() {
+    func setupAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
         let selector2 = #selector(CustomerIOImplementation._swizzled_UIKit_viewDidAppear(_:))
         guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
@@ -26,33 +26,34 @@ public extension CustomerIOImplementation {
             return
         }
 
-        var viewController = window!.rootViewController
-        if viewController is UINavigationController {
-            viewController = (viewController as! UINavigationController).visibleViewController
+        var viewController = window.rootViewController
+        if let navigationController = viewController as? UINavigationController {
+            viewController = navigationController.visibleViewController
         }
 
         var name = String(describing: type(of: viewController)).replacingOccurrences(of: "ViewController", with: "")
 
         if name.isEmpty || name == "" {
-            if viewController?.title != nil {
-                name = viewController?.title ?? "Unknown"
+            if let title = viewController?.title {
+                name = title
             }
             if name.isEmpty || name == "" {
-                // Could not infer screen name
-                name = "Unknown"
+                return
             }
         }
 
-        screen(name: name, data: autoScreenViewBody()) { _ in
-            // TODO: global error handling of result here
+        let data = autoScreenViewBody?() ?? ScreenViewData(data: ScreenViewDefaultData())
+
+        screen(name: name, data: data) { _ in
+            // XXX: global error handling of result here
         }
     }
 }
 
 #else
 public extension CustomerIOImplementation {
-    func enableAutoScreenviewTracking() {
-        // TODO: log warning that tracking is not available
+    func setupAutoScreenviewTracking() {
+        // XXX: log warning that tracking is not available
     }
 }
 #endif

@@ -24,6 +24,12 @@ public struct SdkConfig {
      */
     public var autoTrackScreenViews: Bool = true
 
+    /**
+     Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
+     this to override our defaults and pass custom values in the body of the `screen` event
+     */
+    public var autoScreenViewBody: (() -> ScreenViewData)?
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }

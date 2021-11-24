@@ -25,7 +25,7 @@ public protocol CustomerIOInstance: AutoMockable {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
 
-    // sourcery:Name=screenView
+    // sourcery:Name=screen
     func screen<RequestBody: Encodable>(
         name: String,
         // sourcery:Type=AnyEncodable
@@ -34,8 +34,6 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-
-    func enableAutoScreenviewTracking()
 }
 
 public extension CustomerIOInstance {
@@ -92,18 +90,16 @@ public extension CustomerIOInstance {
 
     func track(
         name: String,
-        jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+        track(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
     }
 
     func screen(
         name: String,
-        jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        screen(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+        screen(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
     }
 }
 
@@ -136,15 +132,6 @@ public class CustomerIO: CustomerIOInstance {
     internal var implementation: CustomerIOImplementation?
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
-    
-    public var autoScreenViewBody: () -> ScreenViewData {
-        get {
-            self.implementation?.autoScreenViewBody ?? CustomerIOImplementation.defaultScreenViewBody
-        }
-        set {
-            self.implementation?.autoScreenViewBody = newValue
-        }
-    }
 
     /**
      Constructor for singleton, only.
@@ -324,7 +311,7 @@ public class CustomerIO: CustomerIOInstance {
      [Learn more](https://customer.io/docs/events/) about events in Customer.io
 
      - Parameters:
-     - name: Name of the currently active screen. When automatically tracked, we use the name of the controller without any `ViewController` substrings
+     - name: Name of the currently active screen
      - data: Optional event body data
      - onComplete: Asynchronous callback with `Result` of tracking an event.
      Check result to see if error or success. Callback called on main thread.
@@ -341,13 +328,5 @@ public class CustomerIO: CustomerIOInstance {
         }
 
         implementation.screen(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
-    }
-
-    public func enableAutoScreenviewTracking() {
-        guard let implementation = self.implementation else {
-            return
-        }
-
-        implementation.enableAutoScreenviewTracking()
     }
 }
