@@ -43,9 +43,11 @@ public extension MessagingPush {
             return false
         }
 
+        // If cioHandleBadge exists and value is true
         if let cioHandleBadge = pushContent.cioHandleBadge, cioHandleBadge  {
             
             let badgeCount = store.badgeCount ?? 0
+            // Update badge count in payload
             if let newRequest = request.content.mutableCopy() as? UNMutableNotificationContent {
                 newRequest.badge = NSNumber(value: badgeCount + 1)
                 store.badgeCount = badgeCount + 1
