@@ -1,7 +1,6 @@
 import CioMessagingPush
 import CioTracking
 import Foundation
-import UIKit
 #if canImport(UserNotifications)
 import UserNotifications
 
