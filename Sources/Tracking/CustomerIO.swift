@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
