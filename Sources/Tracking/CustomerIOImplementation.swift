@@ -25,7 +25,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let identifyRepository: IdentifyRepository
 
-    var autoScreenViewBody: (() -> ScreenViewData)?
+    var autoScreenViewBody: (() -> [String:AnyEncodable])?
 
     /**
      Constructor for singleton, only.

@@ -11,4 +11,9 @@ internal struct TrackRequestBody<T: Encodable>: Encodable {
 public enum EventType: String, Codable {
     case event
     case screen
+    
+    enum CodingKeys: String, CodingKey {
+        case event
+        case screen
+    }
 }

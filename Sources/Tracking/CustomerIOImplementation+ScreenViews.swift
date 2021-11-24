@@ -26,7 +26,7 @@ public extension CustomerIOImplementation {
             return
         }
 
-        var viewController = window.rootViewController
+        var viewController = window!.rootViewController
         if let navigationController = viewController as? UINavigationController {
             viewController = navigationController.visibleViewController
         }
@@ -38,15 +38,26 @@ public extension CustomerIOImplementation {
                 name = title
             }
             if name.isEmpty || name == "" {
+                // XXX: we couldn't infer a name, we should log it for debug purposes
                 return
             }
         }
 
-        let data = autoScreenViewBody?() ?? ScreenViewData(data: ScreenViewDefaultData())
+        guard let data = autoScreenViewBody?() else {
+            screen(name: name, data: CustomerIOImplementation.defaultScreenViewBody) { _ in
+                // XXX: global error handling of result here
+            }
+            return
+        }
 
         screen(name: name, data: data) { _ in
             // XXX: global error handling of result here
         }
+        
+    }
+    
+    private static var defaultScreenViewBody: ScreenViewData {
+        ScreenViewData()
     }
 }
 
