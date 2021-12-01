@@ -46,7 +46,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
      Configure the Customer.io SDK.
 
      This will configure the given non-singleton instance of CustomerIO.
-     Cofiguration changes will only impact this 1 instance of the CustomerIO class.
+     Configuration changes will only impact this 1 instance of the CustomerIO class.
 
      Example use:
      ```
@@ -70,10 +70,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
-            // Note: Even if this function is called with the same identifier as previously identified,
-            // allow the function request to go through. Maybe the customer simply wants to add more
-            // user attributes to a profile so they call this function multiple times?
+        let isChangingIdentifiedProfile = profileStore.identifier != nil && profileStore.identifier == identifier
+        if isChangingIdentifiedProfile {
             // TODO: add to background queue delete device token from currently registered profile.
         }
 
