@@ -9,7 +9,6 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder?
     )
 
@@ -19,70 +18,30 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: RequestBody?,
-        jsonEncoder: JSONEncoder?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        jsonEncoder: JSONEncoder?
     )
     func clearIdentify()
 }
 
 public extension CustomerIOInstance {
-    /**
-     Identify a customer (aka: Add or update a profile).
-
-     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
-
-     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
-     the previously identified profile will be removed. Only the latest identified customer is persisted.
-
-     - Parameters:
-     - identifier: ID you want to assign to the customer.
-     This value can be an internal ID that your system uses or an email address.
-     [Learn more](https://customer.io/docs/api/#operation/identify)
-     - onComplete: Asynchronous callback with `Result` of identifying a customer.
-     Check result to see if error or success. Callback called on main thread.
-     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
-     */
-    func identify(
-        identifier: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
-        jsonEncoder: JSONEncoder? = nil
-    ) {
-        identify(identifier: identifier, body: EmptyRequestBody(), onComplete: onComplete, jsonEncoder: jsonEncoder)
-    }
-
-    /**
-     Identify a customer (aka: Add or update a profile).
-
-     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
-
-     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
-     the previously identified profile will be removed. Only the latest identified customer is persisted.
-
-     - Parameters:
-     - identifier: ID you want to assign to the customer.
-     This value can be an internal ID that your system uses or an email address.
-     [Learn more](https://customer.io/docs/api/#operation/identify)
-     - onComplete: Asynchronous callback with `Result` of identifying a customer.
-     Check result to see if error or success. Callback called on main thread.
-     - email: Optional email address you want to associate with a profile.
-     If you use an email address as the `identifier` this is not needed.
-     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
-     */
     func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
+        identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
+    }
+
+    func identify(
+        identifier: String
+    ) {
+        identify(identifier: identifier, body: EmptyRequestBody(), jsonEncoder: nil)
     }
 
     func track(
-        name: String,
-        jsonEncoder: JSONEncoder? = nil,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        name: String
     ) {
-        track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+        track(name: name, data: EmptyRequestBody(), jsonEncoder: nil)
     }
 }
 
@@ -233,21 +192,16 @@ public class CustomerIO: CustomerIOInstance {
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
      - body: Request body of identifying profile. Use to define user attributes.
-     - onComplete: Asynchronous callback with `Result` of identifying a customer.
-     Check result to see if error or success. Callback called on main thread.
      - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
      */
     public func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let implementation = self.implementation else {
-            return onComplete(Result.failure(.notInitialized))
-        }
+        // XXX: notify developer if SDK not initialized yet
 
-        implementation.identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
+        implementation?.identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
     }
 
     /**
@@ -271,20 +225,15 @@ public class CustomerIO: CustomerIOInstance {
      - Parameters:
      - name: Name of the event you want to track.
      - data: Optional event body data
-     - onComplete: Asynchronous callback with `Result` of tracking an event.
-     Check result to see if error or success. Callback called on main thread.
      - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
      */
     public func track<RequestBody: Encodable>(
         name: String,
         data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let implementation = self.implementation else {
-            return onComplete(Result.failure(.notInitialized))
-        }
+        // XXX: notify developer if SDK not initialized yet
 
-        implementation.track(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
+        implementation?.track(name: name, data: data, jsonEncoder: jsonEncoder)
     }
 }

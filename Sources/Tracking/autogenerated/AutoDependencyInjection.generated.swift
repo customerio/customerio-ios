@@ -59,11 +59,13 @@ import Foundation
  */
 public enum DependencyTracking: CaseIterable {
     case httpClient
-    case identifyRepository
     case sdkCredentialsStore
     case eventBus
     case profileStore
     case queue
+    case queueRequestManager
+    case queueRunRequest
+    case queueRunner
     case logger
     case fileStorage
     case queueStorage
@@ -135,11 +137,13 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
         case .httpClient: return httpClient as! T
-        case .identifyRepository: return identifyRepository as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
         case .queue: return queue as! T
+        case .queueRequestManager: return queueRequestManager as! T
+        case .queueRunRequest: return queueRunRequest as! T
+        case .queueRunner: return queueRunner as! T
         case .logger: return logger as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
@@ -165,19 +169,6 @@ public class DITracking {
     private var newHttpClient: HttpClient {
         CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
                       jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
-    }
-
-    // IdentifyRepository
-    internal var identifyRepository: IdentifyRepository {
-        if let overridenDep = overrides[.identifyRepository] {
-            return overridenDep as! IdentifyRepository
-        }
-        return newIdentifyRepository
-    }
-
-    private var newIdentifyRepository: IdentifyRepository {
-        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter, eventBus: eventBus,
-                              profileStore: profileStore)
     }
 
     // SdkCredentialsStore
@@ -225,7 +216,58 @@ public class DITracking {
     }
 
     private var newQueue: Queue {
-        CioQueue(siteId: siteId, storage: queueStorage)
+        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
+                 logger: logger, sdkConfigStore: sdkConfigStore)
+    }
+
+    // QueueRequestManager (singleton)
+    public var queueRequestManager: QueueRequestManager {
+        if let overridenDep = overrides[.queueRequestManager] {
+            return overridenDep as! QueueRequestManager
+        }
+        return sharedQueueRequestManager
+    }
+
+    private let _queueRequestManager_queue = DispatchQueue(label: "DI_get_queueRequestManager_queue")
+    private var _queueRequestManager_shared: QueueRequestManager?
+    public var sharedQueueRequestManager: QueueRequestManager {
+        _queueRequestManager_queue.sync {
+            if let overridenDep = self.overrides[.queueRequestManager] {
+                return overridenDep as! QueueRequestManager
+            }
+            let res = _queueRequestManager_shared ?? _get_queueRequestManager()
+            _queueRequestManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_queueRequestManager() -> QueueRequestManager {
+        CioQueueRequestManager()
+    }
+
+    // QueueRunRequest
+    public var queueRunRequest: QueueRunRequest {
+        if let overridenDep = overrides[.queueRunRequest] {
+            return overridenDep as! QueueRunRequest
+        }
+        return newQueueRunRequest
+    }
+
+    private var newQueueRunRequest: QueueRunRequest {
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManger: queueRequestManager,
+                           logger: logger)
+    }
+
+    // QueueRunner
+    public var queueRunner: QueueRunner {
+        if let overridenDep = overrides[.queueRunner] {
+            return overridenDep as! QueueRunner
+        }
+        return newQueueRunner
+    }
+
+    private var newQueueRunner: QueueRunner {
+        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
     }
 
     // Logger

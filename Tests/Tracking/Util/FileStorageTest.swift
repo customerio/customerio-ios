@@ -25,6 +25,9 @@ class FileTypeTest: UnitTest {
     }
 }
 
+// MARK: integration tests
+
+#if !os(Linux) // LINUX_DISABLE_FILEMANAGER
 class FileStorageTest: UnitTest {
     private var fileStorage: FileManagerFileStorage!
     private var siteId: SiteId!
@@ -35,8 +38,6 @@ class FileStorageTest: UnitTest {
         siteId = String.random()
         fileStorage = FileManagerFileStorage(siteId: siteId, logger: LoggerMock())
     }
-
-    // MARK: integration tests
 
     func test_get_givenNotSave_expectNil() {
         XCTAssertNil(fileStorage.get(type: .queueInventory, fileId: nil))
@@ -68,3 +69,4 @@ class FileStorageTest: UnitTest {
         XCTAssertMatches(actual.absoluteString, regex: ".*/\(siteId!)/queue/inventory.json")
     }
 }
+#endif

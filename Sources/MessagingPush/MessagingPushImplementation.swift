@@ -78,10 +78,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      Delete the currently registered device token
      */
     public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let bodyData = jsonAdapter.toJson(DeleteDeviceRequest()) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
-        }
-
         guard let deviceToken = self.deviceToken else {
             // no device token, delete has already happened or is not needed
             return onComplete(Result.success(()))
@@ -96,7 +92,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         let httpRequestParameters =
             HttpRequestParams(endpoint: .deleteDevice(identifier: identifier,
                                                       deviceToken: deviceToken),
-                              headers: nil, body: bodyData)
+                              headers: nil, body: nil)
 
         httpClient
             .request(httpRequestParameters) { [weak self] result in

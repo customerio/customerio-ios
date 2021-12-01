@@ -45,4 +45,12 @@ public extension String {
         // a subset of the string meaning it may not match the whole string.
         return match != nil && match?.range == range
     }
+
+    /// Given: "foo" and input ".jpg", return "foo.jpg"
+    /// Given: "foo.jpg" and input ".jpg", return "foo.jpg" (unmodified)
+    func setLastCharacters(_ characters: String) -> String {
+        if hasSuffix(characters) { return self }
+
+        return self + characters
+    }
 }

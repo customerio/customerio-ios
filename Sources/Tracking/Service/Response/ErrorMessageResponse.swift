@@ -13,3 +13,17 @@ public class ErrorMessageResponse: Codable {
         let error: String
     }
 }
+
+/**
+ The API returns error response bodies in the format:
+ ```
+ {"meta": { "errors": ["invalid id"] }}
+ ```
+ */
+public class ErrorsMessageResponse: Codable {
+    let meta: Meta
+
+    public class Meta: Codable {
+        let errors: [String]
+    }
+}

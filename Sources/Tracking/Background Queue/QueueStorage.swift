@@ -30,6 +30,7 @@ public protocol QueueStorage: AutoMockable {
     func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus)
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
+    func delete(storageId: String) -> Bool
 }
 
 // sourcery: InjectRegister = "QueueStorage"
@@ -38,6 +39,8 @@ public class FileManagerQueueStorage: QueueStorage {
     private let jsonAdapter: JsonAdapter
     private let siteId: SiteId
 
+    private let lock = Lock()
+
     init(siteId: SiteId, fileStorage: FileStorage, jsonAdapter: JsonAdapter) {
         self.siteId = siteId
         self.fileStorage = fileStorage
@@ -45,6 +48,9 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func getInventory() -> [QueueTaskMetadata] {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
 
         let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data, decoder: nil) ?? []
@@ -53,6 +59,9 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard let data = jsonAdapter.toJson(inventory, encoder: nil) else {
             return false
         }
@@ -61,6 +70,9 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
+        lock.lock()
+        defer { lock.unlock() }
+
         var existingInventory = getInventory()
         let beforeCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: existingInventory.count)
 
@@ -86,6 +98,9 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard var existingQueueTask = get(storageId: storageId) else {
             return false
         }
@@ -96,6 +111,9 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func get(storageId: String) -> QueueTask? {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard let data = fileStorage.get(type: .queueTask, fileId: storageId),
               let task: QueueTask = jsonAdapter.fromJson(data, decoder: nil)
         else {
@@ -103,6 +121,22 @@ public class FileManagerQueueStorage: QueueStorage {
         }
 
         return task
+    }
+
+    public func delete(storageId: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        // update inventory first so code that requests the inventory doesn't get the inventory item we are deleting
+        var existingInventory = getInventory()
+        existingInventory.removeAll { $0.taskPersistedId == storageId }
+        let updateInventoryResult = saveInventory(existingInventory)
+
+        if !updateInventoryResult { return false }
+
+        // if this fails, we at least deleted the task from inventory so
+        // it will not run again which is the most important thing
+        return fileStorage.delete(type: .queueTask, fileId: storageId)
     }
 }
 

@@ -8,7 +8,6 @@ class MessagingPushImplementationTest: UnitTest {
     private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPushImplementation!
 
-    private var identifyRepositoryMock = IdentifyRepositoryMock()
     private var eventBusMock = EventBusMock()
     private var httpClientMock = HttpClientMock()
     private var profileStoreMock = ProfileStoreMock()
@@ -17,7 +16,6 @@ class MessagingPushImplementationTest: UnitTest {
         super.setUp()
 
         diGraph.override(.httpClient, value: httpClientMock, forType: HttpClient.self)
-        diGraph.override(.identifyRepository, value: identifyRepositoryMock, forType: IdentifyRepository.self)
         diGraph.override(.eventBus, value: eventBusMock, forType: EventBus.self)
         diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
 

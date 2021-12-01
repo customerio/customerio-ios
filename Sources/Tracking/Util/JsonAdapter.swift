@@ -38,6 +38,7 @@ public class JsonAdapter {
     var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.outputFormatting = .sortedKeys
         // We are using custom date encoding because if there are milliseconds in Date object,
         // the default `secondsSince1970` will give a unix time with a decimal. The
         // Customer.io API does not accept timestamps with a decimal value unix time.
@@ -93,7 +94,8 @@ public class JsonAdapter {
      expect to get an error. If we need this functionality, perhaps we should create a 2nd set of
      methods to this class that `throw` so you choose which function to use?
      */
-    public func fromJson<T: Decodable>(_ json: Data, decoder override: JSONDecoder? = nil) -> T? {
+    public func fromJson<T: Decodable>(_ json: Data, decoder override: JSONDecoder? = nil,
+                                       logErrors: Bool = true) -> T? {
         var errorStringToLog: String?
 
         do {
@@ -126,7 +128,9 @@ public class JsonAdapter {
         }
 
         if let errorStringToLog = errorStringToLog {
-            log.error(errorStringToLog)
+            if logErrors {
+                log.error(errorStringToLog)
+            }
         }
 
         return nil
@@ -144,5 +148,21 @@ public class JsonAdapter {
         }
 
         return nil
+    }
+
+    public func toJsonString<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil,
+                                           nilIfEmpty: Bool = true) -> String? {
+        guard let data = toJson(obj, encoder: override ?? encoder) else { return nil }
+
+        let jsonString = data.string
+
+        // Because we usually use JSON strings in API calls with Codable, empty JSON strings
+        // don't get decoded into JSON HTTP request bodies. Therefore, we prefer `nil` to
+        // avoid errors when performing HTTP requests.
+        if nilIfEmpty, jsonString == "{}" {
+            return nil
+        }
+
+        return jsonString
     }
 }

@@ -7,3 +7,9 @@ public struct QueueTaskMetadata: Codable, Equatable {
     let taskPersistedId: String
     let taskType: QueueTaskType
 }
+
+internal extension QueueTaskMetadata {
+    static var random: QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: String.random, taskType: .trackEvent)
+    }
+}
