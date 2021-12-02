@@ -1,7 +1,7 @@
 import Foundation
 
 /// SDK data that is common between all site ids.
-public protocol GlobalDataStore {
+public protocol GlobalDataStore: AutoMockable {
     var sharedInstanceSiteId: String? { get set }
     func appendSiteId(_ siteId: String)
     var siteIds: [String] { get }

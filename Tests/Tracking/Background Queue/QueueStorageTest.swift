@@ -12,8 +12,6 @@ class QueueStorageTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
-        implementationStorage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
-                                                        jsonAdapter: jsonAdapter)
     }
 
     // MARK: getInventory
@@ -59,7 +57,7 @@ class QueueStorageTest: UnitTest {
         fileStorageMock.saveReturnValue = true
 
         let givenData = "hello ami!".data!
-        let givenType = QueueTaskType.identifyProfile
+        let givenType = QueueTaskType.identifyProfile.rawValue
 
         let actual = storage.create(type: givenType, data: givenData)
 
@@ -72,7 +70,7 @@ class QueueStorageTest: UnitTest {
         fileStorageMock.saveReturnValue = false
 
         let givenData = "hello ami!".data!
-        let givenType = QueueTaskType.identifyProfile
+        let givenType = QueueTaskType.identifyProfile.rawValue
 
         let actual = storage.create(type: givenType, data: givenData)
 
@@ -88,7 +86,7 @@ class QueueStorageTest: UnitTest {
         }
 
         let givenData = "hello ami!".data!
-        let givenType = QueueTaskType.identifyProfile
+        let givenType = QueueTaskType.identifyProfile.rawValue
 
         let actual = storage.create(type: givenType, data: givenData)
 
@@ -108,7 +106,7 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_update_expectUpdateTaskToStorage_expectInventoryNotUpdated_expectTrue() {
-        let givenTask = QueueTask(storageId: String.random, type: .identifyProfile, data: "".data,
+        let givenTask = QueueTask(storageId: String.random, type: QueueTaskType.identifyProfile.rawValue, data: "".data,
                                   runResults: QueueTaskRunResults(totalRuns: 1))
         let givenUpdatedRunResults = QueueTaskRunResults(totalRuns: givenTask.runResults.totalRuns + 1)
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)
@@ -133,7 +131,7 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_get_givenTaskInStorage_expectGetSavedTask() {
-        let givenTask = QueueTask(storageId: String.random, type: .identifyProfile, data: "".data,
+        let givenTask = QueueTask(storageId: String.random, type: QueueTaskType.identifyProfile.rawValue, data: "".data,
                                   runResults: QueueTaskRunResults(totalRuns: 1))
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)!
 
@@ -141,24 +139,6 @@ class QueueStorageTest: UnitTest {
 
         XCTAssertNotNil(actual)
         XCTAssertEqual(actual, givenTask)
-    }
-
-    // MARK: delete
-
-    func test_delete_expectDeleteTaskPreviouslyAdded() {
-        _ = implementationStorage.create(type: .identifyProfile, data: Data())
-
-        var inventory = implementationStorage.getInventory()
-        XCTAssertEqual(inventory.count, 1)
-        let givenStorageId = inventory[0].taskPersistedId
-        XCTAssertNotNil(implementationStorage.get(storageId: givenStorageId))
-
-        let actual = implementationStorage.delete(storageId: givenStorageId)
-
-        XCTAssertTrue(actual)
-        inventory = implementationStorage.getInventory()
-        XCTAssertEqual(inventory.count, 0)
-        XCTAssertNil(implementationStorage.get(storageId: givenStorageId))
     }
 }
 
@@ -178,7 +158,7 @@ class QueueStorageIntegrationTest: UnitTest {
     // MARK: delete
 
     func test_delete_expectDeleteTaskPreviouslyAdded() {
-        _ = storage.create(type: .identifyProfile, data: Data())
+        _ = storage.create(type: QueueTaskType.identifyProfile.rawValue, data: Data())
 
         var inventory = storage.getInventory()
         XCTAssertEqual(inventory.count, 1)

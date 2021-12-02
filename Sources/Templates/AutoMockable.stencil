@@ -217,12 +217,12 @@ public protocol {{ argument.moduleName }}Mock {
     {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} = {% if variable.isArray %}[]{% elif variable.isDictionary %}[:]{% endif %}
 {% endmacro %}
 
-{% macro mockNonOptionalVariable variable %}
+{% macro mockVariable variable %}
     /**
      When setter of the property called, the value given to setter is set here. 
      When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
      */
-    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}!
+    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}{% if variable.isOptional %} = nil{% else %}!{% endif %}
     /// `true` if the getter or setter of property is called at least once. 
     {{ type.accessLevel }} var {% call mockedVariableName variable %}Called = false 
     /// `true` if the getter called on the property at least once. 
@@ -266,7 +266,7 @@ public protocol {{ argument.moduleName }}Mock {
     }
 
 {% for variable in type.allVariables|!definedInExtension %}
-    {% if variable.isOptional %}{% call mockOptionalVariable variable %}{% elif variable.isArray or variable.isDictionary %}{% call mockNonOptionalArrayOrDictionaryVariable variable %}{% else %}{% call mockNonOptionalVariable variable %}{% endif %}
+    {% call mockVariable variable %}
 {% endfor %}
 
     public func reset() {
@@ -275,11 +275,10 @@ public protocol {{ argument.moduleName }}Mock {
 {% for variable in type.allVariables|!definedInExtension %}
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
-    {% else %}
+    {% endif %}         
         {% call mockedVariableName variable %}Called = false 
         {% call mockedVariableName variable %}GetCalled = false 
         {% call mockedVariableName variable %}SetCalled = false 
-    {% endif %}
 {% endfor %}        
 {% for method in type.allMethods|!definedInExtension %}
         {% call swiftifyMethodName method %}CallsCount = 0

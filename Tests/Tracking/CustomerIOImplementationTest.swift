@@ -63,7 +63,7 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .identifyProfile)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.identifyProfile.rawValue)
 
         let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data
             .value as? IdentifyProfileQueueTaskData
@@ -92,7 +92,7 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.track(name: String.random, data: givenData)
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .trackEvent)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
 
         let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
 
