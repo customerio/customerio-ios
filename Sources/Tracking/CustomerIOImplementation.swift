@@ -98,12 +98,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
         hooks.profileIdentifyHooks.forEach { hook in
             hook.profileIdentified(identifier: identifier)
         }
-
-        // TODO: after background queue fully implemented into the whole SDK (not just Tracking module) I see
-        // this no longer being needed. This is currently the way for other SDKs (modules) in the project at runtime
-        // to get informed about something happening but we plan on instead changing to runtime "hooks" between
-        // the SDKs.
-        // self.eventBus.post(.identifiedCustomer)
     }
 
     public func clearIdentify() {

@@ -4,9 +4,7 @@ public protocol QueueRunRequest: AutoMockable {
     func start(onComplete: @escaping () -> Void)
 }
 
-/**
- Logic of the queue data structure. Queries for tasks to run and executes each task one-by-one.
- */
+// Logic of the queue data structure. Queries for tasks to run and executes each task one-by-one.
 // sourcery: InjectRegister = "QueueRunRequest"
 public class CioQueueRunRequest: QueueRunRequest {
     private let runner: QueueRunner
