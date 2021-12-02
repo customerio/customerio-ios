@@ -12,6 +12,10 @@ class QueueTest: UnitTest {
     private let sdkConfigStoreMock = SdkConfigStoreMock()
     private let queueRunnerMock = QueueRunnerMock()
 
+    private let storageMock = QueueStorageMock()
+    private let runRequestMock = QueueRunRequestMock()
+    private let sdkConfigStoreMock = SdkConfigStoreMock()
+
     override func setUp() {
         super.setUp()
 
@@ -19,9 +23,6 @@ class QueueTest: UnitTest {
 
         queue = CioQueue(siteId: testSiteId, storage: storageMock, runRequest: runRequestMock, jsonAdapter: jsonAdapter,
                          logger: log, sdkConfigStore: sdkConfigStoreMock)
-
-        diGraph.override(.queueRunner, value: queueRunnerMock, forType: QueueRunner.self)
-        implementationQueue = diGraph.queue
     }
 
     // MARK: addTask
@@ -84,13 +85,25 @@ class QueueTest: UnitTest {
     }
 }
 
-// MARK: implementation tests
+// MARK: integration tests
 
-extension QueueTest {
+#if !os(Linux) // LINUX_DISABLE_FILEMANAGER
+class QueueIntegrationTest: UnitTest {
+    var queue: Queue!
+
+    private let queueRunnerMock = QueueRunnerMock()
+
+    override func setUp() {
+        super.setUp()
+
+        diGraph.override(.queueRunner, value: queueRunnerMock, forType: QueueRunner.self)
+        queue = diGraph.queue
+    }
+
     func test_addTask_expectSuccessfullyAdded() {
-        let addTaskActual = implementationQueue.addTask(type: .trackEvent,
-                                                        data: TrackEventQueueTaskData(identifier: String.random,
-                                                                                      attributesJsonString: ""))
+        let addTaskActual = queue.addTask(type: .trackEvent,
+                                          data: TrackEventQueueTaskData(identifier: String.random,
+                                                                        attributesJsonString: ""))
         XCTAssertTrue(addTaskActual.success)
         XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
     }
@@ -100,12 +113,12 @@ extension QueueTest {
             onComplete(.success(()))
         }
 
-        _ = implementationQueue.addTask(type: .trackEvent,
-                                        data: TrackEventQueueTaskData(identifier: String.random,
-                                                                      attributesJsonString: ""))
+        _ = queue.addTask(type: .trackEvent,
+                          data: TrackEventQueueTaskData(identifier: String.random,
+                                                        attributesJsonString: ""))
 
         let expect = expectation(description: "Expect to complete")
-        implementationQueue.run {
+        queue.run {
             expect.fulfill()
         }
 
@@ -113,7 +126,7 @@ extension QueueTest {
         XCTAssertEqual(queueRunnerMock.runTaskCallsCount, 1)
 
         let expect2 = expectation(description: "Expect to complete")
-        implementationQueue.run {
+        queue.run {
             expect2.fulfill()
         }
 
@@ -127,12 +140,12 @@ extension QueueTest {
             onComplete(.failure(.notInitialized))
         }
 
-        _ = implementationQueue.addTask(type: .trackEvent,
-                                        data: TrackEventQueueTaskData(identifier: String.random,
-                                                                      attributesJsonString: ""))
+        _ = queue.addTask(type: .trackEvent,
+                          data: TrackEventQueueTaskData(identifier: String.random,
+                                                        attributesJsonString: ""))
 
         let expect = expectation(description: "Expect to complete")
-        implementationQueue.run {
+        queue.run {
             expect.fulfill()
         }
 
@@ -140,7 +153,7 @@ extension QueueTest {
         XCTAssertEqual(queueRunnerMock.runTaskCallsCount, 1)
 
         let expect2 = expectation(description: "Expect to complete")
-        implementationQueue.run {
+        queue.run {
             expect2.fulfill()
         }
 
@@ -149,3 +162,4 @@ extension QueueTest {
         XCTAssertEqual(queueRunnerMock.runTaskCallsCount, 2)
     }
 }
+#endif

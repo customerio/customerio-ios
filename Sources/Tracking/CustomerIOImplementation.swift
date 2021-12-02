@@ -48,7 +48,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
      Configure the Customer.io SDK.
 
      This will configure the given non-singleton instance of CustomerIO.
-     Cofiguration changes will only impact this 1 instance of the CustomerIO class.
+     Configuration changes will only impact this 1 instance of the CustomerIO class.
 
      Example use:
      ```
@@ -73,9 +73,13 @@ public class CustomerIOImplementation: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil
     ) {
         if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                                newIdentifier: identifier)
+            let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != identifier
+
+            if isChangingIdentifiedProfile {
+                hooks.profileIdentifyHooks.forEach { hook in
+                    hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                    newIdentifier: identifier)
+                }
             }
         }
 
@@ -86,6 +90,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue, data: queueTaskData)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
+        // XXX: better handle scenario when adding task to queue is not successful
         if queueStatus.success {
             profileStore.identifier = identifier
         }
@@ -125,8 +130,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
                                                 attributesJsonString: jsonBodyString)
 
-        // ignore if adding task was successful or not.
-        // if not successful, it does not impact the state of the SDK so just ignore it.
+        // XXX: better handle scenario when adding task to queue is not successful
         _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue, data: queueData)
     }
 }

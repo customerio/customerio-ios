@@ -14,32 +14,6 @@ class MessagingPushTest: UnitTest {
         messagingPush = MessagingPush(customerIO: mockCustomerIO)
     }
 
-    // MARK: registerDeviceToken
-
-    func test_registerDeviceToken_givenSdkNotInitialized_expectFail() {
-        let expect = expectation(description: "Expect to fail to register device token")
-        messagingPush.registerDeviceToken(String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = error else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    // MARK: deleteDeviceToken
-
-    func test_deleteDeviceToken_expectSuccessIfNoToken() {
-        let expect = expectation(description: "Expect to complete")
-        messagingPush.deleteDeviceToken { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = error else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
     // MARK: trackMetric
 
     func test_trackMetric_givenHttpSuccess_expectSuccess() {

@@ -10,19 +10,16 @@ class MessagingPushImplementationTest: UnitTest {
 
     private var eventBusMock = EventBusMock()
     private var httpClientMock = HttpClientMock()
-    private var profileStoreMock = ProfileStoreMock()
+    private let pushDeviceTokenRepositoryMock = PushDeviceTokenRepositoryMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.httpClient, value: httpClientMock, forType: HttpClient.self)
-        diGraph.override(.eventBus, value: eventBusMock, forType: EventBus.self)
-        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
-
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(httpClient: httpClientMock, jsonAdapter: jsonAdapter,
-                                                    eventBus: eventBusMock, profileStore: profileStoreMock)
+                                                    eventBus: eventBusMock,
+                                                    pushDeviceTokenRepository: pushDeviceTokenRepositoryMock)
     }
 
     // MARK: registerDeviceToken

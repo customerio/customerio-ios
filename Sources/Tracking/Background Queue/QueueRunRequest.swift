@@ -4,22 +4,25 @@ public protocol QueueRunRequest: AutoMockable {
     func start(onComplete: @escaping () -> Void)
 }
 
+/**
+ Logic of the queue data structure. Queries for tasks to run and executes each task one-by-one.
+ */
 // sourcery: InjectRegister = "QueueRunRequest"
 public class CioQueueRunRequest: QueueRunRequest {
     private let runner: QueueRunner
     private let storage: QueueStorage
-    private let requestManger: QueueRequestManager
+    private let requestManager: QueueRequestManager
     private let logger: Logger
 
     init(runner: QueueRunner, storage: QueueStorage, requestManger: QueueRequestManager, logger: Logger) {
         self.runner = runner
         self.storage = storage
-        self.requestManger = requestManger
+        self.requestManager = requestManger
         self.logger = logger
     }
 
     public func start(onComplete: @escaping () -> Void) {
-        let isRequestCurrentlyRunning = requestManger.startRequest(onComplete: onComplete)
+        let isRequestCurrentlyRunning = requestManager.startRequest(onComplete: onComplete)
 
         if !isRequestCurrentlyRunning {
             startNewRequestRun()
@@ -42,7 +45,7 @@ public class CioQueueRunRequest: QueueRunRequest {
         if query.isEmpty { // we hit the end of the current inventory. Done!
             logger.verbose("background queue out of tasks.")
 
-            requestManger.requestComplete()
+            requestManager.requestComplete()
 
             return
         }

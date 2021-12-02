@@ -5,7 +5,6 @@ import XCTest
 
 class QueueStorageTest: UnitTest {
     var storage: FileManagerQueueStorage!
-    var implementationStorage: FileManagerQueueStorage!
 
     let fileStorageMock = FileStorageMock()
 
@@ -15,10 +14,6 @@ class QueueStorageTest: UnitTest {
         storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
         implementationStorage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
                                                         jsonAdapter: jsonAdapter)
-    }
-
-    private func getQueueTaskItem() -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: String.random, taskType: .identifyProfile)
     }
 
     // MARK: getInventory
@@ -32,7 +27,7 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
-        let expected = [getQueueTaskItem()]
+        let expected = [QueueTaskMetadata.random]
         fileStorageMock.getReturnValue = jsonAdapter.toJson(expected, encoder: nil)
 
         let actual = storage.getInventory()
@@ -45,7 +40,7 @@ class QueueStorageTest: UnitTest {
     func test_saveInventory_givenSaveSuccessful_expectTrue() {
         fileStorageMock.saveReturnValue = true
 
-        let actual = storage.saveInventory([getQueueTaskItem()])
+        let actual = storage.saveInventory([QueueTaskMetadata.random])
 
         XCTAssertTrue(actual)
     }
@@ -53,7 +48,7 @@ class QueueStorageTest: UnitTest {
     func test_saveInventory_givenSaveUnsuccessful_expectFalse() {
         fileStorageMock.saveReturnValue = false
 
-        let actual = storage.saveInventory([getQueueTaskItem()])
+        let actual = storage.saveInventory([QueueTaskMetadata.random])
 
         XCTAssertFalse(actual)
     }
@@ -166,3 +161,36 @@ class QueueStorageTest: UnitTest {
         XCTAssertNil(implementationStorage.get(storageId: givenStorageId))
     }
 }
+
+// MARK: integration tests
+
+#if !os(Linux) // LINUX_DISABLE_FILEMANAGER
+class QueueStorageIntegrationTest: UnitTest {
+    var storage: FileManagerQueueStorage!
+
+    override func setUp() {
+        super.setUp()
+
+        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
+                                          jsonAdapter: jsonAdapter)
+    }
+
+    // MARK: delete
+
+    func test_delete_expectDeleteTaskPreviouslyAdded() {
+        _ = storage.create(type: .identifyProfile, data: Data())
+
+        var inventory = storage.getInventory()
+        XCTAssertEqual(inventory.count, 1)
+        let givenStorageId = inventory[0].taskPersistedId
+        XCTAssertNotNil(storage.get(storageId: givenStorageId))
+
+        let actual = storage.delete(storageId: givenStorageId)
+
+        XCTAssertTrue(actual)
+        inventory = storage.getInventory()
+        XCTAssertEqual(inventory.count, 0)
+        XCTAssertNil(storage.get(storageId: givenStorageId))
+    }
+}
+#endif

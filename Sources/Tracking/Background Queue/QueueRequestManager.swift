@@ -6,6 +6,13 @@ import Foundation
 
  When the background queue wants to run it's tasks, it's important that the queue only have 1 concurrent runner
  running at one time to prevent race conditions and tasks running multiple times.
+
+ This class is small and separate from the rest of the queue logic for some readability/scalability value but
+ mostly memory safety.
+
+ We want to avoid making our queue classes singletons because these classes may have lots of
+ dependencies inside of them (especially the runner). We want to avoid keeping all of these dependencies sitting in
+ memory.
  */
 public protocol QueueRequestManager: AutoMockable {
     /// call when a runner run request is complete
