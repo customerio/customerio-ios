@@ -32,11 +32,13 @@ internal class CioPushDeviceTokenRepository: PushDeviceTokenRepository {
     }
 
     func deleteDeviceToken() {
-        let existingDeviceToken = globalDataStore.pushDeviceToken
+        guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            return // no device token to delete, ignore request
+        }
         globalDataStore.pushDeviceToken = nil
 
-        guard let existingDeviceToken = existingDeviceToken, let identifiedProfileId = profileStore.identifier else {
-            return // ignore request, no token to delete
+        guard let identifiedProfileId = profileStore.identifier else {
+            return // no profile to delete token from, ignore request
         }
 
         _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
