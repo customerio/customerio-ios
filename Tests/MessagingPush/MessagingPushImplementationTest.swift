@@ -8,7 +8,6 @@ class MessagingPushImplementationTest: UnitTest {
     private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPushImplementation!
 
-    private var eventBusMock = EventBusMock()
     private var httpClientMock = HttpClientMock()
     private let pushDeviceTokenRepositoryMock = PushDeviceTokenRepositoryMock()
 
@@ -18,7 +17,6 @@ class MessagingPushImplementationTest: UnitTest {
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(httpClient: httpClientMock, jsonAdapter: jsonAdapter,
-                                                    eventBus: eventBusMock,
                                                     pushDeviceTokenRepository: pushDeviceTokenRepositoryMock)
     }
 

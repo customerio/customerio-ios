@@ -4,21 +4,16 @@ import Foundation
 internal class MessagingPushImplementation: MessagingPushInstance {
     private let httpClient: HttpClient
     private let jsonAdapter: JsonAdapter
-    private let eventBus: EventBus
     private let pushDeviceTokenRepository: PushDeviceTokenRepository
-
-    private var identifyCustomerEventBusCallback: NSObjectProtocol?
 
     /// testing init
     internal init(
         httpClient: HttpClient,
         jsonAdapter: JsonAdapter,
-        eventBus: EventBus,
         pushDeviceTokenRepository: PushDeviceTokenRepository
     ) {
         self.httpClient = httpClient
         self.jsonAdapter = jsonAdapter
-        self.eventBus = eventBus
         self.pushDeviceTokenRepository = pushDeviceTokenRepository
     }
 
@@ -28,20 +23,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         self.httpClient = diGraph.httpClient
         self.jsonAdapter = diGraph.jsonAdapter
-        self.eventBus = diGraph.eventBus
         self.pushDeviceTokenRepository = diGraphMessaging.pushDeviceTokenRepository
-
-        self.identifyCustomerEventBusCallback = eventBus.register(event: .identifiedCustomer) {
-            //            if let deviceToken = self.deviceToken {
-            // register device token with customer.
-            //            }
-        }
-    }
-
-    deinit {
-        // XXX: handle deinit case where we want to delete the token
-
-        self.eventBus.unregister(identifyCustomerEventBusCallback)
     }
 
     /**

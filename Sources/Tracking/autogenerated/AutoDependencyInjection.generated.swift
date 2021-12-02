@@ -62,7 +62,6 @@ public enum DependencyTracking: CaseIterable {
     case sdkCredentialsStore
     case globalDataStore
     case hooksManager
-    case eventBus
     case profileStore
     case queue
     case queueRequestManager
@@ -142,7 +141,6 @@ public class DITracking {
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .globalDataStore: return globalDataStore as! T
         case .hooksManager: return hooksManager as! T
-        case .eventBus: return eventBus as! T
         case .profileStore: return profileStore as! T
         case .queue: return queue as! T
         case .queueRequestManager: return queueRequestManager as! T
@@ -222,18 +220,6 @@ public class DITracking {
 
     private func _get_hooksManager() -> HooksManager {
         CioHooksManager()
-    }
-
-    // EventBus
-    public var eventBus: EventBus {
-        if let overridenDep = overrides[.eventBus] {
-            return overridenDep as! EventBus
-        }
-        return newEventBus
-    }
-
-    private var newEventBus: EventBus {
-        CioNotificationCenter()
     }
 
     // ProfileStore
