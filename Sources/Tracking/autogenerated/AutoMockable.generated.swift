@@ -118,23 +118,32 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
      */
     public var underlyingSiteId: String?
     /// `true` if the getter or setter of property is called at least once.
-    public var siteIdCalled = false
+    public var siteIdCalled: Bool {
+        siteIdGetCalled || siteIdSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var siteIdGetCalled = false
+    public var siteIdGetCalled: Bool {
+        siteIdGetCallsCount > 0
+    }
+
+    public var siteIdGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var siteIdSetCalled = false
+    public var siteIdSetCalled: Bool {
+        siteIdSetCallsCount > 0
+    }
+
+    public var siteIdSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var siteId: String? {
         get {
             mockCalled = true
-            siteIdCalled = true
-            siteIdGetCalled = true
+            siteIdGetCallsCount += 1
             return underlyingSiteId
         }
         set(value) {
             mockCalled = true
-            siteIdCalled = true
-            siteIdSetCalled = true
+            siteIdSetCallsCount += 1
             underlyingSiteId = value
         }
     }
@@ -143,9 +152,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         mockCalled = false
 
         siteId = nil
-        siteIdCalled = false
-        siteIdGetCalled = false
-        siteIdSetCalled = false
+        siteIdGetCallsCount = 0
+        siteIdSetCallsCount = 0
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
@@ -378,23 +386,32 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
      */
     public var underlyingSharedInstanceSiteId: String?
     /// `true` if the getter or setter of property is called at least once.
-    public var sharedInstanceSiteIdCalled = false
+    public var sharedInstanceSiteIdCalled: Bool {
+        sharedInstanceSiteIdGetCalled || sharedInstanceSiteIdSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var sharedInstanceSiteIdGetCalled = false
+    public var sharedInstanceSiteIdGetCalled: Bool {
+        sharedInstanceSiteIdGetCallsCount > 0
+    }
+
+    public var sharedInstanceSiteIdGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var sharedInstanceSiteIdSetCalled = false
+    public var sharedInstanceSiteIdSetCalled: Bool {
+        sharedInstanceSiteIdSetCallsCount > 0
+    }
+
+    public var sharedInstanceSiteIdSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var sharedInstanceSiteId: String? {
         get {
             mockCalled = true
-            sharedInstanceSiteIdCalled = true
-            sharedInstanceSiteIdGetCalled = true
+            sharedInstanceSiteIdGetCallsCount += 1
             return underlyingSharedInstanceSiteId
         }
         set(value) {
             mockCalled = true
-            sharedInstanceSiteIdCalled = true
-            sharedInstanceSiteIdSetCalled = true
+            sharedInstanceSiteIdSetCallsCount += 1
             underlyingSharedInstanceSiteId = value
         }
     }
@@ -403,25 +420,34 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingSiteIds: [String]!
+    public var underlyingSiteIds: [String] = []
     /// `true` if the getter or setter of property is called at least once.
-    public var siteIdsCalled = false
+    public var siteIdsCalled: Bool {
+        siteIdsGetCalled || siteIdsSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var siteIdsGetCalled = false
+    public var siteIdsGetCalled: Bool {
+        siteIdsGetCallsCount > 0
+    }
+
+    public var siteIdsGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var siteIdsSetCalled = false
+    public var siteIdsSetCalled: Bool {
+        siteIdsSetCallsCount > 0
+    }
+
+    public var siteIdsSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var siteIds: [String] {
         get {
             mockCalled = true
-            siteIdsCalled = true
-            siteIdsGetCalled = true
+            siteIdsGetCallsCount += 1
             return underlyingSiteIds
         }
         set(value) {
             mockCalled = true
-            siteIdsCalled = true
-            siteIdsSetCalled = true
+            siteIdsSetCallsCount += 1
             underlyingSiteIds = value
         }
     }
@@ -432,23 +458,32 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
      */
     public var underlyingPushDeviceToken: String?
     /// `true` if the getter or setter of property is called at least once.
-    public var pushDeviceTokenCalled = false
+    public var pushDeviceTokenCalled: Bool {
+        pushDeviceTokenGetCalled || pushDeviceTokenSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var pushDeviceTokenGetCalled = false
+    public var pushDeviceTokenGetCalled: Bool {
+        pushDeviceTokenGetCallsCount > 0
+    }
+
+    public var pushDeviceTokenGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var pushDeviceTokenSetCalled = false
+    public var pushDeviceTokenSetCalled: Bool {
+        pushDeviceTokenSetCallsCount > 0
+    }
+
+    public var pushDeviceTokenSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var pushDeviceToken: String? {
         get {
             mockCalled = true
-            pushDeviceTokenCalled = true
-            pushDeviceTokenGetCalled = true
+            pushDeviceTokenGetCallsCount += 1
             return underlyingPushDeviceToken
         }
         set(value) {
             mockCalled = true
-            pushDeviceTokenCalled = true
-            pushDeviceTokenSetCalled = true
+            pushDeviceTokenSetCallsCount += 1
             underlyingPushDeviceToken = value
         }
     }
@@ -457,16 +492,13 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
         mockCalled = false
 
         sharedInstanceSiteId = nil
-        sharedInstanceSiteIdCalled = false
-        sharedInstanceSiteIdGetCalled = false
-        sharedInstanceSiteIdSetCalled = false
-        siteIdsCalled = false
-        siteIdsGetCalled = false
-        siteIdsSetCalled = false
+        sharedInstanceSiteIdGetCallsCount = 0
+        sharedInstanceSiteIdSetCallsCount = 0
+        siteIdsGetCallsCount = 0
+        siteIdsSetCallsCount = 0
         pushDeviceToken = nil
-        pushDeviceTokenCalled = false
-        pushDeviceTokenGetCalled = false
-        pushDeviceTokenSetCalled = false
+        pushDeviceTokenGetCallsCount = 0
+        pushDeviceTokenSetCallsCount = 0
         appendSiteIdCallsCount = 0
         appendSiteIdReceivedArguments = nil
         appendSiteIdReceivedInvocations = []
@@ -497,6 +529,133 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
         appendSiteIdReceivedArguments = siteId
         appendSiteIdReceivedInvocations.append(siteId)
         appendSiteIdClosure?(siteId)
+    }
+}
+
+/**
+ Class to easily create a mocked version of the `HooksManager` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class HooksManagerMock: HooksManager, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingProfileIdentifyHooks: [ProfileIdentifyHook] = []
+    /// `true` if the getter or setter of property is called at least once.
+    public var profileIdentifyHooksCalled: Bool {
+        profileIdentifyHooksGetCalled || profileIdentifyHooksSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var profileIdentifyHooksGetCalled: Bool {
+        profileIdentifyHooksGetCallsCount > 0
+    }
+
+    public var profileIdentifyHooksGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var profileIdentifyHooksSetCalled: Bool {
+        profileIdentifyHooksSetCallsCount > 0
+    }
+
+    public var profileIdentifyHooksSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var profileIdentifyHooks: [ProfileIdentifyHook] {
+        get {
+            mockCalled = true
+            profileIdentifyHooksGetCallsCount += 1
+            return underlyingProfileIdentifyHooks
+        }
+        set(value) {
+            mockCalled = true
+            profileIdentifyHooksSetCallsCount += 1
+            underlyingProfileIdentifyHooks = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingQueueRunnerHooks: [QueueRunnerHook] = []
+    /// `true` if the getter or setter of property is called at least once.
+    public var queueRunnerHooksCalled: Bool {
+        queueRunnerHooksGetCalled || queueRunnerHooksSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var queueRunnerHooksGetCalled: Bool {
+        queueRunnerHooksGetCallsCount > 0
+    }
+
+    public var queueRunnerHooksGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var queueRunnerHooksSetCalled: Bool {
+        queueRunnerHooksSetCallsCount > 0
+    }
+
+    public var queueRunnerHooksSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var queueRunnerHooks: [QueueRunnerHook] {
+        get {
+            mockCalled = true
+            queueRunnerHooksGetCallsCount += 1
+            return underlyingQueueRunnerHooks
+        }
+        set(value) {
+            mockCalled = true
+            queueRunnerHooksSetCallsCount += 1
+            underlyingQueueRunnerHooks = value
+        }
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        profileIdentifyHooksGetCallsCount = 0
+        profileIdentifyHooksSetCallsCount = 0
+        queueRunnerHooksGetCallsCount = 0
+        queueRunnerHooksSetCallsCount = 0
+        addCallsCount = 0
+        addReceivedArguments = nil
+        addReceivedInvocations = []
+    }
+
+    // MARK: - add
+
+    /// Number of times the function was called.
+    public private(set) var addCallsCount = 0
+    /// `true` if the function was ever called.
+    public var addCalled: Bool {
+        addCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var addReceivedArguments: (key: HookModules, provider: ModuleHookProvider)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var addReceivedInvocations: [(key: HookModules, provider: ModuleHookProvider)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var addClosure: ((HookModules, ModuleHookProvider) -> Void)?
+
+    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func add(key: HookModules, provider: ModuleHookProvider) {
+        mockCalled = true
+        addCallsCount += 1
+        addReceivedArguments = (key: key, provider: provider)
+        addReceivedInvocations.append((key: key, provider: provider))
+        addClosure?(key, provider)
     }
 }
 
@@ -1186,6 +1345,188 @@ public class LoggerMock: Logger, TrackingMock {
 }
 
 /**
+ Class to easily create a mocked version of the `ModuleHookProvider` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class ModuleHookProviderMock: ModuleHookProvider, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingProfileIdentifyHook: ProfileIdentifyHook?
+    /// `true` if the getter or setter of property is called at least once.
+    public var profileIdentifyHookCalled: Bool {
+        profileIdentifyHookGetCalled || profileIdentifyHookSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var profileIdentifyHookGetCalled: Bool {
+        profileIdentifyHookGetCallsCount > 0
+    }
+
+    public var profileIdentifyHookGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var profileIdentifyHookSetCalled: Bool {
+        profileIdentifyHookSetCallsCount > 0
+    }
+
+    public var profileIdentifyHookSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var profileIdentifyHook: ProfileIdentifyHook? {
+        get {
+            mockCalled = true
+            profileIdentifyHookGetCallsCount += 1
+            return underlyingProfileIdentifyHook
+        }
+        set(value) {
+            mockCalled = true
+            profileIdentifyHookSetCallsCount += 1
+            underlyingProfileIdentifyHook = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingQueueRunnerHook: QueueRunnerHook?
+    /// `true` if the getter or setter of property is called at least once.
+    public var queueRunnerHookCalled: Bool {
+        queueRunnerHookGetCalled || queueRunnerHookSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var queueRunnerHookGetCalled: Bool {
+        queueRunnerHookGetCallsCount > 0
+    }
+
+    public var queueRunnerHookGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var queueRunnerHookSetCalled: Bool {
+        queueRunnerHookSetCallsCount > 0
+    }
+
+    public var queueRunnerHookSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var queueRunnerHook: QueueRunnerHook? {
+        get {
+            mockCalled = true
+            queueRunnerHookGetCallsCount += 1
+            return underlyingQueueRunnerHook
+        }
+        set(value) {
+            mockCalled = true
+            queueRunnerHookSetCallsCount += 1
+            underlyingQueueRunnerHook = value
+        }
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        profileIdentifyHook = nil
+        profileIdentifyHookGetCallsCount = 0
+        profileIdentifyHookSetCallsCount = 0
+        queueRunnerHook = nil
+        queueRunnerHookGetCallsCount = 0
+        queueRunnerHookSetCallsCount = 0
+    }
+}
+
+/**
+ Class to easily create a mocked version of the `ProfileIdentifyHook` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        beforeNewProfileIdentifiedCallsCount = 0
+        beforeNewProfileIdentifiedReceivedArguments = nil
+        beforeNewProfileIdentifiedReceivedInvocations = []
+        profileIdentifiedCallsCount = 0
+        profileIdentifiedReceivedArguments = nil
+        profileIdentifiedReceivedInvocations = []
+    }
+
+    // MARK: - beforeNewProfileIdentified
+
+    /// Number of times the function was called.
+    public private(set) var beforeNewProfileIdentifiedCallsCount = 0
+    /// `true` if the function was ever called.
+    public var beforeNewProfileIdentifiedCalled: Bool {
+        beforeNewProfileIdentifiedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var beforeNewProfileIdentifiedReceivedArguments: (oldIdentifier: String, newIdentifier: String)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var beforeNewProfileIdentifiedReceivedInvocations: [(oldIdentifier: String,
+                                                                             newIdentifier: String)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var beforeNewProfileIdentifiedClosure: ((String, String) -> Void)?
+
+    /// Mocked function for `beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String) {
+        mockCalled = true
+        beforeNewProfileIdentifiedCallsCount += 1
+        beforeNewProfileIdentifiedReceivedArguments = (oldIdentifier: oldIdentifier, newIdentifier: newIdentifier)
+        beforeNewProfileIdentifiedReceivedInvocations
+            .append((oldIdentifier: oldIdentifier, newIdentifier: newIdentifier))
+        beforeNewProfileIdentifiedClosure?(oldIdentifier, newIdentifier)
+    }
+
+    // MARK: - profileIdentified
+
+    /// Number of times the function was called.
+    public private(set) var profileIdentifiedCallsCount = 0
+    /// `true` if the function was ever called.
+    public var profileIdentifiedCalled: Bool {
+        profileIdentifiedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var profileIdentifiedReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var profileIdentifiedReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var profileIdentifiedClosure: ((String) -> Void)?
+
+    /// Mocked function for `profileIdentified(identifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func profileIdentified(identifier: String) {
+        mockCalled = true
+        profileIdentifiedCallsCount += 1
+        profileIdentifiedReceivedArguments = identifier
+        profileIdentifiedReceivedInvocations.append(identifier)
+        profileIdentifiedClosure?(identifier)
+    }
+}
+
+/**
  Class to easily create a mocked version of the `ProfileStore` class.
  This class is equipped with functions and properties ready for you to mock!
 
@@ -1206,23 +1547,32 @@ public class ProfileStoreMock: ProfileStore, TrackingMock {
      */
     public var underlyingIdentifier: String?
     /// `true` if the getter or setter of property is called at least once.
-    public var identifierCalled = false
+    public var identifierCalled: Bool {
+        identifierGetCalled || identifierSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var identifierGetCalled = false
+    public var identifierGetCalled: Bool {
+        identifierGetCallsCount > 0
+    }
+
+    public var identifierGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var identifierSetCalled = false
+    public var identifierSetCalled: Bool {
+        identifierSetCallsCount > 0
+    }
+
+    public var identifierSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var identifier: String? {
         get {
             mockCalled = true
-            identifierCalled = true
-            identifierGetCalled = true
+            identifierGetCallsCount += 1
             return underlyingIdentifier
         }
         set(value) {
             mockCalled = true
-            identifierCalled = true
-            identifierSetCalled = true
+            identifierSetCallsCount += 1
             underlyingIdentifier = value
         }
     }
@@ -1231,9 +1581,8 @@ public class ProfileStoreMock: ProfileStore, TrackingMock {
         mockCalled = false
 
         identifier = nil
-        identifierCalled = false
-        identifierGetCalled = false
-        identifierSetCalled = false
+        identifierGetCallsCount = 0
+        identifierSetCallsCount = 0
     }
 }
 
@@ -1504,6 +1853,63 @@ public class QueueRunnerMock: QueueRunner, TrackingMock {
 }
 
 /**
+ Class to easily create a mocked version of the `QueueRunnerHook` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class QueueRunnerHookMock: QueueRunnerHook, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        runTaskCallsCount = 0
+        runTaskReceivedArguments = nil
+        runTaskReceivedInvocations = []
+    }
+
+    // MARK: - runTask
+
+    /// Number of times the function was called.
+    public private(set) var runTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    public var runTaskCalled: Bool {
+        runTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var runTaskReceivedArguments: (task: QueueTask,
+                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
+                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    /// Value to return from the mocked function.
+    public var runTaskReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `runTaskReturnValue`
+     */
+    public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Bool)?
+
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
+        mockCalled = true
+        runTaskCallsCount += 1
+        runTaskReceivedArguments = (task: task, onComplete: onComplete)
+        runTaskReceivedInvocations.append((task: task, onComplete: onComplete))
+        return runTaskClosure.map { $0(task, onComplete) } ?? runTaskReturnValue
+    }
+}
+
+/**
  Class to easily create a mocked version of the `QueueStorage` class.
  This class is equipped with functions and properties ready for you to mock!
 
@@ -1741,23 +2147,32 @@ public class SdkConfigStoreMock: SdkConfigStore, TrackingMock {
      */
     public var underlyingConfig: SdkConfig!
     /// `true` if the getter or setter of property is called at least once.
-    public var configCalled = false
+    public var configCalled: Bool {
+        configGetCalled || configSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    public var configGetCalled = false
+    public var configGetCalled: Bool {
+        configGetCallsCount > 0
+    }
+
+    public var configGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    public var configSetCalled = false
+    public var configSetCalled: Bool {
+        configSetCallsCount > 0
+    }
+
+    public var configSetCallsCount = 0
     /// The mocked property with a getter and setter.
     public var config: SdkConfig {
         get {
             mockCalled = true
-            configCalled = true
-            configGetCalled = true
+            configGetCallsCount += 1
             return underlyingConfig
         }
         set(value) {
             mockCalled = true
-            configCalled = true
-            configSetCalled = true
+            configSetCallsCount += 1
             underlyingConfig = value
         }
     }
@@ -1765,9 +2180,8 @@ public class SdkConfigStoreMock: SdkConfigStore, TrackingMock {
     public func reset() {
         mockCalled = false
 
-        configCalled = false
-        configGetCalled = false
-        configSetCalled = false
+        configGetCallsCount = 0
+        configSetCallsCount = 0
     }
 }
 
@@ -1792,23 +2206,32 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore, TrackingMock {
      */
     internal var underlyingCredentials: SdkCredentials!
     /// `true` if the getter or setter of property is called at least once.
-    internal var credentialsCalled = false
+    internal var credentialsCalled: Bool {
+        credentialsGetCalled || credentialsSetCalled
+    }
+
     /// `true` if the getter called on the property at least once.
-    internal var credentialsGetCalled = false
+    internal var credentialsGetCalled: Bool {
+        credentialsGetCallsCount > 0
+    }
+
+    internal var credentialsGetCallsCount = 0
     /// `true` if the setter called on the property at least once.
-    internal var credentialsSetCalled = false
+    internal var credentialsSetCalled: Bool {
+        credentialsSetCallsCount > 0
+    }
+
+    internal var credentialsSetCallsCount = 0
     /// The mocked property with a getter and setter.
     internal var credentials: SdkCredentials {
         get {
             mockCalled = true
-            credentialsCalled = true
-            credentialsGetCalled = true
+            credentialsGetCallsCount += 1
             return underlyingCredentials
         }
         set(value) {
             mockCalled = true
-            credentialsCalled = true
-            credentialsSetCalled = true
+            credentialsSetCallsCount += 1
             underlyingCredentials = value
         }
     }
@@ -1816,9 +2239,8 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore, TrackingMock {
     public func reset() {
         mockCalled = false
 
-        credentialsCalled = false
-        credentialsGetCalled = false
-        credentialsSetCalled = false
+        credentialsGetCallsCount = 0
+        credentialsSetCallsCount = 0
         loadCallsCount = 0
     }
 

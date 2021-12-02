@@ -209,38 +209,36 @@ public protocol {{ argument.moduleName }}Mock {
 {% endif %}
 {% endmacro %}
 
-{% macro mockOptionalVariable variable %}
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }}
-{% endmacro %}
-
-{% macro mockNonOptionalArrayOrDictionaryVariable variable %}
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} = {% if variable.isArray %}[]{% elif variable.isDictionary %}[:]{% endif %}
-{% endmacro %}
-
 {% macro mockVariable variable %}
     /**
      When setter of the property called, the value given to setter is set here. 
      When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
      */
-    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}{% if variable.isOptional %} = nil{% else %}!{% endif %}
+    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}{% if variable.isArray %} = []{% elif variable.isDictionary %} = [:]{% elif variable.isOptional %} = nil{% else %}!{% endif %}
     /// `true` if the getter or setter of property is called at least once. 
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}Called = false 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}Called: Bool {
+        {% call mockedVariableName variable %}GetCalled || {% call mockedVariableName variable %}SetCalled
+    }
     /// `true` if the getter called on the property at least once. 
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCalled = false 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCalled: Bool {
+        {% call mockedVariableName variable %}GetCallsCount > 0
+    } 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCallsCount = 0
     /// `true` if the setter called on the property at least once. 
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCalled = false 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCalled: Bool {
+        {% call mockedVariableName variable %}SetCallsCount > 0
+    } 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCallsCount = 0
     /// The mocked property with a getter and setter. 
     {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} {
         get { 
             self.mockCalled = true
-            {% call mockedVariableName variable %}Called = true
-            {% call mockedVariableName variable %}GetCalled = true
+            {% call mockedVariableName variable %}GetCallsCount += 1
             return {% call underlyingMockedVariableName variable %} 
         }
         set(value) { 
             self.mockCalled = true
-            {% call mockedVariableName variable %}Called = true 
-            {% call mockedVariableName variable %}SetCalled = true
+            {% call mockedVariableName variable %}SetCallsCount += 1
             {% call underlyingMockedVariableName variable %} = value 
         }
     }    
@@ -276,9 +274,8 @@ public protocol {{ argument.moduleName }}Mock {
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
     {% endif %}         
-        {% call mockedVariableName variable %}Called = false 
-        {% call mockedVariableName variable %}GetCalled = false 
-        {% call mockedVariableName variable %}SetCalled = false 
+        {% call mockedVariableName variable %}GetCallsCount = 0
+        {% call mockedVariableName variable %}SetCallsCount = 0
 {% endfor %}        
 {% for method in type.allMethods|!definedInExtension %}
         {% call swiftifyMethodName method %}CallsCount = 0

@@ -21,10 +21,9 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let _siteId: String
 
-    private let diGraph: DITracking
-
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
+    private var sdkConfigStore: SdkConfigStore
     private var profileStore: ProfileStore
     private var hooks: HooksManager
 
@@ -36,10 +35,11 @@ public class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        self.diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DITracking.getInstance(siteId: siteId)
 
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
+        self.sdkConfigStore = diGraph.sdkConfigStore
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
     }
@@ -58,8 +58,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
      ```
      */
     public func config(_ handler: (inout SdkConfig) -> Void) {
-        var sdkConfigStore = diGraph.sdkConfigStore
-
         var configToModify = sdkConfigStore.config
 
         handler(&configToModify)
@@ -72,14 +70,15 @@ public class CustomerIOImplementation: CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        if let currentlyIdentifiedProfileIdentifier = profileStore.identifier {
-            let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != identifier
+        let currentlyIdentifiedProfileIdentifier = profileStore.identifier
+        let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
+            currentlyIdentifiedProfileIdentifier != identifier
 
-            if isChangingIdentifiedProfile {
-                hooks.profileIdentifyHooks.forEach { hook in
-                    hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                                    newIdentifier: identifier)
-                }
+        if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
+           isChangingIdentifiedProfile {
+            hooks.profileIdentifyHooks.forEach { hook in
+                hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                newIdentifier: identifier)
             }
         }
 
@@ -93,10 +92,12 @@ public class CustomerIOImplementation: CustomerIOInstance {
         // XXX: better handle scenario when adding task to queue is not successful
         if queueStatus.success {
             profileStore.identifier = identifier
-        }
 
-        hooks.profileIdentifyHooks.forEach { hook in
-            hook.profileIdentified(identifier: identifier)
+            if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
+                hooks.profileIdentifyHooks.forEach { hook in
+                    hook.profileIdentified(identifier: identifier)
+                }
+            }
         }
     }
 

@@ -35,6 +35,7 @@ public class MessagingPush: MessagingPushInstance {
         if let siteId = customerIO.siteId {
             let diGraphTracking = DITracking.getInstance(siteId: siteId)
 
+            // Register MessagingPush module hooks now that the module is being initialized.
             let hooks = diGraphTracking.hooksManager
             let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)
 
@@ -74,11 +75,5 @@ public class MessagingPush: MessagingPushInstance {
 
         implementation.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
                                    onComplete: onComplete)
-    }
-}
-
-extension DIMessagingPush {
-    var dITracking: DITracking {
-        DITracking.getInstance(siteId: siteId)
     }
 }

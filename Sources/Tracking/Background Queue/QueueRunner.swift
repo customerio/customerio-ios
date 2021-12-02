@@ -17,8 +17,6 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     // a hook instance may need to call completion handler so hold strong reference so it can
     private let hooks: HooksManager
 
-    private let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
-
     init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
         self.hooks = hooksManager
 

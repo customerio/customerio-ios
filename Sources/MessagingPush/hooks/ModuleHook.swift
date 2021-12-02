@@ -1,9 +1,6 @@
 import CioTracking
 import Foundation
 
-// We want to try and limit singletons so, we pass in a di graph from
-// the top level (MessagingPush class) classes and initialize new instances
-// when functions are called below.
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingPushModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
@@ -27,9 +24,4 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     var queueRunnerHook: QueueRunnerHook? {
         diGraphMessaging.queueRunnerHook
     }
-}
-
-internal enum QueueTaskType: String {
-    case registerPushToken
-    case deletePushToken
 }

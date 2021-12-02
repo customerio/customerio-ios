@@ -19,6 +19,8 @@ internal class CioPushDeviceTokenRepository: PushDeviceTokenRepository {
     }
 
     func registerDeviceToken(_ deviceToken: String) {
+        // no matter what, save the device token for use later. if a customer is identified later,
+        // we can reference the token and register it to a new profile.
         globalDataStore.pushDeviceToken = deviceToken
 
         guard let identifier = profileStore.identifier else {
@@ -48,10 +50,15 @@ internal class CioPushDeviceTokenRepository: PushDeviceTokenRepository {
 }
 
 extension CioPushDeviceTokenRepository: ProfileIdentifyHook {
+    // When a new profile is identified, delete token from previously identified profile for
+    // privacy and messaging releveance reasons. We only want to send messages to the currently
+    // identified profile.
     func beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String) {
         deleteDeviceToken()
     }
 
+    // When a profile is identified, try to automatically register a device token to them if there is one assigned
+    // to this device
     func profileIdentified(identifier: String) {
         guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
             return

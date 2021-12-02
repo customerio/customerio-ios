@@ -23,8 +23,11 @@ public protocol Queue: AutoMockable {
     /**
      Add a task to the queue to be performed sometime in the future.
 
-     `data` - Probably a struct that contains "a snapshot" of the data needed to perform the
-     background task (probably a network request).
+     type - String data type to allow any module to add tasks to the queue. It's
+            recommended to avoid hard-coded strings when adding tasks and instead use
+            value from `QueueTaskType` String in each module.
+     data - Probably a struct that contains "a snapshot" of the data needed to perform the
+            background task (probably a network request).
      */
     func addTask<TaskData: Codable>(
         type: String,

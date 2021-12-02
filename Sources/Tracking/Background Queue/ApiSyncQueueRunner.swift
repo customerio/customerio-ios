@@ -1,10 +1,13 @@
 import Foundation
 
+// base class for queue runner subclasses that perform networking
 open class ApiSyncQueueRunner {
     public let jsonAdapter: JsonAdapter
     public let siteId: SiteId
     public let logger: Logger
     private let httpClient: HttpClient
+
+    public let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
 
     public init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
         self.siteId = siteId

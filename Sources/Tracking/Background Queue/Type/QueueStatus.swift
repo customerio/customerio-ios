@@ -9,6 +9,7 @@ public struct QueueStatus: Equatable {
     let numTasksInQueue: Int
 }
 
+// used for testing
 internal extension QueueStatus {
     static var successAddingSingleTask: QueueStatus {
         QueueStatus(queueId: String.random, numTasksInQueue: 1)

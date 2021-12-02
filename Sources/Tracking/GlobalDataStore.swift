@@ -2,9 +2,12 @@ import Foundation
 
 /// SDK data that is common between all site ids.
 public protocol GlobalDataStore: AutoMockable {
+    // site id used for the singleton instance of the SDK.
     var sharedInstanceSiteId: String? { get set }
     func appendSiteId(_ siteId: String)
+    // all site ids that have ever been registered with the SDK
     var siteIds: [String] { get }
+    // APN or FCM device token
     var pushDeviceToken: String? { get set }
 }
 
