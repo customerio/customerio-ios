@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(os)
 import os.log
+#endif
 import OSLog
 
 /// mockable logger + abstract that allows you to log to multiple places if you wish
@@ -26,13 +28,11 @@ public class ConsoleLogger: Logger {
     // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
     // This means we can view logs in xcode console + Console app.
     private func printMessage(_ message: String, _ level: OSLogType) {
-        if #available(iOS 14, *) {
-            let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
-            logger.info("\(message, privacy: .public)")
-        } else {
-            let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: .info, message)
-        }
+        #if canImport(os)
+        newOsLog(message, level)
+        #else
+        oldOsLog(message, level)
+        #endif
     }
 
     public func debug(_ message: String) {
@@ -45,5 +45,21 @@ public class ConsoleLogger: Logger {
 
     public func error(_ message: String) {
         printMessage(message, .error)
+    }
+}
+
+extension ConsoleLogger {
+    private func newOsLog(_ message: String, _ level: OSLogType) {
+        if #available(iOS 14, *) {
+            let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
+            logger.info("\(message, privacy: .public)")
+        } else {
+            oldOsLog(message, level)
+        }
+    }
+
+    private func oldOsLog(_ message: String, _ level: OSLogType) {
+        let logger = OSLog(subsystem: logSubsystem, category: logCategory)
+        os_log("%{public}@", log: logger, type: .info, message)
     }
 }
