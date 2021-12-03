@@ -4,43 +4,38 @@ import Foundation
 
 public protocol MessagingPushAPNInstance: AutoMockable {
     // sourcery:Name=registerAPNDeviceToken
-    func registerDeviceToken(
-        apnDeviceToken: Data,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    )
+    func registerDeviceToken(apnDeviceToken: Data)
 
     // sourcery:Name=didRegisterForRemoteNotifications
     func application(
         _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     )
 
     // sourcery:Name=didFailToRegisterForRemoteNotifications
     func application(
         _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        didFailToRegisterForRemoteNotificationsWithError error: Error
     )
 }
 
 /**
  MessagingPush extension to support APN push notification messaging.
   */
-public extension MessagingPush {
-    func registerDeviceToken(apnDeviceToken: Data) {
+extension MessagingPush: MessagingPushAPNInstance {
+    public func registerDeviceToken(apnDeviceToken: Data) {
         let deviceToken = String(apnDeviceToken: apnDeviceToken)
         return registerDeviceToken(deviceToken)
     }
 
-    func application(
+    public func application(
         _ application: Any,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
         registerDeviceToken(apnDeviceToken: deviceToken)
     }
 
-    func application(
+    public func application(
         _ application: Any,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
