@@ -1,3 +1,10 @@
+# [1.0.0-alpha.19](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.18...1.0.0-alpha.19) (2021-12-03)
+
+
+### Bug Fixes
+
+* logs now show up in mac console app ([#80](https://github.com/customerio/customerio-ios/issues/80)) ([535d0be](https://github.com/customerio/customerio-ios/commit/535d0be1bdbd3a43d9ba1fe2fabeb4002ea5d35f))
+
 # [1.0.0-alpha.18](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.17...1.0.0-alpha.18) (2021-11-18)
 
 
