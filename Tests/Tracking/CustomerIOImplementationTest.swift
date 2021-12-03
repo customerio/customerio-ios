@@ -100,7 +100,7 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertFalse(hooksMock.profileIdentifyHooksCalled)
+        XCTAssertFalse(hooksMock.mockCalled)
     }
 
     func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
@@ -113,6 +113,29 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
+    }
+
+    // MARK: clearIdentify
+
+    func test_clearIdentify_givenNoPreviouslyIdentifiedCustomer_expectDoNotRunHooks_expectStorageSetNil() {
+        profileStoreMock.identifier = nil
+
+        customerIO.clearIdentify()
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_clearIdentify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectStorageSetNil() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+
+        customerIO.clearIdentify()
+
+        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
+        XCTAssertEqual(profileIdentifyHookMock.profileStoppedBeingIdentifiedCallsCount, 1)
+
+        XCTAssertNil(profileStoreMock.identifier)
     }
 
     // MARK: track

@@ -93,4 +93,9 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
 
         registerDeviceToken(existingDeviceToken)
     }
+
+    // stop sending push to a profile that is no longer identified
+    func profileStoppedBeingIdentified(oldIdentifier: String) {
+        deleteDeviceToken()
+    }
 }
