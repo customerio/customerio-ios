@@ -112,6 +112,7 @@ class MessagingPushImplementationTest: UnitTest {
         let givenDeliveryId = String.random
         let givenEvent = Metric.delivered
         let givenDeviceToken = String.random
+        queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
 
         messagingPush.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
 
