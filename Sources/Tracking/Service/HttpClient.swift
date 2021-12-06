@@ -133,7 +133,7 @@ extension CIOHttpClient {
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": "CustomerIO-SDK-iOS/\(SdkVersion.version)"]
+                                                  "User-Agent": getUserAgent()]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -143,5 +143,26 @@ extension CIOHttpClient {
         let encodedRawHeader = rawHeader.data(using: .utf8)!
 
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
+    }
+
+    /**
+     * getUserAgent - To get `user-agent` header value. This value depends on SDK version
+     * and device detail such as OS version, device model, customer's app name etc
+     *
+     * In case, UIKit is available then this function returns value in following format :
+     * `Customer.io iOS Client/1.0.0-alpha.16 (iPhone 11 Pro; iOS 14.5) User App/1.0`
+     *
+     * Otherwise will return
+     * `Customer.io iOS Client/1.0.0-alpha.16`
+     */
+    static func getUserAgent() -> String {
+        var userAgent = "Customer.io iOS Client/"
+        userAgent += SdkVersion.version
+        #if canImport(UIKit)
+        userAgent += " (\(DeviceInfo.deviceInfo); \(DeviceInfo.osInfo))"
+        userAgent += " \(DeviceInfo.customerAppName)/"
+        userAgent += DeviceInfo.customerAppVersion
+        #endif
+        return userAgent
     }
 }
