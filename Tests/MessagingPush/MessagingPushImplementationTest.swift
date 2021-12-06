@@ -18,7 +18,7 @@ class MessagingPushImplementationTest: UnitTest {
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(profileStore: profileStoreMock, backgroundQueue: queueMock,
-                                                    globalDataStore: globalDataStoreMock)
+                                                    globalDataStore: globalDataStoreMock, logger: log)
     }
 
     // MARK: registerDeviceToken

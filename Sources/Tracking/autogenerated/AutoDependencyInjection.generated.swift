@@ -307,7 +307,7 @@ public class DITracking {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger()
+        ConsoleLogger(sdkConfigStore: sdkConfigStore)
     }
 
     // FileStorage

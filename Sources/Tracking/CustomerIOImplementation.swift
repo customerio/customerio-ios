@@ -26,6 +26,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private var sdkConfigStore: SdkConfigStore
     private var profileStore: ProfileStore
     private var hooks: HooksManager
+    private let logger: Logger
 
     /**
      Constructor for singleton, only.
@@ -42,6 +43,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.sdkConfigStore = diGraph.sdkConfigStore
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
+        self.logger = diGraph.logger
     }
 
     /**
@@ -70,12 +72,17 @@ public class CustomerIOImplementation: CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
+        logger.info("identify profile \(identifier)")
+
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
             currentlyIdentifiedProfileIdentifier != identifier
 
         if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
            isChangingIdentifiedProfile {
+            logger.info("changing profile from id \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
+
+            logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
                 hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
                                                 newIdentifier: identifier)
@@ -83,6 +90,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         }
 
         let jsonBodyString = jsonAdapter.toJsonString(body, encoder: jsonEncoder)
+        logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
                                                          attributesJsonString: jsonBodyString)
@@ -91,9 +99,11 @@ public class CustomerIOImplementation: CustomerIOInstance {
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
         if queueStatus.success {
+            logger.debug("storing identifier on device storage \(identifier)")
             profileStore.identifier = identifier
 
             if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
+                logger.debug("running hooks profile identified \(identifier)")
                 hooks.profileIdentifyHooks.forEach { hook in
                     hook.profileIdentified(identifier: identifier)
                 }
@@ -102,11 +112,16 @@ public class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
+        logger.info("clearing identified profile")
+
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             return
         }
+
+        logger.debug("deleting profile info from device storage")
         profileStore.identifier = nil
 
+        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfileIdentifier)")
         hooks.profileIdentifyHooks.forEach { hook in
             hook.profileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
         }
@@ -117,6 +132,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
+        logger.info("tracking event \(name)")
+
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             // XXX: when we have anonymous profiles in SDK,
             // we can decide to not ignore events when a profile is not logged yet.
@@ -128,6 +145,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
             // XXX: log error for customer to debug their request body
             return
         }
+        logger.debug("event attributes \(jsonBodyString)")
 
         let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
                                                 attributesJsonString: jsonBodyString)

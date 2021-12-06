@@ -64,10 +64,16 @@ public class CioQueue: Queue {
     }
 
     public func addTask<T: Codable>(type: String, data: T) -> (success: Bool, queueStatus: QueueStatus) {
+        logger.info("adding queue task \(type)")
+
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {
+            logger.error("fail adding queue task, json encoding fail.")
+
             return (success: false,
                     queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count))
         }
+
+        logger.debug("added queue task data \(data.string ?? "")")
 
         let addTaskResult = storage.create(type: type, data: data)
         processQueueStatus(addTaskResult.queueStatus)
@@ -76,26 +82,28 @@ public class CioQueue: Queue {
     }
 
     public func run(onComplete: @escaping () -> Void) {
-        logger.verbose("Manually running background queue")
+        logger.info("manually running background queue")
 
         runRequest.start(onComplete: onComplete)
     }
 
     private func processQueueStatus(_ status: QueueStatus) {
-        logger.verbose("Processing queue status \(status).")
+        logger.debug("processing queue status \(status).")
         let isManyTasksInQueue = status.numTasksInQueue >= sdkConfigStore.config.backgroundQueueMinNumberOfTasks
 
         let runQueue = isManyTasksInQueue
 
         if runQueue {
-            logger.verbose("Automatically running background queue")
+            logger.info("automatically running background queue")
 
             // not using [weak self] to assert that the queue will complete and callback once started.
             // this might keep this class in memory and not get garbage collected once customer is done using it
             // but it will get released once the queue is done running.
             runRequest.start {
-                self.logger.verbose("Automatic running background queue completed")
+                self.logger.info("automatic running background queue completed")
             }
+        } else {
+            logger.debug("queue skip running automatically")
         }
     }
 }

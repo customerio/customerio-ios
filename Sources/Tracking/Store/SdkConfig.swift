@@ -25,6 +25,10 @@ public struct SdkConfig {
      */
     public var backgroundQueueMinNumberOfTasks = 10
 
+    /// To help you get setup with the SDK or debug SDK, change the log level of logs you
+    /// wish to view from the SDK.
+    public var logLevel: CioLogLevel = .error
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
