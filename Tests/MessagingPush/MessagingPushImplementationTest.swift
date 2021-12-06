@@ -53,8 +53,7 @@ class MessagingPushImplementationTest: UnitTest {
 
     // MARK: deleteDeviceToken
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
-    ) {
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = nil
         profileStoreMock.identifier = nil
 
@@ -64,8 +63,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
-    ) {
+    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = nil
         profileStoreMock.identifier = String.random
 
@@ -75,7 +73,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue(
     ) {
         globalDataStoreMock.pushDeviceToken = String.random
         profileStoreMock.identifier = nil
@@ -83,10 +81,10 @@ class MessagingPushImplementationTest: UnitTest {
         messagingPush.deleteDeviceToken()
 
         XCTAssertFalse(queueMock.mockCalled)
-        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue_expectDeleteFromStorage(
+    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue(
     ) {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
@@ -103,7 +101,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
         XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
 
-        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
     // MARK: trackMetric
