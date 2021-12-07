@@ -16,6 +16,8 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     // store hooks in memory so they don't get garbage collected in `runTask`.
     // a hook instance may need to call completion handler so hold strong reference so it can
     private let hooks: HooksManager
+    // TODO: temp fix below
+    private var hook: QueueRunnerHook?
 
     init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
         self.hooks = hooksManager
@@ -33,7 +35,12 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
             var hookHandled = false
 
             hooks.queueRunnerHooks.forEach { hook in
-                if hook.runTask(task, onComplete: onComplete) {
+                if hook.runTask(task, onComplete: { result in
+                    self.hook = nil
+                    onComplete(result)
+                }) {
+                    self.hook = hook
+
                     hookHandled = true
                 }
             }

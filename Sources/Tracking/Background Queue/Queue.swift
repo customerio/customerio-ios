@@ -46,6 +46,11 @@ public class CioQueue: Queue {
     private let jsonAdapter: JsonAdapter
     private let logger: Logger
     private let sdkConfigStore: SdkConfigStore
+    private let queueTimer: SingleScheduleTimer
+
+    private var numberSecondsToScheduleTimer: Double {
+        sdkConfigStore.config.backgroundQueueSecondsDelay
+    }
 
     init(
         siteId: SiteId,
@@ -53,7 +58,8 @@ public class CioQueue: Queue {
         runRequest: QueueRunRequest,
         jsonAdapter: JsonAdapter,
         logger: Logger,
-        sdkConfigStore: SdkConfigStore
+        sdkConfigStore: SdkConfigStore,
+        queueTimer: SingleScheduleTimer
     ) {
         self.storage = storage
         self.siteId = siteId
@@ -61,6 +67,7 @@ public class CioQueue: Queue {
         self.jsonAdapter = jsonAdapter
         self.logger = logger
         self.sdkConfigStore = sdkConfigStore
+        self.queueTimer = queueTimer
     }
 
     public func addTask<T: Codable>(type: String, data: T) -> (success: Bool, queueStatus: QueueStatus) {
@@ -82,28 +89,45 @@ public class CioQueue: Queue {
     }
 
     public func run(onComplete: @escaping () -> Void) {
-        logger.info("manually running background queue")
+        logger.info("queue run request sent")
 
         runRequest.start(onComplete: onComplete)
     }
 
+    /// We determine the queue needs to run by (1) if there are many tasks in the queue
+    /// (2) we schedule tasks to run sometime in the future.
+    /// It is by grouping more then 1 task to run at a time in the queue that will save
+    /// the device battery life so we try to do that when we can.
     private func processQueueStatus(_ status: QueueStatus) {
         logger.debug("processing queue status \(status).")
         let isManyTasksInQueue = status.numTasksInQueue >= sdkConfigStore.config.backgroundQueueMinNumberOfTasks
 
-        let runQueue = isManyTasksInQueue
+        if isManyTasksInQueue {
+            logger.info("queue met criteria to run automatically")
 
-        if runQueue {
-            logger.info("automatically running background queue")
+            // cancel timer if one running since we will run the queue now
+            queueTimer.cancel()
 
             // not using [weak self] to assert that the queue will complete and callback once started.
             // this might keep this class in memory and not get garbage collected once customer is done using it
             // but it will get released once the queue is done running.
             runRequest.start {
-                self.logger.info("automatic running background queue completed")
+                self.logger.info("queue completed all tasks")
             }
         } else {
-            logger.debug("queue skip running automatically")
+            // Not enough tasks in the queue yet to run it now, so let's schedule them to run in the future.
+            // It's expected that only 1 timer instance exists and is running in the SDK.
+            let didSchedule = queueTimer.scheduleIfNotAleady(numSeconds: numberSecondsToScheduleTimer) {
+                self.logger.info("queue timer: now running queue")
+
+                self.run {
+                    self.logger.info("queue timer: queue done running")
+                }
+            }
+
+            if didSchedule {
+                logger.info("queue timer: scheduled to run queue in \(numberSecondsToScheduleTimer) seconds")
+            }
         }
     }
 }
