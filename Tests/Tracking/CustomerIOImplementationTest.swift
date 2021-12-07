@@ -87,7 +87,7 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 2)
-        XCTAssertEqual(profileIdentifyHookMock.beforeNewProfileIdentifiedCallsCount, 1)
+        XCTAssertEqual(profileIdentifyHookMock.beforeIdentifiedProfileChangeCallsCount, 1)
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
