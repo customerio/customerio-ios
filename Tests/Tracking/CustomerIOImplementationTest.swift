@@ -8,12 +8,17 @@ class CustomerIOImplementationTest: UnitTest {
 
     private var backgroundQueueMock = QueueMock()
     private var profileStoreMock = ProfileStoreMock()
+    private var hooksMock = HooksManagerMock()
+    private var profileIdentifyHookMock = ProfileIdentifyHookMock()
 
     override func setUp() {
         super.setUp()
 
         diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(.hooksManager, value: hooksMock, forType: HooksManager.self)
+
+        hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
         customerIO = CustomerIOImplementation(siteId: diGraph.siteId)
     }
@@ -44,7 +49,7 @@ class CustomerIOImplementationTest: UnitTest {
     func test_identify_expectSetNewProfileInDeviceStorage() {
         let givenIdentifier = String.random
         backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
 
         XCTAssertNil(profileStoreMock.identifier)
 
@@ -58,18 +63,56 @@ class CustomerIOImplementationTest: UnitTest {
         let givenBody = ["first_name": "Dana"]
 
         backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .identifyProfile)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.identifyProfile.rawValue)
 
         let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data
             .value as? IdentifyProfileQueueTaskData
 
         XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
         XCTAssertEqual(actualQueueTaskData?.attributesJsonString, jsonAdapter.toJsonString(givenBody))
+    }
+
+    func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks() {
+        let givenIdentifier = String.random
+        let givenPreviouslyIdentifiedProfile = String.random
+        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 2)
+        XCTAssertEqual(profileIdentifyHookMock.beforeIdentifiedProfileChangeCallsCount, 1)
+        XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
+    }
+
+    func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks() {
+        let givenIdentifier = String.random
+        let givenPreviouslyIdentifiedProfile = givenIdentifier
+        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.profileIdentifyHooksCalled)
+    }
+
+    func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = nil
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
+        XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
     // MARK: track
@@ -87,12 +130,12 @@ class CustomerIOImplementationTest: UnitTest {
         let givenData = ["first_name": "Dana"]
         profileStoreMock.identifier = givenIdentifier
         backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
 
         customerIO.track(name: String.random, data: givenData)
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, .trackEvent)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
 
         let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
 

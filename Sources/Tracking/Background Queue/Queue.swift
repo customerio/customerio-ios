@@ -23,11 +23,14 @@ public protocol Queue: AutoMockable {
     /**
      Add a task to the queue to be performed sometime in the future.
 
-     `data` - Probably a struct that contains "a snapshot" of the data needed to perform the
-     background task (probably a network request).
+     type - String data type to allow any module to add tasks to the queue. It's
+            recommended to avoid hard-coded strings when adding tasks and instead use
+            value from `QueueTaskType` String in each module.
+     data - Probably a struct that contains "a snapshot" of the data needed to perform the
+            background task (probably a network request).
      */
     func addTask<TaskData: Codable>(
-        type: QueueTaskType,
+        type: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData
@@ -60,7 +63,7 @@ public class CioQueue: Queue {
         self.sdkConfigStore = sdkConfigStore
     }
 
-    public func addTask<T: Codable>(type: QueueTaskType, data: T) -> (success: Bool, queueStatus: QueueStatus) {
+    public func addTask<T: Codable>(type: String, data: T) -> (success: Bool, queueStatus: QueueStatus) {
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {
             return (success: false,
                     queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count))
@@ -87,8 +90,11 @@ public class CioQueue: Queue {
         if runQueue {
             logger.verbose("Automatically running background queue")
 
-            runRequest.start { [weak self] in
-                self?.logger.verbose("Automatic running background queue completed")
+            // not using [weak self] to assert that the queue will complete and callback once started.
+            // this might keep this class in memory and not get garbage collected once customer is done using it
+            // but it will get released once the queue is done running.
+            runRequest.start {
+                self.logger.verbose("Automatic running background queue completed")
             }
         }
     }

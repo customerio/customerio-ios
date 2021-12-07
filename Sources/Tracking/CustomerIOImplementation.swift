@@ -21,11 +21,11 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let _siteId: String
 
-    private let diGraph: DITracking
-
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
+    private var sdkConfigStore: SdkConfigStore
     private var profileStore: ProfileStore
+    private var hooks: HooksManager
 
     /**
      Constructor for singleton, only.
@@ -35,11 +35,13 @@ public class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        self.diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DITracking.getInstance(siteId: siteId)
 
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
+        self.sdkConfigStore = diGraph.sdkConfigStore
         self.profileStore = diGraph.profileStore
+        self.hooks = diGraph.hooksManager
     }
 
     /**
@@ -56,8 +58,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
      ```
      */
     public func config(_ handler: (inout SdkConfig) -> Void) {
-        var sdkConfigStore = diGraph.sdkConfigStore
-
         var configToModify = sdkConfigStore.config
 
         handler(&configToModify)
@@ -70,28 +70,35 @@ public class CustomerIOImplementation: CustomerIOInstance {
         body: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        let isChangingIdentifiedProfile = profileStore.identifier != nil && profileStore.identifier == identifier
-        if isChangingIdentifiedProfile {
-            // TODO: add to background queue delete device token from currently registered profile.
+        let currentlyIdentifiedProfileIdentifier = profileStore.identifier
+        let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
+            currentlyIdentifiedProfileIdentifier != identifier
+
+        if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
+           isChangingIdentifiedProfile {
+            hooks.profileIdentifyHooks.forEach { hook in
+                hook.beforeIdentifiedProfileChange(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                   newIdentifier: identifier)
+            }
         }
 
         let jsonBodyString = jsonAdapter.toJsonString(body, encoder: jsonEncoder)
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
                                                          attributesJsonString: jsonBodyString)
-        let queueStatus = backgroundQueue.addTask(type: .identifyProfile, data: queueTaskData)
+        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue, data: queueTaskData)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
         if queueStatus.success {
             profileStore.identifier = identifier
-        }
 
-        // TODO: after background queue fully implemented into the whole SDK (not just Tracking module) I see
-        // this no longer being needed. This is currently the way for other SDKs (modules) in the project at runtime
-        // to get informed about something happening but we plan on instead changing to runtime "hooks" between
-        // the SDKs.
-        // self.eventBus.post(.identifiedCustomer)
+            if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
+                hooks.profileIdentifyHooks.forEach { hook in
+                    hook.profileIdentified(identifier: identifier)
+                }
+            }
+        }
     }
 
     public func clearIdentify() {
@@ -119,6 +126,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
                                                 attributesJsonString: jsonBodyString)
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: .trackEvent, data: queueData)
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue, data: queueData)
     }
 }

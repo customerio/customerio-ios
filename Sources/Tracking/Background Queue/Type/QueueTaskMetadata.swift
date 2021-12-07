@@ -5,11 +5,11 @@ import Foundation
 /// ability to hold all queue task metadata in memory at runtime.
 public struct QueueTaskMetadata: Codable, Equatable {
     let taskPersistedId: String
-    let taskType: QueueTaskType
+    let taskType: String
 }
 
 internal extension QueueTaskMetadata {
     static var random: QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: String.random, taskType: .trackEvent)
+        QueueTaskMetadata(taskPersistedId: String.random, taskType: QueueTaskType.trackEvent.rawValue)
     }
 }

@@ -8,162 +8,16 @@ class MessagingPushImplementationTest: UnitTest {
     private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPushImplementation!
 
-    private var eventBusMock = EventBusMock()
     private var httpClientMock = HttpClientMock()
-    private var profileStoreMock = ProfileStoreMock()
+    private let pushDeviceTokenRepositoryMock = PushDeviceTokenRepositoryMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.httpClient, value: httpClientMock, forType: HttpClient.self)
-        diGraph.override(.eventBus, value: eventBusMock, forType: EventBus.self)
-        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
-
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(httpClient: httpClientMock, jsonAdapter: jsonAdapter,
-                                                    eventBus: eventBusMock, profileStore: profileStoreMock)
-    }
-
-    // MARK: registerDeviceToken
-
-    func test_registerDeviceToken_expectFailIfNoCustomerIdentified() {
-        profileStoreMock.identifier = nil
-
-        let expect = expectation(description: "Expect to fail to register device token")
-        messagingPush.registerDeviceToken(String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .noCustomerIdentified = error else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertFalse(httpClientMock.requestCalled)
-    }
-
-    func test_registerDeviceToken_givenHttpSuccess_expectSaveExpectedData() {
-        profileStoreMock.identifier = String.random
-        let actualToken = String.random
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(.success(Data()))
-        }
-
-        let expect = expectation(description: "Expect to persist token")
-        messagingPush.registerDeviceToken(actualToken) { result in
-            guard case .success = result else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        guard let storedToken = messagingPush.deviceToken else { return XCTFail() }
-        XCTAssertEqual(storedToken, actualToken)
-        XCTAssertTrue(httpClientMock.requestCalled)
-    }
-
-    func test_registerDeviceToken_givenHttpFailure_expectNilDeviceToken() {
-        profileStoreMock.identifier = String.random
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
-        }
-
-        let actualToken = String.random
-
-        let expect = expectation(description: "Expect to persist token")
-        messagingPush.registerDeviceToken(actualToken) { result in
-            guard case .failure(let actualError) = result else { return XCTFail() }
-            guard case .http(let httpError) = actualError else { return XCTFail() }
-            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertNil(messagingPush.deviceToken)
-        XCTAssertTrue(httpClientMock.requestCalled)
-    }
-
-    // MARK: deleteDeviceToken
-
-    func test_deleteDeviceToken_expectSuccessIfNoToken() {
-        messagingPush.deviceToken = nil
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.success(Data()))
-        }
-
-        let expect = expectation(description: "Expect delete to succeed if there is no identified customer")
-        messagingPush.deleteDeviceToken { result in
-            guard case .success = result else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertFalse(httpClientMock.requestCalled)
-    }
-
-    func test_deleteDeviceToken_expectSuccessIfNotIdentified() {
-        profileStoreMock.identifier = nil
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.success(Data()))
-        }
-
-        let expect = expectation(description: "Expect delete to succeed if there is not token")
-        messagingPush.deleteDeviceToken { result in
-            guard case .success = result else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertFalse(httpClientMock.requestCalled)
-    }
-
-    func test_deleteDeviceToken_givenHttpSuccess_expectClearToken() {
-        profileStoreMock.identifier = String.random
-        messagingPush.deviceToken = String.random
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.success(Data()))
-        }
-
-        let expect = expectation(description: "Expect to clear token in memory")
-        messagingPush.deleteDeviceToken { result in
-            guard case .success = result else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertNil(messagingPush.deviceToken)
-        XCTAssertTrue(httpClientMock.requestCalled)
-    }
-
-    func test_deleteDeviceToken_givenHttpFailure_expectTokenNotCleared() {
-        profileStoreMock.identifier = String.random
-        messagingPush.deviceToken = String.random
-
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
-        }
-
-        let expect = expectation(description: "Expect request to fail")
-        messagingPush.deleteDeviceToken { result in
-            guard case .failure(let actualError) = result else { return XCTFail() }
-            guard case .http(let httpError) = actualError else { return XCTFail() }
-            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertNotNil(messagingPush.deviceToken)
-        XCTAssertTrue(httpClientMock.requestCalled)
+                                                    pushDeviceTokenRepository: pushDeviceTokenRepositoryMock)
     }
 
     // MARK: trackMetric

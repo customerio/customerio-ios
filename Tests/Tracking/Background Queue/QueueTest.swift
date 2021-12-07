@@ -5,6 +5,7 @@ import XCTest
 
 class QueueTest: UnitTest {
     var queue: Queue!
+    var implementationQueue: Queue!
 
     private let storageMock = QueueStorageMock()
     private let runRequestMock = QueueRunRequestMock()
@@ -26,7 +27,7 @@ class QueueTest: UnitTest {
                                          queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
         storageMock.getInventoryReturnValue = []
 
-        let actual = queue.addTask(type: .identifyProfile,
+        let actual = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                                    data: IdentifyProfileQueueTaskData(identifier: String.random,
                                                                       attributesJsonString: nil))
 
@@ -41,7 +42,7 @@ class QueueTest: UnitTest {
                                          queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
-        _ = queue.addTask(type: .identifyProfile,
+        _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))
 
         XCTAssertEqual(runRequestMock.startCallsCount, 0)
@@ -55,7 +56,7 @@ class QueueTest: UnitTest {
                                          queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
-        _ = queue.addTask(type: .identifyProfile,
+        _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
@@ -95,7 +96,7 @@ class QueueIntegrationTest: UnitTest {
     }
 
     func test_addTask_expectSuccessfullyAdded() {
-        let addTaskActual = queue.addTask(type: .trackEvent,
+        let addTaskActual = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                                           data: TrackEventQueueTaskData(identifier: String.random,
                                                                         attributesJsonString: ""))
         XCTAssertTrue(addTaskActual.success)
@@ -107,7 +108,7 @@ class QueueIntegrationTest: UnitTest {
             onComplete(.success(()))
         }
 
-        _ = queue.addTask(type: .trackEvent,
+        _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
                                                         attributesJsonString: ""))
 
@@ -134,7 +135,7 @@ class QueueIntegrationTest: UnitTest {
             onComplete(.failure(.notInitialized))
         }
 
-        _ = queue.addTask(type: .trackEvent,
+        _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
                                                         attributesJsonString: ""))
 

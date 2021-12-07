@@ -27,7 +27,7 @@ public protocol QueueStorage: AutoMockable {
     func getInventory() -> [QueueTaskMetadata]
     func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
-    func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus)
+    func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus)
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
@@ -69,7 +69,7 @@ public class FileManagerQueueStorage: QueueStorage {
         return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
     }
 
-    public func create(type: QueueTaskType, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
+    public func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
         lock.lock()
         defer { lock.unlock() }
 

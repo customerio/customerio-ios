@@ -40,6 +40,13 @@ open class UnitTest: XCTestCase {
         super.setUp()
     }
 
+    // If writing integration tests, some dependencies in the DI graph may need credentials to exist to get populated.
+    // populate with random values here so your tests can run.
+    public func populateSdkCredentials() {
+        var credentialsStore = diGraph.sdkCredentialsStore
+        credentialsStore.credentials = SdkCredentials(apiKey: String.random, region: Region.US)
+    }
+
     override open func tearDown() {
         TrackingMocks.shared.resetAll()
 

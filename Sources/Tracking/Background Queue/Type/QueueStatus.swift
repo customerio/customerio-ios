@@ -8,3 +8,10 @@ public struct QueueStatus: Equatable {
     /// This includes tasks that are currently running or have run in the past but failed.
     let numTasksInQueue: Int
 }
+
+// used for testing
+internal extension QueueStatus {
+    static var successAddingSingleTask: QueueStatus {
+        QueueStatus(queueId: String.random, numTasksInQueue: 1)
+    }
+}

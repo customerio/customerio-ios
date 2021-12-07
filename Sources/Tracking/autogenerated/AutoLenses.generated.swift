@@ -66,12 +66,11 @@ extension QueueTask {
                                                                      data: existing.data,
                                                                      runResults: existing.runResults)
                                                        })
-    static let typeLens = Lens<QueueTask, QueueTaskType>(get: { $0.type },
-                                                         set: { type, existing in
-                                                             QueueTask(storageId: existing.storageId, type: type,
-                                                                       data: existing.data,
-                                                                       runResults: existing.runResults)
-                                                         })
+    static let typeLens = Lens<QueueTask, String>(get: { $0.type },
+                                                  set: { type, existing in
+                                                      QueueTask(storageId: existing.storageId, type: type,
+                                                                data: existing.data, runResults: existing.runResults)
+                                                  })
     static let dataLens = Lens<QueueTask, Data>(get: { $0.data },
                                                 set: { data, existing in
                                                     QueueTask(storageId: existing.storageId, type: existing.type,
@@ -90,7 +89,7 @@ extension QueueTask {
         QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
     }
 
-    func typeSet(_ type: QueueTaskType) -> QueueTask {
+    func typeSet(_ type: String) -> QueueTask {
         QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
     }
 
