@@ -15,14 +15,14 @@ class SingleScheduleTimerTest: UnitTest {
     // MARK: scheduleIfNotAleady
 
     func test_scheduleIfNotAleady_givenCallMultipleTimes_expectIgnoreFutureRequests() {
-        let expectation = expectation(description: "Timer fires")
+        let expect = expectation(description: "Timer fires")
         var didSchedule = timer.scheduleIfNotAleady(numSeconds: 0.1) {
-            expectation.fulfill()
+            expect.fulfill()
         }
         XCTAssertTrue(didSchedule)
 
         didSchedule = timer.scheduleIfNotAleady(numSeconds: 0) {
-            expectation.fulfill() // this should not fire
+            expect.fulfill() // this should not fire
         }
         XCTAssertFalse(didSchedule)
 
@@ -47,9 +47,39 @@ class SingleScheduleTimerTest: UnitTest {
 
     // MARK: cancel
 
-    func test_cancel_givenNoScheduleScheduled_expectNoErrors() {}
+    func test_cancel_givenNoScheduleScheduled_expectNoErrors() {
+        timer.cancel()
+    }
 
-    func test_cancel_givenScheduled_expectTimerCanceled() {}
+    func test_cancel_givenScheduled_expectTimerCanceled() {
+        let expect = expectation(description: "Timer does not fire")
+        expect.isInverted = true
+        let didSchedule = timer.scheduleIfNotAleady(numSeconds: 0.1) {
+            expect.fulfill()
+        }
+        XCTAssertTrue(didSchedule)
 
-    func test_cancel_expectScheduleAfterCancel() {}
+        timer.cancel()
+
+        waitForExpectations()
+    }
+
+    func test_cancel_expectScheduleAfterCancel() {
+        let expectNoFire = expectation(description: "Timer does not fire")
+        expectNoFire.isInverted = true
+        var didSchedule = timer.scheduleIfNotAleady(numSeconds: 0.1) {
+            expectNoFire.fulfill()
+        }
+        XCTAssertTrue(didSchedule)
+
+        timer.cancel()
+
+        let expectFire = expectation(description: "Timer fires")
+        didSchedule = timer.scheduleIfNotAleady(numSeconds: 0.1) {
+            expectFire.fulfill()
+        }
+        XCTAssertTrue(didSchedule)
+
+        waitForExpectations()
+    }
 }
