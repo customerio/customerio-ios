@@ -1461,9 +1461,9 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
     public func reset() {
         mockCalled = false
 
-        beforeNewProfileIdentifiedCallsCount = 0
-        beforeNewProfileIdentifiedReceivedArguments = nil
-        beforeNewProfileIdentifiedReceivedInvocations = []
+        beforeIdentifiedProfileChangeCallsCount = 0
+        beforeIdentifiedProfileChangeReceivedArguments = nil
+        beforeIdentifiedProfileChangeReceivedInvocations = []
         profileIdentifiedCallsCount = 0
         profileIdentifiedReceivedArguments = nil
         profileIdentifiedReceivedInvocations = []
@@ -1472,33 +1472,34 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
         profileStoppedBeingIdentifiedReceivedInvocations = []
     }
 
-    // MARK: - beforeNewProfileIdentified
+    // MARK: - beforeIdentifiedProfileChange
 
     /// Number of times the function was called.
-    public private(set) var beforeNewProfileIdentifiedCallsCount = 0
+    public private(set) var beforeIdentifiedProfileChangeCallsCount = 0
     /// `true` if the function was ever called.
-    public var beforeNewProfileIdentifiedCalled: Bool {
-        beforeNewProfileIdentifiedCallsCount > 0
+    public var beforeIdentifiedProfileChangeCalled: Bool {
+        beforeIdentifiedProfileChangeCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var beforeNewProfileIdentifiedReceivedArguments: (oldIdentifier: String, newIdentifier: String)?
+    public private(set) var beforeIdentifiedProfileChangeReceivedArguments: (oldIdentifier: String,
+                                                                             newIdentifier: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var beforeNewProfileIdentifiedReceivedInvocations: [(oldIdentifier: String,
-                                                                             newIdentifier: String)] = []
+    public private(set) var beforeIdentifiedProfileChangeReceivedInvocations: [(oldIdentifier: String,
+                                                                                newIdentifier: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var beforeNewProfileIdentifiedClosure: ((String, String) -> Void)?
+    public var beforeIdentifiedProfileChangeClosure: ((String, String) -> Void)?
 
-    /// Mocked function for `beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String) {
+    /// Mocked function for `beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
         mockCalled = true
-        beforeNewProfileIdentifiedCallsCount += 1
-        beforeNewProfileIdentifiedReceivedArguments = (oldIdentifier: oldIdentifier, newIdentifier: newIdentifier)
-        beforeNewProfileIdentifiedReceivedInvocations
+        beforeIdentifiedProfileChangeCallsCount += 1
+        beforeIdentifiedProfileChangeReceivedArguments = (oldIdentifier: oldIdentifier, newIdentifier: newIdentifier)
+        beforeIdentifiedProfileChangeReceivedInvocations
             .append((oldIdentifier: oldIdentifier, newIdentifier: newIdentifier))
-        beforeNewProfileIdentifiedClosure?(oldIdentifier, newIdentifier)
+        beforeIdentifiedProfileChangeClosure?(oldIdentifier, newIdentifier)
     }
 
     // MARK: - profileIdentified
