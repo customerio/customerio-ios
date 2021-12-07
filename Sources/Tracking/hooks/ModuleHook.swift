@@ -12,7 +12,7 @@ public protocol ModuleHookProvider: AutoMockable {
 public protocol ProfileIdentifyHook: AutoMockable {
     /// called when switching to a new profile. Only called when
     /// `oldIdentifier != newIdentifier`
-    func beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String)
+    func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)
     /// called when a profile is newly identified in the SDK.
     func profileIdentified(identifier: String)
     /// profile previously identified has stopped being identified.

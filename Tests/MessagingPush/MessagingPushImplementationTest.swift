@@ -73,8 +73,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue(
-    ) {
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = String.random
         profileStoreMock.identifier = nil
 
@@ -84,8 +83,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue(
-    ) {
+    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
 

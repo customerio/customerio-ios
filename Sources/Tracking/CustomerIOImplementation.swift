@@ -84,8 +84,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
             logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                                newIdentifier: identifier)
+                hook.beforeIdentifiedProfileChange(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                   newIdentifier: identifier)
             }
         }
 
