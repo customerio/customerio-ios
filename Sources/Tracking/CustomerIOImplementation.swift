@@ -77,8 +77,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
            isChangingIdentifiedProfile {
             hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeNewProfileIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                                newIdentifier: identifier)
+                hook.beforeIdentifiedProfileChange(oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                                                   newIdentifier: identifier)
             }
         }
 

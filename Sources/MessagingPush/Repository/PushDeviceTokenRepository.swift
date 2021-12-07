@@ -53,7 +53,7 @@ extension CioPushDeviceTokenRepository: ProfileIdentifyHook {
     // When a new profile is identified, delete token from previously identified profile for
     // privacy and messaging releveance reasons. We only want to send messages to the currently
     // identified profile.
-    func beforeNewProfileIdentified(oldIdentifier: String, newIdentifier: String) {
+    func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
         deleteDeviceToken()
     }
 
