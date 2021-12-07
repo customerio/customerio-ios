@@ -102,7 +102,14 @@ public class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
+        guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
+            return
+        }
         profileStore.identifier = nil
+
+        hooks.profileIdentifyHooks.forEach { hook in
+            hook.profileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
+        }
     }
 
     public func track<RequestBody: Encodable>(

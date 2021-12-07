@@ -1467,6 +1467,9 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
         profileIdentifiedCallsCount = 0
         profileIdentifiedReceivedArguments = nil
         profileIdentifiedReceivedInvocations = []
+        profileStoppedBeingIdentifiedCallsCount = 0
+        profileStoppedBeingIdentifiedReceivedArguments = nil
+        profileStoppedBeingIdentifiedReceivedInvocations = []
     }
 
     // MARK: - beforeIdentifiedProfileChange
@@ -1524,6 +1527,33 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
         profileIdentifiedReceivedArguments = identifier
         profileIdentifiedReceivedInvocations.append(identifier)
         profileIdentifiedClosure?(identifier)
+    }
+
+    // MARK: - profileStoppedBeingIdentified
+
+    /// Number of times the function was called.
+    public private(set) var profileStoppedBeingIdentifiedCallsCount = 0
+    /// `true` if the function was ever called.
+    public var profileStoppedBeingIdentifiedCalled: Bool {
+        profileStoppedBeingIdentifiedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var profileStoppedBeingIdentifiedReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var profileStoppedBeingIdentifiedClosure: ((String) -> Void)?
+
+    /// Mocked function for `profileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func profileStoppedBeingIdentified(oldIdentifier: String) {
+        mockCalled = true
+        profileStoppedBeingIdentifiedCallsCount += 1
+        profileStoppedBeingIdentifiedReceivedArguments = oldIdentifier
+        profileStoppedBeingIdentifiedReceivedInvocations.append(oldIdentifier)
+        profileStoppedBeingIdentifiedClosure?(oldIdentifier)
     }
 }
 

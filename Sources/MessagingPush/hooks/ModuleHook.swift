@@ -18,7 +18,7 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        diGraphMessaging.pushDeviceTokenRepository as? CioPushDeviceTokenRepository
+        MessagingPushImplementation(siteId: siteId)
     }
 
     var queueRunnerHook: QueueRunnerHook? {

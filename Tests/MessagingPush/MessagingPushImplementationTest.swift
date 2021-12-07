@@ -8,51 +8,119 @@ class MessagingPushImplementationTest: UnitTest {
     private var mockCustomerIO = CustomerIOInstanceMock()
     private var messagingPush: MessagingPushImplementation!
 
-    private var httpClientMock = HttpClientMock()
-    private let pushDeviceTokenRepositoryMock = PushDeviceTokenRepositoryMock()
+    private let profileStoreMock = ProfileStoreMock()
+    private let queueMock = QueueMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
 
     override func setUp() {
         super.setUp()
 
         mockCustomerIO.siteId = testSiteId
 
-        messagingPush = MessagingPushImplementation(httpClient: httpClientMock, jsonAdapter: jsonAdapter,
-                                                    pushDeviceTokenRepository: pushDeviceTokenRepositoryMock)
+        messagingPush = MessagingPushImplementation(profileStore: profileStoreMock, backgroundQueue: queueMock,
+                                                    globalDataStore: globalDataStoreMock)
+    }
+
+    // MARK: registerDeviceToken
+
+    func test_registerDeviceToken_givenNoCustomerIdentified_expectNoAddingToQueue_expectStoreDeviceToken() {
+        let givenDeviceToken = String.random
+        profileStoreMock.identifier = nil
+
+        messagingPush.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertFalse(queueMock.mockCalled)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
+    func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
+        let givenDeviceToken = String.random
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        messagingPush.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(queueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.registerPushToken.rawValue)
+        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
+            .value as! RegisterPushNotificationQueueTaskData
+        XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
+        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
+
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
+    // MARK: deleteDeviceToken
+
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
+    ) {
+        globalDataStoreMock.pushDeviceToken = nil
+        profileStoreMock.identifier = nil
+
+        messagingPush.deleteDeviceToken()
+
+        XCTAssertFalse(queueMock.mockCalled)
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
+    ) {
+        globalDataStoreMock.pushDeviceToken = nil
+        profileStoreMock.identifier = String.random
+
+        messagingPush.deleteDeviceToken()
+
+        XCTAssertFalse(queueMock.mockCalled)
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue_expectDeleteFromStorage(
+    ) {
+        globalDataStoreMock.pushDeviceToken = String.random
+        profileStoreMock.identifier = nil
+
+        messagingPush.deleteDeviceToken()
+
+        XCTAssertFalse(queueMock.mockCalled)
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue_expectDeleteFromStorage(
+    ) {
+        let givenDeviceToken = String.random
+        let givenIdentifier = String.random
+
+        globalDataStoreMock.pushDeviceToken = givenDeviceToken
+        profileStoreMock.identifier = givenIdentifier
+        queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        messagingPush.deleteDeviceToken()
+
+        XCTAssertEqual(queueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.deletePushToken.rawValue)
+        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as! DeletePushNotificationQueueTaskData
+        XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
+        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
+
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
     // MARK: trackMetric
 
-    func test_trackMetric_givenHttpSuccess_expectSuccess() {
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.success(Data()))
-        }
+    func test_trackMetric_expectAddTaskToQueue() {
+        let givenDeliveryId = String.random
+        let givenEvent = Metric.delivered
+        let givenDeviceToken = String.random
+        queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
 
-        let expect = expectation(description: "Expect trackMetric to succeed")
-        messagingPush.trackMetric(deliveryID: String.random, event: .delivered, deviceToken: String.random) { result in
-            guard case .success = result else { return XCTFail() }
-            expect.fulfill()
-        }
+        messagingPush.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
 
-        waitForExpectations()
-
-        XCTAssertTrue(httpClientMock.requestCalled)
-    }
-
-    func test_trackMetric_givenHttpFailure_expectFailure() {
-        httpClientMock.requestClosure = { params, onComplete in
-            onComplete(Result.failure(HttpRequestError.unsuccessfulStatusCode(500, apiMessage: "")))
-        }
-
-        let expect = expectation(description: "Expect trackMetric to fail")
-        messagingPush.trackMetric(deliveryID: String.random, event: .delivered, deviceToken: String.random) { result in
-            guard case .failure(let actualError) = result else { return XCTFail() }
-            guard case .http(let httpError) = actualError else { return XCTFail() }
-            guard case .unsuccessfulStatusCode(let code, _) = httpError, code == 500 else { return XCTFail() }
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-
-        XCTAssertTrue(httpClientMock.requestCalled)
+        XCTAssertEqual(queueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
+        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as! MetricRequest
+        XCTAssertEqual(actualQueueTaskData.deliveryID, givenDeliveryId)
+        XCTAssertEqual(actualQueueTaskData.event, givenEvent)
+        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
     }
 }

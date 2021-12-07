@@ -138,28 +138,21 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerAPNDeviceTokenReceivedArguments: (apnDeviceToken: Data,
-                                                                      onComplete: (Result<Void, CustomerIOError>)
-                                                                          -> Void)?
+    public private(set) var registerAPNDeviceTokenReceivedArguments: (Data)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerAPNDeviceTokenReceivedInvocations: [(apnDeviceToken: Data,
-                                                                         onComplete: (Result<Void, CustomerIOError>)
-                                                                             -> Void)] = []
+    public private(set) var registerAPNDeviceTokenReceivedInvocations: [Data] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var registerAPNDeviceTokenClosure: ((Data, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var registerAPNDeviceTokenClosure: ((Data) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(apnDeviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func registerDeviceToken(
-        apnDeviceToken: Data,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `registerDeviceToken(apnDeviceToken: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerDeviceToken(apnDeviceToken: Data) {
         mockCalled = true
         registerAPNDeviceTokenCallsCount += 1
-        registerAPNDeviceTokenReceivedArguments = (apnDeviceToken: apnDeviceToken, onComplete: onComplete)
-        registerAPNDeviceTokenReceivedInvocations.append((apnDeviceToken: apnDeviceToken, onComplete: onComplete))
-        registerAPNDeviceTokenClosure?(apnDeviceToken, onComplete)
+        registerAPNDeviceTokenReceivedArguments = apnDeviceToken
+        registerAPNDeviceTokenReceivedInvocations.append(apnDeviceToken)
+        registerAPNDeviceTokenClosure?(apnDeviceToken)
     }
 
     // MARK: - application
@@ -172,32 +165,23 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didRegisterForRemoteNotificationsReceivedArguments: (application: Any, deviceToken: Data,
-                                                                                 onComplete: (Result<Void,
-                                                                                     CustomerIOError>) -> Void)?
+    public private(set) var didRegisterForRemoteNotificationsReceivedArguments: (application: Any, deviceToken: Data)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didRegisterForRemoteNotificationsReceivedInvocations: [(application: Any, deviceToken: Data,
-                                                                                    onComplete: (
-                                                                                        Result<Void, CustomerIOError>
-                                                                                    ) -> Void)] = []
+    public private(set) var didRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
+                                                                                    deviceToken: Data)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var didRegisterForRemoteNotificationsClosure: ((Any, Data, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var didRegisterForRemoteNotificationsClosure: ((Any, Data) -> Void)?
 
-    /// Mocked function for `application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func application(
-        _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         mockCalled = true
         didRegisterForRemoteNotificationsCallsCount += 1
-        didRegisterForRemoteNotificationsReceivedArguments = (application: application, deviceToken: deviceToken,
-                                                              onComplete: onComplete)
+        didRegisterForRemoteNotificationsReceivedArguments = (application: application, deviceToken: deviceToken)
         didRegisterForRemoteNotificationsReceivedInvocations
-            .append((application: application, deviceToken: deviceToken, onComplete: onComplete))
-        didRegisterForRemoteNotificationsClosure?(application, deviceToken, onComplete)
+            .append((application: application, deviceToken: deviceToken))
+        didRegisterForRemoteNotificationsClosure?(application, deviceToken)
     }
 
     // MARK: - application
@@ -210,34 +194,21 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error,
-                                                                                       onComplete: (Result<Void,
-                                                                                           CustomerIOError>) -> Void)?
+    public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
-                                                                                          error: Error,
-                                                                                          onComplete: (
-                                                                                              Result<Void,
-                                                                                                  CustomerIOError>
-                                                                                          ) -> Void)] = []
+                                                                                          error: Error)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error, (Result<Void, CustomerIOError>) -> Void)
-        -> Void)?
+    public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error) -> Void)?
 
-    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         mockCalled = true
         didFailToRegisterForRemoteNotificationsCallsCount += 1
-        didFailToRegisterForRemoteNotificationsReceivedArguments = (application: application, error: error,
-                                                                    onComplete: onComplete)
-        didFailToRegisterForRemoteNotificationsReceivedInvocations
-            .append((application: application, error: error, onComplete: onComplete))
-        didFailToRegisterForRemoteNotificationsClosure?(application, error, onComplete)
+        didFailToRegisterForRemoteNotificationsReceivedArguments = (application: application, error: error)
+        didFailToRegisterForRemoteNotificationsReceivedInvocations.append((application: application, error: error))
+        didFailToRegisterForRemoteNotificationsClosure?(application, error)
     }
 }

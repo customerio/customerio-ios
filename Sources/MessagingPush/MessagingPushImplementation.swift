@@ -2,28 +2,28 @@ import CioTracking
 import Foundation
 
 internal class MessagingPushImplementation: MessagingPushInstance {
-    private let httpClient: HttpClient
-    private let jsonAdapter: JsonAdapter
-    private let pushDeviceTokenRepository: PushDeviceTokenRepository
+    private let profileStore: ProfileStore
+    private let backgroundQueue: Queue
+    private var globalDataStore: GlobalDataStore
 
     /// testing init
     internal init(
-        httpClient: HttpClient,
-        jsonAdapter: JsonAdapter,
-        pushDeviceTokenRepository: PushDeviceTokenRepository
+        profileStore: ProfileStore,
+        backgroundQueue: Queue,
+        globalDataStore: GlobalDataStore
     ) {
-        self.httpClient = httpClient
-        self.jsonAdapter = jsonAdapter
-        self.pushDeviceTokenRepository = pushDeviceTokenRepository
+        self.profileStore = profileStore
+        self.backgroundQueue = backgroundQueue
+        self.globalDataStore = globalDataStore
     }
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
         let diGraphMessaging = DIMessagingPush.getInstance(siteId: siteId)
 
-        self.httpClient = diGraph.httpClient
-        self.jsonAdapter = diGraph.jsonAdapter
-        self.pushDeviceTokenRepository = diGraphMessaging.pushDeviceTokenRepository
+        self.profileStore = diGraph.profileStore
+        self.backgroundQueue = diGraph.queue
+        self.globalDataStore = diGraph.globalDataStore
     }
 
     /**
@@ -31,14 +31,36 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        pushDeviceTokenRepository.registerDeviceToken(deviceToken)
+        // no matter what, save the device token for use later. if a customer is identified later,
+        // we can reference the token and register it to a new profile.
+        globalDataStore.pushDeviceToken = deviceToken
+
+        guard let identifier = profileStore.identifier else {
+            return
+        }
+
+        _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
+                                    data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
+                                                                                deviceToken: deviceToken,
+                                                                                lastUsed: Date()))
     }
 
     /**
      Delete the currently registered device token
      */
     public func deleteDeviceToken() {
-        pushDeviceTokenRepository.deleteDeviceToken()
+        guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            return // no device token to delete, ignore request
+        }
+        globalDataStore.pushDeviceToken = nil
+
+        guard let identifiedProfileId = profileStore.identifier else {
+            return // no profile to delete token from, ignore request
+        }
+
+        _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
+                                    data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
+                                                                              deviceToken: existingDeviceToken))
     }
 
     /**
@@ -47,29 +69,34 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     public func trackMetric(
         deliveryID: String,
         event: Metric,
-        deviceToken: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        deviceToken: String
     ) {
-        let request = MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken, timestamp: Date())
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
+                                    data: MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
+                                                        timestamp: Date()))
+    }
+}
 
-        guard let bodyData = jsonAdapter.toJson(request) else {
-            return onComplete(.failure(.http(.noRequestMade(nil))))
+extension MessagingPushImplementation: ProfileIdentifyHook {
+    // When a new profile is identified, delete token from previously identified profile for
+    // privacy and messaging releveance reasons. We only want to send messages to the currently
+    // identified profile.
+    func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
+        deleteDeviceToken()
+    }
+
+    // When a profile is identified, try to automatically register a device token to them if there is one assigned
+    // to this device
+    func profileIdentified(identifier: String) {
+        guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            return
         }
 
-        let httpRequestParameters =
-            HttpRequestParams(endpoint: .pushMetrics,
-                              headers: nil, body: bodyData)
+        registerDeviceToken(existingDeviceToken)
+    }
 
-        httpClient
-            .request(httpRequestParameters) { result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success:
-                        onComplete(Result.success(()))
-                    case .failure(let error):
-                        onComplete(Result.failure(.http(error)))
-                    }
-                }
-            }
+    // stop sending push to a profile that is no longer identified
+    func profileStoppedBeingIdentified(oldIdentifier: String) {
+        deleteDeviceToken()
     }
 }

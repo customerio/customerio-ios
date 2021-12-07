@@ -4,4 +4,5 @@ import Foundation
 internal enum QueueTaskType: String {
     case registerPushToken
     case deletePushToken
+    case trackPushMetric
 }

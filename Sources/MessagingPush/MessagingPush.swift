@@ -7,8 +7,7 @@ public protocol MessagingPushInstance: AutoMockable {
     func trackMetric(
         deliveryID: String,
         event: Metric,
-        deviceToken: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        deviceToken: String
     )
 }
 
@@ -66,14 +65,8 @@ public class MessagingPush: MessagingPushInstance {
     public func trackMetric(
         deliveryID: String,
         event: Metric,
-        deviceToken: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        deviceToken: String
     ) {
-        guard let implementation = self.implementation else {
-            return onComplete(Result.failure(.notInitialized))
-        }
-
-        implementation.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
-                                   onComplete: onComplete)
+        implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 }
