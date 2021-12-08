@@ -49,8 +49,8 @@ public extension CustomerIOImplementation {
             }
             return
         }
-
-        screen(name: name, data: data) { _ in
+            
+        screen(name: name, data: StringAnyEncodable(data)) { _ in
             // XXX: global error handling of result here
         }
         
