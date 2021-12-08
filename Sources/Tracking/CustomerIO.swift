@@ -97,10 +97,10 @@ public extension CustomerIOInstance {
     
     func screen(
         name: String,
-        data: [String:AnyEncodable],
+        data: [String:Any],
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        screen(name: name, data: data, jsonEncoder: nil, onComplete: onComplete)
+        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil, onComplete: onComplete)
     }
 
     func screen(

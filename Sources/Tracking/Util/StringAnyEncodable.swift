@@ -12,7 +12,8 @@ public struct StringAnyEncodable: Encodable {
             case let dict as [String:Any]:
                 d[k] = AnyEncodable(StringAnyEncodable(dict))
             default:
-                print(v, "doesnt conform to encodable")
+                // XXX: throw here? or just warn?
+                continue
             }
         }
         self.data = d
