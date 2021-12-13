@@ -9,8 +9,8 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody,
-        jsonEncoder: JSONEncoder?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder?
     )
 
     func clearIdentify()
@@ -58,7 +58,7 @@ public extension CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        identify(identifier: identifier, body: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+        identify(identifier: identifier, body: EmptyRequestBody(), onComplete: onComplete, jsonEncoder: jsonEncoder)
     }
 
     /**
@@ -82,27 +82,28 @@ public extension CustomerIOInstance {
     func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
-        jsonEncoder: JSONEncoder? = nil,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
     ) {
-        identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder,onComplete: onComplete)
+        identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
     }
-    
+
     func identify(
         identifier: String,
-        body: [String:Any],
-        jsonEncoder: JSONEncoder? = nil,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        body: [String: Any],
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
     ) {
-        identify(identifier: identifier, body: StringAnyEncodable(body), jsonEncoder: jsonEncoder,onComplete: onComplete)
+        identify(identifier: identifier, body: StringAnyEncodable(body), onComplete: onComplete,
+                 jsonEncoder: jsonEncoder)
     }
-    
+
     func track(
         name: String,
-        data: [String:Any],
+        data: [String: Any],
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ){
+    ) {
         track(name: name, data: StringAnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 
@@ -112,10 +113,10 @@ public extension CustomerIOInstance {
     ) {
         track(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
     }
-    
+
     func screen(
         name: String,
-        data: [String:Any],
+        data: [String: Any],
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil, onComplete: onComplete)
