@@ -15,6 +15,8 @@ public extension CustomerIOImplementation {
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 
+    // lint allow start with _ since it's swizzled. Makes it stand out.
+    // swiftlint:disable:next identifier_name
     @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
         _swizzled_UIKit_viewDidAppear(animated)
 
