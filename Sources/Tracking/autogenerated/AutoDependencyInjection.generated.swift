@@ -67,6 +67,7 @@ public enum DependencyTracking: CaseIterable {
     case queueRequestManager
     case queueRunRequest
     case queueRunner
+    case singleScheduleTimer
     case logger
     case fileStorage
     case queueStorage
@@ -146,6 +147,7 @@ public class DITracking {
         case .queueRequestManager: return queueRequestManager as! T
         case .queueRunRequest: return queueRunRequest as! T
         case .queueRunner: return queueRunner as! T
+        case .singleScheduleTimer: return singleScheduleTimer as! T
         case .logger: return logger as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
@@ -244,7 +246,7 @@ public class DITracking {
 
     private var newQueue: Queue {
         CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
-                 logger: logger, sdkConfigStore: sdkConfigStore)
+                 logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer)
     }
 
     // QueueRequestManager (singleton)
@@ -296,6 +298,31 @@ public class DITracking {
     private var newQueueRunner: QueueRunner {
         CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient,
                        hooksManager: hooksManager)
+    }
+
+    // SingleScheduleTimer (singleton)
+    internal var singleScheduleTimer: SingleScheduleTimer {
+        if let overridenDep = overrides[.singleScheduleTimer] {
+            return overridenDep as! SingleScheduleTimer
+        }
+        return sharedSingleScheduleTimer
+    }
+
+    private let _singleScheduleTimer_queue = DispatchQueue(label: "DI_get_singleScheduleTimer_queue")
+    private var _singleScheduleTimer_shared: SingleScheduleTimer?
+    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
+        _singleScheduleTimer_queue.sync {
+            if let overridenDep = self.overrides[.singleScheduleTimer] {
+                return overridenDep as! SingleScheduleTimer
+            }
+            let res = _singleScheduleTimer_shared ?? _get_singleScheduleTimer()
+            _singleScheduleTimer_shared = res
+            return res
+        }
+    }
+
+    private func _get_singleScheduleTimer() -> SingleScheduleTimer {
+        CioSingleScheduleTimer()
     }
 
     // Logger
