@@ -101,8 +101,8 @@ public extension CustomerIOInstance {
     func track(
         name: String,
         data: [String: Any],
-        jsonEncoder: JSONEncoder?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
     ) {
         track(name: name, data: StringAnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
