@@ -8,7 +8,7 @@
 ![min ios version is 13](https://img.shields.io/badge/min%20iOS%20version-13-blue)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md) 
 
-# Summary
+# Customer.io iOS SDK
 
 This is the official Customer.io SDK for iOS.
 
@@ -18,13 +18,18 @@ Before you get started, keep in mind:
 1. **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 2. **Our SDK is a work in progress!** While we're *very* excited about it, it's still in its **`alpha`** phase; it is not ready for general availability. If you want to try it out, contact [product@customer.io](mailto:product@customer.io) and we'll help set you up!
 
-# Get started
+## Summary
 
 To get started, you need to install and initialize the relevant SDK packages in your project. 
 
-To minimize our SDK's impact on your app's size, we offer multiple, separate SDKs. You should only install the packages that you need for your project. 
+We've separated our SDK into packages to minimize our impact on your app's size. You should only install the packages that you need for your project. 
 
-> Tip: Check out our [sample iOS app, Remote Habits](https://github.com/customerio/RemoteHabits-iOS), for a real-world example of how to use our SDK. 
+| Package | Required? | Description |
+| :-- | :---: | :--- |
+| Tracking | Yes | [`identify`](https://customer.io/docs/sdk/ios/identify/) people/devices and [send events](https://customer.io/docs/sdk/ios/track-events/) (to trigger campaigns, track metrics, etc). |
+| MessagingPushAPN | No | [Push](https://customer.io/docs/sdk/ios/push/) and [rich push](https://customer.io/docs/sdk/ios/rich-push/) notifications using Apple's Push Notification service (APNs). |
+
+> Tip: Check out our [sample iOS app, Remote Habits](https://github.com/customerio/RemoteHabits-iOS), for a real-world example using our SDK. 
 
 ## Install the SDK
 
@@ -45,17 +50,6 @@ https://github.com/customerio/customerio-ios.git
 4. Lastly, choose the SDK products that you want to install. You can start by selecting `Tracking` for now and adding others later if you need them. 
 
 ![](docs/img/xcode_spm_select_sdks.jpeg)
-
-### Available SDK packages
-
-Here are the list of the SDKs that you can install. You can find more details on both in [our SDK documentation](/docs/sdk/ios/).
-
-| Package | Required? | Description |
-| :-- | :---: | :--- |
-| Tracking | Yes | `identify` people in Customer.io |
-| MessagingPushAPN | No | Receive push notifications over Apple's Push Notification service (APNs) |
-| MessagingPushFCM | No | Receive push notifications over Firebase Cloud Messaging (FCM) |
-
 
 ## Initialize the SDK
 
