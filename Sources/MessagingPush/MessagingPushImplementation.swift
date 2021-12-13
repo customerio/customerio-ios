@@ -22,7 +22,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
-        let diGraphMessaging = DIMessagingPush.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
@@ -50,7 +49,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
                                     data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
                                                                                 deviceToken: deviceToken,
-                                                                                lastUsed: Date()))
+                                                                                lastUsed: Date()),
+                                    groupsParent: [QueueTaskGroup.registeredPushToken(token: deviceToken).string],
+                                    groupsChild: [QueueTaskGroup.identifiedProfile(identifier: identifier).string])
     }
 
     /**
@@ -73,7 +74,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
                                     data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
-                                                                              deviceToken: existingDeviceToken))
+                                                                              deviceToken: existingDeviceToken),
+                                    groupsParent: nil,
+                                    groupsChild: [
+                                        QueueTaskGroup.registeredPushToken(token: existingDeviceToken).string,
+                                        QueueTaskGroup.identifiedProfile(identifier: identifiedProfileId).string
+                                    ])
     }
 
     /**
@@ -90,7 +96,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
                                     data: MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
-                                                        timestamp: Date()))
+                                                        timestamp: Date()),
+                                    groupsParent: nil,
+                                    groupsChild: nil)
     }
 }
 

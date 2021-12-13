@@ -51,7 +51,9 @@ public struct QueueTask: Codable, AutoLenses, Equatable {
 
 internal extension QueueTask {
     static var random: QueueTask {
-        QueueTask(storageId: String.random, type: QueueTaskType.identifyProfile.rawValue, data: Data(),
+        QueueTask(storageId: String.random,
+                  type: QueueTaskType.identifyProfile.rawValue,
+                  data: Data(),
                   runResults: QueueTaskRunResults(totalRuns: 1))
     }
 }

@@ -59,7 +59,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = QueueTaskType.identifyProfile.rawValue
 
-        let actual = storage.create(type: givenType, data: givenData)
+        let actual = storage.create(type: givenType, data: givenData, groupsParent: [String.random],
+                                    groupsChild: [String.random])
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2) // create task and update inventory
         XCTAssertTrue(actual.success)
@@ -72,7 +73,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = QueueTaskType.identifyProfile.rawValue
 
-        let actual = storage.create(type: givenType, data: givenData)
+        let actual = storage.create(type: givenType, data: givenData, groupsParent: [String.random],
+                                    groupsChild: [String.random])
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call
         XCTAssertFalse(actual.success)
@@ -88,7 +90,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = QueueTaskType.identifyProfile.rawValue
 
-        let actual = storage.create(type: givenType, data: givenData)
+        let actual = storage.create(type: givenType, data: givenData, groupsParent: [String.random],
+                                    groupsChild: [String.random])
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2)
         XCTAssertFalse(actual.success)
@@ -158,7 +161,8 @@ class QueueStorageIntegrationTest: UnitTest {
     // MARK: delete
 
     func test_delete_expectDeleteTaskPreviouslyAdded() {
-        _ = storage.create(type: QueueTaskType.identifyProfile.rawValue, data: Data())
+        _ = storage.create(type: QueueTaskType.identifyProfile.rawValue, data: Data(), groupsParent: [String.random],
+                           groupsChild: [String.random])
 
         var inventory = storage.getInventory()
         XCTAssertEqual(inventory.count, 1)

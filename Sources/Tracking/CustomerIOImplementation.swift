@@ -94,7 +94,12 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
                                                          attributesJsonString: jsonBodyString)
-        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue, data: queueTaskData)
+
+        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue,
+                                                  data: queueTaskData,
+                                                  groupsParent: [QueueTaskGroup
+                                                      .identifiedProfile(identifier: identifier).string],
+                                                  groupsChild: nil)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
@@ -151,6 +156,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
                                                 attributesJsonString: jsonBodyString)
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue, data: queueData)
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
+                                    data: queueData,
+                                    groupsParent: nil,
+                                    groupsChild: [QueueTaskGroup
+                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier).string])
     }
 }

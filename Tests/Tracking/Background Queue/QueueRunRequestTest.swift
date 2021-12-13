@@ -9,12 +9,16 @@ class QueueRunRequestTest: UnitTest {
     private let runnerMock = QueueRunnerMock()
     private let storageMock = QueueStorageMock()
     private let requestManagerMock = QueueRequestManagerMock()
+    // Class is similar to a util class and doesn't add value to be mocked.
+    private var queryRunner: QueueQueryRunner {
+        diGraph.queueQueryRunner
+    }
 
     override func setUp() {
         super.setUp()
 
         runRequest = CioQueueRunRequest(runner: runnerMock, storage: storageMock, requestManger: requestManagerMock,
-                                        logger: log)
+                                        logger: log, queryRunner: queryRunner)
     }
 
     // our indictor if run request is running the queue
@@ -48,7 +52,7 @@ class QueueRunRequestTest: UnitTest {
         let givenStorageId = givenQueueTask.storageId
         storageMock.getReturnValue = givenQueueTask
         var inventory = [
-            QueueTaskMetadata(taskPersistedId: givenStorageId, taskType: QueueTaskType.identifyProfile.rawValue)
+            QueueTaskMetadata.random.taskPersistedIdSet(givenStorageId)
         ]
         storageMock.getInventoryReturnValue = inventory
         runnerMock.runTaskClosure = { _, onComplete in
@@ -71,7 +75,7 @@ class QueueRunRequestTest: UnitTest {
         let givenStorageId = givenQueueTask.storageId
         storageMock.getReturnValue = givenQueueTask
         var inventory = [
-            QueueTaskMetadata(taskPersistedId: givenStorageId, taskType: QueueTaskType.identifyProfile.rawValue)
+            QueueTaskMetadata.random.taskPersistedIdSet(givenStorageId)
         ]
         storageMock.getInventoryReturnValue = inventory
         runnerMock.runTaskClosure = { _, onComplete in
@@ -92,8 +96,8 @@ class QueueRunRequestTest: UnitTest {
         requestManagerMock.startRequestReturnValue = false
         storageMock.getReturnValue = QueueTask.random
         var inventory = [
-            QueueTaskMetadata(taskPersistedId: String.random, taskType: QueueTaskType.identifyProfile.rawValue),
-            QueueTaskMetadata(taskPersistedId: String.random, taskType: QueueTaskType.identifyProfile.rawValue)
+            QueueTaskMetadata.random,
+            QueueTaskMetadata.random
         ]
         storageMock.getInventoryReturnValue = inventory
         runnerMock.runTaskClosure = { _, onComplete in

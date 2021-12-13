@@ -64,6 +64,7 @@ public enum DependencyTracking: CaseIterable {
     case hooksManager
     case profileStore
     case queue
+    case queueQueryRunner
     case queueRequestManager
     case queueRunRequest
     case queueRunner
@@ -144,6 +145,7 @@ public class DITracking {
         case .hooksManager: return hooksManager as! T
         case .profileStore: return profileStore as! T
         case .queue: return queue as! T
+        case .queueQueryRunner: return queueQueryRunner as! T
         case .queueRequestManager: return queueRequestManager as! T
         case .queueRunRequest: return queueRunRequest as! T
         case .queueRunner: return queueRunner as! T
@@ -249,6 +251,18 @@ public class DITracking {
                  logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer)
     }
 
+    // QueueQueryRunner
+    internal var queueQueryRunner: QueueQueryRunner {
+        if let overridenDep = overrides[.queueQueryRunner] {
+            return overridenDep as! QueueQueryRunner
+        }
+        return newQueueQueryRunner
+    }
+
+    private var newQueueQueryRunner: QueueQueryRunner {
+        CioQueueQueryRunner()
+    }
+
     // QueueRequestManager (singleton)
     public var queueRequestManager: QueueRequestManager {
         if let overridenDep = overrides[.queueRequestManager] {
@@ -284,7 +298,7 @@ public class DITracking {
 
     private var newQueueRunRequest: QueueRunRequest {
         CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManger: queueRequestManager,
-                           logger: logger)
+                           logger: logger, queryRunner: queueQueryRunner)
     }
 
     // QueueRunner

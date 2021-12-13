@@ -59,6 +59,18 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
 }
 
+extension QueueQueryCriteria {
+    static let excludeGroupsLens = Lens<QueueQueryCriteria, [String]?>(get: { $0.excludeGroups },
+                                                                       set: { excludeGroups, existing in
+                                                                           QueueQueryCriteria(excludeGroups: excludeGroups)
+                                                                       })
+
+    // Convenient set functions to edit a property of the immutable object
+    func excludeGroupsSet(_ excludeGroups: [String]?) -> QueueQueryCriteria {
+        QueueQueryCriteria(excludeGroups: excludeGroups)
+    }
+}
+
 extension QueueTask {
     static let storageIdLens = Lens<QueueTask, String>(get: { $0.storageId },
                                                        set: { storageId, existing in
@@ -99,6 +111,67 @@ extension QueueTask {
 
     func runResultsSet(_ runResults: QueueTaskRunResults) -> QueueTask {
         QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+}
+
+extension QueueTaskMetadata {
+    static let taskPersistedIdLens = Lens<QueueTaskMetadata, String>(get: { $0.taskPersistedId },
+                                                                     set: { taskPersistedId, existing in
+                                                                         QueueTaskMetadata(taskPersistedId: taskPersistedId,
+                                                                                           taskType: existing.taskType,
+                                                                                           groupsParent: existing
+                                                                                               .groupsParent,
+                                                                                           groupsChild: existing
+                                                                                               .groupsChild)
+                                                                     })
+    static let taskTypeLens = Lens<QueueTaskMetadata, String>(get: { $0.taskType },
+                                                              set: { taskType, existing in
+                                                                  QueueTaskMetadata(taskPersistedId: existing
+                                                                      .taskPersistedId,
+                                                                      taskType: taskType,
+                                                                      groupsParent: existing.groupsParent,
+                                                                      groupsChild: existing.groupsChild)
+                                                              })
+    static let groupsParentLens = Lens<QueueTaskMetadata, QueueTaskGroups>(get: { $0.groupsParent },
+                                                                           set: { groupsParent, existing in
+                                                                               QueueTaskMetadata(taskPersistedId: existing
+                                                                                   .taskPersistedId,
+                                                                                   taskType: existing
+                                                                                       .taskType,
+                                                                                   groupsParent: groupsParent,
+                                                                                   groupsChild: existing
+                                                                                       .groupsChild)
+                                                                           })
+    static let groupsChildLens = Lens<QueueTaskMetadata, QueueTaskGroups>(get: { $0.groupsChild },
+                                                                          set: { groupsChild, existing in
+                                                                              QueueTaskMetadata(taskPersistedId: existing
+                                                                                  .taskPersistedId,
+                                                                                  taskType: existing
+                                                                                      .taskType,
+                                                                                  groupsParent: existing
+                                                                                      .groupsParent,
+                                                                                  groupsChild: groupsChild)
+                                                                          })
+
+    // Convenient set functions to edit a property of the immutable object
+    func taskPersistedIdSet(_ taskPersistedId: String) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupsParent: groupsParent,
+                          groupsChild: groupsChild)
+    }
+
+    func taskTypeSet(_ taskType: String) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupsParent: groupsParent,
+                          groupsChild: groupsChild)
+    }
+
+    func groupsParentSet(_ groupsParent: QueueTaskGroups) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupsParent: groupsParent,
+                          groupsChild: groupsChild)
+    }
+
+    func groupsChildSet(_ groupsChild: QueueTaskGroups) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupsParent: groupsParent,
+                          groupsChild: groupsChild)
     }
 }
 
