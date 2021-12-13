@@ -109,6 +109,8 @@ internal class CIOIdentifyRepository: IdentifyRepository {
                    onComplete: onComplete)
     }
 
+    // disable lint rule as background queue feature will fix this lint issue anyway
+    // swiftlint:disable:next function_parameter_count
     func trackEvent<RequestBody: Encodable>(
         type: EventType,
         name: String,
