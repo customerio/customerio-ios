@@ -75,6 +75,12 @@ public class CustomerIO: CustomerIOInstance {
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
 
+    private var logger: Logger? {
+        guard let siteId = self.siteId else { return nil }
+
+        return DITracking.getInstance(siteId: siteId).logger
+    }
+
     /**
      Constructor for singleton, only.
 
@@ -84,10 +90,15 @@ public class CustomerIO: CustomerIOInstance {
         if let siteId = globalData.sharedInstanceSiteId {
             let diGraph = DITracking.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore
+            let logger = diGraph.logger
 
             // if credentials are not available, we should not set implementation
             if credentialsStore.load() != nil {
+                logger.info("shared instance of Customer.io loaded and ready to use")
+
                 self.implementation = CustomerIOImplementation(siteId: siteId)
+            } else {
+                logger.info("shared instance of Customer.io needs to be initialized before ready to use")
             }
         }
     }
@@ -122,6 +133,8 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
+
+        Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
 
     /**

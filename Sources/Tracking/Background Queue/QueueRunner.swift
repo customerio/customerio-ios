@@ -39,7 +39,7 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
             }
 
             if !hookHandled {
-                let errorMessage = "Task \(task.type) not handled by anything including hooks"
+                let errorMessage = "task \(task.type) not handled by any module"
                 onComplete(.failure(.internalError(message: errorMessage)))
             }
         }

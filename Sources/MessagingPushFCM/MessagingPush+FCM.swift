@@ -19,8 +19,8 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 /**
  MessagingPush extension to support FCM push notification messaging.
   */
-public extension MessagingPush {
-    func messaging(
+extension MessagingPush: MessagingPushFCMInstance {
+    public func messaging(
         _ messaging: Any,
         didReceiveRegistrationToken fcmToken: String?
     ) {
@@ -30,7 +30,7 @@ public extension MessagingPush {
         registerDeviceToken(deviceToken)
     }
 
-    func application(
+    public func application(
         _ application: Any,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {

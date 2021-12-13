@@ -5,16 +5,19 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let profileStore: ProfileStore
     private let backgroundQueue: Queue
     private var globalDataStore: GlobalDataStore
+    private let logger: Logger
 
     /// testing init
     internal init(
         profileStore: ProfileStore,
         backgroundQueue: Queue,
-        globalDataStore: GlobalDataStore
+        globalDataStore: GlobalDataStore,
+        logger: Logger
     ) {
         self.profileStore = profileStore
         self.backgroundQueue = backgroundQueue
         self.globalDataStore = globalDataStore
+        self.logger = logger
     }
 
     init(siteId: String) {
@@ -24,6 +27,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore
+        self.logger = diGraph.logger
     }
 
     /**
@@ -31,11 +35,15 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
+        logger.info("registering device token \(deviceToken)")
+
+        logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
         // we can reference the token and register it to a new profile.
         globalDataStore.pushDeviceToken = deviceToken
 
         guard let identifier = profileStore.identifier else {
+            logger.info("no profile identified, so not registering device token to a profile")
             return
         }
 
@@ -49,12 +57,17 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      Delete the currently registered device token
      */
     public func deleteDeviceToken() {
+        logger.info("deleting device token request made")
+
         guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            logger.info("no device token exists so ignoring request to delete")
             return // no device token to delete, ignore request
         }
-        globalDataStore.pushDeviceToken = nil
+        // Do not delete push token from device storage. The token is valid
+        // once given to SDK. We need it for future profile identifications.
 
         guard let identifiedProfileId = profileStore.identifier else {
+            logger.info("no profile identified so not removing device token from profile")
             return // no profile to delete token from, ignore request
         }
 
@@ -71,6 +84,10 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         event: Metric,
         deviceToken: String
     ) {
+        logger.info("push metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
                                     data: MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
@@ -82,6 +99,8 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
     // privacy and messaging releveance reasons. We only want to send messages to the currently
     // identified profile.
     func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
+        logger.debug("hook: deleting device before identifying new profile")
+
         deleteDeviceToken()
     }
 
@@ -89,14 +108,19 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
     // to this device
     func profileIdentified(identifier: String) {
         guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            logger.debug("hook: no push token stored so not automatically registering token to profile")
             return
         }
+
+        logger.debug("hook: automatically registering token to profile identified. token: \(existingDeviceToken)")
 
         registerDeviceToken(existingDeviceToken)
     }
 
     // stop sending push to a profile that is no longer identified
     func profileStoppedBeingIdentified(oldIdentifier: String) {
+        logger.debug("hook: deleting device token from profile no longer identified")
+
         deleteDeviceToken()
     }
 }

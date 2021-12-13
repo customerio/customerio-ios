@@ -1,3 +1,24 @@
+# [1.0.0-alpha.19](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.18...1.0.0-alpha.19) (2021-12-03)
+
+
+### Bug Fixes
+
+* logs now show up in mac console app ([#80](https://github.com/customerio/customerio-ios/issues/80)) ([535d0be](https://github.com/customerio/customerio-ios/commit/535d0be1bdbd3a43d9ba1fe2fabeb4002ea5d35f))
+
+# [1.0.0-alpha.18](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.17...1.0.0-alpha.18) (2021-11-18)
+
+
+### Bug Fixes
+
+* deep links previously being ignored ([#79](https://github.com/customerio/customerio-ios/issues/79)) ([2041767](https://github.com/customerio/customerio-ios/commit/204176735a8641a77d58232af1daa4e290ee0ca4))
+
+# [1.0.0-alpha.17](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.16...1.0.0-alpha.17) (2021-11-03)
+
+
+### Bug Fixes
+
+* improve user-agent with more detail ([#74](https://github.com/customerio/customerio-ios/issues/74)) ([4301034](https://github.com/customerio/customerio-ios/commit/43010347680d84dfa7d2b782bce18a25b40b8296))
+
 # [1.0.0-alpha.16](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.15...1.0.0-alpha.16) (2021-10-08)
 
 

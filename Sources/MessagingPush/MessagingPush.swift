@@ -33,7 +33,9 @@ public class MessagingPush: MessagingPushInstance {
         // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {
             let diGraphTracking = DITracking.getInstance(siteId: siteId)
+            let logger = diGraphTracking.logger
 
+            logger.info("MessagingPush module setup with SDK")
             // Register MessagingPush module hooks now that the module is being initialized.
             let hooks = diGraphTracking.hooksManager
             let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)

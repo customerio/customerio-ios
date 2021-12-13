@@ -1191,48 +1191,15 @@ public class LoggerMock: Logger, TrackingMock {
     public func reset() {
         mockCalled = false
 
-        verboseCallsCount = 0
-        verboseReceivedArguments = nil
-        verboseReceivedInvocations = []
         debugCallsCount = 0
         debugReceivedArguments = nil
         debugReceivedInvocations = []
         infoCallsCount = 0
         infoReceivedArguments = nil
         infoReceivedInvocations = []
-        warningCallsCount = 0
-        warningReceivedArguments = nil
-        warningReceivedInvocations = []
         errorCallsCount = 0
         errorReceivedArguments = nil
         errorReceivedInvocations = []
-    }
-
-    // MARK: - verbose
-
-    /// Number of times the function was called.
-    public private(set) var verboseCallsCount = 0
-    /// `true` if the function was ever called.
-    public var verboseCalled: Bool {
-        verboseCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var verboseReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var verboseReceivedInvocations: [String] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var verboseClosure: ((String) -> Void)?
-
-    /// Mocked function for `verbose(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func verbose(_ message: String) {
-        mockCalled = true
-        verboseCallsCount += 1
-        verboseReceivedArguments = message
-        verboseReceivedInvocations.append(message)
-        verboseClosure?(message)
     }
 
     // MARK: - debug
@@ -1287,33 +1254,6 @@ public class LoggerMock: Logger, TrackingMock {
         infoReceivedArguments = message
         infoReceivedInvocations.append(message)
         infoClosure?(message)
-    }
-
-    // MARK: - warning
-
-    /// Number of times the function was called.
-    public private(set) var warningCallsCount = 0
-    /// `true` if the function was ever called.
-    public var warningCalled: Bool {
-        warningCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var warningReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var warningReceivedInvocations: [String] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var warningClosure: ((String) -> Void)?
-
-    /// Mocked function for `warning(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func warning(_ message: String) {
-        mockCalled = true
-        warningCallsCount += 1
-        warningReceivedArguments = message
-        warningReceivedInvocations.append(message)
-        warningClosure?(message)
     }
 
     // MARK: - error
