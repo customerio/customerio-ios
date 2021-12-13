@@ -12,7 +12,7 @@ public struct StringAnyEncodable: Encodable {
             case let dict as [String:Any]:
                 d[k] = AnyEncodable(StringAnyEncodable(dict))
             default:
-                // XXX: throw here? or just warn?
+                // XXX: logger error
                 continue
             }
         }
