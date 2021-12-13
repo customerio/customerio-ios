@@ -98,15 +98,19 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
-        if queueStatus.success {
-            logger.debug("storing identifier on device storage \(identifier)")
-            profileStore.identifier = identifier
+        guard queueStatus.success else {
+            // XXX: better handle scenario when adding task to queue is not successful
+            logger.debug("failed to enqueue identify task")
+            return
+        }
 
-            if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
-                logger.debug("running hooks profile identified \(identifier)")
-                hooks.profileIdentifyHooks.forEach { hook in
-                    hook.profileIdentified(identifier: identifier)
-                }
+        logger.debug("storing identifier on device storage \(identifier)")
+        profileStore.identifier = identifier
+
+        if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
+            logger.debug("running hooks profile identified \(identifier)")
+            hooks.profileIdentifyHooks.forEach { hook in
+                hook.profileIdentified(identifier: identifier)
             }
         }
     }
@@ -137,12 +141,13 @@ public class CustomerIOImplementation: CustomerIOInstance {
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             // XXX: when we have anonymous profiles in SDK,
             // we can decide to not ignore events when a profile is not logged yet.
+            logger.info("ignoring track event \(name) because no profile currently identified")
             return
         }
 
         let requestBody = TrackRequestBody(name: name, data: data, timestamp: Date())
         guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: jsonEncoder) else {
-            // XXX: log error for customer to debug their request body
+            logger.error("attributes provided for tracked event \(name) failed to JSON encode.")
             return
         }
         logger.debug("event attributes \(jsonBodyString)")
