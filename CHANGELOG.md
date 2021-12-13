@@ -1,3 +1,10 @@
+# [1.0.0-alpha.20](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.19...1.0.0-alpha.20) (2021-12-13)
+
+
+### Features
+
+* add screen view tracking ([#82](https://github.com/customerio/customerio-ios/issues/82)) ([c2034a6](https://github.com/customerio/customerio-ios/commit/c2034a6fcbcea15716529a4091538f5bb8dc6a00))
+
 # [1.0.0-alpha.19](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.18...1.0.0-alpha.19) (2021-12-03)
 
 
