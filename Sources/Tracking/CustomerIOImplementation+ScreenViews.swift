@@ -15,6 +15,8 @@ public extension CustomerIOImplementation {
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 
+    // lint allow start with _ since it's swizzled. Makes it stand out.
+    // swiftlint:disable:next identifier_name
     @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
         _swizzled_UIKit_viewDidAppear(animated)
 
@@ -49,13 +51,12 @@ public extension CustomerIOImplementation {
             }
             return
         }
-            
+
         screen(name: name, data: data) { _ in
             // XXX: global error handling of result here
         }
-        
     }
-    
+
     private static var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }
