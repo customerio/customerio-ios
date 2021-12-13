@@ -49,13 +49,12 @@ public extension CustomerIOImplementation {
             }
             return
         }
-            
+
         screen(name: name, data: data) { _ in
             // XXX: global error handling of result here
         }
-        
     }
-    
+
     private static var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }

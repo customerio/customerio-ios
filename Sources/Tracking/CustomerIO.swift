@@ -94,10 +94,10 @@ public extension CustomerIOInstance {
     ) {
         track(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
     }
-    
+
     func screen(
         name: String,
-        data: [String:Any],
+        data: [String: Any],
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
         screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil, onComplete: onComplete)
