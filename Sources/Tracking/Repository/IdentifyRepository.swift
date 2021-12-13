@@ -20,6 +20,16 @@ internal protocol IdentifyRepository: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
+
+    func screen<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 }
 
 // sourcery: InjectRegister = "IdentifyRepository"
@@ -84,6 +94,29 @@ internal class CIOIdentifyRepository: IdentifyRepository {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
+        trackEvent(type: .event, name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
+                   onComplete: onComplete)
+    }
+
+    func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        trackEvent(type: .screen, name: name, data: data, timestamp: timestamp, jsonEncoder: jsonEncoder,
+                   onComplete: onComplete)
+    }
+
+    func trackEvent<RequestBody: Encodable>(
+        type: EventType,
+        name: String,
+        data: RequestBody?,
+        timestamp: Date?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
         guard let identifier = profileStore.identifier else {
             // XXX: these could actually do one of
             // - fail
@@ -94,7 +127,7 @@ internal class CIOIdentifyRepository: IdentifyRepository {
             return onComplete(.failure(.noCustomerIdentified))
         }
 
-        let trackRequest = TrackRequestBody(name: name, data: data, timestamp: timestamp)
+        let trackRequest = TrackRequestBody(type: type, name: name, data: data, timestamp: timestamp)
 
         guard let bodyData = jsonAdapter.toJson(trackRequest, encoder: jsonEncoder) else {
             return onComplete(.failure(.http(.noRequestMade(nil))))

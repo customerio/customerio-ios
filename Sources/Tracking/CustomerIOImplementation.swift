@@ -25,6 +25,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     private let identifyRepository: IdentifyRepository
 
+    var autoScreenViewBody: (() -> [String:Any])?
+
     /**
      Constructor for singleton, only.
 
@@ -59,6 +61,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
         handler(&configToModify)
 
         sdkConfigStore.config = configToModify
+
+        if sdkConfigStore.config.autoTrackScreenViews {
+            setupAutoScreenviewTracking()
+        }
     }
 
     public func identify<RequestBody: Encodable>(
@@ -95,6 +101,28 @@ public class CustomerIOImplementation: CustomerIOInstance {
         // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
         identifyRepository
             .trackEvent(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
+                DispatchQueue.main.async { [weak self] in
+                    guard self != nil else { return }
+
+                    switch result {
+                    case .success:
+                        return onComplete(Result.success(()))
+                    case .failure(let error):
+                        return onComplete(Result.failure(error))
+                    }
+                }
+            }
+    }
+
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        // XXX: once we have a bg queue, if this gets deferred to later we should set a timestamp value
+        identifyRepository
+            .screen(name: name, data: data, timestamp: nil, jsonEncoder: jsonEncoder) { [weak self] result in
                 DispatchQueue.main.async { [weak self] in
                     guard self != nil else { return }
 

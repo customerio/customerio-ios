@@ -13,6 +13,8 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?
     )
 
+    func clearIdentify()
+
     // sourcery:Name=track
     func track<RequestBody: Encodable>(
         name: String,
@@ -22,7 +24,16 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     )
-    func clearIdentify()
+
+    // sourcery:Name=screen
+    func screen<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        jsonEncoder: JSONEncoder?,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    )
 }
 
 public extension CustomerIOInstance {
@@ -79,10 +90,24 @@ public extension CustomerIOInstance {
 
     func track(
         name: String,
-        jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        track(name: name, data: EmptyRequestBody(), jsonEncoder: jsonEncoder, onComplete: onComplete)
+        track(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
+    }
+    
+    func screen(
+        name: String,
+        data: [String:Any],
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil, onComplete: onComplete)
+    }
+
+    func screen(
+        name: String,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        screen(name: name, data: EmptyRequestBody(), jsonEncoder: nil, onComplete: onComplete)
     }
 }
 
@@ -286,5 +311,30 @@ public class CustomerIO: CustomerIOInstance {
         }
 
         implementation.track(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
+
+    /**
+     Track a a screen view
+
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+
+     - Parameters:
+     - name: Name of the currently active screen
+     - data: Optional event body data
+     - onComplete: Asynchronous callback with `Result` of tracking an event.
+     Check result to see if error or success. Callback called on main thread.
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
+     */
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+    ) {
+        guard let implementation = self.implementation else {
+            return onComplete(Result.failure(.notInitialized))
+        }
+
+        implementation.screen(name: name, data: data, jsonEncoder: jsonEncoder, onComplete: onComplete)
     }
 }

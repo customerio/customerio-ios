@@ -7,4 +7,5 @@ public extension UIApplication {
         open(url, options: [:]) { _ in }
     }
 }
+
 #endif
