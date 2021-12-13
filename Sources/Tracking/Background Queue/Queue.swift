@@ -128,8 +128,6 @@ public class CioQueue: Queue {
             if didSchedule {
                 logger.info("queue timer: scheduled to run queue in \(numberSecondsToScheduleTimer) seconds")
             }
-        } else {
-            logger.debug("queue skip running automatically")
         }
     }
 }
