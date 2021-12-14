@@ -93,8 +93,6 @@ public class CioQueueRunRequest: QueueRunRequest {
                 return self.goToNextTask(query: query, queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nil)
             case .failure(let error):
-                // update the criterial for querying next task to run
-
                 self.logger
                     .debug("queue task \(self.shortTaskId(nextTaskStorageId)) fail - \(error.localizedDescription)")
 

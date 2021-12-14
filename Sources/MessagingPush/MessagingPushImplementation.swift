@@ -42,7 +42,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         globalDataStore.pushDeviceToken = deviceToken
 
         guard let identifier = profileStore.identifier else {
-            logger.info("no profile identified so not registering device token a profile")
+            logger.info("no profile identified, so not registering device token to a profile")
             return
         }
 

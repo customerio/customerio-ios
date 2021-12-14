@@ -67,10 +67,10 @@ public class ConsoleLogger: Logger {
 
         if #available(iOS 14, *) {
             let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
-            logger.info("\(message, privacy: .public)")
+            logger.log(level: level, "\(message, privacy: .public)")
         } else {
             let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: .info, message)
+            os_log("%{public}@", log: logger, type: level, message)
         }
     }
 
