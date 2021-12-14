@@ -82,7 +82,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return onComplete(.failure(.http(.noRequestMade(nil))))
         }
 
-        guard let deviceToken = self.deviceToken else {
+        guard let deviceToken = deviceToken else {
             // no device token, delete has already happened or is not needed
             return onComplete(Result.success(()))
         }

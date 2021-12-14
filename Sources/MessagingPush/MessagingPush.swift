@@ -43,7 +43,7 @@ public class MessagingPush: MessagingPushInstance {
      */
     public func registerDeviceToken(_ deviceToken: String,
                                     onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -54,7 +54,7 @@ public class MessagingPush: MessagingPushInstance {
      Delete the currently registered device token
      */
     public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -70,7 +70,7 @@ public class MessagingPush: MessagingPushInstance {
         deviceToken: String,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 

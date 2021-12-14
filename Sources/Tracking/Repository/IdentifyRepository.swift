@@ -1,6 +1,8 @@
 import Foundation
 
 internal protocol IdentifyRepository: AutoMockable {
+    var identifier: String? { get }
+
     func addOrUpdateCustomer<RequestBody: Encodable>(
         identifier: String,
         // sourcery:Type=AnyEncodable
@@ -39,6 +41,10 @@ internal class CIOIdentifyRepository: IdentifyRepository {
     private let eventBus: EventBus
     private let siteId: String
     private var profileStore: ProfileStore
+
+    public var identifier: String? {
+        profileStore.identifier
+    }
 
     init(
         siteId: SiteId,

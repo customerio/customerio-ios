@@ -79,7 +79,7 @@ import CioTracking
  */
 
 public class MessagingPushFCMMocks {
-    public static var shared = MessagingPushFCMMocks()
+    public static var shared: MessagingPushFCMMocks = .init()
 
     public var mocks: [MessagingPushFCMMock] = []
     private init() {}

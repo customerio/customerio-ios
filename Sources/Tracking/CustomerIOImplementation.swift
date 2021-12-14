@@ -19,6 +19,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
         _siteId
     }
 
+    public var identifier: String? {
+        identifyRepository.identifier
+    }
+
     private let _siteId: String
 
     private let diGraph: DITracking

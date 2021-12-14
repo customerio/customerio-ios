@@ -78,7 +78,7 @@ import CioTracking
  */
 
 public class MessagingPushMocks {
-    public static var shared = MessagingPushMocks()
+    public static var shared: MessagingPushMocks = .init()
 
     public var mocks: [MessagingPushMock] = []
     private init() {}
