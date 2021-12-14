@@ -49,6 +49,8 @@ class IdentifyRepositoryTest: UnitTest {
         repository.addOrUpdateCustomer(identifier: givenIdentifier, body: givenBody, jsonEncoder: nil) { _ in
             expect.fulfill()
         }
+        
+        XCTAssertEqual(repository.identifier, givenIdentifier)
 
         waitForExpectations()
     }
