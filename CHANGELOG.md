@@ -1,3 +1,10 @@
+# [1.0.0-alpha.21](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.20...1.0.0-alpha.21) (2021-12-13)
+
+
+### Features
+
+* add [String:Any] support to identify & track ([#94](https://github.com/customerio/customerio-ios/issues/94)) ([5a220c4](https://github.com/customerio/customerio-ios/commit/5a220c401c1df1153cdb0cb56efe5a885dd08c68))
+
 # [1.0.0-alpha.20](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.19...1.0.0-alpha.20) (2021-12-13)
 
 

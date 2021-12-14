@@ -88,6 +88,25 @@ public extension CustomerIOInstance {
         identify(identifier: identifier, body: body, onComplete: onComplete, jsonEncoder: jsonEncoder)
     }
 
+    func identify(
+        identifier: String,
+        body: [String: Any],
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        identify(identifier: identifier, body: StringAnyEncodable(body), onComplete: onComplete,
+                 jsonEncoder: jsonEncoder)
+    }
+
+    func track(
+        name: String,
+        data: [String: Any],
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        track(name: name, data: StringAnyEncodable(data), jsonEncoder: jsonEncoder, onComplete: onComplete)
+    }
+
     func track(
         name: String,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void

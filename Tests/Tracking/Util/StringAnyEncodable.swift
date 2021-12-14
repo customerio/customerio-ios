@@ -36,7 +36,7 @@ class StringAnyEncodableTest: UnitTest {
             return
         }
 
-        XCTAssertEqual(expect, String(decoding: actual, as: UTF8.self))
+        XCTAssertEqual(expect, actual.string)
     }
 
     func test_stringanyencodable_encodes_stringstring() {
@@ -51,7 +51,7 @@ class StringAnyEncodableTest: UnitTest {
             return
         }
 
-        XCTAssertEqual(expect, String(decoding: actual, as: UTF8.self))
+        XCTAssertEqual(expect, actual.string)
     }
 
     func test_stringanyencodable_encodes_stringdouble() {
@@ -66,7 +66,7 @@ class StringAnyEncodableTest: UnitTest {
             return
         }
 
-        XCTAssertEqual(expect, String(decoding: actual, as: UTF8.self))
+        XCTAssertEqual(expect, actual.string)
     }
 
     func test_stringanyencodable_encodes_nested_data() {
@@ -81,7 +81,7 @@ class StringAnyEncodableTest: UnitTest {
             return
         }
 
-        XCTAssertEqual(expect, String(decoding: actual, as: UTF8.self))
+        XCTAssertEqual(expect, actual.string)
     }
 
     func test_stringanyencodable_encodes_complex_data() {
