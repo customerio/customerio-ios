@@ -13,9 +13,10 @@ public protocol QueueRunner: AutoMockable {
 
 // sourcery: InjectRegister = "QueueRunner"
 public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
-    // store hooks in memory so they don't get garbage collected in `runTask`.
-    // a hook instance may need to call completion handler so hold strong reference so it can
     private let hooks: HooksManager
+    // store currently running queue hook in memory so it doesn't get garbage collected.
+    // hook instance needs to call completion handler so hold strong reference
+    private var currentlyRunningHook: QueueRunnerHook?
 
     init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
         self.hooks = hooksManager
@@ -33,7 +34,11 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
             var hookHandled = false
 
             hooks.queueRunnerHooks.forEach { hook in
-                if hook.runTask(task, onComplete: onComplete) {
+                if hook.runTask(task, onComplete: { result in
+                    self.currentlyRunningHook = nil
+                    onComplete(result)
+                }) {
+                    self.currentlyRunningHook = hook
                     hookHandled = true
                 }
             }
