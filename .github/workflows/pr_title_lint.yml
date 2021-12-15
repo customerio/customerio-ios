@@ -1,0 +1,22 @@
+# Verifies that pull request title follows the conventional commit spec. learn more:  https://gist.github.com/levibostian/71afa00ddc69688afebb215faab48fd7
+name: Check PR title
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aslafy-z/conventional-pr-title-action@v2.2.3
+        with:
+          success-state: PR title follows conventional commits spec. Ready to merge. 
+          failure-state: Edit PR title to follow conventional commits spec. 
+          context-name: conventional-pr-title
+          preset: conventional-changelog-angular@5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
