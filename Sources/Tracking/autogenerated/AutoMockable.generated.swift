@@ -302,7 +302,7 @@ public class EventBusMock: EventBus, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var postReceivedArguments: (EventBusEvent)?
+    public private(set) var postReceivedArguments: EventBusEvent?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var postReceivedInvocations: [EventBusEvent] = []
     /**
@@ -360,7 +360,7 @@ public class EventBusMock: EventBus, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var unregisterReceivedArguments: (EventBusListenerReference?)?
+    public private(set) var unregisterReceivedArguments: EventBusListenerReference??
     /// Arguments from *all* of the times that the function was called.
     public private(set) var unregisterReceivedInvocations: [EventBusListenerReference?] = []
     /**
@@ -475,7 +475,7 @@ public class HttpClientMock: HttpClient, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var cancelReceivedArguments: (Bool)?
+    public private(set) var cancelReceivedArguments: Bool?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var cancelReceivedInvocations: [Bool] = []
     /**
@@ -825,7 +825,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var integerReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var integerReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var integerReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -883,7 +883,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var doubleReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var doubleReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var doubleReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -941,7 +941,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var stringReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var stringReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var stringReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -999,7 +999,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var dateReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var dateReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var dateReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -1108,7 +1108,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var debugReceivedArguments: (String)?
+    public private(set) var debugReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var debugReceivedInvocations: [String] = []
     /**
@@ -1135,7 +1135,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var infoReceivedArguments: (String)?
+    public private(set) var infoReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var infoReceivedInvocations: [String] = []
     /**
@@ -1162,7 +1162,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var errorReceivedArguments: (String)?
+    public private(set) var errorReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var errorReceivedInvocations: [String] = []
     /**

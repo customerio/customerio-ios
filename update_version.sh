@@ -24,3 +24,5 @@ echo "Done! New version: "
 
 # print the line (/p) that is matched in the file to show the change. 
 sed -n "/$LINE_PATTERN/p" $SWIFT_SOURCE_FILE
+
+# TODO update .podspec version

@@ -287,7 +287,7 @@ public class CustomerIO: CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -325,7 +325,7 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -350,7 +350,7 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
