@@ -1,6 +1,11 @@
+# Cocoapods projects that provide multiple SDKs have a common naming pattern for installing pods:
+# CustomerIO/Tracking 
+# This podspec allows that. It publishes aliases for the cocoapods we have already published. 
+# Example: CustomerIO/Tracking is an alias for the published pod CustomerIOTracking
+
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIO"
-  spec.version      = "1.0.0-alpha.21" # DONT MODIFY LINE, it's automatically updated -- auto-update-version
+  spec.version      = "1.0.0-alpha.21" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.description  = <<-DESC
   Official Customer.io SDK for iOS. Track customers and send messages to your iOS app. 
@@ -23,18 +28,18 @@ Pod::Spec.new do |spec|
   spec.default_subspec = "Tracking"
 
   spec.subspec "Tracking" do |ss|
-    ss.dependency "CustomerIOTracking"
+    ss.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingPush" do |ss|
-    ss.dependency "CustomerIOMessagingPush"
+    ss.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingPushAPN" do |ss|
-    ss.dependency "CustomerIOMessagingPushAPN"
+    ss.dependency "CustomerIOMessagingPushAPN", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingPushFCM" do |ss|
-    ss.dependency "CustomerIOMessagingPushFCM"
+    ss.dependency "CustomerIOMessagingPushFCM", "= #{spec.version.to_s}"
   end
 end

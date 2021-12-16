@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPushAPN"
-  spec.version      = "1.0.0-alpha.21" # DONT MODIFY LINE, it's automatically updated -- auto-update-version
+  spec.version      = "1.0.0-alpha.21" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.description  = <<-DESC
   Official Customer.io SDK for iOS. Track customers and send messages to your iOS app. 
@@ -23,5 +23,5 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/MessagingPushAPN/**/*"
   spec.module_name = "CioMessagingPushAPN"  
   
-  spec.dependency "CustomerIOMessagingPush"
+  spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
 end
