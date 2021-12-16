@@ -100,7 +100,7 @@ public extension CustomerIOInstance {
                  jsonEncoder: jsonEncoder)
     }
 
-    func identify(
+    func setProfileAttributes(
         body: [String: Any],
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
@@ -113,7 +113,7 @@ public extension CustomerIOInstance {
                  jsonEncoder: jsonEncoder)
     }
 
-    func identify<RequestBody: Encodable>(
+    func setProfileAttributes<RequestBody: Encodable>(
         body: RequestBody,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil

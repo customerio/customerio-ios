@@ -57,13 +57,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         waitForExpectations()
     }
-    
-    func test_identify_expectIdentifierPassthrough() {
-        let givenIdentifier = String.random
-
-        self.identifyRepositoryMock.identifier = givenIdentifier
-        XCTAssertEqual(customerIO.identifier, givenIdentifier)
-    }
 
     func test_identify_givenFailedAddCustomer_expectFailureResult() {
         identifyRepositoryMock.addOrUpdateCustomerClosure = { _, _, _, onComplete in

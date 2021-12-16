@@ -610,12 +610,9 @@ internal class IdentifyRepositoryMock: IdentifyRepository, TrackingMock {
         TrackingMocks.shared.add(mock: self)
     }
 
-    internal var identifier: String?
-
     public func reset() {
         mockCalled = false
 
-        identifier = nil
         addOrUpdateCustomerCallsCount = 0
         addOrUpdateCustomerReceivedArguments = nil
         addOrUpdateCustomerReceivedInvocations = []
