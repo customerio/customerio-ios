@@ -1,6 +1,6 @@
 import Foundation
-#if canImport(UserNotifications) && canImport(UIKit)
 import CioTracking
+#if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
 import UserNotifications
 
@@ -23,7 +23,7 @@ public extension MessagingPush {
             return false
         }
 
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DI.getInstance(siteId: siteId)
         let sdkConfig = diGraph.sdkConfigStore.config
         let jsonAdapter = diGraph.jsonAdapter
 

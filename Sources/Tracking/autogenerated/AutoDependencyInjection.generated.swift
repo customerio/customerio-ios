@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -8,59 +8,60 @@ import Foundation
 // Template version 1.0.0
 
 /**
- ######################################################
- Documentation
- ######################################################
+######################################################
+Documentation
+######################################################
 
- This automatically generated file you are viewing is a dependency injection graph for your app's source code.
- You may be wondering a couple of questions.
+This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+You may be wondering a couple of questions. 
 
- 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
- 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
- 3. How do I add dependencies to this graph file? Follow one of the instructions below:
- * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
- * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
- * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
- * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
- * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+3. How do I add dependencies to this graph file? Follow one of the instructions below:
+* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
- 4. How do I get dependencies from the graph in my code?
- ```
- // If you have a class like this:
- class OffRoadWheels {}
+4. How do I get dependencies from the graph in my code? 
+```
+// If you have a class like this:
+class OffRoadWheels {}
 
- class ViewController: UIViewController {
-     // Call the property getter to get your dependency from the graph:
-     let wheels = DITracking.shared.offRoadWheels
-     // note the name of the property is name of the class with the first letter lowercase.
+class ViewController: UIViewController {
+    // Call the property getter to get your dependency from the graph: 
+    let wheels = DI.shared.offRoadWheels
+    // note the name of the property is name of the class with the first letter lowercase. 
 
-     // you can also use this syntax instead:
-     let wheels: OffRoadWheels = DITracking.shared.inject(.offRoadWheels)
-     // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
- }
- ```
+    // you can also use this syntax instead:
+    let wheels: OffRoadWheels = DI.shared.inject(.offRoadWheels)
+    // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app. 
+}
+```
 
- 5. How do I use this graph in my test suite?
- ```
- let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
- ```
+5. How do I use this graph in my test suite? 
+```
+let mockOffRoadWheels = // make a mock of OffRoadWheels class 
+DI.shared.override(.offRoadWheels, mockOffRoadWheels) 
+```
 
- Then, when your test function finishes, reset the graph:
- ```
- DITracking.shared.resetOverrides()
- ```
+Then, when your test function finishes, reset the graph:
+```
+DI.shared.resetOverrides()
+```
 
+*/
+
+/** 
+ enum that contains list of all dependencies in our app. 
+ This allows automated unit testing against our dependency graph + ability to override nodes in graph. 
  */
-
-/**
- enum that contains list of all dependencies in our app.
- This allows automated unit testing against our dependency graph + ability to override nodes in graph.
- */
-public enum DependencyTracking: CaseIterable {
+ enum Dependency: CaseIterable {
     case httpClient
     case identifyRepository
     case sdkCredentialsStore
+    case globalDataStore
     case eventBus
     case profileStore
     case logger
@@ -70,170 +71,165 @@ public enum DependencyTracking: CaseIterable {
     case keyValueStorage
 }
 
-/**
- Dependency injection graph specifically with dependencies in the Tracking module.
 
- We must use 1+ different graphs because of the hierarchy of modules in this SDK.
- Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
- in `Common` module can be in the `Tracking` module.
+/**
+ Dependency injection graph specifically with dependencies in the  module. 
+
+ We must use 1+ different graphs because of the hierarchy of modules in this SDK. 
+ Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes 
+ in `Common` module can be in the `Tracking` module. 
  */
-public class DITracking {
-    private var overrides: [DependencyTracking: Any] = [:]
+ public class DI {    
+    private var overrides: [Dependency: Any] = [:]
 
     internal let siteId: SiteId
     internal init(siteId: String) {
         self.siteId = siteId
     }
 
-    // Used for tests
+    // Used for tests 
     public convenience init() {
         self.init(siteId: "test-identifier")
     }
-
     class Store {
-        var instances: [String: DITracking] = [:]
-        func getInstance(siteId: String) -> DITracking {
-            if let existingInstance = instances[siteId] {
+        var instances: [String: DI] = [:]
+        func getInstance(siteId: String) -> DI {
+            if let existingInstance = self.instances[siteId] {
                 return existingInstance
             }
-            let newInstance = DITracking(siteId: siteId)
-            instances[siteId] = newInstance
+            let newInstance = DI(siteId: siteId)
+            self.instances[siteId] = newInstance
             return newInstance
         }
     }
-
     @Atomic internal static var store = Store()
-    public static func getInstance(siteId: String) -> DITracking {
+    public static func getInstance(siteId: String) -> DI {
         Self.store.getInstance(siteId: siteId)
     }
 
     /**
-     Designed to be used only in test classes to override dependencies.
+    Designed to be used only in test classes to override dependencies. 
 
-     ```
-     let mockOffRoadWheels = // make a mock of OffRoadWheels class
-     DITracking.shared.override(.offRoadWheels, mockOffRoadWheels)
-     ```
-     */
-    public func override<Value: Any>(_ dep: DependencyTracking, value: Value, forType type: Value.Type) {
-        overrides[dep] = value
+    ```
+    let mockOffRoadWheels = // make a mock of OffRoadWheels class 
+    DI.shared.override(.offRoadWheels, mockOffRoadWheels) 
+    ```
+    */
+     func override<Value: Any>(_ dep: Dependency, value: Value, forType type: Value.Type) {
+        overrides[dep] = value 
     }
 
     /**
-     Reset overrides. Meant to be used in `tearDown()` of tests.
-     */
-    public func resetOverrides() {
+    Reset overrides. Meant to be used in `tearDown()` of tests. 
+    */
+     func resetOverrides() {        
         overrides = [:]
     }
 
     /**
-     Use this generic method of getting a dependency, if you wish.
-     */
-    public func inject<T>(_ dep: DependencyTracking) -> T {
+    Use this generic method of getting a dependency, if you wish. 
+    */
+     func inject<T>(_ dep: Dependency) -> T {                            
         switch dep {
-        case .httpClient: return httpClient as! T
-        case .identifyRepository: return identifyRepository as! T
-        case .sdkCredentialsStore: return sdkCredentialsStore as! T
-        case .eventBus: return eventBus as! T
-        case .profileStore: return profileStore as! T
-        case .logger: return logger as! T
-        case .sdkConfigStore: return sdkConfigStore as! T
-        case .jsonAdapter: return jsonAdapter as! T
-        case .httpRequestRunner: return httpRequestRunner as! T
-        case .keyValueStorage: return keyValueStorage as! T
+            case .httpClient: return self.httpClient as! T 
+            case .identifyRepository: return self.identifyRepository as! T 
+            case .sdkCredentialsStore: return self.sdkCredentialsStore as! T 
+            case .globalDataStore: return self.globalDataStore as! T 
+            case .eventBus: return self.eventBus as! T 
+            case .profileStore: return self.profileStore as! T 
+            case .logger: return self.logger as! T 
+            case .sdkConfigStore: return self.sdkConfigStore as! T 
+            case .jsonAdapter: return self.jsonAdapter as! T 
+            case .httpRequestRunner: return self.httpRequestRunner as! T 
+            case .keyValueStorage: return self.keyValueStorage as! T 
         }
     }
 
     /**
-     Use the property accessors below to inject pre-typed dependencies.
-     */
+    Use the property accessors below to inject pre-typed dependencies. 
+    */
 
     // HttpClient
-    public var httpClient: HttpClient {
-        if let overridenDep = overrides[.httpClient] {
+    public var httpClient: HttpClient {  
+        if let overridenDep = self.overrides[.httpClient] {
             return overridenDep as! HttpClient
         }
-        return newHttpClient
+        return self.newHttpClient
     }
-
-    private var newHttpClient: HttpClient {
-        CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
-                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
+    private var newHttpClient: HttpClient {    
+        return CIOHttpClient(siteId: self.siteId, sdkCredentialsStore: self.sdkCredentialsStore, configStore: self.sdkConfigStore, jsonAdapter: self.jsonAdapter, httpRequestRunner: self.httpRequestRunner)
     }
-
     // IdentifyRepository
-    internal var identifyRepository: IdentifyRepository {
-        if let overridenDep = overrides[.identifyRepository] {
+    internal var identifyRepository: IdentifyRepository {  
+        if let overridenDep = self.overrides[.identifyRepository] {
             return overridenDep as! IdentifyRepository
         }
-        return newIdentifyRepository
+        return self.newIdentifyRepository
     }
-
-    private var newIdentifyRepository: IdentifyRepository {
-        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter, eventBus: eventBus,
-                              profileStore: profileStore)
+    private var newIdentifyRepository: IdentifyRepository {    
+        return CIOIdentifyRepository(siteId: self.siteId, httpClient: self.httpClient, jsonAdapter: self.jsonAdapter, eventBus: self.eventBus, profileStore: self.profileStore)
     }
-
     // SdkCredentialsStore
-    internal var sdkCredentialsStore: SdkCredentialsStore {
-        if let overridenDep = overrides[.sdkCredentialsStore] {
+    internal var sdkCredentialsStore: SdkCredentialsStore {  
+        if let overridenDep = self.overrides[.sdkCredentialsStore] {
             return overridenDep as! SdkCredentialsStore
         }
-        return newSdkCredentialsStore
+        return self.newSdkCredentialsStore
     }
-
-    private var newSdkCredentialsStore: SdkCredentialsStore {
-        CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
+    private var newSdkCredentialsStore: SdkCredentialsStore {    
+        return CIOSdkCredentialsStore(keyValueStorage: self.keyValueStorage)
     }
-
+    // GlobalDataStore
+    public var globalDataStore: GlobalDataStore {  
+        if let overridenDep = self.overrides[.globalDataStore] {
+            return overridenDep as! GlobalDataStore
+        }
+        return self.newGlobalDataStore
+    }
+    private var newGlobalDataStore: GlobalDataStore {    
+        return CioGlobalDataStore()
+    }
     // EventBus
-    public var eventBus: EventBus {
-        if let overridenDep = overrides[.eventBus] {
+    public var eventBus: EventBus {  
+        if let overridenDep = self.overrides[.eventBus] {
             return overridenDep as! EventBus
         }
-        return newEventBus
+        return self.newEventBus
     }
-
-    private var newEventBus: EventBus {
-        CioNotificationCenter()
+    private var newEventBus: EventBus {    
+        return CioNotificationCenter()
     }
-
     // ProfileStore
-    public var profileStore: ProfileStore {
-        if let overridenDep = overrides[.profileStore] {
+    public var profileStore: ProfileStore {  
+        if let overridenDep = self.overrides[.profileStore] {
             return overridenDep as! ProfileStore
         }
-        return newProfileStore
+        return self.newProfileStore
     }
-
-    private var newProfileStore: ProfileStore {
-        CioProfileStore(keyValueStorage: keyValueStorage)
+    private var newProfileStore: ProfileStore {    
+        return CioProfileStore(keyValueStorage: self.keyValueStorage)
     }
-
     // Logger
-    public var logger: Logger {
-        if let overridenDep = overrides[.logger] {
+    public var logger: Logger {  
+        if let overridenDep = self.overrides[.logger] {
             return overridenDep as! Logger
         }
-        return newLogger
+        return self.newLogger
     }
-
-    private var newLogger: Logger {
-        ConsoleLogger()
+    private var newLogger: Logger {    
+        return ConsoleLogger()
     }
-
     // SdkConfigStore (singleton)
-    public var sdkConfigStore: SdkConfigStore {
-        if let overridenDep = overrides[.sdkConfigStore] {
+    public var sdkConfigStore: SdkConfigStore {  
+        if let overridenDep = self.overrides[.sdkConfigStore] {
             return overridenDep as! SdkConfigStore
         }
-        return sharedSdkConfigStore
+        return self.sharedSdkConfigStore
     }
-
     private let _sdkConfigStore_queue = DispatchQueue(label: "DI_get_sdkConfigStore_queue")
     private var _sdkConfigStore_shared: SdkConfigStore?
     public var sharedSdkConfigStore: SdkConfigStore {
-        _sdkConfigStore_queue.sync {
+        return _sdkConfigStore_queue.sync {
             if let overridenDep = self.overrides[.sdkConfigStore] {
                 return overridenDep as! SdkConfigStore
             }
@@ -242,44 +238,37 @@ public class DITracking {
             return res
         }
     }
-
     private func _get_sdkConfigStore() -> SdkConfigStore {
-        InMemorySdkConfigStore()
+        return InMemorySdkConfigStore()
     }
-
     // JsonAdapter
-    public var jsonAdapter: JsonAdapter {
-        if let overridenDep = overrides[.jsonAdapter] {
+    public var jsonAdapter: JsonAdapter {  
+        if let overridenDep = self.overrides[.jsonAdapter] {
             return overridenDep as! JsonAdapter
         }
-        return newJsonAdapter
+        return self.newJsonAdapter
     }
-
-    private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
+    private var newJsonAdapter: JsonAdapter {    
+        return JsonAdapter(log: self.logger)
     }
-
     // HttpRequestRunner
-    internal var httpRequestRunner: HttpRequestRunner {
-        if let overridenDep = overrides[.httpRequestRunner] {
+    internal var httpRequestRunner: HttpRequestRunner {  
+        if let overridenDep = self.overrides[.httpRequestRunner] {
             return overridenDep as! HttpRequestRunner
         }
-        return newHttpRequestRunner
+        return self.newHttpRequestRunner
     }
-
-    private var newHttpRequestRunner: HttpRequestRunner {
-        UrlRequestHttpRequestRunner()
+    private var newHttpRequestRunner: HttpRequestRunner {    
+        return UrlRequestHttpRequestRunner()
     }
-
     // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
-        if let overridenDep = overrides[.keyValueStorage] {
+    public var keyValueStorage: KeyValueStorage {  
+        if let overridenDep = self.overrides[.keyValueStorage] {
             return overridenDep as! KeyValueStorage
         }
-        return newKeyValueStorage
+        return self.newKeyValueStorage
     }
-
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId)
+    private var newKeyValueStorage: KeyValueStorage {    
+        return UserDefaultsKeyValueStorage(siteId: self.siteId)
     }
 }

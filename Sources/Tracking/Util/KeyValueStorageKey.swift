@@ -9,4 +9,5 @@ public enum KeyValueStorageKey: String {
     case regionCode
     case identifiedProfileId
     case allSiteIds
+    case badgeCount
 }

@@ -45,6 +45,15 @@ public class PushContent {
         }
     }
 
+    public var cioHandleBadge: Bool? {
+        get {
+            cio.push.cioHandleBadge
+        }
+        set {
+            cioPush = cioPush.cioHandleBadgeSet(newValue)
+        }
+    }
+    
     public var cioAttachments: [UNNotificationAttachment] {
         mutableNotificationContent.attachments.filter { $0.identifier.starts(with: Self.cioAttachmentsPrefix) }
     }
@@ -119,5 +128,6 @@ struct CioPushPayload: Codable {
     struct Push: Codable, AutoLenses {
         let link: String?
         let image: String?
+        let cioHandleBadge : Bool?
     }
 }

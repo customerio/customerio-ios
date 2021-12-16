@@ -14,8 +14,8 @@ open class UnitTest: XCTestCase {
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
     public let testSiteId = "testing"
-    public var diGraph: DITracking {
-        DITracking.getInstance(siteId: testSiteId)
+    public var diGraph: DI {
+        DI.getInstance(siteId: testSiteId)
     }
 
     public var keyValueStorage: KeyValueStorage {
@@ -41,7 +41,7 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
-        TrackingMocks.shared.resetAll()
+        Mocks.shared.resetAll()
 
         deleteAll()
 

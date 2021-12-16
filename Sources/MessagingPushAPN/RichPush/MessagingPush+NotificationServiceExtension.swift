@@ -18,12 +18,14 @@ public extension MessagingPush {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
+        
         guard let siteId = customerIO.siteId else {
             contentHandler(request.content)
             return false
         }
 
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DI.getInstance(siteId: siteId)
+        var store  = diGraph.globalDataStore
         let sdkConfig = diGraph.sdkConfigStore.config
         let jsonAdapter = diGraph.jsonAdapter
 
@@ -40,6 +42,18 @@ public extension MessagingPush {
             return false
         }
 
+        // If cioHandleBadge exists and value is true
+        if let cioHandleBadge = pushContent.cioHandleBadge, cioHandleBadge  {
+            
+            let badgeCount = store.badgeCount ?? 0
+            // Update badge count in payload
+            if let newRequest = request.content.mutableCopy() as? UNMutableNotificationContent {
+                newRequest.badge = NSNumber(value: badgeCount + 1)
+                store.badgeCount = badgeCount + 1
+                contentHandler(newRequest)
+            }
+        }
+        
         RichPushRequestHandler.shared.startRequest(request, content: pushContent, siteId: siteId,
                                                    completionHandler: contentHandler)
 
