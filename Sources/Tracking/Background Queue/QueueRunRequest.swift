@@ -60,11 +60,7 @@ public class CioQueueRunRequest: QueueRunRequest {
             // log error. this scenario shouldn't happen where task can't be found.
             logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
 
-            // delete task from inventory since we can't find it in storage so we don't want to run it.
-            // ignore result because if it's successful or not, all we can do is try and delete and move on.
-            let success = storage.delete(storageId: nextTaskStorageId)
-            logger.debug("deleted task \(nextTaskStorageId) success: \(success)")
-
+            // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
             return goToNextTask(query: query, queryTotalNumberTasks: queryTotalNumberTasks,
                                 lastFailedTask: nextTaskToRunInventoryItem)
         }
