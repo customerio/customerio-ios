@@ -76,7 +76,7 @@ public class CustomerIO: CustomerIOInstance {
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
 
     private var logger: Logger? {
-        guard let siteId = self.siteId else { return nil }
+        guard let siteId = siteId else { return nil }
 
         return DITracking.getInstance(siteId: siteId).logger
     }

@@ -11,6 +11,3 @@ public enum QueueTaskGroup {
         }
     }
 }
-
-/// Get `String` value by using `QueueTaskGroup`
-public typealias QueueTaskGroups = [String]?

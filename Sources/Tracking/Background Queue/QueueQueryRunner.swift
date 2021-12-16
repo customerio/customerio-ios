@@ -6,6 +6,8 @@ internal protocol QueueQueryRunner: AutoMockable {
 
 // sourcery: InjectRegister = "QueueQueryRunner"
 internal class CioQueueQueryRunner: QueueQueryRunner {
+    private var queryCriteria = QueueQueryCriteria()
+
     func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
         guard !queue.isEmpty else {
             return nil
@@ -15,26 +17,22 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
             return queue[0]
         }
 
-        let criteria = getCriteria(lastFailedTask: lastFailedTask)
+        updateCriteria(lastFailedTask: lastFailedTask)
 
-        return queue.first(where: { doesTaskPassCriteria($0, criteria: criteria) })
+        return queue.first(where: { doesTaskPassCriteria($0) })
     }
 
-    private func getCriteria(lastFailedTask: QueueTaskMetadata) -> QueueQueryCriteria {
-        var criteria = QueueQueryCriteria(excludeGroups: nil)
-
-        if let groupsToExclude = lastFailedTask.groupsParent {
-            criteria = criteria.excludeGroupsSet(groupsToExclude)
+    private func updateCriteria(lastFailedTask: QueueTaskMetadata) {
+        if let groupToExclude = lastFailedTask.groupStart {
+            queryCriteria.excludeGroups.insert(groupToExclude)
         }
-
-        return criteria
     }
 
-    private func doesTaskPassCriteria(_ task: QueueTaskMetadata, criteria: QueueQueryCriteria) -> Bool {
+    private func doesTaskPassCriteria(_ task: QueueTaskMetadata) -> Bool {
         var didPassCriteria = true
 
-        if let groupsTaskBelongsTo = task.groupsChild {
-            criteria.excludeGroups?.forEach { groupToExclude in
+        if let groupsTaskBelongsTo = task.groupMember {
+            queryCriteria.excludeGroups.forEach { groupToExclude in
                 if groupsTaskBelongsTo.contains(groupToExclude) {
                     didPassCriteria = false
                 }
@@ -45,6 +43,6 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
     }
 }
 
-struct QueueQueryCriteria: AutoLenses {
-    let excludeGroups: [String]?
+struct QueueQueryCriteria {
+    var excludeGroups: Set<String> = Set()
 }

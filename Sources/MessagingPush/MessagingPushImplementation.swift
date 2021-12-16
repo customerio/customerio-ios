@@ -50,8 +50,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
                                                                                 deviceToken: deviceToken,
                                                                                 lastUsed: Date()),
-                                    groupsParent: [QueueTaskGroup.registeredPushToken(token: deviceToken).string],
-                                    groupsChild: [QueueTaskGroup.identifiedProfile(identifier: identifier).string])
+                                    groupStart: .registeredPushToken(token: deviceToken),
+                                    blockingGroups: [.identifiedProfile(identifier: identifier)])
     }
 
     /**
@@ -75,10 +75,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
                                     data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
                                                                               deviceToken: existingDeviceToken),
-                                    groupsParent: nil,
-                                    groupsChild: [
-                                        QueueTaskGroup.registeredPushToken(token: existingDeviceToken).string,
-                                        QueueTaskGroup.identifiedProfile(identifier: identifiedProfileId).string
+                                    blockingGroups: [
+                                        .registeredPushToken(token: existingDeviceToken),
+                                        .identifiedProfile(identifier: identifiedProfileId)
                                     ])
     }
 
@@ -96,9 +95,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
                                     data: MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
-                                                        timestamp: Date()),
-                                    groupsParent: nil,
-                                    groupsChild: nil)
+                                                        timestamp: Date()))
     }
 }
 

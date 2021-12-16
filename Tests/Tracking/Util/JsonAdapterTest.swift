@@ -100,7 +100,7 @@ class JsonAdapterTest: UnitTest {
         }
 
         let given = Person(name: Person.Name(first: "Dana"))
-        let expected: [String: [String: String]] = ["name": ["first": "Dana"]]
+        let expected = ["name": ["first": "Dana"]]
 
         let actual = jsonAdapter.toDictionary(given) as? [String: [String: String]]
 
@@ -113,7 +113,7 @@ class JsonAdapterTest: UnitTest {
         }
 
         let given = Person(name: "Dana")
-        let expected: [String: String] = ["name": "Dana"]
+        let expected = ["name": "Dana"]
 
         let actual = jsonAdapter.toDictionary(given) as? [String: String]
 

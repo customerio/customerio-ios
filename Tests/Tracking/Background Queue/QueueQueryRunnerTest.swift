@@ -33,10 +33,10 @@ class QueueQueryRunnerTest: UnitTest {
     }
 
     func test_getNextTask_givenFailedTaskParentOfGroup_expectSkipGroupTasks() {
-        let givenFailedTask = QueueTaskMetadata.random.groupsParentSet([String.random])
+        let givenFailedTask = QueueTaskMetadata.random.groupStartSet(String.random)
 
         let queue = [
-            QueueTaskMetadata.random.groupsChildSet(givenFailedTask.groupsParent),
+            QueueTaskMetadata.random.groupMemberSet([givenFailedTask.groupStart!]),
             QueueTaskMetadata.random
         ]
         let expected = queue[1]
@@ -47,10 +47,10 @@ class QueueQueryRunnerTest: UnitTest {
     }
 
     func test_getNextTask_givenFailedTaskChildOfGroup_expectGetNextItemInQueue() {
-        let givenFailedTask = QueueTaskMetadata.random.groupsChildSet([String.random])
+        let givenFailedTask = QueueTaskMetadata.random.groupMemberSet([String.random])
 
         let queue = [
-            QueueTaskMetadata.random.groupsChildSet(givenFailedTask.groupsChild)
+            QueueTaskMetadata.random.groupMemberSet(givenFailedTask.groupMember)
         ]
         let expected = queue[0]
 

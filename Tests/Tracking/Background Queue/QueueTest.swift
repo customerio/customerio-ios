@@ -32,8 +32,8 @@ class QueueTest: UnitTest {
         let actual = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                                    data: IdentifyProfileQueueTaskData(identifier: String.random,
                                                                       attributesJsonString: nil),
-                                   groupsParent: [String.random],
-                                   groupsChild: [String.random])
+                                   groupStart: .identifiedProfile(identifier: String.random),
+                                   blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(actual.success, false)
 
@@ -51,8 +51,8 @@ class QueueTest: UnitTest {
 
         _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
-                          groupsParent: [String.random],
-                          groupsChild: [String.random])
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 0)
 
@@ -69,8 +69,8 @@ class QueueTest: UnitTest {
 
         _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
-                          groupsParent: [String.random],
-                          groupsChild: [String.random])
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
 
@@ -115,8 +115,8 @@ class QueueIntegrationTest: UnitTest {
         let addTaskActual = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                                           data: TrackEventQueueTaskData(identifier: String.random,
                                                                         attributesJsonString: ""),
-                                          groupsParent: [String.random],
-                                          groupsChild: [String.random])
+                                          groupStart: .identifiedProfile(identifier: String.random),
+                                          blockingGroups: [.identifiedProfile(identifier: String.random)])
         XCTAssertTrue(addTaskActual.success)
         XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
     }
@@ -129,8 +129,8 @@ class QueueIntegrationTest: UnitTest {
         _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
                                                         attributesJsonString: ""),
-                          groupsParent: [String.random],
-                          groupsChild: [String.random])
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         let expect = expectation(description: "Expect to complete")
         queue.run {
@@ -158,8 +158,8 @@ class QueueIntegrationTest: UnitTest {
         _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
                                                         attributesJsonString: ""),
-                          groupsParent: [String.random],
-                          groupsChild: [String.random])
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         let expect = expectation(description: "Expect to complete")
         queue.run {
