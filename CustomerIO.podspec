@@ -12,10 +12,10 @@ Pod::Spec.new do |spec|
                    DESC
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
-  spec.changelog = "https://github.com/customerio/customerio-ios/blob/alpha/CHANGELOG.md"
+  spec.changelog    = "https://github.com/customerio/customerio-ios/blob/#{spec.version.to_s}/CHANGELOG.md"
   spec.license      = { :type => "MIT", :file => "LICENSE" }
   spec.author       = { "CustomerIO Team" => "win@customer.io" }
-  spec.source = { :git => 'https://github.com/customerio/customerio-ios.git', :tag => spec.version.to_s }
+  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :tag => spec.version.to_s }
 
   spec.swift_version = '5.3'
   spec.cocoapods_version = '>= 1.11.0'
@@ -28,6 +28,8 @@ Pod::Spec.new do |spec|
   spec.default_subspec = "Tracking"
 
   spec.subspec "Tracking" do |ss|
+    # Using `= X.X.X` is required for pre-release versions of an SDK (alpha, beta) 
+    # In the future, we can use: `~> X.X.X` which matches by semantic version rules. 
     ss.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
   end
 
