@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -79,7 +79,7 @@ import CioTracking
  */
 
 public class MessagingPushFCMMocks {
-    public static var shared = MessagingPushFCMMocks()
+    public static var shared: MessagingPushFCMMocks = .init()
 
     public var mocks: [MessagingPushFCMMock] = []
     private init() {}

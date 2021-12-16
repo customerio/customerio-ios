@@ -31,7 +31,9 @@ class QueueTest: UnitTest {
 
         let actual = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                                    data: IdentifyProfileQueueTaskData(identifier: String.random,
-                                                                      attributesJsonString: nil))
+                                                                      attributesJsonString: nil),
+                                   groupStart: .identifiedProfile(identifier: String.random),
+                                   blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(actual.success, false)
 
@@ -48,7 +50,9 @@ class QueueTest: UnitTest {
         queueTimerMock.scheduleIfNotAleadyReturnValue = true
 
         _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
-                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))
+                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 0)
 
@@ -64,7 +68,9 @@ class QueueTest: UnitTest {
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
         _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
-                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil))
+                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
 
@@ -108,7 +114,9 @@ class QueueIntegrationTest: UnitTest {
     func test_addTask_expectSuccessfullyAdded() {
         let addTaskActual = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                                           data: TrackEventQueueTaskData(identifier: String.random,
-                                                                        attributesJsonString: ""))
+                                                                        attributesJsonString: ""),
+                                          groupStart: .identifiedProfile(identifier: String.random),
+                                          blockingGroups: [.identifiedProfile(identifier: String.random)])
         XCTAssertTrue(addTaskActual.success)
         XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
     }
@@ -120,7 +128,9 @@ class QueueIntegrationTest: UnitTest {
 
         _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
-                                                        attributesJsonString: ""))
+                                                        attributesJsonString: ""),
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         let expect = expectation(description: "Expect to complete")
         queue.run {
@@ -147,7 +157,9 @@ class QueueIntegrationTest: UnitTest {
 
         _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random,
-                                                        attributesJsonString: ""))
+                                                        attributesJsonString: ""),
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         let expect = expectation(description: "Expect to complete")
         queue.run {

@@ -22,7 +22,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
-        let diGraphMessaging = DIMessagingPush.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
@@ -50,7 +49,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
                                     data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
                                                                                 deviceToken: deviceToken,
-                                                                                lastUsed: Date()))
+                                                                                lastUsed: Date()),
+                                    groupStart: .registeredPushToken(token: deviceToken),
+                                    blockingGroups: [.identifiedProfile(identifier: identifier)])
     }
 
     /**
@@ -73,7 +74,11 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
                                     data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
-                                                                              deviceToken: existingDeviceToken))
+                                                                              deviceToken: existingDeviceToken),
+                                    blockingGroups: [
+                                        .registeredPushToken(token: existingDeviceToken),
+                                        .identifiedProfile(identifier: identifiedProfileId)
+                                    ])
     }
 
     /**

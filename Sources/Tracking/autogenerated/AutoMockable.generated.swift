@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -77,7 +77,7 @@ import FoundationNetworking
  */
 
 public class TrackingMocks {
-    public static var shared = TrackingMocks()
+    public static var shared: TrackingMocks = .init()
 
     public var mocks: [TrackingMock] = []
     private init() {}
@@ -514,7 +514,7 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var appendSiteIdReceivedArguments: (String)?
+    public private(set) var appendSiteIdReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var appendSiteIdReceivedInvocations: [String] = []
     /**
@@ -756,7 +756,7 @@ public class HttpClientMock: HttpClient, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var cancelReceivedArguments: (Bool)?
+    public private(set) var cancelReceivedArguments: Bool?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var cancelReceivedInvocations: [Bool] = []
     /**
@@ -929,7 +929,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var integerReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var integerReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var integerReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -987,7 +987,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var doubleReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var doubleReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var doubleReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -1045,7 +1045,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var stringReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var stringReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var stringReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -1103,7 +1103,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var dateReceivedArguments: (KeyValueStorageKey)?
+    public private(set) var dateReceivedArguments: KeyValueStorageKey?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var dateReceivedInvocations: [KeyValueStorageKey] = []
     /// Value to return from the mocked function.
@@ -1212,7 +1212,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var debugReceivedArguments: (String)?
+    public private(set) var debugReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var debugReceivedInvocations: [String] = []
     /**
@@ -1239,7 +1239,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var infoReceivedArguments: (String)?
+    public private(set) var infoReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var infoReceivedInvocations: [String] = []
     /**
@@ -1266,7 +1266,7 @@ public class LoggerMock: Logger, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var errorReceivedArguments: (String)?
+    public private(set) var errorReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var errorReceivedInvocations: [String] = []
     /**
@@ -1452,7 +1452,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var profileIdentifiedReceivedArguments: (String)?
+    public private(set) var profileIdentifiedReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var profileIdentifiedReceivedInvocations: [String] = []
     /**
@@ -1479,7 +1479,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: (String)?
+    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var profileStoppedBeingIdentifiedReceivedInvocations: [String] = []
     /**
@@ -1593,9 +1593,11 @@ public class QueueMock: Queue, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable)?
+    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable, groupStart: QueueTaskGroup?,
+                                                       blockingGroups: [QueueTaskGroup]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable)] = []
+    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?,
+                                                          blockingGroups: [QueueTaskGroup]?)] = []
     /// Value to return from the mocked function.
     public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -1603,15 +1605,22 @@ public class QueueMock: Queue, TrackingMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((String, AnyEncodable) -> (success: Bool, queueStatus: QueueStatus))?
+    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?)
+        -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTask<TaskData: Codable>(type: String, data: TaskData) -> (success: Bool, queueStatus: QueueStatus) {
+    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
+                                           blockingGroups: [QueueTaskGroup]?) -> (
+        success: Bool,
+        queueStatus: QueueStatus
+    ) {
         mockCalled = true
         addTaskCallsCount += 1
-        addTaskReceivedArguments = (type: type, data: AnyEncodable(data))
-        addTaskReceivedInvocations.append((type: type, data: AnyEncodable(data)))
-        return addTaskClosure.map { $0(type, AnyEncodable(data)) } ?? addTaskReturnValue
+        addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart,
+                                    blockingGroups: blockingGroups)
+        addTaskReceivedInvocations
+            .append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups))
+        return addTaskClosure.map { $0(type, AnyEncodable(data), groupStart, blockingGroups) } ?? addTaskReturnValue
     }
 
     // MARK: - run
@@ -1639,6 +1648,63 @@ public class QueueMock: Queue, TrackingMock {
         runReceivedArguments = onComplete
         runReceivedInvocations.append(onComplete)
         runClosure?(onComplete)
+    }
+}
+
+/**
+ Class to easily create a mocked version of the `QueueQueryRunner` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+internal class QueueQueryRunnerMock: QueueQueryRunner, TrackingMock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
+
+    init() {
+        TrackingMocks.shared.add(mock: self)
+    }
+
+    public func reset() {
+        mockCalled = false
+
+        getNextTaskCallsCount = 0
+        getNextTaskReceivedArguments = nil
+        getNextTaskReceivedInvocations = []
+    }
+
+    // MARK: - getNextTask
+
+    /// Number of times the function was called.
+    internal private(set) var getNextTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var getNextTaskCalled: Bool {
+        getNextTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var getNextTaskReceivedArguments: (queue: [QueueTaskMetadata],
+                                                             lastFailedTask: QueueTaskMetadata?)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var getNextTaskReceivedInvocations: [(queue: [QueueTaskMetadata],
+                                                                lastFailedTask: QueueTaskMetadata?)] = []
+    /// Value to return from the mocked function.
+    internal var getNextTaskReturnValue: QueueTaskMetadata?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getNextTaskReturnValue`
+     */
+    internal var getNextTaskClosure: (([QueueTaskMetadata], QueueTaskMetadata?) -> QueueTaskMetadata?)?
+
+    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
+        mockCalled = true
+        getNextTaskCallsCount += 1
+        getNextTaskReceivedArguments = (queue: queue, lastFailedTask: lastFailedTask)
+        getNextTaskReceivedInvocations.append((queue: queue, lastFailedTask: lastFailedTask))
+        return getNextTaskClosure.map { $0(queue, lastFailedTask) } ?? getNextTaskReturnValue
     }
 }
 
@@ -1951,7 +2017,7 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var saveInventoryReceivedArguments: ([QueueTaskMetadata])?
+    public private(set) var saveInventoryReceivedArguments: [QueueTaskMetadata]?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var saveInventoryReceivedInvocations: [[QueueTaskMetadata]] = []
     /// Value to return from the mocked function.
@@ -1982,9 +2048,11 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var createReceivedArguments: (type: String, data: Data)?
+    public private(set) var createReceivedArguments: (type: String, data: Data, groupStart: QueueTaskGroup?,
+                                                      blockingGroups: [QueueTaskGroup]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var createReceivedInvocations: [(type: String, data: Data)] = []
+    public private(set) var createReceivedInvocations: [(type: String, data: Data, groupStart: QueueTaskGroup?,
+                                                         blockingGroups: [QueueTaskGroup]?)] = []
     /// Value to return from the mocked function.
     public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -1992,15 +2060,19 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((String, Data) -> (success: Bool, queueStatus: QueueStatus))?
+    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?)
+        -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `create(type: String, data: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
+    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func create(type: String, data: Data, groupStart: QueueTaskGroup?,
+                       blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus)
+    {
         mockCalled = true
         createCallsCount += 1
-        createReceivedArguments = (type: type, data: data)
-        createReceivedInvocations.append((type: type, data: data))
-        return createClosure.map { $0(type, data) } ?? createReturnValue
+        createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)
+        createReceivedInvocations
+            .append((type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups))
+        return createClosure.map { $0(type, data, groupStart, blockingGroups) } ?? createReturnValue
     }
 
     // MARK: - update
@@ -2044,7 +2116,7 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getReceivedArguments: (String)?
+    public private(set) var getReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var getReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
@@ -2075,7 +2147,7 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteReceivedArguments: (String)?
+    public private(set) var deleteReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var deleteReceivedInvocations: [String] = []
     /// Value to return from the mocked function.

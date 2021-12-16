@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -99,6 +99,65 @@ extension QueueTask {
 
     func runResultsSet(_ runResults: QueueTaskRunResults) -> QueueTask {
         QueueTask(storageId: storageId, type: type, data: data, runResults: runResults)
+    }
+}
+
+extension QueueTaskMetadata {
+    static let taskPersistedIdLens = Lens<QueueTaskMetadata, String>(get: { $0.taskPersistedId },
+                                                                     set: { taskPersistedId, existing in
+                                                                         QueueTaskMetadata(taskPersistedId: taskPersistedId,
+                                                                                           taskType: existing.taskType,
+                                                                                           groupStart: existing
+                                                                                               .groupStart,
+                                                                                           groupMember: existing
+                                                                                               .groupMember)
+                                                                     })
+    static let taskTypeLens = Lens<QueueTaskMetadata, String>(get: { $0.taskType },
+                                                              set: { taskType, existing in
+                                                                  QueueTaskMetadata(taskPersistedId: existing
+                                                                      .taskPersistedId,
+                                                                      taskType: taskType,
+                                                                      groupStart: existing.groupStart,
+                                                                      groupMember: existing.groupMember)
+                                                              })
+    static let groupStartLens = Lens<QueueTaskMetadata, String?>(get: { $0.groupStart },
+                                                                 set: { groupStart, existing in
+                                                                     QueueTaskMetadata(taskPersistedId: existing
+                                                                         .taskPersistedId,
+                                                                         taskType: existing.taskType,
+                                                                         groupStart: groupStart,
+                                                                         groupMember: existing
+                                                                             .groupMember)
+                                                                 })
+    static let groupMemberLens = Lens<QueueTaskMetadata, [String]?>(get: { $0.groupMember },
+                                                                    set: { groupMember, existing in
+                                                                        QueueTaskMetadata(taskPersistedId: existing
+                                                                            .taskPersistedId,
+                                                                            taskType: existing.taskType,
+                                                                            groupStart: existing
+                                                                                .groupStart,
+                                                                            groupMember: groupMember)
+                                                                    })
+
+    // Convenient set functions to edit a property of the immutable object
+    func taskPersistedIdSet(_ taskPersistedId: String) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember)
+    }
+
+    func taskTypeSet(_ taskType: String) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember)
+    }
+
+    func groupStartSet(_ groupStart: String?) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember)
+    }
+
+    func groupMemberSet(_ groupMember: [String]?) -> QueueTaskMetadata {
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember)
     }
 }
 

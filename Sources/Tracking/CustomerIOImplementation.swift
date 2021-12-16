@@ -77,6 +77,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
             currentlyIdentifiedProfileIdentifier != identifier
+        let isFirstTimeIdentifying = currentlyIdentifiedProfileIdentifier == nil
 
         if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
            isChangingIdentifiedProfile {
@@ -94,7 +95,17 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
                                                          attributesJsonString: jsonBodyString)
-        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue, data: queueTaskData)
+
+        // If SDK previously identified profile X and X is being identified again, no use blocking the queue
+        // with a queue group.
+        var queueGroupStart: QueueTaskGroup? = .identifiedProfile(identifier: identifier)
+        if !isChangingIdentifiedProfile {
+            queueGroupStart = nil
+        }
+
+        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue,
+                                                  data: queueTaskData,
+                                                  groupStart: queueGroupStart)
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
@@ -107,7 +118,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
         logger.debug("storing identifier on device storage \(identifier)")
         profileStore.identifier = identifier
 
-        if currentlyIdentifiedProfileIdentifier == nil || isChangingIdentifiedProfile {
+        if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             logger.debug("running hooks profile identified \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
                 hook.profileIdentified(identifier: identifier)
@@ -156,6 +167,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
                                                 attributesJsonString: jsonBodyString)
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue, data: queueData)
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
+                                    data: queueData,
+                                    blockingGroups: [
+                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
+                                    ])
     }
 }

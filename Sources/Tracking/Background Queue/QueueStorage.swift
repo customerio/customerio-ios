@@ -27,7 +27,8 @@ public protocol QueueStorage: AutoMockable {
     func getInventory() -> [QueueTaskMetadata]
     func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
-    func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus)
+    func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
+        -> (success: Bool, queueStatus: QueueStatus)
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
@@ -69,7 +70,12 @@ public class FileManagerQueueStorage: QueueStorage {
         return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
     }
 
-    public func create(type: String, data: Data) -> (success: Bool, queueStatus: QueueStatus) {
+    public func create(
+        type: String,
+        data: Data,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    ) -> (success: Bool, queueStatus: QueueStatus) {
         lock.lock()
         defer { lock.unlock() }
 
@@ -84,7 +90,9 @@ public class FileManagerQueueStorage: QueueStorage {
             return (success: false, queueStatus: beforeCreateQueueStatus)
         }
 
-        let newQueueItem = QueueTaskMetadata(taskPersistedId: newTaskStorageId, taskType: type)
+        let newQueueItem = QueueTaskMetadata(taskPersistedId: newTaskStorageId, taskType: type,
+                                             groupStart: groupStart?.string,
+                                             groupMember: blockingGroups?.map(\.string))
         existingInventory.append(newQueueItem)
 
         let updatedInventoryCount = existingInventory.count

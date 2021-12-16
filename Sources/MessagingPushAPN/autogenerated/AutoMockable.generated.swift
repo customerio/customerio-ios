@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -79,7 +79,7 @@ import CioTracking
  */
 
 public class MessagingPushAPNMocks {
-    public static var shared = MessagingPushAPNMocks()
+    public static var shared: MessagingPushAPNMocks = .init()
 
     public var mocks: [MessagingPushAPNMock] = []
     private init() {}
@@ -138,7 +138,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerAPNDeviceTokenReceivedArguments: (Data)?
+    public private(set) var registerAPNDeviceTokenReceivedArguments: Data?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var registerAPNDeviceTokenReceivedInvocations: [Data] = []
     /**

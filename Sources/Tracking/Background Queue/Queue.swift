@@ -33,9 +33,42 @@ public protocol Queue: AutoMockable {
         type: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData
+        data: TaskData,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
     ) -> (success: Bool, queueStatus: QueueStatus)
     func run(onComplete: @escaping () -> Void)
+}
+
+public extension Queue {
+    func addTask<TaskData: Codable>(
+        type: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: TaskData
+    ) -> (success: Bool, queueStatus: QueueStatus) {
+        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil)
+    }
+
+    func addTask<TaskData: Codable>(
+        type: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: TaskData,
+        groupStart: QueueTaskGroup?
+    ) -> (success: Bool, queueStatus: QueueStatus) {
+        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil)
+    }
+
+    func addTask<TaskData: Codable>(
+        type: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: TaskData,
+        blockingGroups: [QueueTaskGroup]?
+    ) -> (success: Bool, queueStatus: QueueStatus) {
+        addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups)
+    }
 }
 
 // sourcery: InjectRegister = "Queue"
@@ -70,7 +103,8 @@ public class CioQueue: Queue {
         self.queueTimer = queueTimer
     }
 
-    public func addTask<T: Codable>(type: String, data: T) -> (success: Bool, queueStatus: QueueStatus) {
+    public func addTask<T: Codable>(type: String, data: T, groupStart: QueueTaskGroup?,
+                                    blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus) {
         logger.info("adding queue task \(type)")
 
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {
@@ -82,7 +116,8 @@ public class CioQueue: Queue {
 
         logger.debug("added queue task data \(data.string ?? "")")
 
-        let addTaskResult = storage.create(type: type, data: data)
+        let addTaskResult = storage.create(type: type, data: data, groupStart: groupStart,
+                                           blockingGroups: blockingGroups)
         processQueueStatus(addTaskResult.queueStatus)
 
         return addTaskResult
