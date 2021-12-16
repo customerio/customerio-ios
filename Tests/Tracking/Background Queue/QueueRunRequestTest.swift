@@ -17,7 +17,7 @@ class QueueRunRequestTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        runRequest = CioQueueRunRequest(runner: runnerMock, storage: storageMock, requestManger: requestManagerMock,
+        runRequest = CioQueueRunRequest(runner: runnerMock, storage: storageMock, requestManager: requestManagerMock,
                                         logger: log, queryRunner: queryRunner)
     }
 

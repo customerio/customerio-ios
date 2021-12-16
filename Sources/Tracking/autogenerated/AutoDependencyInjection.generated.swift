@@ -297,7 +297,7 @@ public class DITracking {
     }
 
     private var newQueueRunRequest: QueueRunRequest {
-        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManger: queueRequestManager,
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager,
                            logger: logger, queryRunner: queueQueryRunner)
     }
 

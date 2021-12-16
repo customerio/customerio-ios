@@ -18,13 +18,13 @@ public class CioQueueRunRequest: QueueRunRequest {
     init(
         runner: QueueRunner,
         storage: QueueStorage,
-        requestManger: QueueRequestManager,
+        requestManager: QueueRequestManager,
         logger: Logger,
         queryRunner: QueueQueryRunner
     ) {
         self.runner = runner
         self.storage = storage
-        self.requestManager = requestManger
+        self.requestManager = requestManager
         self.logger = logger
         self.queryRunner = queryRunner
     }
