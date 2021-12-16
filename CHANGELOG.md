@@ -1,3 +1,10 @@
+# [1.0.0-alpha.22](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.21...1.0.0-alpha.22) (2021-12-16)
+
+
+### Features
+
+* subsequent identifies without passing identifier ([#96](https://github.com/customerio/customerio-ios/issues/96)) ([47d9166](https://github.com/customerio/customerio-ios/commit/47d916634a5ab34842a19074f3b3c110de4e0348))
+
 # [1.0.0-alpha.21](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.20...1.0.0-alpha.21) (2021-12-13)
 
 
