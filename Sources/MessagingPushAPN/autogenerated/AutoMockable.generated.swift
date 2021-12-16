@@ -79,7 +79,7 @@ import CioTracking
  */
 
 public class MessagingPushAPNMocks {
-    public static var shared = MessagingPushAPNMocks()
+    public static var shared: MessagingPushAPNMocks = .init()
 
     public var mocks: [MessagingPushAPNMock] = []
     private init() {}

@@ -19,6 +19,12 @@ public class CustomerIOImplementation: CustomerIOInstance {
         _siteId
     }
 
+    private let profileStore: ProfileStore
+
+    public var identifier: String? {
+        profileStore.identifier
+    }
+
     private let _siteId: String
 
     private let diGraph: DITracking
@@ -38,6 +44,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self.diGraph = DITracking.getInstance(siteId: siteId)
 
         self.identifyRepository = diGraph.identifyRepository
+
+        self.profileStore = diGraph.profileStore
     }
 
     /**

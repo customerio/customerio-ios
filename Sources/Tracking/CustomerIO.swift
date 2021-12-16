@@ -3,6 +3,8 @@ import Foundation
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
 
+    var identifier: String? { get }
+
     // sourcery:Name=identify
     func identify<RequestBody: Encodable>(
         identifier: String,
@@ -98,6 +100,32 @@ public extension CustomerIOInstance {
                  jsonEncoder: jsonEncoder)
     }
 
+    func setProfileAttributes(
+        body: [String: Any],
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        guard let identifier = identifier else {
+            onComplete(Result.failure(.noCustomerIdentified))
+            return
+        }
+        identify(identifier: identifier, body: StringAnyEncodable(body), onComplete: onComplete,
+                 jsonEncoder: jsonEncoder)
+    }
+
+    func setProfileAttributes<RequestBody: Encodable>(
+        body: RequestBody,
+        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        guard let identifier = identifier else {
+            onComplete(Result.failure(.noCustomerIdentified))
+            return
+        }
+        identify(identifier: identifier, body: body, onComplete: onComplete,
+                 jsonEncoder: jsonEncoder)
+    }
+
     func track(
         name: String,
         data: [String: Any],
@@ -145,6 +173,10 @@ public extension CustomerIOInstance {
  automated tests, dependency injection, or sending data to multiple Workspaces.
  */
 public class CustomerIO: CustomerIOInstance {
+    public var identifier: String? {
+        implementation?.identifier
+    }
+
     public var siteId: String? {
         implementation?.siteId
     }
@@ -287,7 +319,7 @@ public class CustomerIO: CustomerIOInstance {
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -325,7 +357,7 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 
@@ -350,7 +382,7 @@ public class CustomerIO: CustomerIOInstance {
         jsonEncoder: JSONEncoder? = nil,
         onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
     ) {
-        guard let implementation = self.implementation else {
+        guard let implementation = implementation else {
             return onComplete(Result.failure(.notInitialized))
         }
 

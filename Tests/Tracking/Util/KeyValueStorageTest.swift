@@ -5,9 +5,7 @@ import XCTest
 
 class KeyValueStorageTests: UnitTest {
     let defaultKey = KeyValueStorageKey.sharedInstanceSiteId
-    lazy var defaultStorage: KeyValueStorage = {
-        getStorage(siteId: "test")
-    }()
+    lazy var defaultStorage: KeyValueStorage = getStorage(siteId: "test")
 
     private func getStorage(siteId: String) -> KeyValueStorage {
         UserDefaultsKeyValueStorage(siteId: siteId)
@@ -72,7 +70,7 @@ class KeyValueStorageTests: UnitTest {
     }
 
     func test_integer_givenSet_expectGetEqualResult() {
-        let given: Int = 9968686
+        let given = 9968686
 
         defaultStorage.setInt(given, forKey: defaultKey)
 
