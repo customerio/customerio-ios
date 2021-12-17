@@ -28,6 +28,8 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private var hooks: HooksManager
     private let logger: Logger
 
+    var autoScreenViewBody: (() -> [String: Any])?
+
     /**
      Constructor for singleton, only.
 
@@ -65,6 +67,22 @@ public class CustomerIOImplementation: CustomerIOInstance {
         handler(&configToModify)
 
         sdkConfigStore.config = configToModify
+
+        if sdkConfigStore.config.autoTrackScreenViews {
+            setupAutoScreenviewTracking()
+        }
+    }
+
+    public var profileAttributes: [String: Any] {
+        get {
+            [:]
+        }
+        set {
+            guard let existingProfileIdentifier = profileStore.identifier else {
+                return
+            }
+            identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue), jsonEncoder: nil)
+        }
     }
 
     public func identify<RequestBody: Encodable>(
@@ -147,21 +165,44 @@ public class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        logger.info("tracking event \(name)")
+        trackEvent(type: .event, name: name, data: data, jsonEncoder: jsonEncoder)
+    }
+
+    public func screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?) {
+        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: jsonEncoder)
+    }
+
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        trackEvent(type: .screen, name: name, data: data, jsonEncoder: jsonEncoder)
+    }
+}
+
+extension CustomerIOImplementation {
+    private func trackEvent<RequestBody: Encodable>(type: EventType,
+                                                    name: String,
+                                                    data: RequestBody,
+                                                    jsonEncoder: JSONEncoder? = nil) {
+        let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
+
+        logger.info("\(eventTypeDescription) \(name)")
 
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             // XXX: when we have anonymous profiles in SDK,
             // we can decide to not ignore events when a profile is not logged yet.
-            logger.info("ignoring track event \(name) because no profile currently identified")
+            logger.info("ignoring \(eventTypeDescription) \(name) because no profile currently identified")
             return
         }
 
-        let requestBody = TrackRequestBody(name: name, data: data, timestamp: Date())
+        let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
         guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: jsonEncoder) else {
-            logger.error("attributes provided for tracked event \(name) failed to JSON encode.")
+            logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return
         }
-        logger.debug("event attributes \(jsonBodyString)")
+        logger.debug("\(eventTypeDescription) attributes \(jsonBodyString)")
 
         let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
                                                 attributesJsonString: jsonBodyString)

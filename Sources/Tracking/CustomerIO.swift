@@ -12,6 +12,8 @@ public protocol CustomerIOInstance: AutoMockable {
         jsonEncoder: JSONEncoder?
     )
 
+    func clearIdentify()
+
     // sourcery:Name=track
     func track<RequestBody: Encodable>(
         name: String,
@@ -20,10 +22,33 @@ public protocol CustomerIOInstance: AutoMockable {
         data: RequestBody?,
         jsonEncoder: JSONEncoder?
     )
-    func clearIdentify()
+
+    // sourcery:Name=screenEncodable
+    func screen<RequestBody: Encodable>(
+        name: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: RequestBody?,
+        jsonEncoder: JSONEncoder?
+    )
+
+    // sourcery:Name=screen
+    func screen(
+        name: String,
+        data: [String: Any],
+        jsonEncoder: JSONEncoder?
+    )
+
+    var profileAttributes: [String: Any] { get set }
 }
 
 public extension CustomerIOInstance {
+    func identify(
+        identifier: String
+    ) {
+        identify(identifier: identifier, body: EmptyRequestBody(), jsonEncoder: nil)
+    }
+
     func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody,
@@ -32,16 +57,30 @@ public extension CustomerIOInstance {
         identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
     }
 
-    func identify(
-        identifier: String
-    ) {
-        identify(identifier: identifier, body: EmptyRequestBody(), jsonEncoder: nil)
-    }
-
     func track(
         name: String
     ) {
         track(name: name, data: EmptyRequestBody(), jsonEncoder: nil)
+    }
+
+    func track<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody?
+    ) {
+        track(name: name, data: data, jsonEncoder: nil)
+    }
+
+    func screen(
+        name: String,
+        data: [String: Any]
+    ) {
+        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil)
+    }
+
+    func screen(
+        name: String
+    ) {
+        screen(name: name, data: EmptyRequestBody(), jsonEncoder: nil)
     }
 }
 
@@ -193,6 +232,20 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
+      Modify attributes to an already identified profile.
+
+      Note: The getter of this field returns an empty dictionary. This is a setter only field.
+     */
+    public var profileAttributes: [String: Any] {
+        get {
+            implementation?.profileAttributes ?? [:]
+        }
+        set {
+            implementation?.profileAttributes = newValue
+        }
+    }
+
+    /**
      Identify a customer (aka: Add or update a profile).
 
      [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
@@ -248,5 +301,29 @@ public class CustomerIO: CustomerIOInstance {
         // XXX: notify developer if SDK not initialized yet
 
         implementation?.track(name: name, data: data, jsonEncoder: jsonEncoder)
+    }
+
+    public func screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?) {
+        implementation?.screen(name: name, data: data, jsonEncoder: jsonEncoder)
+    }
+
+    /**
+     Track a a screen view
+
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+
+     - Parameters:
+     - name: Name of the currently active screen
+     - data: Optional event body data
+     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
+     */
+    public func screen<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody,
+        jsonEncoder: JSONEncoder? = nil
+    ) {
+        // XXX: notify developer if SDK not initialized yet
+
+        implementation?.screen(name: name, data: data, jsonEncoder: jsonEncoder)
     }
 }

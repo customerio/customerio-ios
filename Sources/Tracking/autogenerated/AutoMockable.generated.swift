@@ -148,19 +148,63 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         }
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingProfileAttributes: [String: Any] = [:]
+    /// `true` if the getter or setter of property is called at least once.
+    public var profileAttributesCalled: Bool {
+        profileAttributesGetCalled || profileAttributesSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var profileAttributesGetCalled: Bool {
+        profileAttributesGetCallsCount > 0
+    }
+
+    public var profileAttributesGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var profileAttributesSetCalled: Bool {
+        profileAttributesSetCallsCount > 0
+    }
+
+    public var profileAttributesSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var profileAttributes: [String: Any] {
+        get {
+            mockCalled = true
+            profileAttributesGetCallsCount += 1
+            return underlyingProfileAttributes
+        }
+        set(value) {
+            mockCalled = true
+            profileAttributesSetCallsCount += 1
+            underlyingProfileAttributes = value
+        }
+    }
+
     public func reset() {
         mockCalled = false
 
         siteId = nil
         siteIdGetCallsCount = 0
         siteIdSetCallsCount = 0
+        profileAttributesGetCallsCount = 0
+        profileAttributesSetCallsCount = 0
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
+        clearIdentifyCallsCount = 0
         trackCallsCount = 0
         trackReceivedArguments = nil
         trackReceivedInvocations = []
-        clearIdentifyCallsCount = 0
+        screenEncodableCallsCount = 0
+        screenEncodableReceivedArguments = nil
+        screenEncodableReceivedInvocations = []
+        screenCallsCount = 0
+        screenReceivedArguments = nil
+        screenReceivedInvocations = []
     }
 
     // MARK: - identify<RequestBody: Encodable>
@@ -192,6 +236,27 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         identifyClosure?(identifier, AnyEncodable(body), jsonEncoder)
     }
 
+    // MARK: - clearIdentify
+
+    /// Number of times the function was called.
+    public private(set) var clearIdentifyCallsCount = 0
+    /// `true` if the function was ever called.
+    public var clearIdentifyCalled: Bool {
+        clearIdentifyCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var clearIdentifyClosure: (() -> Void)?
+
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func clearIdentify() {
+        mockCalled = true
+        clearIdentifyCallsCount += 1
+        clearIdentifyClosure?()
+    }
+
     // MARK: - track<RequestBody: Encodable>
 
     /// Number of times the function was called.
@@ -220,25 +285,62 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         trackClosure?(name, AnyEncodable(data), jsonEncoder)
     }
 
-    // MARK: - clearIdentify
+    // MARK: - screen<RequestBody: Encodable>
 
     /// Number of times the function was called.
-    public private(set) var clearIdentifyCallsCount = 0
+    public private(set) var screenEncodableCallsCount = 0
     /// `true` if the function was ever called.
-    public var clearIdentifyCalled: Bool {
-        clearIdentifyCallsCount > 0
+    public var screenEncodableCalled: Bool {
+        screenEncodableCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable,
+                                                               jsonEncoder: JSONEncoder?)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable,
+                                                                  jsonEncoder: JSONEncoder?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var clearIdentifyClosure: (() -> Void)?
+    public var screenEncodableClosure: ((String, AnyEncodable, JSONEncoder?) -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func clearIdentify() {
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?, jsonEncoder: JSONEncoder?) {
         mockCalled = true
-        clearIdentifyCallsCount += 1
-        clearIdentifyClosure?()
+        screenEncodableCallsCount += 1
+        screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder)
+        screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data), jsonEncoder: jsonEncoder))
+        screenEncodableClosure?(name, AnyEncodable(data), jsonEncoder)
+    }
+
+    // MARK: - screen
+
+    /// Number of times the function was called.
+    public private(set) var screenCallsCount = 0
+    /// `true` if the function was ever called.
+    public var screenCalled: Bool {
+        screenCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var screenReceivedArguments: (name: String, data: [String: Any], jsonEncoder: JSONEncoder?)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var screenReceivedInvocations: [(name: String, data: [String: Any],
+                                                         jsonEncoder: JSONEncoder?)] =
+        []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var screenClosure: ((String, [String: Any], JSONEncoder?) -> Void)?
+
+    /// Mocked function for `screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?) {
+        mockCalled = true
+        screenCallsCount += 1
+        screenReceivedArguments = (name: name, data: data, jsonEncoder: jsonEncoder)
+        screenReceivedInvocations.append((name: name, data: data, jsonEncoder: jsonEncoder))
+        screenClosure?(name, data, jsonEncoder)
     }
 }
 

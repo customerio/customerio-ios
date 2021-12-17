@@ -32,6 +32,18 @@ public struct SdkConfig {
     /// wish to view from the SDK.
     public var logLevel: CioLogLevel = .error
 
+    /**
+     Automatic tracking of screen views will generate `screen`-type events on every screen transition within
+        your application.
+     */
+    public var autoTrackScreenViews: Bool = false
+
+    /**
+     Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
+     this to override our defaults and pass custom values in the body of the `screen` event
+     */
+    public var autoScreenViewBody: (() -> [String: Any])?
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
