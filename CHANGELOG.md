@@ -1,3 +1,10 @@
+# [1.0.0-alpha.23](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.22...1.0.0-alpha.23) (2021-12-17)
+
+
+### Features
+
+* create background queue  ([#99](https://github.com/customerio/customerio-ios/issues/99)) ([80fffb8](https://github.com/customerio/customerio-ios/commit/80fffb881f69337125b189fbf4de5c47bd6c22f2))
+
 # [1.0.0-alpha.22](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.21...1.0.0-alpha.22) (2021-12-16)
 
 
