@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -78,7 +78,7 @@ import CioTracking
  */
 
 public class MessagingPushMocks {
-    public static var shared = MessagingPushMocks()
+    public static var shared: MessagingPushMocks = .init()
 
     public var mocks: [MessagingPushMock] = []
     private init() {}
@@ -120,8 +120,6 @@ public class MessagingPushInstanceMock: MessagingPushInstance, MessagingPushMock
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []
         deleteDeviceTokenCallsCount = 0
-        deleteDeviceTokenReceivedArguments = nil
-        deleteDeviceTokenReceivedInvocations = []
         trackMetricCallsCount = 0
         trackMetricReceivedArguments = nil
         trackMetricReceivedInvocations = []
@@ -137,27 +135,21 @@ public class MessagingPushInstanceMock: MessagingPushInstance, MessagingPushMock
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: (deviceToken: String,
-                                                                   onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    public private(set) var registerDeviceTokenReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [(deviceToken: String,
-                                                                      onComplete: (Result<Void, CustomerIOError>)
-                                                                          -> Void)] = []
+    public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var registerDeviceTokenClosure: ((String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var registerDeviceTokenClosure: ((String) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(_ deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func registerDeviceToken(
-        _ deviceToken: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerDeviceToken(_ deviceToken: String) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
-        registerDeviceTokenReceivedArguments = (deviceToken: deviceToken, onComplete: onComplete)
-        registerDeviceTokenReceivedInvocations.append((deviceToken: deviceToken, onComplete: onComplete))
-        registerDeviceTokenClosure?(deviceToken, onComplete)
+        registerDeviceTokenReceivedArguments = deviceToken
+        registerDeviceTokenReceivedInvocations.append(deviceToken)
+        registerDeviceTokenClosure?(deviceToken)
     }
 
     // MARK: - deleteDeviceToken
@@ -169,22 +161,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, MessagingPushMock
         deleteDeviceTokenCallsCount > 0
     }
 
-    /// The arguments from the *last* time the function was called.
-    public private(set) var deleteDeviceTokenReceivedArguments: ((Result<Void, CustomerIOError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteDeviceTokenReceivedInvocations: [(Result<Void, CustomerIOError>) -> Void] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var deleteDeviceTokenClosure: (((Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func deleteDeviceToken(onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteDeviceToken() {
         mockCalled = true
         deleteDeviceTokenCallsCount += 1
-        deleteDeviceTokenReceivedArguments = onComplete
-        deleteDeviceTokenReceivedInvocations.append(onComplete)
-        deleteDeviceTokenClosure?(onComplete)
+        deleteDeviceTokenClosure?()
     }
 
     // MARK: - trackMetric
@@ -197,29 +183,21 @@ public class MessagingPushInstanceMock: MessagingPushInstance, MessagingPushMock
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String,
-                                                           onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String,
-                                                              onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] =
+        []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var trackMetricClosure: ((String, Metric, String, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func trackMetric(
-        deliveryID: String,
-        event: Metric,
-        deviceToken: String,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         mockCalled = true
         trackMetricCallsCount += 1
-        trackMetricReceivedArguments = (deliveryID: deliveryID, event: event, deviceToken: deviceToken,
-                                        onComplete: onComplete)
-        trackMetricReceivedInvocations
-            .append((deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete))
-        trackMetricClosure?(deliveryID, event, deviceToken, onComplete)
+        trackMetricReceivedArguments = (deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        trackMetricReceivedInvocations.append((deliveryID: deliveryID, event: event, deviceToken: deviceToken))
+        trackMetricClosure?(deliveryID, event, deviceToken)
     }
 }

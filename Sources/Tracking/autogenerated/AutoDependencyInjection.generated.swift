@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -59,11 +59,19 @@ import Foundation
  */
 public enum DependencyTracking: CaseIterable {
     case httpClient
-    case identifyRepository
     case sdkCredentialsStore
-    case eventBus
+    case globalDataStore
+    case hooksManager
     case profileStore
+    case queue
+    case queueQueryRunner
+    case queueRequestManager
+    case queueRunRequest
+    case queueRunner
+    case singleScheduleTimer
     case logger
+    case fileStorage
+    case queueStorage
     case sdkConfigStore
     case jsonAdapter
     case httpRequestRunner
@@ -132,11 +140,19 @@ public class DITracking {
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
         case .httpClient: return httpClient as! T
-        case .identifyRepository: return identifyRepository as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
-        case .eventBus: return eventBus as! T
+        case .globalDataStore: return globalDataStore as! T
+        case .hooksManager: return hooksManager as! T
         case .profileStore: return profileStore as! T
+        case .queue: return queue as! T
+        case .queueQueryRunner: return queueQueryRunner as! T
+        case .queueRequestManager: return queueRequestManager as! T
+        case .queueRunRequest: return queueRunRequest as! T
+        case .queueRunner: return queueRunner as! T
+        case .singleScheduleTimer: return singleScheduleTimer as! T
         case .logger: return logger as! T
+        case .fileStorage: return fileStorage as! T
+        case .queueStorage: return queueStorage as! T
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
         case .httpRequestRunner: return httpRequestRunner as! T
@@ -161,19 +177,6 @@ public class DITracking {
                       jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
     }
 
-    // IdentifyRepository
-    internal var identifyRepository: IdentifyRepository {
-        if let overridenDep = overrides[.identifyRepository] {
-            return overridenDep as! IdentifyRepository
-        }
-        return newIdentifyRepository
-    }
-
-    private var newIdentifyRepository: IdentifyRepository {
-        CIOIdentifyRepository(siteId: siteId, httpClient: httpClient, jsonAdapter: jsonAdapter, eventBus: eventBus,
-                              profileStore: profileStore)
-    }
-
     // SdkCredentialsStore
     internal var sdkCredentialsStore: SdkCredentialsStore {
         if let overridenDep = overrides[.sdkCredentialsStore] {
@@ -186,16 +189,41 @@ public class DITracking {
         CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
     }
 
-    // EventBus
-    public var eventBus: EventBus {
-        if let overridenDep = overrides[.eventBus] {
-            return overridenDep as! EventBus
+    // GlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        if let overridenDep = overrides[.globalDataStore] {
+            return overridenDep as! GlobalDataStore
         }
-        return newEventBus
+        return newGlobalDataStore
     }
 
-    private var newEventBus: EventBus {
-        CioNotificationCenter()
+    private var newGlobalDataStore: GlobalDataStore {
+        CioGlobalDataStore()
+    }
+
+    // HooksManager (singleton)
+    public var hooksManager: HooksManager {
+        if let overridenDep = overrides[.hooksManager] {
+            return overridenDep as! HooksManager
+        }
+        return sharedHooksManager
+    }
+
+    private let _hooksManager_queue = DispatchQueue(label: "DI_get_hooksManager_queue")
+    private var _hooksManager_shared: HooksManager?
+    public var sharedHooksManager: HooksManager {
+        _hooksManager_queue.sync {
+            if let overridenDep = self.overrides[.hooksManager] {
+                return overridenDep as! HooksManager
+            }
+            let res = _hooksManager_shared ?? _get_hooksManager()
+            _hooksManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_hooksManager() -> HooksManager {
+        CioHooksManager()
     }
 
     // ProfileStore
@@ -210,6 +238,107 @@ public class DITracking {
         CioProfileStore(keyValueStorage: keyValueStorage)
     }
 
+    // Queue
+    public var queue: Queue {
+        if let overridenDep = overrides[.queue] {
+            return overridenDep as! Queue
+        }
+        return newQueue
+    }
+
+    private var newQueue: Queue {
+        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
+                 logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer)
+    }
+
+    // QueueQueryRunner
+    internal var queueQueryRunner: QueueQueryRunner {
+        if let overridenDep = overrides[.queueQueryRunner] {
+            return overridenDep as! QueueQueryRunner
+        }
+        return newQueueQueryRunner
+    }
+
+    private var newQueueQueryRunner: QueueQueryRunner {
+        CioQueueQueryRunner()
+    }
+
+    // QueueRequestManager (singleton)
+    public var queueRequestManager: QueueRequestManager {
+        if let overridenDep = overrides[.queueRequestManager] {
+            return overridenDep as! QueueRequestManager
+        }
+        return sharedQueueRequestManager
+    }
+
+    private let _queueRequestManager_queue = DispatchQueue(label: "DI_get_queueRequestManager_queue")
+    private var _queueRequestManager_shared: QueueRequestManager?
+    public var sharedQueueRequestManager: QueueRequestManager {
+        _queueRequestManager_queue.sync {
+            if let overridenDep = self.overrides[.queueRequestManager] {
+                return overridenDep as! QueueRequestManager
+            }
+            let res = _queueRequestManager_shared ?? _get_queueRequestManager()
+            _queueRequestManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_queueRequestManager() -> QueueRequestManager {
+        CioQueueRequestManager()
+    }
+
+    // QueueRunRequest
+    public var queueRunRequest: QueueRunRequest {
+        if let overridenDep = overrides[.queueRunRequest] {
+            return overridenDep as! QueueRunRequest
+        }
+        return newQueueRunRequest
+    }
+
+    private var newQueueRunRequest: QueueRunRequest {
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager,
+                           logger: logger, queryRunner: queueQueryRunner)
+    }
+
+    // QueueRunner
+    public var queueRunner: QueueRunner {
+        if let overridenDep = overrides[.queueRunner] {
+            return overridenDep as! QueueRunner
+        }
+        return newQueueRunner
+    }
+
+    private var newQueueRunner: QueueRunner {
+        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient,
+                       hooksManager: hooksManager)
+    }
+
+    // SingleScheduleTimer (singleton)
+    internal var singleScheduleTimer: SingleScheduleTimer {
+        if let overridenDep = overrides[.singleScheduleTimer] {
+            return overridenDep as! SingleScheduleTimer
+        }
+        return sharedSingleScheduleTimer
+    }
+
+    private let _singleScheduleTimer_queue = DispatchQueue(label: "DI_get_singleScheduleTimer_queue")
+    private var _singleScheduleTimer_shared: SingleScheduleTimer?
+    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
+        _singleScheduleTimer_queue.sync {
+            if let overridenDep = self.overrides[.singleScheduleTimer] {
+                return overridenDep as! SingleScheduleTimer
+            }
+            let res = _singleScheduleTimer_shared ?? _get_singleScheduleTimer()
+            _singleScheduleTimer_shared = res
+            return res
+        }
+    }
+
+    private func _get_singleScheduleTimer() -> SingleScheduleTimer {
+        CioSingleScheduleTimer()
+    }
+
     // Logger
     public var logger: Logger {
         if let overridenDep = overrides[.logger] {
@@ -219,7 +348,31 @@ public class DITracking {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger()
+        ConsoleLogger(sdkConfigStore: sdkConfigStore)
+    }
+
+    // FileStorage
+    public var fileStorage: FileStorage {
+        if let overridenDep = overrides[.fileStorage] {
+            return overridenDep as! FileStorage
+        }
+        return newFileStorage
+    }
+
+    private var newFileStorage: FileStorage {
+        FileManagerFileStorage(siteId: siteId, logger: logger)
+    }
+
+    // QueueStorage
+    public var queueStorage: QueueStorage {
+        if let overridenDep = overrides[.queueStorage] {
+            return overridenDep as! QueueStorage
+        }
+        return newQueueStorage
+    }
+
+    private var newQueueStorage: QueueStorage {
+        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter)
     }
 
     // SdkConfigStore (singleton)

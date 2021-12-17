@@ -72,44 +72,6 @@ class CustomerIOTest: UnitTest {
         XCTAssertEqual(config.trackingApiUrl, Region.EU.productionTrackingUrl)
     }
 
-    // MARK: identify
-
-    func test_identify_givenSdkNotInialized_expectFailureResult() {
-        let givenBody = IdentifyRequestBody.random()
-
-        let expect = expectation(description: "Expect to complete identify")
-        CustomerIO.shared.identify(identifier: String.random, body: givenBody) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = error else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    // MARK: track
-
-    func test_track_givenSdkNotInialized_expectFailureResult() {
-        let expect = expectation(description: "Expect to complete track")
-        CustomerIO.shared.track(name: String.random) { result in
-            guard case .failure(let error) = result else { return XCTFail() }
-            guard case .notInitialized = error else { return XCTFail() }
-
-            expect.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    // MARK: enableAutoScreenviewTracking
-
-    #if canImport(UIKit)
-    func test_enableAutoScreenviewTracking_calledWhenUIKitAvailable() {
-        _ = CustomerIO(siteId: String.random, apiKey: String.random)
-    }
-    #endif
-
     // MARK: deinit
 
     func test_givenNilObject_expectDeinit() {

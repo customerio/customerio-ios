@@ -47,7 +47,7 @@ https://github.com/customerio/customerio-ios.git
 
 3. Select the version that you want to install. While the SDK is its alpha stage, we recommend that you install *an exact* version of the SDK instead of indicating a range. This prevents you from automatically upgrading to a newer alpha version and possibly installing breaking changes on your code base. 
 
-![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version.jpg)
+![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version_blur.png)
 
 4. Lastly, choose the SDK products that you want to install. You can start by selecting `Tracking` for now and adding others later if you need them. 
 

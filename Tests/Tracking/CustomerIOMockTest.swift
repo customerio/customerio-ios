@@ -22,15 +22,6 @@ class CustomerIOMockTest: UnitTest {
         let givenFirstName = "Dana"
         let givenBody = ExampleIdentifyRequestBody(firstName: givenFirstName)
 
-        /// Must call `identify()` `onComplete` handler or `expectToComplete` will not be fulfilled.
-        cioMock.identifyClosure = { _, _, onComplete, _ in
-            /// Return a successful result...
-            onComplete(Result.success(()))
-
-            /// Or, return a failed result
-            /// `return onComplete(Result.failure(CustomerIOError.http(HttpRequestError.noResponse)))`
-        }
-
         /// Call your code under test
         let expect = expectation(description: "Expect login to complete")
         repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { result in
@@ -67,20 +58,9 @@ class ExampleRepository {
     ) {
         // call your code for your app to login the user with email and password.
         // then, identify the customer in Customer.io
-        cio.identify(identifier: email, body: ExampleIdentifyRequestBody(firstName: firstName)) { [weak self] result in
-            guard self != nil else { return }
+        cio.identify(identifier: email, body: ExampleIdentifyRequestBody(firstName: firstName))
 
-            switch result {
-            case .success:
-                return onComplete(Result.success(()))
-            case .failure(let cioError):
-                // parse the `cioError` and optionally log it to fix the issue.
-                _ = cioError.localizedDescription
-                // Do not use the description from `cioError` as it's for debugging, not showing to an app user.
-
-                return onComplete(Result.failure(ExampleRepositoryError.tryLoggingInAgain))
-            }
-        }
+        onComplete(.success(()))
     }
 }
 

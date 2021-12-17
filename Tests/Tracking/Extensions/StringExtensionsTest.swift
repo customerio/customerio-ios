@@ -63,4 +63,20 @@ class StringExtensionsTest: UnitTest {
 
         XCTAssertTrue(actual)
     }
+
+    // setLastCharacters
+
+    func test_setLastCharacters_givenStringWithoutLastCharacters_expectAppendCharacters() {
+        let given = "foo"
+        let expected = "foo.jpg"
+
+        XCTAssertEqual(given.setLastCharacters(".jpg"), expected)
+    }
+
+    func test_setLastCharacters_givenStringWithLastCharacters_expectUnmodifiedString() {
+        let given = "foo.jpg"
+        let expected = given
+
+        XCTAssertEqual(given.setLastCharacters(".jpg"), expected)
+    }
 }
