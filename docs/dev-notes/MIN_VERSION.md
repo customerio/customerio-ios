@@ -10,8 +10,10 @@ Follow instructions below if you need to increase the versions. Our CI server ma
 * Package.swift swift-tools version
 * Remove older swift versions in CI test workflow. 
 * README.md badge version
+* Edit `cocoapods.podspec` file, line: `spec.swift_version = 'X.X'`
 
 # Increase iOS version
 
 * Package.swift platforms version
 * README.md badge version
+* Edit `cocoapods.podspec` file, line: `spec.ios.deployment_target = "X.X"`

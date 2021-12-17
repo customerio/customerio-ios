@@ -2,7 +2,7 @@
 
 # Script that updates the Swift file in the SDK that contains the semantic version of the SDK. 
 # 
-# Use script: ./update_version.sh 0.1.1 Sources/Common/Version.swift
+# Use script: ./scripts/update_version.sh 0.1.1 Sources/Common/Version.swift
 
 set -e 
 

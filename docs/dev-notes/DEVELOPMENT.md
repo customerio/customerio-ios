@@ -72,3 +72,6 @@ To prepare the CI server, do the following steps:
 
 Set the following secret environment variables:
 * `REPO_PUSH_TOKEN` - github personal access token with `repos` access so it can push code to the repository. 
+* `COCOAPODS_TRUNK_TOKEN` - [created token](https://fuller.li/posts/automated-cocoapods-releases-with-ci/) to authenticate and deploy to cocoapods server
+
+For details on cocoapods deployment, check out "cocoapods ios sdk" in 1Password. 
