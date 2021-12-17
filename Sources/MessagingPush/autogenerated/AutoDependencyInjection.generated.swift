@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -59,7 +59,8 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyMessagingPush: CaseIterable {
-    case diPlaceholder
+    case moduleHookProvider
+    case queueRunnerHook
 }
 
 /**
@@ -123,7 +124,8 @@ public class DIMessagingPush {
      */
     public func inject<T>(_ dep: DependencyMessagingPush) -> T {
         switch dep {
-        case .diPlaceholder: return diPlaceholder as! T
+        case .moduleHookProvider: return moduleHookProvider as! T
+        case .queueRunnerHook: return queueRunnerHook as! T
         }
     }
 
@@ -131,15 +133,27 @@ public class DIMessagingPush {
      Use the property accessors below to inject pre-typed dependencies.
      */
 
-    // DiPlaceholder
-    internal var diPlaceholder: DiPlaceholder {
-        if let overridenDep = overrides[.diPlaceholder] {
-            return overridenDep as! DiPlaceholder
+    // ModuleHookProvider
+    internal var moduleHookProvider: ModuleHookProvider {
+        if let overridenDep = overrides[.moduleHookProvider] {
+            return overridenDep as! ModuleHookProvider
         }
-        return newDiPlaceholder
+        return newModuleHookProvider
     }
 
-    private var newDiPlaceholder: DiPlaceholder {
-        DiPlaceholder()
+    private var newModuleHookProvider: ModuleHookProvider {
+        MessagingPushModuleHookProvider(siteId: siteId)
+    }
+
+    // QueueRunnerHook
+    public var queueRunnerHook: QueueRunnerHook {
+        if let overridenDep = overrides[.queueRunnerHook] {
+            return overridenDep as! QueueRunnerHook
+        }
+        return newQueueRunnerHook
+    }
+
+    private var newQueueRunnerHook: QueueRunnerHook {
+        MessagingPushQueueRunner(siteId: siteId, diTracking: dITracking)
     }
 }

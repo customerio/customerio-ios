@@ -46,15 +46,11 @@ public extension CustomerIOImplementation {
         }
 
         guard let data = autoScreenViewBody?() else {
-            screen(name: name, data: CustomerIOImplementation.defaultScreenViewBody) { _ in
-                // XXX: global error handling of result here
-            }
+            screen(name: name, data: CustomerIOImplementation.defaultScreenViewBody)
             return
         }
 
-        screen(name: name, data: data) { _ in
-            // XXX: global error handling of result here
-        }
+        screen(name: name, data: data)
     }
 
     private static var defaultScreenViewBody: ScreenViewData {

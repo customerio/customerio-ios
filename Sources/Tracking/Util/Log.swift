@@ -17,6 +17,31 @@ public protocol Logger: AutoMockable {
     func error(_ message: String)
 }
 
+/// none - no logs will be made
+/// error - only log when there is an error in the SDK (default)
+/// info - basic SDK informion. Somewhat noisy. Recommended to start debugging SDK.
+/// debug - most noisy. See all of the logs made from the SDK.
+public enum CioLogLevel {
+    case none
+    case error
+    case info
+    case debug
+
+    #if canImport(os)
+    func shouldLog(_ level: OSLogType) -> Bool {
+        switch self {
+        case .none: return false
+        case .error:
+            return level == .error
+        case .info:
+            return level == .error || level == .info
+        case .debug:
+            return true
+        }
+    }
+    #endif
+}
+
 // log messages to console.
 // sourcery: InjectRegister = "Logger"
 public class ConsoleLogger: Logger {
@@ -24,16 +49,28 @@ public class ConsoleLogger: Logger {
     private let logSubsystem = "io.customer.sdk"
     private let logCategory = "CIO"
 
+    private let sdkConfigStore: SdkConfigStore
+
+    private var minLogLevel: CioLogLevel {
+        sdkConfigStore.config.logLevel
+    }
+
+    init(sdkConfigStore: SdkConfigStore) {
+        self.sdkConfigStore = sdkConfigStore
+    }
+
     #if canImport(os)
     // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
     // This means we can view logs in xcode console + Console app.
     private func printMessage(_ message: String, _ level: OSLogType) {
+        if !minLogLevel.shouldLog(level) { return }
+
         if #available(iOS 14, *) {
             let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
-            logger.info("\(message, privacy: .public)")
+            logger.log(level: level, "\(message, privacy: .public)")
         } else {
             let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: .info, message)
+            os_log("%{public}@", log: logger, type: level, message)
         }
     }
 
@@ -42,11 +79,11 @@ public class ConsoleLogger: Logger {
     }
 
     public func info(_ message: String) {
-        printMessage(message, .info)
+        printMessage("ℹ️ \(message)", .info)
     }
 
     public func error(_ message: String) {
-        printMessage(message, .error)
+        printMessage("🛑 \(message)", .error)
     }
     #else
     // At this time, Linux cannot use `os.log` or `OSLog`. Instead, use: https://github.com/apple/swift-log/

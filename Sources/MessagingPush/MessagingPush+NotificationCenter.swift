@@ -34,9 +34,7 @@ public extension MessagingPush {
                 pushMetric = Metric.opened
             }
 
-            trackMetric(notificationContent: response.notification.request.content, event: pushMetric) { _ in
-                // XXX: pending background queue so that this can get retried instead of discarding the result
-            }
+            trackMetric(notificationContent: response.notification.request.content, event: pushMetric)
         }
 
         // Time to handle rich push notifications.
@@ -66,16 +64,15 @@ public extension MessagingPush {
 
     func trackMetric(
         notificationContent: UNNotificationContent,
-        event: Metric,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        event: Metric
     ) {
         guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
               let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
         else {
-            return onComplete(Result.success(()))
+            return
         }
 
-        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken, onComplete: onComplete)
+        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
     private func cleanup(pushContent: PushContent) {

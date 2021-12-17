@@ -65,13 +65,9 @@ public class CIOHttpClient: HttpClient {
                     case 401:
                         onComplete(.failure(.unauthorized))
                     default:
-                        var errorBodyString: String? = data?.string
-                        if let data = data,
-                           let errorMessageBody: ErrorMessageResponse = self.jsonAdapter.fromJson(data) {
-                            errorBodyString = errorMessageBody.meta.error
-                        }
-
-                        onComplete(.failure(.unsuccessfulStatusCode(statusCode, apiMessage: errorBodyString)))
+                        onComplete(.failure(.unsuccessfulStatusCode(statusCode,
+                                                                    apiMessage: self
+                                                                        .getErrorMessage(responseBody: data))))
                     }
 
                     return
@@ -83,6 +79,27 @@ public class CIOHttpClient: HttpClient {
 
                 onComplete(.success(data))
             }
+    }
+
+    private func getErrorMessage(responseBody: Data?) -> String? {
+        guard let data = responseBody else {
+            return nil
+        }
+
+        var errorBodyString: String? = data.string
+
+        // don't log errors for JSON mapping since we are trying to decode *multiple* error classes.
+        // we are bound to fail more often and don't want to log errors that are not super helpful to us.
+        if let errorMessageBody: ErrorMessageResponse = jsonAdapter.fromJson(data,
+                                                                             decoder: nil,
+                                                                             logErrors: false) {
+            errorBodyString = errorMessageBody.meta.error
+        } else if let errorMessageBody: ErrorsMessageResponse = jsonAdapter.fromJson(data,
+                                                                                     decoder: nil,
+                                                                                     logErrors: false) {
+            errorBodyString = errorMessageBody.meta.errors.joined(separator: ",")
+        }
+        return errorBodyString
     }
 
     public func cancel(finishTasks: Bool) {

@@ -28,9 +28,7 @@ public extension MessagingPush {
         let jsonAdapter = diGraph.jsonAdapter
 
         if sdkConfig.autoTrackPushEvents {
-            trackMetric(notificationContent: request.content, event: .delivered) { _ in
-                // XXX: pending background queue so that this can get retried instead of discarding the result
-            }
+            trackMetric(notificationContent: request.content, event: .delivered)
         }
 
         guard let pushContent = PushContent.parse(notificationContent: request.content,

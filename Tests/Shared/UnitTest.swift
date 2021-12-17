@@ -40,6 +40,13 @@ open class UnitTest: XCTestCase {
         super.setUp()
     }
 
+    // If writing integration tests, some dependencies in the DI graph may need credentials to exist to get populated.
+    // populate with random values here so your tests can run.
+    public func populateSdkCredentials() {
+        var credentialsStore = diGraph.sdkCredentialsStore
+        credentialsStore.credentials = SdkCredentials(apiKey: String.random, region: Region.US)
+    }
+
     override open func tearDown() {
         TrackingMocks.shared.resetAll()
 
@@ -54,6 +61,25 @@ open class UnitTest: XCTestCase {
         deleteKeyValueStorage()
         CustomerIO.resetSharedInstance()
         CioGlobalDataStore().keyValueStorage.deleteAll()
+        deleteAllFiles()
+    }
+
+    // function meant to only be in tests as deleting all files from a search path (where app files can be stored!) is not a good idea.
+    private func deleteAllFiles() {
+        let fileManager = FileManager.default
+
+        let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
+            let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
+
+            let fileURLs = try! fileManager.contentsOfDirectory(at: pathUrl,
+                                                                includingPropertiesForKeys: nil,
+                                                                options: .skipsHiddenFiles)
+            for fileURL in fileURLs {
+                try? fileManager.removeItem(at: fileURL)
+            }
+        }
+
+        deleteFromSearchPath(.applicationSupportDirectory)
     }
 
     /**

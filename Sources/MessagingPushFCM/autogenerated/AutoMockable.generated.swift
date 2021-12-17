@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.5.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -135,32 +135,21 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveRegistrationTokenReceivedArguments: (messaging: Any, fcmToken: String?,
-                                                                           onComplete: (Result<Void, CustomerIOError>)
-                                                                               -> Void)?
+    public private(set) var didReceiveRegistrationTokenReceivedArguments: (messaging: Any, fcmToken: String?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveRegistrationTokenReceivedInvocations: [(messaging: Any, fcmToken: String?,
-                                                                              onComplete: (Result<Void,
-                                                                                  CustomerIOError>) -> Void)] = [
-    ]
+    public private(set) var didReceiveRegistrationTokenReceivedInvocations: [(messaging: Any, fcmToken: String?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var didReceiveRegistrationTokenClosure: ((Any, String?, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var didReceiveRegistrationTokenClosure: ((Any, String?) -> Void)?
 
-    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func messaging(
-        _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
         mockCalled = true
         didReceiveRegistrationTokenCallsCount += 1
-        didReceiveRegistrationTokenReceivedArguments = (messaging: messaging, fcmToken: fcmToken,
-                                                        onComplete: onComplete)
-        didReceiveRegistrationTokenReceivedInvocations
-            .append((messaging: messaging, fcmToken: fcmToken, onComplete: onComplete))
-        didReceiveRegistrationTokenClosure?(messaging, fcmToken, onComplete)
+        didReceiveRegistrationTokenReceivedArguments = (messaging: messaging, fcmToken: fcmToken)
+        didReceiveRegistrationTokenReceivedInvocations.append((messaging: messaging, fcmToken: fcmToken))
+        didReceiveRegistrationTokenClosure?(messaging, fcmToken)
     }
 
     // MARK: - application
@@ -173,34 +162,21 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error,
-                                                                                       onComplete: (Result<Void,
-                                                                                           CustomerIOError>) -> Void)?
+    public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
-                                                                                          error: Error,
-                                                                                          onComplete: (
-                                                                                              Result<Void,
-                                                                                                  CustomerIOError>
-                                                                                          ) -> Void)] = []
+                                                                                          error: Error)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error, (Result<Void, CustomerIOError>) -> Void)
-        -> Void)?
+    public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error) -> Void)?
 
-    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
-    ) {
+    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         mockCalled = true
         didFailToRegisterForRemoteNotificationsCallsCount += 1
-        didFailToRegisterForRemoteNotificationsReceivedArguments = (application: application, error: error,
-                                                                    onComplete: onComplete)
-        didFailToRegisterForRemoteNotificationsReceivedInvocations
-            .append((application: application, error: error, onComplete: onComplete))
-        didFailToRegisterForRemoteNotificationsClosure?(application, error, onComplete)
+        didFailToRegisterForRemoteNotificationsReceivedArguments = (application: application, error: error)
+        didFailToRegisterForRemoteNotificationsReceivedInvocations.append((application: application, error: error))
+        didFailToRegisterForRemoteNotificationsClosure?(application, error)
     }
 }
