@@ -1,7 +1,7 @@
 name: Deploy SDK 
 on:
   push:
-    branches: [main, beta, alpha]
+    branches: [beta, alpha]
 
 jobs:
   deploy-sdk:
