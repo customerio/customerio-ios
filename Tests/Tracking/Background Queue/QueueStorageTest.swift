@@ -30,7 +30,7 @@ class QueueStorageTest: UnitTest {
 
         let actual = storage.getInventory()
 
-        XCTAssertEqual(actual, expected)
+        XCTAssertEqual(actual[0].createdAt.timeIntervalSince1970, expected[0].createdAt.timeIntervalSince1970)
     }
 
     // MARK: saveInventory

@@ -12,6 +12,8 @@ public struct QueueTaskMetadata: Codable, Equatable, AutoLenses {
     /// Groups that this task belongs to.
     /// Tasks can belong to 0+ groups
     let groupMember: [String]?
+    /// Populated when the task is added to the queue.
+    let createdAt: Date
 }
 
 internal extension QueueTaskMetadata {
@@ -19,6 +21,7 @@ internal extension QueueTaskMetadata {
         QueueTaskMetadata(taskPersistedId: String.random,
                           taskType: QueueTaskType.trackEvent.rawValue,
                           groupStart: nil,
-                          groupMember: nil)
+                          groupMember: nil,
+                          createdAt: Date.nowNoMilliseconds)
     }
 }
