@@ -57,6 +57,8 @@ Documents/
         2939929292001919202002.json
 ```
 
+After a task in the queue executes successfully, the queue will update the `inventory.json` file and will delete the task's `.json` file in `tasks/`. See `QueueStorage.swift` to view all the file system operations performed by the queue. 
+
 Learn more by visiting files `Queue.swift` and `QueueStorage.swift`.
 
 * Trigger the queue to run in the future. 
@@ -77,11 +79,13 @@ When it's time to run the queue, here are the operations of the queue:
 3. If the task fails to run, the queue will check if the task that failed is the start of a *task group*. If it is *not* the start, the queue will simply behave as normal where it goes to the next task of the queue and executes it. if the task *is* the start of a task group, the queue will skip executing all members of that task group left in the queue. 
 
 What is a task group? Let's say the queue has these items in it:
-1. identify profile A - the API has never created profile A beore.
-2. track event for profile A
-3. push metric opened for push notification Z
+A. identify profile A - the API has never created profile A before.
+B. track event for profile A
+C. push metric opened for push notification Z
 
-If queue task 1 fails to execute, queue task 2 will fail. Why? Because the API has yet to create profile A so we can't track events to profile A. To fix this issue, we created *task groups*. If we put task 1 and 2 in the same task group where task 1 is the *start* of the task group and have task 2 be a member of that same group, then if task 1 fails to execute, the queue will then see task 2 is a member of that group and will then skip task 2 and move onto task 3 which is not a member of the task group. 
+[![](https://mermaid.ink/img/eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG5cbkFbQXNzdW1pbmcgdGhlIHF1ZXVlIGNvbnRhaW5zIHRoZSB0YXNrcyA8YnIvPiBBLCBCLCBhbmQgQyA8YnIvPiB3aGVyZSBBIGFuZCBCIGFyZSBpbiBhIHRhc2sgZ3JvdXAgdG9nZXRoZXIuIDxici8-PGJyLz4gUXVldWUgcnVucyB0YXNrIEFdIC0tPnxEaWQgdGFzayBydW4gc3VjY2Vzc2Z1bGx5P3wgQnt5ZXN9ICYgQ3tub31cbkIgLS0-IEQoUnVuIHRhc2sgQilcbkMgLS0-IHxJcyB0YXNrIEEgdGhlIHN0YXJ0IG9mIGEgdGFzayBncm91cD98IEV7eWVzfSAmIEZ7bm99XG5GIC0tPiBIKFJ1biB0YXNrIEIpXG5FIC0tPiB8U2tpcCBhbGwgdGFza3MgdGhhdCBiZWxvbmcgdG8gdGhlIHRhc2sgZ3JvdXAuIDxici8-IFJ1biBuZXh0IHRhc2sgaW4gcXVldWUgdGhhdCBkb2VzIG5vdCBiZWxvbmcgdG8gdGhhdCBncm91cC58IEcoU2tpcCB0YXNrIEIuIFJ1biB0YXNrIEMpIiwibWVybWFpZCI6eyJ0aGVtZSI6ImRlZmF1bHQifSwidXBkYXRlRWRpdG9yIjpmYWxzZSwiYXV0b1N5bmMiOnRydWUsInVwZGF0ZURpYWdyYW0iOmZhbHNlfQ)](https://mermaid-js.github.io/mermaid-live-editor/edit#eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG5cbkFbQXNzdW1pbmcgdGhlIHF1ZXVlIGNvbnRhaW5zIHRoZSB0YXNrcyA8YnIvPiBBLCBCLCBhbmQgQyA8YnIvPiB3aGVyZSBBIGFuZCBCIGFyZSBpbiBhIHRhc2sgZ3JvdXAgdG9nZXRoZXIuIDxici8-PGJyLz4gUXVldWUgcnVucyB0YXNrIEFdIC0tPnxEaWQgdGFzayBydW4gc3VjY2Vzc2Z1bGx5P3wgQnt5ZXN9ICYgQ3tub31cbkIgLS0-IEQoUnVuIHRhc2sgQilcbkMgLS0-IHxJcyB0YXNrIEEgdGhlIHN0YXJ0IG9mIGEgdGFzayBncm91cD98IEV7eWVzfSAmIEZ7bm99XG5GIC0tPiBIKFJ1biB0YXNrIEIpXG5FIC0tPiB8U2tpcCBhbGwgdGFza3MgdGhhdCBiZWxvbmcgdG8gdGhlIHRhc2sgZ3JvdXAuIDxici8-IFJ1biBuZXh0IHRhc2sgaW4gcXVldWUgdGhhdCBkb2VzIG5vdCBiZWxvbmcgdG8gdGhhdCBncm91cC58IEcoU2tpcCB0YXNrIEIuIFJ1biB0YXNrIEMpIiwibWVybWFpZCI6IntcbiAgXCJ0aGVtZVwiOiBcImRlZmF1bHRcIlxufSIsInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0)
+
+> Explaination of chart: If the queue task A fails to execute, queue task B will fail as well. Why? Because the API has yet to create profile A so we can't track events to profile A. The API will always return a 4xx status code until task A is successful. To fix this issue, we created *task groups*. If we put task A and B in the same task group where task A is the *start* of the task group and have task B be a member of that same group, then if task A fails to execute, the queue will then see task B is a member of that group and will then skip task B and move onto task C which is not a member of the task group. 
 
 See file `QueueQueryRunner` to learn more about how the queue gets the next task to execute and how it skips tasks by group. 
 
