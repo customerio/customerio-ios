@@ -194,7 +194,8 @@ extension CIOHttpClient {
     /**
      - When receiving a 5xx response:
      * Begin an exponential backoff retry on the HTTP task that returned back the 5xx error.
-     * After these retry attempts, if the HTTP request is still receiving a 5xx response then the requests will sleep for 5 minutes and no requests will be attempted.
+     * After these retry attempts, if the HTTP request is still receiving a 5xx response then the
+       requests will sleep for 5 minutes and no requests will be attempted.
      * After the 5 minutes, HTTP requests are able to be run as normal. No memory of any errors prior.
 
      - When receiving a 401 response:

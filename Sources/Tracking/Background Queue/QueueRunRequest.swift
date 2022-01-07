@@ -52,8 +52,7 @@ public class CioQueueRunRequest: QueueRunRequest {
         else {
             // we hit the end of the current inventory. Done!
             logger.debug("queue out of tasks to run.")
-            requestManager.requestComplete()
-            return
+            return requestManager.requestComplete()
         }
 
         let nextTaskStorageId = nextTaskToRunInventoryItem.taskPersistedId
@@ -84,34 +83,32 @@ public class CioQueueRunRequest: QueueRunRequest {
                 self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) ran successfully")
 
                 self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
-                let success = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
-                self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId)) success: \(success)")
+                _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
                 return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nil)
             case .failure(let error):
                 self.logger
-                    .debug("queue task \(self.shortTaskId(nextTaskStorageId)) fail - \(error.localizedDescription)")
+                    .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
 
-                let executedTaskPreviousRunResults = nextTaskToRun.runResults
+                let previousRunResults = nextTaskToRun.runResults
 
-                // When a HTTP request isn't made, no need to update the run history for queue task to give us inaccurate data.
+                // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
                 if case .http(let httpError) = error, case .noRequestMade = httpError {
-                    self.logger
-                        .debug("queue task \(self.shortTaskId(nextTaskStorageId)) didn't perform a HTTP request. This may be an expected behavior.")
+                    self.logger.debug("""
+                    queue task \(self.shortTaskId(nextTaskStorageId)) didn't perform a HTTP request.
+                    This may be an expected behavior.
+                    """)
                 } else {
-                    let newRunResults = executedTaskPreviousRunResults
-                        .totalRunsSet(executedTaskPreviousRunResults.totalRuns + 1)
+                    let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
                     self.logger.debug("""
                     queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
                     from: \(nextTaskToRun.runResults) to: \(newRunResults)
                     """)
 
-                    let success = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
-                                                      runResults: newRunResults)
-
-                    self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) update success \(success)")
+                    _ = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
+                                            runResults: newRunResults)
                 }
 
                 return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
