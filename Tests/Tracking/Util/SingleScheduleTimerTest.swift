@@ -9,7 +9,7 @@ class SingleScheduleTimerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        timer = CioSingleScheduleTimer()
+        timer = CioSingleScheduleTimer(timer: diGraph.simpleTimer)
     }
 
     // MARK: scheduleIfNotAleady

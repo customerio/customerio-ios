@@ -68,8 +68,10 @@ public enum DependencyTracking: CaseIterable {
     case queueRequestManager
     case queueRunRequest
     case queueRunner
+    case simpleTimer
     case singleScheduleTimer
     case logger
+    case httpRetryPolicy
     case fileStorage
     case queueStorage
     case sdkConfigStore
@@ -149,8 +151,10 @@ public class DITracking {
         case .queueRequestManager: return queueRequestManager as! T
         case .queueRunRequest: return queueRunRequest as! T
         case .queueRunner: return queueRunner as! T
+        case .simpleTimer: return simpleTimer as! T
         case .singleScheduleTimer: return singleScheduleTimer as! T
         case .logger: return logger as! T
+        case .httpRetryPolicy: return httpRetryPolicy as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
         case .sdkConfigStore: return sdkConfigStore as! T
@@ -174,7 +178,8 @@ public class DITracking {
 
     private var newHttpClient: HttpClient {
         CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
-                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
+                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore,
+                      logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy)
     }
 
     // SdkCredentialsStore
@@ -314,6 +319,18 @@ public class DITracking {
                        hooksManager: hooksManager)
     }
 
+    // SimpleTimer
+    internal var simpleTimer: SimpleTimer {
+        if let overridenDep = overrides[.simpleTimer] {
+            return overridenDep as! SimpleTimer
+        }
+        return newSimpleTimer
+    }
+
+    private var newSimpleTimer: SimpleTimer {
+        CioSimpleTimer()
+    }
+
     // SingleScheduleTimer (singleton)
     internal var singleScheduleTimer: SingleScheduleTimer {
         if let overridenDep = overrides[.singleScheduleTimer] {
@@ -336,7 +353,7 @@ public class DITracking {
     }
 
     private func _get_singleScheduleTimer() -> SingleScheduleTimer {
-        CioSingleScheduleTimer()
+        CioSingleScheduleTimer(timer: simpleTimer)
     }
 
     // Logger
@@ -349,6 +366,18 @@ public class DITracking {
 
     private var newLogger: Logger {
         ConsoleLogger(sdkConfigStore: sdkConfigStore)
+    }
+
+    // HttpRetryPolicy
+    internal var httpRetryPolicy: HttpRetryPolicy {
+        if let overridenDep = overrides[.httpRetryPolicy] {
+            return overridenDep as! HttpRetryPolicy
+        }
+        return newHttpRetryPolicy
+    }
+
+    private var newHttpRetryPolicy: HttpRetryPolicy {
+        CustomerIOAPIHttpRetryPolicy()
     }
 
     // FileStorage

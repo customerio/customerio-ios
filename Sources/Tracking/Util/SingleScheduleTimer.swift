@@ -11,40 +11,17 @@ internal protocol SingleScheduleTimer: AutoMockable {
 // sourcery: InjectRegister = "SingleScheduleTimer"
 // sourcery: InjectSingleton
 internal class CioSingleScheduleTimer: SingleScheduleTimer {
-    @Atomic private var timer: Timer?
-    @Atomic private var lock = Lock()
+    private var timer: SimpleTimer
 
-    deinit {
-        unsafeCancel()
+    init(timer: SimpleTimer) {
+        self.timer = timer
     }
 
     func scheduleIfNotAleady(numSeconds: Double, block: @escaping () -> Void) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard timer == nil else {
-            return false
-        }
-
-        timer = Timer.scheduledTimer(withTimeInterval: numSeconds, repeats: false, block: { timer in
-            timer.invalidate()
-            self.timer = nil
-
-            block()
-        })
-
-        return true
+        timer.scheduleIfNotAleady(milliseconds: numSeconds.toSeconds, block: block)
     }
 
     func cancel() {
-        lock.lock()
-        defer { lock.unlock() }
-
-        unsafeCancel()
-    }
-
-    private func unsafeCancel() {
-        timer?.invalidate()
-        timer = nil
+        timer.cancel()
     }
 }

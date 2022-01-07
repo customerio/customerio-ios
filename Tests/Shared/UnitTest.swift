@@ -34,8 +34,13 @@ open class UnitTest: XCTestCase {
         JsonAdapter(log: log)
     }
 
+    public var retryPolicyMock: HttpRetryPolicyMock!
+
     override open func setUp() {
         deleteAll()
+
+        retryPolicyMock = HttpRetryPolicyMock()
+        retryPolicyMock.underlyingNextSleepTimeMilliseconds = 10
 
         super.setUp()
     }

@@ -10,6 +10,9 @@ class HttpClientTest: UnitTest {
     private var requestRunnerMock = HttpRequestRunnerMock()
     private var credentialsStoreMock = SdkCredentialsStoreMock()
     private var configStoreMock = SdkConfigStoreMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
+    private let timerMock = SimpleTimerMock()
+
     private var client: HttpClient!
 
     private let url = URL(string: "https://customer.io")!
@@ -23,7 +26,19 @@ class HttpClientTest: UnitTest {
 
         client = CIOHttpClient(siteId: SiteId.random, sdkCredentialsStore: credentialsStoreMock,
                                configStore: configStoreMock, jsonAdapter: jsonAdapter,
-                               httpRequestRunner: requestRunnerMock)
+                               httpRequestRunner: requestRunnerMock,
+                               globalDataStore: globalDataStoreMock,
+                               logger: log,
+                               timer: timerMock,
+                               retryPolicy: retryPolicyMock)
+    }
+
+    private func assertHttpRequestsPaused(paused: Bool) {
+        if paused {
+            XCTAssertTrue(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
+        } else {
+            XCTAssertFalse(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
+        }
     }
 
     // MARK: request
@@ -82,58 +97,6 @@ class HttpClientTest: UnitTest {
         waitForExpectations()
     }
 
-    func test_request_given401_expectError() {
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), nil)
-        }
-
-        let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
-        client.request(params) { result in
-            XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            XCTAssertNotNil(result.error)
-
-            guard case .unauthorized = result.error! else {
-                XCTFail()
-                return
-            }
-
-            expectComplete.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
-    func test_request_givenUnsuccessfulStatusCode_expectError() {
-        let expectedCode = 500
-        let expectedError = HttpRequestError.unsuccessfulStatusCode(expectedCode, apiMessage: "invalid id")
-
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
-                       HTTPURLResponse(url: self.url, statusCode: expectedCode, httpVersion: nil, headerFields: nil),
-                       nil)
-        }
-
-        let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
-        client.request(params) { result in
-            XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            XCTAssertNotNil(result.error)
-
-            guard case .unsuccessfulStatusCode(let actualCode, _) = result.error!, let actualError = result.error else {
-                XCTFail()
-                return
-            }
-
-            XCTAssertEqual(actualCode, expectedCode)
-            XCTAssertEqual(actualError.description, expectedError.description)
-
-            expectComplete.fulfill()
-        }
-
-        waitForExpectations()
-    }
-
     func test_request_givenSuccessfulResponse_expectGetResponseBody() {
         let expected = #"{ "message": "Success!" }"#.data!
 
@@ -154,6 +117,162 @@ class HttpClientTest: UnitTest {
         }
 
         waitForExpectations()
+
+        assertHttpRequestsPaused(paused: false)
+    }
+
+    func test_request_givenHttpRequestsPaused_expectDontMakeRequest() {
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().addMinutes(10)
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            guard case .noRequestMade = result.error! else { return XCTFail() }
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertFalse(requestRunnerMock.requestCalled)
+    }
+
+    func test_request_givenHttpRequestsPauseExpired_expectMakeRequest() {
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().minusMinutes(10)
+
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(Data(), HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                       nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertTrue(requestRunnerMock.requestCalled)
+    }
+
+    // MARK: test 401 status codes
+
+    func test_request_given401_expectPauseRequests_expectReturnError() {
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            XCTAssertTrue(self.requestRunnerMock.requestCalled)
+            XCTAssertNotNil(result.error)
+
+            guard case .unauthorized = result.error! else {
+                XCTFail()
+                return
+            }
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        assertHttpRequestsPaused(paused: true)
+    }
+
+    // MARK: test 4xx status codes
+
+    func test_request_given4xx_expectPauseRequets_expectReturnError() {
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 403, httpVersion: nil, headerFields: nil), nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            XCTAssertNotNil(result.error)
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        assertHttpRequestsPaused(paused: false)
+    }
+
+    // MARK: test 500/5xx status codes
+
+    func test_request_given500_expectRetryUntilSuccessful() {
+        let successfulHttpRequestResponse = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                                            headerFields: nil)
+        let failedHttpRequestResponse = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)
+        var httpRequestRunnerResponse = failedHttpRequestResponse
+
+        var numberOfTimesToRetry = 3
+        timerMock.scheduleClosure = { _, onComplete in
+            if numberOfTimesToRetry == 0 {
+                httpRequestRunnerResponse = successfulHttpRequestResponse
+            }
+
+            numberOfTimesToRetry -= 1
+
+            onComplete()
+        }
+
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
+                       httpRequestRunnerResponse,
+                       nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            guard case .success = result else { // expect get success after retrying.
+                return XCTFail()
+            }
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        assertHttpRequestsPaused(paused: false)
+        XCTAssertGreaterThan(requestRunnerMock.requestCallsCount, 3)
+    }
+
+    func test_request_given500_expectPauseAndReturnErrorAfterRetrying() {
+        var numberOfTimesToRetry = 3
+        timerMock.scheduleClosure = { _, onComplete in
+            if numberOfTimesToRetry == 0 {
+                self.retryPolicyMock.underlyingNextSleepTimeMilliseconds = nil
+            }
+
+            numberOfTimesToRetry -= 1
+
+            onComplete()
+        }
+
+        requestRunnerMock.requestClosure = { _, _, _, onComplete in
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
+                       HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
+                       nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        client.request(params) { result in
+            XCTAssertNotNil(result.error)
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+
+        assertHttpRequestsPaused(paused: true)
+        XCTAssertGreaterThan(requestRunnerMock.requestCallsCount, 3)
     }
 
     // MARK: getBasicAuthHeaderString
