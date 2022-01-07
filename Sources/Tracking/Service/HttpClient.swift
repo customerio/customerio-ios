@@ -191,6 +191,18 @@ extension CIOHttpClient {
         logger.info("All HTTP requests to the Customer.io API have been paused for \(minutesToPause) minutes.")
     }
 
+    /**
+     - When receiving a 5xx response:
+     * Begin an exponential backoff retry on the HTTP task that returned back the 5xx error.
+     * After these retry attempts, if the HTTP request is still receiving a 5xx response then the requests will sleep for 5 minutes and no requests will be attempted.
+     * After the 5 minutes, HTTP requests are able to be run as normal. No memory of any errors prior.
+
+     - When receiving a 401 response:
+     * The HTTP requests will sleep for 5 minutes as above.
+
+     - Any other 4xx error
+     * Log the error as it's more then likely a SDK developer error or an error by the customer.
+     */
     private func handleUnsuccessfulStatusCodeResponse(
         statusCode: Int,
         data: Data?,

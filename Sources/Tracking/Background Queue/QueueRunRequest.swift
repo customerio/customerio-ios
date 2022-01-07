@@ -94,17 +94,25 @@ public class CioQueueRunRequest: QueueRunRequest {
                     .debug("queue task \(self.shortTaskId(nextTaskStorageId)) fail - \(error.localizedDescription)")
 
                 let executedTaskPreviousRunResults = nextTaskToRun.runResults
-                let newRunResults = executedTaskPreviousRunResults
-                    .totalRunsSet(executedTaskPreviousRunResults.totalRuns + 1)
 
-                self.logger.debug("""
-                queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
-                from: \(nextTaskToRun.runResults) to: \(newRunResults)
-                """)
+                // When a HTTP request isn't made, no need to update the run history for queue task to give us inaccurate data.
+                if case .http(let httpError) = error, case .noRequestMade = httpError {
+                    self.logger
+                        .debug("queue task \(self.shortTaskId(nextTaskStorageId)) didn't perform a HTTP request. This may be an expected behavior.")
+                } else {
+                    let newRunResults = executedTaskPreviousRunResults
+                        .totalRunsSet(executedTaskPreviousRunResults.totalRuns + 1)
 
-                let success = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
-                                                  runResults: newRunResults)
-                self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) update success \(success)")
+                    self.logger.debug("""
+                    queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
+                    from: \(nextTaskToRun.runResults) to: \(newRunResults)
+                    """)
+
+                    let success = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
+                                                      runResults: newRunResults)
+
+                    self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) update success \(success)")
+                }
 
                 return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nextTaskToRunInventoryItem)
