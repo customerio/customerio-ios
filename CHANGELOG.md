@@ -1,3 +1,10 @@
+# [1.0.0-alpha.24](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.23...1.0.0-alpha.24) (2022-01-10)
+
+
+### Bug Fixes
+
+* add createdAt timestamp to added queue tasks  ([#106](https://github.com/customerio/customerio-ios/issues/106)) ([46aab62](https://github.com/customerio/customerio-ios/commit/46aab6212093ef374df7952f5c335e166a26498e))
+
 # [1.0.0-alpha.23](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.22...1.0.0-alpha.23) (2021-12-17)
 
 
