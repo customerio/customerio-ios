@@ -84,8 +84,8 @@ extension UIViewController {
         } else { // keyWindow is deprecated in iOS 13.0*
             window = UIApplication.shared.keyWindow
         }
-        guard let window = window else { return nil }
-        return window.rootViewController
+        guard let activeWindow = window else { return nil }
+        return activeWindow.rootViewController
     }
 }
 
