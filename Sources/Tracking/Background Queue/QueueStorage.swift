@@ -90,9 +90,11 @@ public class FileManagerQueueStorage: QueueStorage {
             return (success: false, queueStatus: beforeCreateQueueStatus)
         }
 
-        let newQueueItem = QueueTaskMetadata(taskPersistedId: newTaskStorageId, taskType: type,
+        let newQueueItem = QueueTaskMetadata(taskPersistedId: newTaskStorageId,
+                                             taskType: type,
                                              groupStart: groupStart?.string,
-                                             groupMember: blockingGroups?.map(\.string))
+                                             groupMember: blockingGroups?.map(\.string),
+                                             createdAt: Date())
         existingInventory.append(newQueueItem)
 
         let updatedInventoryCount = existingInventory.count
