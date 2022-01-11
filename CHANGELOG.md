@@ -1,3 +1,10 @@
+# [1.0.0-alpha.25](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.24...1.0.0-alpha.25) (2022-01-11)
+
+
+### Bug Fixes
+
+* change hostname for CIO API ([#109](https://github.com/customerio/customerio-ios/issues/109)) ([90e9407](https://github.com/customerio/customerio-ios/commit/90e9407ceb0c1f6f59c7ad7c835ac556651f55ef))
+
 # [1.0.0-alpha.24](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.23...1.0.0-alpha.24) (2022-01-10)
 
 
