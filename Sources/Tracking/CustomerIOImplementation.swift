@@ -28,7 +28,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     private var hooks: HooksManager
     private let logger: Logger
 
-    var autoScreenViewBody: (() -> [String: Any])?
+    static var autoScreenViewBody: (() -> [String: Any])?
 
     /**
      Constructor for singleton, only.
