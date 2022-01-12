@@ -94,7 +94,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
-                                    data: MetricRequest(deliveryID: deliveryID, event: event, deviceToken: deviceToken,
+                                    data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
     }
 }
