@@ -47,6 +47,7 @@ public class JsonAdapter {
             let seconds = Int(date.timeIntervalSince1970)
             try container.encode(seconds)
         }
+        encoder.outputFormatting = .sortedKeys
         return encoder
     }
 
