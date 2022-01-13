@@ -19,8 +19,7 @@ internal extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }
-    // lint allow start with _ since it's swizzled. Makes it stand out.
-    // swiftlint:disable:next identifier_name
+
     @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
         cio_swizzled_UIKit_viewDidAppear(animated)
         let rootViewController = activeRootViewController()
