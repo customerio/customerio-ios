@@ -1,3 +1,10 @@
+# [1.0.0-alpha.26](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.25...1.0.0-alpha.26) (2022-01-13)
+
+
+### Bug Fixes
+
+* opened push metrics being sent to API again ([#111](https://github.com/customerio/customerio-ios/issues/111)) ([93971bf](https://github.com/customerio/customerio-ios/commit/93971bf8e8bf272fbcc73d327069ce0cd244066d))
+
 # [1.0.0-alpha.25](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.24...1.0.0-alpha.25) (2022-01-11)
 
 
