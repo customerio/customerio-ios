@@ -5,7 +5,7 @@ import UIKit
 public extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
-        let selector2 = #selector(UIViewController._swizzled_UIKit_viewDidAppear(_:))
+        let selector2 = #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))
         guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
             return
         }
@@ -15,14 +15,14 @@ public extension CustomerIOImplementation {
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 }
-extension UIViewController {
+internal extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }
     // lint allow start with _ since it's swizzled. Makes it stand out.
     // swiftlint:disable:next identifier_name
-    @objc func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
-        _swizzled_UIKit_viewDidAppear(animated)
+    @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
+        cio_swizzled_UIKit_viewDidAppear(animated)
         let rootViewController = activeRootViewController()
         guard let viewController = visibleViewController(rootViewController) else {
             return
