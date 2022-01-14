@@ -1,3 +1,10 @@
+# [1.0.0-alpha.27](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.26...1.0.0-alpha.27) (2022-01-14)
+
+
+### Bug Fixes
+
+* screen view tracking ([#108](https://github.com/customerio/customerio-ios/issues/108)) ([f836b9a](https://github.com/customerio/customerio-ios/commit/f836b9aaa59cd525afc4db935db4b378f71fa8f4))
+
 # [1.0.0-alpha.26](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.25...1.0.0-alpha.26) (2022-01-13)
 
 
