@@ -1,3 +1,10 @@
+# [1.0.0-alpha.28](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.27...1.0.0-alpha.28) (2022-01-14)
+
+
+### Bug Fixes
+
+* track events type in HTTP requests ([#117](https://github.com/customerio/customerio-ios/issues/117)) ([745d4ad](https://github.com/customerio/customerio-ios/commit/745d4ad642be84f27688b45e2608db1c44cf2798))
+
 # [1.0.0-alpha.27](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.26...1.0.0-alpha.27) (2022-01-14)
 
 
