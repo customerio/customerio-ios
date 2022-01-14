@@ -5,38 +5,31 @@ import UIKit
 public extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
-        let selector2 = #selector(CustomerIOImplementation._swizzled_UIKit_viewDidAppear(_:))
+        let selector2 = #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))
         guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
             return
         }
-        guard let swizzleMethod = class_getInstanceMethod(CustomerIOImplementation.self, selector2) else {
+        guard let swizzleMethod = class_getInstanceMethod(UIViewController.self, selector2) else {
             return
         }
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
+}
+internal extension UIViewController {
+    var defaultScreenViewBody: ScreenViewData {
+        ScreenViewData()
+    }
 
-    // lint allow start with _ since it's swizzled. Makes it stand out.
-    // swiftlint:disable:next identifier_name
-    @objc dynamic func _swizzled_UIKit_viewDidAppear(_ animated: Bool) {
-        _swizzled_UIKit_viewDidAppear(animated)
-
-        guard let delegate = UIApplication.shared.delegate else {
+    @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
+        cio_swizzled_UIKit_viewDidAppear(animated)
+        let rootViewController = activeRootViewController()
+        guard let viewController = visibleViewController(rootViewController) else {
             return
         }
-
-        guard let window = delegate.window else {
-            return
-        }
-
-        var viewController = window!.rootViewController
-        if let navigationController = viewController as? UINavigationController {
-            viewController = navigationController.visibleViewController
-        }
-
-        var name = String(describing: type(of: viewController)).replacingOccurrences(of: "ViewController", with: "")
-
+        let controllerString = String(describing: type(of: viewController))
+        var name = controllerString.replacingOccurrences(of: "ViewController", with: "", options: .caseInsensitive)
         if name.isEmpty || name == "" {
-            if let title = viewController?.title {
+            if let title = viewController.title {
                 name = title
             }
             if name.isEmpty || name == "" {
@@ -44,17 +37,54 @@ public extension CustomerIOImplementation {
                 return
             }
         }
-
-        guard let data = autoScreenViewBody?() else {
-            screen(name: name, data: CustomerIOImplementation.defaultScreenViewBody)
+        guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
+            CustomerIO.shared.screen(name: name, data: defaultScreenViewBody)
             return
         }
-
-        screen(name: name, data: data)
+        CustomerIO.shared.screen(name: name, data: data)
     }
-
-    private static var defaultScreenViewBody: ScreenViewData {
-        ScreenViewData()
+    /**
+     Finds the top most view controller in the navigation controller/ tab bar controller stack or if it is presented
+     */
+    private func visibleViewController(_ controller: UIViewController?) -> UIViewController? {
+        if let navigationController = controller as? UINavigationController {
+            return visibleViewController(navigationController.visibleViewController)
+        }
+        if let tabController = controller as? UITabBarController {
+            if let selected = tabController.selectedViewController {
+                return visibleViewController(selected)
+            }
+        }
+        if let presented = controller?.presentedViewController {
+            return visibleViewController(presented)
+        }
+        return controller
+    }
+    /**
+     Finds out the active root view controller by checking whether the app uses window via AppDelegate or SceneDelegate
+     
+     - returns: If window is not found then this function returns nil else returns the root view controller
+     */
+    private func activeRootViewController() -> UIViewController? {
+        var window: UIWindow?
+        if let appDelegateWindow = UIApplication.shared.delegate?.window {
+            window = appDelegateWindow
+        } else if #available(iOS 13.0, *) {
+            for scene in UIApplication.shared.connectedScenes {
+                if scene.activationState == .foregroundActive, let windowScene = scene as? UIWindowScene {
+                    if let sceneDelegate = windowScene.delegate as? UIWindowSceneDelegate {
+                        if let sceneWindow = sceneDelegate.window {
+                            window = sceneWindow
+                            break
+                        }
+                    }
+                }
+            }
+        } else { // keyWindow is deprecated in iOS 13.0*
+            window = UIApplication.shared.keyWindow
+        }
+        guard let activeWindow = window else { return nil }
+        return activeWindow.rootViewController
     }
 }
 
