@@ -15,6 +15,7 @@ public extension CustomerIOImplementation {
         method_exchangeImplementations(originalMethod, swizzleMethod)
     }
 }
+
 internal extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
@@ -43,6 +44,7 @@ internal extension UIViewController {
         }
         CustomerIO.shared.screen(name: name, data: data)
     }
+
     /**
      Finds the top most view controller in the navigation controller/ tab bar controller stack or if it is presented
      */
@@ -60,9 +62,10 @@ internal extension UIViewController {
         }
         return controller
     }
+
     /**
      Finds out the active root view controller by checking whether the app uses window via AppDelegate or SceneDelegate
-     
+
      - returns: If window is not found then this function returns nil else returns the root view controller
      */
     private func activeRootViewController() -> UIViewController? {
