@@ -34,6 +34,10 @@ open class UnitTest: XCTestCase {
         JsonAdapter(log: log)
     }
 
+    public var lockManager: LockManager {
+        LockManager()
+    }
+
     override open func setUp() {
         deleteAll()
 

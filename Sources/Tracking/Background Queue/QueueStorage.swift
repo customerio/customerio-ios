@@ -40,12 +40,13 @@ public class FileManagerQueueStorage: QueueStorage {
     private let jsonAdapter: JsonAdapter
     private let siteId: SiteId
 
-    private let lock = Lock()
+    private let lock: Lock
 
-    init(siteId: SiteId, fileStorage: FileStorage, jsonAdapter: JsonAdapter) {
+    init(siteId: SiteId, fileStorage: FileStorage, jsonAdapter: JsonAdapter, lockManager: LockManager) {
         self.siteId = siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
+        self.lock = lockManager.getLock(id: .queueStorage)
     }
 
     public func getInventory() -> [QueueTaskMetadata] {

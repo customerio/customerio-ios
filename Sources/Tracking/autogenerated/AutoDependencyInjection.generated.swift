@@ -75,6 +75,7 @@ public enum DependencyTracking: CaseIterable {
     case queueStorage
     case sdkConfigStore
     case jsonAdapter
+    case lockManager
     case httpRequestRunner
     case keyValueStorage
 }
@@ -157,6 +158,7 @@ public class DITracking {
         case .queueStorage: return queueStorage as! T
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
+        case .lockManager: return lockManager as! T
         case .httpRequestRunner: return httpRequestRunner as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
@@ -386,7 +388,8 @@ public class DITracking {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter)
+        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
+                                lockManager: lockManager)
     }
 
     // SdkConfigStore (singleton)
@@ -424,6 +427,31 @@ public class DITracking {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
+    }
+
+    // LockManager (singleton)
+    public var lockManager: LockManager {
+        if let overridenDep = overrides[.lockManager] {
+            return overridenDep as! LockManager
+        }
+        return sharedLockManager
+    }
+
+    private let _lockManager_queue = DispatchQueue(label: "DI_get_lockManager_queue")
+    private var _lockManager_shared: LockManager?
+    public var sharedLockManager: LockManager {
+        _lockManager_queue.sync {
+            if let overridenDep = self.overrides[.lockManager] {
+                return overridenDep as! LockManager
+            }
+            let res = _lockManager_shared ?? _get_lockManager()
+            _lockManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_lockManager() -> LockManager {
+        LockManager()
     }
 
     // HttpRequestRunner
