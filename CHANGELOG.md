@@ -1,3 +1,10 @@
+# [1.0.0-alpha.29](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.28...1.0.0-alpha.29) (2022-01-18)
+
+
+### Bug Fixes
+
+* mutex locks shared across instances ([#119](https://github.com/customerio/customerio-ios/issues/119)) ([cb169bf](https://github.com/customerio/customerio-ios/commit/cb169bf71acd5c0fff9b971894465800b4a7bfbc))
+
 # [1.0.0-alpha.28](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.27...1.0.0-alpha.28) (2022-01-14)
 
 

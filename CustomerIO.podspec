@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIO"
-  spec.version      = "1.0.0-alpha.28" # Don't modify this line - it's automatically updated
+  spec.version      = "1.0.0-alpha.29" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."  
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
