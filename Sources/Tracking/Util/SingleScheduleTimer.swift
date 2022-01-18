@@ -12,7 +12,11 @@ internal protocol SingleScheduleTimer: AutoMockable {
 // sourcery: InjectSingleton
 internal class CioSingleScheduleTimer: SingleScheduleTimer {
     @Atomic private var timer: Timer?
-    @Atomic private var lock = Lock()
+    private var lock: Lock
+
+    init(lockManager: LockManager) {
+        self.lock = lockManager.getLock(id: .singleScheduleTimer)
+    }
 
     deinit {
         unsafeCancel()
