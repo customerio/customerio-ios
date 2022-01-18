@@ -177,7 +177,11 @@ public class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody,
         jsonEncoder: JSONEncoder? = nil
     ) {
-        trackEvent(type: .screen, name: name, data: data, jsonEncoder: jsonEncoder)
+        if sdkConfigStore.config.autoTrackScreenViews {
+            trackEvent(type: .screen, name: name, data: data, jsonEncoder: jsonEncoder)
+        } else {
+            logger.debug("Automatic screen view tracking not enabled. Skipping request to track screen \(name)")
+        }
     }
 }
 

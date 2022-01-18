@@ -176,6 +176,15 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
 
+    private func getAllSiteIdsInstances() -> [CustomerIO] {
+        globalData.siteIds.map { siteId in
+            let diGraph = DITracking.getInstance(siteId: siteId)
+            let credentialsStore = diGraph.sdkCredentialsStore.credentials
+
+            return CustomerIO(siteId: siteId, apiKey: credentialsStore.apiKey, region: credentialsStore.region)
+        }
+    }
+
     /**
      Sets credentials on shared or non-shared instance.
      */
@@ -325,5 +334,26 @@ public class CustomerIO: CustomerIOInstance {
         // XXX: notify developer if SDK not initialized yet
 
         implementation?.screen(name: name, data: data, jsonEncoder: jsonEncoder)
+    }
+
+    public func automaticScreenView(
+        name: String,
+        data: [String: Any]
+    ) {
+        automaticScreenView(name: name, data: StringAnyEncodable(data))
+    }
+
+    // Designed to be called from swizzled methods for automatic screen tracking.
+    // Because swizzled functions are not able to determine what siteId instance of
+    // the SDK the app is using, we simply call `screen()` on all siteIds of the SDK
+    // and if automatic screen view tracking is not setup for that siteId, the function
+    // call to the instance will simply be ignored.
+    public func automaticScreenView<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody
+    ) {
+        getAllSiteIdsInstances().forEach { cio in
+            cio.screen(name: name, data: data, jsonEncoder: nil)
+        }
     }
 }
