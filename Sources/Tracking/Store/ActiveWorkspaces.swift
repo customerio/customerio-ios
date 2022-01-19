@@ -17,10 +17,14 @@ internal protocol ActiveWorkspacesManager: AutoMockable {
 // sourcery: InjectRegister = "ActiveWorkspacesManager"
 // sourcery: InjectSingleton
 internal class InMemoryActiveWorkspaces: ActiveWorkspacesManager {
-    private(set) var activeWorkspaces: [SiteId] = []
+    private var activeWorkspacesSet: Set<SiteId> = Set()
+
+    var activeWorkspaces: [SiteId] {
+        Array(activeWorkspacesSet)
+    }
 
     func addWorkspace(siteId: SiteId) {
-        activeWorkspaces.append(siteId)
+        activeWorkspacesSet.insert(siteId)
     }
 
     // Convenient method to get instance. This object is meant to be shared by all workspaces running
