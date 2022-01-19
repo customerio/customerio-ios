@@ -39,10 +39,10 @@ internal extension UIViewController {
             }
         }
         guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
-            CustomerIO.shared.screen(name: name, data: defaultScreenViewBody)
+            CustomerIO.shared.automaticScreenView(name: name, data: defaultScreenViewBody)
             return
         }
-        CustomerIO.shared.screen(name: name, data: data)
+        CustomerIO.shared.automaticScreenView(name: name, data: data)
     }
 
     /**
