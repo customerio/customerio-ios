@@ -27,7 +27,7 @@ class QueueTest: UnitTest {
         storageMock.createReturnValue = (success: false,
                                          queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
         storageMock.getInventoryReturnValue = []
-        queueTimerMock.scheduleIfNotAleadyReturnValue = true
+        queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
         let actual = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                                    data: IdentifyProfileQueueTaskData(identifier: String.random,
@@ -37,7 +37,7 @@ class QueueTest: UnitTest {
 
         XCTAssertEqual(actual.success, false)
 
-        XCTAssertEqual(queueTimerMock.scheduleIfNotAleadyCallsCount, 1)
+        XCTAssertEqual(queueTimerMock.scheduleIfNotAlreadyCallsCount, 1)
     }
 
     func test_addTask_expectDoNotStartQueueIfNotMeetingCriteria_expectScheduleQueueInstead() {
@@ -47,7 +47,7 @@ class QueueTest: UnitTest {
         storageMock.createReturnValue = (success: true,
                                          queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
-        queueTimerMock.scheduleIfNotAleadyReturnValue = true
+        queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
         _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
                           data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
@@ -56,7 +56,7 @@ class QueueTest: UnitTest {
 
         XCTAssertEqual(runRequestMock.startCallsCount, 0)
 
-        XCTAssertEqual(queueTimerMock.scheduleIfNotAleadyCallsCount, 1)
+        XCTAssertEqual(queueTimerMock.scheduleIfNotAlreadyCallsCount, 1)
     }
 
     func test_addTask_expectStartQueueAfterSuccessfullyAddingTask_expectDoNotScheduleTimer_expectCancelTimer() {
@@ -74,7 +74,7 @@ class QueueTest: UnitTest {
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
 
-        XCTAssertFalse(queueTimerMock.scheduleIfNotAleadyCalled)
+        XCTAssertFalse(queueTimerMock.scheduleIfNotAlreadyCalled)
         XCTAssertEqual(queueTimerMock.cancelCallsCount, 1)
     }
 

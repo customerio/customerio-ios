@@ -1,3 +1,10 @@
+# [1.0.0-alpha.30](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.29...1.0.0-alpha.30) (2022-01-18)
+
+
+### Bug Fixes
+
+* remove custom jsonencoder public functions ([#122](https://github.com/customerio/customerio-ios/issues/122)) ([061a568](https://github.com/customerio/customerio-ios/commit/061a5684a170bd231d5583d56b32406f0086a456))
+
 # [1.0.0-alpha.29](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.28...1.0.0-alpha.29) (2022-01-18)
 
 

@@ -2,7 +2,7 @@ import Foundation
 
 /// Timer that only schedules once. Further calls result in ignored request until the timer fires.
 internal protocol SingleScheduleTimer: AutoMockable {
-    func scheduleIfNotAleady(numSeconds: Double, block: @escaping () -> Void) -> Bool
+    func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool
     func cancel()
 }
 
@@ -11,44 +11,17 @@ internal protocol SingleScheduleTimer: AutoMockable {
 // sourcery: InjectRegister = "SingleScheduleTimer"
 // sourcery: InjectSingleton
 internal class CioSingleScheduleTimer: SingleScheduleTimer {
-    @Atomic private var timer: Timer?
-    private var lock: Lock
+    private var timer: SimpleTimer
 
-    init(lockManager: LockManager) {
-        self.lock = lockManager.getLock(id: .singleScheduleTimer)
+    init(timer: SimpleTimer) {
+        self.timer = timer
     }
 
-    deinit {
-        unsafeCancel()
-    }
-
-    func scheduleIfNotAleady(numSeconds: Double, block: @escaping () -> Void) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard timer == nil else {
-            return false
-        }
-
-        timer = Timer.scheduledTimer(withTimeInterval: numSeconds, repeats: false, block: { timer in
-            timer.invalidate()
-            self.timer = nil
-
-            block()
-        })
-
-        return true
+    func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
+        timer.scheduleIfNotAlready(seconds: seconds, block: block)
     }
 
     func cancel() {
-        lock.lock()
-        defer { lock.unlock() }
-
-        unsafeCancel()
-    }
-
-    private func unsafeCancel() {
-        timer?.invalidate()
-        timer = nil
+        timer.cancel()
     }
 }

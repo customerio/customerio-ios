@@ -68,6 +68,7 @@ public enum DependencyTracking: CaseIterable {
     case queueRequestManager
     case queueRunRequest
     case queueRunner
+    case simpleTimer
     case singleScheduleTimer
     case logger
     case fileStorage
@@ -155,6 +156,7 @@ public class DITracking {
         case .queueRequestManager: return queueRequestManager as! T
         case .queueRunRequest: return queueRunRequest as! T
         case .queueRunner: return queueRunner as! T
+        case .simpleTimer: return simpleTimer as! T
         case .singleScheduleTimer: return singleScheduleTimer as! T
         case .logger: return logger as! T
         case .fileStorage: return fileStorage as! T
@@ -322,6 +324,18 @@ public class DITracking {
                        hooksManager: hooksManager)
     }
 
+    // SimpleTimer
+    internal var simpleTimer: SimpleTimer {
+        if let overridenDep = overrides[.simpleTimer] {
+            return overridenDep as! SimpleTimer
+        }
+        return newSimpleTimer
+    }
+
+    private var newSimpleTimer: SimpleTimer {
+        CioSimpleTimer(logger: logger)
+    }
+
     // SingleScheduleTimer (singleton)
     internal var singleScheduleTimer: SingleScheduleTimer {
         if let overridenDep = overrides[.singleScheduleTimer] {
@@ -344,7 +358,7 @@ public class DITracking {
     }
 
     private func _get_singleScheduleTimer() -> SingleScheduleTimer {
-        CioSingleScheduleTimer(lockManager: lockManager)
+        CioSingleScheduleTimer(timer: simpleTimer)
     }
 
     // Logger

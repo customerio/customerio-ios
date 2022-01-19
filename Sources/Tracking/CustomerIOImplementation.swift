@@ -81,14 +81,13 @@ public class CustomerIOImplementation: CustomerIOInstance {
             guard let existingProfileIdentifier = profileStore.identifier else {
                 return
             }
-            identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue), jsonEncoder: nil)
+            identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
         }
     }
 
     public func identify<RequestBody: Encodable>(
         identifier: String,
-        body: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        body: RequestBody
     ) {
         logger.info("identify profile \(identifier)")
 
@@ -108,7 +107,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
             }
         }
 
-        let jsonBodyString = jsonAdapter.toJsonString(body, encoder: jsonEncoder)
+        let jsonBodyString = jsonAdapter.toJsonString(body, encoder: nil)
         logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
@@ -162,34 +161,27 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     public func track<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        data: RequestBody
     ) {
-        trackEvent(type: .event, name: name, data: data, jsonEncoder: jsonEncoder)
+        trackEvent(type: .event, name: name, data: data)
     }
 
-    public func screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?) {
-        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: jsonEncoder)
+    public func screen(name: String, data: [String: Any]) {
+        screen(name: name, data: StringAnyEncodable(data))
     }
 
     public func screen<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        data: RequestBody
     ) {
-        if sdkConfigStore.config.autoTrackScreenViews {
-            trackEvent(type: .screen, name: name, data: data, jsonEncoder: jsonEncoder)
-        } else {
-            logger.debug("Automatic screen view tracking not enabled. Skipping request to track screen \(name)")
-        }
+        trackEvent(type: .screen, name: name, data: data)
     }
 }
 
 extension CustomerIOImplementation {
     private func trackEvent<RequestBody: Encodable>(type: EventType,
                                                     name: String,
-                                                    data: RequestBody,
-                                                    jsonEncoder: JSONEncoder? = nil) {
+                                                    data: RequestBody) {
         let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
 
         logger.info("\(eventTypeDescription) \(name)")
@@ -202,7 +194,7 @@ extension CustomerIOImplementation {
         }
 
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
-        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: jsonEncoder) else {
+        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: nil) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return
         }
