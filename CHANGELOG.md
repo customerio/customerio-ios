@@ -1,3 +1,10 @@
+# [1.0.0-alpha.32](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.31...1.0.0-alpha.32) (2022-01-19)
+
+
+### Bug Fixes
+
+* automatic screenview tracking correct siteid ([#120](https://github.com/customerio/customerio-ios/issues/120)) ([abd3ea9](https://github.com/customerio/customerio-ios/commit/abd3ea9fdf3b68bd85aa88e4e89d972182c1a3d9))
+
 # [1.0.0-alpha.31](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.30...1.0.0-alpha.31) (2022-01-19)
 
 
