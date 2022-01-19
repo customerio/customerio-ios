@@ -1,23 +1,23 @@
 import Foundation
 
 internal protocol HttpRetryPolicy: AutoMockable {
-    var nextSleepTimeMilliseconds: Milliseconds? { get }
+    var nextSleepTime: Seconds? { get }
 }
 
 // sourcery: InjectRegister = "HttpRetryPolicy"
 internal class CustomerIOAPIHttpRetryPolicy: HttpRetryPolicy {
-    internal static let retryPolicyMilliseconds: [Milliseconds] = [
-        100,
-        200,
-        400,
-        800,
-        1600,
-        3200
+    internal static let retryPolicy: [Seconds] = [
+        0.1,
+        0.2,
+        0.4,
+        0.8,
+        1.6,
+        3.2
     ]
 
-    private var retriesLeft = CustomerIOAPIHttpRetryPolicy.retryPolicyMilliseconds
+    private var retriesLeft = CustomerIOAPIHttpRetryPolicy.retryPolicy
 
-    var nextSleepTimeMilliseconds: Milliseconds? {
+    var nextSleepTime: Seconds? {
         retriesLeft.removeFirstOrNil()
     }
 }

@@ -11,7 +11,8 @@ class QueueStorageTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter)
+        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter,
+                                          lockManager: lockManager)
     }
 
     // MARK: getInventory
@@ -158,7 +159,7 @@ class QueueStorageIntegrationTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
-                                          jsonAdapter: jsonAdapter)
+                                          jsonAdapter: jsonAdapter, lockManager: lockManager)
     }
 
     // MARK: delete

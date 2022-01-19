@@ -74,8 +74,10 @@ public enum DependencyTracking: CaseIterable {
     case httpRetryPolicy
     case fileStorage
     case queueStorage
+    case activeWorkspacesManager
     case sdkConfigStore
     case jsonAdapter
+    case lockManager
     case httpRequestRunner
     case keyValueStorage
 }
@@ -115,6 +117,10 @@ public class DITracking {
     @Atomic internal static var store = Store()
     public static func getInstance(siteId: String) -> DITracking {
         Self.store.getInstance(siteId: siteId)
+    }
+
+    public static func getAllWorkspacesSharedInstance() -> DITracking {
+        Self.store.getInstance(siteId: "shared")
     }
 
     /**
@@ -157,8 +163,10 @@ public class DITracking {
         case .httpRetryPolicy: return httpRetryPolicy as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
+        case .activeWorkspacesManager: return activeWorkspacesManager as! T
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
+        case .lockManager: return lockManager as! T
         case .httpRequestRunner: return httpRequestRunner as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
@@ -328,7 +336,7 @@ public class DITracking {
     }
 
     private var newSimpleTimer: SimpleTimer {
-        CioSimpleTimer()
+        CioSimpleTimer(logger: logger)
     }
 
     // SingleScheduleTimer (singleton)
@@ -401,7 +409,33 @@ public class DITracking {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter)
+        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
+                                lockManager: lockManager)
+    }
+
+    // ActiveWorkspacesManager (singleton)
+    internal var activeWorkspacesManager: ActiveWorkspacesManager {
+        if let overridenDep = overrides[.activeWorkspacesManager] {
+            return overridenDep as! ActiveWorkspacesManager
+        }
+        return sharedActiveWorkspacesManager
+    }
+
+    private let _activeWorkspacesManager_queue = DispatchQueue(label: "DI_get_activeWorkspacesManager_queue")
+    private var _activeWorkspacesManager_shared: ActiveWorkspacesManager?
+    internal var sharedActiveWorkspacesManager: ActiveWorkspacesManager {
+        _activeWorkspacesManager_queue.sync {
+            if let overridenDep = self.overrides[.activeWorkspacesManager] {
+                return overridenDep as! ActiveWorkspacesManager
+            }
+            let res = _activeWorkspacesManager_shared ?? _get_activeWorkspacesManager()
+            _activeWorkspacesManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_activeWorkspacesManager() -> ActiveWorkspacesManager {
+        InMemoryActiveWorkspaces()
     }
 
     // SdkConfigStore (singleton)
@@ -439,6 +473,31 @@ public class DITracking {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
+    }
+
+    // LockManager (singleton)
+    public var lockManager: LockManager {
+        if let overridenDep = overrides[.lockManager] {
+            return overridenDep as! LockManager
+        }
+        return sharedLockManager
+    }
+
+    private let _lockManager_queue = DispatchQueue(label: "DI_get_lockManager_queue")
+    private var _lockManager_shared: LockManager?
+    public var sharedLockManager: LockManager {
+        _lockManager_queue.sync {
+            if let overridenDep = self.overrides[.lockManager] {
+                return overridenDep as! LockManager
+            }
+            let res = _lockManager_shared ?? _get_lockManager()
+            _lockManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_lockManager() -> LockManager {
+        LockManager()
     }
 
     // HttpRequestRunner

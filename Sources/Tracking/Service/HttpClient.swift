@@ -216,14 +216,14 @@ extension CIOHttpClient {
 
         switch statusCode {
         case 500 ..< 600:
-            if let sleepTimeMilliseconds = retryPolicy.nextSleepTimeMilliseconds {
+            if let sleepTime = retryPolicy.nextSleepTime {
                 logger
                     .debug("""
                     Encountered \(statusCode) HTTP response.
-                    Sleeping \(sleepTimeMilliseconds) and then retrying.
+                    Sleeping \(sleepTime) seconds and then retrying.
                     """)
 
-                retryPolicyTimer.schedule(milliseconds: sleepTimeMilliseconds) {
+                retryPolicyTimer.scheduleAndCancelPrevious(seconds: sleepTime) {
                     self.request(params, onComplete: onComplete)
                 }
             } else {

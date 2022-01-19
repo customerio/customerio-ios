@@ -12,15 +12,15 @@ class CustomerIOAPIHttpRetryPolicyTest: UnitTest {
         policy = CustomerIOAPIHttpRetryPolicy()
     }
 
-    // MARK: nextSleepTimeMilliseconds
+    // MARK: nextSleepTime
 
-    func test_nextSleepTimeMilliseconds_expectRetryAttemptsInCorrectOrder_expect6Retries() {
-        let expected = CustomerIOAPIHttpRetryPolicy.retryPolicyMilliseconds
-        var actual: [Milliseconds] = []
+    func test_nextSleepTime_expectRetryAttemptsInCorrectOrder_expect6Retries() {
+        let expected = CustomerIOAPIHttpRetryPolicy.retryPolicy
+        var actual: [Seconds] = []
 
         var moreValuesToGet = true
         while moreValuesToGet {
-            if let nextSleepTime = policy.nextSleepTimeMilliseconds {
+            if let nextSleepTime = policy.nextSleepTime {
                 actual.append(nextSleepTime)
             } else {
                 moreValuesToGet = false

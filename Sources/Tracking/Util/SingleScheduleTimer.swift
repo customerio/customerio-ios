@@ -2,7 +2,7 @@ import Foundation
 
 /// Timer that only schedules once. Further calls result in ignored request until the timer fires.
 internal protocol SingleScheduleTimer: AutoMockable {
-    func scheduleIfNotAleady(numSeconds: Double, block: @escaping () -> Void) -> Bool
+    func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool
     func cancel()
 }
 
@@ -17,8 +17,8 @@ internal class CioSingleScheduleTimer: SingleScheduleTimer {
         self.timer = timer
     }
 
-    func scheduleIfNotAleady(numSeconds: Double, block: @escaping () -> Void) -> Bool {
-        timer.scheduleIfNotAleady(milliseconds: numSeconds.toSeconds, block: block)
+    func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
+        timer.scheduleIfNotAlready(seconds: seconds, block: block)
     }
 
     func cancel() {

@@ -81,7 +81,7 @@ public class CioQueue: Queue {
     private let sdkConfigStore: SdkConfigStore
     private let queueTimer: SingleScheduleTimer
 
-    private var numberSecondsToScheduleTimer: Double {
+    private var numberSecondsToScheduleTimer: Seconds {
         sdkConfigStore.config.backgroundQueueSecondsDelay
     }
 
@@ -152,7 +152,7 @@ public class CioQueue: Queue {
         } else {
             // Not enough tasks in the queue yet to run it now, so let's schedule them to run in the future.
             // It's expected that only 1 timer instance exists and is running in the SDK.
-            let didSchedule = queueTimer.scheduleIfNotAleady(numSeconds: numberSecondsToScheduleTimer) {
+            let didSchedule = queueTimer.scheduleIfNotAlready(seconds: numberSecondsToScheduleTimer) {
                 self.logger.info("queue timer: now running queue")
 
                 self.run {

@@ -36,11 +36,15 @@ open class UnitTest: XCTestCase {
 
     public var retryPolicyMock: HttpRetryPolicyMock!
 
+    public var lockManager: LockManager {
+        LockManager()
+    }
+
     override open func setUp() {
         deleteAll()
 
         retryPolicyMock = HttpRetryPolicyMock()
-        retryPolicyMock.underlyingNextSleepTimeMilliseconds = 10
+        retryPolicyMock.underlyingNextSleepTime = 0.01
 
         super.setUp()
     }

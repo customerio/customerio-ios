@@ -211,7 +211,7 @@ class HttpClientTest: UnitTest {
         var httpRequestRunnerResponse = failedHttpRequestResponse
 
         var numberOfTimesToRetry = 3
-        timerMock.scheduleClosure = { _, onComplete in
+        timerMock.scheduleAndCancelPreviousClosure = { _, onComplete in
             if numberOfTimesToRetry == 0 {
                 httpRequestRunnerResponse = successfulHttpRequestResponse
             }
@@ -245,9 +245,9 @@ class HttpClientTest: UnitTest {
 
     func test_request_given500_expectPauseAndReturnErrorAfterRetrying() {
         var numberOfTimesToRetry = 3
-        timerMock.scheduleClosure = { _, onComplete in
+        timerMock.scheduleAndCancelPreviousClosure = { _, onComplete in
             if numberOfTimesToRetry == 0 {
-                self.retryPolicyMock.underlyingNextSleepTimeMilliseconds = nil
+                self.retryPolicyMock.underlyingNextSleepTime = nil
             }
 
             numberOfTimesToRetry -= 1

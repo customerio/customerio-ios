@@ -115,7 +115,7 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
         XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as! MetricRequest
-        XCTAssertEqual(actualQueueTaskData.deliveryID, givenDeliveryId)
+        XCTAssertEqual(actualQueueTaskData.deliveryId, givenDeliveryId)
         XCTAssertEqual(actualQueueTaskData.event, givenEvent)
         XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
     }

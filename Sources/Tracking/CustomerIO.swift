@@ -8,8 +8,7 @@ public protocol CustomerIOInstance: AutoMockable {
         identifier: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(body)"
-        body: RequestBody,
-        jsonEncoder: JSONEncoder?
+        body: RequestBody
     )
 
     func clearIdentify()
@@ -19,8 +18,7 @@ public protocol CustomerIOInstance: AutoMockable {
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody?,
-        jsonEncoder: JSONEncoder?
+        data: RequestBody?
     )
 
     // sourcery:Name=screenEncodable
@@ -28,15 +26,13 @@ public protocol CustomerIOInstance: AutoMockable {
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody?,
-        jsonEncoder: JSONEncoder?
+        data: RequestBody?
     )
 
     // sourcery:Name=screen
     func screen(
         name: String,
-        data: [String: Any],
-        jsonEncoder: JSONEncoder?
+        data: [String: Any]
     )
 
     var profileAttributes: [String: Any] { get set }
@@ -46,41 +42,19 @@ public extension CustomerIOInstance {
     func identify(
         identifier: String
     ) {
-        identify(identifier: identifier, body: EmptyRequestBody(), jsonEncoder: nil)
-    }
-
-    func identify<RequestBody: Encodable>(
-        identifier: String,
-        body: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
-    ) {
-        identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
+        identify(identifier: identifier, body: EmptyRequestBody())
     }
 
     func track(
         name: String
     ) {
-        track(name: name, data: EmptyRequestBody(), jsonEncoder: nil)
-    }
-
-    func track<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody?
-    ) {
-        track(name: name, data: data, jsonEncoder: nil)
-    }
-
-    func screen(
-        name: String,
-        data: [String: Any]
-    ) {
-        screen(name: name, data: StringAnyEncodable(data), jsonEncoder: nil)
+        track(name: name, data: EmptyRequestBody())
     }
 
     func screen(
         name: String
     ) {
-        screen(name: name, data: EmptyRequestBody(), jsonEncoder: nil)
+        screen(name: name, data: EmptyRequestBody())
     }
 }
 
@@ -176,6 +150,15 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
 
+    private func getActiveWorkspaceInstances() -> [CustomerIO] {
+        InMemoryActiveWorkspaces.getInstance().activeWorkspaces.map { siteId in
+            let diGraph = DITracking.getInstance(siteId: siteId)
+            let credentialsStore = diGraph.sdkCredentialsStore.credentials
+
+            return CustomerIO(siteId: siteId, apiKey: credentialsStore.apiKey, region: credentialsStore.region)
+        }
+    }
+
     /**
      Sets credentials on shared or non-shared instance.
      */
@@ -195,6 +178,8 @@ public class CustomerIO: CustomerIOInstance {
         configStore.config = config
 
         globalData.appendSiteId(siteId)
+
+        InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
     }
 
     /**
@@ -258,16 +243,14 @@ public class CustomerIO: CustomerIOInstance {
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
      - body: Request body of identifying profile. Use to define user attributes.
-     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body for attributes.
      */
     public func identify<RequestBody: Encodable>(
         identifier: String,
-        body: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        body: RequestBody
     ) {
         // XXX: notify developer if SDK not initialized yet
 
-        implementation?.identify(identifier: identifier, body: body, jsonEncoder: jsonEncoder)
+        implementation?.identify(identifier: identifier, body: body)
     }
 
     /**
@@ -291,20 +274,18 @@ public class CustomerIO: CustomerIOInstance {
      - Parameters:
      - name: Name of the event you want to track.
      - data: Optional event body data
-     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
      */
     public func track<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        data: RequestBody
     ) {
         // XXX: notify developer if SDK not initialized yet
 
-        implementation?.track(name: name, data: data, jsonEncoder: jsonEncoder)
+        implementation?.track(name: name, data: data)
     }
 
-    public func screen(name: String, data: [String: Any], jsonEncoder: JSONEncoder?) {
-        implementation?.screen(name: name, data: data, jsonEncoder: jsonEncoder)
+    public func screen(name: String, data: [String: Any]) {
+        implementation?.screen(name: name, data: data)
     }
 
     /**
@@ -315,15 +296,34 @@ public class CustomerIO: CustomerIOInstance {
      - Parameters:
      - name: Name of the currently active screen
      - data: Optional event body data
-     - jsonEncoder: Provide custom JSONEncoder to have more control over the JSON request body
      */
     public func screen<RequestBody: Encodable>(
         name: String,
-        data: RequestBody,
-        jsonEncoder: JSONEncoder? = nil
+        data: RequestBody
     ) {
         // XXX: notify developer if SDK not initialized yet
 
-        implementation?.screen(name: name, data: data, jsonEncoder: jsonEncoder)
+        implementation?.screen(name: name, data: data)
+    }
+
+    public func automaticScreenView(
+        name: String,
+        data: [String: Any]
+    ) {
+        automaticScreenView(name: name, data: StringAnyEncodable(data))
+    }
+
+    // Designed to be called from swizzled methods for automatic screen tracking.
+    // Because swizzled functions are not able to determine what siteId instance of
+    // the SDK the app is using, we simply call `screen()` on all siteIds of the SDK
+    // and if automatic screen view tracking is not setup for that siteId, the function
+    // call to the instance will simply be ignored.
+    public func automaticScreenView<RequestBody: Encodable>(
+        name: String,
+        data: RequestBody
+    ) {
+        getActiveWorkspaceInstances().forEach { cio in
+            cio.screen(name: name, data: data)
+        }
     }
 }

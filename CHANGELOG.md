@@ -1,3 +1,52 @@
+# [1.0.0-alpha.31](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.30...1.0.0-alpha.31) (2022-01-19)
+
+
+### Bug Fixes
+
+* background queue timer scheduling and running ([#114](https://github.com/customerio/customerio-ios/issues/114)) ([6be8a74](https://github.com/customerio/customerio-ios/commit/6be8a7404c5bee1d201138b20dc1abd017254546))
+
+# [1.0.0-alpha.30](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.29...1.0.0-alpha.30) (2022-01-18)
+
+
+### Bug Fixes
+
+* remove custom jsonencoder public functions ([#122](https://github.com/customerio/customerio-ios/issues/122)) ([061a568](https://github.com/customerio/customerio-ios/commit/061a5684a170bd231d5583d56b32406f0086a456))
+
+# [1.0.0-alpha.29](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.28...1.0.0-alpha.29) (2022-01-18)
+
+
+### Bug Fixes
+
+* mutex locks shared across instances ([#119](https://github.com/customerio/customerio-ios/issues/119)) ([cb169bf](https://github.com/customerio/customerio-ios/commit/cb169bf71acd5c0fff9b971894465800b4a7bfbc))
+
+# [1.0.0-alpha.28](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.27...1.0.0-alpha.28) (2022-01-14)
+
+
+### Bug Fixes
+
+* track events type in HTTP requests ([#117](https://github.com/customerio/customerio-ios/issues/117)) ([745d4ad](https://github.com/customerio/customerio-ios/commit/745d4ad642be84f27688b45e2608db1c44cf2798))
+
+# [1.0.0-alpha.27](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.26...1.0.0-alpha.27) (2022-01-14)
+
+
+### Bug Fixes
+
+* screen view tracking ([#108](https://github.com/customerio/customerio-ios/issues/108)) ([f836b9a](https://github.com/customerio/customerio-ios/commit/f836b9aaa59cd525afc4db935db4b378f71fa8f4))
+
+# [1.0.0-alpha.26](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.25...1.0.0-alpha.26) (2022-01-13)
+
+
+### Bug Fixes
+
+* opened push metrics being sent to API again ([#111](https://github.com/customerio/customerio-ios/issues/111)) ([93971bf](https://github.com/customerio/customerio-ios/commit/93971bf8e8bf272fbcc73d327069ce0cd244066d))
+
+# [1.0.0-alpha.25](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.24...1.0.0-alpha.25) (2022-01-11)
+
+
+### Bug Fixes
+
+* change hostname for CIO API ([#109](https://github.com/customerio/customerio-ios/issues/109)) ([90e9407](https://github.com/customerio/customerio-ios/commit/90e9407ceb0c1f6f59c7ad7c835ac556651f55ef))
+
 # [1.0.0-alpha.24](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.23...1.0.0-alpha.24) (2022-01-10)
 
 
