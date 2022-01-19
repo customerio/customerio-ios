@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOTracking"
-  spec.version      = "1.0.0-alpha.33" # Don't modify this line - it's automatically updated
+  spec.version      = "1.0.0-beta.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'

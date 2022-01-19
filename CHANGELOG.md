@@ -1,3 +1,27 @@
+# [1.0.0-beta.2](https://github.com/customerio/customerio-ios/compare/1.0.0-beta.1...1.0.0-beta.2) (2022-01-19)
+
+
+### Bug Fixes
+
+* add createdAt timestamp to added queue tasks  ([#106](https://github.com/customerio/customerio-ios/issues/106)) ([46aab62](https://github.com/customerio/customerio-ios/commit/46aab6212093ef374df7952f5c335e166a26498e))
+* automatic screenview tracking correct siteid ([#120](https://github.com/customerio/customerio-ios/issues/120)) ([abd3ea9](https://github.com/customerio/customerio-ios/commit/abd3ea9fdf3b68bd85aa88e4e89d972182c1a3d9))
+* background queue timer scheduling and running ([#114](https://github.com/customerio/customerio-ios/issues/114)) ([6be8a74](https://github.com/customerio/customerio-ios/commit/6be8a7404c5bee1d201138b20dc1abd017254546))
+* change hostname for CIO API ([#109](https://github.com/customerio/customerio-ios/issues/109)) ([90e9407](https://github.com/customerio/customerio-ios/commit/90e9407ceb0c1f6f59c7ad7c835ac556651f55ef))
+* more safely handle 5xx, 401 status codes ([#107](https://github.com/customerio/customerio-ios/issues/107)) ([d56807b](https://github.com/customerio/customerio-ios/commit/d56807bdbda95e11d742916db4b19e545bead6d7))
+* mutex locks shared across instances ([#119](https://github.com/customerio/customerio-ios/issues/119)) ([cb169bf](https://github.com/customerio/customerio-ios/commit/cb169bf71acd5c0fff9b971894465800b4a7bfbc))
+* opened push metrics being sent to API again ([#111](https://github.com/customerio/customerio-ios/issues/111)) ([93971bf](https://github.com/customerio/customerio-ios/commit/93971bf8e8bf272fbcc73d327069ce0cd244066d))
+* remove custom jsonencoder public functions ([#122](https://github.com/customerio/customerio-ios/issues/122)) ([061a568](https://github.com/customerio/customerio-ios/commit/061a5684a170bd231d5583d56b32406f0086a456))
+* screen view tracking ([#108](https://github.com/customerio/customerio-ios/issues/108)) ([f836b9a](https://github.com/customerio/customerio-ios/commit/f836b9aaa59cd525afc4db935db4b378f71fa8f4))
+* track events type in HTTP requests ([#117](https://github.com/customerio/customerio-ios/issues/117)) ([745d4ad](https://github.com/customerio/customerio-ios/commit/745d4ad642be84f27688b45e2608db1c44cf2798))
+
+
+### Features
+
+* add [String:Any] support to identify & track ([#94](https://github.com/customerio/customerio-ios/issues/94)) ([5a220c4](https://github.com/customerio/customerio-ios/commit/5a220c401c1df1153cdb0cb56efe5a885dd08c68))
+* add screen view tracking ([#82](https://github.com/customerio/customerio-ios/issues/82)) ([c2034a6](https://github.com/customerio/customerio-ios/commit/c2034a6fcbcea15716529a4091538f5bb8dc6a00))
+* create background queue  ([#99](https://github.com/customerio/customerio-ios/issues/99)) ([80fffb8](https://github.com/customerio/customerio-ios/commit/80fffb881f69337125b189fbf4de5c47bd6c22f2))
+* subsequent identifies without passing identifier ([#96](https://github.com/customerio/customerio-ios/issues/96)) ([47d9166](https://github.com/customerio/customerio-ios/commit/47d916634a5ab34842a19074f3b3c110de4e0348))
+
 # [1.0.0-alpha.33](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.32...1.0.0-alpha.33) (2022-01-19)
 
 
