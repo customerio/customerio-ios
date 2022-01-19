@@ -1,3 +1,10 @@
+# [1.0.0-alpha.33](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.32...1.0.0-alpha.33) (2022-01-19)
+
+
+### Bug Fixes
+
+* more safely handle 5xx, 401 status codes ([#107](https://github.com/customerio/customerio-ios/issues/107)) ([d56807b](https://github.com/customerio/customerio-ios/commit/d56807bdbda95e11d742916db4b19e545bead6d7))
+
 # [1.0.0-alpha.32](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.31...1.0.0-alpha.32) (2022-01-19)
 
 
