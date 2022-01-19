@@ -15,9 +15,7 @@ This is the official Customer.io SDK for iOS.
 
 You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios](https://customer.io/docs/sdk/ios/). This readme only contains basic information to help you install and initialize the SDK.
 
-Before you get started, keep in mind:
-1. **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
-2. **Our SDK is a work in progress!** While we're *very* excited about it, it's still in its **`alpha`** phase; it is not ready for general availability. If you want to try it out, contact [product@customer.io](mailto:product@customer.io) and we'll help set you up!
+**The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 
 ## Summary
 
@@ -35,23 +33,11 @@ We've separated our SDK into packages to minimize our impact on your app's size.
 
 ## Install the SDK
 
-Use the Swift Package Manger to install our SDKs into your project.
+Follow **[Apple's instructions](https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app)** to add `https://github.com/customerio/customerio-ios.git` as a dependency to your project in Xcode and select the individual [package products](#sdk-package-products) that you want to install.
 
-1. In Xcode, go to **File** > **Swift Packages** > **Add Package Dependency**
+We recommend that you set the *Dependency Rule* to *Up to Next Major Version*. While we encourage you to keep your app up to date with the latest SDK, major versions can include breaking changes or new features that require your attention.
 
-2. In the window that appears, enter the iOS SDK's GitHub repository: 
-
-```
-https://github.com/customerio/customerio-ios.git
-```
-
-3. Select the version that you want to install. While the SDK is its alpha stage, we recommend that you install *an exact* version of the SDK instead of indicating a range. This prevents you from automatically upgrading to a newer alpha version and possibly installing breaking changes on your code base. 
-
-![in xcode select Exact from dropdown when selecting the version of the SDK to install](docs/img/xcode_spm_install_version_blur.png)
-
-4. Lastly, choose the SDK products that you want to install. You can start by selecting `Tracking` for now and adding others later if you need them. 
-
-![](docs/img/xcode_spm_select_sdks.jpeg)
+![in XCode select up to next major version when installing the SDK](docs/img/xcode-install-sdk.png)
 
 ## Initialize the SDK
 
