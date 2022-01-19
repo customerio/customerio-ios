@@ -1,3 +1,10 @@
+# [1.0.0-alpha.31](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.30...1.0.0-alpha.31) (2022-01-19)
+
+
+### Bug Fixes
+
+* background queue timer scheduling and running ([#114](https://github.com/customerio/customerio-ios/issues/114)) ([6be8a74](https://github.com/customerio/customerio-ios/commit/6be8a7404c5bee1d201138b20dc1abd017254546))
+
 # [1.0.0-alpha.30](https://github.com/customerio/customerio-ios/compare/1.0.0-alpha.29...1.0.0-alpha.30) (2022-01-18)
 
 
