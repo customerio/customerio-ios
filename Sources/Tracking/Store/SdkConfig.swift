@@ -26,7 +26,7 @@ public struct SdkConfig {
     public var backgroundQueueMinNumberOfTasks = 10
 
     /// The number of seconds to delay running queue after a task has been added to it.
-    public var backgroundQueueSecondsDelay: Double = 30
+    public var backgroundQueueSecondsDelay: Seconds = 30
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
