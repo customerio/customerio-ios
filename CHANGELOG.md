@@ -1,3 +1,10 @@
+# [1.0.0-beta.3](https://github.com/customerio/customerio-ios/compare/1.0.0-beta.2...1.0.0-beta.3) (2022-01-19)
+
+
+### Bug Fixes
+
+* duplicate entries for active workspace ([#124](https://github.com/customerio/customerio-ios/issues/124)) ([c903e4a](https://github.com/customerio/customerio-ios/commit/c903e4a972bc8d1ea7ecbbd013b4fd5dfef6ddc2))
+
 # [1.0.0-beta.2](https://github.com/customerio/customerio-ios/compare/1.0.0-beta.1...1.0.0-beta.2) (2022-01-19)
 
 
