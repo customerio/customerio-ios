@@ -8,7 +8,13 @@ jobs:
     name: Deploy SDK with tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      # To make git commits made by semantic-release be made to our bot and not "github-actions" user which doesn't trigger other Action Workflows. 
+      # https://github.com/semantic-release/semantic-release/blob/2c30e268f9484adeb2b9d0bdf52c1cd909779d64/docs/recipes/ci-configurations/github-actions.md#pushing-packagejson-changes-to-a-master-branch
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       
       # Perform git related tasks inside of semantic-release because `git config user...` is already setup. It's easier to run commands in there with exec plugin.
       - name: Deploy via semantic release 
