@@ -181,8 +181,6 @@ extension CIOHttpClient {
     // a short amount of time from a device which makes a performance impact on our API.
     // By pausing HTTP requests, we mitigate the chance of customer devices causing harm to our API.
     private func pauseHttpRequests() {
-        // We do *not* want to make this value configurable by the customer because
-        // we are pausing the SDK to protect our own API from spamming results.
         let minutesToPause = 5
         let dateToEndPause = Date().addMinutes(minutesToPause)
 

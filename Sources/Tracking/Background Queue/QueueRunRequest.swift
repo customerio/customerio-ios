@@ -43,6 +43,9 @@ public class CioQueueRunRequest: QueueRunRequest {
         runTasks(queueInventory: inventory, queryTotalNumberTasks: inventory.count)
     }
 
+    // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
+    // Many of the lines of this function are logging related.
+    // swiftlint:disable:next function_body_length
     private func runTasks(
         queueInventory: [QueueTaskMetadata],
         queryTotalNumberTasks: Int,
@@ -94,11 +97,14 @@ public class CioQueueRunRequest: QueueRunRequest {
                 let previousRunResults = nextTaskToRun.runResults
 
                 // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
-                if case .http(let httpError) = error, case .noRequestMade = httpError {
+                if case .http(let httpError) = error, case .requestsPaused = httpError {
                     self.logger.debug("""
-                    queue task \(self.shortTaskId(nextTaskStorageId)) didn't perform a HTTP request.
-                    This may be an expected behavior.
+                    queue task \(self.shortTaskId(nextTaskStorageId)) didn't run because all HTTP requests paused.
                     """)
+
+                    self.logger.info("queue is quitting early because all HTTP requests are paused.")
+                    return self.goToNextTask(queueInventory: [], queryTotalNumberTasks: queryTotalNumberTasks,
+                                             lastFailedTask: nil)
                 } else {
                     let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
