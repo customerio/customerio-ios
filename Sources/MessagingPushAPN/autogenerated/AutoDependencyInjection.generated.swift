@@ -100,6 +100,10 @@ internal class DIMessagingPushAPN {
         Self.store.getInstance(siteId: siteId)
     }
 
+    public static func getAllWorkspacesSharedInstance() -> DIMessagingPushAPN {
+        Self.store.getInstance(siteId: "shared")
+    }
+
     /**
      Designed to be used only in test classes to override dependencies.
 

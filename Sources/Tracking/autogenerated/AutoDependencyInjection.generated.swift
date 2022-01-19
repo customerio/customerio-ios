@@ -72,6 +72,7 @@ public enum DependencyTracking: CaseIterable {
     case logger
     case fileStorage
     case queueStorage
+    case activeWorkspacesManager
     case sdkConfigStore
     case jsonAdapter
     case lockManager
@@ -116,6 +117,10 @@ public class DITracking {
         Self.store.getInstance(siteId: siteId)
     }
 
+    public static func getAllWorkspacesSharedInstance() -> DITracking {
+        Self.store.getInstance(siteId: "shared")
+    }
+
     /**
      Designed to be used only in test classes to override dependencies.
 
@@ -154,6 +159,7 @@ public class DITracking {
         case .logger: return logger as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
+        case .activeWorkspacesManager: return activeWorkspacesManager as! T
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
         case .lockManager: return lockManager as! T
@@ -376,6 +382,31 @@ public class DITracking {
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
                                 lockManager: lockManager)
+    }
+
+    // ActiveWorkspacesManager (singleton)
+    internal var activeWorkspacesManager: ActiveWorkspacesManager {
+        if let overridenDep = overrides[.activeWorkspacesManager] {
+            return overridenDep as! ActiveWorkspacesManager
+        }
+        return sharedActiveWorkspacesManager
+    }
+
+    private let _activeWorkspacesManager_queue = DispatchQueue(label: "DI_get_activeWorkspacesManager_queue")
+    private var _activeWorkspacesManager_shared: ActiveWorkspacesManager?
+    internal var sharedActiveWorkspacesManager: ActiveWorkspacesManager {
+        _activeWorkspacesManager_queue.sync {
+            if let overridenDep = self.overrides[.activeWorkspacesManager] {
+                return overridenDep as! ActiveWorkspacesManager
+            }
+            let res = _activeWorkspacesManager_shared ?? _get_activeWorkspacesManager()
+            _activeWorkspacesManager_shared = res
+            return res
+        }
+    }
+
+    private func _get_activeWorkspacesManager() -> ActiveWorkspacesManager {
+        InMemoryActiveWorkspaces()
     }
 
     // SdkConfigStore (singleton)

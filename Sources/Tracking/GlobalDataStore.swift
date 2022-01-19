@@ -15,7 +15,7 @@ public protocol GlobalDataStore: AutoMockable {
 public class CioGlobalDataStore: GlobalDataStore {
     private var diGraph: DITracking {
         // Used *only* for information that needs to be global between all site ids!
-        DITracking.getInstance(siteId: "shared")
+        DITracking.getAllWorkspacesSharedInstance()
     }
 
     internal var keyValueStorage: KeyValueStorage {

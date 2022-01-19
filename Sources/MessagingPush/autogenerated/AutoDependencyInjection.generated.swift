@@ -100,6 +100,10 @@ public class DIMessagingPush {
         Self.store.getInstance(siteId: siteId)
     }
 
+    public static func getAllWorkspacesSharedInstance() -> DIMessagingPush {
+        Self.store.getInstance(siteId: "shared")
+    }
+
     /**
      Designed to be used only in test classes to override dependencies.
 

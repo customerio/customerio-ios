@@ -176,8 +176,8 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
 
-    private func getAllSiteIdsInstances() -> [CustomerIO] {
-        globalData.siteIds.map { siteId in
+    private func getActiveWorkspaceInstances() -> [CustomerIO] {
+        InMemoryActiveWorkspaces.getInstance().activeWorkspaces.map { siteId in
             let diGraph = DITracking.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore.credentials
 
@@ -204,6 +204,8 @@ public class CustomerIO: CustomerIOInstance {
         configStore.config = config
 
         globalData.appendSiteId(siteId)
+
+        InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
     }
 
     /**
@@ -352,7 +354,7 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        getAllSiteIdsInstances().forEach { cio in
+        getActiveWorkspaceInstances().forEach { cio in
             cio.screen(name: name, data: data, jsonEncoder: nil)
         }
     }
