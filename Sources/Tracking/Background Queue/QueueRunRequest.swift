@@ -43,6 +43,9 @@ public class CioQueueRunRequest: QueueRunRequest {
         runTasks(queueInventory: inventory, queryTotalNumberTasks: inventory.count)
     }
 
+    // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
+    // Many of the lines of this function are logging related.
+    // swiftlint:disable:next function_body_length
     private func runTasks(
         queueInventory: [QueueTaskMetadata],
         queryTotalNumberTasks: Int,
@@ -52,8 +55,7 @@ public class CioQueueRunRequest: QueueRunRequest {
         else {
             // we hit the end of the current inventory. Done!
             logger.debug("queue out of tasks to run.")
-            requestManager.requestComplete()
-            return
+            return requestManager.requestComplete()
         }
 
         let nextTaskStorageId = nextTaskToRunInventoryItem.taskPersistedId
@@ -84,27 +86,36 @@ public class CioQueueRunRequest: QueueRunRequest {
                 self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) ran successfully")
 
                 self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
-                let success = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
-                self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId)) success: \(success)")
+                _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
                 return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nil)
             case .failure(let error):
                 self.logger
-                    .debug("queue task \(self.shortTaskId(nextTaskStorageId)) fail - \(error.localizedDescription)")
+                    .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
 
-                let executedTaskPreviousRunResults = nextTaskToRun.runResults
-                let newRunResults = executedTaskPreviousRunResults
-                    .totalRunsSet(executedTaskPreviousRunResults.totalRuns + 1)
+                let previousRunResults = nextTaskToRun.runResults
 
-                self.logger.debug("""
-                queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
-                from: \(nextTaskToRun.runResults) to: \(newRunResults)
-                """)
+                // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
+                if case .http(let httpError) = error, case .requestsPaused = httpError {
+                    self.logger.debug("""
+                    queue task \(self.shortTaskId(nextTaskStorageId)) didn't run because all HTTP requests paused.
+                    """)
 
-                let success = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
-                                                  runResults: newRunResults)
-                self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) update success \(success)")
+                    self.logger.info("queue is quitting early because all HTTP requests are paused.")
+                    return self.goToNextTask(queueInventory: [], queryTotalNumberTasks: queryTotalNumberTasks,
+                                             lastFailedTask: nil)
+                } else {
+                    let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
+
+                    self.logger.debug("""
+                    queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
+                    from: \(nextTaskToRun.runResults) to: \(newRunResults)
+                    """)
+
+                    _ = self.storage.update(storageId: nextTaskToRunInventoryItem.taskPersistedId,
+                                            runResults: newRunResults)
+                }
 
                 return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nextTaskToRunInventoryItem)

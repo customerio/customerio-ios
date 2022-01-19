@@ -34,12 +34,17 @@ open class UnitTest: XCTestCase {
         JsonAdapter(log: log)
     }
 
+    public var retryPolicyMock: HttpRetryPolicyMock!
+
     public var lockManager: LockManager {
         LockManager()
     }
 
     override open func setUp() {
         deleteAll()
+
+        retryPolicyMock = HttpRetryPolicyMock()
+        retryPolicyMock.underlyingNextSleepTime = 0.01
 
         super.setUp()
     }

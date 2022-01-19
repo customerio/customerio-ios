@@ -71,6 +71,7 @@ public enum DependencyTracking: CaseIterable {
     case simpleTimer
     case singleScheduleTimer
     case logger
+    case httpRetryPolicy
     case fileStorage
     case queueStorage
     case activeWorkspacesManager
@@ -159,6 +160,7 @@ public class DITracking {
         case .simpleTimer: return simpleTimer as! T
         case .singleScheduleTimer: return singleScheduleTimer as! T
         case .logger: return logger as! T
+        case .httpRetryPolicy: return httpRetryPolicy as! T
         case .fileStorage: return fileStorage as! T
         case .queueStorage: return queueStorage as! T
         case .activeWorkspacesManager: return activeWorkspacesManager as! T
@@ -184,7 +186,8 @@ public class DITracking {
 
     private var newHttpClient: HttpClient {
         CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
-                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner)
+                      jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore,
+                      logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy)
     }
 
     // SdkCredentialsStore
@@ -371,6 +374,18 @@ public class DITracking {
 
     private var newLogger: Logger {
         ConsoleLogger(sdkConfigStore: sdkConfigStore)
+    }
+
+    // HttpRetryPolicy
+    internal var httpRetryPolicy: HttpRetryPolicy {
+        if let overridenDep = overrides[.httpRetryPolicy] {
+            return overridenDep as! HttpRetryPolicy
+        }
+        return newHttpRetryPolicy
+    }
+
+    private var newHttpRetryPolicy: HttpRetryPolicy {
+        CustomerIOAPIHttpRetryPolicy()
     }
 
     // FileStorage

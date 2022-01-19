@@ -14,6 +14,8 @@ public enum HttpRequestError: Error {
     case noOrBadNetwork(_ urlError: URLError)
     /// Request was not able to get a response from server. Maybe no network connection?
     case noRequestMade(_ error: Error?)
+    /// HTTP requests are paused so the request was not made
+    case requestsPaused
     /// Request was cancelled.
     case cancelled
 }
@@ -31,6 +33,7 @@ extension HttpRequestError: CustomStringConvertible, LocalizedError {
         case .noOrBadNetwork: return "No Internet connection or bad network connection."
         case .noRequestMade(let error): return error?
             .localizedDescription ?? "No request was able to be made to server."
+        case .requestsPaused: return "HTTP request skipped. All HTTP requests are paused for the time being."
         case .cancelled: return "Request was cancelled"
         }
     }

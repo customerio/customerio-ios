@@ -20,18 +20,30 @@ public class CIOHttpClient: HttpClient {
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
+    private var globalDataStore: GlobalDataStore
+    private let logger: Logger
+    private let retryPolicyTimer: SimpleTimer
+    private let retryPolicy: HttpRetryPolicy
 
     init(
         siteId: SiteId,
         sdkCredentialsStore: SdkCredentialsStore,
         configStore: SdkConfigStore,
         jsonAdapter: JsonAdapter,
-        httpRequestRunner: HttpRequestRunner
+        httpRequestRunner: HttpRequestRunner,
+        globalDataStore: GlobalDataStore,
+        logger: Logger,
+        timer: SimpleTimer,
+        retryPolicy: HttpRetryPolicy
     ) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey)
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
+        self.globalDataStore = globalDataStore
+        self.logger = logger
+        self.retryPolicyTimer = timer
+        self.retryPolicy = retryPolicy
     }
 
     deinit {
@@ -43,6 +55,11 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
+        if let httpPauseEnds = globalDataStore.httpRequestsPauseEnds, !httpPauseEnds.hasPassed {
+            logger.debug("HTTP request ignored because requests are still paused.")
+            return onComplete(.failure(.noRequestMade(nil)))
+        }
+
         httpRequestRunner
             .request(params, httpBaseUrls: baseUrls, session: session) { [weak self] data, response, error in
                 guard let self = self else { return }
@@ -61,16 +78,8 @@ public class CIOHttpClient: HttpClient {
 
                 let statusCode = response.statusCode
                 guard statusCode < 300 else {
-                    switch statusCode {
-                    case 401:
-                        onComplete(.failure(.unauthorized))
-                    default:
-                        onComplete(.failure(.unsuccessfulStatusCode(statusCode,
-                                                                    apiMessage: self
-                                                                        .getErrorMessage(responseBody: data))))
-                    }
-
-                    return
+                    return self.handleUnsuccessfulStatusCodeResponse(statusCode: statusCode, data: data, params: params,
+                                                                     onComplete: onComplete)
                 }
 
                 guard let data = data else {
@@ -164,5 +173,73 @@ extension CIOHttpClient {
         userAgent += DeviceInfo.customerAppVersion
         #endif
         return userAgent
+    }
+
+    // In certain scenarios, it makes sense for us to pause making any HTTP requests to the
+    // Customer.io API. Because HTTP requests are performed by the background queue, there is
+    // a chance that the background queue could make a lot or more HTTP requests in
+    // a short amount of time from a device which makes a performance impact on our API.
+    // By pausing HTTP requests, we mitigate the chance of customer devices causing harm to our API.
+    private func pauseHttpRequests() {
+        let minutesToPause = 5
+        let dateToEndPause = Date().addMinutes(minutesToPause)
+
+        globalDataStore.httpRequestsPauseEnds = dateToEndPause
+
+        logger.info("All HTTP requests to the Customer.io API have been paused for \(minutesToPause) minutes.")
+    }
+
+    /**
+     - When receiving a 5xx response:
+     * Begin an exponential backoff retry on the HTTP task that returned back the 5xx error.
+     * After these retry attempts, if the HTTP request is still receiving a 5xx response then the
+       requests will sleep for 5 minutes and no requests will be attempted.
+     * After the 5 minutes, HTTP requests are able to be run as normal. No memory of any errors prior.
+
+     - When receiving a 401 response:
+     * The HTTP requests will sleep for 5 minutes as above.
+
+     - Any other 4xx error
+     * Log the error as it's more then likely a SDK developer error or an error by the customer.
+     */
+    private func handleUnsuccessfulStatusCodeResponse(
+        statusCode: Int,
+        data: Data?,
+        params: HttpRequestParams,
+        onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
+    ) {
+        let unsuccessfulStatusCodeError: HttpRequestError =
+            .unsuccessfulStatusCode(statusCode,
+                                    apiMessage: getErrorMessage(responseBody: data))
+
+        switch statusCode {
+        case 500 ..< 600:
+            if let sleepTime = retryPolicy.nextSleepTime {
+                logger
+                    .debug("""
+                    Encountered \(statusCode) HTTP response.
+                    Sleeping \(sleepTime) seconds and then retrying.
+                    """)
+
+                retryPolicyTimer.scheduleAndCancelPrevious(seconds: sleepTime) {
+                    self.request(params, onComplete: onComplete)
+                }
+            } else {
+                pauseHttpRequests()
+
+                onComplete(.failure(unsuccessfulStatusCodeError))
+            }
+        case 401:
+            pauseHttpRequests()
+
+            onComplete(.failure(.unauthorized))
+        default:
+            logger.error("""
+            4xx HTTP status code response.
+            Probably a bug? \(unsuccessfulStatusCodeError.localizedDescription)
+            """)
+
+            onComplete(.failure(unsuccessfulStatusCodeError))
+        }
     }
 }

@@ -10,4 +10,5 @@ public enum KeyValueStorageKey: String {
     case identifiedProfileId
     case allSiteIds
     case pushDeviceToken
+    case httpRequestsPauseEnds
 }
