@@ -15,7 +15,8 @@
             "changelogFile": "CHANGELOG.md"
         }],
         ["@semantic-release/git", {
-            "assets": ["CHANGELOG.md", "Sources/Tracking/Version.swift", "*.podspec"]
+            "assets": ["CHANGELOG.md", "Sources/Tracking/Version.swift", "*.podspec"],
+            "message": "chore: deploy ${nextRelease.version}\n\n${nextRelease.notes}"
         }],
         "@semantic-release/github"
     ]

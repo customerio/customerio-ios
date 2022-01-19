@@ -1,9 +1,8 @@
 name: Deploy SDK to Cocoapods
 # Deploy cocoapods after a git tag made. Cocoapods uses tags to deploy. 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
 
 env:
   COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
