@@ -1,0 +1,26 @@
+name: Promote a release
+
+on: 
+  workflow_dispatch: # manually run this Action so you decide when deployments happen
+    inputs:
+      promoteBranch:
+        description: 'Need to jump to a specific release?'
+        required: false
+        default: ""
+        type: choice
+        options:
+        - ""
+        - alpha
+        - beta
+        - main
+
+jobs:
+  promote-release:
+    name: Promote a branch to the next release 
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Promote release 
+        uses: levibostian/action-promote-semantic-release@v1
+        with:
+          sequence: "develop,alpha,beta,main"
+          githubToken: ${{ secrets.REPO_PUSH_TOKEN }}

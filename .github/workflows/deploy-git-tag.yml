@@ -1,0 +1,24 @@
+name: Deploy git tag  
+on:
+  push:
+    branches: [main, beta, alpha]
+
+jobs:
+  deploy-sdk:
+    name: Deploy git tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: semantic-release setup
+        uses: levibostian/action-semantic-release-justwork@v1
+      - name: Deploy git tag via semantic-release 
+        uses: cycjimmy/semantic-release-action@v2
+        with: 
+          # version numbers below can be in many forms: M, M.m, M.m.p
+          semantic_version: 18
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+            @semantic-release/github@8
+            @semantic-release/exec@6
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_PUSH_TOKEN }}

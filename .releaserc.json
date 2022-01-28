@@ -6,8 +6,12 @@
         { "name": "alpha", "prerelease": true }
     ],
     "plugins": [
-        "@semantic-release/commit-analyzer",
-        "@semantic-release/release-notes-generator",        
+        ["@semantic-release/commit-analyzer", {
+            "preset": "conventionalcommits"
+        }],
+        ["@semantic-release/release-notes-generator", {
+            "preset": "conventionalcommits"
+        }],
         ["@semantic-release/exec", {
             "verifyReleaseCmd": "./scripts/update_version.sh ${nextRelease.version} Sources/Tracking/Version.swift && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
         }],
@@ -16,7 +20,7 @@
         }],
         ["@semantic-release/git", {
             "assets": ["CHANGELOG.md", "Sources/Tracking/Version.swift", "*.podspec"],
-            "message": "chore: deploy ${nextRelease.version}\n\n${nextRelease.notes}"
+            "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}"
         }],
         "@semantic-release/github"
     ]
