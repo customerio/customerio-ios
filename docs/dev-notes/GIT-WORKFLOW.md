@@ -150,7 +150,7 @@ git push origin develop
 
 What is the use case for why you want to skip making an Alpha release and go straight to Beta? 
 
-* Is it because you found a bug in production and you want to quickly release a fix? Follow the steps in [Fix a bug](#Fix a bug). 
+* Is it because you found a bug in production and you want to quickly release a fix? Follow the steps in [Fix a bug](#Fix-a-bug). 
 * Is it because the project already has an Alpha released that you want to promote to Beta? Follow the steps in [Want to promote the latest alpha to beta?](#Want-to-promote-the-latest-alpha-to-beta)
 * Any other reason? This is more then likely a red flag in a situation that we do not recommend that you do. You should probably follow the steps to make a new Alpha release from `develop`. 
 Bring up to your team your use case for why you want to do this to see if it's a scenario that we should automate.

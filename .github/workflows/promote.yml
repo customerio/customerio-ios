@@ -2,17 +2,6 @@ name: Promote a release
 
 on: 
   workflow_dispatch: # manually run this Action so you decide when deployments happen
-    inputs:
-      promoteBranch:
-        description: 'Need to jump to a specific release?'
-        required: false
-        default: ""
-        type: choice
-        options:
-        - ""
-        - alpha
-        - beta
-        - main
 
 jobs:
   promote-release:
