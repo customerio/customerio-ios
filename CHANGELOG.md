@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/customerio/customerio-ios/compare/1.0.0...1.0.1) (2022-02-02)
+
+
+### Bug Fixes
+
+* data:null as HTTP request body ([#135](https://github.com/customerio/customerio-ios/issues/135)) ([04c5211](https://github.com/customerio/customerio-ios/commit/04c5211ac83592e7191d7313a61e37cea8be38fa))
+
 # 1.0.0 (2022-01-19)
 
 
