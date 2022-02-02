@@ -49,13 +49,15 @@ public class ConsoleLogger: Logger {
     private let logSubsystem = "io.customer.sdk"
     private let logCategory = "CIO"
 
+    private let siteId: SiteId
     private let sdkConfigStore: SdkConfigStore
 
     private var minLogLevel: CioLogLevel {
         sdkConfigStore.config.logLevel
     }
 
-    init(sdkConfigStore: SdkConfigStore) {
+    init(siteId: SiteId, sdkConfigStore: SdkConfigStore) {
+        self.siteId = siteId
         self.sdkConfigStore = sdkConfigStore
     }
 
@@ -65,12 +67,14 @@ public class ConsoleLogger: Logger {
     private func printMessage(_ message: String, _ level: OSLogType) {
         if !minLogLevel.shouldLog(level) { return }
 
+        let messageToPrint = "(siteid:\(siteId.abbreviatedSiteId)) \(message)"
+
         if #available(iOS 14, *) {
             let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
-            logger.log(level: level, "\(message, privacy: .public)")
+            logger.log(level: level, "\(messageToPrint, privacy: .public)")
         } else {
             let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: level, message)
+            os_log("%{public}@", log: logger, type: level, messageToPrint)
         }
     }
 

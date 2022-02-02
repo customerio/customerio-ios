@@ -373,7 +373,7 @@ public class DITracking {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger(sdkConfigStore: sdkConfigStore)
+        ConsoleLogger(siteId: siteId, sdkConfigStore: sdkConfigStore)
     }
 
     // HttpRetryPolicy
