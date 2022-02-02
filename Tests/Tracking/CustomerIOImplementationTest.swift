@@ -165,4 +165,26 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
         XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
     }
+
+    // Tests bug found in: https://github.com/customerio/customerio-ios/issues/134#issuecomment-1028090193
+    // If `{"data": null, ...}`, that's a bug that results in HTTP request returning a 400.
+    // We want instead: `{"data": {}, ...}`
+    func test_track_givenDataNil_expectSaveEmptyRequestData() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        let data: EmptyRequestBody? = nil
+        customerIO.track(name: String.random, data: data)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+
+        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
+        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(#"{"data":{}"#))
+        XCTAssertFalse(actualQueueTaskData!.attributesJsonString.contains("null"))
+    }
 }

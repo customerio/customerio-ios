@@ -161,7 +161,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 
     public func track<RequestBody: Encodable>(
         name: String,
-        data: RequestBody
+        data: RequestBody?
     ) {
         trackEvent(type: .event, name: name, data: data)
     }
@@ -181,7 +181,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
 extension CustomerIOImplementation {
     private func trackEvent<RequestBody: Encodable>(type: EventType,
                                                     name: String,
-                                                    data: RequestBody) {
+                                                    data: RequestBody?) {
         let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
 
         logger.info("\(eventTypeDescription) \(name)")
@@ -192,6 +192,10 @@ extension CustomerIOImplementation {
             logger.info("ignoring \(eventTypeDescription) \(name) because no profile currently identified")
             return
         }
+
+        // JSON encoding with `data = nil` returns `"data":null`.
+        // API returns 400 "event data must be a hash" for that. `"data":{}` is a better default.
+        let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
 
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
         guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: nil) else {

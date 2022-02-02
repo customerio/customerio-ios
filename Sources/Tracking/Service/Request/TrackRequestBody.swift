@@ -4,7 +4,7 @@ import Foundation
 internal struct TrackRequestBody<T: Encodable>: Encodable {
     let type: EventType
     let name: String
-    let data: T?
+    let data: T
     let timestamp: Date?
 }
 
