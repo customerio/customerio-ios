@@ -53,11 +53,13 @@ Want to build a new feature? Here is how you would do that.
 ## Fix a bug 
 
 Where did you find this bug? 
-* In an `alpha` or `beta` release of the software (the version of the release ends with `-alpha.X` or `-beta.X` such as `1.0.0-alpha.1`)? If so, make a new git branch off of the `alpha` or `beta` branch, fix the bug, then make a pull request merging your pull request into the `alpha` or `beta` branch. 
-* In a production release of the software (the version of the release does *not* end with `-alpha.X` or `-beta.X` such as `1.0.0`)? If so, our team should make a decision on the bug. If this a bug that's not effecting a lot of customers? Is there a workaround we can help customers implement to temporary fix the bug? The team should decide if...
-1. We can fix the bug and release it in the next release of our software (the bug will be merged into `develop` and then released to alpha and beta before production).
-2. We need to provide a hot fix to customers. This is if the bug is more severe. This means we need to make a new branch off of `main`, fix the bug, then make a pull request into `main`. When the pull request gets merged, a new production release will be deployed to customers. 
-* If the bug is in the `develop` branch and has not yet been released to customers in any way (alpha, beta, or production) then make a new branch off of `develop` and make a pull request into `develop`. 
+* **In an `alpha` or `beta` release** of the software (the version of the release ends with `-alpha.X` or `-beta.X` such as `1.0.0-alpha.1`)? 
+If so, make a new git branch off of the `alpha` or `beta` branch, fix the bug, then make a pull request merging your pull request into the `alpha` or `beta` branch. 
+
+* **In a production release** of the software (the version of the release does *not* end with `-alpha.X` or `-beta.X` such as `1.0.0`)? 
+If so, make a new git branch off of the `main` branch, fix the bug, then make a pull request merging your pull request into the `main` branch. After the pull request gets merged, a new production release will be made to customers. 
+
+> Note: When making a bug fix pull request, it's preferred that you include an automated test (unit test function, integration test, etc) in this pull request that reproduces the bug. This is to help us feel confident the bug is indeed fixed and it will not come up again in the future. 
 
 ## Make a new release 
 
