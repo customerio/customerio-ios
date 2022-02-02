@@ -67,8 +67,7 @@ public class ConsoleLogger: Logger {
     private func printMessage(_ message: String, _ level: OSLogType) {
         if !minLogLevel.shouldLog(level) { return }
 
-        let logsPrefix = "(siteid:\(siteId.abbreviatedSiteId))"
-        let messageToPrint = "\(logsPrefix) \(message)"
+        let messageToPrint = "(siteid:\(siteId.abbreviatedSiteId)) \(message)"
 
         if #available(iOS 14, *) {
             let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
