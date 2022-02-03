@@ -33,45 +33,4 @@ $> ./hooks/autohook.sh install
 
 ### Development workflow 
 
-Let's say that you make changes to this project and you want your changes to become part of the project. This is the workflow that we follow to make that happen:
-
-1. Make a new git branch where your changes will occur. 
-2. Perform your changes on this branch. This part is very important. It's important that your git branches are focused with 1 goal in mind. 
-
-Let's say that you decide to do all of this work under 1 git branch:
-* Add a new feature to the app. 
-* Fix a few bugs. 
-
-....this is an anti-pattern in this repository. Instead...
-
-* Make 1 git branch for your new feature that you add to the app. 
-* Make 1 git branch for each bug that you fix. 
-
-*Note: If you fix a bug or add a feature that it requires you edit the documentation, it's suggested to make all documentation changes in the git branch for that bug or feature. Not recommended to make separate branches just for documentation changes.*
-
-Why do we do it this way? 
-* It makes our git commit history cleaner. When you think to yourself, "Oh, what was that change I made 3 months ago?" you can more easily find those commits because they are focused. 
-* It helps the team deploy the code more easily to customers. 
-* It makes code reviews much easier as pull requests are now more focused. 
-* It is easier to find what commits break code. When we make small pull requests, we are able to isolate those changes from each other and more easily find what changes cause what issues. 
-
-3. Make a pull request. 
-
-When you make a pull request, a team member will merge it for you after...
-* All automated tests pass. If they don't it's your responsibility to fix them. 
-* A team member will review your code. If they have suggestions on how to fix it, you can discuss the suggestions as a team and/or make changes to your code from those suggestions. 
-* The title of the pull request is named following the [conventional commit message](https://gist.github.com/levibostian/71afa00ddc69688afebb215faab48fd7) specification. 
-
-### Deployment 
-
-Deployment is done automatically via CI server. All that needs to be done is a git tag is created. 
-
-When a pull request is merged into `alpha`, `beta`, or `main` the CI server creates a new git tag with the release. 
-
-To prepare the CI server, do the following steps:
-
-Set the following secret environment variables:
-* `REPO_PUSH_TOKEN` - github personal access token with `repos` access so it can push code to the repository. 
-* `COCOAPODS_TRUNK_TOKEN` - [created token](https://fuller.li/posts/automated-cocoapods-releases-with-ci/) to authenticate and deploy to cocoapods server
-
-For details on cocoapods deployment, check out "cocoapods ios sdk" in 1Password. 
+See file [GIT-WORKFLOW](GIT-WORKFLOW.md) to learn about the workflow that this project uses. 
