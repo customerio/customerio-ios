@@ -6,7 +6,7 @@ import {message, danger, warn} from "danger"
 let modifiedPublicApiFiles = danger.git.modified_files.filter((filePath) => filePath.endsWith("APITest.swift"))
 modifiedPublicApiFiles.forEach((filePath) => {
   const message = `
-I noticed file `${filePath}` was modified. That could mean that this pull request is introducing a *breaking change* to the SDK. 
+I noticed file \`${filePath}\` was modified. That could mean that this pull request is introducing a *breaking change* to the SDK. 
   
 If this pull request *does* introduce a breaking change, make sure the pull request title is in the format: 
 \`\`\` 
