@@ -22,8 +22,10 @@ class MessagingPushAPNAPITest: UnitTest {
                                          didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
                                              .notInitialized)
 
+        #if canImport(UserNotifications)
         MessagingPush.shared
             .didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
                                               trigger: nil)) { content in }
+        #endif
     }
 }
