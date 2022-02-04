@@ -5,7 +5,7 @@ import {message, danger, warn} from "danger"
 // Breaking changes should be documented when making a pull request. This is a reminder. 
 let modifiedPublicApiFiles = danger.git.modified_files.filter((filePath) => filePath.endsWith("APITest.swift"))
 modifiedPublicApiFiles.forEach((filePath) => {
-  warn(`
+  const message = `
 I noticed file `${filePath}` was modified. That could mean that this pull request is introducing a *breaking change* to the SDK. 
   
 If this pull request *does* introduce a breaking change, make sure the pull request title is in the format: 
@@ -14,5 +14,7 @@ If this pull request *does* introduce a breaking change, make sure the pull requ
 // Example:
 refactor!: remove onComplete callback from async functions 
 \`\`\`
-`)
+  `
+
+  warn(message)
 })
