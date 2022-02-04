@@ -41,3 +41,12 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
       - name: Push CustomerIO
         run: ./scripts/push-cocoapod.sh CustomerIO.podspec
+
+      - name: Create GitHub issue if fail to deploy 
+        uses: JasonEtco/create-an-issue@v2
+        if: ${{ failure() }} 
+        with: 
+          filename: .github/FAIL_COCOAPODS_DEPLOY_ISSUE_TEMPLATE.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
