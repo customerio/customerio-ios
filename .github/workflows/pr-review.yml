@@ -1,0 +1,19 @@
+name: PR review 
+
+on: [pull_request]
+
+jobs:
+  # Danger is a tool that can help during code reviews. Automate common 
+  # code review tasks. https://danger.systems/js/
+  # TL;DR - it runs script `dangerfile.js` on each pull request. 
+  danger:
+    runs-on: ubuntu-latest
+    name: Danger 
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run danger 
+        run: npx danger@11 ci --dangerfile dangerfile.js
+        env:
+          # Runs on each pull request. Token permissions are only needed to comment on 
+          # the public github repository pull requests. 
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_BOT_TOKEN }}
