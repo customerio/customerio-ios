@@ -29,7 +29,7 @@ fi
 
 echo "Pushing podspec: $PODSPEC."
 
-for i in {1..30}; do 
+for i in {1..50}; do 
     echo "Push attempt $i..."
     pod repo update;
     pod trunk push "$PODSPEC" --allow-warnings && break || sleep 30; 
