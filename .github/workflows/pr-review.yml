@@ -14,6 +14,5 @@ jobs:
       - name: Run danger 
         run: npx danger@11 ci --dangerfile dangerfile.js
         env:
-          # Runs on each pull request. Token permissions are only needed to comment on 
-          # the public github repository pull requests. 
-          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_BOT_TOKEN }}
+          # Bot runs on every pull request so make sure to only use read-only access token 
+          GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
