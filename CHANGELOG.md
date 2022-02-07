@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/customerio/customerio-ios/compare/1.0.1...1.0.2) (2022-02-07)
+
+
+### Bug Fixes
+
+* create valid JSON request body when sending nil as track events data ([#140](https://github.com/customerio/customerio-ios/issues/140)) ([c5d1a50](https://github.com/customerio/customerio-ios/commit/c5d1a50b46422257d4cd770ff052d5d9e6daee38))
+
 ## [1.0.1](https://github.com/customerio/customerio-ios/compare/1.0.0...1.0.1) (2022-02-02)
 
 
