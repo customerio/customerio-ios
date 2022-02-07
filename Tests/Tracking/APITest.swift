@@ -17,7 +17,7 @@ class TrackingAPITest: UnitTest {
     }
 
     let encodableData = EncodableExample(foo: "")
-    
+
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
@@ -67,10 +67,10 @@ class TrackingAPITest: UnitTest {
         CustomerIO.shared.profileAttributes = dictionaryData
         mock.profileAttributes = dictionaryData
     }
-    
+
     func test_allPublicSdkConfigOptions() {
         _ = XCTSkip()
-        
+
         CustomerIO.config {
             $0.trackingApiUrl = ""
             $0.autoTrackPushEvents = true
@@ -78,7 +78,7 @@ class TrackingAPITest: UnitTest {
             $0.backgroundQueueSecondsDelay = 10
             $0.logLevel = .error
             $0.autoTrackPushEvents = false
-            $0.autoScreenViewBody = {return [:]}
+            $0.autoScreenViewBody = { [:] }
         }
     }
 }

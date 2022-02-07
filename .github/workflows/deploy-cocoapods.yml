@@ -1,8 +1,17 @@
 name: Deploy SDK to Cocoapods
+
 # Deploy cocoapods after a git tag made. Cocoapods uses tags to deploy. 
+# We also allow manually running this workflow in case a deploy failed for a given git tag and 
+# we want to retry it. 
 on:
   release:
     types: [published]
+  workflow_dispatch: 
+    inputs:
+      tagToPush:
+        description: 'Type name of existing git tag to retry pushing cocoapods for (example: 1.0.3)'
+        required: true
+        type: string 
 
 env:
   COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
@@ -13,6 +22,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Checkout existing tag if manually running CI task  
+        uses: actions/checkout@v2
+        # If input is not given, that probably means this CI task was run automatically by a new 
+        # git tag being pushed. Skip this step and try to deploy pods for new tag. 
+        if: ${{ github.event.inputs.tagToPush != '' }}
+        with:
+          ref: ${{ github.event.inputs.tagToPush }}
       - name: Install cocoapods 
         run: gem install cocoapods 
       - name: Push CustomerIOTracking 
@@ -25,3 +41,12 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
       - name: Push CustomerIO
         run: ./scripts/push-cocoapod.sh CustomerIO.podspec
+
+      - name: Create GitHub issue if fail to deploy 
+        uses: JasonEtco/create-an-issue@v2
+        if: ${{ failure() }} 
+        with: 
+          filename: .github/FAIL_COCOAPODS_DEPLOY_ISSUE_TEMPLATE.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}

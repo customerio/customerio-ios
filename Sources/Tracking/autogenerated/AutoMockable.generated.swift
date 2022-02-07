@@ -8,86 +8,86 @@ import FoundationNetworking
 #endif
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing contains mock classes that you can use in your test suite. 
+ This automatically generated file you are viewing contains mock classes that you can use in your test suite.
 
-* How do you generate a new mock class? 
+ * How do you generate a new mock class?
 
-1. Mocks are generated from Swift protocols. So, you must make one. 
+ 1. Mocks are generated from Swift protocols. So, you must make one.
 
-```
-protocol FriendsRepository {
-    func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
-}
+ ```
+ protocol FriendsRepository {
+     func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
+ }
 
-class AppFriendsRepository: FriendsRepository {
-    ...
-}
-```
+ class AppFriendsRepository: FriendsRepository {
+     ...
+ }
+ ```
 
-2. Have your new protocol extend `AutoMockable`:
+ 2. Have your new protocol extend `AutoMockable`:
 
-```
-protocol FriendsRepository: AutoMockable {
-    func acceptFriendRequest<Attributes: Encodable>(
-        // sourcery:Type=Encodable
-        attributes: Attributes, 
-        _ onComplete: @escaping () -> Void)
-}
-```
+ ```
+ protocol FriendsRepository: AutoMockable {
+     func acceptFriendRequest<Attributes: Encodable>(
+         // sourcery:Type=Encodable
+         attributes: Attributes,
+         _ onComplete: @escaping () -> Void)
+ }
+ ```
 
-> Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would 
-fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`. 
-Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case. 
-It will require a cast in the test function code, however. 
+ > Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would
+ fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`.
+ Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case.
+ It will require a cast in the test function code, however.
 
-3. Run the command `make generate` on your machine. The new mock should be added to this file. 
+ 3. Run the command `make generate` on your machine. The new mock should be added to this file.
 
-* How do you use the mocks in your test class? 
+ * How do you use the mocks in your test class?
 
-```
-class ExampleViewModelTest: XCTestCase {
-    var viewModel: ExampleViewModel!
-    var exampleRepositoryMock: ExampleRepositoryMock!
-    override func setUp() {
-        exampleRepositoryMock = ExampleRepositoryMock()
-        viewModel = AppExampleViewModel(exampleRepository: exampleRepositoryMock)
-    }
-}
-```
+ ```
+ class ExampleViewModelTest: XCTestCase {
+     var viewModel: ExampleViewModel!
+     var exampleRepositoryMock: ExampleRepositoryMock!
+     override func setUp() {
+         exampleRepositoryMock = ExampleRepositoryMock()
+         viewModel = AppExampleViewModel(exampleRepository: exampleRepositoryMock)
+     }
+ }
+ ```
 
-Or, you may need to inject the mock in a different way using the DI.shared graph:
+ Or, you may need to inject the mock in a different way using the DI.shared graph:
 
-```
-class ExampleTest: XCTestCase {
-    var exampleViewModelMock: ExampleViewModelMock!
-    var example: Example!
-    override func setUp() {
-        exampleViewModelMock = ExampleViewModelMock()
-        DI.shared.override(.exampleViewModel, value: exampleViewModelMock, forType: ExampleViewModel.self)
-        example = Example()
-    }
-}
+ ```
+ class ExampleTest: XCTestCase {
+     var exampleViewModelMock: ExampleViewModelMock!
+     var example: Example!
+     override func setUp() {
+         exampleViewModelMock = ExampleViewModelMock()
+         DI.shared.override(.exampleViewModel, value: exampleViewModelMock, forType: ExampleViewModel.self)
+         example = Example()
+     }
+ }
 
-```
+ ```
 
-*/
+ */
 
 public class TrackingMocks {
-    public static var shared: TrackingMocks = TrackingMocks()
+    public static var shared: TrackingMocks = .init()
 
     public var mocks: [TrackingMock] = []
     private init() {}
 
     func add(mock: TrackingMock) {
-        self.mocks.append(mock)
+        mocks.append(mock)
     }
 
     func resetAll() {
-        self.mocks.forEach {
+        mocks.forEach {
             $0.reset()
         }
     }
@@ -97,227 +97,226 @@ public protocol TrackingMock {
     func reset()
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
- Class to easily create a mocked version of the `ActiveWorkspacesManager` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `ActiveWorkspacesManager` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class ActiveWorkspacesManagerMock: ActiveWorkspacesManager, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     internal var underlyingActiveWorkspaces: [SiteId] = []
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     internal var activeWorkspacesCalled: Bool {
         activeWorkspacesGetCalled || activeWorkspacesSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     internal var activeWorkspacesGetCalled: Bool {
         activeWorkspacesGetCallsCount > 0
-    } 
+    }
+
     internal var activeWorkspacesGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     internal var activeWorkspacesSetCalled: Bool {
         activeWorkspacesSetCallsCount > 0
-    } 
+    }
+
     internal var activeWorkspacesSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     internal var activeWorkspaces: [SiteId] {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             activeWorkspacesGetCallsCount += 1
-            return underlyingActiveWorkspaces 
+            return underlyingActiveWorkspaces
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             activeWorkspacesSetCallsCount += 1
-            underlyingActiveWorkspaces = value 
+            underlyingActiveWorkspaces = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         activeWorkspacesGetCallsCount = 0
         activeWorkspacesSetCallsCount = 0
         addWorkspaceCallsCount = 0
-        addWorkspaceReceivedArguments = nil 
+        addWorkspaceReceivedArguments = nil
         addWorkspaceReceivedInvocations = []
     }
 
     // MARK: - addWorkspace
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var addWorkspaceCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var addWorkspaceCalled: Bool {
-        return addWorkspaceCallsCount > 0
+        addWorkspaceCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    internal private(set) var addWorkspaceReceivedArguments: (SiteId)?
-    /// Arguments from *all* of the times that the function was called. 
-    internal private(set) var addWorkspaceReceivedInvocations: [(SiteId)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var addWorkspaceReceivedArguments: SiteId?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var addWorkspaceReceivedInvocations: [SiteId] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var addWorkspaceClosure: ((SiteId) -> Void)?
 
-    /// Mocked function for `addWorkspace(siteId: SiteId)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `addWorkspace(siteId: SiteId)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func addWorkspace(siteId: SiteId) {
-        self.mockCalled = true
+        mockCalled = true
         addWorkspaceCallsCount += 1
-        addWorkspaceReceivedArguments = (siteId)
-        addWorkspaceReceivedInvocations.append((siteId))
+        addWorkspaceReceivedArguments = siteId
+        addWorkspaceReceivedInvocations.append(siteId)
         addWorkspaceClosure?(siteId)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `CustomerIOInstance` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `CustomerIOInstance` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingSiteId: String? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingSiteId: String?
+    /// `true` if the getter or setter of property is called at least once.
     public var siteIdCalled: Bool {
         siteIdGetCalled || siteIdSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var siteIdGetCalled: Bool {
         siteIdGetCallsCount > 0
-    } 
+    }
+
     public var siteIdGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var siteIdSetCalled: Bool {
         siteIdSetCallsCount > 0
-    } 
+    }
+
     public var siteIdSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var siteId: String? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             siteIdGetCallsCount += 1
-            return underlyingSiteId 
+            return underlyingSiteId
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             siteIdSetCallsCount += 1
-            underlyingSiteId = value 
+            underlyingSiteId = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     public var underlyingProfileAttributes: [String: Any] = [:]
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     public var profileAttributesCalled: Bool {
         profileAttributesGetCalled || profileAttributesSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var profileAttributesGetCalled: Bool {
         profileAttributesGetCallsCount > 0
-    } 
+    }
+
     public var profileAttributesGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var profileAttributesSetCalled: Bool {
         profileAttributesSetCallsCount > 0
-    } 
+    }
+
     public var profileAttributesSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var profileAttributes: [String: Any] {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             profileAttributesGetCallsCount += 1
-            return underlyingProfileAttributes 
+            return underlyingProfileAttributes
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             profileAttributesSetCallsCount += 1
-            underlyingProfileAttributes = value 
+            underlyingProfileAttributes = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
-        siteId = nil 
+        siteId = nil
         siteIdGetCallsCount = 0
         siteIdSetCallsCount = 0
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
         identifyCallsCount = 0
-        identifyReceivedArguments = nil 
+        identifyReceivedArguments = nil
         identifyReceivedInvocations = []
         clearIdentifyCallsCount = 0
         trackCallsCount = 0
-        trackReceivedArguments = nil 
+        trackReceivedArguments = nil
         trackReceivedInvocations = []
         screenEncodableCallsCount = 0
-        screenEncodableReceivedArguments = nil 
+        screenEncodableReceivedArguments = nil
         screenEncodableReceivedInvocations = []
         screenCallsCount = 0
-        screenReceivedArguments = nil 
+        screenReceivedArguments = nil
         screenReceivedInvocations = []
     }
 
     // MARK: - identify<RequestBody: Encodable>
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var identifyCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var identifyCalled: Bool {
-        return identifyCallsCount > 0
+        identifyCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var identifyReceivedArguments: (identifier: String, body: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var identifyReceivedInvocations: [(identifier: String, body: AnyEncodable)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var identifyClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
-        self.mockCalled = true
+        mockCalled = true
         identifyCallsCount += 1
         identifyReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
         identifyReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
@@ -326,44 +325,46 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
 
     // MARK: - clearIdentify
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var clearIdentifyCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var clearIdentifyCalled: Bool {
-        return clearIdentifyCallsCount > 0
+        clearIdentifyCallsCount > 0
     }
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var clearIdentifyClosure: (() -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func clearIdentify() {
-        self.mockCalled = true
+        mockCalled = true
         clearIdentifyCallsCount += 1
         clearIdentifyClosure?()
     }
 
     // MARK: - track<RequestBody: Encodable>
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var trackCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var trackCalled: Bool {
-        return trackCallsCount > 0
+        trackCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var trackClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track<RequestBody: Encodable>(name: String, data: RequestBody?) {
-        self.mockCalled = true
+        mockCalled = true
         trackCallsCount += 1
         trackReceivedArguments = (name: name, data: AnyEncodable(data))
         trackReceivedInvocations.append((name: name, data: AnyEncodable(data)))
@@ -372,24 +373,25 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
 
     // MARK: - screen<RequestBody: Encodable>
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var screenEncodableCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var screenEncodableCalled: Bool {
-        return screenEncodableCallsCount > 0
+        screenEncodableCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
-        self.mockCalled = true
+        mockCalled = true
         screenEncodableCallsCount += 1
         screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
         screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
@@ -398,511 +400,540 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
 
     // MARK: - screen
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var screenCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var screenCalled: Bool {
-        return screenCallsCount > 0
+        screenCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var screenReceivedArguments: (name: String, data: [String: Any])?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var screenReceivedInvocations: [(name: String, data: [String: Any])] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var screenClosure: ((String, [String: Any]) -> Void)?
 
-    /// Mocked function for `screen(name: String, data: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `screen(name: String, data: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func screen(name: String, data: [String: Any]) {
-        self.mockCalled = true
+        mockCalled = true
         screenCallsCount += 1
         screenReceivedArguments = (name: name, data: data)
         screenReceivedInvocations.append((name: name, data: data))
         screenClosure?(name, data)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `FileStorage` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `FileStorage` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class FileStorageMock: FileStorage, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         saveCallsCount = 0
-        saveReceivedArguments = nil 
+        saveReceivedArguments = nil
         saveReceivedInvocations = []
         getCallsCount = 0
-        getReceivedArguments = nil 
+        getReceivedArguments = nil
         getReceivedInvocations = []
         deleteCallsCount = 0
-        deleteReceivedArguments = nil 
+        deleteReceivedArguments = nil
         deleteReceivedInvocations = []
     }
 
     // MARK: - save
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var saveCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var saveCalled: Bool {
-        return saveCallsCount > 0
+        saveCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var saveReceivedArguments: (type: FileType, contents: Data, fileId: String?)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var saveReceivedInvocations: [(type: FileType, contents: Data, fileId: String?)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     public var saveReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `saveReturnValue`
      */
     public var saveClosure: ((FileType, Data, String?) -> Bool)?
 
-    /// Mocked function for `save(type: FileType, contents: Data, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `save(type: FileType, contents: Data, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func save(type: FileType, contents: Data, fileId: String?) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         saveCallsCount += 1
         saveReceivedArguments = (type: type, contents: contents, fileId: fileId)
         saveReceivedInvocations.append((type: type, contents: contents, fileId: fileId))
-        return saveClosure.map({ $0(type, contents, fileId) }) ?? saveReturnValue
+        return saveClosure.map { $0(type, contents, fileId) } ?? saveReturnValue
     }
 
     // MARK: - get
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var getCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var getCalled: Bool {
-        return getCallsCount > 0
+        getCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var getReceivedArguments: (type: FileType, fileId: String?)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var getReceivedInvocations: [(type: FileType, fileId: String?)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     public var getReturnValue: Data?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getReturnValue`
      */
     public var getClosure: ((FileType, String?) -> Data?)?
 
-    /// Mocked function for `get(type: FileType, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `get(type: FileType, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func get(type: FileType, fileId: String?) -> Data? {
-        self.mockCalled = true
+        mockCalled = true
         getCallsCount += 1
         getReceivedArguments = (type: type, fileId: fileId)
         getReceivedInvocations.append((type: type, fileId: fileId))
-        return getClosure.map({ $0(type, fileId) }) ?? getReturnValue
+        return getClosure.map { $0(type, fileId) } ?? getReturnValue
     }
 
     // MARK: - delete
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var deleteCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var deleteCalled: Bool {
-        return deleteCallsCount > 0
+        deleteCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var deleteReceivedArguments: (type: FileType, fileId: String)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var deleteReceivedInvocations: [(type: FileType, fileId: String)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     public var deleteReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `deleteReturnValue`
      */
     public var deleteClosure: ((FileType, String) -> Bool)?
 
-    /// Mocked function for `delete(type: FileType, fileId: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `delete(type: FileType, fileId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func delete(type: FileType, fileId: String) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         deleteCallsCount += 1
         deleteReceivedArguments = (type: type, fileId: fileId)
         deleteReceivedInvocations.append((type: type, fileId: fileId))
-        return deleteClosure.map({ $0(type, fileId) }) ?? deleteReturnValue
+        return deleteClosure.map { $0(type, fileId) } ?? deleteReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `GlobalDataStore` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `GlobalDataStore` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingSharedInstanceSiteId: String? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingSharedInstanceSiteId: String?
+    /// `true` if the getter or setter of property is called at least once.
     public var sharedInstanceSiteIdCalled: Bool {
         sharedInstanceSiteIdGetCalled || sharedInstanceSiteIdSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var sharedInstanceSiteIdGetCalled: Bool {
         sharedInstanceSiteIdGetCallsCount > 0
-    } 
+    }
+
     public var sharedInstanceSiteIdGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var sharedInstanceSiteIdSetCalled: Bool {
         sharedInstanceSiteIdSetCallsCount > 0
-    } 
+    }
+
     public var sharedInstanceSiteIdSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var sharedInstanceSiteId: String? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             sharedInstanceSiteIdGetCallsCount += 1
-            return underlyingSharedInstanceSiteId 
+            return underlyingSharedInstanceSiteId
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             sharedInstanceSiteIdSetCallsCount += 1
-            underlyingSharedInstanceSiteId = value 
+            underlyingSharedInstanceSiteId = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     public var underlyingSiteIds: [String] = []
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     public var siteIdsCalled: Bool {
         siteIdsGetCalled || siteIdsSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var siteIdsGetCalled: Bool {
         siteIdsGetCallsCount > 0
-    } 
+    }
+
     public var siteIdsGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var siteIdsSetCalled: Bool {
         siteIdsSetCallsCount > 0
-    } 
+    }
+
     public var siteIdsSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var siteIds: [String] {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             siteIdsGetCallsCount += 1
-            return underlyingSiteIds 
+            return underlyingSiteIds
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             siteIdsSetCallsCount += 1
-            underlyingSiteIds = value 
+            underlyingSiteIds = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingPushDeviceToken: String? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingPushDeviceToken: String?
+    /// `true` if the getter or setter of property is called at least once.
     public var pushDeviceTokenCalled: Bool {
         pushDeviceTokenGetCalled || pushDeviceTokenSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var pushDeviceTokenGetCalled: Bool {
         pushDeviceTokenGetCallsCount > 0
-    } 
+    }
+
     public var pushDeviceTokenGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var pushDeviceTokenSetCalled: Bool {
         pushDeviceTokenSetCallsCount > 0
-    } 
+    }
+
     public var pushDeviceTokenSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var pushDeviceToken: String? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             pushDeviceTokenGetCallsCount += 1
-            return underlyingPushDeviceToken 
+            return underlyingPushDeviceToken
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             pushDeviceTokenSetCallsCount += 1
-            underlyingPushDeviceToken = value 
+            underlyingPushDeviceToken = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingHttpRequestsPauseEnds: Date? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingHttpRequestsPauseEnds: Date?
+    /// `true` if the getter or setter of property is called at least once.
     public var httpRequestsPauseEndsCalled: Bool {
         httpRequestsPauseEndsGetCalled || httpRequestsPauseEndsSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var httpRequestsPauseEndsGetCalled: Bool {
         httpRequestsPauseEndsGetCallsCount > 0
-    } 
+    }
+
     public var httpRequestsPauseEndsGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var httpRequestsPauseEndsSetCalled: Bool {
         httpRequestsPauseEndsSetCallsCount > 0
-    } 
+    }
+
     public var httpRequestsPauseEndsSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var httpRequestsPauseEnds: Date? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             httpRequestsPauseEndsGetCallsCount += 1
-            return underlyingHttpRequestsPauseEnds 
+            return underlyingHttpRequestsPauseEnds
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             httpRequestsPauseEndsSetCallsCount += 1
-            underlyingHttpRequestsPauseEnds = value 
+            underlyingHttpRequestsPauseEnds = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
-        sharedInstanceSiteId = nil 
+        sharedInstanceSiteId = nil
         sharedInstanceSiteIdGetCallsCount = 0
         sharedInstanceSiteIdSetCallsCount = 0
         siteIdsGetCallsCount = 0
         siteIdsSetCallsCount = 0
-        pushDeviceToken = nil 
+        pushDeviceToken = nil
         pushDeviceTokenGetCallsCount = 0
         pushDeviceTokenSetCallsCount = 0
-        httpRequestsPauseEnds = nil 
+        httpRequestsPauseEnds = nil
         httpRequestsPauseEndsGetCallsCount = 0
         httpRequestsPauseEndsSetCallsCount = 0
         appendSiteIdCallsCount = 0
-        appendSiteIdReceivedArguments = nil 
+        appendSiteIdReceivedArguments = nil
         appendSiteIdReceivedInvocations = []
     }
 
     // MARK: - appendSiteId
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var appendSiteIdCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var appendSiteIdCalled: Bool {
-        return appendSiteIdCallsCount > 0
+        appendSiteIdCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var appendSiteIdReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var appendSiteIdReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var appendSiteIdReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var appendSiteIdReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var appendSiteIdClosure: ((String) -> Void)?
 
-    /// Mocked function for `appendSiteId(_ siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `appendSiteId(_ siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func appendSiteId(_ siteId: String) {
-        self.mockCalled = true
+        mockCalled = true
         appendSiteIdCallsCount += 1
-        appendSiteIdReceivedArguments = (siteId)
-        appendSiteIdReceivedInvocations.append((siteId))
+        appendSiteIdReceivedArguments = siteId
+        appendSiteIdReceivedInvocations.append(siteId)
         appendSiteIdClosure?(siteId)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `HooksManager` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `HooksManager` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class HooksManagerMock: HooksManager, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     public var underlyingProfileIdentifyHooks: [ProfileIdentifyHook] = []
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     public var profileIdentifyHooksCalled: Bool {
         profileIdentifyHooksGetCalled || profileIdentifyHooksSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var profileIdentifyHooksGetCalled: Bool {
         profileIdentifyHooksGetCallsCount > 0
-    } 
+    }
+
     public var profileIdentifyHooksGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var profileIdentifyHooksSetCalled: Bool {
         profileIdentifyHooksSetCallsCount > 0
-    } 
+    }
+
     public var profileIdentifyHooksSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var profileIdentifyHooks: [ProfileIdentifyHook] {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             profileIdentifyHooksGetCallsCount += 1
-            return underlyingProfileIdentifyHooks 
+            return underlyingProfileIdentifyHooks
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             profileIdentifyHooksSetCallsCount += 1
-            underlyingProfileIdentifyHooks = value 
+            underlyingProfileIdentifyHooks = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     public var underlyingQueueRunnerHooks: [QueueRunnerHook] = []
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     public var queueRunnerHooksCalled: Bool {
         queueRunnerHooksGetCalled || queueRunnerHooksSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var queueRunnerHooksGetCalled: Bool {
         queueRunnerHooksGetCallsCount > 0
-    } 
+    }
+
     public var queueRunnerHooksGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var queueRunnerHooksSetCalled: Bool {
         queueRunnerHooksSetCallsCount > 0
-    } 
+    }
+
     public var queueRunnerHooksSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var queueRunnerHooks: [QueueRunnerHook] {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             queueRunnerHooksGetCallsCount += 1
-            return underlyingQueueRunnerHooks 
+            return underlyingQueueRunnerHooks
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             queueRunnerHooksSetCallsCount += 1
-            underlyingQueueRunnerHooks = value 
+            underlyingQueueRunnerHooks = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         profileIdentifyHooksGetCallsCount = 0
         profileIdentifyHooksSetCallsCount = 0
         queueRunnerHooksGetCallsCount = 0
         queueRunnerHooksSetCallsCount = 0
         addCallsCount = 0
-        addReceivedArguments = nil 
+        addReceivedArguments = nil
         addReceivedInvocations = []
     }
 
     // MARK: - add
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var addCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var addCalled: Bool {
-        return addCallsCount > 0
+        addCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var addReceivedArguments: (key: HookModules, provider: ModuleHookProvider)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var addReceivedInvocations: [(key: HookModules, provider: ModuleHookProvider)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var addClosure: ((HookModules, ModuleHookProvider) -> Void)?
 
-    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func add(key: HookModules, provider: ModuleHookProvider) {
-        self.mockCalled = true
+        mockCalled = true
         addCallsCount += 1
         addReceivedArguments = (key: key, provider: provider)
         addReceivedInvocations.append((key: key, provider: provider))
         addClosure?(key, provider)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `HttpClient` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `HttpClient` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class HttpClientMock: HttpClient, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         requestCallsCount = 0
-        requestReceivedArguments = nil 
+        requestReceivedArguments = nil
         requestReceivedInvocations = []
         downloadFileCallsCount = 0
-        downloadFileReceivedArguments = nil 
+        downloadFileReceivedArguments = nil
         downloadFileReceivedInvocations = []
         cancelCallsCount = 0
-        cancelReceivedArguments = nil 
+        cancelReceivedArguments = nil
         cancelReceivedInvocations = []
     }
 
     // MARK: - request
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var requestCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var requestCalled: Bool {
-        return requestCallsCount > 0
+        requestCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var requestReceivedArguments: (params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var requestReceivedArguments: (params: HttpRequestParams,
+                                                       onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams,
+                                                          onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var requestClosure: ((HttpRequestParams, (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         requestCallsCount += 1
         requestReceivedArguments = (params: params, onComplete: onComplete)
         requestReceivedInvocations.append((params: params, onComplete: onComplete))
@@ -911,24 +942,27 @@ public class HttpClientMock: HttpClient, TrackingMock {
 
     // MARK: - downloadFile
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var downloadFileCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var downloadFileCalled: Bool {
-        return downloadFileCallsCount > 0
+        downloadFileCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType,
+                                                            onComplete: (URL?) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
+                                                               onComplete: (URL?) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var downloadFileClosure: ((URL, DownloadFileType, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         downloadFileCallsCount += 1
         downloadFileReceivedArguments = (url: url, fileType: fileType, onComplete: onComplete)
         downloadFileReceivedInvocations.append((url: url, fileType: fileType, onComplete: onComplete))
@@ -937,264 +971,289 @@ public class HttpClientMock: HttpClient, TrackingMock {
 
     // MARK: - cancel
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var cancelCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var cancelCalled: Bool {
-        return cancelCallsCount > 0
+        cancelCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var cancelReceivedArguments: (Bool)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var cancelReceivedInvocations: [(Bool)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var cancelReceivedArguments: Bool?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var cancelReceivedInvocations: [Bool] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var cancelClosure: ((Bool) -> Void)?
 
-    /// Mocked function for `cancel(finishTasks: Bool)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `cancel(finishTasks: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func cancel(finishTasks: Bool) {
-        self.mockCalled = true
+        mockCalled = true
         cancelCallsCount += 1
-        cancelReceivedArguments = (finishTasks)
-        cancelReceivedInvocations.append((finishTasks))
+        cancelReceivedArguments = finishTasks
+        cancelReceivedInvocations.append(finishTasks)
         cancelClosure?(finishTasks)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `HttpRequestRunner` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `HttpRequestRunner` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class HttpRequestRunnerMock: HttpRequestRunner, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         requestCallsCount = 0
-        requestReceivedArguments = nil 
+        requestReceivedArguments = nil
         requestReceivedInvocations = []
         downloadFileCallsCount = 0
-        downloadFileReceivedArguments = nil 
+        downloadFileReceivedArguments = nil
         downloadFileReceivedInvocations = []
     }
 
     // MARK: - request
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var requestCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var requestCalled: Bool {
-        return requestCallsCount > 0
+        requestCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    internal private(set) var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    internal private(set) var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     */
-    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls, URLSession, (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
-    internal func request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
-        self.mockCalled = true
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                         session: URLSession,
+                                                         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                            session: URLSession,
+                                                            onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls, URLSession,
+                                   (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
+
+    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func request(
+        _ params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
+        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
+    ) {
+        mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (params: params, httpBaseUrls: httpBaseUrls, session: session, onComplete: onComplete)
-        requestReceivedInvocations.append((params: params, httpBaseUrls: httpBaseUrls, session: session, onComplete: onComplete))
+        requestReceivedArguments = (params: params, httpBaseUrls: httpBaseUrls, session: session,
+                                    onComplete: onComplete)
+        requestReceivedInvocations
+            .append((params: params, httpBaseUrls: httpBaseUrls, session: session, onComplete: onComplete))
         requestClosure?(params, httpBaseUrls, session, onComplete)
     }
 
     // MARK: - downloadFile
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var downloadFileCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var downloadFileCalled: Bool {
-        return downloadFileCallsCount > 0
+        downloadFileCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    internal private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    internal private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession,
+                                                              onComplete: (URL?) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
+                                                                 session: URLSession, onComplete: (URL?) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var downloadFileClosure: ((URL, DownloadFileType, URLSession, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
-    internal func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void) {
-        self.mockCalled = true
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func downloadFile(
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: @escaping (URL?) -> Void
+    ) {
+        mockCalled = true
         downloadFileCallsCount += 1
         downloadFileReceivedArguments = (url: url, fileType: fileType, session: session, onComplete: onComplete)
         downloadFileReceivedInvocations.append((url: url, fileType: fileType, session: session, onComplete: onComplete))
         downloadFileClosure?(url, fileType, session, onComplete)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `HttpRetryPolicy` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `HttpRetryPolicy` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class HttpRetryPolicyMock: HttpRetryPolicy, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    internal var underlyingNextSleepTime: Seconds? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    internal var underlyingNextSleepTime: Seconds?
+    /// `true` if the getter or setter of property is called at least once.
     internal var nextSleepTimeCalled: Bool {
         nextSleepTimeGetCalled || nextSleepTimeSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     internal var nextSleepTimeGetCalled: Bool {
         nextSleepTimeGetCallsCount > 0
-    } 
+    }
+
     internal var nextSleepTimeGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     internal var nextSleepTimeSetCalled: Bool {
         nextSleepTimeSetCallsCount > 0
-    } 
+    }
+
     internal var nextSleepTimeSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     internal var nextSleepTime: Seconds? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             nextSleepTimeGetCallsCount += 1
-            return underlyingNextSleepTime 
+            return underlyingNextSleepTime
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             nextSleepTimeSetCallsCount += 1
-            underlyingNextSleepTime = value 
+            underlyingNextSleepTime = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
-        nextSleepTime = nil 
+        nextSleepTime = nil
         nextSleepTimeGetCallsCount = 0
         nextSleepTimeSetCallsCount = 0
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `KeyValueStorage` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `KeyValueStorage` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         integerCallsCount = 0
-        integerReceivedArguments = nil 
+        integerReceivedArguments = nil
         integerReceivedInvocations = []
         setIntCallsCount = 0
-        setIntReceivedArguments = nil 
+        setIntReceivedArguments = nil
         setIntReceivedInvocations = []
         doubleCallsCount = 0
-        doubleReceivedArguments = nil 
+        doubleReceivedArguments = nil
         doubleReceivedInvocations = []
         setDoubleCallsCount = 0
-        setDoubleReceivedArguments = nil 
+        setDoubleReceivedArguments = nil
         setDoubleReceivedInvocations = []
         stringCallsCount = 0
-        stringReceivedArguments = nil 
+        stringReceivedArguments = nil
         stringReceivedInvocations = []
         setStringCallsCount = 0
-        setStringReceivedArguments = nil 
+        setStringReceivedArguments = nil
         setStringReceivedInvocations = []
         dateCallsCount = 0
-        dateReceivedArguments = nil 
+        dateReceivedArguments = nil
         dateReceivedInvocations = []
         setDateCallsCount = 0
-        setDateReceivedArguments = nil 
+        setDateReceivedArguments = nil
         setDateReceivedInvocations = []
         deleteAllCallsCount = 0
     }
 
     // MARK: - integer
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var integerCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var integerCalled: Bool {
-        return integerCallsCount > 0
+        integerCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var integerReceivedArguments: (KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var integerReceivedInvocations: [(KeyValueStorageKey)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var integerReceivedArguments: KeyValueStorageKey?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var integerReceivedInvocations: [KeyValueStorageKey] = []
+    /// Value to return from the mocked function.
     public var integerReturnValue: Int?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `integerReturnValue`
      */
     public var integerClosure: ((KeyValueStorageKey) -> Int?)?
 
-    /// Mocked function for `integer(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `integer(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func integer(_ key: KeyValueStorageKey) -> Int? {
-        self.mockCalled = true
+        mockCalled = true
         integerCallsCount += 1
-        integerReceivedArguments = (key)
-        integerReceivedInvocations.append((key))
-        return integerClosure.map({ $0(key) }) ?? integerReturnValue
+        integerReceivedArguments = key
+        integerReceivedInvocations.append(key)
+        return integerClosure.map { $0(key) } ?? integerReturnValue
     }
 
     // MARK: - setInt
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var setIntCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var setIntCalled: Bool {
-        return setIntCallsCount > 0
+        setIntCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var setIntReceivedArguments: (value: Int?, key: KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var setIntReceivedInvocations: [(value: Int?, key: KeyValueStorageKey)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var setIntClosure: ((Int?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setInt(_ value: Int?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `setInt(_ value: Int?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
-        self.mockCalled = true
+        mockCalled = true
         setIntCallsCount += 1
         setIntReceivedArguments = (value: value, key: key)
         setIntReceivedInvocations.append((value: value, key: key))
@@ -1203,54 +1262,56 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
 
     // MARK: - double
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var doubleCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var doubleCalled: Bool {
-        return doubleCallsCount > 0
+        doubleCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var doubleReceivedArguments: (KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var doubleReceivedInvocations: [(KeyValueStorageKey)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var doubleReceivedArguments: KeyValueStorageKey?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var doubleReceivedInvocations: [KeyValueStorageKey] = []
+    /// Value to return from the mocked function.
     public var doubleReturnValue: Double?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `doubleReturnValue`
      */
     public var doubleClosure: ((KeyValueStorageKey) -> Double?)?
 
-    /// Mocked function for `double(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `double(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func double(_ key: KeyValueStorageKey) -> Double? {
-        self.mockCalled = true
+        mockCalled = true
         doubleCallsCount += 1
-        doubleReceivedArguments = (key)
-        doubleReceivedInvocations.append((key))
-        return doubleClosure.map({ $0(key) }) ?? doubleReturnValue
+        doubleReceivedArguments = key
+        doubleReceivedInvocations.append(key)
+        return doubleClosure.map { $0(key) } ?? doubleReturnValue
     }
 
     // MARK: - setDouble
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var setDoubleCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var setDoubleCalled: Bool {
-        return setDoubleCallsCount > 0
+        setDoubleCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var setDoubleReceivedArguments: (value: Double?, key: KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var setDoubleReceivedInvocations: [(value: Double?, key: KeyValueStorageKey)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var setDoubleClosure: ((Double?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setDouble(_ value: Double?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `setDouble(_ value: Double?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
-        self.mockCalled = true
+        mockCalled = true
         setDoubleCallsCount += 1
         setDoubleReceivedArguments = (value: value, key: key)
         setDoubleReceivedInvocations.append((value: value, key: key))
@@ -1259,54 +1320,56 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
 
     // MARK: - string
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var stringCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var stringCalled: Bool {
-        return stringCallsCount > 0
+        stringCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var stringReceivedArguments: (KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var stringReceivedInvocations: [(KeyValueStorageKey)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var stringReceivedArguments: KeyValueStorageKey?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var stringReceivedInvocations: [KeyValueStorageKey] = []
+    /// Value to return from the mocked function.
     public var stringReturnValue: String?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `stringReturnValue`
      */
     public var stringClosure: ((KeyValueStorageKey) -> String?)?
 
-    /// Mocked function for `string(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `string(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func string(_ key: KeyValueStorageKey) -> String? {
-        self.mockCalled = true
+        mockCalled = true
         stringCallsCount += 1
-        stringReceivedArguments = (key)
-        stringReceivedInvocations.append((key))
-        return stringClosure.map({ $0(key) }) ?? stringReturnValue
+        stringReceivedArguments = key
+        stringReceivedInvocations.append(key)
+        return stringClosure.map { $0(key) } ?? stringReturnValue
     }
 
     // MARK: - setString
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var setStringCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var setStringCalled: Bool {
-        return setStringCallsCount > 0
+        setStringCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var setStringReceivedArguments: (value: String?, key: KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var setStringReceivedInvocations: [(value: String?, key: KeyValueStorageKey)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var setStringClosure: ((String?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setString(_ value: String?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `setString(_ value: String?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setString(_ value: String?, forKey key: KeyValueStorageKey) {
-        self.mockCalled = true
+        mockCalled = true
         setStringCallsCount += 1
         setStringReceivedArguments = (value: value, key: key)
         setStringReceivedInvocations.append((value: value, key: key))
@@ -1315,54 +1378,56 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
 
     // MARK: - date
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var dateCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var dateCalled: Bool {
-        return dateCallsCount > 0
+        dateCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var dateReceivedArguments: (KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var dateReceivedInvocations: [(KeyValueStorageKey)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var dateReceivedArguments: KeyValueStorageKey?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var dateReceivedInvocations: [KeyValueStorageKey] = []
+    /// Value to return from the mocked function.
     public var dateReturnValue: Date?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `dateReturnValue`
      */
     public var dateClosure: ((KeyValueStorageKey) -> Date?)?
 
-    /// Mocked function for `date(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `date(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func date(_ key: KeyValueStorageKey) -> Date? {
-        self.mockCalled = true
+        mockCalled = true
         dateCallsCount += 1
-        dateReceivedArguments = (key)
-        dateReceivedInvocations.append((key))
-        return dateClosure.map({ $0(key) }) ?? dateReturnValue
+        dateReceivedArguments = key
+        dateReceivedInvocations.append(key)
+        return dateClosure.map { $0(key) } ?? dateReturnValue
     }
 
     // MARK: - setDate
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var setDateCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var setDateCalled: Bool {
-        return setDateCallsCount > 0
+        setDateCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var setDateReceivedArguments: (value: Date?, key: KeyValueStorageKey)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var setDateReceivedInvocations: [(value: Date?, key: KeyValueStorageKey)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var setDateClosure: ((Date?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setDate(_ value: Date?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `setDate(_ value: Date?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
-        self.mockCalled = true
+        mockCalled = true
         setDateCallsCount += 1
         setDateReceivedArguments = (value: value, key: key)
         setDateReceivedInvocations.append((value: value, key: key))
@@ -1371,1082 +1436,1134 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
 
     // MARK: - deleteAll
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var deleteAllCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var deleteAllCalled: Bool {
-        return deleteAllCallsCount > 0
+        deleteAllCallsCount > 0
     }
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var deleteAllClosure: (() -> Void)?
 
-    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteAll() {
-        self.mockCalled = true
+        mockCalled = true
         deleteAllCallsCount += 1
         deleteAllClosure?()
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `Logger` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `Logger` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class LoggerMock: Logger, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         debugCallsCount = 0
-        debugReceivedArguments = nil 
+        debugReceivedArguments = nil
         debugReceivedInvocations = []
         infoCallsCount = 0
-        infoReceivedArguments = nil 
+        infoReceivedArguments = nil
         infoReceivedInvocations = []
         errorCallsCount = 0
-        errorReceivedArguments = nil 
+        errorReceivedArguments = nil
         errorReceivedInvocations = []
     }
 
     // MARK: - debug
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var debugCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var debugCalled: Bool {
-        return debugCallsCount > 0
+        debugCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var debugReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var debugReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var debugReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var debugReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var debugClosure: ((String) -> Void)?
 
-    /// Mocked function for `debug(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `debug(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func debug(_ message: String) {
-        self.mockCalled = true
+        mockCalled = true
         debugCallsCount += 1
-        debugReceivedArguments = (message)
-        debugReceivedInvocations.append((message))
+        debugReceivedArguments = message
+        debugReceivedInvocations.append(message)
         debugClosure?(message)
     }
 
     // MARK: - info
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var infoCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var infoCalled: Bool {
-        return infoCallsCount > 0
+        infoCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var infoReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var infoReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var infoReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var infoReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var infoClosure: ((String) -> Void)?
 
-    /// Mocked function for `info(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `info(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func info(_ message: String) {
-        self.mockCalled = true
+        mockCalled = true
         infoCallsCount += 1
-        infoReceivedArguments = (message)
-        infoReceivedInvocations.append((message))
+        infoReceivedArguments = message
+        infoReceivedInvocations.append(message)
         infoClosure?(message)
     }
 
     // MARK: - error
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var errorCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var errorCalled: Bool {
-        return errorCallsCount > 0
+        errorCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var errorReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var errorReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var errorReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var errorReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var errorClosure: ((String) -> Void)?
 
-    /// Mocked function for `error(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `error(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func error(_ message: String) {
-        self.mockCalled = true
+        mockCalled = true
         errorCallsCount += 1
-        errorReceivedArguments = (message)
-        errorReceivedInvocations.append((message))
+        errorReceivedArguments = message
+        errorReceivedInvocations.append(message)
         errorClosure?(message)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `ModuleHookProvider` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `ModuleHookProvider` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class ModuleHookProviderMock: ModuleHookProvider, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingProfileIdentifyHook: ProfileIdentifyHook? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingProfileIdentifyHook: ProfileIdentifyHook?
+    /// `true` if the getter or setter of property is called at least once.
     public var profileIdentifyHookCalled: Bool {
         profileIdentifyHookGetCalled || profileIdentifyHookSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var profileIdentifyHookGetCalled: Bool {
         profileIdentifyHookGetCallsCount > 0
-    } 
+    }
+
     public var profileIdentifyHookGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var profileIdentifyHookSetCalled: Bool {
         profileIdentifyHookSetCallsCount > 0
-    } 
+    }
+
     public var profileIdentifyHookSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var profileIdentifyHook: ProfileIdentifyHook? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             profileIdentifyHookGetCallsCount += 1
-            return underlyingProfileIdentifyHook 
+            return underlyingProfileIdentifyHook
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             profileIdentifyHookSetCallsCount += 1
-            underlyingProfileIdentifyHook = value 
+            underlyingProfileIdentifyHook = value
         }
-    }    
+    }
+
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingQueueRunnerHook: QueueRunnerHook? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingQueueRunnerHook: QueueRunnerHook?
+    /// `true` if the getter or setter of property is called at least once.
     public var queueRunnerHookCalled: Bool {
         queueRunnerHookGetCalled || queueRunnerHookSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var queueRunnerHookGetCalled: Bool {
         queueRunnerHookGetCallsCount > 0
-    } 
+    }
+
     public var queueRunnerHookGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var queueRunnerHookSetCalled: Bool {
         queueRunnerHookSetCallsCount > 0
-    } 
+    }
+
     public var queueRunnerHookSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var queueRunnerHook: QueueRunnerHook? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             queueRunnerHookGetCallsCount += 1
-            return underlyingQueueRunnerHook 
+            return underlyingQueueRunnerHook
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             queueRunnerHookSetCallsCount += 1
-            underlyingQueueRunnerHook = value 
+            underlyingQueueRunnerHook = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
-        profileIdentifyHook = nil 
+        profileIdentifyHook = nil
         profileIdentifyHookGetCallsCount = 0
         profileIdentifyHookSetCallsCount = 0
-        queueRunnerHook = nil 
+        queueRunnerHook = nil
         queueRunnerHookGetCallsCount = 0
         queueRunnerHookSetCallsCount = 0
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `ProfileIdentifyHook` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `ProfileIdentifyHook` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         beforeIdentifiedProfileChangeCallsCount = 0
-        beforeIdentifiedProfileChangeReceivedArguments = nil 
+        beforeIdentifiedProfileChangeReceivedArguments = nil
         beforeIdentifiedProfileChangeReceivedInvocations = []
         profileIdentifiedCallsCount = 0
-        profileIdentifiedReceivedArguments = nil 
+        profileIdentifiedReceivedArguments = nil
         profileIdentifiedReceivedInvocations = []
         profileStoppedBeingIdentifiedCallsCount = 0
-        profileStoppedBeingIdentifiedReceivedArguments = nil 
+        profileStoppedBeingIdentifiedReceivedArguments = nil
         profileStoppedBeingIdentifiedReceivedInvocations = []
     }
 
     // MARK: - beforeIdentifiedProfileChange
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var beforeIdentifiedProfileChangeCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var beforeIdentifiedProfileChangeCalled: Bool {
-        return beforeIdentifiedProfileChangeCallsCount > 0
+        beforeIdentifiedProfileChangeCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var beforeIdentifiedProfileChangeReceivedArguments: (oldIdentifier: String, newIdentifier: String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var beforeIdentifiedProfileChangeReceivedInvocations: [(oldIdentifier: String, newIdentifier: String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var beforeIdentifiedProfileChangeReceivedArguments: (oldIdentifier: String,
+                                                                             newIdentifier: String)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var beforeIdentifiedProfileChangeReceivedInvocations: [(oldIdentifier: String,
+                                                                                newIdentifier: String)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var beforeIdentifiedProfileChangeClosure: ((String, String) -> Void)?
 
-    /// Mocked function for `beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
-        self.mockCalled = true
+        mockCalled = true
         beforeIdentifiedProfileChangeCallsCount += 1
         beforeIdentifiedProfileChangeReceivedArguments = (oldIdentifier: oldIdentifier, newIdentifier: newIdentifier)
-        beforeIdentifiedProfileChangeReceivedInvocations.append((oldIdentifier: oldIdentifier, newIdentifier: newIdentifier))
+        beforeIdentifiedProfileChangeReceivedInvocations
+            .append((oldIdentifier: oldIdentifier, newIdentifier: newIdentifier))
         beforeIdentifiedProfileChangeClosure?(oldIdentifier, newIdentifier)
     }
 
     // MARK: - profileIdentified
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var profileIdentifiedCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var profileIdentifiedCalled: Bool {
-        return profileIdentifiedCallsCount > 0
+        profileIdentifiedCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var profileIdentifiedReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var profileIdentifiedReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var profileIdentifiedReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var profileIdentifiedReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var profileIdentifiedClosure: ((String) -> Void)?
 
-    /// Mocked function for `profileIdentified(identifier: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `profileIdentified(identifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func profileIdentified(identifier: String) {
-        self.mockCalled = true
+        mockCalled = true
         profileIdentifiedCallsCount += 1
-        profileIdentifiedReceivedArguments = (identifier)
-        profileIdentifiedReceivedInvocations.append((identifier))
+        profileIdentifiedReceivedArguments = identifier
+        profileIdentifiedReceivedInvocations.append(identifier)
         profileIdentifiedClosure?(identifier)
     }
 
     // MARK: - profileStoppedBeingIdentified
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var profileStoppedBeingIdentifiedCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var profileStoppedBeingIdentifiedCalled: Bool {
-        return profileStoppedBeingIdentifiedCallsCount > 0
+        profileStoppedBeingIdentifiedCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var profileStoppedBeingIdentifiedReceivedInvocations: [(String)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var profileStoppedBeingIdentifiedReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var profileStoppedBeingIdentifiedClosure: ((String) -> Void)?
 
-    /// Mocked function for `profileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `profileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func profileStoppedBeingIdentified(oldIdentifier: String) {
-        self.mockCalled = true
+        mockCalled = true
         profileStoppedBeingIdentifiedCallsCount += 1
-        profileStoppedBeingIdentifiedReceivedArguments = (oldIdentifier)
-        profileStoppedBeingIdentifiedReceivedInvocations.append((oldIdentifier))
+        profileStoppedBeingIdentifiedReceivedArguments = oldIdentifier
+        profileStoppedBeingIdentifiedReceivedInvocations.append(oldIdentifier)
         profileStoppedBeingIdentifiedClosure?(oldIdentifier)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `ProfileStore` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `ProfileStore` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class ProfileStoreMock: ProfileStore, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingIdentifier: String? = nil
-    /// `true` if the getter or setter of property is called at least once. 
+    public var underlyingIdentifier: String?
+    /// `true` if the getter or setter of property is called at least once.
     public var identifierCalled: Bool {
         identifierGetCalled || identifierSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var identifierGetCalled: Bool {
         identifierGetCallsCount > 0
-    } 
+    }
+
     public var identifierGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var identifierSetCalled: Bool {
         identifierSetCallsCount > 0
-    } 
+    }
+
     public var identifierSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var identifier: String? {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             identifierGetCallsCount += 1
-            return underlyingIdentifier 
+            return underlyingIdentifier
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             identifierSetCallsCount += 1
-            underlyingIdentifier = value 
+            underlyingIdentifier = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
-        identifier = nil 
+        identifier = nil
         identifierGetCallsCount = 0
         identifierSetCallsCount = 0
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `Queue` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `Queue` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueMock: Queue, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         addTaskCallsCount = 0
-        addTaskReceivedArguments = nil 
+        addTaskReceivedArguments = nil
         addTaskReceivedInvocations = []
         runCallsCount = 0
-        runReceivedArguments = nil 
+        runReceivedArguments = nil
         runReceivedInvocations = []
     }
 
     // MARK: - addTask<TaskData: Codable>
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var addTaskCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var addTaskCalled: Bool {
-        return addTaskCallsCount > 0
+        addTaskCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable, groupStart: QueueTaskGroup?,
+                                                       blockingGroups: [QueueTaskGroup]?)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?,
+                                                          blockingGroups: [QueueTaskGroup]?)] = []
+    /// Value to return from the mocked function.
     public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus))?
+    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?)
+        -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code. 
-    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus) {
-        self.mockCalled = true
+    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
+                                           blockingGroups: [QueueTaskGroup]?) -> (
+        success: Bool,
+        queueStatus: QueueStatus
+    ) {
+        mockCalled = true
         addTaskCallsCount += 1
-        addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups)
-        addTaskReceivedInvocations.append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups))
-        return addTaskClosure.map({ $0(type, AnyEncodable(data), groupStart, blockingGroups) }) ?? addTaskReturnValue
+        addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart,
+                                    blockingGroups: blockingGroups)
+        addTaskReceivedInvocations
+            .append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups))
+        return addTaskClosure.map { $0(type, AnyEncodable(data), groupStart, blockingGroups) } ?? addTaskReturnValue
     }
 
     // MARK: - run
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var runCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var runCalled: Bool {
-        return runCallsCount > 0
+        runCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var runReceivedArguments: (() -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var runReceivedInvocations: [(() -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var runReceivedInvocations: [() -> Void] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var runClosure: ((() -> Void) -> Void)?
 
-    /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func run(onComplete: @escaping () -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         runCallsCount += 1
-        runReceivedArguments = (onComplete)
-        runReceivedInvocations.append((onComplete))
+        runReceivedArguments = onComplete
+        runReceivedInvocations.append(onComplete)
         runClosure?(onComplete)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueQueryRunner` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueQueryRunner` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class QueueQueryRunnerMock: QueueQueryRunner, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         getNextTaskCallsCount = 0
-        getNextTaskReceivedArguments = nil 
+        getNextTaskReceivedArguments = nil
         getNextTaskReceivedInvocations = []
     }
 
     // MARK: - getNextTask
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var getNextTaskCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var getNextTaskCalled: Bool {
-        return getNextTaskCallsCount > 0
+        getNextTaskCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    internal private(set) var getNextTaskReceivedArguments: (queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)?
-    /// Arguments from *all* of the times that the function was called. 
-    internal private(set) var getNextTaskReceivedInvocations: [(queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var getNextTaskReceivedArguments: (queue: [QueueTaskMetadata],
+                                                             lastFailedTask: QueueTaskMetadata?)?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var getNextTaskReceivedInvocations: [(queue: [QueueTaskMetadata],
+                                                                lastFailedTask: QueueTaskMetadata?)] = []
+    /// Value to return from the mocked function.
     internal var getNextTaskReturnValue: QueueTaskMetadata?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getNextTaskReturnValue`
      */
     internal var getNextTaskClosure: (([QueueTaskMetadata], QueueTaskMetadata?) -> QueueTaskMetadata?)?
 
-    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
-        self.mockCalled = true
+        mockCalled = true
         getNextTaskCallsCount += 1
         getNextTaskReceivedArguments = (queue: queue, lastFailedTask: lastFailedTask)
         getNextTaskReceivedInvocations.append((queue: queue, lastFailedTask: lastFailedTask))
-        return getNextTaskClosure.map({ $0(queue, lastFailedTask) }) ?? getNextTaskReturnValue
+        return getNextTaskClosure.map { $0(queue, lastFailedTask) } ?? getNextTaskReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueRequestManager` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueRequestManager` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueRequestManagerMock: QueueRequestManager, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         requestCompleteCallsCount = 0
         startRequestCallsCount = 0
-        startRequestReceivedArguments = nil 
+        startRequestReceivedArguments = nil
         startRequestReceivedInvocations = []
     }
 
     // MARK: - requestComplete
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var requestCompleteCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var requestCompleteCalled: Bool {
-        return requestCompleteCallsCount > 0
+        requestCompleteCallsCount > 0
     }
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var requestCompleteClosure: (() -> Void)?
 
-    /// Mocked function for `requestComplete()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `requestComplete()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func requestComplete() {
-        self.mockCalled = true
+        mockCalled = true
         requestCompleteCallsCount += 1
         requestCompleteClosure?()
     }
 
     // MARK: - startRequest
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var startRequestCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var startRequestCalled: Bool {
-        return startRequestCallsCount > 0
+        startRequestCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var startRequestReceivedArguments: (() -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var startRequestReceivedInvocations: [(() -> Void)] = []
-    /// Value to return from the mocked function. 
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var startRequestReceivedInvocations: [() -> Void] = []
+    /// Value to return from the mocked function.
     public var startRequestReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `startRequestReturnValue`
      */
     public var startRequestClosure: ((() -> Void) -> Bool)?
 
-    /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func startRequest(onComplete: @escaping () -> Void) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         startRequestCallsCount += 1
-        startRequestReceivedArguments = (onComplete)
-        startRequestReceivedInvocations.append((onComplete))
-        return startRequestClosure.map({ $0(onComplete) }) ?? startRequestReturnValue
+        startRequestReceivedArguments = onComplete
+        startRequestReceivedInvocations.append(onComplete)
+        return startRequestClosure.map { $0(onComplete) } ?? startRequestReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueRunRequest` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueRunRequest` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueRunRequestMock: QueueRunRequest, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         startCallsCount = 0
-        startReceivedArguments = nil 
+        startReceivedArguments = nil
         startReceivedInvocations = []
     }
 
     // MARK: - start
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var startCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var startCalled: Bool {
-        return startCallsCount > 0
+        startCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var startReceivedArguments: (() -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var startReceivedInvocations: [(() -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var startReceivedInvocations: [() -> Void] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var startClosure: ((() -> Void) -> Void)?
 
-    /// Mocked function for `start(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `start(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func start(onComplete: @escaping () -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         startCallsCount += 1
-        startReceivedArguments = (onComplete)
-        startReceivedInvocations.append((onComplete))
+        startReceivedArguments = onComplete
+        startReceivedInvocations.append(onComplete)
         startClosure?(onComplete)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueRunner` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueRunner` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueRunnerMock: QueueRunner, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         runTaskCallsCount = 0
-        runTaskReceivedArguments = nil 
+        runTaskReceivedArguments = nil
         runTaskReceivedInvocations = []
     }
 
     // MARK: - runTask
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var runTaskCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var runTaskCalled: Bool {
-        return runTaskCallsCount > 0
+        runTaskCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var runTaskReceivedArguments: (task: QueueTask, onComplete: (Result<Void, CustomerIOError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask, onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var runTaskReceivedArguments: (task: QueueTask,
+                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
+                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Void)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         runTaskCallsCount += 1
         runTaskReceivedArguments = (task: task, onComplete: onComplete)
         runTaskReceivedInvocations.append((task: task, onComplete: onComplete))
         runTaskClosure?(task, onComplete)
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueRunnerHook` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueRunnerHook` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueRunnerHookMock: QueueRunnerHook, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         runTaskCallsCount = 0
-        runTaskReceivedArguments = nil 
+        runTaskReceivedArguments = nil
         runTaskReceivedInvocations = []
     }
 
     // MARK: - runTask
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var runTaskCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var runTaskCalled: Bool {
-        return runTaskCallsCount > 0
+        runTaskCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var runTaskReceivedArguments: (task: QueueTask, onComplete: (Result<Void, CustomerIOError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask, onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var runTaskReceivedArguments: (task: QueueTask,
+                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
+                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+    /// Value to return from the mocked function.
     public var runTaskReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `runTaskReturnValue`
      */
     public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Bool)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         runTaskCallsCount += 1
         runTaskReceivedArguments = (task: task, onComplete: onComplete)
         runTaskReceivedInvocations.append((task: task, onComplete: onComplete))
-        return runTaskClosure.map({ $0(task, onComplete) }) ?? runTaskReturnValue
+        return runTaskClosure.map { $0(task, onComplete) } ?? runTaskReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `QueueStorage` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `QueueStorage` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class QueueStorageMock: QueueStorage, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         getInventoryCallsCount = 0
         saveInventoryCallsCount = 0
-        saveInventoryReceivedArguments = nil 
+        saveInventoryReceivedArguments = nil
         saveInventoryReceivedInvocations = []
         createCallsCount = 0
-        createReceivedArguments = nil 
+        createReceivedArguments = nil
         createReceivedInvocations = []
         updateCallsCount = 0
-        updateReceivedArguments = nil 
+        updateReceivedArguments = nil
         updateReceivedInvocations = []
         getCallsCount = 0
-        getReceivedArguments = nil 
+        getReceivedArguments = nil
         getReceivedInvocations = []
         deleteCallsCount = 0
-        deleteReceivedArguments = nil 
+        deleteReceivedArguments = nil
         deleteReceivedInvocations = []
     }
 
     // MARK: - getInventory
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var getInventoryCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var getInventoryCalled: Bool {
-        return getInventoryCallsCount > 0
+        getInventoryCallsCount > 0
     }
-    /// Value to return from the mocked function. 
+
+    /// Value to return from the mocked function.
     public var getInventoryReturnValue: [QueueTaskMetadata]!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getInventoryReturnValue`
      */
     public var getInventoryClosure: (() -> [QueueTaskMetadata])?
 
-    /// Mocked function for `getInventory()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `getInventory()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func getInventory() -> [QueueTaskMetadata] {
-        self.mockCalled = true
+        mockCalled = true
         getInventoryCallsCount += 1
-        return getInventoryClosure.map({ $0() }) ?? getInventoryReturnValue
+        return getInventoryClosure.map { $0() } ?? getInventoryReturnValue
     }
 
     // MARK: - saveInventory
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var saveInventoryCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var saveInventoryCalled: Bool {
-        return saveInventoryCallsCount > 0
+        saveInventoryCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var saveInventoryReceivedArguments: ([QueueTaskMetadata])?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var saveInventoryReceivedInvocations: [([QueueTaskMetadata])] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var saveInventoryReceivedArguments: [QueueTaskMetadata]?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var saveInventoryReceivedInvocations: [[QueueTaskMetadata]] = []
+    /// Value to return from the mocked function.
     public var saveInventoryReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `saveInventoryReturnValue`
      */
     public var saveInventoryClosure: (([QueueTaskMetadata]) -> Bool)?
 
-    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         saveInventoryCallsCount += 1
-        saveInventoryReceivedArguments = (inventory)
-        saveInventoryReceivedInvocations.append((inventory))
-        return saveInventoryClosure.map({ $0(inventory) }) ?? saveInventoryReturnValue
+        saveInventoryReceivedArguments = inventory
+        saveInventoryReceivedInvocations.append(inventory)
+        return saveInventoryClosure.map { $0(inventory) } ?? saveInventoryReturnValue
     }
 
     // MARK: - create
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var createCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var createCalled: Bool {
-        return createCallsCount > 0
+        createCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var createReceivedArguments: (type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var createReceivedInvocations: [(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var createReceivedArguments: (type: String, data: Data, groupStart: QueueTaskGroup?,
+                                                      blockingGroups: [QueueTaskGroup]?)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var createReceivedInvocations: [(type: String, data: Data, groupStart: QueueTaskGroup?,
+                                                         blockingGroups: [QueueTaskGroup]?)] = []
+    /// Value to return from the mocked function.
     public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus))?
+    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?)
+        -> (success: Bool, queueStatus: QueueStatus))?
 
-    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code. 
-    public func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus) {
-        self.mockCalled = true
+    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func create(type: String, data: Data, groupStart: QueueTaskGroup?,
+                       blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus)
+    {
+        mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)
-        createReceivedInvocations.append((type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups))
-        return createClosure.map({ $0(type, data, groupStart, blockingGroups) }) ?? createReturnValue
+        createReceivedInvocations
+            .append((type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups))
+        return createClosure.map { $0(type, data, groupStart, blockingGroups) } ?? createReturnValue
     }
 
     // MARK: - update
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var updateCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var updateCalled: Bool {
-        return updateCallsCount > 0
+        updateCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     public private(set) var updateReceivedArguments: (storageId: String, runResults: QueueTaskRunResults)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     public private(set) var updateReceivedInvocations: [(storageId: String, runResults: QueueTaskRunResults)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     public var updateReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `updateReturnValue`
      */
     public var updateClosure: ((String, QueueTaskRunResults) -> Bool)?
 
-    /// Mocked function for `update(storageId: String, runResults: QueueTaskRunResults)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `update(storageId: String, runResults: QueueTaskRunResults)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         updateCallsCount += 1
         updateReceivedArguments = (storageId: storageId, runResults: runResults)
         updateReceivedInvocations.append((storageId: storageId, runResults: runResults))
-        return updateClosure.map({ $0(storageId, runResults) }) ?? updateReturnValue
+        return updateClosure.map { $0(storageId, runResults) } ?? updateReturnValue
     }
 
     // MARK: - get
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var getCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var getCalled: Bool {
-        return getCallsCount > 0
+        getCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var getReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var getReceivedInvocations: [(String)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var getReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var getReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
     public var getReturnValue: QueueTask?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getReturnValue`
      */
     public var getClosure: ((String) -> QueueTask?)?
 
-    /// Mocked function for `get(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `get(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func get(storageId: String) -> QueueTask? {
-        self.mockCalled = true
+        mockCalled = true
         getCallsCount += 1
-        getReceivedArguments = (storageId)
-        getReceivedInvocations.append((storageId))
-        return getClosure.map({ $0(storageId) }) ?? getReturnValue
+        getReceivedArguments = storageId
+        getReceivedInvocations.append(storageId)
+        return getClosure.map { $0(storageId) } ?? getReturnValue
     }
 
     // MARK: - delete
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     public private(set) var deleteCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     public var deleteCalled: Bool {
-        return deleteCallsCount > 0
+        deleteCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
-    public private(set) var deleteReceivedArguments: (String)?
-    /// Arguments from *all* of the times that the function was called. 
-    public private(set) var deleteReceivedInvocations: [(String)] = []
-    /// Value to return from the mocked function. 
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var deleteReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var deleteReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
     public var deleteReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `deleteReturnValue`
      */
     public var deleteClosure: ((String) -> Bool)?
 
-    /// Mocked function for `delete(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `delete(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func delete(storageId: String) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         deleteCallsCount += 1
-        deleteReceivedArguments = (storageId)
-        deleteReceivedInvocations.append((storageId))
-        return deleteClosure.map({ $0(storageId) }) ?? deleteReturnValue
+        deleteReceivedArguments = storageId
+        deleteReceivedInvocations.append(storageId)
+        return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `SdkConfigStore` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `SdkConfigStore` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class SdkConfigStoreMock: SdkConfigStore, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     public var underlyingConfig: SdkConfig!
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     public var configCalled: Bool {
         configGetCalled || configSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     public var configGetCalled: Bool {
         configGetCallsCount > 0
-    } 
+    }
+
     public var configGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     public var configSetCalled: Bool {
         configSetCallsCount > 0
-    } 
+    }
+
     public var configSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     public var config: SdkConfig {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             configGetCallsCount += 1
-            return underlyingConfig 
+            return underlyingConfig
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             configSetCallsCount += 1
-            underlyingConfig = value 
+            underlyingConfig = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         configGetCallsCount = 0
         configSetCallsCount = 0
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `SdkCredentialsStore` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `SdkCredentialsStore` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class SdkCredentialsStoreMock: SdkCredentialsStore, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
     /**
-     When setter of the property called, the value given to setter is set here. 
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
     internal var underlyingCredentials: SdkCredentials!
-    /// `true` if the getter or setter of property is called at least once. 
+    /// `true` if the getter or setter of property is called at least once.
     internal var credentialsCalled: Bool {
         credentialsGetCalled || credentialsSetCalled
     }
-    /// `true` if the getter called on the property at least once. 
+
+    /// `true` if the getter called on the property at least once.
     internal var credentialsGetCalled: Bool {
         credentialsGetCallsCount > 0
-    } 
+    }
+
     internal var credentialsGetCallsCount = 0
-    /// `true` if the setter called on the property at least once. 
+    /// `true` if the setter called on the property at least once.
     internal var credentialsSetCalled: Bool {
         credentialsSetCallsCount > 0
-    } 
+    }
+
     internal var credentialsSetCallsCount = 0
-    /// The mocked property with a getter and setter. 
+    /// The mocked property with a getter and setter.
     internal var credentials: SdkCredentials {
-        get { 
-            self.mockCalled = true
+        get {
+            mockCalled = true
             credentialsGetCallsCount += 1
-            return underlyingCredentials 
+            return underlyingCredentials
         }
-        set(value) { 
-            self.mockCalled = true
+        set(value) {
+            mockCalled = true
             credentialsSetCallsCount += 1
-            underlyingCredentials = value 
+            underlyingCredentials = value
         }
-    }    
+    }
 
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         credentialsGetCallsCount = 0
         credentialsSetCallsCount = 0
@@ -2455,77 +2572,78 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore, TrackingMock {
 
     // MARK: - load
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var loadCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var loadCalled: Bool {
-        return loadCallsCount > 0
+        loadCallsCount > 0
     }
-    /// Value to return from the mocked function. 
+
+    /// Value to return from the mocked function.
     internal var loadReturnValue: SdkCredentials?
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `loadReturnValue`
      */
     internal var loadClosure: (() -> SdkCredentials?)?
 
-    /// Mocked function for `load()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `load()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func load() -> SdkCredentials? {
-        self.mockCalled = true
+        mockCalled = true
         loadCallsCount += 1
-        return loadClosure.map({ $0() }) ?? loadReturnValue
+        return loadClosure.map { $0() } ?? loadReturnValue
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `SimpleTimer` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `SimpleTimer` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class SimpleTimerMock: SimpleTimer, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         scheduleAndCancelPreviousCallsCount = 0
-        scheduleAndCancelPreviousReceivedArguments = nil 
+        scheduleAndCancelPreviousReceivedArguments = nil
         scheduleAndCancelPreviousReceivedInvocations = []
         scheduleIfNotAlreadyCallsCount = 0
-        scheduleIfNotAlreadyReceivedArguments = nil 
+        scheduleIfNotAlreadyReceivedArguments = nil
         scheduleIfNotAlreadyReceivedInvocations = []
         cancelCallsCount = 0
     }
 
     // MARK: - scheduleAndCancelPrevious
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var scheduleAndCancelPreviousCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var scheduleAndCancelPreviousCalled: Bool {
-        return scheduleAndCancelPreviousCallsCount > 0
+        scheduleAndCancelPreviousCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     internal private(set) var scheduleAndCancelPreviousReceivedArguments: (seconds: Seconds, block: () -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     internal private(set) var scheduleAndCancelPreviousReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var scheduleAndCancelPreviousClosure: ((Seconds, () -> Void) -> Void)?
 
-    /// Mocked function for `scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void) {
-        self.mockCalled = true
+        mockCalled = true
         scheduleAndCancelPreviousCallsCount += 1
         scheduleAndCancelPreviousReceivedArguments = (seconds: seconds, block: block)
         scheduleAndCancelPreviousReceivedInvocations.append((seconds: seconds, block: block))
@@ -2534,150 +2652,150 @@ internal class SimpleTimerMock: SimpleTimer, TrackingMock {
 
     // MARK: - scheduleIfNotAlready
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var scheduleIfNotAlreadyCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var scheduleIfNotAlreadyCalled: Bool {
-        return scheduleIfNotAlreadyCallsCount > 0
+        scheduleIfNotAlreadyCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     internal private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     internal private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     internal var scheduleIfNotAlreadyReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `scheduleIfNotAlreadyReturnValue`
      */
     internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
 
-    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         scheduleIfNotAlreadyCallsCount += 1
         scheduleIfNotAlreadyReceivedArguments = (seconds: seconds, block: block)
         scheduleIfNotAlreadyReceivedInvocations.append((seconds: seconds, block: block))
-        return scheduleIfNotAlreadyClosure.map({ $0(seconds, block) }) ?? scheduleIfNotAlreadyReturnValue
+        return scheduleIfNotAlreadyClosure.map { $0(seconds, block) } ?? scheduleIfNotAlreadyReturnValue
     }
 
     // MARK: - cancel
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var cancelCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var cancelCalled: Bool {
-        return cancelCallsCount > 0
+        cancelCallsCount > 0
     }
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var cancelClosure: (() -> Void)?
 
-    /// Mocked function for `cancel()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `cancel()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func cancel() {
-        self.mockCalled = true
+        mockCalled = true
         cancelCallsCount += 1
         cancelClosure?()
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `SingleScheduleTimer` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `SingleScheduleTimer` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 internal class SingleScheduleTimerMock: SingleScheduleTimer, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    internal var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    internal var mockCalled: Bool = false //
 
     internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
+        mockCalled = false
 
         scheduleIfNotAlreadyCallsCount = 0
-        scheduleIfNotAlreadyReceivedArguments = nil 
+        scheduleIfNotAlreadyReceivedArguments = nil
         scheduleIfNotAlreadyReceivedInvocations = []
         cancelCallsCount = 0
     }
 
     // MARK: - scheduleIfNotAlready
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var scheduleIfNotAlreadyCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var scheduleIfNotAlreadyCalled: Bool {
-        return scheduleIfNotAlreadyCallsCount > 0
+        scheduleIfNotAlreadyCallsCount > 0
     }
-    /// The arguments from the *last* time the function was called. 
+
+    /// The arguments from the *last* time the function was called.
     internal private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
-    /// Arguments from *all* of the times that the function was called. 
+    /// Arguments from *all* of the times that the function was called.
     internal private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
-    /// Value to return from the mocked function. 
+    /// Value to return from the mocked function.
     internal var scheduleIfNotAlreadyReturnValue: Bool!
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `scheduleIfNotAlreadyReturnValue`
      */
     internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
 
-    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
-        self.mockCalled = true
+        mockCalled = true
         scheduleIfNotAlreadyCallsCount += 1
         scheduleIfNotAlreadyReceivedArguments = (seconds: seconds, block: block)
         scheduleIfNotAlreadyReceivedInvocations.append((seconds: seconds, block: block))
-        return scheduleIfNotAlreadyClosure.map({ $0(seconds, block) }) ?? scheduleIfNotAlreadyReturnValue
+        return scheduleIfNotAlreadyClosure.map { $0(seconds, block) } ?? scheduleIfNotAlreadyReturnValue
     }
 
     // MARK: - cancel
 
-    /// Number of times the function was called.  
+    /// Number of times the function was called.
     internal private(set) var cancelCallsCount = 0
-    /// `true` if the function was ever called. 
+    /// `true` if the function was ever called.
     internal var cancelCalled: Bool {
-        return cancelCallsCount > 0
+        cancelCallsCount > 0
     }
-    /** 
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var cancelClosure: (() -> Void)?
 
-    /// Mocked function for `cancel()`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `cancel()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func cancel() {
-        self.mockCalled = true
+        mockCalled = true
         cancelCallsCount += 1
         cancelClosure?()
     }
-
 }
+
 /**
- Class to easily create a mocked version of the `TrackingInstance` class. 
- This class is equipped with functions and properties ready for you to mock! 
+ Class to easily create a mocked version of the `TrackingInstance` class.
+ This class is equipped with functions and properties ready for you to mock!
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class TrackingInstanceMock: TrackingInstance, TrackingMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    public var mockCalled: Bool = false // 
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
 
     public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
-
     public func reset() {
-        self.mockCalled = false 
-
+        mockCalled = false
     }
-
 }
