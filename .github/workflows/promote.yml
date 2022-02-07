@@ -12,4 +12,4 @@ jobs:
         uses: levibostian/action-promote-semantic-release@v1
         with:
           sequence: "develop,alpha,beta,main"
-          githubToken: ${{ secrets.REPO_PUSH_TOKEN }}
+          githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
