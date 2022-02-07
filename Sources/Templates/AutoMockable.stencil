@@ -259,7 +259,7 @@ public protocol {{ argument.moduleName }}Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
     {{ type.accessLevel }} var mockCalled: Bool = false // 
 
-    init() {
+    {{ type.accessLevel }} init() {
         {{ argument.moduleName }}Mocks.shared.add(mock: self)
     }
 
