@@ -22,6 +22,7 @@
 set -e 
 
 PODSPEC="$1"
+NUMBER_RETRIES=60
 
 if ! [[ -f "$PODSPEC" ]]; then
     echo "File $PODSPEC does not exist. Please check the pod name."
@@ -29,9 +30,14 @@ fi
 
 echo "Pushing podspec: $PODSPEC."
 
-for i in {1..30}; do 
+for i in $(seq 1 $NUMBER_RETRIES); do 
     echo "Push attempt $i..."
     pod repo update;
     pod trunk push "$PODSPEC" --allow-warnings && break || sleep 30; 
     echo "Failed to push. Sleeping, then will try again."
+
+    if [ $i -eq $NUMBER_RETRIES ]; then 
+        echo "Hit retry limit. Failed to push the pod $PODSPEC. Exiting script with failure status."
+        exit 1
+    fi 
 done
