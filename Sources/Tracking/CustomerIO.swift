@@ -116,6 +116,11 @@ public class CustomerIO: CustomerIOInstance {
         }
     }
 
+    // Constructor for testing.
+    internal init(implementation: CustomerIOImplementation) {
+        self.implementation = implementation
+    }
+
     /**
      Make testing the singleton `instance` possible.
      Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
@@ -277,7 +282,7 @@ public class CustomerIO: CustomerIOInstance {
      */
     public func track<RequestBody: Encodable>(
         name: String,
-        data: RequestBody
+        data: RequestBody?
     ) {
         // XXX: notify developer if SDK not initialized yet
 
