@@ -4,7 +4,11 @@ import SharedTests
 import XCTest
 
 class CustomerIOImplementationTest: UnitTest {
-    private var customerIO: CustomerIOImplementation!
+    private var implementation: CustomerIOImplementation!
+    // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
+    // This is a workaround until this code base contains implementation tests. There have been bugs
+    // that have gone undiscovered in the code when `CustomerIO` passes a request to `CustomerIOImplementation`.
+    private var customerIO: CustomerIO!
 
     private var backgroundQueueMock = QueueMock()
     private var profileStoreMock = ProfileStoreMock()
@@ -20,7 +24,8 @@ class CustomerIOImplementationTest: UnitTest {
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
-        customerIO = CustomerIOImplementation(siteId: diGraph.siteId)
+        implementation = CustomerIOImplementation(siteId: diGraph.siteId)
+        customerIO = CustomerIO(implementation: implementation)
     }
 
     // MARK: config
