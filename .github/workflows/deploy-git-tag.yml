@@ -26,3 +26,10 @@ jobs:
         env:
           # Needs to push git commits to repo. Needs write access. 
           GITHUB_TOKEN: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+          
+      - name: Copy commits into develop after main deployment 
+        uses: levibostian/action-sync-branches@v1
+        with:
+          behind: develop
+          ahead: main 
+          githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
