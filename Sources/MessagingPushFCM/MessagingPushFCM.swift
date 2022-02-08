@@ -44,6 +44,7 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     func serviceExtensionTimeWillExpire()
 
     // sourcery:Name=userNotificationCenterReceivedResponse
+    // sourcery:IfCanImport=UserNotifications
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

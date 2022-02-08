@@ -340,6 +340,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
 
     // MARK: - userNotificationCenter
 
+    #if canImport(UserNotifications)
     /// Number of times the function was called.
     public private(set) var userNotificationCenterReceivedResponseCallsCount = 0
     /// `true` if the function was ever called.
@@ -381,4 +382,5 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
         return userNotificationCenterReceivedResponseClosure
             .map { $0(center, response, completionHandler) } ?? userNotificationCenterReceivedResponseReturnValue
     }
+    #endif
 }
