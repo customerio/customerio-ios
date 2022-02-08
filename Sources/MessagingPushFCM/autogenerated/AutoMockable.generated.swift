@@ -6,6 +6,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 import CioMessagingPush
 import CioTracking
 

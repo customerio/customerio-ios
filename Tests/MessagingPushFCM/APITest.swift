@@ -1,6 +1,6 @@
-@testable import CioMessagingPush
-@testable import CioMessagingPushFCM
-@testable import CioTracking
+import CioMessagingPush // do not import so we can test that customers do not need to import this.
+import CioMessagingPushFCM // do not use `@testable` so we can test functions are made public and not `internal`.
+import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -13,10 +13,18 @@ import XCTest
  fix the mistake and not introduce the breaking change in the code base.
  */
 class MessagingPushFCMAPITest: UnitTest {
-    func test_allPublicFunctions() {
-        _ = XCTSkip()
+    // Test that public functions are accessible by mocked instances
+    let mock = MessagingPushFCMInstanceMock()
+
+//    let instance: MessagingPushFCMInstance = MessagingPUshFCM()
+
+    func test_allPublicFunctions() throws {
+        try skipRunningTest()
 
         MessagingPush.shared.messaging("", didReceiveRegistrationToken: "token")
+        mock.messaging("", didReceiveRegistrationToken: "token")
+
         MessagingPush.shared.messaging("", didReceiveRegistrationToken: nil)
+        mock.messaging("", didReceiveRegistrationToken: nil)
     }
 }

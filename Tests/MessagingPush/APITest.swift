@@ -1,5 +1,5 @@
-@testable import CioMessagingPush
-@testable import CioTracking
+import CioMessagingPush // do not use `@testable` so we can test functions are made public and not `internal`.
+import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -12,17 +12,24 @@ import XCTest
  fix the mistake and not introduce the breaking change in the code base.
  */
 class MessaginPushAPITest: UnitTest {
-    func test_allPublicTrackingFunctions() {
-        _ = XCTSkip()
+    // Test that public functions are accessible by mocked instances
+    let mock = MessagingPushInstanceMock()
+
+    func test_allPublicTrackingFunctions() throws {
+        try skipRunningTest()
 
         MessagingPush.shared.registerDeviceToken("")
+        mock.registerDeviceToken("")
         MessagingPush.shared.deleteDeviceToken()
+        mock.deleteDeviceToken()
         MessagingPush.shared.trackMetric(deliveryID: "", event: .converted, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: .converted, deviceToken: "")
 
         // Not testing userNotificationCenter(didReceive: withCompletionHandler:) because
         // 1. You can't create an instance of UNNotificationResponse
         // 2. This function should only change because an iOS SDK changed it which will require us to
         // introduce a breaking change anyway.
         // MessagingPush.shared.userNotificationCenter(.current(), didReceive: UNNotificationResponse()) {}
+        // mock.userNotificationCenter(.current(), didReceive: UNNotificationResponse()) {}
     }
 }

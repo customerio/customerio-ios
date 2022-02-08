@@ -36,7 +36,7 @@ class CustomerIOMockTest: UnitTest {
 
         /// You can receive the generic `body` that was sent to the Customer.io `identify()` call.
         /// Because of Swift generics, you must get the `.value` and cast it:
-        let actualBody: ExampleIdentifyRequestBody = cioMock.identifyReceivedArguments?.body
+        let actualBody: ExampleIdentifyRequestBody = cioMock.identifyEncodableReceivedArguments?.body
             .value as! ExampleIdentifyRequestBody
         /// Now, you can run checks against the `body` that was actually passed to `identify()`.
         XCTAssertEqual(actualBody.firstName, givenBody.firstName)

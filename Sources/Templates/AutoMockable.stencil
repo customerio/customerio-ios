@@ -4,6 +4,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 {% for importModule in argument.imports|split:":" %}
 import {{ importModule }}
 {% endfor %}
@@ -125,12 +128,12 @@ public protocol {{ argument.moduleName }}Mock {
 
 {% macro methodReceivedParameters method %}
     {%if method.parameters.count == 1 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
-        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{% if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
     {% else %}
     {% if not method.parameters.count == 0 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endfor %})
-        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endfor %}))
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
     {% endif %}
     {% endif %}
 {% endmacro %}
@@ -156,6 +159,9 @@ public protocol {{ argument.moduleName }}Mock {
 {% macro mockMethod method %}
     // MARK: - {{ method.shortName }}
 
+    {% if method|annotated:"IfCanImport" %}
+    #if canImport({{ method.annotations["IfCanImport"] }})
+    {% endif %}
     {% if method.throws %}
         {% call methodThrowableErrorDeclaration method %}
     {% endif %}
@@ -169,9 +175,9 @@ public protocol {{ argument.moduleName }}Mock {
     {% endif %}
     {% if method.parameters.count == 1 %}
     /// The arguments from the *last* time the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?
     /// Arguments from *all* of the times that the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})] = []
     {% elif not method.parameters.count == 0 %}
     /// The arguments from the *last* time the function was called. 
     {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param %}{{ ', ' if not forloop.last }}{% endfor %})?
@@ -191,7 +197,8 @@ public protocol {{ argument.moduleName }}Mock {
         {% call methodClosureName method %}?({% call methodClosureCallParameters method %})
     }
 {% else %}
-    /// Mocked function for `{{ method.name }}`. Your opportunity to return a mocked value and check result of mock in test code. 
+    /// Mocked function for `{{ method.name }}`. Your opportunity to return a mocked value and check result of mock in test code.
+    {% for attribute in method.attributes %}@{{ attribute }} {% endfor %}
     {{ type.accessLevel }} func {{ method.name }}{{ ' throws' if method.throws }}{% if not method.returnTypeName.isVoid %} -> {{ method.returnTypeName }}{% endif %} {
         {% if method.throws %}
         {% call methodThrowableErrorUsage method %}
@@ -205,8 +212,11 @@ public protocol {{ argument.moduleName }}Mock {
         return {{ 'try ' if method.throws }}{% call methodClosureName method %}.map({ {{ 'try ' if method.throws }}$0({% call methodClosureCallParameters method %}) }) ?? {% call swiftifyMethodName method %}ReturnValue
         {% endif %}
     }
-
 {% endif %}
+{% if method|annotated:"IfCanImport" %}
+    #endif 
+{% endif %}
+
 {% endmacro %}
 
 {% macro mockVariable variable %}

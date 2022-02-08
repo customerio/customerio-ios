@@ -3,7 +3,7 @@ import Foundation
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
 
-    // sourcery:Name=identify
+    // sourcery:Name=identifyEncodable
     func identify<RequestBody: Encodable>(
         identifier: String,
         // sourcery:Type=AnyEncodable
@@ -11,9 +11,20 @@ public protocol CustomerIOInstance: AutoMockable {
         body: RequestBody
     )
 
+    // sourcery:Name=identify
+    func identify(
+        identifier: String,
+        body: [String: Any]
+    )
+
     func clearIdentify()
 
-    // sourcery:Name=track
+    func track(
+        name: String,
+        data: [String: Any]
+    )
+
+    // sourcery:Name=trackEncodable
     func track<RequestBody: Encodable>(
         name: String,
         // sourcery:Type=AnyEncodable
@@ -29,13 +40,17 @@ public protocol CustomerIOInstance: AutoMockable {
         data: RequestBody?
     )
 
-    // sourcery:Name=screen
     func screen(
         name: String,
         data: [String: Any]
     )
 
     var profileAttributes: [String: Any] { get set }
+
+    func config(
+        // sourcery:SkipParamCapture=true
+        _ handler: (inout SdkConfig) -> Void
+    )
 }
 
 public extension CustomerIOInstance {
@@ -258,6 +273,10 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.identify(identifier: identifier, body: body)
     }
 
+    public func identify(identifier: String, body: [String: Any]) {
+        implementation?.identify(identifier: identifier, body: body)
+    }
+
     /**
      Stop identifying the currently persisted customer. All future calls to the SDK will no longer
      be associated with the previously identified customer.
@@ -286,6 +305,10 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         // XXX: notify developer if SDK not initialized yet
 
+        implementation?.track(name: name, data: data)
+    }
+
+    public func track(name: String, data: [String: Any]) {
         implementation?.track(name: name, data: data)
     }
 
