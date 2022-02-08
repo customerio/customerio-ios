@@ -5,13 +5,13 @@ import Foundation
 import UserNotifications
 #endif
 
-public protocol MessagingPushAPNInstance: AutoMockable {
-    func registerDeviceToken(apnDeviceToken: Data)
+public protocol MessagingPushFCMInstance: AutoMockable {
+    func registerDeviceToken(fcmToken: String?)
 
-    // sourcery:Name=didRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    // sourcery:Name=didReceiveRegistrationToken
+    func messaging(
+        _ messaging: Any,
+        didReceiveRegistrationToken fcmToken: String?
     )
 
     // sourcery:Name=didFailToRegisterForRemoteNotifications
@@ -52,7 +52,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     #endif
 }
 
-public class MessagingPushAPN: MessagingPushAPNInstance {
+public class MessagingPushFCM: MessagingPushFCMInstance {
     internal let messagingPush: MessagingPushInstance
     public let customerIO: CustomerIOInstance!
 
@@ -67,13 +67,18 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         self.messagingPush = MessagingPush(customerIO: customerIO)
     }
 
-    public func registerDeviceToken(apnDeviceToken: Data) {
-        let deviceToken = String(apnDeviceToken: apnDeviceToken)
+    public func registerDeviceToken(fcmToken: String?) {
+        guard let deviceToken = fcmToken else {
+            return
+        }
         messagingPush.registerDeviceToken(deviceToken)
     }
 
-    public func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        registerDeviceToken(apnDeviceToken: deviceToken)
+    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
+        guard let deviceToken = fcmToken else {
+            return
+        }
+        registerDeviceToken(fcmToken: deviceToken)
     }
 
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {

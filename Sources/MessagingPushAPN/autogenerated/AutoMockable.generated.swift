@@ -137,6 +137,9 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         didReceiveNotificationRequestReceivedArguments = nil
         didReceiveNotificationRequestReceivedInvocations = []
         serviceExtensionTimeWillExpireCallsCount = 0
+        userNotificationCenterReceivedResponseCallsCount = 0
+        userNotificationCenterReceivedResponseReceivedArguments = nil
+        userNotificationCenterReceivedResponseReceivedInvocations = []
     }
 
     // MARK: - registerDeviceToken
@@ -336,4 +339,48 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         serviceExtensionTimeWillExpireClosure?()
     }
     #endif
+
+    // MARK: - userNotificationCenter
+
+    /// Number of times the function was called.
+    public private(set) var userNotificationCenterReceivedResponseCallsCount = 0
+    /// `true` if the function was ever called.
+    public var userNotificationCenterReceivedResponseCalled: Bool {
+        userNotificationCenterReceivedResponseCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var userNotificationCenterReceivedResponseReceivedArguments: (center: UNUserNotificationCenter,
+                                                                                      response: UNNotificationResponse,
+                                                                                      completionHandler: () -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var userNotificationCenterReceivedResponseReceivedInvocations: [(center: UNUserNotificationCenter,
+                                                                                         response: UNNotificationResponse,
+                                                                                         completionHandler: ()
+                                                                                             -> Void)] = []
+    /// Value to return from the mocked function.
+    public var userNotificationCenterReceivedResponseReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `userNotificationCenterReceivedResponseReturnValue`
+     */
+    public var userNotificationCenterReceivedResponseClosure: ((UNUserNotificationCenter, UNNotificationResponse,
+                                                                () -> Void) -> Bool)?
+
+    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) -> Bool {
+        mockCalled = true
+        userNotificationCenterReceivedResponseCallsCount += 1
+        userNotificationCenterReceivedResponseReceivedArguments = (center: center, response: response,
+                                                                   completionHandler: completionHandler)
+        userNotificationCenterReceivedResponseReceivedInvocations
+            .append((center: center, response: response, completionHandler: completionHandler))
+        return userNotificationCenterReceivedResponseClosure
+            .map { $0(center, response, completionHandler) } ?? userNotificationCenterReceivedResponseReturnValue
+    }
 }

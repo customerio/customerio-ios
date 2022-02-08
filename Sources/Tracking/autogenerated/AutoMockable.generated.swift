@@ -284,9 +284,6 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         siteIdSetCallsCount = 0
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
-        identifyEncodableCallsCount = 0
-        identifyEncodableReceivedArguments = nil
-        identifyEncodableReceivedInvocations = []
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
@@ -294,45 +291,12 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         trackCallsCount = 0
         trackReceivedArguments = nil
         trackReceivedInvocations = []
-        trackEncodableCallsCount = 0
-        trackEncodableReceivedArguments = nil
-        trackEncodableReceivedInvocations = []
-        screenEncodableCallsCount = 0
-        screenEncodableReceivedArguments = nil
-        screenEncodableReceivedInvocations = []
         screenCallsCount = 0
         screenReceivedArguments = nil
         screenReceivedInvocations = []
         configCallsCount = 0
         configReceivedArguments = nil
         configReceivedInvocations = []
-    }
-
-    // MARK: - identify<RequestBody: Encodable>
-
-    /// Number of times the function was called.
-    public private(set) var identifyEncodableCallsCount = 0
-    /// `true` if the function was ever called.
-    public var identifyEncodableCalled: Bool {
-        identifyEncodableCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var identifyEncodableReceivedArguments: (identifier: String, body: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyEncodableReceivedInvocations: [(identifier: String, body: AnyEncodable)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
-
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
-        mockCalled = true
-        identifyEncodableCallsCount += 1
-        identifyEncodableReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
-        identifyEncodableReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
-        identifyEncodableClosure?(identifier, AnyEncodable(body))
     }
 
     // MARK: - identify
@@ -360,6 +324,26 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         identifyReceivedArguments = (identifier: identifier, body: body)
         identifyReceivedInvocations.append((identifier: identifier, body: body))
         identifyClosure?(identifier, body)
+    }
+
+    // MARK: - identify<RequestBody: Encodable>
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var identifyEncodableReceivedArguments: (identifier: String, body: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var identifyEncodableReceivedInvocations: [(identifier: String, body: AnyEncodable)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
+
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
+        mockCalled = true
+        identifyCallsCount += 1
+        identifyEncodableReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
+        identifyEncodableReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
+        identifyEncodableClosure?(identifier, AnyEncodable(body))
     }
 
     // MARK: - clearIdentify
@@ -412,13 +396,6 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
 
     // MARK: - track<RequestBody: Encodable>
 
-    /// Number of times the function was called.
-    public private(set) var trackEncodableCallsCount = 0
-    /// `true` if the function was ever called.
-    public var trackEncodableCalled: Bool {
-        trackEncodableCallsCount > 0
-    }
-
     /// The arguments from the *last* time the function was called.
     public private(set) var trackEncodableReceivedArguments: (name: String, data: AnyEncodable)?
     /// Arguments from *all* of the times that the function was called.
@@ -431,37 +408,10 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
     /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track<RequestBody: Encodable>(name: String, data: RequestBody?) {
         mockCalled = true
-        trackEncodableCallsCount += 1
+        trackCallsCount += 1
         trackEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
         trackEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
         trackEncodableClosure?(name, AnyEncodable(data))
-    }
-
-    // MARK: - screen<RequestBody: Encodable>
-
-    /// Number of times the function was called.
-    public private(set) var screenEncodableCallsCount = 0
-    /// `true` if the function was ever called.
-    public var screenEncodableCalled: Bool {
-        screenEncodableCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
-
-    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
-        mockCalled = true
-        screenEncodableCallsCount += 1
-        screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
-        screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
-        screenEncodableClosure?(name, AnyEncodable(data))
     }
 
     // MARK: - screen
@@ -489,6 +439,26 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         screenReceivedArguments = (name: name, data: data)
         screenReceivedInvocations.append((name: name, data: data))
         screenClosure?(name, data)
+    }
+
+    // MARK: - screen<RequestBody: Encodable>
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
+
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
+        mockCalled = true
+        screenCallsCount += 1
+        screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
+        screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
+        screenEncodableClosure?(name, AnyEncodable(data))
     }
 
     // MARK: - config

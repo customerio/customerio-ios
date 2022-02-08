@@ -43,6 +43,10 @@ class MessagingPushAPNAPITest: UnitTest {
         instance.deleteDeviceToken()
         mock.deleteDeviceToken()
 
+        MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        instance.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+
         #if canImport(UserNotifications)
         MessagingPush.shared
             .didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
@@ -55,6 +59,13 @@ class MessagingPushAPNAPITest: UnitTest {
         MessagingPush.shared.serviceExtensionTimeWillExpire()
         instance.serviceExtensionTimeWillExpire()
         mock.serviceExtensionTimeWillExpire()
+
+        _ = MessagingPush.shared.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
+                                                        withCompletionHandler: {})
+        _ = mock.userNotificationCenter(UNUserNotificationCenter.current(),
+                                        didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
+        _ = instance.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
+                                            withCompletionHandler: {})
         #endif
     }
 }
