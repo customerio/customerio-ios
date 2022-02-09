@@ -277,7 +277,6 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
 
     // MARK: - didReceive
 
-    #if canImport(UserNotifications)
     /// Number of times the function was called.
     public private(set) var didReceiveNotificationRequestCallsCount = 0
     /// `true` if the function was ever called.
@@ -285,6 +284,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         didReceiveNotificationRequestCallsCount > 0
     }
 
+    #if canImport(UserNotifications)
     /// The arguments from the *last* time the function was called.
     public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest,
                                                                              contentHandler: (UNNotificationContent)
@@ -319,7 +319,6 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
 
     // MARK: - serviceExtensionTimeWillExpire
 
-    #if canImport(UserNotifications)
     /// Number of times the function was called.
     public private(set) var serviceExtensionTimeWillExpireCallsCount = 0
     /// `true` if the function was ever called.
@@ -327,6 +326,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         serviceExtensionTimeWillExpireCallsCount > 0
     }
 
+    #if canImport(UserNotifications)
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -342,7 +342,6 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
 
     // MARK: - userNotificationCenter
 
-    #if canImport(UserNotifications)
     /// Number of times the function was called.
     public private(set) var userNotificationCenterReceivedResponseCallsCount = 0
     /// `true` if the function was ever called.
@@ -350,6 +349,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         userNotificationCenterReceivedResponseCallsCount > 0
     }
 
+    #if canImport(UserNotifications)
     /// The arguments from the *last* time the function was called.
     public private(set) var userNotificationCenterReceivedResponseReceivedArguments: (center: UNUserNotificationCenter,
                                                                                       response: UNNotificationResponse,

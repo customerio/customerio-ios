@@ -160,9 +160,6 @@ public protocol {{ argument.moduleName }}Mock {
 {% macro mockMethod method %}
     // MARK: - {{ method.shortName }}
 
-    {% if method|annotated:"IfCanImport" %}
-    #if canImport({{ method.annotations["IfCanImport"] }})
-    {% endif %}
     {% if method.throws %}
         {% call methodThrowableErrorDeclaration method %}
     {% endif %}
@@ -175,7 +172,10 @@ public protocol {{ argument.moduleName }}Mock {
         return {% call swiftifyMethodName method %}CallsCount > 0
     }    
     {% endif %}
-    {% endif %} {# endif DuplicateMethod #}
+    {% endif %}{# endif DuplicateMethod #}
+    {% if method|annotated:"IfCanImport" %}
+    #if canImport({{ method.annotations["IfCanImport"] }})
+    {% endif %}
     {% if method.parameters.count == 1 %}
     /// The arguments from the *last* time the function was called. 
     {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?
