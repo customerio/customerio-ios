@@ -6,6 +6,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 
 /**
  ######################################################
@@ -108,7 +111,7 @@ internal class ActiveWorkspacesManagerMock: ActiveWorkspacesManager, TrackingMoc
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -197,7 +200,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -284,19 +287,25 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
+        identifyEncodableReceivedArguments = nil
+        identifyEncodableReceivedInvocations = []
         clearIdentifyCallsCount = 0
         trackCallsCount = 0
         trackReceivedArguments = nil
         trackReceivedInvocations = []
-        screenEncodableCallsCount = 0
-        screenEncodableReceivedArguments = nil
-        screenEncodableReceivedInvocations = []
+        trackEncodableReceivedArguments = nil
+        trackEncodableReceivedInvocations = []
         screenCallsCount = 0
         screenReceivedArguments = nil
         screenReceivedInvocations = []
+        screenEncodableReceivedArguments = nil
+        screenEncodableReceivedInvocations = []
+        configCallsCount = 0
+        configReceivedArguments = nil
+        configReceivedInvocations = []
     }
 
-    // MARK: - identify<RequestBody: Encodable>
+    // MARK: - identify
 
     /// Number of times the function was called.
     public private(set) var identifyCallsCount = 0
@@ -306,21 +315,41 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var identifyReceivedArguments: (identifier: String, body: AnyEncodable)?
+    public private(set) var identifyReceivedArguments: (identifier: String, body: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyReceivedInvocations: [(identifier: String, body: AnyEncodable)] = []
+    public private(set) var identifyReceivedInvocations: [(identifier: String, body: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var identifyClosure: ((String, AnyEncodable) -> Void)?
+    public var identifyClosure: ((String, [String: Any]) -> Void)?
+
+    /// Mocked function for `identify(identifier: String, body: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify(identifier: String, body: [String: Any]) {
+        mockCalled = true
+        identifyCallsCount += 1
+        identifyReceivedArguments = (identifier: identifier, body: body)
+        identifyReceivedInvocations.append((identifier: identifier, body: body))
+        identifyClosure?(identifier, body)
+    }
+
+    // MARK: - identify<RequestBody: Encodable>
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var identifyEncodableReceivedArguments: (identifier: String, body: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var identifyEncodableReceivedInvocations: [(identifier: String, body: AnyEncodable)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
 
     /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
         mockCalled = true
         identifyCallsCount += 1
-        identifyReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
-        identifyReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
-        identifyClosure?(identifier, AnyEncodable(body))
+        identifyEncodableReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
+        identifyEncodableReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
+        identifyEncodableClosure?(identifier, AnyEncodable(body))
     }
 
     // MARK: - clearIdentify
@@ -344,7 +373,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         clearIdentifyClosure?()
     }
 
-    // MARK: - track<RequestBody: Encodable>
+    // MARK: - track
 
     /// Number of times the function was called.
     public private(set) var trackCallsCount = 0
@@ -354,48 +383,41 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackReceivedArguments: (name: String, data: AnyEncodable)?
+    public private(set) var trackReceivedArguments: (name: String, data: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackReceivedInvocations: [(name: String, data: AnyEncodable)] = []
+    public private(set) var trackReceivedInvocations: [(name: String, data: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var trackClosure: ((String, AnyEncodable) -> Void)?
+    public var trackClosure: ((String, [String: Any]) -> Void)?
+
+    /// Mocked function for `track(name: String, data: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func track(name: String, data: [String: Any]) {
+        mockCalled = true
+        trackCallsCount += 1
+        trackReceivedArguments = (name: name, data: data)
+        trackReceivedInvocations.append((name: name, data: data))
+        trackClosure?(name, data)
+    }
+
+    // MARK: - track<RequestBody: Encodable>
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var trackEncodableReceivedArguments: (name: String, data: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var trackEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var trackEncodableClosure: ((String, AnyEncodable) -> Void)?
 
     /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track<RequestBody: Encodable>(name: String, data: RequestBody?) {
         mockCalled = true
         trackCallsCount += 1
-        trackReceivedArguments = (name: name, data: AnyEncodable(data))
-        trackReceivedInvocations.append((name: name, data: AnyEncodable(data)))
-        trackClosure?(name, AnyEncodable(data))
-    }
-
-    // MARK: - screen<RequestBody: Encodable>
-
-    /// Number of times the function was called.
-    public private(set) var screenEncodableCallsCount = 0
-    /// `true` if the function was ever called.
-    public var screenEncodableCalled: Bool {
-        screenEncodableCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
-
-    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
-        mockCalled = true
-        screenEncodableCallsCount += 1
-        screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
-        screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
-        screenEncodableClosure?(name, AnyEncodable(data))
+        trackEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
+        trackEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
+        trackEncodableClosure?(name, AnyEncodable(data))
     }
 
     // MARK: - screen
@@ -424,6 +446,53 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         screenReceivedInvocations.append((name: name, data: data))
         screenClosure?(name, data)
     }
+
+    // MARK: - screen<RequestBody: Encodable>
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var screenEncodableReceivedInvocations: [(name: String, data: AnyEncodable)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
+
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
+        mockCalled = true
+        screenCallsCount += 1
+        screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
+        screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
+        screenEncodableClosure?(name, AnyEncodable(data))
+    }
+
+    // MARK: - config
+
+    /// Number of times the function was called.
+    public private(set) var configCallsCount = 0
+    /// `true` if the function was ever called.
+    public var configCalled: Bool {
+        configCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var configReceivedArguments: ()?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var configReceivedInvocations: [()] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var configClosure: (((inout SdkConfig) -> Void) -> Void)?
+
+    /// Mocked function for `config(_ handler: (inout SdkConfig) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func config(_ handler: (inout SdkConfig) -> Void) {
+        mockCalled = true
+        configCallsCount += 1
+        configReceivedArguments = ()
+        configReceivedInvocations.append(())
+        configClosure?(handler)
+    }
 }
 
 /**
@@ -437,7 +506,7 @@ public class FileStorageMock: FileStorage, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -560,7 +629,7 @@ public class GlobalDataStoreMock: GlobalDataStore, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -766,7 +835,7 @@ public class HooksManagerMock: HooksManager, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -893,7 +962,7 @@ public class HttpClientMock: HttpClient, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1008,7 +1077,7 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1108,7 +1177,7 @@ internal class HttpRetryPolicyMock: HttpRetryPolicy, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1168,7 +1237,7 @@ public class KeyValueStorageMock: KeyValueStorage, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1467,7 +1536,7 @@ public class LoggerMock: Logger, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1578,7 +1647,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1677,7 +1746,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1791,7 +1860,7 @@ public class ProfileStoreMock: ProfileStore, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1851,7 +1920,7 @@ public class QueueMock: Queue, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -1945,7 +2014,7 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2002,7 +2071,7 @@ public class QueueRequestManagerMock: QueueRequestManager, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2079,7 +2148,7 @@ public class QueueRunRequestMock: QueueRunRequest, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2130,7 +2199,7 @@ public class QueueRunnerMock: QueueRunner, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2183,7 +2252,7 @@ public class QueueRunnerHookMock: QueueRunnerHook, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2240,7 +2309,7 @@ public class QueueStorageMock: QueueStorage, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2463,7 +2532,7 @@ public class SdkConfigStoreMock: SdkConfigStore, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2522,7 +2591,7 @@ internal class SdkCredentialsStoreMock: SdkCredentialsStore, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2607,7 +2676,7 @@ internal class SimpleTimerMock: SimpleTimer, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2714,7 +2783,7 @@ internal class SingleScheduleTimerMock: SingleScheduleTimer, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     internal var mockCalled: Bool = false //
 
-    init() {
+    internal init() {
         TrackingMocks.shared.add(mock: self)
     }
 
@@ -2791,7 +2860,7 @@ public class TrackingInstanceMock: TrackingInstance, TrackingMock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    init() {
+    public init() {
         TrackingMocks.shared.add(mock: self)
     }
 

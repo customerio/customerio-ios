@@ -40,4 +40,10 @@ public extension XCTestCase {
             XCTFail("\(actual) does not match pattern: \(regex)", file: file, line: line)
         }
     }
+
+    func skipRunningTest(file: StaticString = #file,
+                         line: UInt = #line) throws
+    {
+        try XCTSkipIf(true, nil, file: file, line: line)
+    }
 }

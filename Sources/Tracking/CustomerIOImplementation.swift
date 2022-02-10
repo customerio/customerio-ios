@@ -143,6 +143,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
         }
     }
 
+    public func identify(identifier: String, body: [String: Any]) {
+        identify(identifier: identifier, body: StringAnyEncodable(body))
+    }
+
     public func clearIdentify() {
         logger.info("clearing identified profile")
 
@@ -164,6 +168,10 @@ public class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody?
     ) {
         trackEvent(type: .event, name: name, data: data)
+    }
+
+    public func track(name: String, data: [String: Any]) {
+        track(name: name, data: StringAnyEncodable(data))
     }
 
     public func screen(name: String, data: [String: Any]) {
