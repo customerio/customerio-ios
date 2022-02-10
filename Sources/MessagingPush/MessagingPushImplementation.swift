@@ -1,5 +1,6 @@
 import CioTracking
 import Foundation
+import UIKit
 
 internal class MessagingPushImplementation: MessagingPushInstance {
     private let profileStore: ProfileStore
@@ -35,7 +36,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      */
     public func registerDeviceToken(_ deviceToken: String) {
         logger.info("registering device token \(deviceToken)")
-
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
         // we can reference the token and register it to a new profile.
@@ -46,12 +46,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return
         }
 
-        _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
-                                    data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
-                                                                                deviceToken: deviceToken,
-                                                                                lastUsed: Date()),
-                                    groupStart: .registeredPushToken(token: deviceToken),
-                                    blockingGroups: [.identifiedProfile(identifier: identifier)])
+        deviceAttributes(deviceToken: deviceToken) { attributes in
+            _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
+                                             data: RegisterPushNotificationQueueTaskData(deviceToken: deviceToken, profileIdentifier: identifier,
+                                                                                    lastUsed: Date(), attributes: attributes),
+                                        groupStart: .registeredPushToken(token: deviceToken),
+                                        blockingGroups: [.identifiedProfile(identifier: identifier)])
+        }
+        
     }
 
     /**
@@ -96,6 +98,34 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
                                     data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
+    }
+    
+    private func deviceAttributes(deviceToken : String, completionHandler : @escaping(DeviceAttributes) -> Void) {
+        
+//        #if canImport(UIKit)
+        let deviceOS = DeviceInfo.osInfo.value
+        let deviceModel = DeviceInfo.deviceInfo.value
+        let appVersion = DeviceInfo.customerAppVersion.value
+        let sdkVersion = DeviceInfo.sdkVersion.value
+        let deviceLocale = DeviceInfo.deviceLocale.value.replacingOccurrences(of: "_", with: "-")
+        
+        pushSubscribed { isSubscribed in
+            let deviceAttributes = DeviceAttributes(deviceOs: deviceOS, deviceModel: deviceModel, appVersion: appVersion, cioSdkVersion: sdkVersion, deviceLocale: deviceLocale, pushSubscribed: isSubscribed)
+            completionHandler(deviceAttributes)
+        }
+//        #endif
+    }
+    
+    private func pushSubscribed(completion: @escaping(String) -> Void) {
+        let current = UNUserNotificationCenter.current()
+        
+        current.getNotificationSettings(completionHandler: { (settings) in
+            if settings.authorizationStatus == .authorized {
+                completion("true")
+                return
+            }
+            completion("false")
+        })
     }
 }
 

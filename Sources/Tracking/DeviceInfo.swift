@@ -1,15 +1,34 @@
 import Foundation
 #if canImport(UIKit)
 import UIKit
+import UserNotifications
 
-internal enum DeviceInfo {
-    /// Device's model on which SDK is running eg. iPhone12,3
-    static let deviceInfo: String = UIDevice.deviceModelCode
-    /// Operating system and version of OS of the Device
-    static let osInfo: String = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-    /// Name of customer's application using the SDK
-    static let customerAppName: String = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
-    /// Version of the customer's application using the SDK
-    static let customerAppVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+public enum DeviceInfo {
+    case deviceInfo
+    case osInfo
+    case customerAppName
+    case customerAppVersion
+    case customerBundleId
+    case sdkVersion
+    case deviceLocale
+    
+    public var value : String {
+        switch self {
+        case .deviceInfo:
+            return UIDevice.deviceModelCode
+        case .osInfo:
+            return "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
+        case .customerAppName:
+            return Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
+        case .customerAppVersion:
+            return Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        case .customerBundleId :
+            return Bundle.main.bundleIdentifier ?? ""
+        case .sdkVersion:
+            return SdkVersion.version
+        case .deviceLocale:
+            return Locale.current.identifier
+        }
+    }
 }
 #endif
