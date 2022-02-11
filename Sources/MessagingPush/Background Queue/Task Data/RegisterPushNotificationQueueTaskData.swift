@@ -4,7 +4,7 @@ struct RegisterPushNotificationQueueTaskData: Codable {
     let deviceToken: String
     let profileIdentifier : String
     let lastUsed: Date
-    let attributes : DeviceAttributes
+    let attributes : DeviceAttributes?
 }
 
 struct DeviceAttributes : Codable {

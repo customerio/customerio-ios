@@ -7,18 +7,21 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let backgroundQueue: Queue
     private var globalDataStore: GlobalDataStore
     private let logger: Logger
-
+    private var sdkConfigStore: SdkConfigStore
+    
     /// testing init
     internal init(
         profileStore: ProfileStore,
         backgroundQueue: Queue,
         globalDataStore: GlobalDataStore,
-        logger: Logger
+        logger: Logger,
+        sdkConfigStore : SdkConfigStore
     ) {
         self.profileStore = profileStore
         self.backgroundQueue = backgroundQueue
         self.globalDataStore = globalDataStore
         self.logger = logger
+        self.sdkConfigStore = sdkConfigStore
     }
 
     init(siteId: String) {
@@ -28,6 +31,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore
         self.logger = diGraph.logger
+        self.sdkConfigStore = diGraph.sdkConfigStore
     }
 
     /**
@@ -45,6 +49,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
+        
+        
 
         deviceAttributes(deviceToken: deviceToken) { attributes in
             _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
@@ -100,9 +106,13 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                                         timestamp: Date()))
     }
     
-    private func deviceAttributes(deviceToken : String, completionHandler : @escaping(DeviceAttributes) -> Void) {
+    private func deviceAttributes(deviceToken : String, completionHandler : @escaping(DeviceAttributes?) -> Void) {
         
-//        #if canImport(UIKit)
+        if !sdkConfigStore.config.autoTrackDeviceAttributes {
+            completionHandler(nil)
+            return
+        }
+        #if canImport(UIKit)
         let deviceOS = DeviceInfo.osInfo.value
         let deviceModel = DeviceInfo.deviceInfo.value
         let appVersion = DeviceInfo.customerAppVersion.value
@@ -113,7 +123,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             let deviceAttributes = DeviceAttributes(deviceOs: deviceOS, deviceModel: deviceModel, appVersion: appVersion, cioSdkVersion: sdkVersion, deviceLocale: deviceLocale, pushSubscribed: isSubscribed)
             completionHandler(deviceAttributes)
         }
-//        #endif
+        #endif
     }
     
     private func pushSubscribed(completion: @escaping(String) -> Void) {

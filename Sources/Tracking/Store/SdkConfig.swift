@@ -44,6 +44,12 @@ public struct SdkConfig {
      */
     public var autoScreenViewBody: (() -> [String: Any])?
 
+    /**
+     Enable this property if you want SDK to automatic tracking of device attributes such as
+     operating system, device locale, device model, app version etc
+     */
+    public var autoTrackDeviceAttributes : Bool = true
+    
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
