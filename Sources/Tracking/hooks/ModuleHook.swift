@@ -29,5 +29,5 @@ public protocol QueueRunnerHook: AutoMockable {
 }
 
 public protocol DeviceAttributesHook : AutoMockable {
-    func customDeviceAttributesAdded(attributes : Encodable)
+    func customDeviceAttributesAdded(attributes : [String: String])
 }

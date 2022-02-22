@@ -85,13 +85,13 @@ public class CustomerIOImplementation: CustomerIOInstance {
         }
     }
     
-    public var deviceAttributes: [String: Any] {
+    public var deviceAttributes: [String: String] {
         get {
             [:]
         }
         set {
             hooks.deviceAttributesHooks.forEach{ hook in
-                hook.customDeviceAttributesAdded(attributes: StringAnyEncodable(newValue))
+                hook.customDeviceAttributesAdded(attributes: newValue)
             }
         }
     }

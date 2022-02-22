@@ -7,6 +7,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let profileStore: ProfileStore
     private let backgroundQueue: Queue
     private var globalDataStore: GlobalDataStore
+    private let jsonAdapter: JsonAdapter
     private let logger: Logger
     private var sdkConfigStore: SdkConfigStore
     
@@ -15,6 +16,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         profileStore: ProfileStore,
         backgroundQueue: Queue,
         globalDataStore: GlobalDataStore,
+        jsonAdapter : JsonAdapter,
         logger: Logger,
         sdkConfigStore : SdkConfigStore
     ) {
@@ -23,12 +25,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.globalDataStore = globalDataStore
         self.logger = logger
         self.sdkConfigStore = sdkConfigStore
+        self.jsonAdapter = jsonAdapter
     }
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
+        self.jsonAdapter = diGraph.jsonAdapter
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore
         self.logger = diGraph.logger
@@ -43,7 +47,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         addDeviceAttributes(deviceToken: deviceToken)
     }
     
-    private func addDeviceAttributes(deviceToken : String, customAttributes : Encodable? = nil) {
+    private func addDeviceAttributes(deviceToken : String, customAttributes : [String: String]? = nil) {
         
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
@@ -57,10 +61,13 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         }
         
         deviceAttributes(deviceToken: deviceToken) { attributes in
-//            let deviceAttributes = attributes + customAttributes
+            var deviceAttributes = attributes ?? customAttributes
+            if let customDeviceAttributes = customAttributes, let defaultDeviceAttributes = attributes {
+                deviceAttributes = defaultDeviceAttributes.merging(customDeviceAttributes) { $1 }
+            }
             _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
                                              data: RegisterPushNotificationQueueTaskData(deviceToken: deviceToken, profileIdentifier: identifier,
-                                                                                    lastUsed: Date(), attributes: attributes),
+                                                                                    lastUsed: Date(), attributes: deviceAttributes),
                                         groupStart: .registeredPushToken(token: deviceToken),
                                         blockingGroups: [.identifiedProfile(identifier: identifier)])
         }
@@ -110,7 +117,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                                         timestamp: Date()))
     }
     
-    private func deviceAttributes(deviceToken : String, completionHandler : @escaping(DeviceAttributes?) -> Void) {
+    private func deviceAttributes(deviceToken : String, completionHandler : @escaping([String: String]?) -> Void) {
         
         if !sdkConfigStore.config.autoTrackDeviceAttributes {
             completionHandler(nil)
@@ -124,7 +131,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         let deviceLocale = DeviceInfo.deviceLocale.value.replacingOccurrences(of: "_", with: "-")
         
         pushSubscribed { isSubscribed in
-            let deviceAttributes = DeviceAttributes(deviceOs: deviceOS, deviceModel: deviceModel, appVersion: appVersion, cioSdkVersion: sdkVersion, deviceLocale: deviceLocale, pushSubscribed: isSubscribed)
+            let deviceAttributes = ["deviceOs": deviceOS,
+                                    "deviceModel": deviceModel,
+                                    "appVersion": appVersion,
+                                    "cioSdkVersion": sdkVersion,
+                                    "deviceLocale": deviceLocale,
+                                    "pushSubscribed": isSubscribed]
             completionHandler(deviceAttributes)
         }
         #endif
@@ -176,7 +188,7 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
 
 
 extension MessagingPushImplementation : DeviceAttributesHook {
-    func customDeviceAttributesAdded(attributes : Encodable) {
+    func customDeviceAttributesAdded(attributes : [String : String]) {
         guard let deviceToken = globalDataStore.pushDeviceToken else { return }
         addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }

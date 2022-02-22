@@ -456,16 +456,16 @@ public class DeviceAttributesHookMock: DeviceAttributesHook, TrackingMock {
         return customDeviceAttributesAddedCallsCount > 0
     }
     /// The arguments from the *last* time the function was called. 
-    public private(set) var customDeviceAttributesAddedReceivedArguments: (Encodable)?
+    public private(set) var customDeviceAttributesAddedReceivedArguments: ([String: String])?
     /// Arguments from *all* of the times that the function was called. 
-    public private(set) var customDeviceAttributesAddedReceivedInvocations: [(Encodable)] = []
+    public private(set) var customDeviceAttributesAddedReceivedInvocations: [([String: String])] = []
     /** 
      Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
      */
-    public var customDeviceAttributesAddedClosure: ((Encodable) -> Void)?
+    public var customDeviceAttributesAddedClosure: (([String: String]) -> Void)?
 
-    /// Mocked function for `customDeviceAttributesAdded(attributes: Encodable)`. Your opportunity to return a mocked value and check result of mock in test code. 
-    public func customDeviceAttributesAdded(attributes: Encodable) {
+    /// Mocked function for `customDeviceAttributesAdded(attributes: [String: String])`. Your opportunity to return a mocked value and check result of mock in test code. 
+    public func customDeviceAttributesAdded(attributes: [String: String]) {
         self.mockCalled = true
         customDeviceAttributesAddedCallsCount += 1
         customDeviceAttributesAddedReceivedArguments = (attributes)
