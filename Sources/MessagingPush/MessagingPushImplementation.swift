@@ -1,5 +1,6 @@
 import CioTracking
 import Foundation
+#if canImport(UIKit)
 import UIKit
 
 internal class MessagingPushImplementation: MessagingPushInstance {
@@ -7,7 +8,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let profileStore: ProfileStore
     private let backgroundQueue: Queue
     private var globalDataStore: GlobalDataStore
-    private let jsonAdapter: JsonAdapter
     private let logger: Logger
     private var sdkConfigStore: SdkConfigStore
     
@@ -16,7 +16,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         profileStore: ProfileStore,
         backgroundQueue: Queue,
         globalDataStore: GlobalDataStore,
-        jsonAdapter : JsonAdapter,
         logger: Logger,
         sdkConfigStore : SdkConfigStore
     ) {
@@ -25,14 +24,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.globalDataStore = globalDataStore
         self.logger = logger
         self.sdkConfigStore = sdkConfigStore
-        self.jsonAdapter = jsonAdapter
     }
 
     init(siteId: String) {
         let diGraph = DITracking.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
-        self.jsonAdapter = diGraph.jsonAdapter
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore
         self.logger = diGraph.logger
@@ -193,3 +190,4 @@ extension MessagingPushImplementation : DeviceAttributesHook {
         addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }
 }
+#endif
