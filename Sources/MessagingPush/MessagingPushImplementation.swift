@@ -1,7 +1,6 @@
 import CioTracking
 import Foundation
-#if canImport(UIKit)
-import UIKit
+import UserNotifications
 
 internal class MessagingPushImplementation: MessagingPushInstance {
     
@@ -127,28 +126,16 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         let sdkVersion = DeviceInfo.sdkVersion.value
         let deviceLocale = DeviceInfo.deviceLocale.value.replacingOccurrences(of: "_", with: "-")
         
-        pushSubscribed { isSubscribed in
+        DeviceDetail().pushSubscribed { isSubscribed in
             let deviceAttributes = ["deviceOs": deviceOS,
                                     "deviceModel": deviceModel,
                                     "appVersion": appVersion,
                                     "cioSdkVersion": sdkVersion,
                                     "deviceLocale": deviceLocale,
-                                    "pushSubscribed": isSubscribed]
+                                    "pushSubscribed": String(isSubscribed)]
             completionHandler(deviceAttributes)
         }
         #endif
-    }
-    
-    private func pushSubscribed(completion: @escaping(String) -> Void) {
-        let current = UNUserNotificationCenter.current()
-        
-        current.getNotificationSettings(completionHandler: { (settings) in
-            if settings.authorizationStatus == .authorized {
-                completion("true")
-                return
-            }
-            completion("false")
-        })
     }
 }
 
@@ -190,4 +177,3 @@ extension MessagingPushImplementation : DeviceAttributesHook {
         addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }
 }
-#endif

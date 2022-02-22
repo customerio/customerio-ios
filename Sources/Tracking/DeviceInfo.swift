@@ -31,4 +31,20 @@ public enum DeviceInfo {
         }
     }
 }
+
+public class DeviceDetail {
+    public init() {}
+    
+    public func pushSubscribed(completion: @escaping(Bool) -> Void) {
+        let current = UNUserNotificationCenter.current()
+        
+        current.getNotificationSettings(completionHandler: { (settings) in
+            if settings.authorizationStatus == .authorized {
+                completion(true)
+                return
+            }
+            completion(false)
+        })
+    }
+}
 #endif
