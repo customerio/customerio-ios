@@ -3,6 +3,7 @@ import Foundation
 import UIKit
 
 internal class MessagingPushImplementation: MessagingPushInstance {
+    
     private let profileStore: ProfileStore
     private let backgroundQueue: Queue
     private var globalDataStore: GlobalDataStore
@@ -39,6 +40,11 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
+        addDeviceAttributes(deviceToken: deviceToken)
+    }
+    
+    private func addDeviceAttributes(deviceToken : String, customAttributes : Encodable? = nil) {
+        
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
@@ -50,16 +56,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return
         }
         
-        
-
         deviceAttributes(deviceToken: deviceToken) { attributes in
+//            let deviceAttributes = attributes + customAttributes
             _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
                                              data: RegisterPushNotificationQueueTaskData(deviceToken: deviceToken, profileIdentifier: identifier,
                                                                                     lastUsed: Date(), attributes: attributes),
                                         groupStart: .registeredPushToken(token: deviceToken),
                                         blockingGroups: [.identifiedProfile(identifier: identifier)])
         }
-        
     }
 
     /**
@@ -167,5 +171,13 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
         logger.debug("hook: deleting device token from profile no longer identified")
 
         deleteDeviceToken()
+    }
+}
+
+
+extension MessagingPushImplementation : DeviceAttributesHook {
+    func customDeviceAttributesAdded(attributes : Encodable) {
+        guard let deviceToken = globalDataStore.pushDeviceToken else { return }
+        addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }
 }

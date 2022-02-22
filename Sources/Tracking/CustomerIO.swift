@@ -229,6 +229,15 @@ public class CustomerIO: CustomerIOInstance {
             implementation?.profileAttributes = newValue
         }
     }
+    
+    public var deviceAttributes: [String: Any] {
+        get {
+            implementation?.deviceAttributes ?? [:]
+        }
+        set {
+            implementation?.deviceAttributes = newValue
+        }
+    }
 
     /**
      Identify a customer (aka: Add or update a profile).

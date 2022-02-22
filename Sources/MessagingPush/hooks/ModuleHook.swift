@@ -3,6 +3,12 @@ import Foundation
 
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingPushModuleHookProvider: ModuleHookProvider {
+    
+    var deviceAttributesHook: DeviceAttributesHook? {
+        MessagingPushImplementation(siteId: siteId)
+    }
+    
+
     private let siteId: SiteId
 
     private var diGraph: DITracking {

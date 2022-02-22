@@ -4,6 +4,7 @@ public protocol HooksManager: AutoMockable {
     func add(key: HookModules, provider: ModuleHookProvider)
     var profileIdentifyHooks: [ProfileIdentifyHook] { get }
     var queueRunnerHooks: [QueueRunnerHook] { get }
+    var deviceAttributesHooks: [DeviceAttributesHook] { get }
 }
 
 public enum HookModules: String {
@@ -33,5 +34,9 @@ public class CioHooksManager: HooksManager {
 
     public var queueRunnerHooks: [QueueRunnerHook] {
         hookProviders.filter { $0.value.queueRunnerHook != nil }.map { $0.value.queueRunnerHook! }
+    }
+    
+    public var deviceAttributesHooks : [DeviceAttributesHook]{
+        hookProviders.filter { $0.value.deviceAttributesHook != nil }.map { $0.value.deviceAttributesHook! }
     }
 }

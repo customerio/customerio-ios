@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.6.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -9,86 +9,86 @@ import FoundationNetworking
 import CioTracking
 
 /**
- ######################################################
- Documentation
- ######################################################
+######################################################
+Documentation
+######################################################
 
- This automatically generated file you are viewing contains mock classes that you can use in your test suite.
+This automatically generated file you are viewing contains mock classes that you can use in your test suite. 
 
- * How do you generate a new mock class?
+* How do you generate a new mock class? 
 
- 1. Mocks are generated from Swift protocols. So, you must make one.
+1. Mocks are generated from Swift protocols. So, you must make one. 
 
- ```
- protocol FriendsRepository {
-     func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
- }
+```
+protocol FriendsRepository {
+    func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
+}
 
- class AppFriendsRepository: FriendsRepository {
-     ...
- }
- ```
+class AppFriendsRepository: FriendsRepository {
+    ...
+}
+```
 
- 2. Have your new protocol extend `AutoMockable`:
+2. Have your new protocol extend `AutoMockable`:
 
- ```
- protocol FriendsRepository: AutoMockable {
-     func acceptFriendRequest<Attributes: Encodable>(
-         // sourcery:Type=Encodable
-         attributes: Attributes,
-         _ onComplete: @escaping () -> Void)
- }
- ```
+```
+protocol FriendsRepository: AutoMockable {
+    func acceptFriendRequest<Attributes: Encodable>(
+        // sourcery:Type=Encodable
+        attributes: Attributes, 
+        _ onComplete: @escaping () -> Void)
+}
+```
 
- > Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would
- fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`.
- Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case.
- It will require a cast in the test function code, however.
+> Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would 
+fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`. 
+Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case. 
+It will require a cast in the test function code, however. 
 
- 3. Run the command `make generate` on your machine. The new mock should be added to this file.
+3. Run the command `make generate` on your machine. The new mock should be added to this file. 
 
- * How do you use the mocks in your test class?
+* How do you use the mocks in your test class? 
 
- ```
- class ExampleViewModelTest: XCTestCase {
-     var viewModel: ExampleViewModel!
-     var exampleRepositoryMock: ExampleRepositoryMock!
-     override func setUp() {
-         exampleRepositoryMock = ExampleRepositoryMock()
-         viewModel = AppExampleViewModel(exampleRepository: exampleRepositoryMock)
-     }
- }
- ```
+```
+class ExampleViewModelTest: XCTestCase {
+    var viewModel: ExampleViewModel!
+    var exampleRepositoryMock: ExampleRepositoryMock!
+    override func setUp() {
+        exampleRepositoryMock = ExampleRepositoryMock()
+        viewModel = AppExampleViewModel(exampleRepository: exampleRepositoryMock)
+    }
+}
+```
 
- Or, you may need to inject the mock in a different way using the DI.shared graph:
+Or, you may need to inject the mock in a different way using the DI.shared graph:
 
- ```
- class ExampleTest: XCTestCase {
-     var exampleViewModelMock: ExampleViewModelMock!
-     var example: Example!
-     override func setUp() {
-         exampleViewModelMock = ExampleViewModelMock()
-         DI.shared.override(.exampleViewModel, value: exampleViewModelMock, forType: ExampleViewModel.self)
-         example = Example()
-     }
- }
+```
+class ExampleTest: XCTestCase {
+    var exampleViewModelMock: ExampleViewModelMock!
+    var example: Example!
+    override func setUp() {
+        exampleViewModelMock = ExampleViewModelMock()
+        DI.shared.override(.exampleViewModel, value: exampleViewModelMock, forType: ExampleViewModel.self)
+        example = Example()
+    }
+}
 
- ```
+```
 
- */
+*/
 
 public class MessagingPushMocks {
-    public static var shared: MessagingPushMocks = .init()
+    public static var shared: MessagingPushMocks = MessagingPushMocks()
 
     public var mocks: [MessagingPushMock] = []
     private init() {}
 
     func add(mock: MessagingPushMock) {
-        mocks.append(mock)
+        self.mocks.append(mock)
     }
 
     func resetAll() {
-        mocks.forEach {
+        self.mocks.forEach {
             $0.reset()
         }
     }
@@ -98,106 +98,117 @@ public protocol MessagingPushMock {
     func reset()
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
- Class to easily create a mocked version of the `MessagingPushInstance` class.
- This class is equipped with functions and properties ready for you to mock!
+ Class to easily create a mocked version of the `MessagingPushInstance` class. 
+ This class is equipped with functions and properties ready for you to mock! 
 
  Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
  */
 public class MessagingPushInstanceMock: MessagingPushInstance, MessagingPushMock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
-    public var mockCalled: Bool = false //
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
+    public var mockCalled: Bool = false // 
 
     init() {
         MessagingPushMocks.shared.add(mock: self)
     }
 
+
     public func reset() {
-        mockCalled = false
+        self.mockCalled = false 
 
         registerDeviceTokenCallsCount = 0
-        registerDeviceTokenReceivedArguments = nil
+        registerDeviceTokenReceivedArguments = nil 
         registerDeviceTokenReceivedInvocations = []
         deleteDeviceTokenCallsCount = 0
         trackMetricCallsCount = 0
-        trackMetricReceivedArguments = nil
+        trackMetricReceivedArguments = nil 
         trackMetricReceivedInvocations = []
     }
 
     // MARK: - registerDeviceToken
 
-    /// Number of times the function was called.
+    /// Number of times the function was called.  
     public private(set) var registerDeviceTokenCallsCount = 0
-    /// `true` if the function was ever called.
+    /// `true` if the function was ever called. 
     public var registerDeviceTokenCalled: Bool {
-        registerDeviceTokenCallsCount > 0
+        return registerDeviceTokenCallsCount > 0
     }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+    /// The arguments from the *last* time the function was called. 
+    public private(set) var registerDeviceTokenReceivedArguments: (String)?
+    /// Arguments from *all* of the times that the function was called. 
+    public private(set) var registerDeviceTokenReceivedInvocations: [(String)] = []
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
      */
     public var registerDeviceTokenClosure: ((String) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
     public func registerDeviceToken(_ deviceToken: String) {
-        mockCalled = true
+        self.mockCalled = true
         registerDeviceTokenCallsCount += 1
-        registerDeviceTokenReceivedArguments = deviceToken
-        registerDeviceTokenReceivedInvocations.append(deviceToken)
+        registerDeviceTokenReceivedArguments = (deviceToken)
+        registerDeviceTokenReceivedInvocations.append((deviceToken))
         registerDeviceTokenClosure?(deviceToken)
     }
 
     // MARK: - deleteDeviceToken
 
-    /// Number of times the function was called.
+    /// Number of times the function was called.  
     public private(set) var deleteDeviceTokenCallsCount = 0
-    /// `true` if the function was ever called.
+    /// `true` if the function was ever called. 
     public var deleteDeviceTokenCalled: Bool {
-        deleteDeviceTokenCallsCount > 0
+        return deleteDeviceTokenCallsCount > 0
     }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
      */
     public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code. 
     public func deleteDeviceToken() {
-        mockCalled = true
+        self.mockCalled = true
         deleteDeviceTokenCallsCount += 1
         deleteDeviceTokenClosure?()
     }
 
     // MARK: - trackMetric
 
-    /// Number of times the function was called.
+    /// Number of times the function was called.  
     public private(set) var trackMetricCallsCount = 0
-    /// `true` if the function was ever called.
+    /// `true` if the function was ever called. 
     public var trackMetricCalled: Bool {
-        trackMetricCallsCount > 0
+        return trackMetricCallsCount > 0
     }
-
-    /// The arguments from the *last* time the function was called.
+    /// The arguments from the *last* time the function was called. 
     public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] =
-        []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+    /// Arguments from *all* of the times that the function was called. 
+    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
      */
     public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code. 
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        mockCalled = true
+        self.mockCalled = true
         trackMetricCallsCount += 1
         trackMetricReceivedArguments = (deliveryID: deliveryID, event: event, deviceToken: deviceToken)
         trackMetricReceivedInvocations.append((deliveryID: deliveryID, event: event, deviceToken: deviceToken))
         trackMetricClosure?(deliveryID, event, deviceToken)
     }
+
 }

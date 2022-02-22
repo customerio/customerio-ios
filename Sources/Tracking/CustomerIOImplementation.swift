@@ -84,6 +84,17 @@ public class CustomerIOImplementation: CustomerIOInstance {
             identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
         }
     }
+    
+    public var deviceAttributes: [String: Any] {
+        get {
+            [:]
+        }
+        set {
+            hooks.deviceAttributesHooks.forEach{ hook in
+                hook.customDeviceAttributesAdded(attributes: StringAnyEncodable(newValue))
+            }
+        }
+    }
 
     public func identify<RequestBody: Encodable>(
         identifier: String,
