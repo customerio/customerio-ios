@@ -127,7 +127,7 @@ class MessagingPushImplementationTest: UnitTest {
         var config = SdkConfig()
         config.autoTrackDeviceAttributes = true
         sdkConfigStoreMock.config = config
-
+        #if canImport(UIKit)
         messagingPush.deviceAttributes(deviceToken: givenDeviceToken) { defaultAttributes in
             let expectedAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
             let expectedOS = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
@@ -141,6 +141,7 @@ class MessagingPushImplementationTest: UnitTest {
             XCTAssertEqual(defaultAttributes!["pushSubscribed"], "false")
             XCTAssertEqual(defaultAttributes!["cioSdkVersion"], expectedSDKVersion)
         }
+        #endif
     }
     
     func test_deviceAttributes_givenDeviceToken_expectNil() {
