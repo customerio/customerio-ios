@@ -11,6 +11,7 @@ class MessagingPushImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let queueMock = QueueMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
+    private let sdkConfigStore = SdkConfigStoreMock()
 
     override func setUp() {
         super.setUp()
@@ -18,7 +19,7 @@ class MessagingPushImplementationTest: UnitTest {
         mockCustomerIO.siteId = testSiteId
 
         messagingPush = MessagingPushImplementation(profileStore: profileStoreMock, backgroundQueue: queueMock,
-                                                    globalDataStore: globalDataStoreMock, logger: log)
+                                                    globalDataStore: globalDataStoreMock, logger: log, sdkConfigStore: sdkConfigStore)
     }
 
     // MARK: registerDeviceToken
