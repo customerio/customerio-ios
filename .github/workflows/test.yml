@@ -44,7 +44,7 @@ jobs:
       with:
         check_name: XCode macOS tests (xcode ${{ matrix.xcode }}) - Results
         report_paths: test-report.xml
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.READ_ONLY_BOT_TOKEN }}
         fail_on_failure: true 
         require_tests: true 
       if: ${{ always() }} # if running tests fails, we still want to parse the test results     
@@ -82,7 +82,7 @@ jobs:
       with:
         check_name: SPM Linux tests (swift ${{ matrix.swift }}) - Results 
         report_paths: test-report.xml
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.READ_ONLY_BOT_TOKEN }}
         fail_on_failure: true 
         require_tests: true 
       if: ${{ always() }} # if running tests fails, we still want to parse the test results     

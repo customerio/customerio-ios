@@ -1,42 +1,50 @@
 import CioMessagingPush
 import CioTracking
 import Foundation
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 
-public protocol MessagingPushFCMInstance: AutoMockable {
-    // sourcery:Name=didReceiveRegistrationToken
-    func messaging(
-        _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?
-    )
-
-    // sourcery:Name=didFailToRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    )
-}
+// Expose `MessagingPush` in module so customers do not need to `import CioMessaginPush`
+// Only 1 import: `CioMessaginPushAPN`.
+public typealias MessagingPush = CioMessagingPush.MessagingPush
 
 /**
- MessagingPush extension to support FCM push notification messaging.
-  */
+ Convenient extensions so singleton instances of `MessagingPush` can access functions from `MessagingPushFCM`.
+ */
 extension MessagingPush: MessagingPushFCMInstance {
+    public func registerDeviceToken(fcmToken: String?) {
+        MessagingPushFCM(customerIO: customerIO).registerDeviceToken(fcmToken: fcmToken)
+    }
+
     public func messaging(
         _ messaging: Any,
         didReceiveRegistrationToken fcmToken: String?
     ) {
-        guard let deviceToken = fcmToken else {
-            return // ignore if token nil
-        }
-        registerDeviceToken(deviceToken)
+        MessagingPushFCM(customerIO: customerIO)
+            .messaging(messaging, didReceiveRegistrationToken: fcmToken)
     }
 
     public func application(
         _ application: Any,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        deleteDeviceToken()
+        MessagingPushFCM(customerIO: customerIO)
+            .application(application, didFailToRegisterForRemoteNotificationsWithError: error)
     }
-}
 
-// sourcery: InjectRegister = "DiPlaceholder"
-internal class DiPlaceholder {}
+    #if canImport(UserNotifications)
+    @discardableResult
+    public func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) -> Bool {
+        MessagingPushFCM(customerIO: customerIO)
+            .didReceive(request, withContentHandler: contentHandler)
+    }
+
+    public func serviceExtensionTimeWillExpire() {
+        MessagingPushFCM(customerIO: customerIO).serviceExtensionTimeWillExpire()
+    }
+    #endif
+}

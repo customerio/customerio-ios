@@ -17,9 +17,10 @@ class MessagingPushImplementationTest: UnitTest {
         super.setUp()
 
         mockCustomerIO.siteId = testSiteId
-        sdkConfigStoreMock.config = SdkConfig()
-        messagingPush = MessagingPushImplementation(profileStore: profileStoreMock, backgroundQueue: queueMock,
-                                                    globalDataStore: globalDataStoreMock, logger: log, sdkConfigStore: sdkConfigStoreMock)
+        messagingPush = MessagingPushImplementation(siteId: testSiteId, profileStore: profileStoreMock,
+                                                    backgroundQueue: queueMock,
+                                                    globalDataStore: globalDataStoreMock, logger: log,
+                                                    sdkConfigStore: sdkConfigStoreMock, jsonAdapter: jsonAdapter)
     }
 
     // MARK: registerDeviceToken
@@ -40,6 +41,10 @@ class MessagingPushImplementationTest: UnitTest {
         profileStoreMock.identifier = givenIdentifier
         queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
 
+        var config = SdkConfig()
+        config.autoTrackDeviceAttributes = true
+        sdkConfigStoreMock.config = config
+        
         messagingPush.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)

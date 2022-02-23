@@ -1,4 +1,7 @@
 name: Deploy git tag  
+
+# Only run after a pull request has been merged. This is because
+# bot account runs write operations on the github repo to push a tag. 
 on:
   push:
     branches: [main, beta, alpha]
@@ -21,4 +24,12 @@ jobs:
             @semantic-release/github@8
             @semantic-release/exec@6
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_PUSH_TOKEN }}
+          # Needs to push git commits to repo. Needs write access. 
+          GITHUB_TOKEN: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+          
+      - name: Copy commits into develop after main deployment 
+        uses: levibostian/action-sync-branches@v1
+        with:
+          behind: develop
+          ahead: main 
+          githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}

@@ -1,7 +1,11 @@
 import CioTracking
 import Foundation
+#if canImport(UserNotifications) && canImport(UIKit)
+import UIKit
+import UserNotifications
+#endif
 
-public protocol MessagingPushInstance: AutoMockable {
+public protocol MessagingPushInstance {
     func registerDeviceToken(_ deviceToken: String)
     func deleteDeviceToken()
     func trackMetric(
@@ -9,6 +13,25 @@ public protocol MessagingPushInstance: AutoMockable {
         event: Metric,
         deviceToken: String
     )
+
+    #if canImport(UserNotifications)
+    @discardableResult
+    // sourcery:Name=didReceiveNotificationRequest
+    // sourcery:IfCanImport=UserNotifications
+    func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) -> Bool
+
+    // sourcery:IfCanImport=UserNotifications
+    func serviceExtensionTimeWillExpire()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) -> Bool
+    #endif
 }
 
 /**
@@ -71,4 +94,46 @@ public class MessagingPush: MessagingPushInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
+
+    #if canImport(UserNotifications)
+    /**
+     - returns:
+     Bool indicating if this push notification is one handled by Customer.io SDK or not.
+     If function returns `false`, `contentHandler` will *not* be called by the SDK.
+     */
+    @discardableResult
+    public func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) -> Bool {
+        guard let implementation = implementation else {
+            contentHandler(request.content)
+            return false
+        }
+
+        return implementation.didReceive(request, withContentHandler: contentHandler)
+    }
+
+    /**
+     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+     Stop all network requests and modifying and show the push for what it looks like now.
+     */
+    public func serviceExtensionTimeWillExpire() {
+        implementation?.serviceExtensionTimeWillExpire()
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) -> Bool {
+        guard let implementation = implementation else {
+            completionHandler()
+            return false
+        }
+
+        return implementation.userNotificationCenter(center, didReceive: response,
+                                                     withCompletionHandler: completionHandler)
+    }
+    #endif
 }
