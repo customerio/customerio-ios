@@ -38,6 +38,11 @@ public class DeviceDetail {
     public init() {}
     // Tells whether user has enabled or disabled push notifications for the app
     public func pushSubscribed(completion: @escaping(Bool) -> Void) {
+        if let executableBundle = Bundle.main.infoDictionary?["CFBundleExecutable"] as? String,
+           executableBundle == "xctest" {
+            completion(false)
+            return
+        }
         let current = UNUserNotificationCenter.current()
         current.getNotificationSettings(completionHandler: { (settings) in
             if settings.authorizationStatus == .authorized {

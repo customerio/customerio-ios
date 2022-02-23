@@ -111,7 +111,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
     }
-    private func deviceAttributes(deviceToken: String, completionHandler: @escaping([String: String]?) -> Void) {
+    func deviceAttributes(deviceToken: String, completionHandler: @escaping([String: String]?) -> Void) {
         if !sdkConfigStore.config.autoTrackDeviceAttributes {
             completionHandler(nil)
             return
