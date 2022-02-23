@@ -5,7 +5,7 @@ internal struct Device: Codable {
     let token: String
     let platform = "ios"
     let lastUsed: Date
-    let attributes : [String: String]?
+    let attributes: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case platform

@@ -35,8 +35,7 @@ public class CioHooksManager: HooksManager {
     public var queueRunnerHooks: [QueueRunnerHook] {
         hookProviders.filter { $0.value.queueRunnerHook != nil }.map { $0.value.queueRunnerHook! }
     }
-    
-    public var deviceAttributesHooks : [DeviceAttributesHook]{
+    public var deviceAttributesHooks: [DeviceAttributesHook] {
         hookProviders.filter { $0.value.deviceAttributesHook != nil }.map { $0.value.deviceAttributesHook! }
     }
 }

@@ -229,7 +229,6 @@ public class CustomerIO: CustomerIOInstance {
             implementation?.profileAttributes = newValue
         }
     }
-    
     public var deviceAttributes: [String: String] {
         get {
             implementation?.deviceAttributes ?? [:]

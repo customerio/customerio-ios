@@ -6,7 +6,7 @@ import Foundation
 public protocol ModuleHookProvider: AutoMockable {
     var profileIdentifyHook: ProfileIdentifyHook? { get }
     var queueRunnerHook: QueueRunnerHook? { get }
-    var deviceAttributesHook : DeviceAttributesHook? {get}
+    var deviceAttributesHook: DeviceAttributesHook? {get}
 }
 
 // hooks all dealing with events related to profiles being identified.
@@ -28,6 +28,6 @@ public protocol QueueRunnerHook: AutoMockable {
     func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool
 }
 
-public protocol DeviceAttributesHook : AutoMockable {
-    func customDeviceAttributesAdded(attributes : [String: String])
+public protocol DeviceAttributesHook: AutoMockable {
+    func customDeviceAttributesAdded(attributes: [String: String])
 }

@@ -84,13 +84,12 @@ public class CustomerIOImplementation: CustomerIOInstance {
             identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
         }
     }
-    
     public var deviceAttributes: [String: String] {
         get {
             [:]
         }
         set {
-            hooks.deviceAttributesHooks.forEach{ hook in
+            hooks.deviceAttributesHooks.forEach { hook in
                 hook.customDeviceAttributesAdded(attributes: newValue)
             }
         }

@@ -11,8 +11,7 @@ public enum DeviceInfo {
     case customerBundleId
     case sdkVersion
     case deviceLocale
-    
-    public var value : String {
+    public var value: String {
         switch self {
         case .deviceInfo:
             return UIDevice.deviceModelCode
@@ -34,10 +33,8 @@ public enum DeviceInfo {
 
 public class DeviceDetail {
     public init() {}
-    
     public func pushSubscribed(completion: @escaping(Bool) -> Void) {
         let current = UNUserNotificationCenter.current()
-        
         current.getNotificationSettings(completionHandler: { (settings) in
             if settings.authorizationStatus == .authorized {
                 completion(true)
