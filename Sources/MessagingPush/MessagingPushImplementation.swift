@@ -42,7 +42,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     /**
      Adds device default and custom attributes and registers device token.
      */
-    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
+    func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,

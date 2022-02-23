@@ -40,8 +40,8 @@ class MessagingPushImplementationTest: UnitTest {
         profileStoreMock.identifier = givenIdentifier
         queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
 
-        messagingPush.registerDeviceToken(givenDeviceToken)
-
+//        messagingPush.registerDeviceToken(givenDeviceToken)
+        messagingPush.addDeviceAttributes(deviceToken: givenDeviceToken)
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
         XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.registerPushToken.rawValue)
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
