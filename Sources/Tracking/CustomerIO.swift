@@ -229,6 +229,17 @@ public class CustomerIO: CustomerIOInstance {
             implementation?.profileAttributes = newValue
         }
     }
+    /**
+     Use `deviceAttributes` to provide additional and custom device attributes
+     apart from the ones the SDK is programmed to send to customer workspace.
+
+     Example use:
+     ```
+     CustomerIO.config {
+     $0.deviceAttributes = ["foo" : "bar"]
+     }
+     ```
+     */
     public var deviceAttributes: [String: String] {
         get {
             implementation?.deviceAttributes ?? [:]

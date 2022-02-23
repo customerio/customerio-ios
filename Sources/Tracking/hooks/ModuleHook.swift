@@ -28,6 +28,7 @@ public protocol QueueRunnerHook: AutoMockable {
     func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool
 }
 
+// Hook to send custom device attributes to workspace
 public protocol DeviceAttributesHook: AutoMockable {
     func customDeviceAttributesAdded(attributes: [String: String])
 }

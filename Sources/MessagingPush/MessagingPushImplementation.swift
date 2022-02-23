@@ -39,6 +39,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     public func registerDeviceToken(_ deviceToken: String) {
         addDeviceAttributes(deviceToken: deviceToken)
     }
+    /**
+     Adds device default and custom attributes and registers device token.
+     */
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
@@ -164,6 +167,7 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
 }
 
 extension MessagingPushImplementation: DeviceAttributesHook {
+    // Adds custom device attributes to background queue and sends to workspace
     func customDeviceAttributesAdded(attributes: [String: String]) {
         guard let deviceToken = globalDataStore.pushDeviceToken else { return }
         addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)

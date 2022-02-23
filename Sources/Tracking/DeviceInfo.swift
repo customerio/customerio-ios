@@ -3,6 +3,8 @@ import Foundation
 import UIKit
 import UserNotifications
 
+/// To get basic detail about the device SDK is working on
+/// such as operating system, customer app name, bundle id etc
 public enum DeviceInfo {
     case deviceInfo
     case osInfo
@@ -31,8 +33,10 @@ public enum DeviceInfo {
     }
 }
 
+/// Provides additional async details about device the SDK is working on
 public class DeviceDetail {
     public init() {}
+    // Tells whether user has enabled or disabled push notifications for the app
     public func pushSubscribed(completion: @escaping(Bool) -> Void) {
         let current = UNUserNotificationCenter.current()
         current.getNotificationSettings(completionHandler: { (settings) in
