@@ -136,12 +136,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         let sdkVersion = deviceDetail.sdkVersion
         let deviceLocale = deviceDetail.deviceLocale.replacingOccurrences(of: "_", with: "-")
         deviceDetail.pushSubscribed { isSubscribed in
-            let deviceAttributes = ["deviceOs": deviceOS,
-                                    "deviceModel": deviceModel,
-                                    "appVersion": appVersion,
-                                    "cioSdkVersion": sdkVersion,
-                                    "deviceLocale": deviceLocale,
-                                    "pushSubscribed": String(isSubscribed)]
+            let deviceAttributes = ["device_os": deviceOS,
+                                    "device_model": deviceModel,
+                                    "app_version": appVersion,
+                                    "cio_sdk_version": sdkVersion,
+                                    "device_locale": deviceLocale,
+                                    "push_subscribed": String(isSubscribed)]
             completionHandler(deviceAttributes)
         }
     }

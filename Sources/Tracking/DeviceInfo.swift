@@ -1,6 +1,6 @@
 import Foundation
-//#if canImport(UIKit) && canImport(UserNotifications)
-//import UIKit
+#if canImport(UIKit) && canImport(UserNotifications)
+import UIKit
 import UserNotifications
 
 /// To get basic detail about the device SDK is working on
