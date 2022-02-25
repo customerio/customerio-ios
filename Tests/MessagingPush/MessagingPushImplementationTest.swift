@@ -125,21 +125,20 @@ class MessagingPushImplementationTest: UnitTest {
     
     // MARK: DeviceAttributes
     func test_deviceAttributes_givenDefaultDeviceAttributesEnabled_expectGetDefaultDeviceMetrics() {
-        let givenDeviceToken = String.random
         configureDeviceAttributes(to: true)
         #if canImport(UIKit)
-        messagingPush.deviceAttributes(deviceToken: givenDeviceToken) { defaultAttributes in
+        messagingPush.getDefaultDeviceAttributes{ defaultAttributes in
             let expectedAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
             let expectedOS = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-            let expectedLocale = DeviceInfo.deviceLocale.value.replacingOccurrences(of: "_", with: "-")
+            let expectedLocale = DeviceInfo().deviceLocale.replacingOccurrences(of: "_", with: "-")
             let expectedModel = UIDevice.deviceModelCode
             let expectedSDKVersion = SdkVersion.version
-            XCTAssertEqual(defaultAttributes!["appVersion"], expectedAppVersion)
-            XCTAssertEqual(defaultAttributes!["deviceOs"], expectedOS)
-            XCTAssertEqual(defaultAttributes!["deviceLocale"], expectedLocale)
-            XCTAssertEqual(defaultAttributes!["deviceModel"], expectedModel)
-            XCTAssertEqual(defaultAttributes!["pushSubscribed"], "false")
-            XCTAssertEqual(defaultAttributes!["cioSdkVersion"], expectedSDKVersion)
+            XCTAssertEqual(defaultAttributes!["app_version"], expectedAppVersion)
+            XCTAssertEqual(defaultAttributes!["device_os"], expectedOS)
+            XCTAssertEqual(defaultAttributes!["device_locale"], expectedLocale)
+            XCTAssertEqual(defaultAttributes!["device_model"], expectedModel)
+            XCTAssertEqual(defaultAttributes!["push_subscribed"], "false")
+            XCTAssertEqual(defaultAttributes!["cio_sdk_version"], expectedSDKVersion)
         }
         #endif
     }
@@ -150,7 +149,7 @@ class MessagingPushImplementationTest: UnitTest {
 
         // This function returns `nil` in case
         // `autoTrackDeviceAttributes` is set to `false`
-        messagingPush.deviceAttributes(deviceToken: givenDeviceToken) { defaultAttributes in
+        messagingPush.getDefaultDeviceAttributes{ defaultAttributes in
             
             XCTAssertNil(defaultAttributes)
         }
@@ -158,7 +157,7 @@ class MessagingPushImplementationTest: UnitTest {
     
     private func configureDeviceAttributes(to value : Bool) {
         var config = SdkConfig()
-        config.autoTrackDeviceAttributes = true
+        config.autoTrackDeviceAttributes = value
         sdkConfigStoreMock.config = config
     }
 }
