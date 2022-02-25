@@ -66,7 +66,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
-        getDefaultDeviceAttributes() { attributes in
+        getDefaultDeviceAttributes {attributes in
             var deviceAttributes = attributes ?? [:]
             if let customDeviceAttributes = customAttributes {
                 deviceAttributes = deviceAttributes.mergeWith(customDeviceAttributes)
