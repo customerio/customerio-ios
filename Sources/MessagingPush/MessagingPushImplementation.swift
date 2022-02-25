@@ -55,7 +55,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     /**
      Adds device default and custom attributes and registers device token.
      */
-    func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
+    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
@@ -66,10 +66,10 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
-        deviceAttributes(deviceToken: deviceToken) { attributes in
-            var deviceAttributes = attributes ?? customAttributes
-            if let customDeviceAttributes = customAttributes, let defaultDeviceAttributes = attributes {
-                deviceAttributes = defaultDeviceAttributes.merging(customDeviceAttributes) { $1 }
+        getDefaultDeviceAttributes() { attributes in
+            var deviceAttributes = attributes ?? [:]
+            if let customDeviceAttributes = customAttributes {
+                deviceAttributes = deviceAttributes.mergeWith(customDeviceAttributes)
             }
             _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
                                              data: RegisterPushNotificationQueueTaskData(deviceToken: deviceToken,
@@ -124,18 +124,18 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
     }
-    func deviceAttributes(deviceToken: String, completionHandler: @escaping([String: String]?) -> Void) {
+    func getDefaultDeviceAttributes(completionHandler: @escaping([String: String]?) -> Void) {
         if !sdkConfigStore.config.autoTrackDeviceAttributes {
             completionHandler(nil)
             return
         }
-        #if canImport(UIKit)
-        let deviceOS = DeviceInfo.osInfo.value
-        let deviceModel = DeviceInfo.deviceInfo.value
-        let appVersion = DeviceInfo.customerAppVersion.value
-        let sdkVersion = DeviceInfo.sdkVersion.value
-        let deviceLocale = DeviceInfo.deviceLocale.value.replacingOccurrences(of: "_", with: "-")
-        DeviceDetail().pushSubscribed { isSubscribed in
+        let deviceDetail = DeviceInfo()
+        let deviceOS = deviceDetail.osInfo
+        let deviceModel = deviceDetail.deviceInfo
+        let appVersion = deviceDetail.customerAppVersion
+        let sdkVersion = deviceDetail.sdkVersion
+        let deviceLocale = deviceDetail.deviceLocale.replacingOccurrences(of: "_", with: "-")
+        deviceDetail.pushSubscribed { isSubscribed in
             let deviceAttributes = ["deviceOs": deviceOS,
                                     "deviceModel": deviceModel,
                                     "appVersion": appVersion,
@@ -144,7 +144,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     "pushSubscribed": String(isSubscribed)]
             completionHandler(deviceAttributes)
         }
-        #endif
     }
 
     #if canImport(UserNotifications)

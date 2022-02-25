@@ -41,10 +41,7 @@ class MessagingPushImplementationTest: UnitTest {
         profileStoreMock.identifier = givenIdentifier
         queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
 
-        var config = SdkConfig()
-        config.autoTrackDeviceAttributes = true
-        sdkConfigStoreMock.config = config
-        
+        configureDeviceAttributes(to: true)
         messagingPush.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
@@ -127,11 +124,9 @@ class MessagingPushImplementationTest: UnitTest {
     }
     
     // MARK: DeviceAttributes
-    func test_deviceAttributes_givenDeviceToken_expectDefaultDeviceAttributesDictionary() {
+    func test_deviceAttributes_givenDefaultDeviceAttributesEnabled_expectGetDefaultDeviceMetrics() {
         let givenDeviceToken = String.random
-        var config = SdkConfig()
-        config.autoTrackDeviceAttributes = true
-        sdkConfigStoreMock.config = config
+        configureDeviceAttributes(to: true)
         #if canImport(UIKit)
         messagingPush.deviceAttributes(deviceToken: givenDeviceToken) { defaultAttributes in
             let expectedAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -149,11 +144,9 @@ class MessagingPushImplementationTest: UnitTest {
         #endif
     }
     
-    func test_deviceAttributes_givenDeviceToken_expectNil() {
+    func test_deviceAttributes_givenDefaultDeviceAttributesDisabled_expectNil() {
         let givenDeviceToken = String.random
-        var config = SdkConfig()
-        config.autoTrackDeviceAttributes = false
-        sdkConfigStoreMock.config = config
+        configureDeviceAttributes(to: false)
 
         // This function returns `nil` in case
         // `autoTrackDeviceAttributes` is set to `false`
@@ -161,5 +154,11 @@ class MessagingPushImplementationTest: UnitTest {
             
             XCTAssertNil(defaultAttributes)
         }
+    }
+    
+    private func configureDeviceAttributes(to value : Bool) {
+        var config = SdkConfig()
+        config.autoTrackDeviceAttributes = true
+        sdkConfigStoreMock.config = config
     }
 }
