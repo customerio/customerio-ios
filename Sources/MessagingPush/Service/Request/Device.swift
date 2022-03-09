@@ -1,11 +1,11 @@
 import Foundation
 
 // Standard device structure
-internal struct Device: Codable {
+internal struct Device<T: Encodable>: Encodable {
     let token: String
     let platform = "ios"
     let lastUsed: Date
-    let attributes: [String: String]?
+    let attributes: T?
 
     enum CodingKeys: String, CodingKey {
         case platform

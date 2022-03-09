@@ -30,5 +30,5 @@ public protocol QueueRunnerHook: AutoMockable {
 
 // Hook to send custom device attributes to workspace
 public protocol DeviceAttributesHook: AutoMockable {
-    func customDeviceAttributesAdded(attributes: [String: String])
+    func customDeviceAttributesAdded(attributes: [String: Any])
 }

@@ -55,7 +55,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     /**
      Adds device default and custom attributes and registers device token.
      */
-    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: String]? = nil) {
+    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any]? = nil) {
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
@@ -66,16 +66,24 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
+        
         getDefaultDeviceAttributes {attributes in
             var deviceAttributes = attributes ?? [:]
             if let customDeviceAttributes = customAttributes {
                 deviceAttributes = deviceAttributes.mergeWith(customDeviceAttributes)
             }
+            let body = StringAnyEncodable(deviceAttributes)
+            let data: AnyEncodable = AnyEncodable(body)
+            let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken, lastUsed: Date(), attributes: data))
+
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, encoder: nil) else {
+                return
+            }
+            let queueTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
+                                                    attributesJsonString: jsonBodyString)
+
             _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
-                                             data: RegisterPushNotificationQueueTaskData(deviceToken: deviceToken,
-                                                                                         profileIdentifier: identifier,
-                                                                                         lastUsed: Date(),
-                                                                                         attributes: deviceAttributes),
+                                             data: queueTaskData,
                                         groupStart: .registeredPushToken(token: deviceToken),
                                         blockingGroups: [.identifiedProfile(identifier: identifier)])
         }
@@ -124,7 +132,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
                                                         timestamp: Date()))
     }
-    func getDefaultDeviceAttributes(completionHandler: @escaping([String: String]?) -> Void) {
+    func getDefaultDeviceAttributes(completionHandler: @escaping([String: Any]?) -> Void) {
         if !sdkConfigStore.config.autoTrackDeviceAttributes {
             completionHandler(nil)
             return
@@ -301,7 +309,7 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
 
 extension MessagingPushImplementation: DeviceAttributesHook {
     // Adds custom device attributes to background queue and sends to workspace
-    func customDeviceAttributesAdded(attributes: [String: String]) {
+    func customDeviceAttributesAdded(attributes: [String: Any]) {
         guard let deviceToken = globalDataStore.pushDeviceToken else { return }
         addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }

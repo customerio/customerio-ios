@@ -262,7 +262,7 @@ public class CustomerIO: CustomerIOInstance {
      }
      ```
      */
-    public var deviceAttributes: [String: String] {
+    public var deviceAttributes: [String: Any] {
         get {
             implementation?.deviceAttributes ?? [:]
         }

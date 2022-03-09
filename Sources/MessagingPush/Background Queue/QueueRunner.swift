@@ -30,17 +30,8 @@ private extension MessagingPushQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let requestBody =
-        RegisterDeviceRequest(device: Device(token: taskData.deviceToken,
-                                             lastUsed: taskData.lastUsed,
-                                             attributes: taskData.attributes))
-
-        guard let body = jsonAdapter.toJson(requestBody, encoder: nil) else {
-            return onComplete(failureIfDontDecodeTaskData)
-        }
-
         let httpParams = HttpRequestParams(endpoint: .registerDevice(identifier: taskData.profileIdentifier),
-                                           headers: nil, body: body)
+                                           headers: nil, body: taskData.attributesJsonString!.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
