@@ -66,7 +66,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
-        
         getDefaultDeviceAttributes {attributes in
             var deviceAttributes = attributes ?? [:]
             if let customDeviceAttributes = customAttributes {
@@ -74,7 +73,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             }
             let body = StringAnyEncodable(deviceAttributes)
             let data: AnyEncodable = AnyEncodable(body)
-            let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken, lastUsed: Date(), attributes: data))
+            let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken,
+                                                                   lastUsed: Date(),
+                                                                   attributes: data))
 
             guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, encoder: nil) else {
                 return
