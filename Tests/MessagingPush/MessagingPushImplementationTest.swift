@@ -49,7 +49,6 @@ class MessagingPushImplementationTest: UnitTest {
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
             .value as! RegisterPushNotificationQueueTaskData
         XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
 
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
@@ -133,12 +132,12 @@ class MessagingPushImplementationTest: UnitTest {
             let expectedLocale = DeviceInfo().deviceLocale.replacingOccurrences(of: "_", with: "-")
             let expectedModel = UIDevice.deviceModelCode
             let expectedSDKVersion = SdkVersion.version
-            XCTAssertEqual(defaultAttributes!["app_version"], expectedAppVersion)
-            XCTAssertEqual(defaultAttributes!["device_os"], expectedOS)
-            XCTAssertEqual(defaultAttributes!["device_locale"], expectedLocale)
-            XCTAssertEqual(defaultAttributes!["device_model"], expectedModel)
-            XCTAssertEqual(defaultAttributes!["push_subscribed"], "false")
-            XCTAssertEqual(defaultAttributes!["cio_sdk_version"], expectedSDKVersion)
+            XCTAssertEqual(defaultAttributes!["app_version"] as? String, expectedAppVersion)
+            XCTAssertEqual(defaultAttributes!["device_os"] as? String, expectedOS)
+            XCTAssertEqual(defaultAttributes!["device_locale"] as? String, expectedLocale)
+            XCTAssertEqual(defaultAttributes!["device_model"] as? String, expectedModel)
+            XCTAssertEqual(defaultAttributes!["push_subscribed"] as? String, "false")
+            XCTAssertEqual(defaultAttributes!["cio_sdk_version"] as? String, expectedSDKVersion)
         }
         #endif
     }
