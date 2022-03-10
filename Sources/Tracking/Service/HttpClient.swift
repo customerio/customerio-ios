@@ -167,8 +167,8 @@ extension CIOHttpClient {
     static func getUserAgent() -> String {
         var userAgent = "Customer.io iOS Client/"
         userAgent += SdkVersion.version
-        let deviceDetail = DeviceInfo()
         #if canImport(UIKit)
+        let deviceDetail = DeviceInfo()
         userAgent += " (\(deviceDetail.deviceInfo); \(deviceDetail.osInfo))"
         userAgent += " \(deviceDetail.customerAppName)/"
         userAgent += deviceDetail.customerAppVersion
