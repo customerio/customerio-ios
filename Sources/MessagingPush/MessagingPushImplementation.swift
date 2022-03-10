@@ -138,6 +138,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             completionHandler(nil)
             return
         }
+        #if canImport(UIKit) && canImport(UserNotifications)
         let deviceDetail = DeviceInfo()
         let deviceOS = deviceDetail.osInfo
         let deviceModel = deviceDetail.deviceInfo
@@ -153,6 +154,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                     "push_subscribed": String(isSubscribed)]
             completionHandler(deviceAttributes)
         }
+        #else
+            completionHandler(nil)
+        #endif
     }
 
     #if canImport(UserNotifications)
