@@ -15,6 +15,7 @@ jobs:
         uses: levibostian/action-semantic-release-justwork@v1
       - name: Deploy git tag via semantic-release 
         uses: cycjimmy/semantic-release-action@v2
+        id: semantic-release
         with: 
           # version numbers below can be in many forms: M, M.m, M.m.p
           semantic_version: 18
@@ -33,3 +34,13 @@ jobs:
           behind: develop
           ahead: main 
           githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+
+      - name: Notify team of git tag being created 
+        uses: openhousepvt/slack@v1.3.2
+        with:
+          status: 'success' 
+          version: ${{ steps.semantic-release.outputs.new_release_version }}
+          platform: 'iOS SDK - Swift Package Manager deployed + git tag created'
+          channel: '#squad-mobile'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}

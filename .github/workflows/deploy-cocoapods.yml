@@ -50,3 +50,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
           RELEASE_VERSION: ${{ github.event.release.tag_name }}
+      
+      - name: Notify team of Cocoapods deployment 
+        uses: openhousepvt/slack@v1.3.2
+        with:
+          status: 'success'
+          version: ${{ github.event.release.tag_name }}
+          platform: 'iOS SDK - Deployed to Cocoapods'
+          channel: '#squad-mobile'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
