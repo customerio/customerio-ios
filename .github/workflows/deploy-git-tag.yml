@@ -37,6 +37,7 @@ jobs:
 
       - name: Notify team of git tag being created 
         uses: openhousepvt/slack@v1.3.2
+        if: steps.semantic-release.outputs.new_release_published == 'true'
         with:
           status: 'success' 
           version: ${{ steps.semantic-release.outputs.new_release_version }}
