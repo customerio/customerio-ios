@@ -48,6 +48,7 @@ public protocol CustomerIOInstance: AutoMockable {
     )
 
     var profileAttributes: [String: Any] { get set }
+    var deviceAttributes: [String: Any] { get set }
 
     func config(
         // sourcery:SkipParamCapture=true

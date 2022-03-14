@@ -277,6 +277,38 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
             underlyingProfileAttributes = value 
         }
     }    
+    /**
+     When setter of the property called, the value given to setter is set here. 
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     */
+    public var underlyingDeviceAttributes: [String: Any] = [:]
+    /// `true` if the getter or setter of property is called at least once. 
+    public var deviceAttributesCalled: Bool {
+        deviceAttributesGetCalled || deviceAttributesSetCalled
+    }
+    /// `true` if the getter called on the property at least once. 
+    public var deviceAttributesGetCalled: Bool {
+        deviceAttributesGetCallsCount > 0
+    } 
+    public var deviceAttributesGetCallsCount = 0
+    /// `true` if the setter called on the property at least once. 
+    public var deviceAttributesSetCalled: Bool {
+        deviceAttributesSetCallsCount > 0
+    } 
+    public var deviceAttributesSetCallsCount = 0
+    /// The mocked property with a getter and setter. 
+    public var deviceAttributes: [String: Any] {
+        get { 
+            self.mockCalled = true
+            deviceAttributesGetCallsCount += 1
+            return underlyingDeviceAttributes 
+        }
+        set(value) { 
+            self.mockCalled = true
+            deviceAttributesSetCallsCount += 1
+            underlyingDeviceAttributes = value 
+        }
+    }    
 
     public func reset() {
         self.mockCalled = false 
@@ -286,6 +318,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         siteIdSetCallsCount = 0
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
+        deviceAttributesGetCallsCount = 0
+        deviceAttributesSetCallsCount = 0
         identifyCallsCount = 0
         identifyReceivedArguments = nil 
         identifyReceivedInvocations = []

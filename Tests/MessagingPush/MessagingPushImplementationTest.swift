@@ -126,6 +126,9 @@ class MessagingPushImplementationTest: UnitTest {
     func test_deviceAttributes_givenDefaultDeviceAttributesEnabled_expectGetDefaultDeviceMetrics() {
         configureDeviceAttributes(to: true)
         #if canImport(UIKit)
+        
+        let expectComplete = expectation(description: "Expect to complete")
+                
         messagingPush.getDefaultDeviceAttributes{ defaultAttributes in
             let expectedAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
             let expectedOS = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
@@ -138,7 +141,9 @@ class MessagingPushImplementationTest: UnitTest {
             XCTAssertEqual(defaultAttributes!["device_model"] as? String, expectedModel)
             XCTAssertEqual(defaultAttributes!["push_subscribed"] as? String, "false")
             XCTAssertEqual(defaultAttributes!["cio_sdk_version"] as? String, expectedSDKVersion)
+            expectComplete.fulfill()
         }
+        waitForExpectations()
         #endif
     }
     
