@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/customerio/customerio-ios/compare/1.0.2...1.0.3) (2022-03-15)
+
+
+### Bug Fixes
+
+* delete device token from profile on logout ([#145](https://github.com/customerio/customerio-ios/issues/145)) ([d976c27](https://github.com/customerio/customerio-ios/commit/d976c27b3200f124260c3d006f825613cb308b12))
+
 ## [1.0.2](https://github.com/customerio/customerio-ios/compare/1.0.1...1.0.2) (2022-02-07)
 
 

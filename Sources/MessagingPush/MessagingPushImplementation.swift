@@ -260,7 +260,7 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
     }
 
     // stop sending push to a profile that is no longer identified
-    func profileStoppedBeingIdentified(oldIdentifier: String) {
+    func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
         logger.debug("hook: deleting device token from profile no longer identified")
 
         deleteDeviceToken()

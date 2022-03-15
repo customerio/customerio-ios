@@ -1759,9 +1759,9 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
         profileIdentifiedCallsCount = 0
         profileIdentifiedReceivedArguments = nil
         profileIdentifiedReceivedInvocations = []
-        profileStoppedBeingIdentifiedCallsCount = 0
-        profileStoppedBeingIdentifiedReceivedArguments = nil
-        profileStoppedBeingIdentifiedReceivedInvocations = []
+        beforeProfileStoppedBeingIdentifiedCallsCount = 0
+        beforeProfileStoppedBeingIdentifiedReceivedArguments = nil
+        beforeProfileStoppedBeingIdentifiedReceivedInvocations = []
     }
 
     // MARK: - beforeIdentifiedProfileChange
@@ -1821,31 +1821,31 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, TrackingMock {
         profileIdentifiedClosure?(identifier)
     }
 
-    // MARK: - profileStoppedBeingIdentified
+    // MARK: - beforeProfileStoppedBeingIdentified
 
     /// Number of times the function was called.
-    public private(set) var profileStoppedBeingIdentifiedCallsCount = 0
+    public private(set) var beforeProfileStoppedBeingIdentifiedCallsCount = 0
     /// `true` if the function was ever called.
-    public var profileStoppedBeingIdentifiedCalled: Bool {
-        profileStoppedBeingIdentifiedCallsCount > 0
+    public var beforeProfileStoppedBeingIdentifiedCalled: Bool {
+        beforeProfileStoppedBeingIdentifiedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var profileStoppedBeingIdentifiedReceivedArguments: String?
+    public private(set) var beforeProfileStoppedBeingIdentifiedReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var profileStoppedBeingIdentifiedReceivedInvocations: [String] = []
+    public private(set) var beforeProfileStoppedBeingIdentifiedReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var profileStoppedBeingIdentifiedClosure: ((String) -> Void)?
+    public var beforeProfileStoppedBeingIdentifiedClosure: ((String) -> Void)?
 
-    /// Mocked function for `profileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func profileStoppedBeingIdentified(oldIdentifier: String) {
+    /// Mocked function for `beforeProfileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
         mockCalled = true
-        profileStoppedBeingIdentifiedCallsCount += 1
-        profileStoppedBeingIdentifiedReceivedArguments = oldIdentifier
-        profileStoppedBeingIdentifiedReceivedInvocations.append(oldIdentifier)
-        profileStoppedBeingIdentifiedClosure?(oldIdentifier)
+        beforeProfileStoppedBeingIdentifiedCallsCount += 1
+        beforeProfileStoppedBeingIdentifiedReceivedArguments = oldIdentifier
+        beforeProfileStoppedBeingIdentifiedReceivedInvocations.append(oldIdentifier)
+        beforeProfileStoppedBeingIdentifiedClosure?(oldIdentifier)
     }
 }
 
