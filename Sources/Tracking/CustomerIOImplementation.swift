@@ -150,13 +150,14 @@ public class CustomerIOImplementation: CustomerIOInstance {
             return
         }
 
-        logger.debug("deleting profile info from device storage")
-        profileStore.identifier = nil
-
         logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfileIdentifier)")
         hooks.profileIdentifyHooks.forEach { hook in
-            hook.profileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
+            hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
         }
+
+        logger.debug("deleting profile info from device storage")
+        // remove device identifier from storage last so hooks can succeed.
+        profileStore.identifier = nil
     }
 
     public func track<RequestBody: Encodable>(

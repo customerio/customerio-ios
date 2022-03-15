@@ -16,8 +16,9 @@ public protocol ProfileIdentifyHook: AutoMockable {
     /// called when a profile is newly identified in the SDK.
     func profileIdentified(identifier: String)
     /// profile previously identified has stopped being identified.
-    /// called only when there was a profile that was previously identified
-    func profileStoppedBeingIdentified(oldIdentifier: String)
+    /// called before finishing the process of deleting which means you can still
+    /// retrieve the identifier from SDK storage.
+    func beforeProfileStoppedBeingIdentified(oldIdentifier: String)
 }
 
 // When a module wants to run background queue tasks, they implement this hook.
