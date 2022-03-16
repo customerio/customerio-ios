@@ -31,7 +31,7 @@ private extension MessagingPushQueueRunner {
         }
 
         let httpParams = HttpRequestParams(endpoint: .registerDevice(identifier: taskData.profileIdentifier),
-                                           headers: nil, body: taskData.attributesJsonString!.data)
+                                           headers: nil, body: taskData.attributesJsonString?.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
