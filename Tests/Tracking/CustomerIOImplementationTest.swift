@@ -138,7 +138,25 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.clearIdentify()
 
         XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
-        XCTAssertEqual(profileIdentifyHookMock.profileStoppedBeingIdentifiedCallsCount, 1)
+        XCTAssertEqual(profileIdentifyHookMock.beforeProfileStoppedBeingIdentifiedCallsCount, 1)
+
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_clearIdentify_expectAbleToGetIdentifierFromStorageInHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        let expect = expectation(description: "Expect to call hook")
+        profileIdentifyHookMock.beforeProfileStoppedBeingIdentifiedClosure = { actualOldIdentifier in
+            XCTAssertNotNil(self.profileStoreMock.identifier)
+            XCTAssertEqual(self.profileStoreMock.identifier, actualOldIdentifier)
+
+            expect.fulfill()
+        }
+
+        customerIO.clearIdentify()
+
+        waitForExpectations()
 
         XCTAssertNil(profileStoreMock.identifier)
     }
