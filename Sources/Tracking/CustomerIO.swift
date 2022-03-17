@@ -258,9 +258,7 @@ public class CustomerIO: CustomerIOInstance {
 
      Example use:
      ```
-     CustomerIO.config {
-     $0.deviceAttributes = ["foo" : "bar"]
-     }
+     CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
      ```
      */
     public var deviceAttributes: [String: Any] {
