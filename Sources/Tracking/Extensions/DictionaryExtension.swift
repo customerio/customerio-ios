@@ -1,7 +1,7 @@
 import Foundation
 
-extension Dictionary where Key == String, Value == Any {
-    public func mergeWith(_ other: [String: Any]) -> [String: Any] {
-        return self.merging(other) { $1 }
+public extension Dictionary where Key == String, Value == Any {
+    func mergeWith(_ other: [String: Any]) -> [String: Any] {
+        merging(other) { $1 }
     }
 }

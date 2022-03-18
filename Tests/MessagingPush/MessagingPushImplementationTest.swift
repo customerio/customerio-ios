@@ -12,6 +12,8 @@ class MessagingPushImplementationTest: UnitTest {
     private let queueMock = QueueMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let sdkConfigStoreMock = SdkConfigStoreMock()
+    private let deviceAttributesMock = DeviceAttributesProviderMock()
+    private let dateUtilStub = DateUtilStub()
 
     override func setUp() {
         super.setUp()
@@ -20,7 +22,9 @@ class MessagingPushImplementationTest: UnitTest {
         messagingPush = MessagingPushImplementation(siteId: testSiteId, profileStore: profileStoreMock,
                                                     backgroundQueue: queueMock,
                                                     globalDataStore: globalDataStoreMock, logger: log,
-                                                    sdkConfigStore: sdkConfigStoreMock, jsonAdapter: jsonAdapter)
+                                                    sdkConfigStore: sdkConfigStoreMock, jsonAdapter: jsonAdapter,
+                                                    deviceAttributesProvider: deviceAttributesMock,
+                                                    dateUtil: dateUtilStub)
     }
 
     // MARK: registerDeviceToken
@@ -38,10 +42,13 @@ class MessagingPushImplementationTest: UnitTest {
     func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
+        let givenDefaultAttributes = ["foo": "bar"]
         profileStoreMock.identifier = givenIdentifier
         queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
+            onComplete(givenDefaultAttributes)
+        }
 
-        configureDeviceAttributes(to: true)
         messagingPush.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
@@ -49,10 +56,16 @@ class MessagingPushImplementationTest: UnitTest {
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
             .value as! RegisterPushNotificationQueueTaskData
         XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
+        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(device:
+            Device(token: givenDeviceToken,
+                   lastUsed: dateUtilStub
+                       .givenNow,
+                   attributes: StringAnyEncodable(givenDefaultAttributes))))
+        XCTAssertEqual(actualQueueTaskData.attributesJsonString, expectedJsonString)
 
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
-    
+
     // MARK: deleteDeviceToken
 
     func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
@@ -120,48 +133,5 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData.deliveryId, givenDeliveryId)
         XCTAssertEqual(actualQueueTaskData.event, givenEvent)
         XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
-    }
-    
-    // MARK: DeviceAttributes
-    func test_deviceAttributes_givenDefaultDeviceAttributesEnabled_expectGetDefaultDeviceMetrics() {
-        configureDeviceAttributes(to: true)
-        #if canImport(UIKit)
-        
-        let expectComplete = expectation(description: "Expect to complete")
-                
-        messagingPush.getDefaultDeviceAttributes{ defaultAttributes in
-            let expectedAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-            let expectedOS = "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
-            let expectedLocale = DeviceInfo().deviceLocale.replacingOccurrences(of: "_", with: "-")
-            let expectedModel = UIDevice.deviceModelCode
-            let expectedSDKVersion = SdkVersion.version
-            XCTAssertEqual(defaultAttributes!["app_version"] as? String, expectedAppVersion)
-            XCTAssertEqual(defaultAttributes!["device_os"] as? String, expectedOS)
-            XCTAssertEqual(defaultAttributes!["device_locale"] as? String, expectedLocale)
-            XCTAssertEqual(defaultAttributes!["device_model"] as? String, expectedModel)
-            XCTAssertEqual(defaultAttributes!["push_subscribed"] as? String, "false")
-            XCTAssertEqual(defaultAttributes!["cio_sdk_version"] as? String, expectedSDKVersion)
-            expectComplete.fulfill()
-        }
-        waitForExpectations()
-        #endif
-    }
-    
-    func test_deviceAttributes_givenDefaultDeviceAttributesDisabled_expectNil() {
-        let givenDeviceToken = String.random
-        configureDeviceAttributes(to: false)
-
-        // This function returns `nil` in case
-        // `autoTrackDeviceAttributes` is set to `false`
-        messagingPush.getDefaultDeviceAttributes{ defaultAttributes in
-            
-            XCTAssertNil(defaultAttributes)
-        }
-    }
-    
-    private func configureDeviceAttributes(to value : Bool) {
-        var config = SdkConfig()
-        config.autoTrackDeviceAttributes = value
-        sdkConfigStoreMock.config = config
     }
 }

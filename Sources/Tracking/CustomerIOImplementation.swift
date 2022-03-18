@@ -83,6 +83,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
             identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
         }
     }
+
     public var deviceAttributes: [String: Any] {
         get {
             [:]

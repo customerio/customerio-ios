@@ -12,6 +12,7 @@ class HttpClientTest: UnitTest {
     private var configStoreMock = SdkConfigStoreMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let timerMock = SimpleTimerMock()
+    private let deviceInfoMock = DeviceInfoMock()
 
     private var client: HttpClient!
 
@@ -21,6 +22,7 @@ class HttpClientTest: UnitTest {
         super.setUp()
 
         credentialsStoreMock.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
+        deviceInfoMock.underlyingSdkVersion = "1.0.0" // HttpClient uses this during initialization. Needed to set now.
 
         configStoreMock.config = SdkConfig()
 
@@ -30,7 +32,8 @@ class HttpClientTest: UnitTest {
                                globalDataStore: globalDataStoreMock,
                                logger: log,
                                timer: timerMock,
-                               retryPolicy: retryPolicyMock)
+                               retryPolicy: retryPolicyMock,
+                               deviceInfo: deviceInfoMock)
     }
 
     private func assertHttpRequestsPaused(paused: Bool) {
@@ -287,19 +290,28 @@ class HttpClientTest: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
-    func testGetUserAgent() {
-        let userAgentValue = CIOHttpClient.getUserAgent()
+    // MARK: getUserAgent
 
-        var expectedUserAgent = "Customer.io iOS Client/\(SdkVersion.version)"
+    func test_getUserAgent_givenDeviceInfoNotAvailable_expectShortUserAgent() {
+        let expected = "Customer.io iOS Client/1.0.1"
+        deviceInfoMock.underlyingSdkVersion = "1.0.1"
+        deviceInfoMock.underlyingDeviceModel = nil
 
-        #if canImport(UIKit)
-        let deviceModel = UIDevice.deviceModelCode
-        let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? ""
-        let osInfo = "\(UIDevice().systemName) \(UIDevice().systemVersion)"
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        expectedUserAgent += " (\(deviceModel); \(osInfo)) \(appName)/\(appVersion)"
-        #endif
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock)
 
-        XCTAssertEqual(userAgentValue, expectedUserAgent)
+        XCTAssertEqual(expected, actual)
+    }
+
+    func test_getUserAgent_givenDeviceInfoAvailable_expectLongUserAgent() {
+        let expected = "Customer.io iOS Client/1.0.1 (iPhone12; 14.1) SuperAwesomeStore/3.4.5"
+        deviceInfoMock.underlyingSdkVersion = "1.0.1"
+        deviceInfoMock.underlyingDeviceModel = "iPhone12"
+        deviceInfoMock.underlyingOsInfo = "14.1"
+        deviceInfoMock.underlyingCustomerAppName = "SuperAwesomeStore"
+        deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
+
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock)
+
+        XCTAssertEqual(expected, actual)
     }
 }

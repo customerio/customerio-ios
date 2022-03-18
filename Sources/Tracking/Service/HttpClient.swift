@@ -34,10 +34,12 @@ public class CIOHttpClient: HttpClient {
         globalDataStore: GlobalDataStore,
         logger: Logger,
         timer: SimpleTimer,
-        retryPolicy: HttpRetryPolicy
+        retryPolicy: HttpRetryPolicy,
+        deviceInfo: DeviceInfo
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey)
+        self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey,
+                                       deviceInfo: deviceInfo)
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
@@ -133,7 +135,7 @@ public class CIOHttpClient: HttpClient {
 }
 
 extension CIOHttpClient {
-    static func getSession(siteId: String, apiKey: String) -> URLSession {
+    static func getSession(siteId: String, apiKey: String, deviceInfo: DeviceInfo) -> URLSession {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
@@ -142,7 +144,7 @@ extension CIOHttpClient {
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": getUserAgent()]
+                                                  "User-Agent": getUserAgent(deviceInfo: deviceInfo)]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -164,15 +166,17 @@ extension CIOHttpClient {
      * Otherwise will return
      * `Customer.io iOS Client/1.0.0-alpha.16`
      */
-    static func getUserAgent() -> String {
+    static func getUserAgent(deviceInfo: DeviceInfo) -> String {
         var userAgent = "Customer.io iOS Client/"
-        userAgent += SdkVersion.version
-        #if canImport(UIKit)
-        let deviceDetail = DeviceInfo()
-        userAgent += " (\(deviceDetail.deviceInfo); \(deviceDetail.osInfo))"
-        userAgent += " \(deviceDetail.customerAppName)/"
-        userAgent += deviceDetail.customerAppVersion
-        #endif
+        userAgent += deviceInfo.sdkVersion
+
+        if let deviceModel = deviceInfo.deviceModel,
+           let deviceOs = deviceInfo.osInfo {
+            userAgent += " (\(deviceModel); \(deviceOs))"
+            userAgent += " \(deviceInfo.customerAppName)/"
+            userAgent += deviceInfo.customerAppVersion
+        }
+
         return userAgent
     }
 

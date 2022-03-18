@@ -281,8 +281,6 @@ public protocol {{ argument.moduleName }}Mock {
 {% endfor %}
 
     public func reset() {
-        self.mockCalled = false 
-
 {% for variable in type.allVariables|!definedInExtension %}
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
@@ -304,6 +302,8 @@ public protocol {{ argument.moduleName }}Mock {
     {% if method|annotated:"IfCanImport" %}
     #endif 
     {% endif %}
+
+        self.mockCalled = false // do last as resetting properties above can make this true
     
 {% endfor %}
     }

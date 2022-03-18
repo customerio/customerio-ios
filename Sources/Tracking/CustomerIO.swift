@@ -252,6 +252,7 @@ public class CustomerIO: CustomerIOInstance {
             implementation?.profileAttributes = newValue
         }
     }
+
     /**
      Use `deviceAttributes` to provide additional and custom device attributes
      apart from the ones the SDK is programmed to send to customer workspace.
