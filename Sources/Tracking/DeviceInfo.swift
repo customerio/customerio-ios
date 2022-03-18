@@ -27,7 +27,7 @@ public class CIODeviceInfo: DeviceInfo {
         #if canImport(UIKit)
         return UIDevice.deviceModelCode
         #else
-        return null
+        return nil
         #endif
     }
 
@@ -35,7 +35,7 @@ public class CIODeviceInfo: DeviceInfo {
         #if canImport(UIKit)
         return "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
         #else
-        return null
+        return nil
         #endif
     }
 
