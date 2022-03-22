@@ -173,8 +173,7 @@ extension CIOHttpClient {
         if let deviceModel = deviceInfo.deviceModel,
            let deviceOs = deviceInfo.osInfo {
             userAgent += " (\(deviceModel); \(deviceOs))"
-            userAgent += " \(deviceInfo.customerAppName)/"
-            userAgent += deviceInfo.customerAppVersion
+            userAgent += " \(deviceInfo.customerBundleId)/\(deviceInfo.customerAppVersion)"
         }
 
         return userAgent
