@@ -49,7 +49,7 @@ class DeviceAttributesProviderTest: UnitTest {
             "cio_sdk_version": givenSdkVersion,
             "app_version": givenAppVersion,
             "device_locale": givenDeviceLocale,
-            "push_subscribed": "true"
+            "push_enabled": "true"
         ]
         deviceInfoMock.underlyingSdkVersion = givenSdkVersion
         deviceInfoMock.underlyingCustomerAppVersion = givenAppVersion

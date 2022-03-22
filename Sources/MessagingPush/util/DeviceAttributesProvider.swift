@@ -33,7 +33,7 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
             deviceAttributes["device_os"] = deviceOs
         }
         deviceInfo.isPushSubscribed { isSubscribed in
-            deviceAttributes["push_subscribed"] = String(isSubscribed)
+            deviceAttributes["push_enabled"] = String(isSubscribed)
 
             onComplete(deviceAttributes)
         }
