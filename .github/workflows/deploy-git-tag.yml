@@ -20,6 +20,7 @@ jobs:
           # version numbers below can be in many forms: M, M.m, M.m.p
           semantic_version: 18
           extra_plugins: |
+            conventional-changelog-conventionalcommits@4
             @semantic-release/changelog@6
             @semantic-release/git@10
             @semantic-release/github@8
@@ -28,6 +29,10 @@ jobs:
           # Needs to push git commits to repo. Needs write access. 
           GITHUB_TOKEN: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
           
+      - name: Prepare to sync branches 
+        run: |
+          git config user.email "frontend@customer.io"
+          git config user.name "Ami CI"
       - name: Copy commits into develop after main deployment 
         uses: levibostian/action-sync-branches@v1
         with:
