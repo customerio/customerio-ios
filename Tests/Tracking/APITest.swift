@@ -79,6 +79,11 @@ class TrackingAPITest: UnitTest {
         CustomerIO.shared.profileAttributes = dictionaryData
         mock.profileAttributes = dictionaryData
         instance.profileAttributes = dictionaryData
+
+        // device attributes
+        CustomerIO.shared.deviceAttributes = dictionaryData
+        mock.deviceAttributes = dictionaryData
+        instance.deviceAttributes = dictionaryData
     }
 
     func test_allPublicSdkConfigOptions() throws {

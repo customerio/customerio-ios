@@ -39,7 +39,6 @@ public class CustomerIOImplementation: CustomerIOInstance {
         self._siteId = siteId
 
         let diGraph = DITracking.getInstance(siteId: siteId)
-
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfigStore = diGraph.sdkConfigStore
@@ -82,6 +81,17 @@ public class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
+        }
+    }
+
+    public var deviceAttributes: [String: Any] {
+        get {
+            [:]
+        }
+        set {
+            hooks.deviceAttributesHooks.forEach { hook in
+                hook.customDeviceAttributesAdded(attributes: newValue)
+            }
         }
     }
 

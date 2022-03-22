@@ -118,34 +118,48 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
     }
 
     public func reset() {
-        mockCalled = false
-
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         didRegisterForRemoteNotificationsCallsCount = 0
         didRegisterForRemoteNotificationsReceivedArguments = nil
         didRegisterForRemoteNotificationsReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         didFailToRegisterForRemoteNotificationsCallsCount = 0
         didFailToRegisterForRemoteNotificationsReceivedArguments = nil
         didFailToRegisterForRemoteNotificationsReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         deleteDeviceTokenCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
         trackMetricCallsCount = 0
         trackMetricReceivedArguments = nil
         trackMetricReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         #if canImport(UserNotifications)
         didReceiveNotificationRequestCallsCount = 0
         didReceiveNotificationRequestReceivedArguments = nil
         didReceiveNotificationRequestReceivedInvocations = []
         #endif
+
+        mockCalled = false // do last as resetting properties above can make this true
         #if canImport(UserNotifications)
         serviceExtensionTimeWillExpireCallsCount = 0
         #endif
+
+        mockCalled = false // do last as resetting properties above can make this true
         #if canImport(UserNotifications)
         userNotificationCenterReceivedResponseCallsCount = 0
         userNotificationCenterReceivedResponseReceivedArguments = nil
         userNotificationCenterReceivedResponseReceivedInvocations = []
         #endif
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - registerDeviceToken

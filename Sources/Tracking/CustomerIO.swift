@@ -48,6 +48,7 @@ public protocol CustomerIOInstance: AutoMockable {
     )
 
     var profileAttributes: [String: Any] { get set }
+    var deviceAttributes: [String: Any] { get set }
 
     func config(
         // sourcery:SkipParamCapture=true
@@ -249,6 +250,24 @@ public class CustomerIO: CustomerIOInstance {
         }
         set {
             implementation?.profileAttributes = newValue
+        }
+    }
+
+    /**
+     Use `deviceAttributes` to provide additional and custom device attributes
+     apart from the ones the SDK is programmed to send to customer workspace.
+
+     Example use:
+     ```
+     CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
+     ```
+     */
+    public var deviceAttributes: [String: Any] {
+        get {
+            implementation?.deviceAttributes ?? [:]
+        }
+        set {
+            implementation?.deviceAttributes = newValue
         }
     }
 

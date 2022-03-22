@@ -24,4 +24,8 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     var queueRunnerHook: QueueRunnerHook? {
         diGraphMessaging.queueRunnerHook
     }
+
+    var deviceAttributesHook: DeviceAttributesHook? {
+        MessagingPushImplementation(siteId: siteId)
+    }
 }

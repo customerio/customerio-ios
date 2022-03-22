@@ -58,6 +58,7 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 public enum DependencyTracking: CaseIterable {
+    case deviceInfo
     case httpClient
     case sdkCredentialsStore
     case globalDataStore
@@ -78,6 +79,7 @@ public enum DependencyTracking: CaseIterable {
     case sdkConfigStore
     case jsonAdapter
     case lockManager
+    case dateUtil
     case httpRequestRunner
     case keyValueStorage
 }
@@ -147,6 +149,7 @@ public class DITracking {
      */
     public func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
+        case .deviceInfo: return deviceInfo as! T
         case .httpClient: return httpClient as! T
         case .sdkCredentialsStore: return sdkCredentialsStore as! T
         case .globalDataStore: return globalDataStore as! T
@@ -167,6 +170,7 @@ public class DITracking {
         case .sdkConfigStore: return sdkConfigStore as! T
         case .jsonAdapter: return jsonAdapter as! T
         case .lockManager: return lockManager as! T
+        case .dateUtil: return dateUtil as! T
         case .httpRequestRunner: return httpRequestRunner as! T
         case .keyValueStorage: return keyValueStorage as! T
         }
@@ -175,6 +179,18 @@ public class DITracking {
     /**
      Use the property accessors below to inject pre-typed dependencies.
      */
+
+    // DeviceInfo
+    public var deviceInfo: DeviceInfo {
+        if let overridenDep = overrides[.deviceInfo] {
+            return overridenDep as! DeviceInfo
+        }
+        return newDeviceInfo
+    }
+
+    private var newDeviceInfo: DeviceInfo {
+        CIODeviceInfo()
+    }
 
     // HttpClient
     public var httpClient: HttpClient {
@@ -187,7 +203,7 @@ public class DITracking {
     private var newHttpClient: HttpClient {
         CIOHttpClient(siteId: siteId, sdkCredentialsStore: sdkCredentialsStore, configStore: sdkConfigStore,
                       jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore,
-                      logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy)
+                      logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, deviceInfo: deviceInfo)
     }
 
     // SdkCredentialsStore
@@ -498,6 +514,18 @@ public class DITracking {
 
     private func _get_lockManager() -> LockManager {
         LockManager()
+    }
+
+    // DateUtil
+    public var dateUtil: DateUtil {
+        if let overridenDep = overrides[.dateUtil] {
+            return overridenDep as! DateUtil
+        }
+        return newDateUtil
+    }
+
+    private var newDateUtil: DateUtil {
+        SdkDateUtil()
     }
 
     // HttpRequestRunner

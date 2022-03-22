@@ -13,6 +13,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let logger: Logger
     private let sdkConfigStore: SdkConfigStore
     private let jsonAdapter: JsonAdapter
+    private let deviceAttributesProvider: DeviceAttributesProvider
+    private let dateUtil: DateUtil
 
     /// testing init
     internal init(
@@ -22,7 +24,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         globalDataStore: GlobalDataStore,
         logger: Logger,
         sdkConfigStore: SdkConfigStore,
-        jsonAdapter: JsonAdapter
+        jsonAdapter: JsonAdapter,
+        deviceAttributesProvider: DeviceAttributesProvider,
+        dateUtil: DateUtil
     ) {
         self.siteId = siteId
         self.profileStore = profileStore
@@ -31,11 +35,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.logger = logger
         self.sdkConfigStore = sdkConfigStore
         self.jsonAdapter = jsonAdapter
+        self.deviceAttributesProvider = deviceAttributesProvider
+        self.dateUtil = dateUtil
     }
 
     init(siteId: String) {
         self.siteId = siteId
         let diGraph = DITracking.getInstance(siteId: siteId)
+        let messagingPushDiGraph = DIMessagingPush.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
@@ -43,6 +50,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.logger = diGraph.logger
         self.sdkConfigStore = diGraph.sdkConfigStore
         self.jsonAdapter = diGraph.jsonAdapter
+        self.deviceAttributesProvider = messagingPushDiGraph.deviceAttributesProvider
+        self.dateUtil = diGraph.dateUtil
     }
 
     /**
@@ -50,8 +59,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        logger.info("registering device token \(deviceToken)")
+        addDeviceAttributes(deviceToken: deviceToken)
+    }
 
+    /**
+     Adds device default and custom attributes and registers device token.
+     */
+    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
+        logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
         // we can reference the token and register it to a new profile.
@@ -62,12 +77,26 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return
         }
 
-        _ = backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
-                                    data: RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
-                                                                                deviceToken: deviceToken,
-                                                                                lastUsed: Date()),
-                                    groupStart: .registeredPushToken(token: deviceToken),
-                                    blockingGroups: [.identifiedProfile(identifier: identifier)])
+        deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
+            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
+
+            let encodableBody =
+                StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
+            let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken,
+                                                                   lastUsed: self.dateUtil.now,
+                                                                   attributes: encodableBody))
+
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, encoder: nil) else {
+                return
+            }
+            let queueTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
+                                                                      attributesJsonString: jsonBodyString)
+
+            _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
+                                             data: queueTaskData,
+                                             groupStart: .registeredPushToken(token: deviceToken),
+                                             blockingGroups: [.identifiedProfile(identifier: identifier)])
+        }
     }
 
     /**
@@ -264,5 +293,13 @@ extension MessagingPushImplementation: ProfileIdentifyHook {
         logger.debug("hook: deleting device token from profile no longer identified")
 
         deleteDeviceToken()
+    }
+}
+
+extension MessagingPushImplementation: DeviceAttributesHook {
+    // Adds custom device attributes to background queue and sends to workspace
+    func customDeviceAttributesAdded(attributes: [String: Any]) {
+        guard let deviceToken = globalDataStore.pushDeviceToken else { return }
+        addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
     }
 }

@@ -11,17 +11,20 @@ class MessagingPushImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let queueMock = QueueMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
-    private let sdkConfigMock = SdkConfigStoreMock()
+    private let sdkConfigStoreMock = SdkConfigStoreMock()
+    private let deviceAttributesMock = DeviceAttributesProviderMock()
+    private let dateUtilStub = DateUtilStub()
 
     override func setUp() {
         super.setUp()
 
         mockCustomerIO.siteId = testSiteId
-
         messagingPush = MessagingPushImplementation(siteId: testSiteId, profileStore: profileStoreMock,
                                                     backgroundQueue: queueMock,
                                                     globalDataStore: globalDataStoreMock, logger: log,
-                                                    sdkConfigStore: sdkConfigMock, jsonAdapter: jsonAdapter)
+                                                    sdkConfigStore: sdkConfigStoreMock, jsonAdapter: jsonAdapter,
+                                                    deviceAttributesProvider: deviceAttributesMock,
+                                                    dateUtil: dateUtilStub)
     }
 
     // MARK: registerDeviceToken
@@ -39,8 +42,12 @@ class MessagingPushImplementationTest: UnitTest {
     func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
+        let givenDefaultAttributes = ["foo": "bar"]
         profileStoreMock.identifier = givenIdentifier
         queueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
+            onComplete(givenDefaultAttributes)
+        }
 
         messagingPush.registerDeviceToken(givenDeviceToken)
 
@@ -49,7 +56,12 @@ class MessagingPushImplementationTest: UnitTest {
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
             .value as! RegisterPushNotificationQueueTaskData
         XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
+        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(device:
+            Device(token: givenDeviceToken,
+                   lastUsed: dateUtilStub
+                       .givenNow,
+                   attributes: StringAnyEncodable(givenDefaultAttributes))))
+        XCTAssertEqual(actualQueueTaskData.attributesJsonString, expectedJsonString)
 
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }

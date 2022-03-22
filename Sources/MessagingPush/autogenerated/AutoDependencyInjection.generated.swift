@@ -61,6 +61,7 @@ import Foundation
 public enum DependencyMessagingPush: CaseIterable {
     case moduleHookProvider
     case queueRunnerHook
+    case deviceAttributesProvider
 }
 
 /**
@@ -130,6 +131,7 @@ public class DIMessagingPush {
         switch dep {
         case .moduleHookProvider: return moduleHookProvider as! T
         case .queueRunnerHook: return queueRunnerHook as! T
+        case .deviceAttributesProvider: return deviceAttributesProvider as! T
         }
     }
 
@@ -159,5 +161,17 @@ public class DIMessagingPush {
 
     private var newQueueRunnerHook: QueueRunnerHook {
         MessagingPushQueueRunner(siteId: siteId, diTracking: dITracking)
+    }
+
+    // DeviceAttributesProvider
+    internal var deviceAttributesProvider: DeviceAttributesProvider {
+        if let overridenDep = overrides[.deviceAttributesProvider] {
+            return overridenDep as! DeviceAttributesProvider
+        }
+        return newDeviceAttributesProvider
+    }
+
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(diTracking: dITracking)
     }
 }
