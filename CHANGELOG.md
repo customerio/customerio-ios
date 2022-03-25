@@ -1,3 +1,11 @@
+## [1.1.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.1.0-alpha.1...1.1.0-alpha.2) (2022-03-25)
+
+
+### Bug Fixes
+
+* remove platform from os_version attribute ([f735197](https://github.com/customerio/customerio-ios/commit/f7351973d1a0edf47952133fa6b62bfe06a3e5a1))
+* use dashes instead of underscores device locale ([f85e858](https://github.com/customerio/customerio-ios/commit/f85e858d673fa24da324e0feecb4678c241c907e))
+
 ## [1.1.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.0.3...1.1.0-alpha.1) (2022-03-22)
 
 
