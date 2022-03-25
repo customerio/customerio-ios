@@ -29,8 +29,8 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         if let deviceModel = deviceInfo.deviceModel {
             deviceAttributes["device_model"] = deviceModel
         }
-        if let deviceOs = deviceInfo.osInfo {
-            deviceAttributes["device_os"] = deviceOs
+        if let deviceOsVersion = deviceInfo.osVersion {
+            deviceAttributes["device_os"] = deviceOsVersion
         }
         deviceInfo.isPushSubscribed { isSubscribed in
             deviceAttributes["push_enabled"] = String(isSubscribed)

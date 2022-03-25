@@ -15,6 +15,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     private let jsonAdapter: JsonAdapter
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
+    private let deviceInfo: DeviceInfo
 
     /// testing init
     internal init(
@@ -26,7 +27,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         sdkConfigStore: SdkConfigStore,
         jsonAdapter: JsonAdapter,
         deviceAttributesProvider: DeviceAttributesProvider,
-        dateUtil: DateUtil
+        dateUtil: DateUtil,
+        deviceInfo: DeviceInfo
     ) {
         self.siteId = siteId
         self.profileStore = profileStore
@@ -37,6 +39,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = jsonAdapter
         self.deviceAttributesProvider = deviceAttributesProvider
         self.dateUtil = dateUtil
+        self.deviceInfo = deviceInfo
     }
 
     init(siteId: String) {
@@ -52,6 +55,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.deviceAttributesProvider = messagingPushDiGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
+        self.deviceInfo = diGraph.deviceInfo
     }
 
     /**
@@ -76,6 +80,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
+        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
+        // and iOS should always be non-nil.
+        guard let deviceOsName = deviceInfo.osName else {
+            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
+            return
+        }
 
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
@@ -83,6 +93,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             let encodableBody =
                 StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
             let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken,
+                                                                   platform: deviceOsName,
                                                                    lastUsed: self.dateUtil.now,
                                                                    attributes: encodableBody))
 
