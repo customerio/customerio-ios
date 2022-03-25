@@ -67,7 +67,11 @@ public class CIODeviceInfo: DeviceInfo {
     }
 
     public var deviceLocale: String {
-        Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
+        guard let preferredIdentifier = Locale.preferredLanguages.first else {
+            return Locale.current.identifier
+        }
+
+        return preferredIdentifier.replacingOccurrences(of: "_", with: "-")
     }
 
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
