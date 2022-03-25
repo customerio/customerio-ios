@@ -303,10 +303,11 @@ class HttpClientTest: UnitTest {
     }
 
     func test_getUserAgent_givenDeviceInfoAvailable_expectLongUserAgent() {
-        let expected = "Customer.io iOS Client/1.0.1 (iPhone12; 14.1) io.customer.superawesomestore/3.4.5"
+        let expected = "Customer.io iOS Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
         deviceInfoMock.underlyingSdkVersion = "1.0.1"
         deviceInfoMock.underlyingDeviceModel = "iPhone12"
-        deviceInfoMock.underlyingOsInfo = "14.1"
+        deviceInfoMock.underlyingOsVersion = "14.1"
+        deviceInfoMock.underlyingOsName = "iOS"
         deviceInfoMock.underlyingCustomerAppName = "SuperAwesomeStore"
         deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
         deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
