@@ -8,6 +8,11 @@ jobs:
     name: Promote a branch to the next release 
     runs-on: ubuntu-latest 
     steps:
+      - uses: actions/checkout@v2
+      - name: Prepare to promote 
+        run: |
+          git config user.email "frontend@customer.io"
+          git config user.name "Ami CI"
       - name: Promote release 
         uses: levibostian/action-promote-semantic-release@v1
         with:

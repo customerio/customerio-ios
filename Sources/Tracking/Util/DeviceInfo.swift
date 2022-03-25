@@ -8,7 +8,10 @@ import UserNotifications
 
 public protocol DeviceInfo: AutoMockable {
     var deviceModel: String? { get }
-    var osInfo: String? { get }
+    // Version of the OS. Example: "15.2.1" for iOS 15.2.1.
+    var osVersion: String? { get }
+    // OS name. Example: iOS, watchOS
+    var osName: String? { get }
     var customerAppName: String { get }
     var customerAppVersion: String { get }
     var customerBundleId: String { get }
@@ -31,9 +34,17 @@ public class CIODeviceInfo: DeviceInfo {
         #endif
     }
 
-    public var osInfo: String? {
+    public var osVersion: String? {
         #if canImport(UIKit)
-        return "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
+        return UIDevice.current.systemVersion
+        #else
+        return nil
+        #endif
+    }
+
+    public var osName: String? {
+        #if canImport(UIKit)
+        return UIDevice.current.systemName
         #else
         return nil
         #endif
@@ -56,7 +67,7 @@ public class CIODeviceInfo: DeviceInfo {
     }
 
     public var deviceLocale: String {
-        Locale.current.identifier
+        Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
     }
 
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
