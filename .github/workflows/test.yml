@@ -27,11 +27,20 @@ jobs:
     - name: Get XCode schemes (xcode ${{ matrix.xcode }})
       run: xcrun xcodebuild -list
 
-    # run command made with help from `fastlane scan`. Running `scan` will output the command that it uses to run tests that you can use for help constructing test command. 
-    # `-scheme` name found by running: `xcrun xcodebuild -list` (or, see output of workflow run)
-    # `-destination` chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
+    - name: Setup Ruby to run Fastlane 
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 2.7.2
     - name: Run tests (xcode ${{ matrix.xcode }})
-      run: xcrun xcodebuild -scheme Customer.io-Package -destination 'platform=iOS Simulator,name=iPhone 8' build test | xcpretty  --report html --output 'test-report.html' --report junit --output 'test-report.xml'
+      uses: maierj/fastlane-action@v2.0.1
+      with:
+        lane: 'scan'
+        skip-tracking: true
+
+    - name: Upload code coverage report 
+      uses: codecov/codecov-action@v2
+      with: 
+        verbose: true 
 
     - name: Upload test report 
       uses: actions/upload-artifact@v2
