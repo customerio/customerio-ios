@@ -15,8 +15,6 @@ jobs:
         xcode: ["12.4", "12.5", "13.0"]
     runs-on: macos-11
     name: XCode macOS tests (xcode ${{ matrix.xcode }})
-    # skip if '[skip ci]' exists in commit message 
-    if: ${{ !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]') }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up XCode
@@ -66,8 +64,6 @@ jobs:
         # Can add `-arch X` to `swift build` command to compile for an architecture. Examples: -arch arm64, -arch x86_64
     runs-on: ${{ matrix.os }}
     name: SPM Linux tests (swift ${{ matrix.swift }})
-    # skip if '[skip ci]' exists in commit message 
-    if: ${{ !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]') }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Swift
