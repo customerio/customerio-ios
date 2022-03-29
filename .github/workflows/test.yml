@@ -34,11 +34,15 @@ jobs:
       with:
         lane: 'scan'
         skip-tracking: true
-
+        
+    - name: Generate code coverage report from .xcresult/
+      run: ./scripts/generate-code-coverage-report.sh ".build" "CioTracking,CioMessagingPushAPN,CioMessagingPushFCM,Common,"
+  
     - name: Upload code coverage report 
       uses: codecov/codecov-action@v2
       with: 
         verbose: true 
+        directory: .build/generated
 
     - name: Upload test report 
       uses: actions/upload-artifact@v2

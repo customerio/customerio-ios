@@ -14,7 +14,7 @@ output_directory(".")
 
 code_coverage(true)
 result_bundle(true) # required to get code coverage report 
-derived_data_path(".build/derivedData") # put in .build which is where SPM builds. this allows codecov to find the output
+derived_data_path(".build/derivedData")
 
 skip_build(true) # speed up testing 
 
