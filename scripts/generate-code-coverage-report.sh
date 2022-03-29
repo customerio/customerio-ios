@@ -1,16 +1,23 @@
 #!/bin/sh
 
-# After tests have been executed, we need to generate a file with the code 
-# coverage statistics in it. This file will then be what we upload to a 
-# code coverage service suh as CodeCov.io 
-# This means that it's important that we generate a code coverage report that 
-# the service we are using supports. 
+# In order for us to view the code coverage of our project, we need a few things. 
+# 1. Run tests to determine the test coverage of the project. 
+# 2. Generate a file that tells you the test coverage of your project. 
+# 3. (Optional) Upload this generated file to a service such as CodeCov.io which tells you 
+# historical data on the test coverage of your project. 
+#
+# This script takes care of item #2 in the list above. 
+# 
+# As of XCode 11, XCode generates a directory '*.xcresult/' after tests are run. This 
+# directory contains lots of data such as test coverage, test results, etc. We need to 
+# use this directory of data to generate the test coverage file. It's also important 
+# to generate a file format that CodeCov.io understands. 
 #
 # Use script: generate-code-coverage-report.sh ".build" "CioTracking,CioMessagingPushAPN,CioMessagingPushFCM,Common,"
 # first argument is the directory you want all generated files to go into. 
 # second argument is a comma separated list of targets that you want code coverage for. This includes common modules that are used internally. Make sure to have a trailing ',' in the string! 
 # 
-# The final report that you should be uploading will be 1 file in directory: .build/generated/
+# The final report that you should be uploading to CodeCov.io will be 1 file in directory: <directory-you-provided>/generated/
 
 set -e
 
@@ -27,8 +34,11 @@ XCODE_CODE_COV_REPORT="$OUTPUT_DIR/code-coverage.json"
 echo "Parsing .xcresult/ for code coverage to $XCODE_CODE_COV_REPORT"
 xcrun xccov view --report *.xcresult --json > "$XCODE_CODE_COV_REPORT"
 
-# Takes the newline separated string and turns it into a single line string separated by spaces and adds another space to the very end: Example: 'foo foo foo ' 
-# Then, sed command uses regex to turn 'foo bar ' into '--include-targets foo --include-targets bar'. 
+# We have now generated a human-readable file with code coverage information in it. However, CodeCov.io does not 
+# understand the format that we generated with xccov. We need to convert that file into a different format. 
+
+# Take the list of targets you provided to script and turns that into a CLI arguments string. 
+# sed separates 'TargetName,' from the targets string and then prepends that with arguments string. 
 TARGETS=$(echo "$LIST_TARGETS" | sed 's/\([A-Za-z0-9]*\),/--include-targets \1 /g')
 echo "Include targets command line argument: "
 echo "\n\nExpected value of variable: a string with format: '--include-targets foo --include-targets bar'"
@@ -40,6 +50,7 @@ echo "\n\n"
 echo "Generating lcov report from json"
 LCOV_REPORT="$OUTPUT_DIR/generated/code-coverage.info"
 mkdir -p "$OUTPUT_DIR/generated"
+# --trim-path takes '/full/path/to/customerio-ios/Sources/File.swift' and just turns it into '/Sources/File.swift' so that CodeCov.io understands what file we are talking about. 
 mint run trax-retail/xccov2lcov@master "$XCODE_CODE_COV_REPORT" --trim-path $(pwd) $TARGETS > "$LCOV_REPORT"
 echo "Generated lcov report to $LCOV_REPORT"
 

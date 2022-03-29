@@ -34,7 +34,8 @@ jobs:
       with:
         lane: 'scan'
         skip-tracking: true
-        
+
+    # Read generate script file to learn more about this CI step. 
     - name: Generate code coverage report from .xcresult/
       run: ./scripts/generate-code-coverage-report.sh ".build" "CioTracking,CioMessagingPushAPN,CioMessagingPushFCM,Common,"
   
