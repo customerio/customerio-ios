@@ -21,9 +21,17 @@ let package = Package(
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     ],
     dependencies: [],
-    targets: [
+    targets: [        
+        // Common - Code used by multiple modules in the SDK project. 
+        // this module is *not* exposed to the public. It's used internally. 
+        .target(name: "Common",
+                path: "Sources/Common"),
+        .testTarget(name: "CommonTests",
+                    dependencies: ["SharedTests"],
+                    path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
+                dependencies: ["Common"],
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
@@ -36,18 +44,20 @@ let package = Package(
                 
         // Messaging Push 
         .target(name: "CioMessagingPush",
-                dependencies: ["CioTracking"],
+                dependencies: ["Common", "CioTracking"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush"),
 
+        // APN
         .target(name: "CioMessagingPushAPN",
                 dependencies: ["CioMessagingPush"],
                 path: "Sources/MessagingPushAPN"),
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN"),
+        // FCM 
         .target(name: "CioMessagingPushFCM",
                 dependencies: ["CioMessagingPush"],
                 path: "Sources/MessagingPushFCM"),

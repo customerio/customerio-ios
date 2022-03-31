@@ -24,3 +24,8 @@ format:
 check-undocumented:
 	jazzy --module CioTracking --swift-build-tool spm --output /tmp/CioTrackingDocs > /dev/null 2>&1 && cat /tmp/CioTrackingDocs/undocumented.json
 	jazzy --module CioMessagingPush --swift-build-tool spm --output /tmp/CioMessagingPushDocs > /dev/null 2>&1 && cat /tmp/CioMessagingPushDocs/undocumented.json
+
+doc: 
+	jazzy --module CioTracking --output /tmp/CioTrackingDocs	
+	jazzy --module CioMessagingPushAPN --output /tmp/CioTrackingDocs
+	jazzy --module CioMessagingPushFCM --output /tmp/CioTrackingDocs

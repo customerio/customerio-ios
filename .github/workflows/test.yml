@@ -31,6 +31,7 @@ jobs:
     # `-scheme` name found by running: `xcrun xcodebuild -list` (or, see output of workflow run)
     # `-destination` chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
     - name: Run tests (xcode ${{ matrix.xcode }})
+      # !!! If you edit this command below, also edit .jazzy.yaml file. 
       run: xcrun xcodebuild -scheme Customer.io-Package -destination 'platform=iOS Simulator,name=iPhone 8' build test | xcpretty  --report html --output 'test-report.html' --report junit --output 'test-report.xml'
 
     - name: Upload test report 

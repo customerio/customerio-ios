@@ -1,0 +1,12 @@
+# Contains configuration settings for 'jazzy' CLI tool. 
+# Config file doesn't need to exist as all config options can be set in Makefile. However, 
+# this issue https://github.com/realm/jazzy/issues/651 explains why this file is sometimes required. 
+#
+# The configuration here is copy/pasted from the CI server configuration files for building and testing the SDK code. 
+
+swift_build_tool: "xcodebuild"
+build_tool_arguments:
+  - "-scheme"
+  - "Customer.io-Package"
+  - "-destination"
+  - "platform=iOS Simulator,name=iPhone 8"
