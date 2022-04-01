@@ -9,7 +9,7 @@ public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
                    httpClient: diGraph.httpClient)
     }
 
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
         guard let queueTaskType = QueueTaskType(rawValue: task.type) else {
             return false
         }
@@ -25,7 +25,7 @@ public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
 }
 
 private extension MessagingPushQueueRunner {
-    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: RegisterPushNotificationQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -36,7 +36,7 @@ private extension MessagingPushQueueRunner {
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
-    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: DeletePushNotificationQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -49,7 +49,7 @@ private extension MessagingPushQueueRunner {
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
-    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: MetricRequest.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }

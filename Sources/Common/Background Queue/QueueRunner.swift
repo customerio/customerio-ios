@@ -8,7 +8,7 @@ import Foundation
  actual work on executing the task.
  */
 public protocol QueueRunner: AutoMockable {
-    func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)
+    func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
 }
 
 // sourcery: InjectRegister = "QueueRunner"
@@ -24,7 +24,7 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
     }
 
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         var hookHandled = false
 
         hooks.queueRunnerHooks.forEach { hook in
@@ -38,8 +38,9 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         }
 
         if !hookHandled {
-            let errorMessage = "task \(task.type) not handled by any module"
-            onComplete(.failure(.internalError(message: errorMessage)))
+            logger.error("task \(task.type) not handled by any module")
+
+            onComplete(.failure(.noRequestMade(nil)))
         }
     }
 }

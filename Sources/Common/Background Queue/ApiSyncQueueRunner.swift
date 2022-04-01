@@ -7,7 +7,7 @@ open class ApiSyncQueueRunner {
     public let logger: Logger
     private let httpClient: HttpClient
 
-    public let failureIfDontDecodeTaskData: Result<Void, CustomerIOError> = .failure(.http(.noRequestMade(nil)))
+    public let failureIfDontDecodeTaskData: Result<Void, HttpRequestError> = .failure(.noRequestMade(nil))
 
     public init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
         self.siteId = siteId
@@ -31,12 +31,12 @@ open class ApiSyncQueueRunner {
 
     public func performHttpRequest(
         params: HttpRequestParams,
-        onComplete: @escaping (Result<Void, CustomerIOError>) -> Void
+        onComplete: @escaping (Result<Void, HttpRequestError>) -> Void
     ) {
         httpClient.request(params) { result in
             switch result {
             case .success: onComplete(.success(()))
-            case .failure(let httpError): onComplete(.failure(.http(httpError)))
+            case .failure(let httpError): onComplete(.failure(httpError))
             }
         }
     }

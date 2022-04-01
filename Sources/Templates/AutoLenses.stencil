@@ -62,7 +62,7 @@ func |> <A, B, C> (f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     return { g(f($0)) }
 }
 
-{% for type in types.implementing.AutoLenses|struct %}
+{% for type in types.all where type.based.AutoLenses %}{% if type.name != "AutoLenses" %}
 extension {{ type.name }} {
 {% for variable in type.storedVariables %}
   static let {{ variable.name }}Lens = Lens<{{type.name}}, {{variable.typeName}}>(
@@ -79,4 +79,4 @@ extension {{ type.name }} {
   }
 {% endfor %}
 }
-{% endfor %}
+{% endif %}{% endfor %}

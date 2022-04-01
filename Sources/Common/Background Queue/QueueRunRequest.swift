@@ -97,7 +97,7 @@ public class CioQueueRunRequest: QueueRunRequest {
                 let previousRunResults = nextTaskToRun.runResults
 
                 // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
-                if case .http(let httpError) = error, case .requestsPaused = httpError {
+                if case .requestsPaused = error {
                     self.logger.debug("""
                     queue task \(self.shortTaskId(nextTaskStorageId)) didn't run because all HTTP requests paused.
                     """)

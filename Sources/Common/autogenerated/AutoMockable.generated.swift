@@ -2434,17 +2434,17 @@ public class QueueRunnerMock: QueueRunner, CommonMock {
 
     /// The arguments from the *last* time the function was called.
     public private(set) var runTaskReceivedArguments: (task: QueueTask,
-                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
+                                                       onComplete: (Result<Void, HttpRequestError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
-                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+                                                          onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Void)?
+    public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Void)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         mockCalled = true
         runTaskCallsCount += 1
         runTaskReceivedArguments = (task: task, onComplete: onComplete)
@@ -2487,10 +2487,10 @@ public class QueueRunnerHookMock: QueueRunnerHook, CommonMock {
 
     /// The arguments from the *last* time the function was called.
     public private(set) var runTaskReceivedArguments: (task: QueueTask,
-                                                       onComplete: (Result<Void, CustomerIOError>) -> Void)?
+                                                       onComplete: (Result<Void, HttpRequestError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
-                                                          onComplete: (Result<Void, CustomerIOError>) -> Void)] = []
+                                                          onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
     /// Value to return from the mocked function.
     public var runTaskReturnValue: Bool!
     /**
@@ -2498,10 +2498,10 @@ public class QueueRunnerHookMock: QueueRunnerHook, CommonMock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `runTaskReturnValue`
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, CustomerIOError>) -> Void) -> Bool)?
+    public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Bool)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
         mockCalled = true
         runTaskCallsCount += 1
         runTaskReceivedArguments = (task: task, onComplete: onComplete)

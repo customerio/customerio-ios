@@ -26,7 +26,7 @@ public protocol ProfileIdentifyHook: AutoMockable {
 public protocol QueueRunnerHook: AutoMockable {
     /// called from background queue in `Tracking` module.
     /// return `true` if the `task` belongs to that module.
-    func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool
+    func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool
 }
 
 // Hook to send custom device attributes to workspace

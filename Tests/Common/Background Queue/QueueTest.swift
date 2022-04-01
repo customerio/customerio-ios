@@ -149,7 +149,7 @@ class QueueIntegrationTest: UnitTest {
 
     func test_addTaskThenRun_givenTaskFailsToRun_expectRunAgain() {
         queueRunnerMock.runTaskClosure = { queueTask, onComplete in
-            onComplete(.failure(.notInitialized))
+            onComplete(.failure(.noRequestMade(nil)))
         }
 
         _ = queue.addTask(type: String.random,

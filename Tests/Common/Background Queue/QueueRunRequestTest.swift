@@ -80,7 +80,7 @@ class QueueRunRequestTest: UnitTest {
         storageMock.getInventoryReturnValue = inventory
         runnerMock.runTaskClosure = { _, onComplete in
             inventory.removeFirst()
-            onComplete(.failure(.notInitialized))
+            onComplete(.failure(.noRequestMade(nil)))
         }
         storageMock.updateReturnValue = true
 

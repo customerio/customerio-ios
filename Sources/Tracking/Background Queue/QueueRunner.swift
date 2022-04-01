@@ -9,7 +9,7 @@ internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
                    httpClient: diGraph.httpClient)
     }
 
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
         guard let queueTaskType = QueueTaskType(rawValue: task.type) else {
             return false
         }
@@ -24,7 +24,7 @@ internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
 }
 
 extension TrackingQueueRunner {
-    private func identify(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func identify(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -35,7 +35,7 @@ extension TrackingQueueRunner {
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
-    private func track(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func track(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
