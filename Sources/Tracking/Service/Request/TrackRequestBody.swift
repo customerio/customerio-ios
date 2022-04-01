@@ -8,7 +8,7 @@ internal struct TrackRequestBody<T: Encodable>: Encodable {
     let timestamp: Date?
 }
 
-public enum EventType: String, Codable {
+internal enum EventType: String, Codable {
     case event
     case screen
 }

@@ -5,6 +5,9 @@ import Foundation
 import SharedTests
 import XCTest
 
+// TODO: remove this import
+import Common
+
 /**
  Contains an example of every public facing SDK function call. This file helps
  us prevent introducing breaking changes to the SDK by accident. If a public function

@@ -1,12 +1,12 @@
-import CioTracking
+import Common
 import Foundation
 
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingPushModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
-    private var diGraph: DITracking {
-        DITracking.getInstance(siteId: siteId)
+    private var diGraph: DICommon {
+        DICommon.getInstance(siteId: siteId)
     }
 
     private var diGraphMessaging: DIMessagingPush {

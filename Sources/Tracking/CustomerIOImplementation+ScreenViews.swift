@@ -2,7 +2,7 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-public extension CustomerIOImplementation {
+extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
         let selector2 = #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))

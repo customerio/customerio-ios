@@ -1,4 +1,5 @@
 @testable import CioTracking
+@testable import Common
 import Foundation
 import SharedTests
 import XCTest
@@ -7,7 +8,7 @@ class DiTrackingTests: XCTestCase {
     func testDependencyGraphComplete() {
         let graph = DITracking.getInstance(siteId: "test")
         // We cannot resolve all dependencies until the creds store is resolved.
-        var credsStore = graph.sdkCredentialsStore
+        var credsStore = DICommon.getInstance(siteId: "test").sdkCredentialsStore
         credsStore.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
 
         for dependency in DependencyTracking.allCases {

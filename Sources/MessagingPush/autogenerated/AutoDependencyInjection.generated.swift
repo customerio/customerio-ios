@@ -3,6 +3,7 @@
 // swiftlint:disable all
 
 import CioTracking
+import Common
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
@@ -160,7 +161,7 @@ public class DIMessagingPush {
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {
-        MessagingPushQueueRunner(siteId: siteId, diTracking: dITracking)
+        MessagingPushQueueRunner(siteId: siteId, diGraph: dICommon)
     }
 
     // DeviceAttributesProvider
@@ -172,6 +173,6 @@ public class DIMessagingPush {
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(diTracking: dITracking)
+        SdkDeviceAttributesProvider(diGraph: dICommon)
     }
 }

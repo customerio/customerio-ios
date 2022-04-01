@@ -11,6 +11,7 @@ import UserNotifications
 #endif
 import CioMessagingPush
 import CioTracking
+import Common
 
 /**
  ######################################################
@@ -81,10 +82,10 @@ import CioTracking
 
  */
 
-public class MessagingPushAPNMocks {
-    public static var shared: MessagingPushAPNMocks = .init()
+internal class MessagingPushAPNMocks {
+    internal static var shared: MessagingPushAPNMocks = .init()
 
-    public var mocks: [MessagingPushAPNMock] = []
+    internal var mocks: [MessagingPushAPNMock] = []
     private init() {}
 
     func add(mock: MessagingPushAPNMock) {
@@ -98,7 +99,7 @@ public class MessagingPushAPNMocks {
     }
 }
 
-public protocol MessagingPushAPNMock {
+internal protocol MessagingPushAPNMock {
     func reset()
 }
 
@@ -117,7 +118,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         MessagingPushAPNMocks.shared.add(mock: self)
     }
 
-    public func reset() {
+    internal func reset() {
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []

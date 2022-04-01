@@ -1,4 +1,4 @@
-import CioTracking
+import Common
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
@@ -44,7 +44,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
     init(siteId: String) {
         self.siteId = siteId
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DICommon.getInstance(siteId: siteId)
         let messagingPushDiGraph = DIMessagingPush.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore

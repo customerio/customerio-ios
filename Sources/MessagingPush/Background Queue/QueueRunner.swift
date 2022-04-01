@@ -1,12 +1,12 @@
-import CioTracking
+import Common
 import Foundation
 
 // Queue tasks for the MessagingPush module.
 // sourcery: InjectRegister = "QueueRunnerHook"
 public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
-    init(siteId: SiteId, diTracking: DITracking) {
-        super.init(siteId: siteId, jsonAdapter: diTracking.jsonAdapter, logger: diTracking.logger,
-                   httpClient: diTracking.httpClient)
+    init(siteId: SiteId, diGraph: DICommon) {
+        super.init(siteId: siteId, jsonAdapter: diGraph.jsonAdapter, logger: diGraph.logger,
+                   httpClient: diGraph.httpClient)
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {

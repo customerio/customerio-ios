@@ -1,5 +1,5 @@
 @testable import CioMessagingPush
-@testable import CioTracking
+@testable import Common
 import Foundation
 import SharedTests
 import XCTest
@@ -16,7 +16,7 @@ class DeviceAttributesProviderTest: UnitTest {
         diGraph.override(.deviceInfo, value: deviceInfoMock, forType: DeviceInfo.self)
         diGraph.override(.sdkConfigStore, value: sdkConfigStoreMock, forType: SdkConfigStore.self)
 
-        provider = SdkDeviceAttributesProvider(diTracking: diGraph)
+        provider = SdkDeviceAttributesProvider(diGraph: diGraph)
     }
 
     private func enableTrackDeviceAttributesSdkConfig(_ enable: Bool) {

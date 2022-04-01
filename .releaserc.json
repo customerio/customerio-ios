@@ -13,13 +13,13 @@
             "preset": "conventionalcommits"
         }],
         ["@semantic-release/exec", {
-            "verifyReleaseCmd": "./scripts/update_version.sh ${nextRelease.version} Sources/Tracking/Version.swift && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
+            "verifyReleaseCmd": "./scripts/update_version.sh ${nextRelease.version} Sources/Common/Version.swift && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
         }],
         ["@semantic-release/changelog", {
             "changelogFile": "CHANGELOG.md"
         }],
         ["@semantic-release/git", {
-            "assets": ["CHANGELOG.md", "Sources/Tracking/Version.swift", "*.podspec"],
+            "assets": ["CHANGELOG.md", "Sources/Common/Version.swift", "*.podspec"],
             "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}"
         }],
         "@semantic-release/github"

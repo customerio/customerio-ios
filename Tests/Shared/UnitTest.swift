@@ -1,4 +1,5 @@
 @testable import CioTracking
+@testable import Common
 import Foundation
 import XCTest
 
@@ -14,8 +15,8 @@ open class UnitTest: XCTestCase {
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
     public let testSiteId = "testing"
-    public var diGraph: DITracking {
-        DITracking.getInstance(siteId: testSiteId)
+    public var diGraph: DICommon {
+        DICommon.getInstance(siteId: testSiteId)
     }
 
     public var keyValueStorage: KeyValueStorage {

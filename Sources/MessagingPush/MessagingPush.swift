@@ -1,4 +1,5 @@
 import CioTracking
+import Common
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
@@ -55,7 +56,7 @@ public class MessagingPush: MessagingPushInstance {
         self.customerIO = customerIO
         // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {
-            let diGraphTracking = DITracking.getInstance(siteId: siteId)
+            let diGraphTracking = DICommon.getInstance(siteId: siteId)
             let logger = diGraphTracking.logger
 
             logger.info("MessagingPush module setup with SDK")
