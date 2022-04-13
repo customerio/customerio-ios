@@ -37,7 +37,7 @@ jobs:
 
     # Read generate script file to learn more about this CI step. 
     - name: Generate code coverage report from .xcresult/
-      run: ./scripts/generate-code-coverage-report.sh ".build" "CioTracking,CioMessagingPushAPN,CioMessagingPushFCM,Common,"
+      run: ./scripts/generate-code-coverage-report.sh 
   
     - name: Upload code coverage report 
       uses: codecov/codecov-action@v2

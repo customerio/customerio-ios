@@ -13,20 +13,17 @@
 # use this directory of data to generate the test coverage file. It's also important 
 # to generate a file format that CodeCov.io understands. 
 #
-# Use script: generate-code-coverage-report.sh ".build" "CioTracking,CioMessagingPushAPN,CioMessagingPushFCM,Common,"
-# first argument is the directory you want all generated files to go into. 
-# second argument is a comma separated list of targets that you want code coverage for. This includes common modules that are used internally. Make sure to have a trailing ',' in the string! 
+# Use script: generate-code-coverage-report.sh
 # 
-# The final report that you should be uploading to CodeCov.io will be 1 file in directory: <directory-you-provided>/generated/
+# The final report that you should be uploading to CodeCov.io will be 1 file in directory: .build/generated/
 
 set -e
 
-OUTPUT_DIR="$1"
-LIST_TARGETS="$2"
+OUTPUT_DIR=".build" # where swift package manager puts data. re-use that. 
 
 # Install some tools that we need 
 # mint allows us to execute a swift package manager executable
-brew install mint
+brew install mint jq
 
 # We use Apple's xccov tool to take .xcresult/ and parse the code coverage report from that data. 
 # We generate a json file with all the code coverage content in it. 
@@ -37,9 +34,13 @@ xcrun xccov view --report *.xcresult --json > "$XCODE_CODE_COV_REPORT"
 # We have now generated a human-readable file with code coverage information in it. However, CodeCov.io does not 
 # understand the format that we generated with xccov. We need to convert that file into a different format. 
 
-# Take the list of targets you provided to script and turns that into a CLI arguments string. 
-# sed separates 'TargetName,' from the targets string and then prepends that with arguments string. 
-TARGETS=$(echo "$LIST_TARGETS" | sed 's/\([A-Za-z0-9]*\),/--include-targets \1 /g')
+# Here, we are getting the list of SPM targets that we want code coverage for. We want all targets of the project minus targets having to do with tests. 
+# jq takes JSON and prints it into a format that you want. the tool is quite powerful so let me try to explain what it is doing. 
+# --join-output removes newline characters and prints the jq output all on one line. 
+# select(.type == "regular") removes ".testTarget()" targets. 
+# select(.name != "SharedTests") simply removes the "SharedTests" target as that's a ".target()" but still a target we don't care about test coverage for. 
+# "--include-targets \(.name) " is a template that we do string formatting for where jq inserts JSON values into it for us. 
+TARGETS=$(swift package dump-package | jq --join-output '.targets[] | select(.type == "regular") | select(.name != "SharedTests") | "--include-targets \(.name) "')
 echo "Include targets command line argument: "
 echo "\n\nExpected value of variable: a string with format: '--include-targets foo --include-targets bar'"
 echo "Actual value: $TARGETS"
@@ -53,5 +54,3 @@ mkdir -p "$OUTPUT_DIR/generated"
 # --trim-path takes '/full/path/to/customerio-ios/Sources/File.swift' and just turns it into '/Sources/File.swift' so that CodeCov.io understands what file we are talking about. 
 mint run trax-retail/xccov2lcov@master "$XCODE_CODE_COV_REPORT" --trim-path $(pwd) $TARGETS > "$LCOV_REPORT"
 echo "Generated lcov report to $LCOV_REPORT"
-
-
