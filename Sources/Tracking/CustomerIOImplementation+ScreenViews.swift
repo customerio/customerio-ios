@@ -92,7 +92,7 @@ internal extension UIViewController {
 }
 
 #else
-public extension CustomerIOImplementation {
+extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         // XXX: log warning that tracking is not available
     }
