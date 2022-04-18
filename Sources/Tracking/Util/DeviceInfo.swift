@@ -66,8 +66,22 @@ public class CIODeviceInfo: DeviceInfo {
         SdkVersion.version
     }
 
+    // Requirements:
+    // 1. Use - instead of _
+    // 2. We prefer to get the OS language that the user has set. First try to return that. If that does not succeed
+    // we default to the language set for the host app. The language returned for that will only return languagues
+    // that the app supports. If OS set to "es" but app does not support Spanish, then "es" will not be returned.
     public var deviceLocale: String {
-        Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
+        if let osSetLanguage = Locale.preferredLanguages.first {
+            let locale = Locale(identifier: osSetLanguage)
+
+            if let languageCode = locale.languageCode,
+               let regionCode = locale.regionCode {
+                return "\(languageCode)-\(regionCode)"
+            }
+        }
+
+        return Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
     }
 
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
