@@ -1,0 +1,21 @@
+# scheme for xcodebuild
+# name found by running: `xcrun xcodebuild -list` (or, see output of workflow run)
+scheme("Customer.io-Package")
+
+# -destination for xcodebuild
+# chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
+devices([
+  "iPhone 8"
+])
+
+output_types("html,junit")
+output_files("test-report.html,test-report.xml")
+output_directory(".")
+
+code_coverage(true)
+result_bundle(true) # required to get code coverage report 
+derived_data_path(".build/derivedData")
+
+skip_build(true) # speed up testing 
+
+package_path("./")

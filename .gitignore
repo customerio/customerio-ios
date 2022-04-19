@@ -1,4 +1,5 @@
 test-report.*
+*.xcresult/
 
 #############################################################################
 # Below from: https://github.com/github/gitignore/blob/master/Swift.gitignore
