@@ -1,3 +1,15 @@
+## [1.1.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.1.0-alpha.2...1.1.0-alpha.3) (2022-04-19)
+
+
+### Features
+
+* add device_manufacturer device attribute ([585aefb](https://github.com/customerio/customerio-ios/commit/585aefbad99a06ac54c8358ffac89d3a5beba857))
+
+
+### Bug Fixes
+
+* locale uses preferred language ([4a5ecf1](https://github.com/customerio/customerio-ios/commit/4a5ecf149cf43d5b0df3b0f01ef24063c1f3a6c8))
+
 ## [1.1.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.1.0-alpha.1...1.1.0-alpha.2) (2022-03-25)
 
 
