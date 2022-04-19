@@ -617,6 +617,42 @@ public class DeviceInfoMock: DeviceInfo, TrackingMock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
+    public var underlyingDeviceManufacturer: String!
+    /// `true` if the getter or setter of property is called at least once.
+    public var deviceManufacturerCalled: Bool {
+        deviceManufacturerGetCalled || deviceManufacturerSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var deviceManufacturerGetCalled: Bool {
+        deviceManufacturerGetCallsCount > 0
+    }
+
+    public var deviceManufacturerGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var deviceManufacturerSetCalled: Bool {
+        deviceManufacturerSetCallsCount > 0
+    }
+
+    public var deviceManufacturerSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var deviceManufacturer: String {
+        get {
+            mockCalled = true
+            deviceManufacturerGetCallsCount += 1
+            return underlyingDeviceManufacturer
+        }
+        set(value) {
+            mockCalled = true
+            deviceManufacturerSetCallsCount += 1
+            underlyingDeviceManufacturer = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
     public var underlyingDeviceModel: String?
     /// `true` if the getter or setter of property is called at least once.
     public var deviceModelCalled: Bool {
@@ -902,6 +938,8 @@ public class DeviceInfoMock: DeviceInfo, TrackingMock {
     }
 
     public func reset() {
+        deviceManufacturerGetCallsCount = 0
+        deviceManufacturerSetCallsCount = 0
         deviceModel = nil
         deviceModelGetCallsCount = 0
         deviceModelSetCallsCount = 0

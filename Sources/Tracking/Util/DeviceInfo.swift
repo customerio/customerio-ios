@@ -7,6 +7,7 @@ import UserNotifications
 #endif
 
 public protocol DeviceInfo: AutoMockable {
+    var deviceManufacturer: String { get }
     var deviceModel: String? { get }
     // Version of the OS. Example: "15.2.1" for iOS 15.2.1.
     var osVersion: String? { get }
@@ -26,6 +27,8 @@ public protocol DeviceInfo: AutoMockable {
 //
 // sourcery: InjectRegister = "DeviceInfo"
 public class CIODeviceInfo: DeviceInfo {
+    public var deviceManufacturer: String = "Apple"
+
     public var deviceModel: String? {
         #if canImport(UIKit)
         return UIDevice.deviceModelCode
