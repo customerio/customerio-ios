@@ -43,6 +43,7 @@ jobs:
       uses: codecov/codecov-action@v2
       with: 
         token: ${{ secrets.CODECOV_UPLOAD_TOKEN }} # not required for public repos, but sometimes uploads fail without it so include it anyway
+        fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
         verbose: true 
         directory: .build/generated
 
