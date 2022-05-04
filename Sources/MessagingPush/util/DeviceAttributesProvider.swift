@@ -24,7 +24,8 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         var deviceAttributes = [
             "cio_sdk_version": deviceInfo.sdkVersion,
             "app_version": deviceInfo.customerAppVersion,
-            "device_locale": deviceInfo.deviceLocale
+            "device_locale": deviceInfo.deviceLocale,
+            "device_manufacturer": deviceInfo.deviceManufacturer
         ]
         if let deviceModel = deviceInfo.deviceModel {
             deviceAttributes["device_model"] = deviceModel

@@ -45,15 +45,18 @@ class DeviceAttributesProviderTest: UnitTest {
         let givenSdkVersion = String.random
         let givenAppVersion = String.random
         let givenDeviceLocale = String.random
+        let givenDeviceManufacturer = String.random
         let expected = [
             "cio_sdk_version": givenSdkVersion,
             "app_version": givenAppVersion,
             "device_locale": givenDeviceLocale,
-            "push_enabled": "true"
+            "push_enabled": "true",
+            "device_manufacturer": givenDeviceManufacturer
         ]
         deviceInfoMock.underlyingSdkVersion = givenSdkVersion
         deviceInfoMock.underlyingCustomerAppVersion = givenAppVersion
         deviceInfoMock.underlyingDeviceLocale = givenDeviceLocale
+        deviceInfoMock.underlyingDeviceManufacturer = givenDeviceManufacturer
         deviceInfoMock.isPushSubscribedClosure = { onComplete in
             onComplete(true)
         }
