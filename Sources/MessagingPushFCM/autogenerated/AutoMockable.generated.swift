@@ -11,6 +11,7 @@ import UserNotifications
 #endif
 import CioMessagingPush
 import CioTracking
+import Common
 
 /**
  ######################################################
@@ -81,10 +82,10 @@ import CioTracking
 
  */
 
-public class MessagingPushFCMMocks {
-    public static var shared: MessagingPushFCMMocks = .init()
+internal class MessagingPushFCMMocks {
+    internal static var shared: MessagingPushFCMMocks = .init()
 
-    public var mocks: [MessagingPushFCMMock] = []
+    internal var mocks: [MessagingPushFCMMock] = []
     private init() {}
 
     func add(mock: MessagingPushFCMMock) {
@@ -98,7 +99,7 @@ public class MessagingPushFCMMocks {
     }
 }
 
-public protocol MessagingPushFCMMock {
+internal protocol MessagingPushFCMMock {
     func reset()
 }
 
@@ -117,7 +118,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
         MessagingPushFCMMocks.shared.add(mock: self)
     }
 
-    public func reset() {
+    internal func reset() {
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []

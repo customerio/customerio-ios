@@ -1,4 +1,4 @@
-import CioTracking
+import Common
 import Foundation
 
 /// If a dependency in `DIMessagingPush` needs to access a dependency from the `DITracking` graph,
@@ -6,12 +6,12 @@ import Foundation
 /// ```
 /// internal class CioPushDeviceTokenRepository: PushDeviceTokenRepository {
 ///   internal init(diTracking: DITracking) {
-///     self.profileStore = diTracking.profileStore
+///     self.profileStore = dICommon.profileStore
 ///   }
 /// }
 /// ```
 extension DIMessagingPush {
-    var dITracking: DITracking {
-        DITracking.getInstance(siteId: siteId)
+    var dICommon: DICommon {
+        DICommon.getInstance(siteId: siteId)
     }
 }

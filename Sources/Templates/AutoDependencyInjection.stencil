@@ -54,6 +54,9 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
 
 */
 
+{# if statement around all the code so we don't print anything if no dependencies in the module #}
+{% if types.all|annotated:"InjectRegister"|count > 0 %}{# (start: if-any-dependencies) #}
+
 /** 
  enum that contains list of all dependencies in our app. 
  This allows automated unit testing against our dependency graph + ability to override nodes in graph. 
@@ -197,3 +200,5 @@ DI{{ argument.moduleName }}.shared.resetOverrides()
     {% endif %}
     {% endfor %} 
 }
+
+{% endif %}{# (end: if-any-dependencies)  #}

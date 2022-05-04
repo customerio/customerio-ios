@@ -1,3 +1,4 @@
+import Common
 import Foundation
 
 /**
@@ -14,7 +15,7 @@ import Foundation
  This method is recommended for code bases containing
  automated tests, dependency injection, or sending data to multiple Workspaces.
  */
-public class CustomerIOImplementation: CustomerIOInstance {
+internal class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
         _siteId
     }
@@ -38,7 +39,7 @@ public class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        let diGraph = DITracking.getInstance(siteId: siteId)
+        let diGraph = DICommon.getInstance(siteId: siteId)
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfigStore = diGraph.sdkConfigStore

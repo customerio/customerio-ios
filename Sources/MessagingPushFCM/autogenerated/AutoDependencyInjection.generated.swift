@@ -4,6 +4,7 @@
 
 import CioMessagingPush
 import CioTracking
+import Common
 import Foundation
 
 // File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI

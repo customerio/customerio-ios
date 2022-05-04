@@ -1,5 +1,6 @@
 import CioMessagingPush
 import CioTracking
+import Common
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -55,7 +56,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
     internal let messagingPush: MessagingPushInstance
-    public let customerIO: CustomerIOInstance!
+    internal let customerIO: CustomerIOInstance!
 
     // for testing purposes
     internal init(messagingPush: MessagingPushInstance, customerIO: CustomerIOInstance) {

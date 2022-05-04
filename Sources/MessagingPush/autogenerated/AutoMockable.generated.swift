@@ -10,6 +10,7 @@ import FoundationNetworking
 import UserNotifications
 #endif
 import CioTracking
+import Common
 
 /**
  ######################################################
@@ -80,10 +81,10 @@ import CioTracking
 
  */
 
-public class MessagingPushMocks {
-    public static var shared: MessagingPushMocks = .init()
+internal class MessagingPushMocks {
+    internal static var shared: MessagingPushMocks = .init()
 
-    public var mocks: [MessagingPushMock] = []
+    internal var mocks: [MessagingPushMock] = []
     private init() {}
 
     func add(mock: MessagingPushMock) {
@@ -97,7 +98,7 @@ public class MessagingPushMocks {
     }
 }
 
-public protocol MessagingPushMock {
+internal protocol MessagingPushMock {
     func reset()
 }
 
@@ -116,7 +117,7 @@ internal class DeviceAttributesProviderMock: DeviceAttributesProvider, Messaging
         MessagingPushMocks.shared.add(mock: self)
     }
 
-    public func reset() {
+    internal func reset() {
         getDefaultDeviceAttributesCallsCount = 0
         getDefaultDeviceAttributesReceivedArguments = nil
         getDefaultDeviceAttributesReceivedInvocations = []

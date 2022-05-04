@@ -2,7 +2,7 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-public extension CustomerIOImplementation {
+extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         let selector1 = #selector(UIViewController.viewDidAppear(_:))
         let selector2 = #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))
@@ -92,7 +92,7 @@ internal extension UIViewController {
 }
 
 #else
-public extension CustomerIOImplementation {
+extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         // XXX: log warning that tracking is not available
     }

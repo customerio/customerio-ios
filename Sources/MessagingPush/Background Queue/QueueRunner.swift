@@ -1,15 +1,15 @@
-import CioTracking
+import Common
 import Foundation
 
 // Queue tasks for the MessagingPush module.
 // sourcery: InjectRegister = "QueueRunnerHook"
 public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
-    init(siteId: SiteId, diTracking: DITracking) {
-        super.init(siteId: siteId, jsonAdapter: diTracking.jsonAdapter, logger: diTracking.logger,
-                   httpClient: diTracking.httpClient)
+    init(siteId: SiteId, diGraph: DICommon) {
+        super.init(siteId: siteId, jsonAdapter: diGraph.jsonAdapter, logger: diGraph.logger,
+                   httpClient: diGraph.httpClient)
     }
 
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) -> Bool {
+    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
         guard let queueTaskType = QueueTaskType(rawValue: task.type) else {
             return false
         }
@@ -25,7 +25,7 @@ public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
 }
 
 private extension MessagingPushQueueRunner {
-    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: RegisterPushNotificationQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -36,7 +36,7 @@ private extension MessagingPushQueueRunner {
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
-    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: DeletePushNotificationQueueTaskData.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -49,7 +49,7 @@ private extension MessagingPushQueueRunner {
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
-    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, CustomerIOError>) -> Void) {
+    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: MetricRequest.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }

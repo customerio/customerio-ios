@@ -1,4 +1,4 @@
-import CioTracking
+import Common
 import Foundation
 
 internal protocol DeviceAttributesProvider: AutoMockable {
@@ -10,9 +10,9 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let sdkConfigStore: SdkConfigStore
     private let deviceInfo: DeviceInfo
 
-    init(diTracking: DITracking) {
-        self.sdkConfigStore = diTracking.sdkConfigStore
-        self.deviceInfo = diTracking.deviceInfo
+    init(diGraph: DICommon) {
+        self.sdkConfigStore = diGraph.sdkConfigStore
+        self.deviceInfo = diGraph.deviceInfo
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {

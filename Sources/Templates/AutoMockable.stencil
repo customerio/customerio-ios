@@ -83,10 +83,10 @@ class ExampleTest: XCTestCase {
 
 */
 
-public class {{ argument.moduleName }}Mocks {
-    public static var shared: {{ argument.moduleName }}Mocks = {{ argument.moduleName }}Mocks()
+internal class {{ argument.moduleName }}Mocks {
+    internal static var shared: {{ argument.moduleName }}Mocks = {{ argument.moduleName }}Mocks()
 
-    public var mocks: [{{ argument.moduleName }}Mock] = []
+    internal var mocks: [{{ argument.moduleName }}Mock] = []
     
     private init() {}
 
@@ -101,7 +101,7 @@ public class {{ argument.moduleName }}Mocks {
     }
 }
 
-public protocol {{ argument.moduleName }}Mock {
+internal protocol {{ argument.moduleName }}Mock {
     func reset()
 }
 
@@ -280,7 +280,7 @@ public protocol {{ argument.moduleName }}Mock {
     {% call mockVariable variable %}
 {% endfor %}
 
-    public func reset() {
+    internal func reset() {
 {% for variable in type.allVariables|!definedInExtension %}
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
