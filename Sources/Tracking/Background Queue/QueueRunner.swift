@@ -1,7 +1,7 @@
 import Common
 import Foundation
 
-// Queue tasks for the MessagingPush module.
+// Queue tasks for the Tracking module.
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     init(siteId: SiteId, diGraph: DICommon) {
@@ -44,5 +44,33 @@ extension TrackingQueueRunner {
                                            headers: nil, body: taskData.attributesJsonString.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
+    }
+}
+
+class TrackingModuleHookProvider: ModuleHookProvider {
+    private let siteId: SiteId
+
+    private var diGraphTracking: DITracking {
+        DITracking.getInstance(siteId: siteId)
+    }
+
+    private var diGraph: DICommon {
+        DICommon.getInstance(siteId: siteId)
+    }
+
+    init(siteId: SiteId) {
+        self.siteId = siteId
+    }
+
+    var profileIdentifyHook: ProfileIdentifyHook? {
+        nil
+    }
+
+    var queueRunnerHook: QueueRunnerHook? {
+        diGraphTracking.queueRunnerHook
+    }
+
+    var deviceAttributesHook: DeviceAttributesHook? {
+        nil
     }
 }

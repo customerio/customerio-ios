@@ -10,8 +10,6 @@ class MessagingPushModuleHookProviderTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        populateSdkCredentials()
-
         hookProvider = MessagingPushModuleHookProvider(siteId: testSiteId)
     }
 

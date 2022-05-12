@@ -8,6 +8,7 @@ public protocol HooksManager: AutoMockable {
 }
 
 public enum HookModules: String {
+    case tracking
     case messagingPush
 }
 

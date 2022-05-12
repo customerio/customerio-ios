@@ -9,7 +9,7 @@ class QueueQueryRunnerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        runner = CioQueueQueryRunner()
+        runner = CioQueueQueryRunner(logger: log)
     }
 
     // MARK: getNextTask

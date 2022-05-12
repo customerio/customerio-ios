@@ -1,3 +1,4 @@
+import CioMessagingPush
 @testable import CioTracking
 @testable import Common
 import Foundation
@@ -37,12 +38,27 @@ open class UnitTest: XCTestCase {
 
     public var retryPolicyMock: HttpRetryPolicyMock!
 
+    public let httpRequestRunnerMock = HttpRequestRunnerMock()
+
     public var lockManager: LockManager {
         LockManager()
     }
 
     override open func setUp() {
         deleteAll()
+
+        populateSdkCredentials()
+
+        var sdkConfigStore = diGraph.sdkConfigStore
+        var sdkConfig = sdkConfigStore.config
+        sdkConfig.logLevel = CioLogLevel.debug
+        sdkConfigStore.config = sdkConfig
+
+        var hooksManager = diGraph.hooksManager
+        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: testSiteId))
+
+        // To prevent any real HTTP requests from being sent, override http request runner for all tests.
+        diGraph.override(.httpRequestRunner, value: httpRequestRunnerMock, forType: HttpRequestRunner.self)
 
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
@@ -58,6 +74,7 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
+        CommonMocks.shared.resetAll()
         TrackingMocks.shared.resetAll()
 
         deleteAll()

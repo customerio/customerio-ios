@@ -8,16 +8,22 @@ internal protocol QueueQueryRunner: AutoMockable {
 internal class CioQueueQueryRunner: QueueQueryRunner {
     private var queryCriteria = QueueQueryCriteria()
 
+    private let logger: Logger
+
+    init(logger: Logger) {
+        self.logger = logger
+    }
+
     func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
         guard !queue.isEmpty else {
             return nil
         }
-
-        guard let lastFailedTask = lastFailedTask else {
-            return queue[0]
+        if let lastFailedTask = lastFailedTask {
+            updateCriteria(lastFailedTask: lastFailedTask)
         }
 
-        updateCriteria(lastFailedTask: lastFailedTask)
+        // log *after* updating the criteria
+        logger.debug("queue querying next task. criteria: \(queryCriteria)")
 
         return queue.first(where: { doesTaskPassCriteria($0) })
     }
