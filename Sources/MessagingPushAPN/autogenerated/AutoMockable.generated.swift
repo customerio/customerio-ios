@@ -94,13 +94,13 @@ internal class MessagingPushAPNMocks {
 
     func resetAll() {
         mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol MessagingPushAPNMock {
-    func reset()
+    func resetMock()
 }
 
 /**
@@ -118,7 +118,7 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, MessagingPu
         MessagingPushAPNMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []

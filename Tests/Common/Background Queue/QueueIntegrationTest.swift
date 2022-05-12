@@ -4,7 +4,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class QueueIntegration2Test: UnitTest {
+class QueueIntegration2Test: IntegrationTest {
     private var queue: Queue!
     private var queueStorage: QueueStorage!
 
@@ -23,9 +23,8 @@ class QueueIntegration2Test: UnitTest {
         _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
                           data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
                           blockingGroups: [givenGroupForTasks])
-        httpRequestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, nil, URLError(.cancelled))
-        }
+
+        httpRequestRunnerStub.queueNoRequestMade()
 
         var expect = expectation(description: "Expect to complete")
         queue.run {
@@ -34,14 +33,10 @@ class QueueIntegration2Test: UnitTest {
         waitForExpectations()
 
         XCTAssertEqual(queueStorage.getInventory().count, 2)
-        XCTAssertEqual(httpRequestRunnerMock.requestCallsCount, 1)
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
 
-        httpRequestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete("".data,
-                       HTTPURLResponse(url: "https://customer.io".url!, statusCode: 200, httpVersion: nil,
-                                       headerFields: nil),
-                       nil)
-        }
+        httpRequestRunnerStub.queueSuccessfulResponse()
+        httpRequestRunnerStub.queueSuccessfulResponse()
 
         expect = expectation(description: "Expect to complete")
         queue.run {
@@ -51,6 +46,6 @@ class QueueIntegration2Test: UnitTest {
 
         // expect all of tasks to run and run successfully
         XCTAssertEqual(queueStorage.getInventory().count, 0)
-        XCTAssertEqual(httpRequestRunnerMock.requestCallsCount, 3)
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
     }
 }

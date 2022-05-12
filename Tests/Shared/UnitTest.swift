@@ -38,8 +38,6 @@ open class UnitTest: XCTestCase {
 
     public var retryPolicyMock: HttpRetryPolicyMock!
 
-    public let httpRequestRunnerMock = HttpRequestRunnerMock()
-
     public var lockManager: LockManager {
         LockManager()
     }
@@ -47,30 +45,20 @@ open class UnitTest: XCTestCase {
     override open func setUp() {
         deleteAll()
 
-        populateSdkCredentials()
-
-        var sdkConfigStore = diGraph.sdkConfigStore
-        var sdkConfig = sdkConfigStore.config
-        sdkConfig.logLevel = CioLogLevel.debug
-        sdkConfigStore.config = sdkConfig
-
-        var hooksManager = diGraph.hooksManager
-        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: testSiteId))
-
-        // To prevent any real HTTP requests from being sent, override http request runner for all tests.
-        diGraph.override(.httpRequestRunner, value: httpRequestRunnerMock, forType: HttpRequestRunner.self)
-
+        // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
 
         super.setUp()
     }
 
-    // If writing integration tests, some dependencies in the DI graph may need credentials to exist to get populated.
-    // populate with random values here so your tests can run.
-    public func populateSdkCredentials() {
-        var credentialsStore = diGraph.sdkCredentialsStore
-        credentialsStore.credentials = SdkCredentials(apiKey: String.random, region: Region.US)
+    // If logs would help you with debugging a test, enable logs. It's recommended to disable them when running tests as there are so many logs, it's unhelpful.
+    // Enabling logs and running 1 test function is helpful.
+    public func enableLogs() {
+        var sdkConfigStore = diGraph.sdkConfigStore
+        var sdkConfig = sdkConfigStore.config
+        sdkConfig.logLevel = CioLogLevel.debug
+        sdkConfigStore.config = sdkConfig
     }
 
     override open func tearDown() {
@@ -84,7 +72,7 @@ open class UnitTest: XCTestCase {
         super.tearDown()
     }
 
-    func deleteAll() {
+    public func deleteAll() {
         deleteKeyValueStorage()
         CustomerIO.resetSharedInstance()
         CioGlobalDataStore().keyValueStorage.deleteAll()
