@@ -4,7 +4,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class QueueIntegration2Test: IntegrationTest {
+class QueueIntegrationTest: IntegrationTest {
     private var queue: Queue!
     private var queueStorage: QueueStorage!
 
@@ -13,6 +13,41 @@ class QueueIntegration2Test: IntegrationTest {
 
         queue = diGraph.queue // Since this is an integration test, we want real instances in our test.
         queueStorage = diGraph.queueStorage
+    }
+
+    func test_addTask_expectSuccessfullyAdded() {
+        let addTaskActual = queue.addTask(type: String.random,
+                                          data: ["foo": "bar"],
+                                          groupStart: .identifiedProfile(identifier: String.random),
+                                          blockingGroups: [.identifiedProfile(identifier: String.random)])
+        XCTAssertTrue(addTaskActual.success)
+        XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
+    }
+
+    func test_addTaskThenRun_expectToRunTaskInQueueAndCallCallback() {
+        httpRequestRunnerStub.queueSuccessfulResponse()
+
+        _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
+                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
+
+        let expect = expectation(description: "Expect to complete")
+        queue.run {
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
+
+        let expect2 = expectation(description: "Expect to complete")
+        queue.run {
+            expect2.fulfill()
+        }
+
+        waitForExpectations()
+        // assert that we didn't run any tasks because there were not to run
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
     }
 
     func test_givenRunQueueAndFailTasksThenRerunQueue_expectQueueRerunsAllTasksAgain() {
