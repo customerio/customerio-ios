@@ -7,7 +7,7 @@ internal protocol QueueQueryRunner: AutoMockable {
 
 // sourcery: InjectRegister = "QueueQueryRunner"
 internal class CioQueueQueryRunner: QueueQueryRunner {
-    private var queryCriteria = QueueQueryCriteria()
+    internal var queryCriteria = QueueQueryCriteria()
 
     private let logger: Logger
 
@@ -35,7 +35,7 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         queryCriteria.reset()
     }
 
-    private func updateCriteria(lastFailedTask: QueueTaskMetadata) {
+    internal func updateCriteria(lastFailedTask: QueueTaskMetadata) {
         if let groupToExclude = lastFailedTask.groupStart {
             queryCriteria.excludeGroups.insert(groupToExclude)
         }

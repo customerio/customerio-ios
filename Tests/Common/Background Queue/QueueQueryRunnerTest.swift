@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class QueueQueryRunnerTest: UnitTest {
-    private var runner: QueueQueryRunner!
+    private var runner: CioQueueQueryRunner!
 
     override func setUp() {
         super.setUp()
@@ -57,5 +57,32 @@ class QueueQueryRunnerTest: UnitTest {
         let actual = runner.getNextTask(queue, lastFailedTask: givenFailedTask)
 
         XCTAssertEqual(expected, actual)
+    }
+
+    // reset
+
+    func test_reset_givenCriteriaEmpty_expectCriteriaToRemainEmpty() {
+        assertQueryCriteriaEmpty(isEmpty: true)
+
+        runner.reset()
+
+        assertQueryCriteriaEmpty(isEmpty: true)
+    }
+
+    func test_reset_givenCriteriaNotEmpty_expectCriteriaToBecomeEmpty() {
+        runner.updateCriteria(lastFailedTask: QueueTaskMetadata.random.groupStartSet(String.random))
+        assertQueryCriteriaEmpty(isEmpty: false)
+
+        runner.reset()
+
+        assertQueryCriteriaEmpty(isEmpty: true)
+    }
+
+    private func assertQueryCriteriaEmpty(isEmpty: Bool) {
+        if isEmpty {
+            XCTAssertTrue(runner.queryCriteria.excludeGroups.isEmpty)
+        } else {
+            XCTAssertFalse(runner.queryCriteria.excludeGroups.isEmpty)
+        }
     }
 }
