@@ -1,5 +1,8 @@
 import Common
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public class HttpRequestRunnerStub {
     private var responseQueue: [HttpResponse] = []
