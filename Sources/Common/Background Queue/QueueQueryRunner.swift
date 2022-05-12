@@ -2,6 +2,7 @@ import Foundation
 
 internal protocol QueueQueryRunner: AutoMockable {
     func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata?
+    func reset()
 }
 
 // sourcery: InjectRegister = "QueueQueryRunner"
@@ -28,6 +29,12 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         return queue.first(where: { doesTaskPassCriteria($0) })
     }
 
+    func reset() {
+        logger.debug("resetting queue tasks query criteria")
+
+        queryCriteria.reset()
+    }
+
     private func updateCriteria(lastFailedTask: QueueTaskMetadata) {
         if let groupToExclude = lastFailedTask.groupStart {
             queryCriteria.excludeGroups.insert(groupToExclude)
@@ -51,4 +58,8 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
 
 struct QueueQueryCriteria {
     var excludeGroups: Set<String> = Set()
+
+    mutating func reset() {
+        excludeGroups.removeAll()
+    }
 }

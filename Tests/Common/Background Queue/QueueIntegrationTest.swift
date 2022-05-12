@@ -37,7 +37,7 @@ class QueueIntegration2Test: UnitTest {
         XCTAssertEqual(httpRequestRunnerMock.requestCallsCount, 1)
 
         httpRequestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil,
+            onComplete("".data,
                        HTTPURLResponse(url: "https://customer.io".url!, statusCode: 200, httpVersion: nil,
                                        headerFields: nil),
                        nil)
