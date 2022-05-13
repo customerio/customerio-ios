@@ -15,6 +15,7 @@ class QueueIntegrationTest: IntegrationTest {
         queueStorage = diGraph.queueStorage
     }
 
+    #if !os(Linux) // LINUX_DISABLE_FILEMANAGER
     func test_addTask_expectSuccessfullyAdded() {
         let addTaskActual = queue.addTask(type: String.random,
                                           data: ["foo": "bar"],
@@ -83,4 +84,5 @@ class QueueIntegrationTest: IntegrationTest {
         XCTAssertEqual(queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
     }
+    #endif
 }
