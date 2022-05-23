@@ -19,8 +19,11 @@ let package = Package(
         .library(name: "Tracking", targets: ["CioTracking"]),
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+        .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
+    ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
@@ -64,5 +67,13 @@ let package = Package(
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
                     path: "Tests/MessagingPushFCM"),
+
+        // Messaging in-app
+        .target(name: "CioMessagingInApp",
+                dependencies: ["Common", "CioTracking", .product(name: "Gist", package: "gist-apple")],
+                path: "Sources/MessagingInApp"),
+        .testTarget(name: "MessagingInAppTests",
+                    dependencies: ["CioMessagingInApp", "SharedTests"],
+                    path: "Tests/MessagingInApp"),
     ]
 )
