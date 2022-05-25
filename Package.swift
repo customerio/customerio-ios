@@ -22,6 +22,8 @@ let package = Package(
         .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
     dependencies: [
+        // Help for the format of declaring SPM dependencies:
+        // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
     ],
     targets: [        
