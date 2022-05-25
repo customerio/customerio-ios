@@ -1,5 +1,7 @@
 import Foundation
 
+public typealias ModifyQueueResult = (success: Bool, queueStatus: QueueStatus)
+
 /**
  A background queue to perform actions in the background (probably network requests).
  A queue exists to make our public facing SDK functions synchronous:
@@ -20,6 +22,15 @@ import Foundation
  before the task runs.
  */
 public protocol Queue: AutoMockable {
+    /*
+     Note: We are transitioning the code base to having a Queue function for every type of
+     queue task. This is intead of having `Queue.addTask()` code scattered around the codebase.
+
+     See list of refactors: https://github.com/customerio/issues/issues/6934
+     */
+
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult
+
     /**
      Add a task to the queue to be performed sometime in the future.
 
@@ -36,7 +47,7 @@ public protocol Queue: AutoMockable {
         data: TaskData,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus)
+    ) -> ModifyQueueResult
     func run(onComplete: @escaping () -> Void)
 }
 
@@ -46,7 +57,7 @@ public extension Queue {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    ) -> ModifyQueueResult {
         addTask(type: type, data: data, groupStart: nil, blockingGroups: nil)
     }
 
@@ -56,7 +67,7 @@ public extension Queue {
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
         groupStart: QueueTaskGroup?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    ) -> ModifyQueueResult {
         addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil)
     }
 
@@ -66,7 +77,7 @@ public extension Queue {
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    ) -> ModifyQueueResult {
         addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups)
     }
 }
@@ -80,6 +91,7 @@ public class CioQueue: Queue {
     private let logger: Logger
     private let sdkConfigStore: SdkConfigStore
     private let queueTimer: SingleScheduleTimer
+    private let dateUtil: DateUtil
 
     private var numberSecondsToScheduleTimer: Seconds {
         sdkConfigStore.config.backgroundQueueSecondsDelay
@@ -92,7 +104,8 @@ public class CioQueue: Queue {
         jsonAdapter: JsonAdapter,
         logger: Logger,
         sdkConfigStore: SdkConfigStore,
-        queueTimer: SingleScheduleTimer
+        queueTimer: SingleScheduleTimer,
+        dateUtil: DateUtil
     ) {
         self.storage = storage
         self.siteId = siteId
@@ -101,10 +114,19 @@ public class CioQueue: Queue {
         self.logger = logger
         self.sdkConfigStore = sdkConfigStore
         self.queueTimer = queueTimer
+        self.dateUtil = dateUtil
     }
 
-    public func addTask<T: Codable>(type: String, data: T, groupStart: QueueTaskGroup?,
-                                    blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus) {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+        addTask(type: QueueTaskType.trackDeliveryMetric.rawValue,
+                data: TrackDeliveryEventRequestBody(type: .inApp,
+                                                    payload: DeliveryPayload(deliveryId: deliveryId, event: event,
+                                                                             timestamp: dateUtil.now)))
+    }
+
+    public func addTask<T: Codable>(type: String, data: T,
+                                    groupStart: QueueTaskGroup?,
+                                    blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult {
         logger.info("adding queue task \(type)")
 
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {

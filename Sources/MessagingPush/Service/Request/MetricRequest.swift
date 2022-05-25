@@ -1,10 +1,6 @@
+import CioTracking
+import Common
 import Foundation
-
-public enum Metric: String, Codable {
-    case delivered
-    case opened
-    case converted
-}
 
 // https://customer.io/docs/api/#operation/pushMetrics
 internal struct MetricRequest: Codable {
