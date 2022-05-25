@@ -22,7 +22,7 @@ let package = Package(
         .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
     dependencies: [
-        .package(url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
+        .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
     ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
@@ -70,7 +70,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["Common", "CioTracking", .product(name: "Gist", package: "gist-apple")],
+                dependencies: ["Common", "CioTracking", "Gist"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
