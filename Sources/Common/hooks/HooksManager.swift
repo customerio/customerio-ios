@@ -1,13 +1,13 @@
 import Foundation
 
 public protocol HooksManager: AutoMockable {
-    func add(key: HookModules, provider: ModuleHookProvider)
+    func add(key: HookModule, provider: ModuleHookProvider)
     var profileIdentifyHooks: [ProfileIdentifyHook] { get }
     var queueRunnerHooks: [QueueRunnerHook] { get }
     var deviceAttributesHooks: [DeviceAttributesHook] { get }
 }
 
-public enum HookModules: String {
+public enum HookModule: String {
     case tracking
     case messagingPush
     case messagingInApp
@@ -22,11 +22,11 @@ public enum HookModules: String {
 // sourcery: InjectRegister = "HooksManager"
 // sourcery: InjectSingleton
 public class CioHooksManager: HooksManager {
-    private var hookProviders: [HookModules: ModuleHookProvider] = [:]
+    private var hookProviders: [HookModule: ModuleHookProvider] = [:]
 
     /// using key/value pairs enforces that there is only 1 hook provider for each
     /// SDK without having duplicates.
-    public func add(key: HookModules, provider: ModuleHookProvider) {
+    public func add(key: HookModule, provider: ModuleHookProvider) {
         hookProviders[key] = provider
     }
 

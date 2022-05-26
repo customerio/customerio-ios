@@ -12,7 +12,7 @@ public protocol MessagingInAppInstance {
  So, performing an HTTP request to the API with a device token goes here.
  */
 public class MessagingInApp: MessagingInAppInstance {
-    @Atomic public private(set) static var shared = MessagingInApp(customerIO: CustomerIO.shared)
+    @Atomic public private(set) static var shared = MessagingInApp()
 
     private var siteId: String!
 
@@ -21,9 +21,9 @@ public class MessagingInApp: MessagingInAppInstance {
         diGraphOverride ?? DICommon.getInstance(siteId: siteId)
     }
 
-    private var customerIOOverride: CustomerIOInstance?
-    private var customerIO: CustomerIOInstance {
-        customerIOOverride ?? CustomerIO.shared
+    private var moduleDiGraphOverride: DIMessagingInApp?
+    private var moduleDiGraph: DIMessagingInApp {
+        moduleDiGraphOverride ?? DIMessagingInApp.getInstance(siteId: siteId)
     }
 
     private var queue: Queue {
@@ -38,15 +38,19 @@ public class MessagingInApp: MessagingInAppInstance {
         diGraph.logger
     }
 
-    // for testing
-    internal init(diGraph: DICommon, customerIO: CustomerIOInstance) {
-        self.diGraphOverride = diGraph
-        self.customerIOOverride = customerIO
-        self.siteId = customerIO.siteId
+    private var inAppProvider: InAppProvider {
+        moduleDiGraph.inAppProvider
     }
 
-    private init(customerIO: CustomerIO) {
-        if let siteId = customerIO.siteId {
+    // for testing
+    internal init(diGraph: DICommon, moduleDiGraph: DIMessagingInApp, siteId: String) {
+        self.diGraphOverride = diGraph
+        self.moduleDiGraphOverride = moduleDiGraph
+        self.siteId = siteId
+    }
+
+    private init() {
+        if let siteId = CustomerIO.shared.siteId {
             self.siteId = siteId
 
             logger.info("MessagingInApp module setup with SDK")
@@ -62,9 +66,7 @@ public class MessagingInApp: MessagingInAppInstance {
     public func initialize(organizationId: String) {
         logger.debug("gist SDK being setup \(organizationId)")
 
-        Gist.shared.setup(organizationId: organizationId)
-
-        Gist.shared.delegate = self
+        inAppProvider.initialize(id: organizationId, delegate: self)
     }
 }
 
@@ -74,13 +76,13 @@ extension MessagingInApp: ProfileIdentifyHook {
     public func profileIdentified(identifier: String) {
         logger.debug("registering profile \(identifier) for in-app")
 
-        Gist.shared.setUserToken(identifier)
+        inAppProvider.setProfileIdentifier(identifier)
     }
 
     public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
         logger.debug("removing profile for in-app")
 
-        Gist.shared.clearUserToken()
+        inAppProvider.clearIdentify()
     }
 }
 

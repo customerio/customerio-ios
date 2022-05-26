@@ -94,18 +94,4 @@ class QueueTest: UnitTest {
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
     }
-
-    // MARK: addTrackInAppDeliveryTask
-
-    func test_addTrackInAppDeliveryTask_expectAddTaskToQueue() {
-        let givenDeliveryId = String.random
-        let givenMetric = InAppMetric.clicked
-        storageMock.createReturnValue = (success: true,
-                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
-
-        _ = queue.addTrackInAppDeliveryTask(deliveryId: givenDeliveryId, event: givenMetric)
-
-        XCTAssertEqual(storageMock.createCallsCount, 1)
-        XCTAssertEqual(storageMock.createReceivedArguments?.type, QueueTaskType.trackDeliveryMetric.rawValue)
-    }
 }
