@@ -12,5 +12,5 @@ internal struct DeliveryPayload: Codable {
 }
 
 internal enum DeliveryType: String, Codable {
-    case inApp
+    case inApp = "in_app"
 }

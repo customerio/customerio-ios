@@ -90,28 +90,46 @@ extension MessagingInApp: GistDelegate {
     // Aka: message opened
     public func messageShown(message: Message) {
         // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-        logger.debug("in-app message opened. \(message)")
+        logger.debug("in-app message opened. \(message.describeForLogs)")
 
-        _ = queue.addTrackInAppDeliveryTask(deliveryId: message.messageId, event: .opened)
+        if let deliveryId = getDeliveryId(from: message) {
+            // the state of the SDK does not change if adding this queue task isn't successful so ignore result
+            _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
+        }
     }
 
     public func messageDismissed(message: Message) {
-        logger.debug("in-app message dismissed. \(message)")
+        logger.debug("in-app message dismissed. \(message.describeForLogs)")
     }
 
     public func messageError(message: Message) {
-        logger.error("error with in-app message. Message: \(message)")
+        logger.error("error with in-app message. \(message.describeForLogs)")
     }
 
     public func action(message: Message, currentRoute: String, action: String) {
-        logger.debug("in-app action made. \(action), \(message)")
+        logger.debug("in-app action made. \(action), \(message.describeForLogs)")
 
         // a close action does not count as a clicked action.
         guard action != "gist://close" else {
             return
         }
 
-        // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-        _ = queue.addTrackInAppDeliveryTask(deliveryId: message.messageId, event: .clicked)
+        if let deliveryId = getDeliveryId(from: message) {
+            // the state of the SDK does not change if adding this queue task isn't successful so ignore result
+            _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked)
+        }
+    }
+
+    private func getDeliveryId(from message: Message) -> String? {
+        guard let deliveryId = message.gistProperties.campaignId else {
+            logger
+                .error("""
+                in-app message opened but does not contain a delivery id.
+                Not able to track event. \(message.describeForLogs)
+                """)
+            return nil
+        }
+
+        return deliveryId
     }
 }
