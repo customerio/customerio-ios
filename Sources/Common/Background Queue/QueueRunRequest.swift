@@ -55,6 +55,9 @@ public class CioQueueRunRequest: QueueRunRequest {
         else {
             // we hit the end of the current inventory. Done!
             logger.debug("queue out of tasks to run.")
+
+            queryRunner.reset()
+
             return requestManager.requestComplete()
         }
 

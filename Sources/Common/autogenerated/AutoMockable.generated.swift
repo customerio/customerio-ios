@@ -91,13 +91,13 @@ internal class CommonMocks {
 
     func resetAll() {
         mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol CommonMock {
-    func reset()
+    func resetMock()
 }
 
 /**
@@ -151,7 +151,7 @@ public class ActiveWorkspacesManagerMock: ActiveWorkspacesManager, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         activeWorkspacesGetCallsCount = 0
         activeWorkspacesSetCallsCount = 0
         addWorkspaceCallsCount = 0
@@ -204,7 +204,7 @@ public class DeviceAttributesHookMock: DeviceAttributesHook, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         customDeviceAttributesAddedCallsCount = 0
         customDeviceAttributesAddedReceivedArguments = nil
         customDeviceAttributesAddedReceivedInvocations = []
@@ -579,7 +579,7 @@ public class DeviceInfoMock: DeviceInfo, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         deviceManufacturerGetCallsCount = 0
         deviceManufacturerSetCallsCount = 0
         deviceModel = nil
@@ -651,7 +651,7 @@ public class FileStorageMock: FileStorage, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         saveCallsCount = 0
         saveReceivedArguments = nil
         saveReceivedInvocations = []
@@ -922,7 +922,7 @@ public class GlobalDataStoreMock: GlobalDataStore, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         sharedInstanceSiteId = nil
         sharedInstanceSiteIdGetCallsCount = 0
         sharedInstanceSiteIdSetCallsCount = 0
@@ -1092,7 +1092,7 @@ public class HooksManagerMock: HooksManager, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         profileIdentifyHooksGetCallsCount = 0
         profileIdentifyHooksSetCallsCount = 0
         queueRunnerHooksGetCallsCount = 0
@@ -1149,7 +1149,7 @@ public class HttpClientMock: HttpClient, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         requestCallsCount = 0
         requestReceivedArguments = nil
         requestReceivedInvocations = []
@@ -1268,7 +1268,7 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         requestCallsCount = 0
         requestReceivedArguments = nil
         requestReceivedInvocations = []
@@ -1406,7 +1406,7 @@ internal class HttpRetryPolicyMock: HttpRetryPolicy, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         nextSleepTime = nil
         nextSleepTimeGetCallsCount = 0
         nextSleepTimeSetCallsCount = 0
@@ -1428,7 +1428,7 @@ public class KeyValueStorageMock: KeyValueStorage, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         integerCallsCount = 0
         integerReceivedArguments = nil
         integerReceivedInvocations = []
@@ -1743,7 +1743,7 @@ public class LoggerMock: Logger, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         debugCallsCount = 0
         debugReceivedArguments = nil
         debugReceivedInvocations = []
@@ -1966,7 +1966,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         profileIdentifyHook = nil
         profileIdentifyHookGetCallsCount = 0
         profileIdentifyHookSetCallsCount = 0
@@ -1994,7 +1994,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         beforeIdentifiedProfileChangeCallsCount = 0
         beforeIdentifiedProfileChangeReceivedArguments = nil
         beforeIdentifiedProfileChangeReceivedInvocations = []
@@ -2148,7 +2148,7 @@ public class ProfileStoreMock: ProfileStore, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         identifier = nil
         identifierGetCallsCount = 0
         identifierSetCallsCount = 0
@@ -2170,7 +2170,7 @@ public class QueueMock: Queue, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         addTaskCallsCount = 0
         addTaskReceivedArguments = nil
         addTaskReceivedInvocations = []
@@ -2266,10 +2266,13 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         getNextTaskCallsCount = 0
         getNextTaskReceivedArguments = nil
         getNextTaskReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        resetCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -2306,6 +2309,27 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, CommonMock {
         getNextTaskReceivedInvocations.append((queue: queue, lastFailedTask: lastFailedTask))
         return getNextTaskClosure.map { $0(queue, lastFailedTask) } ?? getNextTaskReturnValue
     }
+
+    // MARK: - reset
+
+    /// Number of times the function was called.
+    internal private(set) var resetCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var resetCalled: Bool {
+        resetCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var resetClosure: (() -> Void)?
+
+    /// Mocked function for `reset()`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func reset() {
+        mockCalled = true
+        resetCallsCount += 1
+        resetClosure?()
+    }
 }
 
 /**
@@ -2323,7 +2347,7 @@ public class QueueRequestManagerMock: QueueRequestManager, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         requestCompleteCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2402,7 +2426,7 @@ public class QueueRunRequestMock: QueueRunRequest, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         startCallsCount = 0
         startReceivedArguments = nil
         startReceivedInvocations = []
@@ -2453,7 +2477,7 @@ public class QueueRunnerMock: QueueRunner, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         runTaskCallsCount = 0
         runTaskReceivedArguments = nil
         runTaskReceivedInvocations = []
@@ -2506,7 +2530,7 @@ public class QueueRunnerHookMock: QueueRunnerHook, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         runTaskCallsCount = 0
         runTaskReceivedArguments = nil
         runTaskReceivedInvocations = []
@@ -2563,7 +2587,7 @@ public class QueueStorageMock: QueueStorage, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         getInventoryCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2832,7 +2856,7 @@ public class SdkConfigStoreMock: SdkConfigStore, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         configGetCallsCount = 0
         configSetCallsCount = 0
     }
@@ -2889,7 +2913,7 @@ public class SdkCredentialsStoreMock: SdkCredentialsStore, CommonMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         credentialsGetCallsCount = 0
         credentialsSetCallsCount = 0
         loadCallsCount = 0
@@ -2938,7 +2962,7 @@ internal class SimpleTimerMock: SimpleTimer, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         scheduleAndCancelPreviousCallsCount = 0
         scheduleAndCancelPreviousReceivedArguments = nil
         scheduleAndCancelPreviousReceivedInvocations = []
@@ -3049,7 +3073,7 @@ internal class SingleScheduleTimerMock: SingleScheduleTimer, CommonMock {
         CommonMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         scheduleIfNotAlreadyCallsCount = 0
         scheduleIfNotAlreadyReceivedArguments = nil
         scheduleIfNotAlreadyReceivedInvocations = []
