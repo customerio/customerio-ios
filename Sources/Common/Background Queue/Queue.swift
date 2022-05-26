@@ -26,6 +26,8 @@ public protocol Queue: AutoMockable {
      Note: We are transitioning the code base to having a Queue function for every type of
      queue task. This is intead of having `Queue.addTask()` code scattered around the codebase.
 
+     You may see some `addTaskX` functions below but not all until this refactor is completed.
+
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
@@ -48,6 +50,7 @@ public protocol Queue: AutoMockable {
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
     ) -> ModifyQueueResult
+
     func run(onComplete: @escaping () -> Void)
 }
 
@@ -120,7 +123,8 @@ public class CioQueue: Queue {
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
         addTask(type: QueueTaskType.trackDeliveryMetric.rawValue,
                 data: TrackDeliveryEventRequestBody(type: .inApp,
-                                                    payload: DeliveryPayload(deliveryId: deliveryId, event: event,
+                                                    payload: DeliveryPayload(deliveryId: deliveryId,
+                                                                             event: event,
                                                                              timestamp: dateUtil.now)))
     }
 
