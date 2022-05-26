@@ -96,13 +96,13 @@ internal class {{ argument.moduleName }}Mocks {
 
     func resetAll() {
         self.mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol {{ argument.moduleName }}Mock {
-    func reset()
+    func resetMock()
 }
 
 {% macro swiftifyMethodName method %}{% if method|annotated:"Name" %}{{ method.annotations["Name"] }}{% else %}{{ method.callName | replace:"(","_" | replace:")","" | replace:":","_" | replace:"`","" | snakeToCamelCase | lowerFirstWord }}{% endif %}{% endmacro %}
@@ -280,7 +280,7 @@ internal protocol {{ argument.moduleName }}Mock {
     {% call mockVariable variable %}
 {% endfor %}
 
-    internal func reset() {
+    internal func resetMock() {
 {% for variable in type.allVariables|!definedInExtension %}
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
