@@ -4,13 +4,11 @@ import Foundation
 import SharedTests
 import XCTest
 
-class MessagingPushModuleHookProviderTest: UnitTest {
+class MessagingPushModuleHookProviderTest: IntegrationTest {
     private var hookProvider: MessagingPushModuleHookProvider!
 
     override func setUp() {
         super.setUp()
-
-        populateSdkCredentials()
 
         hookProvider = MessagingPushModuleHookProvider(siteId: testSiteId)
     }
