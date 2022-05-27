@@ -186,14 +186,25 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         track(name: name, data: StringAnyEncodable(data))
     }
 
+    // Meant to be called for manually tracked screen
     public func screen(name: String, data: [String: Any]) {
         screen(name: name, data: StringAnyEncodable(data))
     }
 
+    // Meant to be called for manually tracked screen
     public func screen<RequestBody: Encodable>(
         name: String,
         data: RequestBody
     ) {
+        // call hooks for manual screen view events at this time. Automatic screen view tracking is not the most stable.
+        hooks.screenViewHooks.forEach { hook in
+            hook.screenViewed(name: name)
+        }
+
+        trackEvent(type: .screen, name: name, data: data)
+    }
+
+    internal func automaticScreen<RequestBody: Encodable>(name: String, data: RequestBody?) {
         trackEvent(type: .screen, name: name, data: data)
     }
 }

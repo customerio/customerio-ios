@@ -360,7 +360,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.screen(name: name, data: data)
     }
 
-    public func automaticScreenView(
+    internal func automaticScreenView(
         name: String,
         data: [String: Any]
     ) {
@@ -372,12 +372,12 @@ public class CustomerIO: CustomerIOInstance {
     // the SDK the app is using, we simply call `screen()` on all siteIds of the SDK
     // and if automatic screen view tracking is not setup for that siteId, the function
     // call to the instance will simply be ignored.
-    public func automaticScreenView<RequestBody: Encodable>(
+    internal func automaticScreenView<RequestBody: Encodable>(
         name: String,
         data: RequestBody
     ) {
-        getActiveWorkspaceInstances().forEach { cio in
-            cio.screen(name: name, data: data)
+        getActiveWorkspaceInstances().forEach { _ in
+            implementation?.automaticScreen(name: name, data: data)
         }
     }
 }

@@ -28,4 +28,8 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     var deviceAttributesHook: DeviceAttributesHook? {
         MessagingPushImplementation(siteId: siteId)
     }
+
+    var screenTrackingHook: ScreenTrackingHook? {
+        nil
+    }
 }
