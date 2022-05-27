@@ -377,7 +377,7 @@ public class CustomerIO: CustomerIOInstance {
         data: RequestBody
     ) {
         getActiveWorkspaceInstances().forEach { _ in
-            implementation?.automaticScreen(name: name, data: data)
+            implementation?.automaticScreenView(name: name, data: data)
         }
     }
 }

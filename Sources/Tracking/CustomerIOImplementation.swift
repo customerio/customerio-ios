@@ -204,7 +204,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         trackEvent(type: .screen, name: name, data: data)
     }
 
-    internal func automaticScreen<RequestBody: Encodable>(name: String, data: RequestBody?) {
+    internal func automaticScreenView<RequestBody: Encodable>(name: String, data: RequestBody?) {
         trackEvent(type: .screen, name: name, data: data)
     }
 }
