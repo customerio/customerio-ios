@@ -1,6 +1,7 @@
 @testable import CioMessagingInApp
 @testable import CioTracking
 import Foundation
+import Gist
 import SharedTests
 import XCTest
 
@@ -25,5 +26,22 @@ class MessagingInAppTest: UnitTest {
         messagingInApp.initialize(organizationId: givenId)
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
+    }
+
+    // MARK: profile hooks
+
+    func test_givenProfileIdentified_expectSetupWithInApp() {
+        let given = String.random
+
+        messagingInApp.profileIdentified(identifier: given)
+
+        XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
+        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
+    }
+
+    func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
+        messagingInApp.beforeProfileStoppedBeingIdentified(oldIdentifier: String.random)
+
+        XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
 }
