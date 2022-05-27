@@ -3,7 +3,7 @@ import Common
 import Foundation
 import Gist
 
-public protocol MessagingInAppInstance {
+public protocol MessagingInAppInstance: AutoMockable {
     func initialize(organizationId: String)
 }
 
