@@ -144,21 +144,21 @@ internal class InAppProviderMock: InAppProvider, MessagingInAppMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var initializeReceivedArguments: (id: String, delegate: GistDelegate)?
+    internal private(set) var initializeReceivedArguments: (organizationId: String, delegate: GistDelegate)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var initializeReceivedInvocations: [(id: String, delegate: GistDelegate)] = []
+    internal private(set) var initializeReceivedInvocations: [(organizationId: String, delegate: GistDelegate)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var initializeClosure: ((String, GistDelegate) -> Void)?
 
-    /// Mocked function for `initialize(id: String, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func initialize(id: String, delegate: GistDelegate) {
+    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func initialize(organizationId: String, delegate: GistDelegate) {
         mockCalled = true
         initializeCallsCount += 1
-        initializeReceivedArguments = (id: id, delegate: delegate)
-        initializeReceivedInvocations.append((id: id, delegate: delegate))
-        initializeClosure?(id, delegate)
+        initializeReceivedArguments = (organizationId: organizationId, delegate: delegate)
+        initializeReceivedInvocations.append((organizationId: organizationId, delegate: delegate))
+        initializeClosure?(organizationId, delegate)
     }
 
     // MARK: - setProfileIdentifier
