@@ -24,7 +24,7 @@ public typealias ModifyQueueResult = (success: Bool, queueStatus: QueueStatus)
 public protocol Queue: AutoMockable {
     /*
      Note: We are transitioning the code base to having a Queue function for every type of
-     queue task. This is intead of having `Queue.addTask()` code scattered around the codebase.
+     queue task. This is instead of having `Queue.addTask()` code scattered around the codebase.
 
      You may see some `addTaskX` functions below but not all until this refactor is completed.
 

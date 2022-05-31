@@ -3,7 +3,7 @@ import Common
 import Foundation
 import Gist
 
-public protocol MessagingInAppInstance {
+public protocol MessagingInAppInstance: AutoMockable {
     func initialize(organizationId: String)
 }
 
@@ -66,7 +66,7 @@ public class MessagingInApp: MessagingInAppInstance {
     public func initialize(organizationId: String) {
         logger.debug("gist SDK being setup \(organizationId)")
 
-        inAppProvider.initialize(id: organizationId, delegate: self)
+        inAppProvider.initialize(organizationId: organizationId, delegate: self)
     }
 }
 
