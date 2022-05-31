@@ -277,7 +277,7 @@ public class DICommon {
 
     private var newQueue: Queue {
         CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
-                 logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer)
+                 logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // QueueQueryRunner

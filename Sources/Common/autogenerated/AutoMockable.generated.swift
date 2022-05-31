@@ -1116,16 +1116,16 @@ public class HooksManagerMock: HooksManager, CommonMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addReceivedArguments: (key: HookModules, provider: ModuleHookProvider)?
+    public private(set) var addReceivedArguments: (key: HookModule, provider: ModuleHookProvider)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addReceivedInvocations: [(key: HookModules, provider: ModuleHookProvider)] = []
+    public private(set) var addReceivedInvocations: [(key: HookModule, provider: ModuleHookProvider)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var addClosure: ((HookModules, ModuleHookProvider) -> Void)?
+    public var addClosure: ((HookModule, ModuleHookProvider) -> Void)?
 
-    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func add(key: HookModules, provider: ModuleHookProvider) {
+    /// Mocked function for `add(key: HookModule, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func add(key: HookModule, provider: ModuleHookProvider) {
         mockCalled = true
         addCallsCount += 1
         addReceivedArguments = (key: key, provider: provider)
@@ -2171,6 +2171,11 @@ public class QueueMock: Queue, CommonMock {
     }
 
     internal func resetMock() {
+        addTrackInAppDeliveryTaskCallsCount = 0
+        addTrackInAppDeliveryTaskReceivedArguments = nil
+        addTrackInAppDeliveryTaskReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         addTaskCallsCount = 0
         addTaskReceivedArguments = nil
         addTaskReceivedInvocations = []
@@ -2181,6 +2186,38 @@ public class QueueMock: Queue, CommonMock {
         runReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - addTrackInAppDeliveryTask
+
+    /// Number of times the function was called.
+    public private(set) var addTrackInAppDeliveryTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    public var addTrackInAppDeliveryTaskCalled: Bool {
+        addTrackInAppDeliveryTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric)] =
+        []
+    /// Value to return from the mocked function.
+    public var addTrackInAppDeliveryTaskReturnValue: ModifyQueueResult!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `addTrackInAppDeliveryTaskReturnValue`
+     */
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> ModifyQueueResult)?
+
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+        mockCalled = true
+        addTrackInAppDeliveryTaskCallsCount += 1
+        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event)
+        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event))
+        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event) } ?? addTrackInAppDeliveryTaskReturnValue
     }
 
     // MARK: - addTask<TaskData: Codable>
@@ -2199,21 +2236,18 @@ public class QueueMock: Queue, CommonMock {
     public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?,
                                                           blockingGroups: [QueueTaskGroup]?)] = []
     /// Value to return from the mocked function.
-    public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
+    public var addTaskReturnValue: ModifyQueueResult!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus))?
+    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?) -> ModifyQueueResult)?
 
     /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
-                                           blockingGroups: [QueueTaskGroup]?) -> (
-        success: Bool,
-        queueStatus: QueueStatus
-    ) {
+                                           blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult
+    {
         mockCalled = true
         addTaskCallsCount += 1
         addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart,

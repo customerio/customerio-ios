@@ -22,7 +22,9 @@ let package = Package(
         .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
     dependencies: [
-        .package(url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
+        // Help for the format of declaring SPM dependencies:
+        // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
+        .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
     ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
@@ -70,7 +72,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["Common", "CioTracking", .product(name: "Gist", package: "gist-apple")],
+                dependencies: ["Common", "CioTracking", "Gist"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],

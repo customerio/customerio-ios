@@ -32,6 +32,10 @@ class TrackingAPITest: UnitTest {
         CustomerIO.initialize(siteId: "", apiKey: "")
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
 
+        // Reference some objects that should be public in the Tracking module
+        let region: Region = .EU
+        let loglevel: CioLogLevel = .debug
+
         // config
         CustomerIO.config { config in }
         mock.config { config in }
