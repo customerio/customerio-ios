@@ -44,4 +44,15 @@ class MessagingInAppTest: UnitTest {
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
+
+    // MARK: screen view hooks
+
+    func test_givenScreenViewed_expectSetRouteOnInApp() {
+        let given = String.random
+
+        messagingInApp.screenViewed(name: given)
+
+        XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
+        XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
+    }
 }

@@ -5,6 +5,7 @@ public protocol HooksManager: AutoMockable {
     var profileIdentifyHooks: [ProfileIdentifyHook] { get }
     var queueRunnerHooks: [QueueRunnerHook] { get }
     var deviceAttributesHooks: [DeviceAttributesHook] { get }
+    var screenViewHooks: [ScreenTrackingHook] { get }
 }
 
 public enum HookModule: String {
@@ -38,8 +39,11 @@ public class CioHooksManager: HooksManager {
         hookProviders.filter { $0.value.queueRunnerHook != nil }.map { $0.value.queueRunnerHook! }
     }
 
-    // Checks all hooks available and provides hook for custom device attributes
     public var deviceAttributesHooks: [DeviceAttributesHook] {
         hookProviders.filter { $0.value.deviceAttributesHook != nil }.map { $0.value.deviceAttributesHook! }
+    }
+
+    public var screenViewHooks: [ScreenTrackingHook] {
+        hookProviders.filter { $0.value.screenTrackingHook != nil }.map { $0.value.screenTrackingHook! }
     }
 }

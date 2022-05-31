@@ -24,4 +24,8 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
     var deviceAttributesHook: DeviceAttributesHook? {
         nil
     }
+
+    var screenTrackingHook: ScreenTrackingHook? {
+        MessagingInApp.shared
+    }
 }

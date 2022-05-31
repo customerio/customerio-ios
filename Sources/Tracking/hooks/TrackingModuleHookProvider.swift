@@ -23,4 +23,8 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     var deviceAttributesHook: DeviceAttributesHook? {
         nil
     }
+
+    var screenTrackingHook: ScreenTrackingHook? {
+        nil
+    }
 }

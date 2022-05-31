@@ -86,6 +86,14 @@ extension MessagingInApp: ProfileIdentifyHook {
     }
 }
 
+extension MessagingInApp: ScreenTrackingHook {
+    public func screenViewed(name: String) {
+        logger.debug("setting route for in-app to \(name)")
+
+        inAppProvider.setRoute(name)
+    }
+}
+
 extension MessagingInApp: GistDelegate {
     public func embedMessage(message: Message, elementId: String) {}
 

@@ -211,4 +211,34 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(#"{"data":{}"#))
         XCTAssertFalse(actualQueueTaskData!.attributesJsonString.contains("null"))
     }
+
+    // MARK: screen
+
+    func test_screen_givenAutomaticScreenTracking_expectTrackScreenViewEvent_expectDoNotCallHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        let data: EmptyRequestBody? = nil
+        implementation.automaticScreenView(name: String.random, data: data)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertFalse(hooksMock.mockCalled)
+    }
+
+    func test_screen_givenManualScreenTracking_expectTrackScreenViewEvent_expectCallHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        let data: EmptyRequestBody? = nil
+        implementation.screen(name: String.random, data: data)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertTrue(hooksMock.screenViewHooksGetCalled)
+    }
 }

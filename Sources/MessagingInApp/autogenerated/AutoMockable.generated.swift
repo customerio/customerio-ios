@@ -132,6 +132,11 @@ internal class InAppProviderMock: InAppProvider, MessagingInAppMock {
         clearIdentifyCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        setRouteCallsCount = 0
+        setRouteReceivedArguments = nil
+        setRouteReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - initialize
@@ -207,6 +212,33 @@ internal class InAppProviderMock: InAppProvider, MessagingInAppMock {
         mockCalled = true
         clearIdentifyCallsCount += 1
         clearIdentifyClosure?()
+    }
+
+    // MARK: - setRoute
+
+    /// Number of times the function was called.
+    internal private(set) var setRouteCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var setRouteCalled: Bool {
+        setRouteCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    internal private(set) var setRouteReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    internal private(set) var setRouteReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var setRouteClosure: ((String) -> Void)?
+
+    /// Mocked function for `setRoute(_ route: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func setRoute(_ route: String) {
+        mockCalled = true
+        setRouteCallsCount += 1
+        setRouteReceivedArguments = route
+        setRouteReceivedInvocations.append(route)
+        setRouteClosure?(route)
     }
 }
 
