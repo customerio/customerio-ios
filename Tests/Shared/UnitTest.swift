@@ -37,6 +37,10 @@ open class UnitTest: XCTestCase {
 
     public var retryPolicyMock: HttpRetryPolicyMock!
 
+    public var dateUtilStub: DateUtilStub!
+
+    public var threadUtilStub: ThreadUtilStub!
+
     public var lockManager: LockManager {
         LockManager()
     }
@@ -44,6 +48,12 @@ open class UnitTest: XCTestCase {
     override open func setUp() {
         deleteAll()
 
+        dateUtilStub = DateUtilStub()
+        threadUtilStub = ThreadUtilStub()
+        // make default behavior of tests to run async code in synchronous way to make tests more predictable.
+        diGraph.override(.threadUtil, value: threadUtilStub, forType: ThreadUtilStub.self)
+
+        // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
 

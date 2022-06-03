@@ -187,7 +187,7 @@ extension CIOHttpClient {
     // By pausing HTTP requests, we mitigate the chance of customer devices causing harm to our API.
     private func pauseHttpRequests() {
         let minutesToPause = 5
-        let dateToEndPause = Date().addMinutes(minutesToPause)
+        let dateToEndPause = Date().add(minutesToPause, .minute)
 
         globalDataStore.httpRequestsPauseEnds = dateToEndPause
 

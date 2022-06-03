@@ -107,6 +107,15 @@ public class CustomerIO: CustomerIOInstance {
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
 
+    // strong reference to repository to prevent garbage collection as it runs tasks in async.
+    private var cleanupRepository: CleanupRepository?
+
+    private var threadUtil: ThreadUtil? {
+        guard let siteId = siteId else { return nil }
+
+        return DICommon.getInstance(siteId: siteId).threadUtil
+    }
+
     private var logger: Logger? {
         guard let siteId = siteId else { return nil }
 
@@ -158,6 +167,8 @@ public class CustomerIO: CustomerIOInstance {
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         self.implementation = CustomerIOImplementation(siteId: siteId)
+
+        postInitialize(siteId: siteId)
     }
 
     /**
@@ -170,6 +181,8 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
+
+        Self.shared.postInitialize(siteId: siteId)
 
         Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
@@ -204,6 +217,23 @@ public class CustomerIO: CustomerIOInstance {
         globalData.appendSiteId(siteId)
 
         InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
+    }
+
+    private func postInitialize(siteId: String) {
+        let diGraph = DICommon.getInstance(siteId: siteId)
+        let diGraphTracking = DITracking.getInstance(siteId: siteId)
+
+        // Register Tracking module hooks now that the module is being initialized.
+        let hooksManager = diGraph.hooksManager
+        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
+
+        cleanupRepository = diGraphTracking.cleanupRepository
+
+        // run cleanup in background to prevent locking the UI thread
+        threadUtil?.runBackground { [weak self] in
+            self?.cleanupRepository?.cleanup()
+            self?.cleanupRepository = nil
+        }
     }
 
     /**

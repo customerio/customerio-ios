@@ -71,6 +71,7 @@ public enum DependencyCommon: CaseIterable {
     case queueRunner
     case simpleTimer
     case singleScheduleTimer
+    case threadUtil
     case logger
     case httpRetryPolicy
     case fileStorage
@@ -162,6 +163,7 @@ public class DICommon {
         case .queueRunner: return queueRunner as! T
         case .simpleTimer: return simpleTimer as! T
         case .singleScheduleTimer: return singleScheduleTimer as! T
+        case .threadUtil: return threadUtil as! T
         case .logger: return logger as! T
         case .httpRetryPolicy: return httpRetryPolicy as! T
         case .fileStorage: return fileStorage as! T
@@ -380,6 +382,18 @@ public class DICommon {
         CioSingleScheduleTimer(timer: simpleTimer)
     }
 
+    // ThreadUtil
+    public var threadUtil: ThreadUtil {
+        if let overridenDep = overrides[.threadUtil] {
+            return overridenDep as! ThreadUtil
+        }
+        return newThreadUtil
+    }
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
+    }
+
     // Logger
     public var logger: Logger {
         if let overridenDep = overrides[.logger] {
@@ -426,7 +440,8 @@ public class DICommon {
 
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
-                                lockManager: lockManager)
+                                lockManager: lockManager, sdkConfigStore: sdkConfigStore, logger: logger,
+                                dateUtil: dateUtil)
     }
 
     // ActiveWorkspacesManager (singleton)
