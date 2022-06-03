@@ -92,13 +92,13 @@ internal class TrackingMocks {
 
     func resetAll() {
         mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol TrackingMock {
-    func reset()
+    func resetMock()
 }
 
 /**
@@ -267,7 +267,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, TrackingMock {
         }
     }
 
-    internal func reset() {
+    internal func resetMock() {
         siteId = nil
         siteIdGetCallsCount = 0
         siteIdSetCallsCount = 0

@@ -6,5 +6,5 @@ import Foundation
  Keep this file as small as possible to make the automated updating script stable and easy to use.
  */
 internal enum SdkVersion {
-    static let version: String = "1.0.3"
+    static let version: String = "1.1.0"
 }

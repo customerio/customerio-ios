@@ -216,6 +216,10 @@ public class CustomerIO: CustomerIOInstance {
 
         globalData.appendSiteId(siteId)
 
+        // Register Tracking module hooks now that the module is being initialized.
+        let hooksManager = diGraph.hooksManager
+        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
+
         InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
     }
 

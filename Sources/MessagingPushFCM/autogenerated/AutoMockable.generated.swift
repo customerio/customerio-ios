@@ -94,13 +94,13 @@ internal class MessagingPushFCMMocks {
 
     func resetAll() {
         mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol MessagingPushFCMMock {
-    func reset()
+    func resetMock()
 }
 
 /**
@@ -118,7 +118,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, MessagingPu
         MessagingPushFCMMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []

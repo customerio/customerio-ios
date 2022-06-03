@@ -291,7 +291,7 @@ public class DICommon {
     }
 
     private var newQueueQueryRunner: QueueQueryRunner {
-        CioQueueQueryRunner()
+        CioQueueQueryRunner(logger: logger)
     }
 
     // QueueRequestManager (singleton)

@@ -93,13 +93,13 @@ internal class MessagingPushMocks {
 
     func resetAll() {
         mocks.forEach {
-            $0.reset()
+            $0.resetMock()
         }
     }
 }
 
 internal protocol MessagingPushMock {
-    func reset()
+    func resetMock()
 }
 
 /**
@@ -117,7 +117,7 @@ internal class DeviceAttributesProviderMock: DeviceAttributesProvider, Messaging
         MessagingPushMocks.shared.add(mock: self)
     }
 
-    internal func reset() {
+    internal func resetMock() {
         getDefaultDeviceAttributesCallsCount = 0
         getDefaultDeviceAttributesReceivedArguments = nil
         getDefaultDeviceAttributesReceivedInvocations = []
