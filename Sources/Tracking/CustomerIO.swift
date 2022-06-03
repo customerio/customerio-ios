@@ -406,4 +406,4 @@ public class CustomerIO: CustomerIOInstance {
             cio.screen(name: name, data: data)
         }
     }
-}
+} // swiftlint:disable:this file_length

@@ -180,12 +180,14 @@ public class FileManagerQueueStorage: QueueStorage {
 
         getInventory().filter { inventoryItem in
             // Do not delete tasks that are at the start of a group of tasks.
-            // Why? Take for example Identifying a profile. If we identify profile X in an app today, we expire the Identify queue task and delete the
-            // queue task, and then profile X stays logged into an app for 6 months, that means we run the risk of 6 months of data never
-            // successfully being sent to the API.
-            // Also, queue tasks such as Identifying a profile are more rare queue tasks compared to tracking of events (that are not the start of a group). So, it should rarely
-            // be a scenario when there are thousands of "expired" Identifying a profile tasks sitting in a queue. It's the queue tasks such as
-            // tracking that are taking up a large majority of the queue inventory. Those we should be deleting more of.
+            // Why? Take for example Identifying a profile. If we identify profile X in an app today,
+            // we expire the Identify queue task and delete the queue task, and then profile X stays logged
+            // into an app for 6 months, that means we run the risk of 6 months of data never successfully being sent
+            // to the API.
+            // Also, queue tasks such as Identifying a profile are more rare queue tasks compared to tracking of events
+            // (that are not the start of a group). So, it should rarely be a scenario when there are thousands
+            // of "expired" Identifying a profile tasks sitting in a queue. It's the queue tasks such as tracking
+            // that are taking up a large majority of the queue inventory. Those we should be deleting more of.
             inventoryItem.groupStart == nil
         }.forEach { taskInventoryItem in
             let isItemTooOld = taskInventoryItem.createdAt.isOlderThan(queueTaskExpiredThreshold)
@@ -198,7 +200,8 @@ public class FileManagerQueueStorage: QueueStorage {
         logger.debug("deleting \(tasksToDelete.count) tasks. \n Tasks: \(tasksToDelete)")
 
         tasksToDelete.forEach { taskToDelete in
-            // Because the queue tasks we are deleting are not the start of a group, if deleting a task is not successful, we can ignore that
+            // Because the queue tasks we are deleting are not the start of a group,
+            // if deleting a task is not successful, we can ignore that
             // because it doesn't negatively effect the state of the SDK or the queue.
             _ = self.delete(storageId: taskToDelete.taskPersistedId)
         }
