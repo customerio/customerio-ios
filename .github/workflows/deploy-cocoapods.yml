@@ -39,6 +39,8 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
       - name: Push CustomerIOMessagingPushFCM 
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
+      - name: Push CustomerIOMessagingInApp 
+        run: ./scripts/push-cocoapod.sh CustomerIOMessagingInApp.podspec
       - name: Push CustomerIO
         run: ./scripts/push-cocoapod.sh CustomerIO.podspec
 
