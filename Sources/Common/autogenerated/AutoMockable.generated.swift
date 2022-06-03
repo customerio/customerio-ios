@@ -1116,16 +1116,16 @@ public class HooksManagerMock: HooksManager, CommonMock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addReceivedArguments: (key: HookModules, provider: ModuleHookProvider)?
+    public private(set) var addReceivedArguments: (key: HookModule, provider: ModuleHookProvider)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addReceivedInvocations: [(key: HookModules, provider: ModuleHookProvider)] = []
+    public private(set) var addReceivedInvocations: [(key: HookModule, provider: ModuleHookProvider)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var addClosure: ((HookModules, ModuleHookProvider) -> Void)?
+    public var addClosure: ((HookModule, ModuleHookProvider) -> Void)?
 
-    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func add(key: HookModules, provider: ModuleHookProvider) {
+    /// Mocked function for `add(key: HookModule, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func add(key: HookModule, provider: ModuleHookProvider) {
         mockCalled = true
         addCallsCount += 1
         addReceivedArguments = (key: key, provider: provider)

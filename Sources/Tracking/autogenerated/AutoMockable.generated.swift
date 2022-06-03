@@ -116,7 +116,7 @@ internal class CleanupRepositoryMock: CleanupRepository, TrackingMock {
         TrackingMocks.shared.add(mock: self)
     }
 
-    internal func resetMock() {
+    internal func reset() {
         cleanupCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
