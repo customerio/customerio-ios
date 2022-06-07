@@ -16,6 +16,7 @@ public protocol GlobalDataStore: AutoMockable {
     var lastTrackedScreenName: String? { get set }
 }
 
+// Note: using singleton because we are storing some properties use in-memory as storage mechanism.
 // sourcery: InjectRegister = "GlobalDataStore"
 // sourcery: InjectSingleton
 public class CioGlobalDataStore: GlobalDataStore {
