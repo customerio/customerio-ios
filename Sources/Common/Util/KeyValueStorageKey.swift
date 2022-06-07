@@ -11,4 +11,5 @@ public enum KeyValueStorageKey: String {
     case allSiteIds
     case pushDeviceToken
     case httpRequestsPauseEnds
+    case lastTrackedScreenName
 }
