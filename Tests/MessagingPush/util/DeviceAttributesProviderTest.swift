@@ -28,7 +28,7 @@ class DeviceAttributesProviderTest: UnitTest {
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
-            XCTAssertEqual(actual as! [String: String], expected)
+            XCTAssertEqual(actual as? [String: String], expected)
 
             expect.fulfill()
         }
@@ -61,7 +61,7 @@ class DeviceAttributesProviderTest: UnitTest {
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
-            XCTAssertEqual(actual as! [String: String], expected)
+            XCTAssertEqual(actual as? [String: String], expected)
 
             expect.fulfill()
         }

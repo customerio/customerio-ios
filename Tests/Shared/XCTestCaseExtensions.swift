@@ -30,9 +30,11 @@ public extension XCTestCase {
         }
     }
 
-    func XCTAssertMatches(_ actual: String, regex: String, file: StaticString = #file,
+    func XCTAssertMatches(_ actual: String?, regex: String, file: StaticString = #file,
                           line: UInt = #line) {
-        let matches = actual.matches(regex: regex)
+        XCTAssertNotNil(actual, file: file, line: line)
+
+        let matches = actual!.matches(regex: regex)
 
         if !matches {
             XCTFail("\(actual) does not match pattern: \(regex)", file: file, line: line)

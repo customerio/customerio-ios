@@ -27,8 +27,8 @@ open class UnitTest: XCTestCase {
         diGraph.profileStore
     }
 
-    public var log: ConsoleLogger {
-        diGraph.logger as! ConsoleLogger
+    public var log: Logger {
+        diGraph.logger
     }
 
     public var jsonAdapter: JsonAdapter {
@@ -82,8 +82,11 @@ open class UnitTest: XCTestCase {
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
+            // OK to use try! here as we want tests to crash if for some reason we are not able to delete files from the device.
+            // if files do not get deleted between tests, we could have false positive tests.
+            // swiftlint:disable:next force_try
             let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
-
+            // swiftlint:disable:next force_try
             let fileURLs = try! fileManager.contentsOfDirectory(at: pathUrl,
                                                                 includingPropertiesForKeys: nil,
                                                                 options: .skipsHiddenFiles)

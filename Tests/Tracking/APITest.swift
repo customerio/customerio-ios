@@ -25,6 +25,7 @@ class TrackingAPITest: UnitTest {
 
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
+    // swiftlint:disable:next function_body_length
     func test_allPublicTrackingFunctions() throws {
         try skipRunningTest()
 
