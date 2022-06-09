@@ -39,7 +39,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        let diGraph = DICommon.getInstance(siteId: siteId)
+        let diGraph = DIGraph.getInstance(siteId: siteId)
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfigStore = diGraph.sdkConfigStore

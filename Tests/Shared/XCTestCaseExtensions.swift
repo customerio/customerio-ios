@@ -20,8 +20,7 @@ public extension XCTestCase {
     }
 
     func XCTAssertEqualEither<T: Equatable>(_ expected: [T], actual: T, file: StaticString = #file,
-                                            line: UInt = #line)
-    {
+                                            line: UInt = #line) {
         let matches = expected.contains { value in
             value == actual
         }
@@ -32,8 +31,7 @@ public extension XCTestCase {
     }
 
     func XCTAssertMatches(_ actual: String, regex: String, file: StaticString = #file,
-                          line: UInt = #line)
-    {
+                          line: UInt = #line) {
         let matches = actual.matches(regex: regex)
 
         if !matches {
@@ -42,8 +40,7 @@ public extension XCTestCase {
     }
 
     func skipRunningTest(file: StaticString = #file,
-                         line: UInt = #line) throws
-    {
+                         line: UInt = #line) throws {
         try XCTSkipIf(true, nil, file: file, line: line)
     }
 }

@@ -33,9 +33,9 @@ class TrackingAPITest: UnitTest {
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
 
         // config
-        CustomerIO.config { config in }
-        mock.config { config in }
-        instance.config { config in }
+        CustomerIO.config { _ in }
+        mock.config { _ in }
+        instance.config { _ in }
 
         // Identify
         CustomerIO.shared.identify(identifier: "")

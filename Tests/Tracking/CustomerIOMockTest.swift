@@ -24,7 +24,7 @@ class CustomerIOMockTest: UnitTest {
 
         /// Call your code under test
         let expect = expectation(description: "Expect login to complete")
-        repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { result in
+        repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
             expect.fulfill()
         }
 

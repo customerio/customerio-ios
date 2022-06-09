@@ -150,7 +150,7 @@ class HttpClientTest: UnitTest {
 
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
-        client.request(params) { result in
+        client.request(params) { _ in
             expectComplete.fulfill()
         }
 

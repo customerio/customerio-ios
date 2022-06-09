@@ -110,7 +110,7 @@ public class CustomerIO: CustomerIOInstance {
     private var logger: Logger? {
         guard let siteId = siteId else { return nil }
 
-        return DICommon.getInstance(siteId: siteId).logger
+        return DIGraph.getInstance(siteId: siteId).logger
     }
 
     /**
@@ -120,7 +120,7 @@ public class CustomerIO: CustomerIOInstance {
      */
     internal init() {
         if let siteId = globalData.sharedInstanceSiteId {
-            let diGraph = DICommon.getInstance(siteId: siteId)
+            let diGraph = DIGraph.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore
             let logger = diGraph.logger
 
@@ -176,7 +176,7 @@ public class CustomerIO: CustomerIOInstance {
 
     private func getActiveWorkspaceInstances() -> [CustomerIO] {
         InMemoryActiveWorkspaces.getInstance().activeWorkspaces.map { siteId in
-            let diGraph = DICommon.getInstance(siteId: siteId)
+            let diGraph = DIGraph.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore.credentials
 
             return CustomerIO(siteId: siteId, apiKey: credentialsStore.apiKey, region: credentialsStore.region)
@@ -187,7 +187,7 @@ public class CustomerIO: CustomerIOInstance {
      Sets credentials on shared or non-shared instance.
      */
     internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        let diGraph = DICommon.getInstance(siteId: siteId)
+        let diGraph = DIGraph.getInstance(siteId: siteId)
         var credentialsStore = diGraph.sdkCredentialsStore
 
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)

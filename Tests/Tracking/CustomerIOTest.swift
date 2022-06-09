@@ -68,7 +68,7 @@ class CustomerIOTest: UnitTest {
 
         _ = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
-        let config = DICommon.getInstance(siteId: givenSiteId).sdkConfigStore.config
+        let config = DIGraph.getInstance(siteId: givenSiteId).sdkConfigStore.config
 
         XCTAssertEqual(config.trackingApiUrl, Region.EU.productionTrackingUrl)
     }
