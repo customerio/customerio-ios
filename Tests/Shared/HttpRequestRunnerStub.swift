@@ -8,6 +8,8 @@ public class HttpRequestRunnerStub {
     private var responseQueue: [HttpResponse] = []
 
     public var requestCallsCount: Int = 0
+    public var lastRequestParams: HttpRequestParams?
+    public var allRequestsParams: [HttpRequestParams] = []
 
     public func queueNoRequestMade() {
         responseQueue.append(HttpResponse(data: nil, response: nil, error: URLError(.cancelled)))
@@ -38,6 +40,9 @@ extension HttpRequestRunnerStub: HttpRequestRunner {
         requestCallsCount += 1
 
         let queueNextResponse = responseQueue.removeFirst()
+
+        lastRequestParams = params
+        allRequestsParams.append(params)
 
         onComplete(queueNextResponse.data, queueNextResponse.response, queueNextResponse.error)
     }

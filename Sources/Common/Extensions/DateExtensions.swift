@@ -1,11 +1,18 @@
 import Foundation
 
-enum DateFormat: String {
+public enum DateFormat: String {
     case hourMinuteSecond = "HH:mm:ss"
     case iso8601noMilliseconds = "yyyy-MM-dd'T'HH:mm:ssZ"
+    case iso8601 = "yyyy-MM-dd'T'HH:mm:ss:SSSZ"
 }
 
-extension Date {
+public extension Date {
+    // the default `timeIntervalSince1970` will give a unix time with a decimal. The
+    // Customer.io API does not accept timestamps with a decimal value unix time.
+    var unixTime: Int {
+        Int(timeIntervalSince1970)
+    }
+
     static func fromFormat(_ format: DateFormat, string: String) -> Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = format.rawValue

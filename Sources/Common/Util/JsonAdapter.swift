@@ -40,11 +40,11 @@ public class JsonAdapter {
         encoder.keyEncodingStrategy = .convertToSnakeCase
         encoder.outputFormatting = .sortedKeys
         // We are using custom date encoding because if there are milliseconds in Date object,
-        // the default `secondsSince1970` will give a unix time with a decimal. The
+        // the default `timeIntervalSince1970` will give a unix time with a decimal. The
         // Customer.io API does not accept timestamps with a decimal value unix time.
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
-            let seconds = Int(date.timeIntervalSince1970)
+            let seconds = date.unixTime
             try container.encode(seconds)
         }
         encoder.outputFormatting = .sortedKeys
@@ -151,9 +151,12 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toJsonString<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil,
+    // default values for parameters are designed for creating JSON strings to send to our API. they are to meet the requirements of our API.
+    public func toJsonString<T: Encodable>(_ obj: T,
+                                           convertKeysToSnakecase: Bool = true,
                                            nilIfEmpty: Bool = true) -> String? {
-        guard let data = toJson(obj, encoder: override ?? encoder) else { return nil }
+        guard let data = toJson(obj, encoder: getEncoder(convertKeysToSnakecase: convertKeysToSnakecase))
+        else { return nil }
 
         let jsonString = data.string
 
@@ -165,5 +168,17 @@ public class JsonAdapter {
         }
 
         return jsonString
+    }
+
+    // modify the default encoder to change it's behavior for certain use cases.
+    private func getEncoder(convertKeysToSnakecase: Bool) -> JSONEncoder {
+        let modifiedEncoder = encoder
+        if convertKeysToSnakecase {
+            modifiedEncoder.keyEncodingStrategy = .convertToSnakeCase
+        } else {
+            modifiedEncoder.keyEncodingStrategy = .useDefaultKeys
+        }
+
+        return modifiedEncoder
     }
 }
