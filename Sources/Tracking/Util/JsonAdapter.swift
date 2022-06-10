@@ -151,7 +151,8 @@ public class JsonAdapter {
         return nil
     }
 
-    // default values for parameters are designed for creating JSON strings to send to our API. they are to meet the requirements of our API.
+    // default values for parameters are designed for creating JSON strings to send to our API.
+    // They are to meet the requirements of our API.
     public func toJsonString<T: Encodable>(_ obj: T,
                                            convertKeysToSnakecase: Bool = true,
                                            nilIfEmpty: Bool = true) -> String? {
