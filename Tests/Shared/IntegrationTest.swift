@@ -9,6 +9,13 @@ import XCTest
 open class IntegrationTest: UnitTest {
     public var httpRequestRunnerStub: HttpRequestRunnerStub!
 
+    public func configureBackgroundQueue(minNumberOfTasks: Int) {
+        var sdkConfigStore = diGraph.sdkConfigStore
+        var config = sdkConfigStore.config
+        config.backgroundQueueMinNumberOfTasks = minNumberOfTasks
+        sdkConfigStore.config = config
+    }
+
     override open func setUp() {
         super.setUp()
 

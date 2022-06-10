@@ -49,6 +49,7 @@ open class UnitTest: XCTestCase {
         deleteAll()
 
         dateUtilStub = DateUtilStub()
+        diGraph.override(.dateUtil, value: dateUtilStub, forType: DateUtil.self)
         threadUtilStub = ThreadUtilStub()
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraph.override(.threadUtil, value: threadUtilStub, forType: ThreadUtilStub.self)
