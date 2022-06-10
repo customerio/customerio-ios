@@ -151,9 +151,13 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toJsonString<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil,
+    // default values for parameters are designed for creating JSON strings to send to our API.
+    // They are to meet the requirements of our API.
+    public func toJsonString<T: Encodable>(_ obj: T,
+                                           convertKeysToSnakecase: Bool = true,
                                            nilIfEmpty: Bool = true) -> String? {
-        guard let data = toJson(obj, encoder: override ?? encoder) else { return nil }
+        guard let data = toJson(obj, encoder: getEncoder(convertKeysToSnakecase: convertKeysToSnakecase))
+        else { return nil }
 
         let jsonString = data.string
 
@@ -165,5 +169,17 @@ public class JsonAdapter {
         }
 
         return jsonString
+    }
+
+    // modify the default encoder to change it's behavior for certain use cases.
+    private func getEncoder(convertKeysToSnakecase: Bool) -> JSONEncoder {
+        let modifiedEncoder = encoder
+        if convertKeysToSnakecase {
+            modifiedEncoder.keyEncodingStrategy = .convertToSnakeCase
+        } else {
+            modifiedEncoder.keyEncodingStrategy = .useDefaultKeys
+        }
+
+        return modifiedEncoder
     }
 }
