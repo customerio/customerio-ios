@@ -12,7 +12,8 @@ class QueueStorageTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter,
-                                          lockManager: lockManager)
+                                          lockManager: lockManager, sdkConfigStore: diGraph.sdkConfigStore, logger: log,
+                                          dateUtil: dateUtilStub)
     }
 
     // MARK: getInventory
@@ -159,7 +160,8 @@ class QueueStorageIntegrationTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
-                                          jsonAdapter: jsonAdapter, lockManager: lockManager)
+                                          jsonAdapter: jsonAdapter, lockManager: lockManager,
+                                          sdkConfigStore: diGraph.sdkConfigStore, logger: log, dateUtil: dateUtilStub)
     }
 
     // MARK: delete
@@ -180,6 +182,60 @@ class QueueStorageIntegrationTest: UnitTest {
         inventory = storage.getInventory()
         XCTAssertEqual(inventory.count, 0)
         XCTAssertNil(storage.get(storageId: givenStorageId))
+    }
+
+    // MARK: deleteExpired
+
+    func test_deleteExpired_givenNoTasksInQueue_expectDeleteNoTasks() {
+        let tasksDeleted = storage.deleteExpired()
+
+        XCTAssertEqual(tasksDeleted.count, 0)
+    }
+
+    func test_deleteExpired_givenTasksNotExpired_expectDeleteNoTasks() {
+        dateUtilStub.givenNow = Date() // make newly created tasks not expired
+        _ = storage.create(type: String.random, data: "".data, groupStart: nil, blockingGroups: nil)
+
+        let tasksDeleted = storage.deleteExpired()
+
+        XCTAssertEqual(tasksDeleted.count, 0)
+    }
+
+    func test_deleteExpired_givenTasksStartOfGroupAndExpired_expectDeleteNoTasks() {
+        dateUtilStub.givenNow = Date().subtract(10, .day) // make newly created tasks expired
+        _ = storage.create(type: String.random,
+                           data: "".data,
+                           groupStart: QueueTaskGroup.identifiedProfile(identifier: String.random),
+                           blockingGroups: nil)
+
+        let tasksDeleted = storage.deleteExpired()
+
+        XCTAssertEqual(tasksDeleted.count, 0)
+    }
+
+    func test_deleteExpired_givenTasksNoStartOfGroupAndExpired_expectDeleteTasksExpired() {
+        let givenGroupOfTasks = QueueTaskGroup.identifiedProfile(identifier: String.random)
+        dateUtilStub.givenNow = Date().subtract(10, .day) // make newly created tasks expired
+        _ = storage.create(type: String.random,
+                           data: "".data,
+                           groupStart: givenGroupOfTasks,
+                           blockingGroups: nil)
+        let expectedNotDeleted = storage.getInventory()[0]
+        _ = storage.create(type: String.random,
+                           data: "".data,
+                           groupStart: nil,
+                           blockingGroups: [givenGroupOfTasks])
+        let expectedDeleted = storage.getInventory()[1]
+        XCTAssertNotEqual(expectedNotDeleted.taskPersistedId, expectedDeleted.taskPersistedId)
+
+        let tasksDeleted = storage.deleteExpired()
+
+        XCTAssertEqual(tasksDeleted.count, 1)
+        XCTAssertEqual(tasksDeleted[0], expectedDeleted)
+
+        let actualInventory = storage.getInventory()
+        XCTAssertEqual(actualInventory.count, 1)
+        XCTAssertEqual(actualInventory[0], expectedNotDeleted)
     }
 }
 #endif

@@ -59,6 +59,7 @@ import Foundation
  This allows automated unit testing against our dependency graph + ability to override nodes in graph.
  */
 internal enum DependencyTracking: CaseIterable {
+    case cleanupRepository
     case queueRunnerHook
 }
 
@@ -127,6 +128,7 @@ internal class DITracking {
      */
     internal func inject<T>(_ dep: DependencyTracking) -> T {
         switch dep {
+        case .cleanupRepository: return cleanupRepository as! T
         case .queueRunnerHook: return queueRunnerHook as! T
         }
     }
@@ -134,6 +136,18 @@ internal class DITracking {
     /**
      Use the property accessors below to inject pre-typed dependencies.
      */
+
+    // CleanupRepository
+    internal var cleanupRepository: CleanupRepository {
+        if let overridenDep = overrides[.cleanupRepository] {
+            return overridenDep as! CleanupRepository
+        }
+        return newCleanupRepository
+    }
+
+    private var newCleanupRepository: CleanupRepository {
+        CioCleanupRepository(diCommon: dICommon)
+    }
 
     // QueueRunnerHook
     internal var queueRunnerHook: QueueRunnerHook {

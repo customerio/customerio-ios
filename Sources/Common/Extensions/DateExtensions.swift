@@ -18,18 +18,34 @@ extension Date {
         return formatter.string(from: self)
     }
 
-    func addMinutes(_ minutes: Int) -> Date {
-        let calendar = Calendar(identifier: .iso8601)
-
-        return calendar.date(byAdding: DateComponents(minute: minutes),
-                             to: self)!
+    func add(_ value: Double, _ unit: Calendar.Component) -> Date {
+        add(Int(value), unit)
     }
 
-    func minusMinutes(_ minutes: Int) -> Date {
+    func add(_ value: Int, _ unit: Calendar.Component) -> Date {
         let calendar = Calendar(identifier: .iso8601)
 
-        return calendar.date(byAdding: DateComponents(minute: -minutes),
-                             to: self)!
+        var dateComponents = DateComponents()
+        dateComponents.setValue(value, for: unit)
+
+        return calendar.date(byAdding: dateComponents, to: self)!
+    }
+
+    func subtract(_ value: Double, _ unit: Calendar.Component) -> Date {
+        subtract(Int(value), unit)
+    }
+
+    func subtract(_ value: Int, _ unit: Calendar.Component) -> Date {
+        let calendar = Calendar(identifier: .iso8601)
+
+        var dateComponents = DateComponents()
+        dateComponents.setValue(-value, for: unit)
+
+        return calendar.date(byAdding: dateComponents, to: self)!
+    }
+
+    func isOlderThan(_ other: Date) -> Bool {
+        timeIntervalSince1970 < other.timeIntervalSince1970
     }
 
     var hasPassed: Bool {

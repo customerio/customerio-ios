@@ -27,6 +27,12 @@ public struct SdkConfig {
 
     /// The number of seconds to delay running queue after a task has been added to it.
     public var backgroundQueueSecondsDelay: Seconds = 30
+    /**
+     * The number of seconds old a queue task is when it is "expired" and should be deleted.
+     * We do not recommend modifying this value because it risks losing data or taking up too much
+     * space on the user's device.
+     */
+    public var backgroundQueueExpiredSeconds: Seconds = Seconds.secondsFromDays(3)
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.

@@ -38,6 +38,8 @@ public protocol Queue: AutoMockable {
         blockingGroups: [QueueTaskGroup]?
     ) -> (success: Bool, queueStatus: QueueStatus)
     func run(onComplete: @escaping () -> Void)
+
+    func deleteExpiredTasks()
 }
 
 public extension Queue {
@@ -164,5 +166,9 @@ public class CioQueue: Queue {
                 logger.info("queue timer: scheduled to run queue in \(numberSecondsToScheduleTimer) seconds")
             }
         }
+    }
+
+    public func deleteExpiredTasks() {
+        _ = storage.deleteExpired()
     }
 }
