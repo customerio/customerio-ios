@@ -28,6 +28,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
+    private var globalDataStore: GlobalDataStore
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -46,6 +47,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
+        self.globalDataStore = diGraph.globalDataStore
     }
 
     /**
@@ -196,15 +198,34 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        // call hooks for manual screen view events at this time. Automatic screen view tracking is not the most stable.
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
-
         trackEvent(type: .screen, name: name, data: data)
     }
 
     internal func automaticScreenView<RequestBody: Encodable>(name: String, data: RequestBody?) {
+        // check for profile identified first before other checks. This is to prevent the scenario where
+        // we save the last tracked screen name, then identify, then we might ignore a screen view event
+        // because of saving the last tracked screen name already.
+        guard profileStore.identifier != nil else {
+            // XXX: when we have anonymous profiles in SDK,
+            // we can decide to not ignore events when a profile is not logged yet.
+            logger.info("ignoring screen \(name) because no profile currently identified")
+            return
+        }
+
+        // TODO: currently disabling ignore functionality until decision is made on if we ignore screen tracking or not.
+        // TODO: also, we will want to move this logic to include manual screen tracking as well?
+
+        // this logic is to prevent duplication. Sometimes with method swizzling, you can receive multiple calls to the
+        // SDK for the same 1 screen. Only track an event if it's unique.
+//        if let previousScreenTrackedName = globalDataStore.lastTrackedScreenName, previousScreenTrackedName == name {
+
+//            logger
+//                .info("ignoring screen \(name) because this was the last screen tracked and we want to prevent sending duplicates")
+//            return
+        // }
+
+//        globalDataStore.lastTrackedScreenName = name
+
         trackEvent(type: .screen, name: name, data: data)
     }
 }
@@ -244,5 +265,11 @@ extension CustomerIOImplementation {
                                     blockingGroups: [
                                         .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
                                     ])
+
+        if type == .screen {
+            hooks.screenViewHooks.forEach { hook in
+                hook.screenViewed(name: name)
+            }
+        }
     }
 }

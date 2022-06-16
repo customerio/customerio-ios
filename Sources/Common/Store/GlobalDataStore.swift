@@ -12,9 +12,13 @@ public protocol GlobalDataStore: AutoMockable {
     // HTTP requests can be paused to avoid spamming the API too hard.
     // This Date is when a pause is able to be lifted.
     var httpRequestsPauseEnds: Date? { get set }
+    // keep track of the last viewed screen that was tracked to prevent sending duplicates.
+    var lastTrackedScreenName: String? { get set }
 }
 
+// Note: using singleton because we are storing some properties use in-memory as storage mechanism.
 // sourcery: InjectRegister = "GlobalDataStore"
+// sourcery: InjectSingleton
 public class CioGlobalDataStore: GlobalDataStore {
     private var diGraph: DICommon {
         // Used *only* for information that needs to be global between all site ids!
@@ -51,6 +55,10 @@ public class CioGlobalDataStore: GlobalDataStore {
             keyValueStorage.setDate(newValue, forKey: .httpRequestsPauseEnds)
         }
     }
+
+    // have this value in-memory so that it gets automatically cleared after the app gets cleared from memory.
+    // When app restarts, we don't want to know the last tracked screen so we can track the first screen that's seen when the app opens.
+    public var lastTrackedScreenName: String?
 
     public init() {}
 
