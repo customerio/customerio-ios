@@ -209,9 +209,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         // this logic is to prevent duplication. Sometimes with method swizzling, you can receive multiple calls to the
         // SDK for the same 1 screen. Only track an event if it's unique.
         if let previousScreenTrackedName = globalDataStore.lastTrackedScreenName, previousScreenTrackedName == name {
-            logger
-                .info("ignoring screen \(name) because this was the last screen tracked and we want to prevent sending duplicates")
-            return
+            // TODO: currently disabling ignore functionality until decision is made on if we ignore screen tracking or not.
+//            logger
+//                .info("ignoring screen \(name) because this was the last screen tracked and we want to prevent sending duplicates")
+//            return
         }
 
         globalDataStore.lastTrackedScreenName = name
