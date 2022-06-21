@@ -64,7 +64,7 @@ extension DIGraph {
     }
 
     private var newCleanupRepository: CleanupRepository {
-        CioCleanupRepository(diCommon: dICommon)
+        CioCleanupRepository(queue: queue)
     }
 
     // QueueRunnerHook

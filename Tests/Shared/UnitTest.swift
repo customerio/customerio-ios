@@ -51,7 +51,7 @@ open class UnitTest: XCTestCase {
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
-        diGraph.override(.threadUtil, value: threadUtilStub, forType: ThreadUtilStub.self)
+        diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
 
         // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()

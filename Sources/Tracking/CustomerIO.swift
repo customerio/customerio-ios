@@ -113,7 +113,7 @@ public class CustomerIO: CustomerIOInstance {
     private var threadUtil: ThreadUtil? {
         guard let siteId = siteId else { return nil }
 
-        return DICommon.getInstance(siteId: siteId).threadUtil
+        return DIGraph.getInstance(siteId: siteId).threadUtil
     }
 
     private var logger: Logger? {
@@ -220,14 +220,13 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     private func postInitialize(siteId: String) {
-        let diGraph = DICommon.getInstance(siteId: siteId)
-        let diGraphTracking = DITracking.getInstance(siteId: siteId)
+        let diGraph = DIGraph.getInstance(siteId: siteId)
 
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
         hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
 
-        cleanupRepository = diGraphTracking.cleanupRepository
+        cleanupRepository = diGraph.cleanupRepository
 
         // run cleanup in background to prevent locking the UI thread
         threadUtil?.runBackground { [weak self] in

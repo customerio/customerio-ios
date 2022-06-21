@@ -9,8 +9,8 @@ internal protocol CleanupRepository: AutoMockable {
 internal class CioCleanupRepository: CleanupRepository {
     private let queue: Queue
 
-    init(diCommon: DICommon) {
-        self.queue = diCommon.queue
+    init(queue: Queue) {
+        self.queue = queue
     }
 
     func cleanup() {

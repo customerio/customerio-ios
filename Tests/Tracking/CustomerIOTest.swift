@@ -12,9 +12,8 @@ class CustomerIOTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        DITracking.getInstance(siteId: testSiteId)
-            .override(.cleanupRepository, value: cleanupRepositoryMock, forType: CleanupRepository.self)
-        diGraph.override(.hooksManager, value: hooksManagerMock, forType: HooksManager.self)
+        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
+        diGraph.override(value: hooksManagerMock, forType: HooksManager.self)
     }
 
     // MARK: init
