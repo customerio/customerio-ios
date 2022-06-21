@@ -50,11 +50,11 @@ class MessagingPushFCMAPITest: UnitTest {
         #if canImport(UserNotifications)
         MessagingPush.shared
             .didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { content in }
+                                              trigger: nil)) { _ in }
         mock.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { content in }
+                                              trigger: nil)) { _ in }
         instance.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                                  trigger: nil)) { content in }
+                                                  trigger: nil)) { _ in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
         instance.serviceExtensionTimeWillExpire()

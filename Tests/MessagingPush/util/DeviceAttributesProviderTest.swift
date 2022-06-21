@@ -13,10 +13,7 @@ class DeviceAttributesProviderTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.deviceInfo, value: deviceInfoMock, forType: DeviceInfo.self)
-        diGraph.override(.sdkConfigStore, value: sdkConfigStoreMock, forType: SdkConfigStore.self)
-
-        provider = SdkDeviceAttributesProvider(diGraph: diGraph)
+        provider = SdkDeviceAttributesProvider(sdkConfigStore: sdkConfigStoreMock, deviceInfo: deviceInfoMock)
     }
 
     private func enableTrackDeviceAttributesSdkConfig(_ enable: Bool) {
@@ -31,7 +28,7 @@ class DeviceAttributesProviderTest: UnitTest {
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
-            XCTAssertEqual(actual as! [String: String], expected)
+            XCTAssertEqual(actual as? [String: String], expected)
 
             expect.fulfill()
         }
@@ -64,7 +61,7 @@ class DeviceAttributesProviderTest: UnitTest {
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
-            XCTAssertEqual(actual as! [String: String], expected)
+            XCTAssertEqual(actual as? [String: String], expected)
 
             expect.fulfill()
         }

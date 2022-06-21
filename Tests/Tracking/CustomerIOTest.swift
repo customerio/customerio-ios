@@ -12,9 +12,8 @@ class CustomerIOTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        DITracking.getInstance(siteId: testSiteId)
-            .override(.cleanupRepository, value: cleanupRepositoryMock, forType: CleanupRepository.self)
-        diGraph.override(.hooksManager, value: hooksManagerMock, forType: HooksManager.self)
+        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
+        diGraph.override(value: hooksManagerMock, forType: HooksManager.self)
     }
 
     // MARK: init
@@ -78,7 +77,7 @@ class CustomerIOTest: UnitTest {
 
         _ = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
-        let config = DICommon.getInstance(siteId: givenSiteId).sdkConfigStore.config
+        let config = DIGraph.getInstance(siteId: givenSiteId).sdkConfigStore.config
 
         XCTAssertEqual(config.trackingApiUrl, Region.EU.productionTrackingUrl)
     }

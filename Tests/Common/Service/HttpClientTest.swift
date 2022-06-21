@@ -57,8 +57,11 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noOrBadNetwork(let actualError) = result.error! else { return XCTFail() }
-            guard case .notConnectedToInternet = actualError.code else { return XCTFail() }
+            guard case .noOrBadNetwork(let actualError) = result.error!,
+                  case .notConnectedToInternet = actualError.code
+            else {
+                return XCTFail("expect request failed because not connected to internet")
+            }
 
             expectComplete.fulfill()
         }
@@ -75,7 +78,9 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noRequestMade = result.error! else { return XCTFail() }
+            guard case .noRequestMade = result.error! else {
+                return XCTFail("expect no request was made")
+            }
 
             expectComplete.fulfill()
         }
@@ -92,7 +97,9 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noRequestMade = result.error! else { return XCTFail() }
+            guard case .noRequestMade = result.error! else {
+                return XCTFail("expect no request was made")
+            }
 
             expectComplete.fulfill()
         }
@@ -130,7 +137,9 @@ class HttpClientTest: UnitTest {
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
-            guard case .noRequestMade = result.error! else { return XCTFail() }
+            guard case .noRequestMade = result.error! else {
+                return XCTFail("expect no request was made")
+            }
 
             expectComplete.fulfill()
         }
@@ -150,7 +159,7 @@ class HttpClientTest: UnitTest {
 
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
-        client.request(params) { result in
+        client.request(params) { _ in
             expectComplete.fulfill()
         }
 
@@ -173,8 +182,7 @@ class HttpClientTest: UnitTest {
             XCTAssertNotNil(result.error)
 
             guard case .unauthorized = result.error! else {
-                XCTFail()
-                return
+                return XCTFail("expected request to not have been authorized")
             }
 
             expectComplete.fulfill()
@@ -234,7 +242,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             guard case .success = result else { // expect get success after retrying.
-                return XCTFail()
+                return XCTFail("expect get success after retrying")
             }
 
             expectComplete.fulfill()
