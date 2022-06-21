@@ -14,7 +14,6 @@ class MessagingPushImplementationTest: UnitTest {
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let sdkConfigStoreMock = SdkConfigStoreMock()
     private let deviceAttributesMock = DeviceAttributesProviderMock()
-    private let dateUtilStub = DateUtilStub()
     private let deviceInfoMock = DeviceInfoMock()
 
     override func setUp() {

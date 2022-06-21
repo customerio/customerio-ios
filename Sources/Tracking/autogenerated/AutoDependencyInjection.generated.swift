@@ -51,7 +51,20 @@ extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     func testDependenciesAbleToResolve() {
+        _ = cleanupRepository
         _ = queueRunnerHook
+    }
+
+    // CleanupRepository
+    var cleanupRepository: CleanupRepository {
+        if let overridenDep = overrides[String(describing: CleanupRepository.self)] {
+            return overridenDep as! CleanupRepository
+        }
+        return newCleanupRepository
+    }
+
+    private var newCleanupRepository: CleanupRepository {
+        CioCleanupRepository(diCommon: dICommon)
     }
 
     // QueueRunnerHook

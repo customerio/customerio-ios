@@ -132,7 +132,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenHttpRequestsPaused_expectDontMakeRequest() {
-        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().addMinutes(10)
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().add(10, .minute)
 
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
@@ -150,7 +150,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenHttpRequestsPauseExpired_expectMakeRequest() {
-        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().minusMinutes(10)
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(Data(), HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),

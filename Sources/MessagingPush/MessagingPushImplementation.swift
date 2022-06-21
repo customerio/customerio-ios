@@ -96,7 +96,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                                                    lastUsed: self.dateUtil.now,
                                                                    attributes: encodableBody))
 
-            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, encoder: nil) else {
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
                 return
             }
             let queueTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,

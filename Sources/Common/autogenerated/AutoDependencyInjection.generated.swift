@@ -63,6 +63,7 @@ extension DIGraph {
         _ = queueRunner
         _ = simpleTimer
         _ = singleScheduleTimer
+        _ = threadUtil
         _ = logger
         _ = httpRetryPolicy
         _ = fileStorage
@@ -281,6 +282,18 @@ extension DIGraph {
         CioSingleScheduleTimer(timer: simpleTimer)
     }
 
+    // ThreadUtil
+    public var threadUtil: ThreadUtil {
+        if let overridenDep = overrides[String(describing: ThreadUtil.self)] {
+            return overridenDep as! ThreadUtil
+        }
+        return newThreadUtil
+    }
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
+    }
+
     // Logger
     public var logger: Logger {
         if let overridenDep = overrides[String(describing: Logger.self)] {
@@ -327,7 +340,8 @@ extension DIGraph {
 
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
-                                lockManager: lockManager)
+                                lockManager: lockManager, sdkConfigStore: sdkConfigStore, logger: logger,
+                                dateUtil: dateUtil)
     }
 
     // ActiveWorkspacesManager (singleton)

@@ -1095,16 +1095,16 @@ public class HooksManagerMock: HooksManager, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addReceivedArguments: (key: HookModules, provider: ModuleHookProvider)?
+    public private(set) var addReceivedArguments: (key: HookModule, provider: ModuleHookProvider)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addReceivedInvocations: [(key: HookModules, provider: ModuleHookProvider)] = []
+    public private(set) var addReceivedInvocations: [(key: HookModule, provider: ModuleHookProvider)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var addClosure: ((HookModules, ModuleHookProvider) -> Void)?
+    public var addClosure: ((HookModule, ModuleHookProvider) -> Void)?
 
-    /// Mocked function for `add(key: HookModules, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func add(key: HookModules, provider: ModuleHookProvider) {
+    /// Mocked function for `add(key: HookModule, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func add(key: HookModule, provider: ModuleHookProvider) {
         mockCalled = true
         addCallsCount += 1
         addReceivedArguments = (key: key, provider: provider)
@@ -2161,6 +2161,9 @@ public class QueueMock: Queue, Mock {
         runReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        deleteExpiredTasksCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - addTask<TaskData: Codable>
@@ -2228,6 +2231,27 @@ public class QueueMock: Queue, Mock {
         runReceivedArguments = onComplete
         runReceivedInvocations.append(onComplete)
         runClosure?(onComplete)
+    }
+
+    // MARK: - deleteExpiredTasks
+
+    /// Number of times the function was called.
+    public private(set) var deleteExpiredTasksCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteExpiredTasksCalled: Bool {
+        deleteExpiredTasksCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var deleteExpiredTasksClosure: (() -> Void)?
+
+    /// Mocked function for `deleteExpiredTasks()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteExpiredTasks() {
+        mockCalled = true
+        deleteExpiredTasksCallsCount += 1
+        deleteExpiredTasksClosure?()
     }
 }
 
@@ -2596,6 +2620,9 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        deleteExpiredCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - getInventory
@@ -2782,6 +2809,31 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedArguments = storageId
         deleteReceivedInvocations.append(storageId)
         return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
+    }
+
+    // MARK: - deleteExpired
+
+    /// Number of times the function was called.
+    public private(set) var deleteExpiredCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteExpiredCalled: Bool {
+        deleteExpiredCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    public var deleteExpiredReturnValue: [QueueTaskMetadata]!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `deleteExpiredReturnValue`
+     */
+    public var deleteExpiredClosure: (() -> [QueueTaskMetadata])?
+
+    /// Mocked function for `deleteExpired()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteExpired() -> [QueueTaskMetadata] {
+        mockCalled = true
+        deleteExpiredCallsCount += 1
+        return deleteExpiredClosure.map { $0() } ?? deleteExpiredReturnValue
     }
 }
 
