@@ -17,6 +17,6 @@ open class IntegrationTest: UnitTest {
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
         httpRequestRunnerStub = HttpRequestRunnerStub()
-        diGraph.override(.httpRequestRunner, value: httpRequestRunnerStub, forType: HttpRequestRunner.self)
+        diGraph.override(value: httpRequestRunnerStub, forType: HttpRequestRunner.self)
     }
 }

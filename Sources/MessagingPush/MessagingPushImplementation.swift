@@ -44,8 +44,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
     init(siteId: String) {
         self.siteId = siteId
-        let diGraph = DICommon.getInstance(siteId: siteId)
-        let messagingPushDiGraph = DIMessagingPush.getInstance(siteId: siteId)
+        let diGraph = DIGraph.getInstance(siteId: siteId)
 
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
@@ -53,7 +52,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.logger = diGraph.logger
         self.sdkConfigStore = diGraph.sdkConfigStore
         self.jsonAdapter = diGraph.jsonAdapter
-        self.deviceAttributesProvider = messagingPushDiGraph.deviceAttributesProvider
+        self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
     }
@@ -97,7 +96,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
                                                                    lastUsed: self.dateUtil.now,
                                                                    attributes: encodableBody))
 
-            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, encoder: nil) else {
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
                 return
             }
             let queueTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,

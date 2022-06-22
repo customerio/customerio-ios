@@ -18,10 +18,10 @@ let package = Package(
         // target name is the name used for `import X`
         .library(name: "Tracking", targets: ["CioTracking"]),
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
-        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"])
     ],
     dependencies: [],
-    targets: [        
+    targets: [
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
         .target(name: "Common",
@@ -36,12 +36,12 @@ let package = Package(
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
                     path: "Tests/Tracking"),
-            
+
         // shared code dependency that other test targets use. 
-        .target(name: "SharedTests", 
+        .target(name: "SharedTests",
                 dependencies: ["CioTracking"],
                 path: "Tests/Shared"),
-                
+
         // Messaging Push 
         .target(name: "CioMessagingPush",
                 dependencies: ["Common", "CioTracking"],
@@ -63,6 +63,6 @@ let package = Package(
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
-                    path: "Tests/MessagingPushFCM"),
+                    path: "Tests/MessagingPushFCM")
     ]
 )

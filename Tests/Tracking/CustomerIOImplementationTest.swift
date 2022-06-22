@@ -19,9 +19,9 @@ class CustomerIOImplementationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(.hooksManager, value: hooksMock, forType: HooksManager.self)
+        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
+        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(value: hooksMock, forType: HooksManager.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
