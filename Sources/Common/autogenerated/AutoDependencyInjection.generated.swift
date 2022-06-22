@@ -218,28 +218,15 @@ public class DICommon {
         CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
     }
 
-    // GlobalDataStore (singleton)
+    // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
         if let overridenDep = overrides[.globalDataStore] {
             return overridenDep as! GlobalDataStore
         }
-        return sharedGlobalDataStore
+        return newGlobalDataStore
     }
 
-    private let _globalDataStore_queue = DispatchQueue(label: "DI_get_globalDataStore_queue")
-    private var _globalDataStore_shared: GlobalDataStore?
-    public var sharedGlobalDataStore: GlobalDataStore {
-        _globalDataStore_queue.sync {
-            if let overridenDep = self.overrides[.globalDataStore] {
-                return overridenDep as! GlobalDataStore
-            }
-            let res = _globalDataStore_shared ?? _get_globalDataStore()
-            _globalDataStore_shared = res
-            return res
-        }
-    }
-
-    private func _get_globalDataStore() -> GlobalDataStore {
+    private var newGlobalDataStore: GlobalDataStore {
         CioGlobalDataStore()
     }
 

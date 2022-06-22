@@ -922,42 +922,6 @@ public class GlobalDataStoreMock: GlobalDataStore, CommonMock {
         }
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    public var underlyingLastTrackedScreenName: String?
-    /// `true` if the getter or setter of property is called at least once.
-    public var lastTrackedScreenNameCalled: Bool {
-        lastTrackedScreenNameGetCalled || lastTrackedScreenNameSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var lastTrackedScreenNameGetCalled: Bool {
-        lastTrackedScreenNameGetCallsCount > 0
-    }
-
-    public var lastTrackedScreenNameGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var lastTrackedScreenNameSetCalled: Bool {
-        lastTrackedScreenNameSetCallsCount > 0
-    }
-
-    public var lastTrackedScreenNameSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var lastTrackedScreenName: String? {
-        get {
-            mockCalled = true
-            lastTrackedScreenNameGetCallsCount += 1
-            return underlyingLastTrackedScreenName
-        }
-        set(value) {
-            mockCalled = true
-            lastTrackedScreenNameSetCallsCount += 1
-            underlyingLastTrackedScreenName = value
-        }
-    }
-
     internal func resetMock() {
         sharedInstanceSiteId = nil
         sharedInstanceSiteIdGetCallsCount = 0
@@ -970,9 +934,6 @@ public class GlobalDataStoreMock: GlobalDataStore, CommonMock {
         httpRequestsPauseEnds = nil
         httpRequestsPauseEndsGetCallsCount = 0
         httpRequestsPauseEndsSetCallsCount = 0
-        lastTrackedScreenName = nil
-        lastTrackedScreenNameGetCallsCount = 0
-        lastTrackedScreenNameSetCallsCount = 0
         appendSiteIdCallsCount = 0
         appendSiteIdReceivedArguments = nil
         appendSiteIdReceivedInvocations = []

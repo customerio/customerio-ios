@@ -28,7 +28,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
-    private var globalDataStore: GlobalDataStore
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -47,7 +46,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
-        self.globalDataStore = diGraph.globalDataStore
     }
 
     /**
@@ -196,27 +194,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        // check for profile identified first before other checks. This is to prevent the scenario where
-        // we save the last tracked screen name, then identify, then we might ignore a screen view event
-        // because of saving the last tracked screen name already.
-        guard profileStore.identifier != nil else {
-            // XXX: when we have anonymous profiles in SDK,
-            // we can decide to not ignore events when a profile is not logged yet.
-            logger.info("ignoring screen \(name) because no profile currently identified")
-            return
-        }
-
-        // this logic is to prevent duplication. Sometimes with method swizzling, you can receive multiple calls to the
-        // SDK for the same 1 screen. Only track an event if it's unique.
-        if let previousScreenTrackedName = globalDataStore.lastTrackedScreenName, previousScreenTrackedName == name {
-            // TODO: currently disabling ignore functionality until decision is made on if we ignore screen tracking or not.
-//            logger
-//                .info("ignoring screen \(name) because this was the last screen tracked and we want to prevent sending duplicates")
-//            return
-        }
-
-        globalDataStore.lastTrackedScreenName = name
-
         trackEvent(type: .screen, name: name, data: data)
     }
 }
