@@ -15,7 +15,6 @@ class CustomerIOImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let hooksMock = HooksManagerMock()
     private let profileIdentifyHookMock = ProfileIdentifyHookMock()
-    private let globalDataStoreMock = GlobalDataStoreMock()
 
     override func setUp() {
         super.setUp()
@@ -23,7 +22,6 @@ class CustomerIOImplementationTest: UnitTest {
         diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(.hooksManager, value: hooksMock, forType: HooksManager.self)
-        diGraph.override(.globalDataStore, value: globalDataStoreMock, forType: GlobalDataStore.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
@@ -222,46 +220,6 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.screen(name: String.random)
 
         XCTAssertFalse(backgroundQueueMock.addTaskCalled)
-        XCTAssertFalse(globalDataStoreMock.mockCalled)
-    }
-
-    func test_screen_givenScreenPreviouslyTracked_expectIgnoreRequest() {
-        profileStoreMock.identifier = String.random
-        let givenPreviousScreenTrackedName = String.random
-        globalDataStoreMock.underlyingLastTrackedScreenName = givenPreviousScreenTrackedName
-
-        customerIO.screen(name: givenPreviousScreenTrackedName)
-
-        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
-        XCTAssertFalse(globalDataStoreMock.lastTrackedScreenNameSetCalled)
-    }
-
-    func test_screen_givenNoPreviousScreenTrackedBefore_expectSaveScreenName_expectTrackEvent() {
-        let givenScreenName = String.random
-        profileStoreMock.identifier = String.random
-        globalDataStoreMock.underlyingLastTrackedScreenName = nil
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
-
-        customerIO.screen(name: givenScreenName)
-
-        XCTAssertTrue(backgroundQueueMock.addTaskCalled)
-        XCTAssertTrue(globalDataStoreMock.lastTrackedScreenNameSetCalled)
-        XCTAssertEqual(globalDataStoreMock.lastTrackedScreenName, givenScreenName)
-    }
-
-    func test_screen_givenPreviousScreenTrackedNotEqual_expectSaveScreenName_expectTrackEvent() {
-        let givenScreenName = String.random
-        profileStoreMock.identifier = String.random
-        globalDataStoreMock.underlyingLastTrackedScreenName = String.random
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
-
-        customerIO.screen(name: givenScreenName)
-
-        XCTAssertTrue(backgroundQueueMock.addTaskCalled)
-        XCTAssertTrue(globalDataStoreMock.lastTrackedScreenNameSetCalled)
-        XCTAssertEqual(globalDataStoreMock.lastTrackedScreenName, givenScreenName)
     }
 
     func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue() {
