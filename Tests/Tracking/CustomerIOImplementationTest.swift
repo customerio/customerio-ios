@@ -11,17 +11,17 @@ class CustomerIOImplementationTest: UnitTest {
     // that have gone undiscovered in the code when `CustomerIO` passes a request to `CustomerIOImplementation`.
     private var customerIO: CustomerIO!
 
-    private var backgroundQueueMock = QueueMock()
-    private var profileStoreMock = ProfileStoreMock()
-    private var hooksMock = HooksManagerMock()
-    private var profileIdentifyHookMock = ProfileIdentifyHookMock()
+    private let backgroundQueueMock = QueueMock()
+    private let profileStoreMock = ProfileStoreMock()
+    private let hooksMock = HooksManagerMock()
+    private let profileIdentifyHookMock = ProfileIdentifyHookMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(.hooksManager, value: hooksMock, forType: HooksManager.self)
+        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
+        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(value: hooksMock, forType: HooksManager.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
@@ -214,31 +214,29 @@ class CustomerIOImplementationTest: UnitTest {
 
     // MARK: screen
 
-    func test_screen_givenAutomaticScreenTracking_expectTrackScreenViewEvent_expectDoNotCallHooks() {
-        let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+    func test_screen_givenNoProfileIdentified_expectIgnoreRequest() {
+        profileStoreMock.identifier = nil
 
-        let data: EmptyRequestBody? = nil
-        implementation.automaticScreenView(name: String.random, data: data)
+        customerIO.screen(name: String.random)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
-        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
     }
 
-    func test_screen_givenManualScreenTracking_expectTrackScreenViewEvent_expectCallHooks() {
+    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue() {
         let givenIdentifier = String.random
+        let givenData = ["first_name": "Dana"]
         profileStoreMock.identifier = givenIdentifier
         backgroundQueueMock.addTaskReturnValue = (success: true,
                                                   queueStatus: QueueStatus.successAddingSingleTask)
 
-        let data: EmptyRequestBody? = nil
-        implementation.screen(name: String.random, data: data)
+        customerIO.screen(name: String.random, data: givenData)
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
         XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
-        XCTAssertTrue(hooksMock.screenViewHooksGetCalled)
+
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+
+        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
+        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
     }
 }

@@ -16,14 +16,9 @@ public class MessagingInApp: MessagingInAppInstance {
 
     private var siteId: String!
 
-    private var diGraphOverride: DICommon?
-    private var diGraph: DICommon {
-        diGraphOverride ?? DICommon.getInstance(siteId: siteId)
-    }
-
-    private var moduleDiGraphOverride: DIMessagingInApp?
-    private var moduleDiGraph: DIMessagingInApp {
-        moduleDiGraphOverride ?? DIMessagingInApp.getInstance(siteId: siteId)
+    private var diGraphOverride: DIGraph?
+    private var diGraph: DIGraph {
+        diGraphOverride ?? DIGraph.getInstance(siteId: siteId)
     }
 
     private var queue: Queue {
@@ -39,13 +34,12 @@ public class MessagingInApp: MessagingInAppInstance {
     }
 
     private var inAppProvider: InAppProvider {
-        moduleDiGraph.inAppProvider
+        diGraph.inAppProvider
     }
 
     // for testing
-    internal init(diGraph: DICommon, moduleDiGraph: DIMessagingInApp, siteId: String) {
+    internal init(diGraph: DIGraph, siteId: String) {
         self.diGraphOverride = diGraph
-        self.moduleDiGraphOverride = moduleDiGraph
         self.siteId = siteId
     }
 

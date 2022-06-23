@@ -1,3 +1,80 @@
+### [1.1.1](https://github.com/customerio/customerio-ios/compare/1.1.0...1.1.1) (2022-06-10)
+
+
+### Bug Fixes
+
+* send attributes in all caps to API ([9eea27b](https://github.com/customerio/customerio-ios/commit/9eea27b29e11b2fed75bfe584f0a98f923e393fc))
+
+## [1.1.0](https://github.com/customerio/customerio-ios/compare/1.0.3...1.1.0) (2022-06-01)
+
+
+### Features
+
+* add device_manufacturer device attribute ([585aefb](https://github.com/customerio/customerio-ios/commit/585aefbad99a06ac54c8358ffac89d3a5beba857))
+* adding support for device attributes and custom device attributes ([#143](https://github.com/customerio/customerio-ios/issues/143)) ([84ead00](https://github.com/customerio/customerio-ios/commit/84ead00911416b39a25a2318c6e9a084bde22c75))
+
+
+### Bug Fixes
+
+* add siteid to logs help with multi-workspace ([#130](https://github.com/customerio/customerio-ios/issues/130)) ([0ad3906](https://github.com/customerio/customerio-ios/commit/0ad39061e5add7f69e9617056a99669b00814df9))
+* change property name from push_subscribed to push_enabled ([2f071ec](https://github.com/customerio/customerio-ios/commit/2f071ec2d48465731cfbb17c051d8f16a5cbb10c))
+* locale uses preferred language ([4a5ecf1](https://github.com/customerio/customerio-ios/commit/4a5ecf149cf43d5b0df3b0f01ef24063c1f3a6c8))
+* missing public sdk functions ([0ca0618](https://github.com/customerio/customerio-ios/commit/0ca06183f9c0094019e3e58d0963b5931909c348))
+* remove platform from os_version attribute ([f735197](https://github.com/customerio/customerio-ios/commit/f7351973d1a0edf47952133fa6b62bfe06a3e5a1))
+* use dashes instead of underscores device locale ([f85e858](https://github.com/customerio/customerio-ios/commit/f85e858d673fa24da324e0feecb4678c241c907e))
+
+## [1.1.0-beta.1](https://github.com/customerio/customerio-ios/compare/1.0.3...1.1.0-beta.1) (2022-04-19)
+
+
+### Features
+
+* add device_manufacturer device attribute ([585aefb](https://github.com/customerio/customerio-ios/commit/585aefbad99a06ac54c8358ffac89d3a5beba857))
+* adding support for device attributes and custom device attributes ([#143](https://github.com/customerio/customerio-ios/issues/143)) ([84ead00](https://github.com/customerio/customerio-ios/commit/84ead00911416b39a25a2318c6e9a084bde22c75))
+
+
+### Bug Fixes
+
+* add siteid to logs help with multi-workspace ([#130](https://github.com/customerio/customerio-ios/issues/130)) ([0ad3906](https://github.com/customerio/customerio-ios/commit/0ad39061e5add7f69e9617056a99669b00814df9))
+* change property name from push_subscribed to push_enabled ([2f071ec](https://github.com/customerio/customerio-ios/commit/2f071ec2d48465731cfbb17c051d8f16a5cbb10c))
+* locale uses preferred language ([4a5ecf1](https://github.com/customerio/customerio-ios/commit/4a5ecf149cf43d5b0df3b0f01ef24063c1f3a6c8))
+* missing public sdk functions ([0ca0618](https://github.com/customerio/customerio-ios/commit/0ca06183f9c0094019e3e58d0963b5931909c348))
+* remove platform from os_version attribute ([f735197](https://github.com/customerio/customerio-ios/commit/f7351973d1a0edf47952133fa6b62bfe06a3e5a1))
+* use dashes instead of underscores device locale ([f85e858](https://github.com/customerio/customerio-ios/commit/f85e858d673fa24da324e0feecb4678c241c907e))
+
+## [1.1.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.1.0-alpha.2...1.1.0-alpha.3) (2022-04-19)
+
+
+### Features
+
+* add device_manufacturer device attribute ([585aefb](https://github.com/customerio/customerio-ios/commit/585aefbad99a06ac54c8358ffac89d3a5beba857))
+
+
+### Bug Fixes
+
+* locale uses preferred language ([4a5ecf1](https://github.com/customerio/customerio-ios/commit/4a5ecf149cf43d5b0df3b0f01ef24063c1f3a6c8))
+
+## [1.1.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.1.0-alpha.1...1.1.0-alpha.2) (2022-03-25)
+
+
+### Bug Fixes
+
+* remove platform from os_version attribute ([f735197](https://github.com/customerio/customerio-ios/commit/f7351973d1a0edf47952133fa6b62bfe06a3e5a1))
+* use dashes instead of underscores device locale ([f85e858](https://github.com/customerio/customerio-ios/commit/f85e858d673fa24da324e0feecb4678c241c907e))
+
+## [1.1.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.0.3...1.1.0-alpha.1) (2022-03-22)
+
+
+### Features
+
+* adding support for device attributes and custom device attributes ([#143](https://github.com/customerio/customerio-ios/issues/143)) ([84ead00](https://github.com/customerio/customerio-ios/commit/84ead00911416b39a25a2318c6e9a084bde22c75))
+
+
+### Bug Fixes
+
+* add siteid to logs help with multi-workspace ([#130](https://github.com/customerio/customerio-ios/issues/130)) ([0ad3906](https://github.com/customerio/customerio-ios/commit/0ad39061e5add7f69e9617056a99669b00814df9))
+* change property name from push_subscribed to push_enabled ([2f071ec](https://github.com/customerio/customerio-ios/commit/2f071ec2d48465731cfbb17c051d8f16a5cbb10c))
+* missing public sdk functions ([0ca0618](https://github.com/customerio/customerio-ios/commit/0ca06183f9c0094019e3e58d0963b5931909c348))
+
 ## [1.0.3](https://github.com/customerio/customerio-ios/compare/1.0.2...1.0.3) (2022-03-15)
 
 

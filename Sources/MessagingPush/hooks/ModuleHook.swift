@@ -5,12 +5,8 @@ import Foundation
 class MessagingPushModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
-    private var diGraph: DICommon {
-        DICommon.getInstance(siteId: siteId)
-    }
-
-    private var diGraphMessaging: DIMessagingPush {
-        DIMessagingPush.getInstance(siteId: siteId)
+    private var diGraph: DIGraph {
+        DIGraph.getInstance(siteId: siteId)
     }
 
     init(siteId: SiteId) {
@@ -22,7 +18,7 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraphMessaging.queueRunnerHook
+        diGraph.queueRunnerHook
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {

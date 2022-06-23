@@ -7,9 +7,6 @@ import CioTracking
 import Common
 import Foundation
 
-// File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
-// Template version 1.0.0
-
 /**
  ######################################################
  Documentation
@@ -34,112 +31,34 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DIMessagingPushAPN.shared.offRoadWheels
+     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
-
-     // you can also use this syntax instead:
-     let wheels: OffRoadWheels = DIMessagingPushAPN.shared.inject(.offRoadWheels)
-     // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
  }
  ```
 
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIMessagingPushAPN.shared.override(.offRoadWheels, mockOffRoadWheels)
+ DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DIMessagingPushAPN.shared.resetOverrides()
+ DIGraph().reset()
  ```
 
  */
 
-/**
- enum that contains list of all dependencies in our app.
- This allows automated unit testing against our dependency graph + ability to override nodes in graph.
- */
-internal enum DependencyMessagingPushAPN: CaseIterable {
-    case diPlaceholder
-}
-
-/**
- Dependency injection graph specifically with dependencies in the MessagingPushAPN module.
-
- We must use 1+ different graphs because of the hierarchy of modules in this SDK.
- Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
- in `Common` module can be in the `Tracking` module.
- */
-internal class DIMessagingPushAPN {
-    private var overrides: [DependencyMessagingPushAPN: Any] = [:]
-
-    internal let siteId: SiteId
-    internal init(siteId: String) {
-        self.siteId = siteId
+extension DIGraph {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    func testDependenciesAbleToResolve() {
+        _ = diPlaceholder
     }
-
-    // Used for tests
-    public convenience init() {
-        self.init(siteId: "test-identifier")
-    }
-
-    class Store {
-        var instances: [String: DIMessagingPushAPN] = [:]
-        func getInstance(siteId: String) -> DIMessagingPushAPN {
-            if let existingInstance = instances[siteId] {
-                return existingInstance
-            }
-            let newInstance = DIMessagingPushAPN(siteId: siteId)
-            instances[siteId] = newInstance
-            return newInstance
-        }
-    }
-
-    @Atomic internal static var store = Store()
-    public static func getInstance(siteId: String) -> DIMessagingPushAPN {
-        Self.store.getInstance(siteId: siteId)
-    }
-
-    public static func getAllWorkspacesSharedInstance() -> DIMessagingPushAPN {
-        Self.store.getInstance(siteId: "shared")
-    }
-
-    /**
-     Designed to be used only in test classes to override dependencies.
-
-     ```
-     let mockOffRoadWheels = // make a mock of OffRoadWheels class
-     DIMessagingPushAPN.shared.override(.offRoadWheels, mockOffRoadWheels)
-     ```
-     */
-    internal func override<Value: Any>(_ dep: DependencyMessagingPushAPN, value: Value, forType type: Value.Type) {
-        overrides[dep] = value
-    }
-
-    /**
-     Reset overrides. Meant to be used in `tearDown()` of tests.
-     */
-    internal func resetOverrides() {
-        overrides = [:]
-    }
-
-    /**
-     Use this generic method of getting a dependency, if you wish.
-     */
-    internal func inject<T>(_ dep: DependencyMessagingPushAPN) -> T {
-        switch dep {
-        case .diPlaceholder: return diPlaceholder as! T
-        }
-    }
-
-    /**
-     Use the property accessors below to inject pre-typed dependencies.
-     */
 
     // DiPlaceholder
-    internal var diPlaceholder: DiPlaceholder {
-        if let overridenDep = overrides[.diPlaceholder] {
+    var diPlaceholder: DiPlaceholder {
+        if let overridenDep = overrides[String(describing: DiPlaceholder.self)] {
             return overridenDep as! DiPlaceholder
         }
         return newDiPlaceholder

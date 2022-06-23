@@ -6,6 +6,15 @@ import XCTest
 
 class CustomerIOTest: UnitTest {
     private let globalDataStore = CioGlobalDataStore()
+    private let cleanupRepositoryMock = CleanupRepositoryMock()
+    private let hooksManagerMock = HooksManagerMock()
+
+    override func setUp() {
+        super.setUp()
+
+        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
+        diGraph.override(value: hooksManagerMock, forType: HooksManager.self)
+    }
 
     // MARK: init
 
@@ -68,9 +77,18 @@ class CustomerIOTest: UnitTest {
 
         _ = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
-        let config = DICommon.getInstance(siteId: givenSiteId).sdkConfigStore.config
+        let config = DIGraph.getInstance(siteId: givenSiteId).sdkConfigStore.config
 
         XCTAssertEqual(config.trackingApiUrl, Region.EU.productionTrackingUrl)
+    }
+
+    func test_initialize_expectAddModuleHooks_expectRunCleanup() {
+        _ = CustomerIO(siteId: testSiteId, apiKey: String.random, region: Region.EU)
+
+        XCTAssertEqual(hooksManagerMock.addCallsCount, 1)
+        XCTAssertEqual(hooksManagerMock.addReceivedArguments?.key, .tracking)
+
+        XCTAssertEqual(cleanupRepositoryMock.cleanupCallsCount, 1)
     }
 
     // MARK: deinit

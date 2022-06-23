@@ -13,9 +13,9 @@ class MessagingInAppTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        moduleDiGraph.override(.inAppProvider, value: inAppProviderMock, forType: InAppProvider.self)
+        diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
 
-        messagingInApp = MessagingInApp(diGraph: diGraph, moduleDiGraph: moduleDiGraph, siteId: testSiteId)
+        messagingInApp = MessagingInApp(diGraph: diGraph, siteId: testSiteId)
     }
 
     // MARK: initialize

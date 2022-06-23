@@ -1,0 +1,19 @@
+# Swiftlint rules that are only applied to files in the Tests directory. 
+# When writing tests, there are some lint rules that are less important to follow then the source code that customers use. 
+
+# This file inherits rules from the base `.swiftlint.yml` file while overriding rules specified in this file. 
+
+disabled_rules:
+  # try! in a test can result in tests being halted and not finish executing. Instead, we would rather have a test fail and continue executing the suite. 
+  # Instead of try!, use:
+  # let foo = try? ...
+  # XCTAssertNotNil(foo)
+  # XCTAssertEqual(foo?.bar, "")
+  # - force_try
+
+  # `as!` in a test can result in tests being halted and not finish executing. Instead, we would rather have a test fail and continue executing the suite. 
+  # Instead of `as!` use: 
+  # let foo = ... as? ABC
+  # XCTAssertNotNil(foo)
+  # XCTAssertEqual(foo?.bar, "")
+  # - force_cast

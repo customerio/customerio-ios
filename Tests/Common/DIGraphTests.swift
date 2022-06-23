@@ -1,5 +1,4 @@
-@testable import CioTracking
-import Common
+@testable import Common
 import Foundation
 import SharedTests
 import XCTest

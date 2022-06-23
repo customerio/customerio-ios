@@ -15,8 +15,8 @@ open class UnitTest: XCTestCase {
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely to real app.
     public let testSiteId = "testing"
-    public var diGraph: DICommon {
-        DICommon.getInstance(siteId: testSiteId)
+    public var diGraph: DIGraph {
+        DIGraph.getInstance(siteId: testSiteId)
     }
 
     public var keyValueStorage: KeyValueStorage {
@@ -27,8 +27,8 @@ open class UnitTest: XCTestCase {
         diGraph.profileStore
     }
 
-    public var log: ConsoleLogger {
-        diGraph.logger as! ConsoleLogger
+    public var log: Logger {
+        diGraph.logger
     }
 
     public var jsonAdapter: JsonAdapter {
@@ -39,6 +39,8 @@ open class UnitTest: XCTestCase {
 
     public var dateUtilStub: DateUtilStub!
 
+    public var threadUtilStub: ThreadUtilStub!
+
     public var lockManager: LockManager {
         LockManager()
     }
@@ -47,6 +49,9 @@ open class UnitTest: XCTestCase {
         deleteAll()
 
         dateUtilStub = DateUtilStub()
+        threadUtilStub = ThreadUtilStub()
+        // make default behavior of tests to run async code in synchronous way to make tests more predictable.
+        diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
 
         // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()
@@ -65,12 +70,11 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
-        CommonMocks.shared.resetAll()
-        TrackingMocks.shared.resetAll()
+        Mocks.shared.resetAll()
 
         deleteAll()
 
-        diGraph.resetOverrides()
+        diGraph.reset()
 
         super.tearDown()
     }
@@ -87,8 +91,11 @@ open class UnitTest: XCTestCase {
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
+            // OK to use try! here as we want tests to crash if for some reason we are not able to delete files from the device.
+            // if files do not get deleted between tests, we could have false positive tests.
+            // swiftlint:disable:next force_try
             let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
-
+            // swiftlint:disable:next force_try
             let fileURLs = try! fileManager.contentsOfDirectory(at: pathUrl,
                                                                 includingPropertiesForKeys: nil,
                                                                 options: .skipsHiddenFiles)
