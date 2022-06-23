@@ -11,10 +11,10 @@ class CustomerIOImplementationTest: UnitTest {
     // that have gone undiscovered in the code when `CustomerIO` passes a request to `CustomerIOImplementation`.
     private var customerIO: CustomerIO!
 
-    private var backgroundQueueMock = QueueMock()
-    private var profileStoreMock = ProfileStoreMock()
-    private var hooksMock = HooksManagerMock()
-    private var profileIdentifyHookMock = ProfileIdentifyHookMock()
+    private let backgroundQueueMock = QueueMock()
+    private let profileStoreMock = ProfileStoreMock()
+    private let hooksMock = HooksManagerMock()
+    private let profileIdentifyHookMock = ProfileIdentifyHookMock()
 
     override func setUp() {
         super.setUp()
@@ -210,5 +210,33 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
         XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(#"{"data":{}"#))
         XCTAssertFalse(actualQueueTaskData!.attributesJsonString.contains("null"))
+    }
+
+    // MARK: screen
+
+    func test_screen_givenNoProfileIdentified_expectIgnoreRequest() {
+        profileStoreMock.identifier = nil
+
+        customerIO.screen(name: String.random)
+
+        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
+    }
+
+    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue() {
+        let givenIdentifier = String.random
+        let givenData = ["first_name": "Dana"]
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.screen(name: String.random, data: givenData)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+
+        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
+        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
     }
 }

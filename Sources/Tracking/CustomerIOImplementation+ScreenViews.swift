@@ -4,15 +4,18 @@ import UIKit
 
 extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
-        let selector1 = #selector(UIViewController.viewDidAppear(_:))
-        let selector2 = #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))
-        guard let originalMethod = class_getInstanceMethod(UIViewController.self, selector1) else {
-            return
-        }
-        guard let swizzleMethod = class_getInstanceMethod(UIViewController.self, selector2) else {
-            return
-        }
-        method_exchangeImplementations(originalMethod, swizzleMethod)
+        swizzle(forClass: UIViewController.self,
+                original: #selector(UIViewController.viewDidAppear(_:)),
+                new: #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:)))
+        swizzle(forClass: UIViewController.self,
+                original: #selector(UIViewController.viewDidDisappear(_:)),
+                new: #selector(UIViewController.cio_swizzled_UIKit_viewDidDisappear(_:)))
+    }
+
+    private func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
+        guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
+        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
+        method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 }
 
@@ -22,18 +25,35 @@ internal extension UIViewController {
     }
 
     @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
+        performScreenTracking()
+
+        // this function looks like recursion, but it's how you call ViewController.viewDidAppear.
         cio_swizzled_UIKit_viewDidAppear(animated)
-        let rootViewController = activeRootViewController()
-        guard let viewController = visibleViewController(rootViewController) else {
+    }
+
+    // capture the screen we are at when the previous ViewController got removed from the view stack.
+    @objc func cio_swizzled_UIKit_viewDidDisappear(_ animated: Bool) {
+        // this function looks like recursion, but it's how you call ViewController.viewDidDisappear.
+        cio_swizzled_UIKit_viewDidDisappear(animated)
+
+        performScreenTracking()
+    }
+
+    func performScreenTracking() {
+        var rootViewController = viewIfLoaded?.window?.rootViewController
+        if rootViewController == nil {
+            rootViewController = getActiveRootViewController()
+        }
+        guard let viewController = getVisibleViewController(fromRootViewController: rootViewController) else {
             return
         }
-        let controllerString = String(describing: type(of: viewController))
-        var name = controllerString.replacingOccurrences(of: "ViewController", with: "", options: .caseInsensitive)
+        let nameOfViewControllerClass = String(describing: type(of: viewController))
+        var name = nameOfViewControllerClass.replacingOccurrences(of: "ViewController", with: "",
+                                                                  options: .caseInsensitive)
         if name.isEmpty || name == "" {
             if let title = viewController.title {
                 name = title
-            }
-            if name.isEmpty || name == "" {
+            } else {
                 // XXX: we couldn't infer a name, we should log it for debug purposes
                 return
             }
@@ -48,19 +68,20 @@ internal extension UIViewController {
     /**
      Finds the top most view controller in the navigation controller/ tab bar controller stack or if it is presented
      */
-    private func visibleViewController(_ controller: UIViewController?) -> UIViewController? {
-        if let navigationController = controller as? UINavigationController {
-            return visibleViewController(navigationController.visibleViewController)
+    private func getVisibleViewController(fromRootViewController rootViewController: UIViewController?)
+        -> UIViewController? {
+        if let navigationController = rootViewController as? UINavigationController {
+            return getVisibleViewController(fromRootViewController: navigationController.visibleViewController)
         }
-        if let tabController = controller as? UITabBarController {
+        if let tabController = rootViewController as? UITabBarController {
             if let selected = tabController.selectedViewController {
-                return visibleViewController(selected)
+                return getVisibleViewController(fromRootViewController: selected)
             }
         }
-        if let presented = controller?.presentedViewController {
-            return visibleViewController(presented)
+        if let presented = rootViewController?.presentedViewController {
+            return getVisibleViewController(fromRootViewController: presented)
         }
-        return controller
+        return rootViewController
     }
 
     /**
@@ -68,26 +89,24 @@ internal extension UIViewController {
 
      - returns: If window is not found then this function returns nil else returns the root view controller
      */
-    private func activeRootViewController() -> UIViewController? {
-        var window: UIWindow?
-        if let appDelegateWindow = UIApplication.shared.delegate?.window {
-            window = appDelegateWindow
+    private func getActiveRootViewController() -> UIViewController? {
+        if let viewController = UIApplication.shared.delegate?.window??.rootViewController {
+            return viewController
         } else if #available(iOS 13.0, *) {
             for scene in UIApplication.shared.connectedScenes {
                 if scene.activationState == .foregroundActive, let windowScene = scene as? UIWindowScene {
                     if let sceneDelegate = windowScene.delegate as? UIWindowSceneDelegate {
                         if let sceneWindow = sceneDelegate.window {
-                            window = sceneWindow
-                            break
+                            return sceneWindow?.rootViewController
                         }
                     }
                 }
             }
         } else { // keyWindow is deprecated in iOS 13.0*
-            window = UIApplication.shared.keyWindow
+            return UIApplication.shared.keyWindow?.rootViewController
         }
-        guard let activeWindow = window else { return nil }
-        return activeWindow.rootViewController
+
+        return nil
     }
 }
 
