@@ -213,20 +213,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             return
         }
 
-        // TODO: currently disabling ignore functionality until decision is made on if we ignore screen tracking or not.
-        // TODO: also, we will want to move this logic to include manual screen tracking as well?
-
-        // this logic is to prevent duplication. Sometimes with method swizzling, you can receive multiple calls to the
-        // SDK for the same 1 screen. Only track an event if it's unique.
-//        if let previousScreenTrackedName = globalDataStore.lastTrackedScreenName, previousScreenTrackedName == name {
-
-//            logger
-//                .info("ignoring screen \(name) because this was the last screen tracked and we want to prevent sending duplicates")
-//            return
-        // }
-
-//        globalDataStore.lastTrackedScreenName = name
-
         trackEvent(type: .screen, name: name, data: data)
     }
 }
