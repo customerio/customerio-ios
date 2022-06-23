@@ -4,9 +4,6 @@
 
 import Foundation
 
-// File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
-// Template version 1.0.0
-
 /**
  ######################################################
  Documentation
@@ -31,158 +28,58 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DICommon.shared.offRoadWheels
+     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
-
-     // you can also use this syntax instead:
-     let wheels: OffRoadWheels = DICommon.shared.inject(.offRoadWheels)
-     // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
  }
  ```
 
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DICommon.shared.override(.offRoadWheels, mockOffRoadWheels)
+ DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DICommon.shared.resetOverrides()
+ DIGraph().reset()
  ```
 
  */
 
-/**
- enum that contains list of all dependencies in our app.
- This allows automated unit testing against our dependency graph + ability to override nodes in graph.
- */
-public enum DependencyCommon: CaseIterable {
-    case deviceInfo
-    case httpClient
-    case sdkCredentialsStore
-    case globalDataStore
-    case hooksManager
-    case profileStore
-    case queue
-    case queueQueryRunner
-    case queueRequestManager
-    case queueRunRequest
-    case queueRunner
-    case simpleTimer
-    case singleScheduleTimer
-    case logger
-    case httpRetryPolicy
-    case fileStorage
-    case queueStorage
-    case activeWorkspacesManager
-    case sdkConfigStore
-    case jsonAdapter
-    case lockManager
-    case dateUtil
-    case httpRequestRunner
-    case keyValueStorage
-}
-
-/**
- Dependency injection graph specifically with dependencies in the Common module.
-
- We must use 1+ different graphs because of the hierarchy of modules in this SDK.
- Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
- in `Common` module can be in the `Tracking` module.
- */
-public class DICommon {
-    private var overrides: [DependencyCommon: Any] = [:]
-
-    internal let siteId: SiteId
-    internal init(siteId: String) {
-        self.siteId = siteId
+public extension DIGraph {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    internal func testDependenciesAbleToResolve() {
+        _ = deviceInfo
+        _ = httpClient
+        _ = sdkCredentialsStore
+        _ = globalDataStore
+        _ = hooksManager
+        _ = profileStore
+        _ = queue
+        _ = queueQueryRunner
+        _ = queueRequestManager
+        _ = queueRunRequest
+        _ = queueRunner
+        _ = simpleTimer
+        _ = singleScheduleTimer
+        _ = threadUtil
+        _ = logger
+        _ = httpRetryPolicy
+        _ = fileStorage
+        _ = queueStorage
+        _ = activeWorkspacesManager
+        _ = sdkConfigStore
+        _ = jsonAdapter
+        _ = lockManager
+        _ = dateUtil
+        _ = httpRequestRunner
+        _ = keyValueStorage
     }
-
-    // Used for tests
-    public convenience init() {
-        self.init(siteId: "test-identifier")
-    }
-
-    class Store {
-        var instances: [String: DICommon] = [:]
-        func getInstance(siteId: String) -> DICommon {
-            if let existingInstance = instances[siteId] {
-                return existingInstance
-            }
-            let newInstance = DICommon(siteId: siteId)
-            instances[siteId] = newInstance
-            return newInstance
-        }
-    }
-
-    @Atomic internal static var store = Store()
-    public static func getInstance(siteId: String) -> DICommon {
-        Self.store.getInstance(siteId: siteId)
-    }
-
-    public static func getAllWorkspacesSharedInstance() -> DICommon {
-        Self.store.getInstance(siteId: "shared")
-    }
-
-    /**
-     Designed to be used only in test classes to override dependencies.
-
-     ```
-     let mockOffRoadWheels = // make a mock of OffRoadWheels class
-     DICommon.shared.override(.offRoadWheels, mockOffRoadWheels)
-     ```
-     */
-    public func override<Value: Any>(_ dep: DependencyCommon, value: Value, forType type: Value.Type) {
-        overrides[dep] = value
-    }
-
-    /**
-     Reset overrides. Meant to be used in `tearDown()` of tests.
-     */
-    public func resetOverrides() {
-        overrides = [:]
-    }
-
-    /**
-     Use this generic method of getting a dependency, if you wish.
-     */
-    public func inject<T>(_ dep: DependencyCommon) -> T {
-        switch dep {
-        case .deviceInfo: return deviceInfo as! T
-        case .httpClient: return httpClient as! T
-        case .sdkCredentialsStore: return sdkCredentialsStore as! T
-        case .globalDataStore: return globalDataStore as! T
-        case .hooksManager: return hooksManager as! T
-        case .profileStore: return profileStore as! T
-        case .queue: return queue as! T
-        case .queueQueryRunner: return queueQueryRunner as! T
-        case .queueRequestManager: return queueRequestManager as! T
-        case .queueRunRequest: return queueRunRequest as! T
-        case .queueRunner: return queueRunner as! T
-        case .simpleTimer: return simpleTimer as! T
-        case .singleScheduleTimer: return singleScheduleTimer as! T
-        case .logger: return logger as! T
-        case .httpRetryPolicy: return httpRetryPolicy as! T
-        case .fileStorage: return fileStorage as! T
-        case .queueStorage: return queueStorage as! T
-        case .activeWorkspacesManager: return activeWorkspacesManager as! T
-        case .sdkConfigStore: return sdkConfigStore as! T
-        case .jsonAdapter: return jsonAdapter as! T
-        case .lockManager: return lockManager as! T
-        case .dateUtil: return dateUtil as! T
-        case .httpRequestRunner: return httpRequestRunner as! T
-        case .keyValueStorage: return keyValueStorage as! T
-        }
-    }
-
-    /**
-     Use the property accessors below to inject pre-typed dependencies.
-     */
 
     // DeviceInfo
-    public var deviceInfo: DeviceInfo {
-        if let overridenDep = overrides[.deviceInfo] {
+    var deviceInfo: DeviceInfo {
+        if let overridenDep = overrides[String(describing: DeviceInfo.self)] {
             return overridenDep as! DeviceInfo
         }
         return newDeviceInfo
@@ -193,8 +90,8 @@ public class DICommon {
     }
 
     // HttpClient
-    public var httpClient: HttpClient {
-        if let overridenDep = overrides[.httpClient] {
+    var httpClient: HttpClient {
+        if let overridenDep = overrides[String(describing: HttpClient.self)] {
             return overridenDep as! HttpClient
         }
         return newHttpClient
@@ -207,8 +104,8 @@ public class DICommon {
     }
 
     // SdkCredentialsStore
-    public var sdkCredentialsStore: SdkCredentialsStore {
-        if let overridenDep = overrides[.sdkCredentialsStore] {
+    var sdkCredentialsStore: SdkCredentialsStore {
+        if let overridenDep = overrides[String(describing: SdkCredentialsStore.self)] {
             return overridenDep as! SdkCredentialsStore
         }
         return newSdkCredentialsStore
@@ -219,23 +116,25 @@ public class DICommon {
     }
 
     // GlobalDataStore (singleton)
-    public var globalDataStore: GlobalDataStore {
-        if let overridenDep = overrides[.globalDataStore] {
+    var globalDataStore: GlobalDataStore {
+        if let overridenDep = overrides[String(describing: GlobalDataStore.self)] {
             return overridenDep as! GlobalDataStore
         }
         return sharedGlobalDataStore
     }
 
-    private let _globalDataStore_queue = DispatchQueue(label: "DI_get_globalDataStore_queue")
-    private var _globalDataStore_shared: GlobalDataStore?
-    public var sharedGlobalDataStore: GlobalDataStore {
-        _globalDataStore_queue.sync {
-            if let overridenDep = self.overrides[.globalDataStore] {
+    var sharedGlobalDataStore: GlobalDataStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_GlobalDataStore_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: GlobalDataStore.self)] {
                 return overridenDep as! GlobalDataStore
             }
-            let res = _globalDataStore_shared ?? _get_globalDataStore()
-            _globalDataStore_shared = res
-            return res
+            let existingSingletonInstance = self
+                .singletons[String(describing: GlobalDataStore.self)] as? GlobalDataStore
+            let instance = existingSingletonInstance ?? _get_globalDataStore()
+            self.singletons[String(describing: GlobalDataStore.self)] = instance
+            return instance
         }
     }
 
@@ -244,23 +143,24 @@ public class DICommon {
     }
 
     // HooksManager (singleton)
-    public var hooksManager: HooksManager {
-        if let overridenDep = overrides[.hooksManager] {
+    var hooksManager: HooksManager {
+        if let overridenDep = overrides[String(describing: HooksManager.self)] {
             return overridenDep as! HooksManager
         }
         return sharedHooksManager
     }
 
-    private let _hooksManager_queue = DispatchQueue(label: "DI_get_hooksManager_queue")
-    private var _hooksManager_shared: HooksManager?
-    public var sharedHooksManager: HooksManager {
-        _hooksManager_queue.sync {
-            if let overridenDep = self.overrides[.hooksManager] {
+    var sharedHooksManager: HooksManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: HooksManager.self)] {
                 return overridenDep as! HooksManager
             }
-            let res = _hooksManager_shared ?? _get_hooksManager()
-            _hooksManager_shared = res
-            return res
+            let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
+            let instance = existingSingletonInstance ?? _get_hooksManager()
+            self.singletons[String(describing: HooksManager.self)] = instance
+            return instance
         }
     }
 
@@ -269,8 +169,8 @@ public class DICommon {
     }
 
     // ProfileStore
-    public var profileStore: ProfileStore {
-        if let overridenDep = overrides[.profileStore] {
+    var profileStore: ProfileStore {
+        if let overridenDep = overrides[String(describing: ProfileStore.self)] {
             return overridenDep as! ProfileStore
         }
         return newProfileStore
@@ -281,8 +181,8 @@ public class DICommon {
     }
 
     // Queue
-    public var queue: Queue {
-        if let overridenDep = overrides[.queue] {
+    var queue: Queue {
+        if let overridenDep = overrides[String(describing: Queue.self)] {
             return overridenDep as! Queue
         }
         return newQueue
@@ -295,7 +195,7 @@ public class DICommon {
 
     // QueueQueryRunner
     internal var queueQueryRunner: QueueQueryRunner {
-        if let overridenDep = overrides[.queueQueryRunner] {
+        if let overridenDep = overrides[String(describing: QueueQueryRunner.self)] {
             return overridenDep as! QueueQueryRunner
         }
         return newQueueQueryRunner
@@ -306,23 +206,25 @@ public class DICommon {
     }
 
     // QueueRequestManager (singleton)
-    public var queueRequestManager: QueueRequestManager {
-        if let overridenDep = overrides[.queueRequestManager] {
+    var queueRequestManager: QueueRequestManager {
+        if let overridenDep = overrides[String(describing: QueueRequestManager.self)] {
             return overridenDep as! QueueRequestManager
         }
         return sharedQueueRequestManager
     }
 
-    private let _queueRequestManager_queue = DispatchQueue(label: "DI_get_queueRequestManager_queue")
-    private var _queueRequestManager_shared: QueueRequestManager?
-    public var sharedQueueRequestManager: QueueRequestManager {
-        _queueRequestManager_queue.sync {
-            if let overridenDep = self.overrides[.queueRequestManager] {
+    var sharedQueueRequestManager: QueueRequestManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: QueueRequestManager.self)] {
                 return overridenDep as! QueueRequestManager
             }
-            let res = _queueRequestManager_shared ?? _get_queueRequestManager()
-            _queueRequestManager_shared = res
-            return res
+            let existingSingletonInstance = self
+                .singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
+            let instance = existingSingletonInstance ?? _get_queueRequestManager()
+            self.singletons[String(describing: QueueRequestManager.self)] = instance
+            return instance
         }
     }
 
@@ -331,8 +233,8 @@ public class DICommon {
     }
 
     // QueueRunRequest
-    public var queueRunRequest: QueueRunRequest {
-        if let overridenDep = overrides[.queueRunRequest] {
+    var queueRunRequest: QueueRunRequest {
+        if let overridenDep = overrides[String(describing: QueueRunRequest.self)] {
             return overridenDep as! QueueRunRequest
         }
         return newQueueRunRequest
@@ -344,8 +246,8 @@ public class DICommon {
     }
 
     // QueueRunner
-    public var queueRunner: QueueRunner {
-        if let overridenDep = overrides[.queueRunner] {
+    var queueRunner: QueueRunner {
+        if let overridenDep = overrides[String(describing: QueueRunner.self)] {
             return overridenDep as! QueueRunner
         }
         return newQueueRunner
@@ -358,7 +260,7 @@ public class DICommon {
 
     // SimpleTimer
     internal var simpleTimer: SimpleTimer {
-        if let overridenDep = overrides[.simpleTimer] {
+        if let overridenDep = overrides[String(describing: SimpleTimer.self)] {
             return overridenDep as! SimpleTimer
         }
         return newSimpleTimer
@@ -370,22 +272,24 @@ public class DICommon {
 
     // SingleScheduleTimer (singleton)
     internal var singleScheduleTimer: SingleScheduleTimer {
-        if let overridenDep = overrides[.singleScheduleTimer] {
+        if let overridenDep = overrides[String(describing: SingleScheduleTimer.self)] {
             return overridenDep as! SingleScheduleTimer
         }
         return sharedSingleScheduleTimer
     }
 
-    private let _singleScheduleTimer_queue = DispatchQueue(label: "DI_get_singleScheduleTimer_queue")
-    private var _singleScheduleTimer_shared: SingleScheduleTimer?
     internal var sharedSingleScheduleTimer: SingleScheduleTimer {
-        _singleScheduleTimer_queue.sync {
-            if let overridenDep = self.overrides[.singleScheduleTimer] {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: SingleScheduleTimer.self)] {
                 return overridenDep as! SingleScheduleTimer
             }
-            let res = _singleScheduleTimer_shared ?? _get_singleScheduleTimer()
-            _singleScheduleTimer_shared = res
-            return res
+            let existingSingletonInstance = self
+                .singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
+            let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
+            self.singletons[String(describing: SingleScheduleTimer.self)] = instance
+            return instance
         }
     }
 
@@ -393,9 +297,21 @@ public class DICommon {
         CioSingleScheduleTimer(timer: simpleTimer)
     }
 
+    // ThreadUtil
+    var threadUtil: ThreadUtil {
+        if let overridenDep = overrides[String(describing: ThreadUtil.self)] {
+            return overridenDep as! ThreadUtil
+        }
+        return newThreadUtil
+    }
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
+    }
+
     // Logger
-    public var logger: Logger {
-        if let overridenDep = overrides[.logger] {
+    var logger: Logger {
+        if let overridenDep = overrides[String(describing: Logger.self)] {
             return overridenDep as! Logger
         }
         return newLogger
@@ -407,7 +323,7 @@ public class DICommon {
 
     // HttpRetryPolicy
     internal var httpRetryPolicy: HttpRetryPolicy {
-        if let overridenDep = overrides[.httpRetryPolicy] {
+        if let overridenDep = overrides[String(describing: HttpRetryPolicy.self)] {
             return overridenDep as! HttpRetryPolicy
         }
         return newHttpRetryPolicy
@@ -418,8 +334,8 @@ public class DICommon {
     }
 
     // FileStorage
-    public var fileStorage: FileStorage {
-        if let overridenDep = overrides[.fileStorage] {
+    var fileStorage: FileStorage {
+        if let overridenDep = overrides[String(describing: FileStorage.self)] {
             return overridenDep as! FileStorage
         }
         return newFileStorage
@@ -430,8 +346,8 @@ public class DICommon {
     }
 
     // QueueStorage
-    public var queueStorage: QueueStorage {
-        if let overridenDep = overrides[.queueStorage] {
+    var queueStorage: QueueStorage {
+        if let overridenDep = overrides[String(describing: QueueStorage.self)] {
             return overridenDep as! QueueStorage
         }
         return newQueueStorage
@@ -439,27 +355,30 @@ public class DICommon {
 
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter,
-                                lockManager: lockManager)
+                                lockManager: lockManager, sdkConfigStore: sdkConfigStore, logger: logger,
+                                dateUtil: dateUtil)
     }
 
     // ActiveWorkspacesManager (singleton)
-    public var activeWorkspacesManager: ActiveWorkspacesManager {
-        if let overridenDep = overrides[.activeWorkspacesManager] {
+    var activeWorkspacesManager: ActiveWorkspacesManager {
+        if let overridenDep = overrides[String(describing: ActiveWorkspacesManager.self)] {
             return overridenDep as! ActiveWorkspacesManager
         }
         return sharedActiveWorkspacesManager
     }
 
-    private let _activeWorkspacesManager_queue = DispatchQueue(label: "DI_get_activeWorkspacesManager_queue")
-    private var _activeWorkspacesManager_shared: ActiveWorkspacesManager?
-    public var sharedActiveWorkspacesManager: ActiveWorkspacesManager {
-        _activeWorkspacesManager_queue.sync {
-            if let overridenDep = self.overrides[.activeWorkspacesManager] {
+    var sharedActiveWorkspacesManager: ActiveWorkspacesManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_ActiveWorkspacesManager_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: ActiveWorkspacesManager.self)] {
                 return overridenDep as! ActiveWorkspacesManager
             }
-            let res = _activeWorkspacesManager_shared ?? _get_activeWorkspacesManager()
-            _activeWorkspacesManager_shared = res
-            return res
+            let existingSingletonInstance = self
+                .singletons[String(describing: ActiveWorkspacesManager.self)] as? ActiveWorkspacesManager
+            let instance = existingSingletonInstance ?? _get_activeWorkspacesManager()
+            self.singletons[String(describing: ActiveWorkspacesManager.self)] = instance
+            return instance
         }
     }
 
@@ -468,23 +387,24 @@ public class DICommon {
     }
 
     // SdkConfigStore (singleton)
-    public var sdkConfigStore: SdkConfigStore {
-        if let overridenDep = overrides[.sdkConfigStore] {
+    var sdkConfigStore: SdkConfigStore {
+        if let overridenDep = overrides[String(describing: SdkConfigStore.self)] {
             return overridenDep as! SdkConfigStore
         }
         return sharedSdkConfigStore
     }
 
-    private let _sdkConfigStore_queue = DispatchQueue(label: "DI_get_sdkConfigStore_queue")
-    private var _sdkConfigStore_shared: SdkConfigStore?
-    public var sharedSdkConfigStore: SdkConfigStore {
-        _sdkConfigStore_queue.sync {
-            if let overridenDep = self.overrides[.sdkConfigStore] {
+    var sharedSdkConfigStore: SdkConfigStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_SdkConfigStore_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: SdkConfigStore.self)] {
                 return overridenDep as! SdkConfigStore
             }
-            let res = _sdkConfigStore_shared ?? _get_sdkConfigStore()
-            _sdkConfigStore_shared = res
-            return res
+            let existingSingletonInstance = self.singletons[String(describing: SdkConfigStore.self)] as? SdkConfigStore
+            let instance = existingSingletonInstance ?? _get_sdkConfigStore()
+            self.singletons[String(describing: SdkConfigStore.self)] = instance
+            return instance
         }
     }
 
@@ -493,8 +413,8 @@ public class DICommon {
     }
 
     // JsonAdapter
-    public var jsonAdapter: JsonAdapter {
-        if let overridenDep = overrides[.jsonAdapter] {
+    var jsonAdapter: JsonAdapter {
+        if let overridenDep = overrides[String(describing: JsonAdapter.self)] {
             return overridenDep as! JsonAdapter
         }
         return newJsonAdapter
@@ -505,23 +425,24 @@ public class DICommon {
     }
 
     // LockManager (singleton)
-    public var lockManager: LockManager {
-        if let overridenDep = overrides[.lockManager] {
+    var lockManager: LockManager {
+        if let overridenDep = overrides[String(describing: LockManager.self)] {
             return overridenDep as! LockManager
         }
         return sharedLockManager
     }
 
-    private let _lockManager_queue = DispatchQueue(label: "DI_get_lockManager_queue")
-    private var _lockManager_shared: LockManager?
-    public var sharedLockManager: LockManager {
-        _lockManager_queue.sync {
-            if let overridenDep = self.overrides[.lockManager] {
+    var sharedLockManager: LockManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: LockManager.self)] {
                 return overridenDep as! LockManager
             }
-            let res = _lockManager_shared ?? _get_lockManager()
-            _lockManager_shared = res
-            return res
+            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
+            let instance = existingSingletonInstance ?? _get_lockManager()
+            self.singletons[String(describing: LockManager.self)] = instance
+            return instance
         }
     }
 
@@ -530,8 +451,8 @@ public class DICommon {
     }
 
     // DateUtil
-    public var dateUtil: DateUtil {
-        if let overridenDep = overrides[.dateUtil] {
+    var dateUtil: DateUtil {
+        if let overridenDep = overrides[String(describing: DateUtil.self)] {
             return overridenDep as! DateUtil
         }
         return newDateUtil
@@ -543,7 +464,7 @@ public class DICommon {
 
     // HttpRequestRunner
     internal var httpRequestRunner: HttpRequestRunner {
-        if let overridenDep = overrides[.httpRequestRunner] {
+        if let overridenDep = overrides[String(describing: HttpRequestRunner.self)] {
             return overridenDep as! HttpRequestRunner
         }
         return newHttpRequestRunner
@@ -554,8 +475,8 @@ public class DICommon {
     }
 
     // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
-        if let overridenDep = overrides[.keyValueStorage] {
+    var keyValueStorage: KeyValueStorage {
+        if let overridenDep = overrides[String(describing: KeyValueStorage.self)] {
             return overridenDep as! KeyValueStorage
         }
         return newKeyValueStorage

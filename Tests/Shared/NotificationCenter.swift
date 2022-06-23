@@ -14,6 +14,8 @@ public extension UNNotificationResponse {
     // Parse parts of `UNNotificationResponse` that you need and test that function instead.
     // Hack help: https://onmyway133.com/posts/how-to-mock-unnotificationresponse-in-unit-tests/
     static var testInstance: UNNotificationResponse {
+        // OK to use try! as it's utility code used by tests and is rarely edited.
+        // swiftlint:disable:next force_try
         try! XCTUnwrap(UNNotificationResponse(coder: KeyedArchiver()))
     }
 }

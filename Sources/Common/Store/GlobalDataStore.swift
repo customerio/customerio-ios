@@ -20,9 +20,9 @@ public protocol GlobalDataStore: AutoMockable {
 // sourcery: InjectRegister = "GlobalDataStore"
 // sourcery: InjectSingleton
 public class CioGlobalDataStore: GlobalDataStore {
-    private var diGraph: DICommon {
+    private var diGraph: DIGraph {
         // Used *only* for information that needs to be global between all site ids!
-        DICommon.getAllWorkspacesSharedInstance()
+        DIGraph.getAllWorkspacesSharedInstance()
     }
 
     internal var keyValueStorage: KeyValueStorage {
