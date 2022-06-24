@@ -197,11 +197,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        // call hooks for manual screen view events at this time. Automatic screen view tracking is not the most stable.
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
-
         trackEvent(type: .screen, name: name, data: data)
     }
 
@@ -245,5 +240,11 @@ extension CustomerIOImplementation {
                                     blockingGroups: [
                                         .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
                                     ])
+
+        if type == .screen {
+            hooks.screenViewHooks.forEach { hook in
+                hook.screenViewed(name: name)
+            }
+        }
     }
 }

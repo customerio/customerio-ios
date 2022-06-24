@@ -214,15 +214,16 @@ class CustomerIOImplementationTest: UnitTest {
 
     // MARK: screen
 
-    func test_screen_givenNoProfileIdentified_expectIgnoreRequest() {
+    func test_screen_givenNoProfileIdentified_expectIgnoreRequest_expectDoNotCallHooks() {
         profileStoreMock.identifier = nil
 
         customerIO.screen(name: String.random)
 
         XCTAssertFalse(backgroundQueueMock.addTaskCalled)
+        XCTAssertFalse(hooksMock.mockCalled)
     }
 
-    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue() {
+    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue_expectCallHooks() {
         let givenIdentifier = String.random
         let givenData = ["first_name": "Dana"]
         profileStoreMock.identifier = givenIdentifier
@@ -238,5 +239,7 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
         XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
+        XCTAssertTrue(hooksMock.screenViewHooksCalled)
+        XCTAssertEqual(hooksMock.screenViewHooksGetCallsCount, 1)
     }
 }
