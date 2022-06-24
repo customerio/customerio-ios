@@ -40,7 +40,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     internal init(siteId: String) {
         self._siteId = siteId
 
-        let diGraph = DIGraph.getInstance(siteId: siteId)
+        let diGraph = DICommon.getInstance(siteId: siteId)
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfigStore = diGraph.sdkConfigStore
@@ -83,7 +83,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             guard let existingProfileIdentifier = profileStore.identifier else {
                 return
             }
-            identify(identifier: existingProfileIdentifier, body: newValue)
+            identify(identifier: existingProfileIdentifier, body: StringAnyEncodable(newValue))
         }
     }
 
@@ -120,8 +120,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             }
         }
 
-        // Custom attributes so do not modify keys in JSON string
-        let jsonBodyString = jsonAdapter.toJsonString(body, convertKeysToSnakecase: false)
+        let jsonBodyString = jsonAdapter.toJsonString(body, encoder: nil)
         logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
 
         let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
@@ -237,7 +236,7 @@ extension CustomerIOImplementation {
         let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
 
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
-        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
+        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, encoder: nil) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return
         }

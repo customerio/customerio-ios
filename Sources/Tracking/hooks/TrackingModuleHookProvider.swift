@@ -4,8 +4,8 @@ import Foundation
 class TrackingModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
+    private var diGraphTracking: DITracking {
+        DITracking.getInstance(siteId: siteId)
     }
 
     init(siteId: SiteId) {
@@ -17,7 +17,7 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraph.queueRunnerHook
+        diGraphTracking.queueRunnerHook
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {

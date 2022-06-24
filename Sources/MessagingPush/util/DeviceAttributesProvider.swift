@@ -10,9 +10,9 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let sdkConfigStore: SdkConfigStore
     private let deviceInfo: DeviceInfo
 
-    init(sdkConfigStore: SdkConfigStore, deviceInfo: DeviceInfo) {
-        self.sdkConfigStore = sdkConfigStore
-        self.deviceInfo = deviceInfo
+    init(diGraph: DICommon) {
+        self.sdkConfigStore = diGraph.sdkConfigStore
+        self.deviceInfo = diGraph.deviceInfo
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {

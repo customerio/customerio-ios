@@ -32,7 +32,6 @@ public protocol QueueStorage: AutoMockable {
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
-    func deleteExpired() -> [QueueTaskMetadata]
 }
 
 // sourcery: InjectRegister = "QueueStorage"
@@ -40,27 +39,13 @@ public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
     private let siteId: SiteId
-    private let sdkConfigStore: SdkConfigStore
-    private let logger: Logger
-    private let dateUtil: DateUtil
 
     private let lock: Lock
 
-    init(
-        siteId: SiteId,
-        fileStorage: FileStorage,
-        jsonAdapter: JsonAdapter,
-        lockManager: LockManager,
-        sdkConfigStore: SdkConfigStore,
-        logger: Logger,
-        dateUtil: DateUtil
-    ) {
+    init(siteId: SiteId, fileStorage: FileStorage, jsonAdapter: JsonAdapter, lockManager: LockManager) {
         self.siteId = siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
-        self.sdkConfigStore = sdkConfigStore
-        self.logger = logger
-        self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
     }
 
@@ -110,7 +95,7 @@ public class FileManagerQueueStorage: QueueStorage {
                                              taskType: type,
                                              groupStart: groupStart?.string,
                                              groupMember: blockingGroups?.map(\.string),
-                                             createdAt: dateUtil.now)
+                                             createdAt: Date())
         existingInventory.append(newQueueItem)
 
         let updatedInventoryCount = existingInventory.count
@@ -163,50 +148,6 @@ public class FileManagerQueueStorage: QueueStorage {
         // if this fails, we at least deleted the task from inventory so
         // it will not run again which is the most important thing
         return fileStorage.delete(type: .queueTask, fileId: storageId)
-    }
-
-    public func deleteExpired() -> [QueueTaskMetadata] {
-        lock.lock()
-        defer { lock.unlock() }
-
-        logger.debug("deleting expired tasks from the queue")
-
-        var tasksToDelete: Set<QueueTaskMetadata> = Set()
-        let queueTaskExpiredThreshold = Date().subtract(sdkConfigStore.config.backgroundQueueExpiredSeconds, .second)
-        logger.debug("""
-        deleting tasks older then \(queueTaskExpiredThreshold.string(format: .iso8601noMilliseconds)),
-        current time is: \(Date().string(format: .iso8601noMilliseconds))
-        """)
-
-        getInventory().filter { inventoryItem in
-            // Do not delete tasks that are at the start of a group of tasks.
-            // Why? Take for example Identifying a profile. If we identify profile X in an app today,
-            // we expire the Identify queue task and delete the queue task, and then profile X stays logged
-            // into an app for 6 months, that means we run the risk of 6 months of data never successfully being sent
-            // to the API.
-            // Also, queue tasks such as Identifying a profile are more rare queue tasks compared to tracking of events
-            // (that are not the start of a group). So, it should rarely be a scenario when there are thousands
-            // of "expired" Identifying a profile tasks sitting in a queue. It's the queue tasks such as tracking
-            // that are taking up a large majority of the queue inventory. Those we should be deleting more of.
-            inventoryItem.groupStart == nil
-        }.forEach { taskInventoryItem in
-            let isItemTooOld = taskInventoryItem.createdAt.isOlderThan(queueTaskExpiredThreshold)
-
-            if isItemTooOld {
-                tasksToDelete.insert(taskInventoryItem)
-            }
-        }
-
-        logger.debug("deleting \(tasksToDelete.count) tasks. \n Tasks: \(tasksToDelete)")
-
-        tasksToDelete.forEach { taskToDelete in
-            // Because the queue tasks we are deleting are not the start of a group,
-            // if deleting a task is not successful, we can ignore that
-            // because it doesn't negatively effect the state of the SDK or the queue.
-            _ = self.delete(storageId: taskToDelete.taskPersistedId)
-        }
-
-        return Array(tasksToDelete)
     }
 }
 

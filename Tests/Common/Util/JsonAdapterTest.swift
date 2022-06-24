@@ -73,14 +73,15 @@ class JsonAdapterTest: UnitTest {
     func test_fromDictionary_givenDictionaryWithNesting_expectObject() {
         struct Person: Codable, Equatable {
             let name: Name
-        }
-        struct Name: Codable, Equatable {
-            let first: String
-            let last: String
+
+            struct Name: Codable, Equatable {
+                let first: String
+                let last: String
+            }
         }
 
         let given = ["name": ["first": "Dana", "last": "Green"]]
-        let expected = Person(name: Name(first: "Dana", last: "Green"))
+        let expected = Person(name: Person.Name(first: "Dana", last: "Green"))
 
         let actual: Person = jsonAdapter.fromDictionary(given)!
 
@@ -92,12 +93,13 @@ class JsonAdapterTest: UnitTest {
     func test_toDictionary_givenObjectWithNesting_expectDictionary() {
         struct Person: Codable, Equatable {
             let name: Name
-        }
-        struct Name: Codable, Equatable {
-            let first: String
+
+            struct Name: Codable, Equatable {
+                let first: String
+            }
         }
 
-        let given = Person(name: Name(first: "Dana"))
+        let given = Person(name: Person.Name(first: "Dana"))
         let expected = ["name": ["first": "Dana"]]
 
         let actual = jsonAdapter.toDictionary(given) as? [String: [String: String]]

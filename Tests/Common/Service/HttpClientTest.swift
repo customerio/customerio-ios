@@ -57,11 +57,8 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noOrBadNetwork(let actualError) = result.error!,
-                  case .notConnectedToInternet = actualError.code
-            else {
-                return XCTFail("expect request failed because not connected to internet")
-            }
+            guard case .noOrBadNetwork(let actualError) = result.error! else { return XCTFail() }
+            guard case .notConnectedToInternet = actualError.code else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -78,9 +75,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noRequestMade = result.error! else {
-                return XCTFail("expect no request was made")
-            }
+            guard case .noRequestMade = result.error! else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -97,9 +92,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
-            guard case .noRequestMade = result.error! else {
-                return XCTFail("expect no request was made")
-            }
+            guard case .noRequestMade = result.error! else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -132,14 +125,12 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenHttpRequestsPaused_expectDontMakeRequest() {
-        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().add(10, .minute)
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().addMinutes(10)
 
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
-            guard case .noRequestMade = result.error! else {
-                return XCTFail("expect no request was made")
-            }
+            guard case .noRequestMade = result.error! else { return XCTFail() }
 
             expectComplete.fulfill()
         }
@@ -150,7 +141,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenHttpRequestsPauseExpired_expectMakeRequest() {
-        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
+        globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().minusMinutes(10)
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
             onComplete(Data(), HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
@@ -159,7 +150,7 @@ class HttpClientTest: UnitTest {
 
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
-        client.request(params) { _ in
+        client.request(params) { result in
             expectComplete.fulfill()
         }
 
@@ -182,7 +173,8 @@ class HttpClientTest: UnitTest {
             XCTAssertNotNil(result.error)
 
             guard case .unauthorized = result.error! else {
-                return XCTFail("expected request to not have been authorized")
+                XCTFail()
+                return
             }
 
             expectComplete.fulfill()
@@ -242,7 +234,7 @@ class HttpClientTest: UnitTest {
         let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
         client.request(params) { result in
             guard case .success = result else { // expect get success after retrying.
-                return XCTFail("expect get success after retrying")
+                return XCTFail()
             }
 
             expectComplete.fulfill()

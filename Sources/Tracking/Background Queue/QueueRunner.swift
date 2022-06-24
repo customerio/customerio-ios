@@ -4,9 +4,9 @@ import Foundation
 // Queue tasks for the Tracking module.
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
-    override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger,
-                   httpClient: httpClient)
+    init(siteId: SiteId, diGraph: DICommon) {
+        super.init(siteId: siteId, jsonAdapter: diGraph.jsonAdapter, logger: diGraph.logger,
+                   httpClient: diGraph.httpClient)
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {

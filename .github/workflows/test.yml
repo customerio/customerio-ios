@@ -5,71 +5,15 @@ on: [push, pull_request]
 # See example commands by choosing a package: https://swiftpackageindex.com/nativedevbr/swift-log/builds and viewing the build information for each environment to see the commands run in that environment. 
 
 jobs:
-  older-xcode-test:
+  xcode-test:
     strategy:
       matrix:
         # 12.4 = swift 5.3
         # 12.5 = swift 5.4
-        # 13.0 = swift 5.5        
-        # Thanks: https://swiftly.dev/swift-versions, https://xcodereleases.com/, https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#xcode
+        # 13.0 = swift 5.5
+        # Thanks: https://swiftly.dev/swift-versions and https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#xcode
         xcode: ["12.4", "12.5", "13.0"]
     runs-on: macos-11
-    name: XCode macOS tests (xcode ${{ matrix.xcode }})
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up XCode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: ${{ matrix.xcode }}
-    # If running tests fails, sometimes it's because of scheme name is wrong. This gives us all available schemes. 
-    - name: Get XCode schemes (xcode ${{ matrix.xcode }})
-      run: xcrun xcodebuild -list
-
-    - name: Setup Ruby to run Fastlane 
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.7.2
-    - name: Run tests (xcode ${{ matrix.xcode }})
-      uses: maierj/fastlane-action@v2.0.1
-      with:
-        lane: 'scan'
-        skip-tracking: true
-
-    # Read generate script file to learn more about this CI step. 
-    - name: Generate code coverage report from .xcresult/
-      run: ./scripts/generate-code-coverage-report.sh 
-  
-    - name: Upload code coverage report 
-      uses: codecov/codecov-action@v2
-      with: 
-        token: ${{ secrets.CODECOV_UPLOAD_TOKEN }} # not required for public repos, but sometimes uploads fail without it so include it anyway
-        fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
-        verbose: true 
-        directory: .build/generated
-
-    - name: Upload test report 
-      uses: actions/upload-artifact@v2
-      with:
-        name: xcode-test-report
-        path: test-report.*
-      if: ${{ always() }}
-    - name: Publish test results
-      uses: mikepenz/action-junit-report@v2      
-      with:
-        check_name: XCode macOS tests (xcode ${{ matrix.xcode }}) - Results
-        report_paths: test-report.xml
-        github_token: ${{ secrets.READ_ONLY_BOT_TOKEN }}
-        fail_on_failure: true 
-        require_tests: true 
-      if: ${{ always() }} # if running tests fails, we still want to parse the test results   
-
-  xcode-test:
-    strategy:
-      matrix:
-        # 13.3 = swift 5.6
-        # Thanks: https://swiftly.dev/swift-versions, https://xcodereleases.com/, https://github.com/actions/virtual-environments/blob/main/images/macos/macos-12-Readme.md#xcode
-        xcode: ["13.3"]
-    runs-on: macos-12
     name: XCode macOS tests (xcode ${{ matrix.xcode }})
     steps:
     - uses: actions/checkout@v2
@@ -125,7 +69,7 @@ jobs:
   # spm-test:
   #   strategy:
   #     matrix: 
-  #       swift: ["5.3", "5.4", "5.5", "5.6"]
+  #       swift: ["5.3", "5.4"]
   #       os: [ubuntu-latest]
   #       # Can add `-arch X` to `swift build` command to compile for an architecture. Examples: -arch arm64, -arch x86_64
   #   runs-on: ${{ matrix.os }}

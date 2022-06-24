@@ -8,10 +8,12 @@ class MetricRequestTest: UnitTest {
     func test_expectSuccessful_decode_encode() {
         let metric = MetricRequest.random
 
-        guard let jsonData = jsonAdapter.toJson(metric, encoder: nil),
-              let _: MetricRequest = jsonAdapter.fromJson(jsonData)
-        else {
-            return XCTFail("expected to call functions without returning nil")
+        guard let jsonData = jsonAdapter.toJson(metric, encoder: nil) else {
+            return XCTFail()
+        }
+
+        guard let _: MetricRequest = jsonAdapter.fromJson(jsonData) else {
+            return XCTFail()
         }
     }
 
@@ -22,10 +24,8 @@ class MetricRequestTest: UnitTest {
         {"delivery_id":"123","device_id":"234","event":"opened","timestamp":1642018466}
         """
 
-        guard let jsonData = jsonAdapter.toJson(given, encoder: nil),
-              let actualJson = jsonData.string
-        else {
-            return XCTFail("expected to call functions without returning nil")
+        guard let jsonData = jsonAdapter.toJson(given, encoder: nil), let actualJson = jsonData.string else {
+            return XCTFail()
         }
 
         print(actualJson)

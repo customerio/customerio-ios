@@ -58,17 +58,15 @@ class FileStorageTest: UnitTest {
     // MARK: getUrl
 
     func test_getUrl_expectPartitionBySiteId() {
-        let actual = try? fileStorage.getUrl(type: .queueInventory, fileId: nil)!
+        let actual = try! fileStorage.getUrl(type: .queueInventory, fileId: nil)!
 
-        XCTAssertNotNil(actual)
-        XCTAssertMatches(actual?.absoluteString, regex: ".*/\(siteId!)/.*")
+        XCTAssertMatches(actual.absoluteString, regex: ".*/\(siteId!)/.*")
     }
 
     func test_getUrl_givenEachFileType_expectGetExpectedPath() {
-        let actual = try? fileStorage.getUrl(type: .queueInventory, fileId: nil)!
+        let actual = try! fileStorage.getUrl(type: .queueInventory, fileId: nil)!
 
-        XCTAssertNotNil(actual)
-        XCTAssertMatches(actual?.absoluteString, regex: ".*/\(siteId!)/queue/inventory.json")
+        XCTAssertMatches(actual.absoluteString, regex: ".*/\(siteId!)/queue/inventory.json")
     }
 }
 #endif

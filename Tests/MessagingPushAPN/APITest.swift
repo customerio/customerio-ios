@@ -50,11 +50,11 @@ class MessagingPushAPNAPITest: UnitTest {
         #if canImport(UserNotifications)
         MessagingPush.shared
             .didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
+                                              trigger: nil)) { content in }
         mock.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
+                                              trigger: nil)) { content in }
         instance.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                                  trigger: nil)) { _ in }
+                                                  trigger: nil)) { content in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
         instance.serviceExtensionTimeWillExpire()

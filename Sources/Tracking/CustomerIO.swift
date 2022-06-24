@@ -107,19 +107,10 @@ public class CustomerIO: CustomerIOInstance {
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
 
-    // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    private var cleanupRepository: CleanupRepository?
-
-    private var threadUtil: ThreadUtil? {
-        guard let siteId = siteId else { return nil }
-
-        return DIGraph.getInstance(siteId: siteId).threadUtil
-    }
-
     private var logger: Logger? {
         guard let siteId = siteId else { return nil }
 
-        return DIGraph.getInstance(siteId: siteId).logger
+        return DICommon.getInstance(siteId: siteId).logger
     }
 
     /**
@@ -129,7 +120,7 @@ public class CustomerIO: CustomerIOInstance {
      */
     internal init() {
         if let siteId = globalData.sharedInstanceSiteId {
-            let diGraph = DIGraph.getInstance(siteId: siteId)
+            let diGraph = DICommon.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore
             let logger = diGraph.logger
 
@@ -167,8 +158,6 @@ public class CustomerIO: CustomerIOInstance {
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         self.implementation = CustomerIOImplementation(siteId: siteId)
-
-        postInitialize(siteId: siteId)
     }
 
     /**
@@ -182,14 +171,12 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
 
-        Self.shared.postInitialize(siteId: siteId)
-
         Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
     }
 
     private func getActiveWorkspaceInstances() -> [CustomerIO] {
         InMemoryActiveWorkspaces.getInstance().activeWorkspaces.map { siteId in
-            let diGraph = DIGraph.getInstance(siteId: siteId)
+            let diGraph = DICommon.getInstance(siteId: siteId)
             let credentialsStore = diGraph.sdkCredentialsStore.credentials
 
             return CustomerIO(siteId: siteId, apiKey: credentialsStore.apiKey, region: credentialsStore.region)
@@ -200,7 +187,7 @@ public class CustomerIO: CustomerIOInstance {
      Sets credentials on shared or non-shared instance.
      */
     internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
+        let diGraph = DICommon.getInstance(siteId: siteId)
         var credentialsStore = diGraph.sdkCredentialsStore
 
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
@@ -216,23 +203,11 @@ public class CustomerIO: CustomerIOInstance {
 
         globalData.appendSiteId(siteId)
 
-        InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
-    }
-
-    private func postInitialize(siteId: String) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
-
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
         hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
 
-        cleanupRepository = diGraph.cleanupRepository
-
-        // run cleanup in background to prevent locking the UI thread
-        threadUtil?.runBackground { [weak self] in
-            self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
-        }
+        InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
     }
 
     /**
@@ -405,4 +380,4 @@ public class CustomerIO: CustomerIOInstance {
             implementation?.automaticScreenView(name: name, data: data)
         }
     }
-} // swiftlint:disable:this file_length
+}

@@ -12,10 +12,8 @@ class TrackRequestBodyTest: UnitTest {
         {"data":{"logged_in":false},"name":"Dashboard","timestamp":1642018466,"type":"screen"}
         """
 
-        guard let jsonData = jsonAdapter.toJson(given, encoder: nil),
-              let actualJson = jsonData.string
-        else {
-            return XCTFail("expected to call functions without nil")
+        guard let jsonData = jsonAdapter.toJson(given, encoder: nil), let actualJson = jsonData.string else {
+            return XCTFail()
         }
 
         print(actualJson)

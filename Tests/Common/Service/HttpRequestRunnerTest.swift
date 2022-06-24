@@ -23,7 +23,7 @@ class HttpRequestRunnerTest: HttpTest {
         runner
             .request(requestParams,
                      httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US),
-                     session: session) { data, response, _ in
+                     session: session) { data, response, error in
                 print(response!)
                 print(data!.string!)
 

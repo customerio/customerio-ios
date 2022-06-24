@@ -1,10 +1,3 @@
-### [1.1.1](https://github.com/customerio/customerio-ios/compare/1.1.0...1.1.1) (2022-06-10)
-
-
-### Bug Fixes
-
-* send attributes in all caps to API ([9eea27b](https://github.com/customerio/customerio-ios/commit/9eea27b29e11b2fed75bfe584f0a98f923e393fc))
-
 ## [1.1.0](https://github.com/customerio/customerio-ios/compare/1.0.3...1.1.0) (2022-06-01)
 
 

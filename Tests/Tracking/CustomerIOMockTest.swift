@@ -24,7 +24,7 @@ class CustomerIOMockTest: UnitTest {
 
         /// Call your code under test
         let expect = expectation(description: "Expect login to complete")
-        repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
+        repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { result in
             expect.fulfill()
         }
 
@@ -36,11 +36,10 @@ class CustomerIOMockTest: UnitTest {
 
         /// You can receive the generic `body` that was sent to the Customer.io `identify()` call.
         /// Because of Swift generics, you must get the `.value` and cast it:
-        let actualBody: ExampleIdentifyRequestBody? = cioMock.identifyEncodableReceivedArguments?.body
-            .value as? ExampleIdentifyRequestBody
+        let actualBody: ExampleIdentifyRequestBody = cioMock.identifyEncodableReceivedArguments?.body
+            .value as! ExampleIdentifyRequestBody
         /// Now, you can run checks against the `body` that was actually passed to `identify()`.
-        XCTAssertNotNil(actualBody)
-        XCTAssertEqual(actualBody?.firstName, givenBody.firstName)
+        XCTAssertEqual(actualBody.firstName, givenBody.firstName)
     }
 }
 

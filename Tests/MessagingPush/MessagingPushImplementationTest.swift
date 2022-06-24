@@ -57,17 +57,15 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
         XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.registerPushToken.rawValue)
         let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data
-            .value as? RegisterPushNotificationQueueTaskData
-
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
+            .value as! RegisterPushNotificationQueueTaskData
+        XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
         let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(device:
             Device(token: givenDeviceToken,
                    platform: "iOS",
                    lastUsed: dateUtilStub
                        .givenNow,
                    attributes: StringAnyEncodable(givenDefaultAttributes))))
-        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)
+        XCTAssertEqual(actualQueueTaskData.attributesJsonString, expectedJsonString)
 
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
@@ -127,11 +125,9 @@ class MessagingPushImplementationTest: UnitTest {
 
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
         XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.deletePushToken.rawValue)
-        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as? DeletePushNotificationQueueTaskData
-
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
+        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as! DeletePushNotificationQueueTaskData
+        XCTAssertEqual(actualQueueTaskData.profileIdentifier, givenIdentifier)
+        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
 
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
@@ -148,11 +144,9 @@ class MessagingPushImplementationTest: UnitTest {
 
         XCTAssertEqual(queueMock.addTaskCallsCount, 1)
         XCTAssertEqual(queueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
-        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as? MetricRequest
-
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.deliveryId, givenDeliveryId)
-        XCTAssertEqual(actualQueueTaskData?.event, givenEvent)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
+        let actualQueueTaskData = queueMock.addTaskReceivedArguments!.data.value as! MetricRequest
+        XCTAssertEqual(actualQueueTaskData.deliveryId, givenDeliveryId)
+        XCTAssertEqual(actualQueueTaskData.event, givenEvent)
+        XCTAssertEqual(actualQueueTaskData.deviceToken, givenDeviceToken)
     }
 }

@@ -30,6 +30,6 @@ public class InMemoryActiveWorkspaces: ActiveWorkspacesManager {
     // Convenient method to get instance. This object is meant to be shared by all workspaces running
     // with the SDK so we need to use the special instance of the DI graph.
     public static func getInstance() -> ActiveWorkspacesManager {
-        DIGraph.getAllWorkspacesSharedInstance().activeWorkspacesManager
+        DICommon.getAllWorkspacesSharedInstance().activeWorkspacesManager
     }
 }

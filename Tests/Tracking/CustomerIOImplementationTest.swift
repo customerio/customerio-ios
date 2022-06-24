@@ -15,13 +15,15 @@ class CustomerIOImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let hooksMock = HooksManagerMock()
     private let profileIdentifyHookMock = ProfileIdentifyHookMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(value: hooksMock, forType: HooksManager.self)
+        diGraph.override(.queue, value: backgroundQueueMock, forType: Queue.self)
+        diGraph.override(.profileStore, value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(.hooksManager, value: hooksMock, forType: HooksManager.self)
+        diGraph.override(.globalDataStore, value: globalDataStoreMock, forType: GlobalDataStore.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
@@ -214,13 +216,85 @@ class CustomerIOImplementationTest: UnitTest {
 
     // MARK: screen
 
+    func test_screen_givenAutomaticScreenTracking_expectTrackScreenViewEvent_expectCallHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        let data: EmptyRequestBody? = nil
+        implementation.automaticScreenView(name: String.random, data: data)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertTrue(hooksMock.screenViewHooksGetCalled)
+    }
+
+    func test_screen_givenManualScreenTracking_expectTrackScreenViewEvent_expectCallHooks() {
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true,
+                                                  queueStatus: QueueStatus.successAddingSingleTask)
+
+        let data: EmptyRequestBody? = nil
+        implementation.screen(name: String.random, data: data)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertTrue(hooksMock.screenViewHooksGetCalled)
+    }
+
     func test_screen_givenNoProfileIdentified_expectIgnoreRequest() {
         profileStoreMock.identifier = nil
 
         customerIO.screen(name: String.random)
 
         XCTAssertFalse(backgroundQueueMock.addTaskCalled)
+        // TODO:
+//        XCTAssertFalse(globalDataStoreMock.mockCalled)
     }
+
+    // TODO:
+//    func test_screen_givenScreenPreviouslyTracked_expectIgnoreRequest() {
+//        profileStoreMock.identifier = String.random
+//        let givenPreviousScreenTrackedName = String.random
+//        globalDataStoreMock.underlyingLastTrackedScreenName = givenPreviousScreenTrackedName
+//
+//        customerIO.screen(name: givenPreviousScreenTrackedName)
+//
+//        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
+//        XCTAssertFalse(globalDataStoreMock.lastTrackedScreenNameSetCalled)
+//    }
+
+//    func test_screen_givenNoPreviousScreenTrackedBefore_expectSaveScreenName_expectTrackEvent() {
+//        let givenScreenName = String.random
+//        profileStoreMock.identifier = String.random
+//        globalDataStoreMock.underlyingLastTrackedScreenName = nil
+//        backgroundQueueMock.addTaskReturnValue = (success: true,
+//                                                  queueStatus: QueueStatus.successAddingSingleTask)
+//
+//        customerIO.screen(name: givenScreenName)
+//
+//        XCTAssertTrue(backgroundQueueMock.addTaskCalled)
+//        // TODO:
+//        //        XCTAssertTrue(globalDataStoreMock.lastTrackedScreenNameSetCalled)
+    ////        XCTAssertEqual(globalDataStoreMock.lastTrackedScreenName, givenScreenName)
+//    }
+//
+//    func test_screen_givenPreviousScreenTrackedNotEqual_expectSaveScreenName_expectTrackEvent() {
+//        let givenScreenName = String.random
+//        profileStoreMock.identifier = String.random
+//        globalDataStoreMock.underlyingLastTrackedScreenName = String.random
+//        backgroundQueueMock.addTaskReturnValue = (success: true,
+//                                                  queueStatus: QueueStatus.successAddingSingleTask)
+//
+//        customerIO.screen(name: givenScreenName)
+//
+//        XCTAssertTrue(backgroundQueueMock.addTaskCalled)
+//        // TODO:
+    ////        XCTAssertTrue(globalDataStoreMock.lastTrackedScreenNameSetCalled)
+    ////        XCTAssertEqual(globalDataStoreMock.lastTrackedScreenName, givenScreenName)
+//    }
 
     func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue() {
         let givenIdentifier = String.random
