@@ -58,6 +58,12 @@ public struct SdkConfig {
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
+
+    /**
+     Creating a wrapper/bridge around the Customer.io SDK? Provide some information so we can customize
+     the SDK for you.
+     */
+    public var sdkWrapperConfig: SdkWrapperConfig?
 }
 
 public protocol SdkConfigStore: AutoMockable {

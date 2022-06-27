@@ -39,7 +39,7 @@ public class CIOHttpClient: HttpClient {
     ) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey,
-                                       deviceInfo: deviceInfo)
+                                       deviceInfo: deviceInfo, sdkWrapperConfig: configStore.config.sdkWrapperConfig)
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
@@ -135,7 +135,8 @@ public class CIOHttpClient: HttpClient {
 }
 
 extension CIOHttpClient {
-    static func getSession(siteId: String, apiKey: String, deviceInfo: DeviceInfo) -> URLSession {
+    static func getSession(siteId: String, apiKey: String, deviceInfo: DeviceInfo,
+                           sdkWrapperConfig: SdkWrapperConfig?) -> URLSession {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
@@ -144,7 +145,8 @@ extension CIOHttpClient {
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": getUserAgent(deviceInfo: deviceInfo)]
+                                                  "User-Agent": getUserAgent(deviceInfo: deviceInfo,
+                                                                             sdkWrapperConfig: sdkWrapperConfig)]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -166,9 +168,12 @@ extension CIOHttpClient {
      * Otherwise will return
      * `Customer.io iOS Client/1.0.0-alpha.16`
      */
-    static func getUserAgent(deviceInfo: DeviceInfo) -> String {
-        var userAgent = "Customer.io iOS Client/"
-        userAgent += deviceInfo.sdkVersion
+    static func getUserAgent(deviceInfo: DeviceInfo, sdkWrapperConfig: SdkWrapperConfig?) -> String {
+        var userAgent = "Customer.io iOS Client/\(deviceInfo.sdkVersion)"
+
+        if let sdkWrapperConfig = sdkWrapperConfig {
+            userAgent = "\(sdkWrapperConfig.name)/\(sdkWrapperConfig.version)"
+        }
 
         if let deviceModel = deviceInfo.deviceModel,
            let deviceOsVersion = deviceInfo.osVersion,
