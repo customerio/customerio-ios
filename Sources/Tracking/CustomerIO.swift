@@ -175,12 +175,22 @@ public class CustomerIO: CustomerIOInstance {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    public static func initialize(siteId: String, apiKey: String, region: Region = Region.US) {
+    public static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region = Region.US,
+        configure configureHandler: ((inout SdkConfig) -> Void)? = nil
+    ) {
         Self.shared.globalData.sharedInstanceSiteId = siteId
 
         Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
+
+        if let configureHandler = configureHandler {
+            // configure before post initialize steps so we can make accurate logs based on configuration options.
+            Self.config(configureHandler)
+        }
 
         Self.shared.postInitialize(siteId: siteId)
 
@@ -221,6 +231,8 @@ public class CustomerIO: CustomerIOInstance {
 
     private func postInitialize(siteId: String) {
         let diGraph = DIGraph.getInstance(siteId: siteId)
+
+        diGraph.logger.info("Customer.io SDK \(SdkVersion.version) initialized successfully.")
 
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager

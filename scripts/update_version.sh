@@ -9,7 +9,7 @@ set -e
 NEW_VERSION="$1"
 SWIFT_SOURCE_FILE="$2"
 
-# Given line: `    static let version: String = "0.1.1"` 
+# Given line: `    public static let version: String = "0.1.1"` 
 # Regex string will match the line of the file that we can then substitute. 
 LINE_PATTERN="let version: String = \"\(.*\)\""
 
