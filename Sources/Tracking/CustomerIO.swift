@@ -402,7 +402,7 @@ public class CustomerIO: CustomerIOInstance {
         data: RequestBody
     ) {
         getActiveWorkspaceInstances().forEach { _ in
-            implementation?.automaticScreenView(name: name, data: data)
+            implementation?.screen(name: name, data: data)
         }
     }
 } // swiftlint:disable:this file_length
