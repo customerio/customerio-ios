@@ -32,7 +32,8 @@ open class HttpTest: UnitTest {
         if let siteId = getEnvironmentVariable("SITE_ID"), let apiKey = getEnvironmentVariable("API_KEY") {
             runner = UrlRequestHttpRequestRunner()
             customerIO = CustomerIO(siteId: siteId, apiKey: apiKey, region: Region.US)
-            session = CIOHttpClient.getSession(siteId: siteId, apiKey: apiKey, deviceInfo: deviceInfoMock)
+            session = CIOHttpClient.getSession(siteId: siteId, apiKey: apiKey, deviceInfo: deviceInfoMock,
+                                               sdkWrapperConfig: nil)
         }
     }
 

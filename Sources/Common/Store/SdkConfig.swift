@@ -59,11 +59,12 @@ public struct SdkConfig {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
 
+    // property is used internally so disable swiftlint rule
     /**
-     Creating a wrapper/bridge around the Customer.io SDK? Provide some information so we can customize
-     the SDK for you.
+     Used internally at Customer.io to override some information in the SDK when the SDK is being used
+     as a wrapper/bridge such as with ReactNative.
      */
-    public var sdkWrapperConfig: SdkWrapperConfig?
+    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }
 
 public protocol SdkConfigStore: AutoMockable {

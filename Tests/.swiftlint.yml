@@ -17,3 +17,8 @@ disabled_rules:
   # XCTAssertNotNil(foo)
   # XCTAssertEqual(foo?.bar, "")
   # - force_cast
+
+  # Test classes that contain lots of unit test methods will throw this lint error. 
+  # That's not necessarily a bad thing to have lots of unit test functions so this error is OK to ignore 
+  # for tests. 
+  - type_body_length 

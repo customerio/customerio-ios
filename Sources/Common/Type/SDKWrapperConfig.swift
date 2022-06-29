@@ -2,8 +2,16 @@ import Foundation
 
 /// Metadata about a SDK wrapper/bridge made to use this Customer.io SDK.
 public struct SdkWrapperConfig {
-    /// What is the name of your SDK wrapper?
-    let name: String
+    /// What is the technology used for this wrapper?
+    let source: Source
     /// What version of your wrapper is installed?
     let version: String
+
+    /// All of the official SDK wrappers that we create around this SDK.
+    /// At this time, we do not recommend to customers to build their own
+    /// bridge/wrapper around our native mobile SDKs so there is no need
+    /// to expand this to include more Sources besides ones that we use internally.
+    enum Source: String {
+        case reactNative = "ReactNative"
+    }
 }

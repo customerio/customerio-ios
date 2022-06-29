@@ -39,7 +39,7 @@ public class CIOHttpClient: HttpClient {
     ) {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey,
-                                       deviceInfo: deviceInfo, sdkWrapperConfig: configStore.config.sdkWrapperConfig)
+                                       deviceInfo: deviceInfo, sdkWrapperConfig: configStore.config._sdkWrapperConfig)
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
@@ -172,7 +172,7 @@ extension CIOHttpClient {
         var userAgent = "Customer.io iOS Client/\(deviceInfo.sdkVersion)"
 
         if let sdkWrapperConfig = sdkWrapperConfig {
-            userAgent = "\(sdkWrapperConfig.name)/\(sdkWrapperConfig.version)"
+            userAgent = "Customer.io \(sdkWrapperConfig.source.rawValue) Client/\(sdkWrapperConfig.version)"
         }
 
         if let deviceModel = deviceInfo.deviceModel,
