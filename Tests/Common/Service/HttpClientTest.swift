@@ -305,7 +305,7 @@ class HttpClientTest: UnitTest {
         deviceInfoMock.underlyingSdkVersion = "1.0.1"
         deviceInfoMock.underlyingDeviceModel = nil
 
-        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock)
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock, sdkWrapperConfig: nil)
 
         XCTAssertEqual(expected, actual)
     }
@@ -320,7 +320,27 @@ class HttpClientTest: UnitTest {
         deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
         deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
 
-        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock)
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock, sdkWrapperConfig: nil)
+
+        XCTAssertEqual(expected, actual)
+    }
+
+    func test_getUserAgent_givenSdkWrapperConfig_expectModifiedUserAgentForWrapper() {
+        let givenWrapperVersion = "2.0.0"
+        let givenSdkVersion = "1.0.0" // make sure this value is different from the given wrapper value
+
+        let expected = "Customer.io ReactNative Client/2.0.0 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
+        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
+        deviceInfoMock.underlyingDeviceModel = "iPhone12"
+        deviceInfoMock.underlyingOsVersion = "14.1"
+        deviceInfoMock.underlyingOsName = "iOS"
+        deviceInfoMock.underlyingCustomerAppName = "SuperAwesomeStore"
+        deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
+        deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
+
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock,
+                                                sdkWrapperConfig: SdkWrapperConfig(source: .reactNative,
+                                                                                   version: givenWrapperVersion))
 
         XCTAssertEqual(expected, actual)
     }
