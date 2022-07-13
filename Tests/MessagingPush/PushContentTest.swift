@@ -19,7 +19,7 @@ class PushContentTest: UnitTest {
         let givenContent = UNMutableNotificationContent()
         givenContent.userInfo = ["aps": ["mutable-content": 1]]
 
-        XCTAssertNil(PushContent.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter))
+        XCTAssertNil(CustomerIOParsedPushPayload.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter))
     }
 
     func test_parse_givenPushNotContainingValidCioContent_expectNil() {
@@ -30,7 +30,7 @@ class PushContentTest: UnitTest {
             ]
         ]]
 
-        XCTAssertNil(PushContent.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter))
+        XCTAssertNil(CustomerIOParsedPushPayload.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter))
     }
 
     func test_parse_givenCioPushContent_expectObject() {
@@ -42,7 +42,7 @@ class PushContentTest: UnitTest {
             ]
         ]]
 
-        let actual = PushContent.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter)!
+        let actual = CustomerIOParsedPushPayload.parse(notificationContent: givenContent, jsonAdapter: jsonAdapter)!
 
         XCTAssertEqual(actual.deepLink!, givenLink.url!)
     }
@@ -52,7 +52,7 @@ class PushContentTest: UnitTest {
     func test_addImage_givenMultipleImages_expectAddAll() {
         let content = UNMutableNotificationContent()
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
 
@@ -66,7 +66,7 @@ class PushContentTest: UnitTest {
     func test_addImage_givenAddImage_expectGetImageFromAttachmentsProperty() {
         let content = UNMutableNotificationContent()
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         pushContent.addImage(localFilePath: "https://customer.io/\(String.random).jpg".url!)
 
@@ -82,11 +82,10 @@ class PushContentTest: UnitTest {
             // OK to use try! here as it's setup code for the test. Not actually testing code.
             // swiftlint:disable:next force_try
             try! UNNotificationAttachment(identifier: "non-cio-attachment", url: "file:///foo.jpg".url!, options: nil),
-            // swiftlint:disable:next force_try
-            try! UNNotificationAttachment(identifier: "\(PushContent.cioAttachmentsPrefix)\(String.random)",
+            try! UNNotificationAttachment(identifier: "\(CustomerIOParsedPushPayload.cioAttachmentsPrefix)\(String.random)",
                                           url: "file:///foo.jpg".url!, options: nil)
         ]
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         XCTAssertEqual(pushContent.cioAttachments.count, 1)
         XCTAssertEqual(pushContent.mutableNotificationContent.attachments.count, 2)
@@ -99,7 +98,7 @@ class PushContentTest: UnitTest {
         let content = UNMutableNotificationContent()
         content.title = "foo"
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         XCTAssertNotEqual(given, pushContent.title)
 
@@ -113,7 +112,7 @@ class PushContentTest: UnitTest {
         let content = UNMutableNotificationContent()
         content.body = "foo"
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         XCTAssertNotEqual(given, pushContent.body)
 
@@ -126,7 +125,7 @@ class PushContentTest: UnitTest {
         let given = "cio://\(String.random)".url
         let content = UNMutableNotificationContent()
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         XCTAssertNotEqual(given, pushContent.deepLink)
 
@@ -139,7 +138,7 @@ class PushContentTest: UnitTest {
         let given = "https://\(String.random).jpg".url
         let content = UNMutableNotificationContent()
         content.userInfo = validCioPushContent
-        let pushContent = PushContent.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
 
         XCTAssertNotEqual(given, pushContent.image)
 

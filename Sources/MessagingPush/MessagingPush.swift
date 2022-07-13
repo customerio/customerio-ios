@@ -29,6 +29,11 @@ public protocol MessagingPushInstance {
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) -> CustomerIOParsedPushPayload?
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool
@@ -129,12 +134,22 @@ public class MessagingPush: MessagingPushInstance {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
         guard let implementation = implementation else {
-            completionHandler()
             return false
         }
 
         return implementation.userNotificationCenter(center, didReceive: response,
                                                      withCompletionHandler: completionHandler)
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) -> CustomerIOParsedPushPayload? {
+        guard let implementation = implementation else {
+            return nil
+        }
+
+        return implementation.userNotificationCenter(center, didReceive: response)
     }
     #endif
 }

@@ -12,7 +12,7 @@ internal class RichPushRequestHandler {
 
     func startRequest(
         _ request: UNNotificationRequest,
-        content: PushContent,
+        content: CustomerIOParsedPushPayload,
         siteId: SiteId,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {

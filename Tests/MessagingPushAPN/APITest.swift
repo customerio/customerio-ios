@@ -66,6 +66,23 @@ class MessagingPushAPNAPITest: UnitTest {
                                         didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
         _ = instance.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
                                             withCompletionHandler: {})
+        // custom handler
+        let pushContent: CustomerIOParsedPushPayload? = MessagingPush.shared.userNotificationCenter(.current(),
+                                                                                                    didReceive: UNNotificationResponse
+                                                                                                        .testInstance)
+        let _: CustomerIOParsedPushPayload? = mock.userNotificationCenter(.current(),
+                                                                          didReceive: UNNotificationResponse
+                                                                              .testInstance)
+        let _: CustomerIOParsedPushPayload? = instance.userNotificationCenter(.current(),
+                                                                              didReceive: UNNotificationResponse
+                                                                                  .testInstance)
+
+        // make sure all properties that a customer might care about are all public
+        _ = pushContent?.notificationContent
+        _ = pushContent?.title
+        _ = pushContent?.body
+        _ = pushContent?.deepLink
+        _ = pushContent?.image
         #endif
     }
 }
