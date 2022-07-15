@@ -152,22 +152,7 @@ This deployment step is run when you use the *Promote a release* button in GitHu
 
 **Did you encounter a problem with the automated release and you need to manually perform this step? Follow these steps:**
 
-* Run these `git` commands from your computer:
-
-
-   ```bash
-   git fetch
-   
-   // TODO update these instructions. the command should be printed from the git bot for promote. 
-   
-   git switch develop
-   git pull
-   
-   git checkout -b alpha
-   git push origin alpha 
-   ```
-
-* Tell the team that you encountered an issue with making an automated release so it can be fixed. 
+* View the logs from the CI server. The promote a release CI script is designed to have very good logs showing you every git command executed, what commands succeeded, what commands failed. 
 
 ### 2. Determine the next semantic version and create a new git tag
 
@@ -189,7 +174,6 @@ But if semantic-release fails to run, follow these instructions to manually perf
   > Tip: Want to edit the graph above? Just click it > edit graph > replace markdown in this document with new markdown URL from your edits. 
 
 * After you determine what the next semantic version should be, you want to go into the code and edit metadata files with the newest version. Each SDK project contains a script that updates the version files for you. You should be able to run this command in each of the SDK projects: `./scripts/update-version.sh "new-version-here"` and the files of the project will be updated for you. 
-  // TODO make sure each project contains this script to update version. the script can suggest a git commit message for you to make. 
 
 * After you edit the metadata files, you will want to make a git commit. Make the commit's commit message with this format: `chore: prepare for <next-semantic-version>` like [this example git commit has done](https://github.com/customerio/customerio-ios/commit/bfcaeea962dcf196118550ee38ca26419e9d2069). 
 
@@ -200,5 +184,3 @@ But if semantic-release fails to run, follow these instructions to manually perf
 The last step of the deployment process is pushing the code to a server so that customers can use it. Each of the mobile projects are setup to automatically deploy code to a server after a git tag is created and pushed to GitHub. This means that when you follow the step above of *Determine the next semantic version and create a new git tag*, the CI server should automatically deploy the code to servers for you. 
 
 However, if for some reason the CI server fails to deploy to a server automatically for you and you decide to deploy the code manually, here is how to do it. Each of the mobile projects contains a script that will do the deployment for you. You should be able to run this command in each of the mobile projects: `./scripts/deploy-code.sh` and it will do the process of uploading the code to the deployment servers for you. 
-
-// TODO make sure each project contains this script to deploy 
