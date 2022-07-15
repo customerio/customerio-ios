@@ -8,13 +8,23 @@ jobs:
     name: Promote a branch to the next release 
     runs-on: ubuntu-latest 
     steps:
-      - uses: actions/checkout@v2
-      - name: Prepare to promote 
-        run: |
-          git config user.email "frontend@customer.io"
-          git config user.name "Ami CI"
       - name: Promote release 
         uses: levibostian/action-promote-semantic-release@v1
         with:
           sequence: "develop,alpha,beta,main"
           githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+          # Find private email address that github uses for CI account at: https://github.com/settings/emails
+          gitName: "Ami CI"
+          gitEmail: "21171259+ami-ci@users.noreply.github.com"
+
+      - name: Notify team of failure 
+        uses: slackapi/slack-github-action@v1.18.0
+        if: ${{ failure() }} # only run this if any previous step failed 
+        with:
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          payload-file-path: ".github/slack-payloads/promote_fail.json"
+        env:
+          # Incoming webhook URL that sends message into the correct Slack channel. 
+          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

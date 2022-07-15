@@ -1,0 +1,22 @@
+{
+    "text": "iOS SDK git tag created",
+    "blocks": [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*iOS* SDK git tag created successfully and deployed to Swift Package Manager! (deployment step 1 of 2)"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Version ${{ steps.semantic-release.outputs.new_release_version }}*\niOS SDK deployment progress:\n ~1. <https://github.com/${{github.repository}}/releases/tag/${{steps.semantic-release.outputs.new_release_version}}|create git ta and deploy to Swift Package Manager>~\n2. deploy to cocoapods\n\n"
+            }
+        }
+    ]
+}

@@ -51,12 +51,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
           RELEASE_VERSION: ${{ github.event.release.tag_name }}
       
-      - name: Notify team of Cocoapods deployment 
-        uses: openhousepvt/slack@v1.3.2
+      - name: Notify team of successful deployment 
+        uses: slackapi/slack-github-action@v1.18.0        
+        if: ${{ success() }}
         with:
-          status: 'success'
-          version: ${{ github.event.release.tag_name }}
-          platform: 'iOS SDK - Deployed to Cocoapods'
-          channel: '#squad-mobile'
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          payload-file-path: ".github/slack-payloads/deploy_code_success.json"            
         env:
+          # Incoming webhook URL that sends message into the correct Slack channel. 
+          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+      - name: Notify team of failure 
+        uses: slackapi/slack-github-action@v1.18.0
+        if: ${{ failure() }} # only run this if any previous step failed 
+        with:
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          payload-file-path: ".github/slack-payloads/deploy_code_fail.json"
+        env:
+          # Incoming webhook URL that sends message into the correct Slack channel. 
+          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK  
