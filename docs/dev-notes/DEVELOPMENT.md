@@ -33,4 +33,4 @@ $> ./hooks/autohook.sh install
 
 ### Development workflow 
 
-See file [GIT-WORKFLOW](GIT-WORKFLOW.md) to learn about the workflow that this project uses. 
+See file [GIT-WORKFLOW](https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md) to learn about the workflow that this project uses. 
