@@ -15,7 +15,7 @@
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "iOS SDK failed deployment during step *promote*. The best way to fix this particular issue is <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|viewing the CI server logs> to learn why and fix the issue."
+                "text": "iOS SDK failed deployment during step *promote*. The best way to fix this particular issue is <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|viewing the CI server logs> to learn why and fix the issue. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>."
             }
         }
     ]
