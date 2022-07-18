@@ -39,10 +39,10 @@ xcrun xccov view --report *.xcresult --json > "$XCODE_CODE_COV_REPORT"
 # --join-output removes newline characters and prints the jq output all on one line. 
 # select(.type == "regular") removes ".testTarget()" targets. 
 # select(.name != "SharedTests") simply removes the "SharedTests" target as that's a ".target()" but still a target we don't care about test coverage for. 
-# "--include-targets \(.name) " is a template that we do string formatting for where jq inserts JSON values into it for us. 
-TARGETS=$(swift package dump-package | jq --join-output '.targets[] | select(.type == "regular") | select(.name != "SharedTests") | "--include-targets \(.name) "')
+# "--include-target \(.name) " is a template that we do string formatting for where jq inserts JSON values into it for us. 
+TARGETS=$(swift package dump-package | jq --join-output '.targets[] | select(.type == "regular") | select(.name != "SharedTests") | "--include-target \(.name) "')
 echo "Include targets command line argument: "
-echo "\n\nExpected value of variable: a string with format: '--include-targets foo --include-targets bar'"
+echo "\n\nExpected value of variable: a string with format: '--include-target foo --include-target bar'"
 echo "Actual value: $TARGETS"
 echo "\n\n"
 
@@ -52,5 +52,5 @@ echo "Generating lcov report from json"
 LCOV_REPORT="$OUTPUT_DIR/generated/code-coverage.info"
 mkdir -p "$OUTPUT_DIR/generated"
 # --trim-path takes '/full/path/to/customerio-ios/Sources/File.swift' and just turns it into '/Sources/File.swift' so that CodeCov.io understands what file we are talking about. 
-mint run trax-retail/xccov2lcov@master "$XCODE_CODE_COV_REPORT" --trim-path $(pwd) $TARGETS > "$LCOV_REPORT"
+mint run trax-retail/xccov2lcov@1.0.0 "$XCODE_CODE_COV_REPORT" --trim-path $(pwd) $TARGETS > "$LCOV_REPORT"
 echo "Generated lcov report to $LCOV_REPORT"
