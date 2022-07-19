@@ -17,6 +17,6 @@ Pod::Spec.new do |spec|
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.source_files  = "Sources/Common/**/*", "Sources/Tracking/**/*"
+  spec.source_files  = "Sources/Tracking/**/*"
   spec.module_name = "CioTracking" # the `import X` name when using SDK in Swift files
 end
