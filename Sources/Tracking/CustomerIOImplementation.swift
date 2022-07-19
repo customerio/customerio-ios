@@ -61,6 +61,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
      }
      ```
      */
+    @available(iOSApplicationExtension, unavailable)
     public func config(_ handler: (inout SdkConfig) -> Void) {
         var configToModify = sdkConfigStore.config
 
