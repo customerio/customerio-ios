@@ -113,6 +113,3 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
     #endif
 }
-
-// sourcery: InjectRegister = "DiPlaceholder"
-internal class DiPlaceholder {}

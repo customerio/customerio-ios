@@ -6,26 +6,6 @@ import UIKit
 import UserNotifications
 #endif
 
-// Used for mocking. Some functions do not exist such as ones used for deep linking or rich push as they are
-// disabled in app extensions.
-public protocol MessagingPushInstance {
-    func registerDeviceToken(_ deviceToken: String)
-    func deleteDeviceToken()
-    func trackMetric(
-        deliveryID: String,
-        event: Metric,
-        deviceToken: String
-    )
-
-    @discardableResult
-    func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool
-
-    func serviceExtensionTimeWillExpire()
-}
-
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
  So, performing an HTTP request to the API with a device token goes here.
@@ -85,22 +65,5 @@ public class MessagingPush: MessagingPushInstance {
         deviceToken: String
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-    }
-}
-
-@available(iOSApplicationExtension, unavailable)
-public extension MessagingPush {
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
-        guard let implementation = implementation else {
-            completionHandler()
-            return false
-        }
-
-        return implementation.userNotificationCenter(center, didReceive: response,
-                                                     withCompletionHandler: completionHandler)
     }
 }

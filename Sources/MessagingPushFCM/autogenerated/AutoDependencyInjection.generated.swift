@@ -52,19 +52,5 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    func testDependenciesAbleToResolve() {
-        _ = diPlaceholder
-    }
-
-    // DiPlaceholder
-    var diPlaceholder: DiPlaceholder {
-        if let overridenDep = overrides[String(describing: DiPlaceholder.self)] {
-            return overridenDep as! DiPlaceholder
-        }
-        return newDiPlaceholder
-    }
-
-    private var newDiPlaceholder: DiPlaceholder {
-        DiPlaceholder()
-    }
+    func testDependenciesAbleToResolve() {}
 }

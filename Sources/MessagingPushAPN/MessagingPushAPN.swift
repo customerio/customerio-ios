@@ -6,6 +6,9 @@ import Foundation
 import UserNotifications
 #endif
 
+// Some functions are copied from MessagingPush because
+// 1. This allows the generated mock to contain these functions
+// 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
 public protocol MessagingPushAPNInstance: AutoMockable {
     func registerDeviceToken(apnDeviceToken: Data)
 
@@ -21,9 +24,6 @@ public protocol MessagingPushAPNInstance: AutoMockable {
         didFailToRegisterForRemoteNotificationsWithError error: Error
     )
 
-    // Some functions are copied from MessagingPush because
-    // 1. This allows the generated mock to contain these functions
-    // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
     func deleteDeviceToken()
 
     func trackMetric(
@@ -110,6 +110,3 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     }
     #endif
 }
-
-// sourcery: InjectRegister = "DiPlaceholder"
-internal class DiPlaceholder {}

@@ -62,9 +62,8 @@ class MessagingPushFCMAPITest: UnitTest {
 
         _ = MessagingPush.shared.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
                                                         withCompletionHandler: {})
-        _ = mock.userNotificationCenter(UNUserNotificationCenter.current(),
-                                        didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
         // cannot guarantee instance of protocol will have userNotificationCenter() function as that function is not available to app extensions.
+        // _ = mock.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
         // _ = instance.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
         #endif
     }
