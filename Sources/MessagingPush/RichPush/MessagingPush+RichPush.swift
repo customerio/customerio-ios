@@ -36,7 +36,7 @@ public extension MessagingPush {
     #endif
 }
 
-public extension MessagingPushImplementation {
+extension MessagingPushImplementation {
     #if canImport(UserNotifications)
     /**
      - returns:
