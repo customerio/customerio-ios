@@ -212,6 +212,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
      - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.
      */
+    @available(iOSApplicationExtension, unavailable)
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
