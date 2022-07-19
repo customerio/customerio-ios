@@ -3,7 +3,6 @@ import Foundation
 import UIKit
 
 extension CustomerIOImplementation {
-    @available(iOSApplicationExtension, unavailable)
     func setupAutoScreenviewTracking() {
         swizzle(forClass: UIViewController.self,
                 original: #selector(UIViewController.viewDidAppear(_:)),
@@ -25,7 +24,6 @@ internal extension UIViewController {
         ScreenViewData()
     }
 
-    @available(iOSApplicationExtension, unavailable)
     @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
         performScreenTracking()
 
@@ -33,7 +31,6 @@ internal extension UIViewController {
         cio_swizzled_UIKit_viewDidAppear(animated)
     }
 
-    @available(iOSApplicationExtension, unavailable)
     // capture the screen we are at when the previous ViewController got removed from the view stack.
     @objc func cio_swizzled_UIKit_viewDidDisappear(_ animated: Bool) {
         // this function looks like recursion, but it's how you call ViewController.viewDidDisappear.
@@ -42,7 +39,6 @@ internal extension UIViewController {
         performScreenTracking()
     }
 
-    @available(iOSApplicationExtension, unavailable)
     func performScreenTracking() {
         var rootViewController = viewIfLoaded?.window?.rootViewController
         if rootViewController == nil {
@@ -93,7 +89,6 @@ internal extension UIViewController {
 
      - returns: If window is not found then this function returns nil else returns the root view controller
      */
-    @available(iOSApplicationExtension, unavailable)
     private func getActiveRootViewController() -> UIViewController? {
         if let viewController = UIApplication.shared.delegate?.window??.rootViewController {
             return viewController
