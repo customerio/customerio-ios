@@ -51,11 +51,8 @@ public protocol CustomerIOInstance: AutoMockable {
     var profileAttributes: [String: Any] { get set }
     var deviceAttributes: [String: Any] { get set }
 
-    // Not needed for mock. Also, config is not available for app extensions so we must make this function optional to imherit.
-//    func config(
-//        // sourcery:SkipParamCapture=true
-//        _ handler: (inout SdkConfig) -> Void
-//    )
+    // Any of the config functions not needed for mocking. Also, config() is not available for app extensions so we must make this function optional to imherit.
+    // func config() {}
 }
 
 public extension CustomerIOInstance {
@@ -170,6 +167,8 @@ public class CustomerIO: CustomerIOInstance {
         self.implementation = CustomerIOImplementation(siteId: siteId)
 
         postInitialize(siteId: siteId)
+
+        logger?.info("Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)")
     }
 
     public static func initialize(
@@ -185,7 +184,8 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.postInitialize(siteId: siteId)
 
-        Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
+        Self.shared.logger?
+            .info("shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)")
     }
 
     /**
@@ -202,7 +202,6 @@ public class CustomerIO: CustomerIOInstance {
         Self.initialize(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
-            // configure before post initialize steps so we can make accurate logs based on configuration options.
             Self.config(configureHandler)
         }
     }
@@ -241,8 +240,6 @@ public class CustomerIO: CustomerIOInstance {
 
     private func postInitialize(siteId: String) {
         let diGraph = DIGraph.getInstance(siteId: siteId)
-
-        diGraph.logger.info("Customer.io SDK \(SdkVersion.version) initialized successfully.")
 
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager

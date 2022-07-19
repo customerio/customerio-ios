@@ -33,6 +33,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     )
 
     #if canImport(UserNotifications)
+    // Used for rich push
     @discardableResult
     // sourcery:Name=didReceiveNotificationRequest
     // sourcery:IfCanImport=UserNotifications
@@ -41,28 +42,15 @@ public protocol MessagingPushAPNInstance: AutoMockable {
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool
 
+    // Used for rich push
     // sourcery:IfCanImport=UserNotifications
     func serviceExtensionTimeWillExpire()
-
-    // sourcery:Name=userNotificationCenterReceivedResponse
-    // sourcery:IfCanImport=UserNotifications
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool
     #endif
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    internal let messagingPush: MessagingPushInstance
+    internal let messagingPush: MessagingPush
     internal let customerIO: CustomerIOInstance!
-
-    // for testing purposes
-    internal init(messagingPush: MessagingPushInstance, customerIO: CustomerIOInstance) {
-        self.messagingPush = messagingPush
-        self.customerIO = customerIO
-    }
 
     public init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
@@ -112,6 +100,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         messagingPush.serviceExtensionTimeWillExpire()
     }
 
+    @available(iOSApplicationExtension, unavailable)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
