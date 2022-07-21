@@ -16,7 +16,29 @@ jobs:
         if: ${{ success() }} # only run this if any previous step failed 
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload-file-path: ".github/slack-payloads/deploy_git_tag_success.json"
+          payload: |
+            {
+              "text": "iOS SDK git tag created",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*iOS* SDK git tag created successfully and deployed to Swift Package Manager! (deployment step 1 of 2)"
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*Version ${{ steps.semantic-release.outputs.new_release_version }}*\niOS SDK deployment progress:\n ~1. View <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|CI server logs>~\n2. deploy to cocoapods\n\n"
+                      }
+                  }
+              ]
+            }
         env:
           # Incoming webhook URL that sends message into the correct Slack channel. 
           # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
