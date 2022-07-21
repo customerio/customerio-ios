@@ -1156,11 +1156,15 @@ public class HttpClientMock: HttpClient, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var requestReceivedArguments: (params: HttpRequestParams,
-                                                       onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    public private(set) var requestReceivedArguments: (
+        params: HttpRequestParams,
+        onComplete: (Result<Data, HttpRequestError>) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams,
-                                                          onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    public private(set) var requestReceivedInvocations: [(
+        params: HttpRequestParams,
+        onComplete: (Result<Data, HttpRequestError>) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1185,13 +1189,17 @@ public class HttpClientMock: HttpClient, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var downloadFileReceivedArguments: (url: URL,
-                                                            fileType: DownloadFileType,
-                                                            onComplete: (URL?) -> Void)?
+    public private(set) var downloadFileReceivedArguments: (
+        url: URL,
+        fileType: DownloadFileType,
+        onComplete: (URL?) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var downloadFileReceivedInvocations: [(url: URL,
-                                                               fileType: DownloadFileType,
-                                                               onComplete: (URL?) -> Void)] = []
+    public private(set) var downloadFileReceivedInvocations: [(
+        url: URL,
+        fileType: DownloadFileType,
+        onComplete: (URL?) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1272,15 +1280,19 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var requestReceivedArguments: (params: HttpRequestParams,
-                                                       httpBaseUrls: HttpBaseUrls,
-                                                       session: URLSession,
-                                                       onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    public private(set) var requestReceivedArguments: (
+        params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
+        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams,
-                                                          httpBaseUrls: HttpBaseUrls,
-                                                          session: URLSession,
-                                                          onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    public private(set) var requestReceivedInvocations: [(
+        params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
+        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1296,10 +1308,12 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     ) {
         mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (params: params,
-                                    httpBaseUrls: httpBaseUrls,
-                                    session: session,
-                                    onComplete: onComplete)
+        requestReceivedArguments = (
+            params: params,
+            httpBaseUrls: httpBaseUrls,
+            session: session,
+            onComplete: onComplete
+        )
         requestReceivedInvocations
             .append((params: params, httpBaseUrls: httpBaseUrls, session: session, onComplete: onComplete))
         requestClosure?(params, httpBaseUrls, session, onComplete)
@@ -1315,15 +1329,19 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var downloadFileReceivedArguments: (url: URL,
-                                                            fileType: DownloadFileType,
-                                                            session: URLSession,
-                                                            onComplete: (URL?) -> Void)?
+    public private(set) var downloadFileReceivedArguments: (
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: (URL?) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var downloadFileReceivedInvocations: [(url: URL,
-                                                               fileType: DownloadFileType,
-                                                               session: URLSession,
-                                                               onComplete: (URL?) -> Void)] = []
+    public private(set) var downloadFileReceivedInvocations: [(
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: (URL?) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2011,11 +2029,15 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var beforeIdentifiedProfileChangeReceivedArguments: (oldIdentifier: String,
-                                                                             newIdentifier: String)?
+    public private(set) var beforeIdentifiedProfileChangeReceivedArguments: (
+        oldIdentifier: String,
+        newIdentifier: String
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var beforeIdentifiedProfileChangeReceivedInvocations: [(oldIdentifier: String,
-                                                                                newIdentifier: String)] = []
+    public private(set) var beforeIdentifiedProfileChangeReceivedInvocations: [(
+        oldIdentifier: String,
+        newIdentifier: String
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2185,15 +2207,19 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTaskReceivedArguments: (type: String,
-                                                       data: AnyEncodable,
-                                                       groupStart: QueueTaskGroup?,
-                                                       blockingGroups: [QueueTaskGroup]?)?
+    public private(set) var addTaskReceivedArguments: (
+        type: String,
+        data: AnyEncodable,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTaskReceivedInvocations: [(type: String,
-                                                          data: AnyEncodable,
-                                                          groupStart: QueueTaskGroup?,
-                                                          blockingGroups: [QueueTaskGroup]?)] = []
+    public private(set) var addTaskReceivedInvocations: [(
+        type: String,
+        data: AnyEncodable,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    )] = []
     /// Value to return from the mocked function.
     public var addTaskReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -2201,8 +2227,10 @@ public class QueueMock: Queue, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus))?
+    public var addTaskClosure: (
+        (String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?)
+            -> (success: Bool, queueStatus: QueueStatus)
+    )?
 
     /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
@@ -2212,10 +2240,12 @@ public class QueueMock: Queue, Mock {
     ) {
         mockCalled = true
         addTaskCallsCount += 1
-        addTaskReceivedArguments = (type: type,
-                                    data: AnyEncodable(data),
-                                    groupStart: groupStart,
-                                    blockingGroups: blockingGroups)
+        addTaskReceivedArguments = (
+            type: type,
+            data: AnyEncodable(data),
+            groupStart: groupStart,
+            blockingGroups: blockingGroups
+        )
         addTaskReceivedInvocations
             .append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups))
         return addTaskClosure.map { $0(type, AnyEncodable(data), groupStart, blockingGroups) } ?? addTaskReturnValue
@@ -2306,11 +2336,15 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var getNextTaskReceivedArguments: (queue: [QueueTaskMetadata],
-                                                             lastFailedTask: QueueTaskMetadata?)?
+    internal private(set) var getNextTaskReceivedArguments: (
+        queue: [QueueTaskMetadata],
+        lastFailedTask: QueueTaskMetadata?
+    )?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var getNextTaskReceivedInvocations: [(queue: [QueueTaskMetadata],
-                                                                lastFailedTask: QueueTaskMetadata?)] = []
+    internal private(set) var getNextTaskReceivedInvocations: [(
+        queue: [QueueTaskMetadata],
+        lastFailedTask: QueueTaskMetadata?
+    )] = []
     /// Value to return from the mocked function.
     internal var getNextTaskReturnValue: QueueTaskMetadata?
     /**
@@ -2514,11 +2548,15 @@ public class QueueRunnerMock: QueueRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var runTaskReceivedArguments: (task: QueueTask,
-                                                       onComplete: (Result<Void, HttpRequestError>) -> Void)?
+    public private(set) var runTaskReceivedArguments: (
+        task: QueueTask,
+        onComplete: (Result<Void, HttpRequestError>) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
-                                                          onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
+    public private(set) var runTaskReceivedInvocations: [(
+        task: QueueTask,
+        onComplete: (Result<Void, HttpRequestError>) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2567,11 +2605,15 @@ public class QueueRunnerHookMock: QueueRunnerHook, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var runTaskReceivedArguments: (task: QueueTask,
-                                                       onComplete: (Result<Void, HttpRequestError>) -> Void)?
+    public private(set) var runTaskReceivedArguments: (
+        task: QueueTask,
+        onComplete: (Result<Void, HttpRequestError>) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask,
-                                                          onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
+    public private(set) var runTaskReceivedInvocations: [(
+        task: QueueTask,
+        onComplete: (Result<Void, HttpRequestError>) -> Void
+    )] = []
     /// Value to return from the mocked function.
     public var runTaskReturnValue: Bool!
     /**
@@ -2706,15 +2748,19 @@ public class QueueStorageMock: QueueStorage, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var createReceivedArguments: (type: String,
-                                                      data: Data,
-                                                      groupStart: QueueTaskGroup?,
-                                                      blockingGroups: [QueueTaskGroup]?)?
+    public private(set) var createReceivedArguments: (
+        type: String,
+        data: Data,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var createReceivedInvocations: [(type: String,
-                                                         data: Data,
-                                                         groupStart: QueueTaskGroup?,
-                                                         blockingGroups: [QueueTaskGroup]?)] = []
+    public private(set) var createReceivedInvocations: [(
+        type: String,
+        data: Data,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    )] = []
     /// Value to return from the mocked function.
     public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
     /**
@@ -2722,8 +2768,10 @@ public class QueueStorageMock: QueueStorage, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus))?
+    public var createClosure: (
+        (String, Data, QueueTaskGroup?, [QueueTaskGroup]?)
+            -> (success: Bool, queueStatus: QueueStatus)
+    )?
 
     /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func create(type: String, data: Data, groupStart: QueueTaskGroup?,

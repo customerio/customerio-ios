@@ -40,8 +40,10 @@ class SdkCredentialsStoreTest: UnitTest {
     }
 
     func test_load_givenExistingSiteId_givenExistingCredentials_expectCredentials() {
-        let expected = SdkCredentials(apiKey: String.random,
-                                      region: Region.EU)
+        let expected = SdkCredentials(
+            apiKey: String.random,
+            region: Region.EU
+        )
 
         keyValueStorageMock.stringClosure = { key in
             switch key {

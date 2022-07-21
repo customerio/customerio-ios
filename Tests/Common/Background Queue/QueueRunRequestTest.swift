@@ -17,11 +17,13 @@ class QueueRunRequestTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        runRequest = CioQueueRunRequest(runner: runnerMock,
-                                        storage: storageMock,
-                                        requestManager: requestManagerMock,
-                                        logger: log,
-                                        queryRunner: queryRunner)
+        runRequest = CioQueueRunRequest(
+            runner: runnerMock,
+            storage: storageMock,
+            requestManager: requestManagerMock,
+            logger: log,
+            queryRunner: queryRunner
+        )
     }
 
     // our indictor if run request is running the queue

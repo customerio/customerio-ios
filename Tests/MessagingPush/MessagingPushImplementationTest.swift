@@ -20,16 +20,18 @@ class MessagingPushImplementationTest: UnitTest {
         super.setUp()
 
         mockCustomerIO.siteId = testSiteId
-        messagingPush = MessagingPushImplementation(siteId: testSiteId,
-                                                    profileStore: profileStoreMock,
-                                                    backgroundQueue: queueMock,
-                                                    globalDataStore: globalDataStoreMock,
-                                                    logger: log,
-                                                    sdkConfigStore: sdkConfigStoreMock,
-                                                    jsonAdapter: jsonAdapter,
-                                                    deviceAttributesProvider: deviceAttributesMock,
-                                                    dateUtil: dateUtilStub,
-                                                    deviceInfo: deviceInfoMock)
+        messagingPush = MessagingPushImplementation(
+            siteId: testSiteId,
+            profileStore: profileStoreMock,
+            backgroundQueue: queueMock,
+            globalDataStore: globalDataStoreMock,
+            logger: log,
+            sdkConfigStore: sdkConfigStoreMock,
+            jsonAdapter: jsonAdapter,
+            deviceAttributesProvider: deviceAttributesMock,
+            dateUtil: dateUtilStub,
+            deviceInfo: deviceInfoMock
+        )
     }
 
     // MARK: registerDeviceToken
@@ -64,12 +66,16 @@ class MessagingPushImplementationTest: UnitTest {
 
         XCTAssertNotNil(actualQueueTaskData)
         XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
-        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(device:
-            Device(token: givenDeviceToken,
-                   platform: "iOS",
-                   lastUsed: dateUtilStub
-                       .givenNow,
-                   attributes: StringAnyEncodable(givenDefaultAttributes))))
+        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(
+            device:
+            Device(
+                token: givenDeviceToken,
+                platform: "iOS",
+                lastUsed: dateUtilStub
+                    .givenNow,
+                attributes: StringAnyEncodable(givenDefaultAttributes)
+            )
+        ))
         XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)
 
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)

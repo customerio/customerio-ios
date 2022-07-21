@@ -43,8 +43,10 @@ struct Lens<Whole, Part> {
 }
 
 func * <A, B, C>(lhs: Lens<A, B>, rhs: Lens<B, C>) -> Lens<A, C> {
-    Lens<A, C>(get: { a in rhs.get(lhs.get(a)) },
-               set: { c, a in lhs.set(rhs.set(c, lhs.get(a)), a) })
+    Lens<A, C>(
+        get: { a in rhs.get(lhs.get(a)) },
+        set: { c, a in lhs.set(rhs.set(c, lhs.get(a)), a) }
+    )
 }
 
 func *~ <A, B>(lhs: Lens<A, B>, rhs: B) -> (A) -> A {
@@ -60,34 +62,50 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
 }
 
 extension QueueTask {
-    static let storageIdLens = Lens<QueueTask, String>(get: { $0.storageId },
-                                                       set: { storageId, existing in
-                                                           QueueTask(storageId: storageId,
-                                                                     type: existing.type,
-                                                                     data: existing.data,
-                                                                     runResults: existing.runResults)
-                                                       })
-    static let typeLens = Lens<QueueTask, String>(get: { $0.type },
-                                                  set: { type, existing in
-                                                      QueueTask(storageId: existing.storageId,
-                                                                type: type,
-                                                                data: existing.data,
-                                                                runResults: existing.runResults)
-                                                  })
-    static let dataLens = Lens<QueueTask, Data>(get: { $0.data },
-                                                set: { data, existing in
-                                                    QueueTask(storageId: existing.storageId,
-                                                              type: existing.type,
-                                                              data: data,
-                                                              runResults: existing.runResults)
-                                                })
-    static let runResultsLens = Lens<QueueTask, QueueTaskRunResults>(get: { $0.runResults },
-                                                                     set: { runResults, existing in
-                                                                         QueueTask(storageId: existing.storageId,
-                                                                                   type: existing.type,
-                                                                                   data: existing.data,
-                                                                                   runResults: runResults)
-                                                                     })
+    static let storageIdLens = Lens<QueueTask, String>(
+        get: { $0.storageId },
+        set: { storageId, existing in
+            QueueTask(
+                storageId: storageId,
+                type: existing.type,
+                data: existing.data,
+                runResults: existing.runResults
+            )
+        }
+    )
+    static let typeLens = Lens<QueueTask, String>(
+        get: { $0.type },
+        set: { type, existing in
+            QueueTask(
+                storageId: existing.storageId,
+                type: type,
+                data: existing.data,
+                runResults: existing.runResults
+            )
+        }
+    )
+    static let dataLens = Lens<QueueTask, Data>(
+        get: { $0.data },
+        set: { data, existing in
+            QueueTask(
+                storageId: existing.storageId,
+                type: existing.type,
+                data: data,
+                runResults: existing.runResults
+            )
+        }
+    )
+    static let runResultsLens = Lens<QueueTask, QueueTaskRunResults>(
+        get: { $0.runResults },
+        set: { runResults, existing in
+            QueueTask(
+                storageId: existing.storageId,
+                type: existing.type,
+                data: existing.data,
+                runResults: runResults
+            )
+        }
+    )
 
     // Convenient set functions to edit a property of the immutable object
     func storageIdSet(_ storageId: String) -> QueueTask {
@@ -108,103 +126,135 @@ extension QueueTask {
 }
 
 extension QueueTaskMetadata {
-    static let taskPersistedIdLens = Lens<QueueTaskMetadata, String>(get: { $0.taskPersistedId },
-                                                                     set: { taskPersistedId, existing in
-                                                                         QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                                                                                           taskType: existing.taskType,
-                                                                                           groupStart: existing
-                                                                                               .groupStart,
-                                                                                           groupMember: existing
-                                                                                               .groupMember,
-                                                                                           createdAt: existing
-                                                                                               .createdAt)
-                                                                     })
-    static let taskTypeLens = Lens<QueueTaskMetadata, String>(get: { $0.taskType },
-                                                              set: { taskType, existing in
-                                                                  QueueTaskMetadata(taskPersistedId: existing
-                                                                      .taskPersistedId,
-                                                                      taskType: taskType,
-                                                                      groupStart: existing.groupStart,
-                                                                      groupMember: existing.groupMember,
-                                                                      createdAt: existing.createdAt)
-                                                              })
-    static let groupStartLens = Lens<QueueTaskMetadata, String?>(get: { $0.groupStart },
-                                                                 set: { groupStart, existing in
-                                                                     QueueTaskMetadata(taskPersistedId: existing
-                                                                         .taskPersistedId,
-                                                                         taskType: existing.taskType,
-                                                                         groupStart: groupStart,
-                                                                         groupMember: existing
-                                                                             .groupMember,
-                                                                         createdAt: existing.createdAt)
-                                                                 })
-    static let groupMemberLens = Lens<QueueTaskMetadata, [String]?>(get: { $0.groupMember },
-                                                                    set: { groupMember, existing in
-                                                                        QueueTaskMetadata(taskPersistedId: existing
-                                                                            .taskPersistedId,
-                                                                            taskType: existing.taskType,
-                                                                            groupStart: existing
-                                                                                .groupStart,
-                                                                            groupMember: groupMember,
-                                                                            createdAt: existing.createdAt)
-                                                                    })
-    static let createdAtLens = Lens<QueueTaskMetadata, Date>(get: { $0.createdAt },
-                                                             set: { createdAt, existing in
-                                                                 QueueTaskMetadata(taskPersistedId: existing
-                                                                     .taskPersistedId,
-                                                                     taskType: existing.taskType,
-                                                                     groupStart: existing.groupStart,
-                                                                     groupMember: existing.groupMember,
-                                                                     createdAt: createdAt)
-                                                             })
+    static let taskPersistedIdLens = Lens<QueueTaskMetadata, String>(
+        get: { $0.taskPersistedId },
+        set: { taskPersistedId, existing in
+            QueueTaskMetadata(
+                taskPersistedId: taskPersistedId,
+                taskType: existing.taskType,
+                groupStart: existing
+                    .groupStart,
+                groupMember: existing
+                    .groupMember,
+                createdAt: existing
+                    .createdAt
+            )
+        }
+    )
+    static let taskTypeLens = Lens<QueueTaskMetadata, String>(
+        get: { $0.taskType },
+        set: { taskType, existing in
+            QueueTaskMetadata(
+                taskPersistedId: existing
+                    .taskPersistedId,
+                taskType: taskType,
+                groupStart: existing.groupStart,
+                groupMember: existing.groupMember,
+                createdAt: existing.createdAt
+            )
+        }
+    )
+    static let groupStartLens = Lens<QueueTaskMetadata, String?>(
+        get: { $0.groupStart },
+        set: { groupStart, existing in
+            QueueTaskMetadata(
+                taskPersistedId: existing
+                    .taskPersistedId,
+                taskType: existing.taskType,
+                groupStart: groupStart,
+                groupMember: existing
+                    .groupMember,
+                createdAt: existing.createdAt
+            )
+        }
+    )
+    static let groupMemberLens = Lens<QueueTaskMetadata, [String]?>(
+        get: { $0.groupMember },
+        set: { groupMember, existing in
+            QueueTaskMetadata(
+                taskPersistedId: existing
+                    .taskPersistedId,
+                taskType: existing.taskType,
+                groupStart: existing
+                    .groupStart,
+                groupMember: groupMember,
+                createdAt: existing.createdAt
+            )
+        }
+    )
+    static let createdAtLens = Lens<QueueTaskMetadata, Date>(
+        get: { $0.createdAt },
+        set: { createdAt, existing in
+            QueueTaskMetadata(
+                taskPersistedId: existing
+                    .taskPersistedId,
+                taskType: existing.taskType,
+                groupStart: existing.groupStart,
+                groupMember: existing.groupMember,
+                createdAt: createdAt
+            )
+        }
+    )
 
     // Convenient set functions to edit a property of the immutable object
     func taskPersistedIdSet(_ taskPersistedId: String) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(
+            taskPersistedId: taskPersistedId,
+            taskType: taskType,
+            groupStart: groupStart,
+            groupMember: groupMember,
+            createdAt: createdAt
+        )
     }
 
     func taskTypeSet(_ taskType: String) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(
+            taskPersistedId: taskPersistedId,
+            taskType: taskType,
+            groupStart: groupStart,
+            groupMember: groupMember,
+            createdAt: createdAt
+        )
     }
 
     func groupStartSet(_ groupStart: String?) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(
+            taskPersistedId: taskPersistedId,
+            taskType: taskType,
+            groupStart: groupStart,
+            groupMember: groupMember,
+            createdAt: createdAt
+        )
     }
 
     func groupMemberSet(_ groupMember: [String]?) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(
+            taskPersistedId: taskPersistedId,
+            taskType: taskType,
+            groupStart: groupStart,
+            groupMember: groupMember,
+            createdAt: createdAt
+        )
     }
 
     func createdAtSet(_ createdAt: Date) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(
+            taskPersistedId: taskPersistedId,
+            taskType: taskType,
+            groupStart: groupStart,
+            groupMember: groupMember,
+            createdAt: createdAt
+        )
     }
 }
 
 extension QueueTaskRunResults {
-    static let totalRunsLens = Lens<QueueTaskRunResults, Int>(get: { $0.totalRuns },
-                                                              set: { totalRuns, existing in
-                                                                  QueueTaskRunResults(totalRuns: totalRuns)
-                                                              })
+    static let totalRunsLens = Lens<QueueTaskRunResults, Int>(
+        get: { $0.totalRuns },
+        set: { totalRuns, existing in
+            QueueTaskRunResults(totalRuns: totalRuns)
+        }
+    )
 
     // Convenient set functions to edit a property of the immutable object
     func totalRunsSet(_ totalRuns: Int) -> QueueTaskRunResults {
@@ -213,14 +263,18 @@ extension QueueTaskRunResults {
 }
 
 extension SdkCredentials {
-    static let apiKeyLens = Lens<SdkCredentials, String>(get: { $0.apiKey },
-                                                         set: { apiKey, existing in
-                                                             SdkCredentials(apiKey: apiKey, region: existing.region)
-                                                         })
-    static let regionLens = Lens<SdkCredentials, Region>(get: { $0.region },
-                                                         set: { region, existing in
-                                                             SdkCredentials(apiKey: existing.apiKey, region: region)
-                                                         })
+    static let apiKeyLens = Lens<SdkCredentials, String>(
+        get: { $0.apiKey },
+        set: { apiKey, existing in
+            SdkCredentials(apiKey: apiKey, region: existing.region)
+        }
+    )
+    static let regionLens = Lens<SdkCredentials, Region>(
+        get: { $0.region },
+        set: { region, existing in
+            SdkCredentials(apiKey: existing.apiKey, region: region)
+        }
+    )
 
     // Convenient set functions to edit a property of the immutable object
     func apiKeySet(_ apiKey: String) -> SdkCredentials {

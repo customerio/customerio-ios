@@ -91,21 +91,27 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
             let encodableBody =
                 StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
-            let requestBody = RegisterDeviceRequest(device: Device(token: deviceToken,
-                                                                   platform: deviceOsName,
-                                                                   lastUsed: self.dateUtil.now,
-                                                                   attributes: encodableBody))
+            let requestBody = RegisterDeviceRequest(device: Device(
+                token: deviceToken,
+                platform: deviceOsName,
+                lastUsed: self.dateUtil.now,
+                attributes: encodableBody
+            ))
 
             guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
                 return
             }
-            let queueTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: identifier,
-                                                                      attributesJsonString: jsonBodyString)
+            let queueTaskData = RegisterPushNotificationQueueTaskData(
+                profileIdentifier: identifier,
+                attributesJsonString: jsonBodyString
+            )
 
-            _ = self.backgroundQueue.addTask(type: QueueTaskType.registerPushToken.rawValue,
-                                             data: queueTaskData,
-                                             groupStart: .registeredPushToken(token: deviceToken),
-                                             blockingGroups: [.identifiedProfile(identifier: identifier)])
+            _ = self.backgroundQueue.addTask(
+                type: QueueTaskType.registerPushToken.rawValue,
+                data: queueTaskData,
+                groupStart: .registeredPushToken(token: deviceToken),
+                blockingGroups: [.identifiedProfile(identifier: identifier)]
+            )
         }
     }
 
@@ -127,13 +133,17 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return // no profile to delete token from, ignore request
         }
 
-        _ = backgroundQueue.addTask(type: QueueTaskType.deletePushToken.rawValue,
-                                    data: DeletePushNotificationQueueTaskData(profileIdentifier: identifiedProfileId,
-                                                                              deviceToken: existingDeviceToken),
-                                    blockingGroups: [
-                                        .registeredPushToken(token: existingDeviceToken),
-                                        .identifiedProfile(identifier: identifiedProfileId)
-                                    ])
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.deletePushToken.rawValue,
+            data: DeletePushNotificationQueueTaskData(
+                profileIdentifier: identifiedProfileId,
+                deviceToken: existingDeviceToken
+            ),
+            blockingGroups: [
+                .registeredPushToken(token: existingDeviceToken),
+                .identifiedProfile(identifier: identifiedProfileId)
+            ]
+        )
     }
 
     /**
@@ -148,11 +158,15 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
-                                    data: MetricRequest(deliveryId: deliveryID,
-                                                        event: event,
-                                                        deviceToken: deviceToken,
-                                                        timestamp: Date()))
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.trackPushMetric.rawValue,
+            data: MetricRequest(
+                deliveryId: deliveryID,
+                event: event,
+                deviceToken: deviceToken,
+                timestamp: Date()
+            )
+        )
     }
 
     #if canImport(UserNotifications)
@@ -178,8 +192,10 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
         }
 
-        guard let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: request.content,
-                                                                  jsonAdapter: jsonAdapter)
+        guard let pushContent = CustomerIOParsedPushPayload.parse(
+            notificationContent: request.content,
+            jsonAdapter: jsonAdapter
+        )
         else {
             // push does not contain a CIO rich payload, so end early
             logger.info("the notification was not sent by Customer.io. Ignoring notification request.")
@@ -193,10 +209,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             """)
         logger.debug("push content: \(pushContent)")
 
-        RichPushRequestHandler.shared.startRequest(request,
-                                                   content: pushContent,
-                                                   siteId: siteId,
-                                                   completionHandler: contentHandler)
+        RichPushRequestHandler.shared.startRequest(
+            request,
+            content: pushContent,
+            siteId: siteId,
+            completionHandler: contentHandler
+        )
 
         return true
     }
@@ -227,8 +245,10 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
         // Time to handle rich push notifications.
         guard let pushContent = CustomerIOParsedPushPayload
-            .parse(notificationContent: response.notification.request.content,
-                   jsonAdapter: jsonAdapter)
+            .parse(
+                notificationContent: response.notification.request.content,
+                jsonAdapter: jsonAdapter
+            )
         else {
             // push does not contain a CIO rich payload, so end early
             return nil
