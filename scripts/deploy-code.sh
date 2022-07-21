@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# This file exists 
-
 set -e
 
 if [[ "$COCOAPODS_TRUNK_TOKEN" == "" ]]; then # makes sure deployment key set. 
