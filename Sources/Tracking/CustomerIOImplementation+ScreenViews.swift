@@ -4,12 +4,16 @@ import UIKit
 
 extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
-        swizzle(forClass: UIViewController.self,
-                original: #selector(UIViewController.viewDidAppear(_:)),
-                new: #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:)))
-        swizzle(forClass: UIViewController.self,
-                original: #selector(UIViewController.viewDidDisappear(_:)),
-                new: #selector(UIViewController.cio_swizzled_UIKit_viewDidDisappear(_:)))
+        swizzle(
+            forClass: UIViewController.self,
+            original: #selector(UIViewController.viewDidAppear(_:)),
+            new: #selector(UIViewController.cio_swizzled_UIKit_viewDidAppear(_:))
+        )
+        swizzle(
+            forClass: UIViewController.self,
+            original: #selector(UIViewController.viewDidDisappear(_:)),
+            new: #selector(UIViewController.cio_swizzled_UIKit_viewDidDisappear(_:))
+        )
     }
 
     private func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
@@ -48,8 +52,11 @@ internal extension UIViewController {
             return
         }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
-        var name = nameOfViewControllerClass.replacingOccurrences(of: "ViewController", with: "",
-                                                                  options: .caseInsensitive)
+        var name = nameOfViewControllerClass.replacingOccurrences(
+            of: "ViewController",
+            with: "",
+            options: .caseInsensitive
+        )
         if name.isEmpty || name == "" {
             if let title = viewController.title {
                 name = title

@@ -16,8 +16,12 @@ class MetricRequestTest: UnitTest {
     }
 
     func test_expectJsonStringApiRequires() {
-        let given = MetricRequest(deliveryId: "123", event: .opened, deviceToken: "234",
-                                  timestamp: Date(timeIntervalSince1970: 1642018466))
+        let given = MetricRequest(
+            deliveryId: "123",
+            event: .opened,
+            deviceToken: "234",
+            timestamp: Date(timeIntervalSince1970: 1642018466)
+        )
         let expectedJson = """
         {"delivery_id":"123","device_id":"234","event":"opened","timestamp":1642018466}
         """

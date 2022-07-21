@@ -96,9 +96,11 @@ open class UnitTest: XCTestCase {
             // swiftlint:disable:next force_try
             let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
             // swiftlint:disable:next force_try
-            let fileURLs = try! fileManager.contentsOfDirectory(at: pathUrl,
-                                                                includingPropertiesForKeys: nil,
-                                                                options: .skipsHiddenFiles)
+            let fileURLs = try! fileManager.contentsOfDirectory(
+                at: pathUrl,
+                includingPropertiesForKeys: nil,
+                options: .skipsHiddenFiles
+            )
             for fileURL in fileURLs {
                 try? fileManager.removeItem(at: fileURL)
             }

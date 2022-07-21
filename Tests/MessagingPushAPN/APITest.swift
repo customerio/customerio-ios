@@ -18,7 +18,7 @@ class MessagingPushAPNAPITest: UnitTest {
     // Test that all public functions are accessible by non-singleton instances
     let instance: MessagingPushAPNInstance = MessagingPushAPN(customerIO: CustomerIO(siteId: "", apiKey: ""))
 
-    func test_allPublicFunctions() throws { // swiftlint:disable:this function_body_length
+    func test_allPublicFunctions() throws {
         try skipRunningTest()
 
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())
@@ -29,15 +29,21 @@ class MessagingPushAPNAPITest: UnitTest {
         mock.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
         instance.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
 
-        MessagingPush.shared.application("",
-                                         didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                                             .notInitialized)
-        mock.application("",
-                         didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                             .notInitialized)
-        instance.application("",
-                             didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                                 .notInitialized)
+        MessagingPush.shared.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
+        mock.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
+        instance.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
 
         MessagingPush.shared.deleteDeviceToken()
         instance.deleteDeviceToken()
@@ -46,36 +52,70 @@ class MessagingPushAPNAPITest: UnitTest {
         MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
         mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
         instance.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+    }
+
+    func test_richPushPublicFunctions() throws {
+        try skipRunningTest()
 
         #if canImport(UserNotifications)
         MessagingPush.shared
-            .didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
-        mock.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
-        instance.didReceive(UNNotificationRequest(identifier: "", content: UNNotificationContent(),
-                                                  trigger: nil)) { _ in }
+            .didReceive(UNNotificationRequest(
+                identifier: "",
+                content: UNNotificationContent(),
+                trigger: nil
+            )) { _ in }
+        mock.didReceive(UNNotificationRequest(
+            identifier: "",
+            content: UNNotificationContent(),
+            trigger: nil
+        )) { _ in }
+        instance.didReceive(UNNotificationRequest(
+            identifier: "",
+            content: UNNotificationContent(),
+            trigger: nil
+        )) { _ in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
         instance.serviceExtensionTimeWillExpire()
         mock.serviceExtensionTimeWillExpire()
+        #endif
+    }
 
-        _ = MessagingPush.shared.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
-                                                        withCompletionHandler: {})
-        _ = mock.userNotificationCenter(UNUserNotificationCenter.current(),
-                                        didReceive: UNNotificationResponse.testInstance, withCompletionHandler: {})
-        _ = instance.userNotificationCenter(.current(), didReceive: UNNotificationResponse.testInstance,
-                                            withCompletionHandler: {})
+    func test_deepLinkPublicFunctions() throws {
+        try skipRunningTest()
+
+        #if canImport(UserNotifications)
+        _ = MessagingPush.shared.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: {}
+        )
+        _ = mock.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: {}
+        )
+        _ = instance.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: {}
+        )
         // custom handler
-        let pushContent: CustomerIOParsedPushPayload? = MessagingPush.shared.userNotificationCenter(.current(),
-                                                                                                    didReceive: UNNotificationResponse
-                                                                                                        .testInstance)
-        let _: CustomerIOParsedPushPayload? = mock.userNotificationCenter(.current(),
-                                                                          didReceive: UNNotificationResponse
-                                                                              .testInstance)
-        let _: CustomerIOParsedPushPayload? = instance.userNotificationCenter(.current(),
-                                                                              didReceive: UNNotificationResponse
-                                                                                  .testInstance)
+        let pushContent: CustomerIOParsedPushPayload? = MessagingPush.shared.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse
+                .testInstance
+        )
+        let _: CustomerIOParsedPushPayload? = mock.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse
+                .testInstance
+        )
+        let _: CustomerIOParsedPushPayload? = instance.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse
+                .testInstance
+        )
 
         // make sure all properties that a customer might care about are all public
         _ = pushContent?.notificationContent

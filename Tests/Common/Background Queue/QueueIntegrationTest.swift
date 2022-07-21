@@ -17,10 +17,12 @@ class QueueIntegrationTest: IntegrationTest {
 
     #if !os(Linux) // LINUX_DISABLE_FILEMANAGER
     func test_addTask_expectSuccessfullyAdded() {
-        let addTaskActual = queue.addTask(type: String.random,
-                                          data: ["foo": "bar"],
-                                          groupStart: .identifiedProfile(identifier: String.random),
-                                          blockingGroups: [.identifiedProfile(identifier: String.random)])
+        let addTaskActual = queue.addTask(
+            type: String.random,
+            data: ["foo": "bar"],
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
         XCTAssertTrue(addTaskActual.success)
         XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
     }
@@ -28,10 +30,12 @@ class QueueIntegrationTest: IntegrationTest {
     func test_addTaskThenRun_expectToRunTaskInQueueAndCallCallback() {
         httpRequestRunnerStub.queueSuccessfulResponse()
 
-        _ = queue.addTask(type: QueueTaskType.identifyProfile.rawValue,
-                          data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
-                          groupStart: .identifiedProfile(identifier: String.random),
-                          blockingGroups: [.identifiedProfile(identifier: String.random)])
+        _ = queue.addTask(
+            type: QueueTaskType.identifyProfile.rawValue,
+            data: IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil),
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
 
         let expect = expectation(description: "Expect to complete")
         queue.run {
@@ -53,12 +57,16 @@ class QueueIntegrationTest: IntegrationTest {
 
     func test_givenRunQueueAndFailTasksThenRerunQueue_expectQueueRerunsAllTasksAgain() {
         let givenGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: String.random)
-        _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
-                          data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
-                          groupStart: givenGroupForTasks)
-        _ = queue.addTask(type: QueueTaskType.trackEvent.rawValue,
-                          data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
-                          blockingGroups: [givenGroupForTasks])
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
+            groupStart: givenGroupForTasks
+        )
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
+            blockingGroups: [givenGroupForTasks]
+        )
 
         httpRequestRunnerStub.queueNoRequestMade()
 
