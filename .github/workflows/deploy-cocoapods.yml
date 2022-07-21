@@ -31,16 +31,8 @@ jobs:
           ref: ${{ github.event.inputs.tagToPush }}
       - name: Install cocoapods 
         run: gem install cocoapods 
-      - name: Push CustomerIOTracking 
-        run: ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
-      - name: Push CustomerIOMessagingPush 
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
-      - name: Push CustomerIOMessagingPushAPN 
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
-      - name: Push CustomerIOMessagingPushFCM 
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
-      - name: Push CustomerIO
-        run: ./scripts/push-cocoapod.sh CustomerIO.podspec
+      - name: deploy all pods
+        run: ./scripts/deploy-code.sh
 
       - name: Create GitHub issue if fail to deploy 
         uses: JasonEtco/create-an-issue@v2
