@@ -22,7 +22,29 @@ jobs:
         if: ${{ failure() }} # only run this if any previous step failed 
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload-file-path: ".github/slack-payloads/promote_fail.json"
+          payload: |
+            {
+              "text": "iOS SDK deployment failure",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*iOS* SDK deployment :warning: failure :warning:"
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "iOS SDK failed deployment during step *promote*. The best way to fix this particular issue is <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|viewing the CI server logs> to learn why and fix the issue. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>."
+                      }
+                  }
+              ]
+            }
         env:
           # Incoming webhook URL that sends message into the correct Slack channel. 
           # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
