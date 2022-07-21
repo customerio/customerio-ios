@@ -20,6 +20,9 @@ if [[ "$CI" == "" ]]; then # manual deployment
     read # waits for ENTER key to be pressed to continue.     
 fi 
 
+# The order of pods *does* matter. If you look at each of the podspec files listed below, you will see that some 
+# pods depend on others. You need to deploy each pod one-by-one to make sure that when a pod depends on another, 
+# all dependencies have already been deployed. 
 echo "Push CustomerIOTracking"
 exec ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
 
@@ -32,6 +35,7 @@ exec ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
 echo "Push CustomerIOMessagingPushFCM"
 exec ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
 
+# This pod is deployed last. As it depends on all other pods above. 
 echo "Push CustomerIO"
 exec ./scripts/push-cocoapod.sh CustomerIO.podspec
 
