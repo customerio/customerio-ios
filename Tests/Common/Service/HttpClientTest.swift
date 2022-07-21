@@ -26,18 +26,16 @@ class HttpClientTest: UnitTest {
 
         configStoreMock.config = SdkConfig()
 
-        client = CIOHttpClient(
-            siteId: SiteId.random,
-            sdkCredentialsStore: credentialsStoreMock,
-            configStore: configStoreMock,
-            jsonAdapter: jsonAdapter,
-            httpRequestRunner: requestRunnerMock,
-            globalDataStore: globalDataStoreMock,
-            logger: log,
-            timer: timerMock,
-            retryPolicy: retryPolicyMock,
-            deviceInfo: deviceInfoMock
-        )
+        client = CIOHttpClient(siteId: SiteId.random,
+                               sdkCredentialsStore: credentialsStoreMock,
+                               configStore: configStoreMock,
+                               jsonAdapter: jsonAdapter,
+                               httpRequestRunner: requestRunnerMock,
+                               globalDataStore: globalDataStoreMock,
+                               logger: log,
+                               timer: timerMock,
+                               retryPolicy: retryPolicyMock,
+                               deviceInfo: deviceInfoMock)
     }
 
     private func assertHttpRequestsPaused(paused: Bool) {
@@ -115,11 +113,9 @@ class HttpClientTest: UnitTest {
         let expected = #"{ "message": "Success!" }"#.data!
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                expected,
-                HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                nil
-            )
+            onComplete(expected,
+                       HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -160,11 +156,9 @@ class HttpClientTest: UnitTest {
         globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                Data(),
-                HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                nil
-            )
+            onComplete(Data(),
+                       HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -226,12 +220,10 @@ class HttpClientTest: UnitTest {
     // MARK: test 500/5xx status codes
 
     func test_request_given500_expectRetryUntilSuccessful() {
-        let successfulHttpRequestResponse = HTTPURLResponse(
-            url: url,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )
+        let successfulHttpRequestResponse = HTTPURLResponse(url: url,
+                                                            statusCode: 200,
+                                                            httpVersion: nil,
+                                                            headerFields: nil)
         let failedHttpRequestResponse = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)
         var httpRequestRunnerResponse = failedHttpRequestResponse
 
@@ -247,11 +239,9 @@ class HttpClientTest: UnitTest {
         }
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                #"{"meta": { "error": "invalid id" }}"#.data,
-                httpRequestRunnerResponse,
-                nil
-            )
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
+                       httpRequestRunnerResponse,
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -283,11 +273,9 @@ class HttpClientTest: UnitTest {
         }
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                #"{"meta": { "error": "invalid id" }}"#.data,
-                HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
-                nil
-            )
+            onComplete(#"{"meta": { "error": "invalid id" }}"#.data,
+                       HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
+                       nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -356,13 +344,9 @@ class HttpClientTest: UnitTest {
         deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
         deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
 
-        let actual = CIOHttpClient.getUserAgent(
-            deviceInfo: deviceInfoMock,
-            sdkWrapperConfig: SdkWrapperConfig(
-                source: .reactNative,
-                version: givenWrapperVersion
-            )
-        )
+        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock,
+                                                sdkWrapperConfig: SdkWrapperConfig(source: .reactNative,
+                                                                                   version: givenWrapperVersion))
 
         XCTAssertEqual(expected, actual)
     }

@@ -188,10 +188,8 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var didRegisterForRemoteNotificationsReceivedArguments: (application: Any, deviceToken: Data)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didRegisterForRemoteNotificationsReceivedInvocations: [(
-        application: Any,
-        deviceToken: Data
-    )] = []
+    public private(set) var didRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
+                                                                                    deviceToken: Data)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -219,10 +217,8 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(
-        application: Any,
-        error: Error
-    )] = []
+    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
+                                                                                          error: Error)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -297,17 +293,13 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent)
-            -> Void
-    )?
+    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest,
+                                                                             contentHandler: (UNNotificationContent)
+                                                                                 -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent)
-            -> Void
-    )] = []
+    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest,
+                                                                                contentHandler: (UNNotificationContent)
+                                                                                    -> Void)] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**
@@ -366,15 +358,11 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedArguments: (
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse
-    )?
+    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedArguments: (center: UNUserNotificationCenter,
+                                                                                                   response: UNNotificationResponse)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedInvocations: [(
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse
-    )] =
+    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedInvocations: [(center: UNUserNotificationCenter,
+                                                                                                      response: UNNotificationResponse)] =
         [
         ]
     /// Value to return from the mocked function.
@@ -414,18 +402,14 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedResponseReceivedArguments: (
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse,
-        completionHandler: () -> Void
-    )?
+    public private(set) var userNotificationCenterReceivedResponseReceivedArguments: (center: UNUserNotificationCenter,
+                                                                                      response: UNNotificationResponse,
+                                                                                      completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedResponseReceivedInvocations: [(
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse,
-        completionHandler: ()
-            -> Void
-    )] = []
+    public private(set) var userNotificationCenterReceivedResponseReceivedInvocations: [(center: UNUserNotificationCenter,
+                                                                                         response: UNNotificationResponse,
+                                                                                         completionHandler: ()
+                                                                                             -> Void)] = []
     /// Value to return from the mocked function.
     public var userNotificationCenterReceivedResponseReturnValue: Bool!
     /**
@@ -444,11 +428,9 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     ) -> Bool {
         mockCalled = true
         userNotificationCenterReceivedResponseCallsCount += 1
-        userNotificationCenterReceivedResponseReceivedArguments = (
-            center: center,
-            response: response,
-            completionHandler: completionHandler
-        )
+        userNotificationCenterReceivedResponseReceivedArguments = (center: center,
+                                                                   response: response,
+                                                                   completionHandler: completionHandler)
         userNotificationCenterReceivedResponseReceivedInvocations
             .append((center: center, response: response, completionHandler: completionHandler))
         return userNotificationCenterReceivedResponseClosure

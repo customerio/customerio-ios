@@ -38,10 +38,8 @@ public class CIOSdkCredentialsStore: SdkCredentialsStore {
             return nil
         }
 
-        cache = SdkCredentials(
-            apiKey: apiKey,
-            region: region
-        )
+        cache = SdkCredentials(apiKey: apiKey,
+                               region: region)
 
         return cache
     }

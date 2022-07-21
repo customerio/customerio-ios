@@ -8,7 +8,7 @@
 --patternlet inline 
 --self init-only 
 --semicolons never
---wraparguments before-first
+--wraparguments after-first
 --commas inline
 --header strip
 

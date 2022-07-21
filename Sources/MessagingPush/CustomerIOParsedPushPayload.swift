@@ -51,11 +51,9 @@ public class CustomerIOParsedPushPayload {
 
     public func addImage(localFilePath: URL) {
         guard let imageAttachment =
-            try? UNNotificationAttachment(
-                identifier: "\(Self.cioAttachmentsPrefix)\(String.random)",
-                url: localFilePath,
-                options: nil
-            )
+            try? UNNotificationAttachment(identifier: "\(Self.cioAttachmentsPrefix)\(String.random)",
+                                          url: localFilePath,
+                                          options: nil)
         else {
             return
         }
@@ -106,11 +104,9 @@ public class CustomerIOParsedPushPayload {
             return nil
         }
 
-        return CustomerIOParsedPushPayload(
-            originalNotificationContent: notificationContent,
-            mutableNotificationContent: mutableNotificationContent,
-            jsonAdapter: jsonAdapter
-        )
+        return CustomerIOParsedPushPayload(originalNotificationContent: notificationContent,
+                                           mutableNotificationContent: mutableNotificationContent,
+                                           jsonAdapter: jsonAdapter)
     }
 
     // Used when modifying push content before showing and for parsing after displaying.

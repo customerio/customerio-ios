@@ -10,11 +10,9 @@ public struct TrackEventData: Codable, Equatable {
 
 public extension TrackEventData {
     static func random(update: Bool = false) -> TrackEventData {
-        TrackEventData(
-            product: String.random,
-            count: Int.random(in: 1 ... 10),
-            price: Int.random(in: 10 ... 100)
-        )
+        TrackEventData(product: String.random,
+                       count: Int.random(in: 1 ... 10),
+                       price: Int.random(in: 10 ... 100))
     }
 
     static func blank() -> TrackEventData {

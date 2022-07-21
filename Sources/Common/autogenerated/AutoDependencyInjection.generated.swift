@@ -98,18 +98,16 @@ extension DIGraph {
     }
 
     private var newHttpClient: HttpClient {
-        CIOHttpClient(
-            siteId: siteId,
-            sdkCredentialsStore: sdkCredentialsStore,
-            configStore: sdkConfigStore,
-            jsonAdapter: jsonAdapter,
-            httpRequestRunner: httpRequestRunner,
-            globalDataStore: globalDataStore,
-            logger: logger,
-            timer: simpleTimer,
-            retryPolicy: httpRetryPolicy,
-            deviceInfo: deviceInfo
-        )
+        CIOHttpClient(siteId: siteId,
+                      sdkCredentialsStore: sdkCredentialsStore,
+                      configStore: sdkConfigStore,
+                      jsonAdapter: jsonAdapter,
+                      httpRequestRunner: httpRequestRunner,
+                      globalDataStore: globalDataStore,
+                      logger: logger,
+                      timer: simpleTimer,
+                      retryPolicy: httpRetryPolicy,
+                      deviceInfo: deviceInfo)
     }
 
     // SdkCredentialsStore
@@ -183,15 +181,13 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(
-            siteId: siteId,
-            storage: queueStorage,
-            runRequest: queueRunRequest,
-            jsonAdapter: jsonAdapter,
-            logger: logger,
-            sdkConfigStore: sdkConfigStore,
-            queueTimer: singleScheduleTimer
-        )
+        CioQueue(siteId: siteId,
+                 storage: queueStorage,
+                 runRequest: queueRunRequest,
+                 jsonAdapter: jsonAdapter,
+                 logger: logger,
+                 sdkConfigStore: sdkConfigStore,
+                 queueTimer: singleScheduleTimer)
     }
 
     // QueueQueryRunner
@@ -242,13 +238,11 @@ extension DIGraph {
     }
 
     private var newQueueRunRequest: QueueRunRequest {
-        CioQueueRunRequest(
-            runner: queueRunner,
-            storage: queueStorage,
-            requestManager: queueRequestManager,
-            logger: logger,
-            queryRunner: queueQueryRunner
-        )
+        CioQueueRunRequest(runner: queueRunner,
+                           storage: queueStorage,
+                           requestManager: queueRequestManager,
+                           logger: logger,
+                           queryRunner: queueQueryRunner)
     }
 
     // QueueRunner
@@ -260,13 +254,11 @@ extension DIGraph {
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(
-            siteId: siteId,
-            jsonAdapter: jsonAdapter,
-            logger: logger,
-            httpClient: httpClient,
-            hooksManager: hooksManager
-        )
+        CioQueueRunner(siteId: siteId,
+                       jsonAdapter: jsonAdapter,
+                       logger: logger,
+                       httpClient: httpClient,
+                       hooksManager: hooksManager)
     }
 
     // SimpleTimer
@@ -365,15 +357,13 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(
-            siteId: siteId,
-            fileStorage: fileStorage,
-            jsonAdapter: jsonAdapter,
-            lockManager: lockManager,
-            sdkConfigStore: sdkConfigStore,
-            logger: logger,
-            dateUtil: dateUtil
-        )
+        FileManagerQueueStorage(siteId: siteId,
+                                fileStorage: fileStorage,
+                                jsonAdapter: jsonAdapter,
+                                lockManager: lockManager,
+                                sdkConfigStore: sdkConfigStore,
+                                logger: logger,
+                                dateUtil: dateUtil)
     }
 
     // ActiveWorkspacesManager (singleton)

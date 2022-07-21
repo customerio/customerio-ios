@@ -56,9 +56,7 @@ class GlobalDataStoreTest: UnitTest {
             "\(givenSiteId2),\(givenSiteId1)"
         ]
 
-        XCTAssertEqualEither(
-            expected,
-            actual: store.keyValueStorage.string(.allSiteIds)
-        )
+        XCTAssertEqualEither(expected,
+                             actual: store.keyValueStorage.string(.allSiteIds))
     }
 }

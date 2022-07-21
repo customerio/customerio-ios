@@ -118,12 +118,10 @@ public class FileManagerFileStorage: FileStorage {
         guard var fileName = type.fileName ?? fileId else { return nil } // let the type be first to define file name
         fileName = fileName.setLastCharacters(type.fileExtension) // make sure file has extension.
 
-        var saveLocationUrl = try fileManager.url(
-            for: type.searchPath,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        var saveLocationUrl = try fileManager.url(for: type.searchPath,
+                                                  in: .userDomainMask,
+                                                  appropriateFor: nil,
+                                                  create: true)
 
         // put *all* files into our own "io.customer" directory to isolate files.
         saveLocationUrl = saveLocationUrl.appendingPathComponent("io.customer", isDirectory: true)

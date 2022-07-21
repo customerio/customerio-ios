@@ -137,11 +137,9 @@ public class MessagingPush: MessagingPushInstance {
             return false
         }
 
-        return implementation.userNotificationCenter(
-            center,
-            didReceive: response,
-            withCompletionHandler: completionHandler
-        )
+        return implementation.userNotificationCenter(center,
+                                                     didReceive: response,
+                                                     withCompletionHandler: completionHandler)
     }
 
     public func userNotificationCenter(

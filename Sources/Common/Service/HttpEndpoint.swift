@@ -13,10 +13,8 @@ public enum HttpEndpoint {
         case .findAccountRegion: return "/api/v1/accounts/region"
         case .identifyCustomer(let identifier): return "/api/v1/customers/\(identifier)"
         case .registerDevice(let identifier): return "/api/v1/customers/\(identifier)/devices"
-        case .deleteDevice(
-            let identifier,
-            let deviceToken
-        ): return "/api/v1/customers/\(identifier)/devices/\(deviceToken)"
+        case .deleteDevice(let identifier,
+                           let deviceToken): return "/api/v1/customers/\(identifier)/devices/\(deviceToken)"
         case .trackCustomerEvent(let identifier): return "/api/v1/customers/\(identifier)/events"
         case .pushMetrics: return "/push/events"
         }

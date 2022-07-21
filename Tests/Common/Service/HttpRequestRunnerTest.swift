@@ -21,11 +21,9 @@ class HttpRequestRunnerTest: HttpTest {
         let expectComplete = expectation(description: "Expect to complete")
         let requestParams = HttpRequestParams(endpoint: endpoint, headers: nil, body: nil)
         runner
-            .request(
-                requestParams,
-                httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US),
-                session: session
-            ) { data, response, _ in
+            .request(requestParams,
+                     httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US),
+                     session: session) { data, response, _ in
                 print(response!)
                 print(data!.string!)
 

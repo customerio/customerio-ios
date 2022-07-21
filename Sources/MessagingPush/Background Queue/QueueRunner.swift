@@ -5,12 +5,10 @@ import Foundation
 // sourcery: InjectRegister = "QueueRunnerHook"
 public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        super.init(
-            siteId: siteId,
-            jsonAdapter: jsonAdapter,
-            logger: logger,
-            httpClient: httpClient
-        )
+        super.init(siteId: siteId,
+                   jsonAdapter: jsonAdapter,
+                   logger: logger,
+                   httpClient: httpClient)
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
@@ -34,11 +32,9 @@ private extension MessagingPushQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
-            endpoint: .registerDevice(identifier: taskData.profileIdentifier),
-            headers: nil,
-            body: taskData.attributesJsonString?.data
-        )
+        let httpParams = HttpRequestParams(endpoint: .registerDevice(identifier: taskData.profileIdentifier),
+                                           headers: nil,
+                                           body: taskData.attributesJsonString?.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
@@ -48,14 +44,10 @@ private extension MessagingPushQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
-            endpoint: .deleteDevice(
-                identifier: taskData.profileIdentifier,
-                deviceToken: taskData.deviceToken
-            ),
-            headers: nil,
-            body: nil
-        )
+        let httpParams = HttpRequestParams(endpoint: .deleteDevice(identifier: taskData.profileIdentifier,
+                                                                   deviceToken: taskData.deviceToken),
+                                           headers: nil,
+                                           body: nil)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }

@@ -17,33 +17,27 @@ class QueueTest: UnitTest {
 
         sdkConfigStoreMock.config = SdkConfig()
 
-        queue = CioQueue(
-            siteId: testSiteId,
-            storage: storageMock,
-            runRequest: runRequestMock,
-            jsonAdapter: jsonAdapter,
-            logger: log,
-            sdkConfigStore: sdkConfigStoreMock,
-            queueTimer: queueTimerMock
-        )
+        queue = CioQueue(siteId: testSiteId,
+                         storage: storageMock,
+                         runRequest: runRequestMock,
+                         jsonAdapter: jsonAdapter,
+                         logger: log,
+                         sdkConfigStore: sdkConfigStoreMock,
+                         queueTimer: queueTimerMock)
     }
 
     // MARK: addTask
 
     func test_addTask_givenFailCreateQueueTask_expectFailStatus_expectScheduleQueueToRun() {
-        storageMock.createReturnValue = (
-            success: false,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0)
-        )
+        storageMock.createReturnValue = (success: false,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
         storageMock.getInventoryReturnValue = []
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
-        let actual = queue.addTask(
-            type: String.random,
-            data: ["foo": "bar"],
-            groupStart: .identifiedProfile(identifier: String.random),
-            blockingGroups: [.identifiedProfile(identifier: String.random)]
-        )
+        let actual = queue.addTask(type: String.random,
+                                   data: ["foo": "bar"],
+                                   groupStart: .identifiedProfile(identifier: String.random),
+                                   blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(actual.success, false)
 
@@ -54,19 +48,15 @@ class QueueTest: UnitTest {
         var config = SdkConfig()
         config.backgroundQueueMinNumberOfTasks = 10
         sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = (
-            success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
-        )
+        storageMock.createReturnValue = (success: true,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
-        _ = queue.addTask(
-            type: String.random,
-            data: ["foo": "bar"],
-            groupStart: .identifiedProfile(identifier: String.random),
-            blockingGroups: [.identifiedProfile(identifier: String.random)]
-        )
+        _ = queue.addTask(type: String.random,
+                          data: ["foo": "bar"],
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 0)
 
@@ -77,18 +67,14 @@ class QueueTest: UnitTest {
         var config = SdkConfig()
         config.backgroundQueueMinNumberOfTasks = 1
         sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = (
-            success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
-        )
+        storageMock.createReturnValue = (success: true,
+                                         queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
         storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
 
-        _ = queue.addTask(
-            type: String.random,
-            data: ["foo": "bar"],
-            groupStart: .identifiedProfile(identifier: String.random),
-            blockingGroups: [.identifiedProfile(identifier: String.random)]
-        )
+        _ = queue.addTask(type: String.random,
+                          data: ["foo": "bar"],
+                          groupStart: .identifiedProfile(identifier: String.random),
+                          blockingGroups: [.identifiedProfile(identifier: String.random)])
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
 

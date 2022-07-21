@@ -99,24 +99,20 @@ public class FileManagerQueueStorage: QueueStorage {
         let beforeCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: existingInventory.count)
 
         let newTaskStorageId = UUID().uuidString
-        let newQueueTask = QueueTask(
-            storageId: newTaskStorageId,
-            type: type,
-            data: data,
-            runResults: QueueTaskRunResults(totalRuns: 0)
-        )
+        let newQueueTask = QueueTask(storageId: newTaskStorageId,
+                                     type: type,
+                                     data: data,
+                                     runResults: QueueTaskRunResults(totalRuns: 0))
 
         if !update(queueTask: newQueueTask) {
             return (success: false, queueStatus: beforeCreateQueueStatus)
         }
 
-        let newQueueItem = QueueTaskMetadata(
-            taskPersistedId: newTaskStorageId,
-            taskType: type,
-            groupStart: groupStart?.string,
-            groupMember: blockingGroups?.map(\.string),
-            createdAt: dateUtil.now
-        )
+        let newQueueItem = QueueTaskMetadata(taskPersistedId: newTaskStorageId,
+                                             taskType: type,
+                                             groupStart: groupStart?.string,
+                                             groupMember: blockingGroups?.map(\.string),
+                                             createdAt: dateUtil.now)
         existingInventory.append(newQueueItem)
 
         let updatedInventoryCount = existingInventory.count
