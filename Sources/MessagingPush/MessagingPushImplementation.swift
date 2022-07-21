@@ -245,9 +245,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        let pushContent = userNotificationCenter(center, didReceive: response)
-
-        guard let pushContent = pushContent else { // push did not come from CIO
+        guard let pushContent = userNotificationCenter(center, didReceive: response) else {
+            // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so allow another SDK
             // to call the completionHandler()
             return false
