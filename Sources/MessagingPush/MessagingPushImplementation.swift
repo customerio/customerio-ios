@@ -247,9 +247,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     ) -> Bool {
         let pushContent = userNotificationCenter(center, didReceive: response)
 
-        guard let pushContent = pushContent else {
-            // push does not contain a CIO rich payload, so end early
-            // do not call the completionHandler() because the push did not come from CIO so, another SDK should call the completionHandler().
+        guard let pushContent = pushContent else { // push did not come from CIO
+            // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so allow another SDK
+            // to call the completionHandler()
             return false
         }
 
@@ -261,7 +261,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         default: break
         }
 
-        // The push came from CIO and we handled it. So, we can call the completionHandler for the customer so they don't have to.
+        // Push came from CIO and the SDK handled it. Therefore, call the completionHandler for the customer and return true telling them that the SDK handled the push for them.
         completionHandler()
         return true
     }
