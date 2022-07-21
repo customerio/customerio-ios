@@ -17,6 +17,7 @@ public protocol MessagingPushInstance {
         deviceToken: String
     )
 
+    #if canImport(UserNotifications)
     // Used for rich push
     @discardableResult
     func didReceive(
@@ -26,4 +27,5 @@ public protocol MessagingPushInstance {
 
     // Used for rich push
     func serviceExtensionTimeWillExpire()
+    #endif
 }
