@@ -18,7 +18,7 @@ class MessagingPushAPNAPITest: UnitTest {
     // Test that all public functions are accessible by non-singleton instances
     let instance: MessagingPushAPNInstance = MessagingPushAPN(customerIO: CustomerIO(siteId: "", apiKey: ""))
 
-    func test_allPublicFunctions() throws {
+    func test_allPublicFunctions() throws { // swiftlint:disable:this function_body_length
         try skipRunningTest()
 
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())

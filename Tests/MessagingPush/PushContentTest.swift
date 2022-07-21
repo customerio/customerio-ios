@@ -82,6 +82,7 @@ class PushContentTest: UnitTest {
             // OK to use try! here as it's setup code for the test. Not actually testing code.
             // swiftlint:disable:next force_try
             try! UNNotificationAttachment(identifier: "non-cio-attachment", url: "file:///foo.jpg".url!, options: nil),
+            // swiftlint:disable:next force_try
             try! UNNotificationAttachment(identifier: "\(CustomerIOParsedPushPayload.cioAttachmentsPrefix)\(String.random)",
                                           url: "file:///foo.jpg".url!, options: nil)
         ]
