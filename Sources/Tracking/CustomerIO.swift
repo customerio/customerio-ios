@@ -51,8 +51,8 @@ public protocol CustomerIOInstance: AutoMockable {
     var profileAttributes: [String: Any] { get set }
     var deviceAttributes: [String: Any] { get set }
 
-    // Any of the config functions not needed for mocking. Also, config() is not available for app extensions so we must make this function optional to imherit.
-    // func config() {}
+    // Any of the config functions not needed for mocking because config is designed to be called during application runtime during app startup.
+    // Also, config() is not available for app extensions so we must make this function optional to inherit.
 }
 
 public extension CustomerIOInstance {

@@ -27,7 +27,7 @@ public extension MessagingPush {
     }
 
     /**
-     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+     iOS telling the notification service to hurry up and stop modifying the push notifications.
      Stop all network requests and modifying and show the push for what it looks like now.
      */
     func serviceExtensionTimeWillExpire() {
@@ -82,7 +82,7 @@ extension MessagingPushImplementation {
     }
 
     /**
-     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+     iOS telling the notification service to hurry up and stop modifying the push notifications.
      Stop all network requests and modifying and show the push for what it looks like now.
      */
     func serviceExtensionTimeWillExpire() {
