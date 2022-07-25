@@ -1,3 +1,18 @@
+## [1.2.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.1.1...1.2.0-alpha.1) (2022-07-25)
+
+
+### Features
+
+* delete expired queue tasks ([dc22280](https://github.com/customerio/customerio-ios/commit/dc22280afd3c7a9e721e7e1105954f9656cbc7ea))
+* sdk wrappers modify user-agent ([5c127e5](https://github.com/customerio/customerio-ios/commit/5c127e5f32a16e568f4fd969094223130de42e36))
+
+
+### Bug Fixes
+
+* improve reliability of screen view tracking ([60e9289](https://github.com/customerio/customerio-ios/commit/60e9289930485d3394911490bf6f05c7d1af521c))
+* queue attempts to run all tasks on each run ([80f90e9](https://github.com/customerio/customerio-ios/commit/80f90e97e9f9c76e7d235b2065c799c396414236))
+* some classes not found in tracking module ([45f178e](https://github.com/customerio/customerio-ios/commit/45f178ecd670514864194611506d652a5e8cd4b9))
+
 ### [1.1.1](https://github.com/customerio/customerio-ios/compare/1.1.0...1.1.1) (2022-06-10)
 
 
