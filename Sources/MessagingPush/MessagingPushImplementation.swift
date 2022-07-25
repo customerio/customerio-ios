@@ -6,16 +6,16 @@ import UserNotifications
 #endif
 
 internal class MessagingPushImplementation: MessagingPushInstance {
-    private let siteId: SiteId
-    private let profileStore: ProfileStore
-    private let backgroundQueue: Queue
-    private var globalDataStore: GlobalDataStore
-    private let logger: Logger
-    private let sdkConfigStore: SdkConfigStore
-    private let jsonAdapter: JsonAdapter
-    private let deviceAttributesProvider: DeviceAttributesProvider
-    private let dateUtil: DateUtil
-    private let deviceInfo: DeviceInfo
+    let siteId: SiteId
+    let profileStore: ProfileStore
+    let backgroundQueue: Queue
+    var globalDataStore: GlobalDataStore
+    let logger: Logger
+    let sdkConfigStore: SdkConfigStore
+    let jsonAdapter: JsonAdapter
+    let deviceAttributesProvider: DeviceAttributesProvider
+    let dateUtil: DateUtil
+    let deviceInfo: DeviceInfo
 
     /// testing init
     internal init(
@@ -154,104 +154,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     }
 
     #if canImport(UserNotifications)
-    /**
-     - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
-     */
-    @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        logger.info("did recieve notification request. Checking if message was a rich push sent from Customer.io...")
-        logger.debug("notification request: \(request.content.userInfo)")
-
-        if sdkConfigStore.config.autoTrackPushEvents,
-           let deliveryID: String = request.content.userInfo["CIO-Delivery-ID"] as? String,
-           let deviceToken: String = request.content.userInfo["CIO-Delivery-Token"] as? String {
-            logger.info("automatically tracking push metric: delivered")
-            logger.debug("parsed deliveryId \(deliveryID), deviceToken: \(deviceToken)")
-
-            trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
-        }
-
-        guard let pushContent = PushContent.parse(notificationContent: request.content,
-                                                  jsonAdapter: jsonAdapter)
-        else {
-            // push does not contain a CIO rich payload, so end early
-            logger.info("the notification was not sent by Customer.io. Ignoring notification request.")
-            return false
-        }
-
-        logger
-            .info("""
-            the notification was sent by Customer.io.
-            Parsing notification request to display rich content such as images, deep links, etc.
-            """)
-        logger.debug("push content: \(pushContent)")
-
-        RichPushRequestHandler.shared.startRequest(request, content: pushContent, siteId: siteId,
-                                                   completionHandler: contentHandler)
-
-        return true
-    }
-
-    /**
-     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
-     Stop all network requests and modifying and show the push for what it looks like now.
-     */
-    public func serviceExtensionTimeWillExpire() {
-        logger.info("notification service time will expire. Stopping all notification requests early.")
-
-        RichPushRequestHandler.shared.stopAll()
-    }
-
-    /**
-     A push notification was interacted with.
-
-     - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.
-     */
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
-        if sdkConfigStore.config.autoTrackPushEvents {
-            var pushMetric = Metric.delivered
-
-            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-                pushMetric = Metric.opened
-            }
-
-            trackMetric(notificationContent: response.notification.request.content, event: pushMetric)
-        }
-
-        // Time to handle rich push notifications.
-        guard let pushContent = PushContent.parse(notificationContent: response.notification.request.content,
-                                                  jsonAdapter: jsonAdapter)
-        else {
-            // push does not contain a CIO rich payload, so end early
-            return false
-        }
-
-        cleanup(pushContent: pushContent)
-
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier: // push notification was touched.
-            if let deepLinkurl = pushContent.deepLink {
-                UIApplication.shared.open(url: deepLinkurl)
-
-                completionHandler()
-
-                return true
-            }
-        default: break
-        }
-
-        return false
-    }
-
     func trackMetric(
         notificationContent: UNNotificationContent,
         event: Metric
@@ -265,7 +167,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    private func cleanup(pushContent: PushContent) {
+    internal func cleanup(pushContent: PushContent) {
         pushContent.cioAttachments.forEach { attachment in
             let localFilePath = attachment.url
 

@@ -284,11 +284,6 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         screenEncodableReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        configCallsCount = 0
-        configReceivedArguments = nil
-        configReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - identify
@@ -451,32 +446,5 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
         screenEncodableReceivedInvocations.append((name: name, data: AnyEncodable(data)))
         screenEncodableClosure?(name, AnyEncodable(data))
-    }
-
-    // MARK: - config
-
-    /// Number of times the function was called.
-    public private(set) var configCallsCount = 0
-    /// `true` if the function was ever called.
-    public var configCalled: Bool {
-        configCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var configReceivedArguments: ()?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var configReceivedInvocations: [()] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var configClosure: (((inout SdkConfig) -> Void) -> Void)?
-
-    /// Mocked function for `config(_ handler: (inout SdkConfig) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func config(_ handler: (inout SdkConfig) -> Void) {
-        mockCalled = true
-        configCallsCount += 1
-        configReceivedArguments = ()
-        configReceivedInvocations.append(())
-        configClosure?(handler)
     }
 }
