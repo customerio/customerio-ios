@@ -5,8 +5,12 @@ import Foundation
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger,
-                   httpClient: httpClient)
+        super.init(
+            siteId: siteId,
+            jsonAdapter: jsonAdapter,
+            logger: logger,
+            httpClient: httpClient
+        )
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
@@ -29,8 +33,11 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
-                                           headers: nil, body: taskData.attributesJsonString?.data)
+        let httpParams = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: taskData.identifier),
+            headers: nil,
+            body: taskData.attributesJsonString?.data
+        )
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
@@ -40,8 +47,11 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
-                                           headers: nil, body: taskData.attributesJsonString.data)
+        let httpParams = HttpRequestParams(
+            endpoint: .trackCustomerEvent(identifier: taskData.identifier),
+            headers: nil,
+            body: taskData.attributesJsonString.data
+        )
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }

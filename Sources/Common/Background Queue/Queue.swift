@@ -112,14 +112,20 @@ public class CioQueue: Queue {
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {
             logger.error("fail adding queue task, json encoding fail.")
 
-            return (success: false,
-                    queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count))
+            return (
+                success: false,
+                queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count)
+            )
         }
 
         logger.debug("added queue task data \(data.string ?? "")")
 
-        let addTaskResult = storage.create(type: type, data: data, groupStart: groupStart,
-                                           blockingGroups: blockingGroups)
+        let addTaskResult = storage.create(
+            type: type,
+            data: data,
+            groupStart: groupStart,
+            blockingGroups: blockingGroups
+        )
         processQueueStatus(addTaskResult.queueStatus)
 
         return addTaskResult

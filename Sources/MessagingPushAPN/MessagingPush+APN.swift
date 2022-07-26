@@ -5,10 +5,6 @@ import Foundation
 import UserNotifications
 #endif
 
-// Expose `MessagingPush` in module so customers do not need to `import CioMessaginPush`
-// Only 1 import: `CioMessaginPushAPN`.
-public typealias MessagingPush = CioMessagingPush.MessagingPush
-
 /**
  Convenient extensions so singleton instances of `MessagingPush` can access functions from `MessagingPushAPN`.
   */

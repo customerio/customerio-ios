@@ -21,10 +21,16 @@ public class HttpRequestRunnerStub {
     }
 
     public func queueSuccessfulResponse(code: Int, data: Data) {
-        responseQueue.append(HttpResponse(data: data,
-                                          response: HTTPURLResponse(url: "https://customer.io".url!, statusCode: code,
-                                                                    httpVersion: nil, headerFields: nil),
-                                          error: nil))
+        responseQueue.append(HttpResponse(
+            data: data,
+            response: HTTPURLResponse(
+                url: "https://customer.io".url!,
+                statusCode: code,
+                httpVersion: nil,
+                headerFields: nil
+            ),
+            error: nil
+        ))
     }
 }
 

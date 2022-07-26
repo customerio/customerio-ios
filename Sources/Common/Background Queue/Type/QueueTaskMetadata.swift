@@ -18,10 +18,12 @@ public struct QueueTaskMetadata: Codable, Equatable, Hashable, AutoLenses {
 
 internal extension QueueTaskMetadata {
     static var random: QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: String.random,
-                          taskType: String.random,
-                          groupStart: nil,
-                          groupMember: nil,
-                          createdAt: Date.nowNoMilliseconds)
+        QueueTaskMetadata(
+            taskPersistedId: String.random,
+            taskType: String.random,
+            groupStart: nil,
+            groupMember: nil,
+            createdAt: Date.nowNoMilliseconds
+        )
     }
 }
