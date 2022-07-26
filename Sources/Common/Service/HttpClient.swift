@@ -38,10 +38,12 @@ public class CIOHttpClient: HttpClient {
         deviceInfo: DeviceInfo
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(siteId: siteId,
-                                       apiKey: sdkCredentialsStore.credentials.apiKey,
-                                       deviceInfo: deviceInfo,
-                                       sdkWrapperConfig: configStore.config._sdkWrapperConfig)
+        self.session = Self.getSession(
+            siteId: siteId,
+            apiKey: sdkCredentialsStore.credentials.apiKey,
+            deviceInfo: deviceInfo,
+            sdkWrapperConfig: configStore.config._sdkWrapperConfig
+        )
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
@@ -82,10 +84,12 @@ public class CIOHttpClient: HttpClient {
 
                 let statusCode = response.statusCode
                 guard statusCode < 300 else {
-                    return self.handleUnsuccessfulStatusCodeResponse(statusCode: statusCode,
-                                                                     data: data,
-                                                                     params: params,
-                                                                     onComplete: onComplete)
+                    return self.handleUnsuccessfulStatusCodeResponse(
+                        statusCode: statusCode,
+                        data: data,
+                        params: params,
+                        onComplete: onComplete
+                    )
                 }
 
                 guard let data = data else {
@@ -105,13 +109,17 @@ public class CIOHttpClient: HttpClient {
 
         // don't log errors for JSON mapping since we are trying to decode *multiple* error classes.
         // we are bound to fail more often and don't want to log errors that are not super helpful to us.
-        if let errorMessageBody: ErrorMessageResponse = jsonAdapter.fromJson(data,
-                                                                             decoder: nil,
-                                                                             logErrors: false) {
+        if let errorMessageBody: ErrorMessageResponse = jsonAdapter.fromJson(
+            data,
+            decoder: nil,
+            logErrors: false
+        ) {
             errorBodyString = errorMessageBody.meta.error
-        } else if let errorMessageBody: ErrorsMessageResponse = jsonAdapter.fromJson(data,
-                                                                                     decoder: nil,
-                                                                                     logErrors: false) {
+        } else if let errorMessageBody: ErrorsMessageResponse = jsonAdapter.fromJson(
+            data,
+            decoder: nil,
+            logErrors: false
+        ) {
             errorBodyString = errorMessageBody.meta.errors.joined(separator: ",")
         }
         return errorBodyString
@@ -149,8 +157,10 @@ extension CIOHttpClient {
         urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": getUserAgent(deviceInfo: deviceInfo,
-                                                                             sdkWrapperConfig: sdkWrapperConfig)]
+                                                  "User-Agent": getUserAgent(
+                                                      deviceInfo: deviceInfo,
+                                                      sdkWrapperConfig: sdkWrapperConfig
+                                                  )]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -223,8 +233,10 @@ extension CIOHttpClient {
         onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
     ) {
         let unsuccessfulStatusCodeError: HttpRequestError =
-            .unsuccessfulStatusCode(statusCode,
-                                    apiMessage: getErrorMessage(responseBody: data))
+            .unsuccessfulStatusCode(
+                statusCode,
+                apiMessage: getErrorMessage(responseBody: data)
+            )
 
         switch statusCode {
         case 500 ..< 600:

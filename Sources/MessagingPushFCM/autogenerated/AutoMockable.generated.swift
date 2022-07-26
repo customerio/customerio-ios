@@ -201,8 +201,10 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any,
-                                                                                          error: Error)] = []
+    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(
+        application: Any,
+        error: Error
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -277,13 +279,17 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest,
-                                                                             contentHandler: (UNNotificationContent)
-                                                                                 -> Void)?
+    public private(set) var didReceiveNotificationRequestReceivedArguments: (
+        request: UNNotificationRequest,
+        contentHandler: (UNNotificationContent)
+            -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest,
-                                                                                contentHandler: (UNNotificationContent)
-                                                                                    -> Void)] = []
+    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(
+        request: UNNotificationRequest,
+        contentHandler: (UNNotificationContent)
+            -> Void
+    )] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**

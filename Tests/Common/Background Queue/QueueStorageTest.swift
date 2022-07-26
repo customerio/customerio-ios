@@ -11,13 +11,15 @@ class QueueStorageTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(siteId: testSiteId,
-                                          fileStorage: fileStorageMock,
-                                          jsonAdapter: jsonAdapter,
-                                          lockManager: lockManager,
-                                          sdkConfigStore: diGraph.sdkConfigStore,
-                                          logger: log,
-                                          dateUtil: dateUtilStub)
+        storage = FileManagerQueueStorage(
+            siteId: testSiteId,
+            fileStorage: fileStorageMock,
+            jsonAdapter: jsonAdapter,
+            lockManager: lockManager,
+            sdkConfigStore: diGraph.sdkConfigStore,
+            logger: log,
+            dateUtil: dateUtilStub
+        )
     }
 
     // MARK: getInventory
@@ -65,10 +67,12 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType,
-                                    data: givenData,
-                                    groupStart: .identifiedProfile(identifier: String.random),
-                                    blockingGroups: [.identifiedProfile(identifier: String.random)])
+        let actual = storage.create(
+            type: givenType,
+            data: givenData,
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2) // create task and update inventory
         XCTAssertTrue(actual.success)
@@ -81,10 +85,12 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType,
-                                    data: givenData,
-                                    groupStart: .identifiedProfile(identifier: String.random),
-                                    blockingGroups: [.identifiedProfile(identifier: String.random)])
+        let actual = storage.create(
+            type: givenType,
+            data: givenData,
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call
         XCTAssertFalse(actual.success)
@@ -100,10 +106,12 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType,
-                                    data: givenData,
-                                    groupStart: .identifiedProfile(identifier: String.random),
-                                    blockingGroups: [.identifiedProfile(identifier: String.random)])
+        let actual = storage.create(
+            type: givenType,
+            data: givenData,
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 2)
         XCTAssertFalse(actual.success)
@@ -121,10 +129,12 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_update_expectUpdateTaskToStorage_expectInventoryNotUpdated_expectTrue() {
-        let givenTask = QueueTask(storageId: String.random,
-                                  type: String.random,
-                                  data: "".data,
-                                  runResults: QueueTaskRunResults(totalRuns: 1))
+        let givenTask = QueueTask(
+            storageId: String.random,
+            type: String.random,
+            data: "".data,
+            runResults: QueueTaskRunResults(totalRuns: 1)
+        )
         let givenUpdatedRunResults = QueueTaskRunResults(totalRuns: givenTask.runResults.totalRuns + 1)
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)
         fileStorageMock.saveReturnValue = true
@@ -132,8 +142,10 @@ class QueueStorageTest: UnitTest {
         let actual = storage.update(storageId: givenTask.storageId, runResults: givenUpdatedRunResults)
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 1)
-        let actualQueueTask: QueueTask = jsonAdapter.fromJson(fileStorageMock.saveReceivedArguments!.contents,
-                                                              decoder: nil)!
+        let actualQueueTask: QueueTask = jsonAdapter.fromJson(
+            fileStorageMock.saveReceivedArguments!.contents,
+            decoder: nil
+        )!
         let actualRunResults = actualQueueTask.runResults
         XCTAssertEqual(actualRunResults, givenUpdatedRunResults)
         XCTAssertTrue(actual)
@@ -148,10 +160,12 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_get_givenTaskInStorage_expectGetSavedTask() {
-        let givenTask = QueueTask(storageId: String.random,
-                                  type: String.random,
-                                  data: "".data,
-                                  runResults: QueueTaskRunResults(totalRuns: 1))
+        let givenTask = QueueTask(
+            storageId: String.random,
+            type: String.random,
+            data: "".data,
+            runResults: QueueTaskRunResults(totalRuns: 1)
+        )
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)!
 
         let actual = storage.get(storageId: givenTask.storageId)
@@ -170,22 +184,26 @@ class QueueStorageIntegrationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(siteId: testSiteId,
-                                          fileStorage: diGraph.fileStorage,
-                                          jsonAdapter: jsonAdapter,
-                                          lockManager: lockManager,
-                                          sdkConfigStore: diGraph.sdkConfigStore,
-                                          logger: log,
-                                          dateUtil: dateUtilStub)
+        storage = FileManagerQueueStorage(
+            siteId: testSiteId,
+            fileStorage: diGraph.fileStorage,
+            jsonAdapter: jsonAdapter,
+            lockManager: lockManager,
+            sdkConfigStore: diGraph.sdkConfigStore,
+            logger: log,
+            dateUtil: dateUtilStub
+        )
     }
 
     // MARK: delete
 
     func test_delete_expectDeleteTaskPreviouslyAdded() {
-        _ = storage.create(type: String.random,
-                           data: Data(),
-                           groupStart: .identifiedProfile(identifier: String.random),
-                           blockingGroups: [.identifiedProfile(identifier: String.random)])
+        _ = storage.create(
+            type: String.random,
+            data: Data(),
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
 
         var inventory = storage.getInventory()
         XCTAssertEqual(inventory.count, 1)
@@ -219,10 +237,12 @@ class QueueStorageIntegrationTest: UnitTest {
 
     func test_deleteExpired_givenTasksStartOfGroupAndExpired_expectDeleteNoTasks() {
         dateUtilStub.givenNow = Date().subtract(10, .day) // make newly created tasks expired
-        _ = storage.create(type: String.random,
-                           data: "".data,
-                           groupStart: QueueTaskGroup.identifiedProfile(identifier: String.random),
-                           blockingGroups: nil)
+        _ = storage.create(
+            type: String.random,
+            data: "".data,
+            groupStart: QueueTaskGroup.identifiedProfile(identifier: String.random),
+            blockingGroups: nil
+        )
 
         let tasksDeleted = storage.deleteExpired()
 
@@ -232,15 +252,19 @@ class QueueStorageIntegrationTest: UnitTest {
     func test_deleteExpired_givenTasksNoStartOfGroupAndExpired_expectDeleteTasksExpired() {
         let givenGroupOfTasks = QueueTaskGroup.identifiedProfile(identifier: String.random)
         dateUtilStub.givenNow = Date().subtract(10, .day) // make newly created tasks expired
-        _ = storage.create(type: String.random,
-                           data: "".data,
-                           groupStart: givenGroupOfTasks,
-                           blockingGroups: nil)
+        _ = storage.create(
+            type: String.random,
+            data: "".data,
+            groupStart: givenGroupOfTasks,
+            blockingGroups: nil
+        )
         let expectedNotDeleted = storage.getInventory()[0]
-        _ = storage.create(type: String.random,
-                           data: "".data,
-                           groupStart: nil,
-                           blockingGroups: [givenGroupOfTasks])
+        _ = storage.create(
+            type: String.random,
+            data: "".data,
+            groupStart: nil,
+            blockingGroups: [givenGroupOfTasks]
+        )
         let expectedDeleted = storage.getInventory()[1]
         XCTAssertNotEqual(expectedNotDeleted.taskPersistedId, expectedDeleted.taskPersistedId)
 

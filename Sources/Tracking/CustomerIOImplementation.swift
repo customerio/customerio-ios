@@ -114,8 +114,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
             logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeIdentifiedProfileChange(oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                                                   newIdentifier: identifier)
+                hook.beforeIdentifiedProfileChange(
+                    oldIdentifier: currentlyIdentifiedProfileIdentifier,
+                    newIdentifier: identifier
+                )
             }
         }
 
@@ -123,8 +125,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         let jsonBodyString = jsonAdapter.toJsonString(body, convertKeysToSnakecase: false)
         logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
 
-        let queueTaskData = IdentifyProfileQueueTaskData(identifier: identifier,
-                                                         attributesJsonString: jsonBodyString)
+        let queueTaskData = IdentifyProfileQueueTaskData(
+            identifier: identifier,
+            attributesJsonString: jsonBodyString
+        )
 
         // If SDK previously identified profile X and X is being identified again, no use blocking the queue
         // with a queue group.
@@ -133,9 +137,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             queueGroupStart = nil
         }
 
-        let queueStatus = backgroundQueue.addTask(type: QueueTaskType.identifyProfile.rawValue,
-                                                  data: queueTaskData,
-                                                  groupStart: queueGroupStart)
+        let queueStatus = backgroundQueue.addTask(
+            type: QueueTaskType.identifyProfile.rawValue,
+            data: queueTaskData,
+            groupStart: queueGroupStart
+        )
 
         // don't modify the state of the SDK until we confirm we added a background queue task successfully.
         // XXX: better handle scenario when adding task to queue is not successful
@@ -226,14 +232,18 @@ extension CustomerIOImplementation {
         }
         logger.debug("\(eventTypeDescription) attributes \(jsonBodyString)")
 
-        let queueData = TrackEventQueueTaskData(identifier: currentlyIdentifiedProfileIdentifier,
-                                                attributesJsonString: jsonBodyString)
+        let queueData = TrackEventQueueTaskData(
+            identifier: currentlyIdentifiedProfileIdentifier,
+            attributesJsonString: jsonBodyString
+        )
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
-                                    data: queueData,
-                                    blockingGroups: [
-                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
-                                    ])
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: queueData,
+            blockingGroups: [
+                .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
+            ]
+        )
     }
 }
