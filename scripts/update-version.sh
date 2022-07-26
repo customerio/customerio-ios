@@ -29,6 +29,6 @@ sed -n "/$LINE_PATTERN/p" $SWIFT_SOURCE_FILE
 
 
 echo "Now, updating cocoapods files...."
-exec scripts/update-version-cocoapods.sh "$NEW_VERSION"
+./scripts/update-version-cocoapods.sh "$NEW_VERSION"
 
 echo "\n\n Done!\n Dont forget to commit your changes. A good commit message is: \"chore: prepare for $NEW_VERSION\""

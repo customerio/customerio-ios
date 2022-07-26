@@ -19,10 +19,9 @@
 # then using the git repo. We *might* save a couple minutes here and there when using the git repo
 # but we will potentially need to deal with more failed deployments. 
 
-set -e 
-
 PODSPEC="$1"
 NUMBER_RETRIES=60
+PUSH_SUCCESS="false"
 
 if ! [[ -f "$PODSPEC" ]]; then
     echo "File $PODSPEC does not exist. Please check the pod name."
@@ -31,13 +30,17 @@ fi
 echo "Pushing podspec: $PODSPEC."
 
 for i in $(seq 1 $NUMBER_RETRIES); do 
-    echo "Push attempt $i..."
-    pod repo update;
-    pod trunk push "$PODSPEC" --allow-warnings && break || sleep 30; 
-    echo "Failed to push. Sleeping, then will try again."
+    if [[ $PUSH_SUCCESS == "false" ]]; then
+        echo "Push attempt $i..."
+        pod repo update;
+        # if the push is successful, it will set PUSH_SUCCESS which will prevent from trying to push again. Else, sleep 30 seconds and try again. 
+        pod trunk push "$PODSPEC" --allow-warnings && PUSH_SUCCESS="true" || sleep 30;
+        echo "Failed to push. Sleeping, then will try again."
 
-    if [ $i -eq $NUMBER_RETRIES ]; then 
-        echo "Hit retry limit. Failed to push the pod $PODSPEC. Exiting script with failure status."
-        exit 1
+        if [ $i -eq $NUMBER_RETRIES ]; then 
+            echo "Hit retry limit. Failed to push the pod $PODSPEC. Exiting script with failure status."
+            echo "Currently not existing script if timeout because we allow you to run deploy script manually and you cannot overwrite existing pods. It's best to check emails saying that pod got deployed or https://github.com/cocoaPods/specs to see if pod got pushed."
+            # exit 1 
+        fi 
     fi 
 done
