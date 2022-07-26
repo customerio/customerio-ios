@@ -234,7 +234,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return nil
         }
 
-        cleanup(pushContent: pushContent)
+        cleanupAfterPushInteractedWith(pushContent: pushContent)
 
         return pushContent
     }
@@ -282,7 +282,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    private func cleanup(pushContent: CustomerIOParsedPushPayload) {
+    // There are files that are created just for displaying a rich push. After a push is interacted with, those files are no longer needed.
+    // This function's job is to cleanup after a push is no longer being displayed.
+    private func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
         pushContent.cioAttachments.forEach { attachment in
             let localFilePath = attachment.url
 
