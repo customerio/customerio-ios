@@ -20,10 +20,13 @@ class MessagingPushImplementationTest: UnitTest {
         super.setUp()
 
         mockCustomerIO.siteId = testSiteId
-        messagingPush = MessagingPushImplementation(siteId: testSiteId, profileStore: profileStoreMock,
+        messagingPush = MessagingPushImplementation(siteId: testSiteId,
+                                                    profileStore: profileStoreMock,
                                                     backgroundQueue: queueMock,
-                                                    globalDataStore: globalDataStoreMock, logger: log,
-                                                    sdkConfigStore: sdkConfigStoreMock, jsonAdapter: jsonAdapter,
+                                                    globalDataStore: globalDataStoreMock,
+                                                    logger: log,
+                                                    sdkConfigStore: sdkConfigStoreMock,
+                                                    jsonAdapter: jsonAdapter,
                                                     deviceAttributesProvider: deviceAttributesMock,
                                                     dateUtil: dateUtilStub,
                                                     deviceInfo: deviceInfoMock)

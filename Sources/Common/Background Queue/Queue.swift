@@ -118,7 +118,9 @@ public class CioQueue: Queue {
 
         logger.debug("added queue task data \(data.string ?? "")")
 
-        let addTaskResult = storage.create(type: type, data: data, groupStart: groupStart,
+        let addTaskResult = storage.create(type: type,
+                                           data: data,
+                                           groupStart: groupStart,
                                            blockingGroups: blockingGroups)
         processQueueStatus(addTaskResult.queueStatus)
 

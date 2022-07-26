@@ -11,8 +11,12 @@ class QueueStorageTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: fileStorageMock, jsonAdapter: jsonAdapter,
-                                          lockManager: lockManager, sdkConfigStore: diGraph.sdkConfigStore, logger: log,
+        storage = FileManagerQueueStorage(siteId: testSiteId,
+                                          fileStorage: fileStorageMock,
+                                          jsonAdapter: jsonAdapter,
+                                          lockManager: lockManager,
+                                          sdkConfigStore: diGraph.sdkConfigStore,
+                                          logger: log,
                                           dateUtil: dateUtilStub)
     }
 
@@ -61,7 +65,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType, data: givenData,
+        let actual = storage.create(type: givenType,
+                                    data: givenData,
                                     groupStart: .identifiedProfile(identifier: String.random),
                                     blockingGroups: [.identifiedProfile(identifier: String.random)])
 
@@ -76,7 +81,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType, data: givenData,
+        let actual = storage.create(type: givenType,
+                                    data: givenData,
                                     groupStart: .identifiedProfile(identifier: String.random),
                                     blockingGroups: [.identifiedProfile(identifier: String.random)])
 
@@ -94,7 +100,8 @@ class QueueStorageTest: UnitTest {
         let givenData = "hello ami!".data!
         let givenType = String.random
 
-        let actual = storage.create(type: givenType, data: givenData,
+        let actual = storage.create(type: givenType,
+                                    data: givenData,
                                     groupStart: .identifiedProfile(identifier: String.random),
                                     blockingGroups: [.identifiedProfile(identifier: String.random)])
 
@@ -114,7 +121,9 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_update_expectUpdateTaskToStorage_expectInventoryNotUpdated_expectTrue() {
-        let givenTask = QueueTask(storageId: String.random, type: String.random, data: "".data,
+        let givenTask = QueueTask(storageId: String.random,
+                                  type: String.random,
+                                  data: "".data,
                                   runResults: QueueTaskRunResults(totalRuns: 1))
         let givenUpdatedRunResults = QueueTaskRunResults(totalRuns: givenTask.runResults.totalRuns + 1)
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)
@@ -139,7 +148,9 @@ class QueueStorageTest: UnitTest {
     }
 
     func test_get_givenTaskInStorage_expectGetSavedTask() {
-        let givenTask = QueueTask(storageId: String.random, type: String.random, data: "".data,
+        let givenTask = QueueTask(storageId: String.random,
+                                  type: String.random,
+                                  data: "".data,
                                   runResults: QueueTaskRunResults(totalRuns: 1))
         fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)!
 
@@ -159,15 +170,20 @@ class QueueStorageIntegrationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(siteId: testSiteId, fileStorage: diGraph.fileStorage,
-                                          jsonAdapter: jsonAdapter, lockManager: lockManager,
-                                          sdkConfigStore: diGraph.sdkConfigStore, logger: log, dateUtil: dateUtilStub)
+        storage = FileManagerQueueStorage(siteId: testSiteId,
+                                          fileStorage: diGraph.fileStorage,
+                                          jsonAdapter: jsonAdapter,
+                                          lockManager: lockManager,
+                                          sdkConfigStore: diGraph.sdkConfigStore,
+                                          logger: log,
+                                          dateUtil: dateUtilStub)
     }
 
     // MARK: delete
 
     func test_delete_expectDeleteTaskPreviouslyAdded() {
-        _ = storage.create(type: String.random, data: Data(),
+        _ = storage.create(type: String.random,
+                           data: Data(),
                            groupStart: .identifiedProfile(identifier: String.random),
                            blockingGroups: [.identifiedProfile(identifier: String.random)])
 

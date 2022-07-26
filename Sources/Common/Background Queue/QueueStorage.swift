@@ -99,7 +99,9 @@ public class FileManagerQueueStorage: QueueStorage {
         let beforeCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: existingInventory.count)
 
         let newTaskStorageId = UUID().uuidString
-        let newQueueTask = QueueTask(storageId: newTaskStorageId, type: type, data: data,
+        let newQueueTask = QueueTask(storageId: newTaskStorageId,
+                                     type: type,
+                                     data: data,
                                      runResults: QueueTaskRunResults(totalRuns: 0))
 
         if !update(queueTask: newQueueTask) {

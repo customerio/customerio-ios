@@ -48,7 +48,8 @@ internal extension UIViewController {
             return
         }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
-        var name = nameOfViewControllerClass.replacingOccurrences(of: "ViewController", with: "",
+        var name = nameOfViewControllerClass.replacingOccurrences(of: "ViewController",
+                                                                  with: "",
                                                                   options: .caseInsensitive)
         if name.isEmpty || name == "" {
             if let title = viewController.title {

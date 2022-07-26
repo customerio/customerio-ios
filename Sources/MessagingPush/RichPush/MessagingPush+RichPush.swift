@@ -60,8 +60,8 @@ extension MessagingPushImplementation {
             trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
         }
 
-        guard let pushContent = PushContent.parse(notificationContent: request.content,
-                                                  jsonAdapter: jsonAdapter)
+        guard let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: request.content,
+                                                                  jsonAdapter: jsonAdapter)
         else {
             // push does not contain a CIO rich payload, so end early
             logger.info("the notification was not sent by Customer.io. Ignoring notification request.")

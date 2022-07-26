@@ -6,7 +6,7 @@ import UserNotifications
 /**
  The content of a push notification. Single source of truth for getting properties of a push notification.
  */
-public class PushContent {
+public class CustomerIOParsedPushPayload {
     public static let cioAttachmentsPrefix = "cio_sdk_"
 
     public var title: String {
@@ -91,8 +91,10 @@ public class PushContent {
 
     private let jsonAdapter: JsonAdapter
     public let mutableNotificationContent: UNMutableNotificationContent
+    public let notificationContent: UNNotificationContent
 
-    public static func parse(notificationContent: UNNotificationContent, jsonAdapter: JsonAdapter) -> PushContent? {
+    public static func parse(notificationContent: UNNotificationContent,
+                             jsonAdapter: JsonAdapter) -> CustomerIOParsedPushPayload? {
         let raw = notificationContent.userInfo
 
         guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],
@@ -102,11 +104,18 @@ public class PushContent {
             return nil
         }
 
-        return PushContent(mutableNotificationContent: mutableNotificationContent, jsonAdapter: jsonAdapter)
+        return CustomerIOParsedPushPayload(originalNotificationContent: notificationContent,
+                                           mutableNotificationContent: mutableNotificationContent,
+                                           jsonAdapter: jsonAdapter)
     }
 
     // Used when modifying push content before showing and for parsing after displaying.
-    private init(mutableNotificationContent: UNMutableNotificationContent, jsonAdapter: JsonAdapter) {
+    private init(
+        originalNotificationContent: UNNotificationContent,
+        mutableNotificationContent: UNMutableNotificationContent,
+        jsonAdapter: JsonAdapter
+    ) {
+        self.notificationContent = originalNotificationContent
         self.mutableNotificationContent = mutableNotificationContent
         self.jsonAdapter = jsonAdapter
     }

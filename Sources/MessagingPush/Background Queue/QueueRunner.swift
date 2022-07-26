@@ -5,7 +5,9 @@ import Foundation
 // sourcery: InjectRegister = "QueueRunnerHook"
 public class MessagingPushQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger,
+        super.init(siteId: siteId,
+                   jsonAdapter: jsonAdapter,
+                   logger: logger,
                    httpClient: httpClient)
     }
 
@@ -31,7 +33,8 @@ private extension MessagingPushQueueRunner {
         }
 
         let httpParams = HttpRequestParams(endpoint: .registerDevice(identifier: taskData.profileIdentifier),
-                                           headers: nil, body: taskData.attributesJsonString?.data)
+                                           headers: nil,
+                                           body: taskData.attributesJsonString?.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }

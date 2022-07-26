@@ -73,7 +73,8 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
 
             do {
                 // confirm that directories all created because we may have created a new sub-directory
-                try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true,
+                try FileManager.default.createDirectory(at: directoryURL,
+                                                        withIntermediateDirectories: true,
                                                         attributes: nil)
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
             } catch {

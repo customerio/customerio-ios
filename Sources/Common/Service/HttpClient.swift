@@ -38,8 +38,10 @@ public class CIOHttpClient: HttpClient {
         deviceInfo: DeviceInfo
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(siteId: siteId, apiKey: sdkCredentialsStore.credentials.apiKey,
-                                       deviceInfo: deviceInfo, sdkWrapperConfig: configStore.config._sdkWrapperConfig)
+        self.session = Self.getSession(siteId: siteId,
+                                       apiKey: sdkCredentialsStore.credentials.apiKey,
+                                       deviceInfo: deviceInfo,
+                                       sdkWrapperConfig: configStore.config._sdkWrapperConfig)
         self.baseUrls = configStore.config.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
@@ -80,7 +82,9 @@ public class CIOHttpClient: HttpClient {
 
                 let statusCode = response.statusCode
                 guard statusCode < 300 else {
-                    return self.handleUnsuccessfulStatusCodeResponse(statusCode: statusCode, data: data, params: params,
+                    return self.handleUnsuccessfulStatusCodeResponse(statusCode: statusCode,
+                                                                     data: data,
+                                                                     params: params,
                                                                      onComplete: onComplete)
                 }
 

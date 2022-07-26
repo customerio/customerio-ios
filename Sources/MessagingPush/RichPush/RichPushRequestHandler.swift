@@ -12,7 +12,7 @@ internal class RichPushRequestHandler {
 
     func startRequest(
         _ request: UNNotificationRequest,
-        content: PushContent,
+        content: CustomerIOParsedPushPayload,
         siteId: SiteId,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
@@ -24,7 +24,9 @@ internal class RichPushRequestHandler {
         let diGraph = DIGraph.getInstance(siteId: siteId)
         let httpClient = diGraph.httpClient
 
-        let newRequest = RichPushRequest(pushContent: content, request: request, httpClient: httpClient,
+        let newRequest = RichPushRequest(pushContent: content,
+                                         request: request,
+                                         httpClient: httpClient,
                                          completionHandler: completionHandler)
         requests[requestId] = newRequest
 

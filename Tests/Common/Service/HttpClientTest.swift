@@ -26,8 +26,10 @@ class HttpClientTest: UnitTest {
 
         configStoreMock.config = SdkConfig()
 
-        client = CIOHttpClient(siteId: SiteId.random, sdkCredentialsStore: credentialsStoreMock,
-                               configStore: configStoreMock, jsonAdapter: jsonAdapter,
+        client = CIOHttpClient(siteId: SiteId.random,
+                               sdkCredentialsStore: credentialsStoreMock,
+                               configStore: configStoreMock,
+                               jsonAdapter: jsonAdapter,
                                httpRequestRunner: requestRunnerMock,
                                globalDataStore: globalDataStoreMock,
                                logger: log,
@@ -111,7 +113,8 @@ class HttpClientTest: UnitTest {
         let expected = #"{ "message": "Success!" }"#.data!
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(expected, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+            onComplete(expected,
+                       HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
                        nil)
         }
 
@@ -153,7 +156,8 @@ class HttpClientTest: UnitTest {
         globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
 
         requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(Data(), HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+            onComplete(Data(),
+                       HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
                        nil)
         }
 
@@ -216,7 +220,9 @@ class HttpClientTest: UnitTest {
     // MARK: test 500/5xx status codes
 
     func test_request_given500_expectRetryUntilSuccessful() {
-        let successfulHttpRequestResponse = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+        let successfulHttpRequestResponse = HTTPURLResponse(url: url,
+                                                            statusCode: 200,
+                                                            httpVersion: nil,
                                                             headerFields: nil)
         let failedHttpRequestResponse = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)
         var httpRequestRunnerResponse = failedHttpRequestResponse

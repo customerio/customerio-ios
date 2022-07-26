@@ -67,7 +67,8 @@ public class CioQueueRunRequest: QueueRunRequest {
             logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
 
             // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
-            return goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
+            return goToNextTask(queueInventory: queueInventory,
+                                queryTotalNumberTasks: queryTotalNumberTasks,
                                 lastFailedTask: nextTaskToRunInventoryItem)
         }
 
@@ -91,7 +92,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                 self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
                 _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
-                return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
+                return self.goToNextTask(queueInventory: queueInventory,
+                                         queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nil)
             case .failure(let error):
                 self.logger
@@ -106,7 +108,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                     """)
 
                     self.logger.info("queue is quitting early because all HTTP requests are paused.")
-                    return self.goToNextTask(queueInventory: [], queryTotalNumberTasks: queryTotalNumberTasks,
+                    return self.goToNextTask(queueInventory: [],
+                                             queryTotalNumberTasks: queryTotalNumberTasks,
                                              lastFailedTask: nil)
                 } else {
                     let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
@@ -120,7 +123,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                                             runResults: newRunResults)
                 }
 
-                return self.goToNextTask(queueInventory: queueInventory, queryTotalNumberTasks: queryTotalNumberTasks,
+                return self.goToNextTask(queueInventory: queueInventory,
+                                         queryTotalNumberTasks: queryTotalNumberTasks,
                                          lastFailedTask: nextTaskToRunInventoryItem)
             }
         }
@@ -133,7 +137,8 @@ public class CioQueueRunRequest: QueueRunRequest {
     ) {
         var newInventory = queueInventory
         newInventory.removeFirst()
-        runTasks(queueInventory: newInventory, queryTotalNumberTasks: queryTotalNumberTasks,
+        runTasks(queueInventory: newInventory,
+                 queryTotalNumberTasks: queryTotalNumberTasks,
                  lastFailedTask: lastFailedTask)
     }
 }

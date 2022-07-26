@@ -149,7 +149,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
         _ = backgroundQueue.addTask(type: QueueTaskType.trackPushMetric.rawValue,
-                                    data: MetricRequest(deliveryId: deliveryID, event: event, deviceToken: deviceToken,
+                                    data: MetricRequest(deliveryId: deliveryID,
+                                                        event: event,
+                                                        deviceToken: deviceToken,
                                                         timestamp: Date()))
     }
 
@@ -167,7 +169,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    internal func cleanup(pushContent: PushContent) {
+    // There are files that are created just for displaying a rich push. After a push is interacted with, those files are no longer needed.
+    // This function's job is to cleanup after a push is no longer being displayed.
+    internal func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
         pushContent.cioAttachments.forEach { attachment in
             let localFilePath = attachment.url
 

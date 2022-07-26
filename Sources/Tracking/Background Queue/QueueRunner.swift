@@ -5,7 +5,9 @@ import Foundation
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
-        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger,
+        super.init(siteId: siteId,
+                   jsonAdapter: jsonAdapter,
+                   logger: logger,
                    httpClient: httpClient)
     }
 
@@ -30,7 +32,8 @@ extension TrackingQueueRunner {
         }
 
         let httpParams = HttpRequestParams(endpoint: .identifyCustomer(identifier: taskData.identifier),
-                                           headers: nil, body: taskData.attributesJsonString?.data)
+                                           headers: nil,
+                                           body: taskData.attributesJsonString?.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
@@ -41,7 +44,8 @@ extension TrackingQueueRunner {
         }
 
         let httpParams = HttpRequestParams(endpoint: .trackCustomerEvent(identifier: taskData.identifier),
-                                           headers: nil, body: taskData.attributesJsonString.data)
+                                           headers: nil,
+                                           body: taskData.attributesJsonString.data)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
