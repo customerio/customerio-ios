@@ -24,8 +24,10 @@ public struct IdentifyRequestBody: Codable, Equatable {
 
 public extension IdentifyRequestBody {
     static func random(update: Bool = false) -> IdentifyRequestBody {
-        IdentifyRequestBody(email: EmailAddress.randomEmail,
-                            name: IdentifyRequestBody.Name(firstName: String.random, lastName: String.random),
-                            update: update)
+        IdentifyRequestBody(
+            email: EmailAddress.randomEmail,
+            name: IdentifyRequestBody.Name(firstName: String.random, lastName: String.random),
+            update: update
+        )
     }
 }

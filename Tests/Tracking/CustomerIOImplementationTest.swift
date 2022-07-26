@@ -54,8 +54,10 @@ class CustomerIOImplementationTest: UnitTest {
 
     func test_identify_expectSetNewProfileInDeviceStorage() {
         let givenIdentifier = String.random
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         XCTAssertNil(profileStoreMock.identifier)
 
@@ -68,8 +70,10 @@ class CustomerIOImplementationTest: UnitTest {
         let givenIdentifier = String.random
         let givenBody = ["first_name": "Dana"]
 
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
@@ -87,8 +91,10 @@ class CustomerIOImplementationTest: UnitTest {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = String.random
         profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.identify(identifier: givenIdentifier)
 
@@ -101,8 +107,10 @@ class CustomerIOImplementationTest: UnitTest {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = givenIdentifier
         profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.identify(identifier: givenIdentifier)
 
@@ -112,8 +120,10 @@ class CustomerIOImplementationTest: UnitTest {
     func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
         let givenIdentifier = String.random
         profileStoreMock.identifier = nil
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.identify(identifier: givenIdentifier)
 
@@ -176,8 +186,10 @@ class CustomerIOImplementationTest: UnitTest {
         let givenIdentifier = String.random
         let givenData = ["first_name": "Dana"]
         profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.track(name: String.random, data: givenData)
 
@@ -196,8 +208,10 @@ class CustomerIOImplementationTest: UnitTest {
     func test_track_givenDataNil_expectSaveEmptyRequestData() {
         let givenIdentifier = String.random
         profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         let data: EmptyRequestBody? = nil
         customerIO.track(name: String.random, data: data)
@@ -226,8 +240,10 @@ class CustomerIOImplementationTest: UnitTest {
         let givenIdentifier = String.random
         let givenData = ["first_name": "Dana"]
         profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true,
-                                                  queueStatus: QueueStatus.successAddingSingleTask)
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
 
         customerIO.screen(name: String.random, data: givenData)
 

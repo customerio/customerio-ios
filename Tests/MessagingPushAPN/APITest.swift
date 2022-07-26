@@ -29,15 +29,21 @@ class MessagingPushAPNAPITest: UnitTest {
         mock.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
         instance.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
 
-        MessagingPush.shared.application("",
-                                         didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                                             .notInitialized)
-        mock.application("",
-                         didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                             .notInitialized)
-        instance.application("",
-                             didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                                 .notInitialized)
+        MessagingPush.shared.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
+        mock.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
+        instance.application(
+            "",
+            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
+                .notInitialized
+        )
 
         MessagingPush.shared.deleteDeviceToken()
         instance.deleteDeviceToken()
@@ -53,15 +59,21 @@ class MessagingPushAPNAPITest: UnitTest {
 
         #if canImport(UserNotifications)
         MessagingPush.shared
-            .didReceive(UNNotificationRequest(identifier: "",
-                                              content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
-        mock.didReceive(UNNotificationRequest(identifier: "",
-                                              content: UNNotificationContent(),
-                                              trigger: nil)) { _ in }
-        instance.didReceive(UNNotificationRequest(identifier: "",
-                                                  content: UNNotificationContent(),
-                                                  trigger: nil)) { _ in }
+            .didReceive(UNNotificationRequest(
+                identifier: "",
+                content: UNNotificationContent(),
+                trigger: nil
+            )) { _ in }
+        mock.didReceive(UNNotificationRequest(
+            identifier: "",
+            content: UNNotificationContent(),
+            trigger: nil
+        )) { _ in }
+        instance.didReceive(UNNotificationRequest(
+            identifier: "",
+            content: UNNotificationContent(),
+            trigger: nil
+        )) { _ in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
         instance.serviceExtensionTimeWillExpire()
@@ -74,13 +86,17 @@ class MessagingPushAPNAPITest: UnitTest {
 
         #if canImport(UserNotifications)
         // Cannot guarantee instance or mock will have userNotificationCenter() function as that function is not available to app extensions.
-        _ = MessagingPush.shared.userNotificationCenter(.current(),
-                                                        didReceive: UNNotificationResponse.testInstance,
-                                                        withCompletionHandler: {})
+        _ = MessagingPush.shared.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: {}
+        )
         // custom handler
-        let pushContent: CustomerIOParsedPushPayload? = MessagingPush.shared.userNotificationCenter(.current(),
-                                                                                                    didReceive: UNNotificationResponse
-                                                                                                        .testInstance)
+        let pushContent: CustomerIOParsedPushPayload? = MessagingPush.shared.userNotificationCenter(
+            .current(),
+            didReceive: UNNotificationResponse
+                .testInstance
+        )
 
         // make sure all properties that a customer might care about are all public
         _ = pushContent?.notificationContent

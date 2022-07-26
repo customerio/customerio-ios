@@ -185,7 +185,9 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.postInitialize(siteId: siteId)
 
         Self.shared.logger?
-            .info("shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)")
+            .info(
+                "shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)"
+            )
     }
 
     /**

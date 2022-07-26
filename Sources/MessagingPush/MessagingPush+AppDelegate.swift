@@ -22,8 +22,11 @@ public extension MessagingPush {
             return false
         }
 
-        return implementation.userNotificationCenter(center, didReceive: response,
-                                                     withCompletionHandler: completionHandler)
+        return implementation.userNotificationCenter(
+            center,
+            didReceive: response,
+            withCompletionHandler: completionHandler
+        )
     }
 
     func userNotificationCenter(
@@ -86,8 +89,10 @@ extension MessagingPushImplementation {
 
         // Time to handle rich push notifications.
         guard let pushContent = CustomerIOParsedPushPayload
-            .parse(notificationContent: response.notification.request.content,
-                   jsonAdapter: jsonAdapter)
+            .parse(
+                notificationContent: response.notification.request.content,
+                jsonAdapter: jsonAdapter
+            )
         else {
             // push does not contain a CIO rich payload, so end early
             return nil
