@@ -1,3 +1,16 @@
+## [1.2.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.1...1.2.0-alpha.2) (2022-07-26)
+
+
+### Features
+
+* allow option to handle deep link yourself ([#177](https://github.com/customerio/customerio-ios/issues/177)) ([b8167ea](https://github.com/customerio/customerio-ios/commit/b8167ea6c34f5f863b597ee7e365377ff5c33dea))
+
+
+### Bug Fixes
+
+* cocoapods compiling of SDK ([a20e583](https://github.com/customerio/customerio-ios/commit/a20e58342bf5175cd42934cb778cedd1402dcb0f))
+* compile sdk without xcode error app extensions ([#185](https://github.com/customerio/customerio-ios/issues/185)) ([5fc0fd5](https://github.com/customerio/customerio-ios/commit/5fc0fd5809ac6be4002605bb28a7649b664272f1))
+
 ## [1.2.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.1.1...1.2.0-alpha.1) (2022-07-25)
 
 
