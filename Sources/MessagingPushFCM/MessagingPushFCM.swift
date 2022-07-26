@@ -6,6 +6,9 @@ import Foundation
 import UserNotifications
 #endif
 
+// Some functions are copied from MessagingPush because
+// 1. This allows the generated mock to contain these functions
+// 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushFCM`.
 public protocol MessagingPushFCMInstance: AutoMockable {
     func registerDeviceToken(fcmToken: String?)
 
@@ -21,9 +24,6 @@ public protocol MessagingPushFCMInstance: AutoMockable {
         didFailToRegisterForRemoteNotificationsWithError error: Error
     )
 
-    // Some functions are copied from MessagingPush because
-    // 1. This allows the generated mock to contain these functions
-    // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
     func deleteDeviceToken()
 
     func trackMetric(
@@ -43,33 +43,12 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 
     // sourcery:IfCanImport=UserNotifications
     func serviceExtensionTimeWillExpire()
-
-    // sourcery:Name=userNotificationCenterReceivedResponseCustomHandler
-    // sourcery:IfCanImport=UserNotifications
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload?
-
-    // sourcery:Name=userNotificationCenterReceivedResponse
-    // sourcery:IfCanImport=UserNotifications
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool
     #endif
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
-    internal let messagingPush: MessagingPushInstance
+    internal let messagingPush: MessagingPush
     public let customerIO: CustomerIOInstance!
-
-    // for testing purposes
-    internal init(messagingPush: MessagingPushInstance, customerIO: CustomerIOInstance) {
-        self.messagingPush = messagingPush
-        self.customerIO = customerIO
-    }
 
     public init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
@@ -124,11 +103,13 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         messagingPush.serviceExtensionTimeWillExpire()
     }
 
+    @available(iOSApplicationExtension, unavailable)
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                        didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
         messagingPush.userNotificationCenter(center, didReceive: response)
     }
 
+    @available(iOSApplicationExtension, unavailable)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -138,6 +119,3 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
     #endif
 }
-
-// sourcery: InjectRegister = "DiPlaceholder"
-internal class DiPlaceholder {}

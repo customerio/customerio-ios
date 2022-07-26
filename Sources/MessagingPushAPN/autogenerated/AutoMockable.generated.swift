@@ -133,20 +133,6 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
         #endif
 
         mockCalled = false // do last as resetting properties above can make this true
-        #if canImport(UserNotifications)
-        userNotificationCenterReceivedResponseCustomHandlerCallsCount = 0
-        userNotificationCenterReceivedResponseCustomHandlerReceivedArguments = nil
-        userNotificationCenterReceivedResponseCustomHandlerReceivedInvocations = []
-        #endif
-
-        mockCalled = false // do last as resetting properties above can make this true
-        #if canImport(UserNotifications)
-        userNotificationCenterReceivedResponseCallsCount = 0
-        userNotificationCenterReceivedResponseReceivedArguments = nil
-        userNotificationCenterReceivedResponseReceivedInvocations = []
-        #endif
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - registerDeviceToken
@@ -344,97 +330,6 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
         mockCalled = true
         serviceExtensionTimeWillExpireCallsCount += 1
         serviceExtensionTimeWillExpireClosure?()
-    }
-    #endif
-
-    // MARK: - userNotificationCenter
-
-    #if canImport(UserNotifications)
-    /// Number of times the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCustomHandlerCallsCount = 0
-    /// `true` if the function was ever called.
-    public var userNotificationCenterReceivedResponseCustomHandlerCalled: Bool {
-        userNotificationCenterReceivedResponseCustomHandlerCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedArguments: (center: UNUserNotificationCenter,
-                                                                                                   response: UNNotificationResponse)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCustomHandlerReceivedInvocations: [(center: UNUserNotificationCenter,
-                                                                                                      response: UNNotificationResponse)] =
-        [
-        ]
-    /// Value to return from the mocked function.
-    public var userNotificationCenterReceivedResponseCustomHandlerReturnValue: CustomerIOParsedPushPayload?
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `userNotificationCenterReceivedResponseCustomHandlerReturnValue`
-     */
-    public var userNotificationCenterReceivedResponseCustomHandlerClosure: ((
-        UNUserNotificationCenter,
-        UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload?)?
-
-    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                       didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload?
-    {
-        mockCalled = true
-        userNotificationCenterReceivedResponseCustomHandlerCallsCount += 1
-        userNotificationCenterReceivedResponseCustomHandlerReceivedArguments = (center: center, response: response)
-        userNotificationCenterReceivedResponseCustomHandlerReceivedInvocations
-            .append((center: center, response: response))
-        return userNotificationCenterReceivedResponseCustomHandlerClosure
-            .map { $0(center, response) } ?? userNotificationCenterReceivedResponseCustomHandlerReturnValue
-    }
-    #endif
-
-    // MARK: - userNotificationCenter
-
-    #if canImport(UserNotifications)
-    /// Number of times the function was called.
-    public private(set) var userNotificationCenterReceivedResponseCallsCount = 0
-    /// `true` if the function was ever called.
-    public var userNotificationCenterReceivedResponseCalled: Bool {
-        userNotificationCenterReceivedResponseCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedResponseReceivedArguments: (center: UNUserNotificationCenter,
-                                                                                      response: UNNotificationResponse,
-                                                                                      completionHandler: () -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedResponseReceivedInvocations: [(center: UNUserNotificationCenter,
-                                                                                         response: UNNotificationResponse,
-                                                                                         completionHandler: ()
-                                                                                             -> Void)] = []
-    /// Value to return from the mocked function.
-    public var userNotificationCenterReceivedResponseReturnValue: Bool!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `userNotificationCenterReceivedResponseReturnValue`
-     */
-    public var userNotificationCenterReceivedResponseClosure: ((UNUserNotificationCenter, UNNotificationResponse,
-                                                                () -> Void) -> Bool)?
-
-    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
-        mockCalled = true
-        userNotificationCenterReceivedResponseCallsCount += 1
-        userNotificationCenterReceivedResponseReceivedArguments = (center: center,
-                                                                   response: response,
-                                                                   completionHandler: completionHandler)
-        userNotificationCenterReceivedResponseReceivedInvocations
-            .append((center: center, response: response, completionHandler: completionHandler))
-        return userNotificationCenterReceivedResponseClosure
-            .map { $0(center, response, completionHandler) } ?? userNotificationCenterReceivedResponseReturnValue
     }
     #endif
 }

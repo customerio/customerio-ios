@@ -51,10 +51,8 @@ public protocol CustomerIOInstance: AutoMockable {
     var profileAttributes: [String: Any] { get set }
     var deviceAttributes: [String: Any] { get set }
 
-    func config(
-        // sourcery:SkipParamCapture=true
-        _ handler: (inout SdkConfig) -> Void
-    )
+    // Any of the config functions not needed for mocking because config is designed to be called during application runtime during app startup.
+    // Also, config() is not available for app extensions so we must make this function optional to inherit.
 }
 
 public extension CustomerIOInstance {
@@ -169,17 +167,14 @@ public class CustomerIO: CustomerIOInstance {
         self.implementation = CustomerIOImplementation(siteId: siteId)
 
         postInitialize(siteId: siteId)
+
+        logger?.info("Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)")
     }
 
-    /**
-     Initialize the shared `instance` of `CustomerIO`.
-     Call this function when your app launches, before using `CustomerIO.instance`.
-     */
     public static func initialize(
         siteId: String,
         apiKey: String,
-        region: Region = Region.US,
-        configure configureHandler: ((inout SdkConfig) -> Void)? = nil
+        region: Region = Region.US
     ) {
         Self.shared.globalData.sharedInstanceSiteId = siteId
 
@@ -187,14 +182,28 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
 
-        if let configureHandler = configureHandler {
-            // configure before post initialize steps so we can make accurate logs based on configuration options.
-            Self.config(configureHandler)
-        }
-
         Self.shared.postInitialize(siteId: siteId)
 
-        Self.shared.logger?.info("shared Customer.io SDK instance initialized and ready to use for site id: \(siteId)")
+        Self.shared.logger?
+            .info("shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)")
+    }
+
+    /**
+     Initialize the shared `instance` of `CustomerIO`.
+     Call this function when your app launches, before using `CustomerIO.instance`.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    public static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region = Region.US,
+        configure configureHandler: ((inout SdkConfig) -> Void)?
+    ) {
+        Self.initialize(siteId: siteId, apiKey: apiKey, region: region)
+
+        if let configureHandler = configureHandler {
+            Self.config(configureHandler)
+        }
     }
 
     private func getActiveWorkspaceInstances() -> [CustomerIO] {
@@ -232,8 +241,6 @@ public class CustomerIO: CustomerIOInstance {
     private func postInitialize(siteId: String) {
         let diGraph = DIGraph.getInstance(siteId: siteId)
 
-        diGraph.logger.info("Customer.io SDK \(SdkVersion.version) initialized successfully.")
-
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
         hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
@@ -260,6 +267,7 @@ public class CustomerIO: CustomerIOInstance {
      }
      ```
      */
+    @available(iOSApplicationExtension, unavailable)
     public static func config(_ handler: (inout SdkConfig) -> Void) {
         shared.config(handler)
     }
@@ -277,6 +285,7 @@ public class CustomerIO: CustomerIOInstance {
      }
      ```
      */
+    @available(iOSApplicationExtension, unavailable)
     public func config(_ handler: (inout SdkConfig) -> Void) {
         implementation?.config(handler)
     }

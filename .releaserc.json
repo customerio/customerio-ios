@@ -13,7 +13,7 @@
             "preset": "conventionalcommits"
         }],
         ["@semantic-release/exec", {
-            "verifyReleaseCmd": "./scripts/update_version.sh ${nextRelease.version} Sources/Common/Version.swift && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
+            "verifyReleaseCmd": "./scripts/update-version.sh ${nextRelease.version}"
         }],
         ["@semantic-release/changelog", {
             "changelogFile": "CHANGELOG.md"

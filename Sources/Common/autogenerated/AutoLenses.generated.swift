@@ -62,24 +62,19 @@ func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
 extension QueueTask {
     static let storageIdLens = Lens<QueueTask, String>(get: { $0.storageId },
                                                        set: { storageId, existing in
-                                                           QueueTask(storageId: storageId,
-                                                                     type: existing.type,
+                                                           QueueTask(storageId: storageId, type: existing.type,
                                                                      data: existing.data,
                                                                      runResults: existing.runResults)
                                                        })
     static let typeLens = Lens<QueueTask, String>(get: { $0.type },
                                                   set: { type, existing in
-                                                      QueueTask(storageId: existing.storageId,
-                                                                type: type,
-                                                                data: existing.data,
-                                                                runResults: existing.runResults)
+                                                      QueueTask(storageId: existing.storageId, type: type,
+                                                                data: existing.data, runResults: existing.runResults)
                                                   })
     static let dataLens = Lens<QueueTask, Data>(get: { $0.data },
                                                 set: { data, existing in
-                                                    QueueTask(storageId: existing.storageId,
-                                                              type: existing.type,
-                                                              data: data,
-                                                              runResults: existing.runResults)
+                                                    QueueTask(storageId: existing.storageId, type: existing.type,
+                                                              data: data, runResults: existing.runResults)
                                                 })
     static let runResultsLens = Lens<QueueTask, QueueTaskRunResults>(get: { $0.runResults },
                                                                      set: { runResults, existing in
@@ -160,43 +155,28 @@ extension QueueTaskMetadata {
 
     // Convenient set functions to edit a property of the immutable object
     func taskPersistedIdSet(_ taskPersistedId: String) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember, createdAt: createdAt)
     }
 
     func taskTypeSet(_ taskType: String) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember, createdAt: createdAt)
     }
 
     func groupStartSet(_ groupStart: String?) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember, createdAt: createdAt)
     }
 
     func groupMemberSet(_ groupMember: [String]?) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember, createdAt: createdAt)
     }
 
     func createdAtSet(_ createdAt: Date) -> QueueTaskMetadata {
-        QueueTaskMetadata(taskPersistedId: taskPersistedId,
-                          taskType: taskType,
-                          groupStart: groupStart,
-                          groupMember: groupMember,
-                          createdAt: createdAt)
+        QueueTaskMetadata(taskPersistedId: taskPersistedId, taskType: taskType, groupStart: groupStart,
+                          groupMember: groupMember, createdAt: createdAt)
     }
 }
 
