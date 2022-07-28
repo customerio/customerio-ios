@@ -14,7 +14,6 @@ public struct SdkWrapperConfig {
     public enum Source: String {
         case reactNative = "ReactNative"
     }
-    
     public init(source: Source, version: String) {
         self.source = source
         self.version = version
