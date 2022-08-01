@@ -16,16 +16,9 @@ class QueueTest: UnitTest {
         super.setUp()
 
         sdkConfigStoreMock.config = SdkConfig()
-
-        queue = CioQueue(
-            siteId: testSiteId,
-            storage: storageMock,
-            runRequest: runRequestMock,
-            jsonAdapter: jsonAdapter,
-            logger: log,
-            sdkConfigStore: sdkConfigStoreMock,
-            queueTimer: queueTimerMock
-        )
+        queue = CioQueue(siteId: testSiteId, storage: storageMock, runRequest: runRequestMock, jsonAdapter: jsonAdapter,
+                         logger: log, sdkConfigStore: sdkConfigStoreMock, queueTimer: queueTimerMock,
+                         dateUtil: dateUtilStub)
     }
 
     // MARK: addTask

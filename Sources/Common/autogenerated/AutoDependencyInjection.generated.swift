@@ -183,15 +183,8 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(
-            siteId: siteId,
-            storage: queueStorage,
-            runRequest: queueRunRequest,
-            jsonAdapter: jsonAdapter,
-            logger: logger,
-            sdkConfigStore: sdkConfigStore,
-            queueTimer: singleScheduleTimer
-        )
+        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter,
+                 logger: logger, sdkConfigStore: sdkConfigStore, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // QueueQueryRunner
