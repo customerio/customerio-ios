@@ -25,8 +25,7 @@ class TrackingAPITest: UnitTest {
 
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
-    func test_allPublicTrackingFunctions()
-    throws {
+    func test_allPublicTrackingFunctions() throws {
         try skipRunningTest()
 
         // Initialize
@@ -78,6 +77,9 @@ class TrackingAPITest: UnitTest {
         mock.screen(name: "", data: encodableData)
         instance.screen(name: "", data: encodableData)
 
+        checkDeviceProfileAttributes()
+    }
+    func checkDeviceProfileAttributes() {
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
         mock.profileAttributes = dictionaryData
