@@ -18,10 +18,15 @@ let package = Package(
         // target name is the name used for `import X`
         .library(name: "Tracking", targets: ["CioTracking"]),
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
-        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"])
+        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+        .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
-    dependencies: [],
-    targets: [
+    dependencies: [
+        // Help for the format of declaring SPM dependencies:
+        // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
+        .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.1.2"),
+    ],
+    targets: [        
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
         .target(name: "Common",
@@ -63,6 +68,14 @@ let package = Package(
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
-                    path: "Tests/MessagingPushFCM")
+                    path: "Tests/MessagingPushFCM"),
+
+        // Messaging in-app
+        .target(name: "CioMessagingInApp",
+                dependencies: ["Common", "CioTracking", "Gist"],
+                path: "Sources/MessagingInApp"),
+        .testTarget(name: "MessagingInAppTests",
+                    dependencies: ["CioMessagingInApp", "SharedTests"],
+                    path: "Tests/MessagingInApp"),
     ]
 )

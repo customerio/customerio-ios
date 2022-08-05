@@ -6,7 +6,7 @@ import FoundationNetworking
 /**
  Exists to be able to mock http requests so we can test our HttpClient's response handling logic.
  */
-public protocol HttpRequestRunner: AutoMockable {
+internal protocol HttpRequestRunner: AutoMockable {
     func request(
         _ params: HttpRequestParams,
         httpBaseUrls: HttpBaseUrls,

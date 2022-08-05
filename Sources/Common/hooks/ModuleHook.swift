@@ -7,6 +7,7 @@ public protocol ModuleHookProvider: AutoMockable {
     var profileIdentifyHook: ProfileIdentifyHook? { get }
     var queueRunnerHook: QueueRunnerHook? { get }
     var deviceAttributesHook: DeviceAttributesHook? { get }
+    var screenTrackingHook: ScreenTrackingHook? { get }
 }
 
 // hooks all dealing with events related to profiles being identified.
@@ -32,4 +33,9 @@ public protocol QueueRunnerHook: AutoMockable {
 // Hook to send custom device attributes to workspace
 public protocol DeviceAttributesHook: AutoMockable {
     func customDeviceAttributesAdded(attributes: [String: Any])
+}
+
+// Hook for when a screen view track event is sent
+public protocol ScreenTrackingHook: AutoMockable {
+    func screenViewed(name: String)
 }

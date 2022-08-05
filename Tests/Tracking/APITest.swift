@@ -32,6 +32,10 @@ class TrackingAPITest: UnitTest {
         CustomerIO.initialize(siteId: "", apiKey: "")
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
 
+        // Reference some objects that should be public in the Tracking module
+        let region: Region = .EU
+        let loglevel: CioLogLevel = .debug
+
         // config
         CustomerIO.config { _ in }
 
@@ -73,6 +77,9 @@ class TrackingAPITest: UnitTest {
         mock.screen(name: "", data: encodableData)
         instance.screen(name: "", data: encodableData)
 
+        checkDeviceProfileAttributes()
+    }
+    func checkDeviceProfileAttributes() {
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
         mock.profileAttributes = dictionaryData

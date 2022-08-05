@@ -187,7 +187,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
-        trackEvent(type: .event, name: name, data: data)
+        _ = trackEvent(type: .event, name: name, data: data)
     }
 
     public func track(name: String, data: [String: Any]) {
@@ -202,14 +202,21 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        trackEvent(type: .screen, name: name, data: data)
+        let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
+
+        if eventWasTracked {
+            hooks.screenViewHooks.forEach { hook in
+                hook.screenViewed(name: name)
+            }
+        }
     }
 }
 
 extension CustomerIOImplementation {
+    // returns if an event was tracked. If no event was tracked (request was ignored), false will be returned.
     private func trackEvent<RequestBody: Encodable>(type: EventType,
                                                     name: String,
-                                                    data: RequestBody?) {
+                                                    data: RequestBody?) -> Bool {
         let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
 
         logger.info("\(eventTypeDescription) \(name)")
@@ -218,7 +225,7 @@ extension CustomerIOImplementation {
             // XXX: when we have anonymous profiles in SDK,
             // we can decide to not ignore events when a profile is not logged yet.
             logger.info("ignoring \(eventTypeDescription) \(name) because no profile currently identified")
-            return
+            return false
         }
 
         // JSON encoding with `data = nil` returns `"data":null`.
@@ -228,7 +235,7 @@ extension CustomerIOImplementation {
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
         guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
-            return
+            return false
         }
         logger.debug("\(eventTypeDescription) attributes \(jsonBodyString)")
 
@@ -238,12 +245,12 @@ extension CustomerIOImplementation {
         )
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(
-            type: QueueTaskType.trackEvent.rawValue,
-            data: queueData,
-            blockingGroups: [
-                .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
-            ]
-        )
+        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
+                                    data: queueData,
+                                    blockingGroups: [
+                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
+                                    ])
+
+        return true
     }
 }
