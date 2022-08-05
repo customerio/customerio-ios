@@ -1,3 +1,15 @@
+## [1.2.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.2...1.2.0-alpha.3) (2022-08-05)
+
+
+### Features
+
+* in-app into develop to promote to alpha ([2b2712c](https://github.com/customerio/customerio-ios/commit/2b2712c09be4baf7dabd27af5af00d8a5e2d859d))
+
+
+### Bug Fixes
+
+* make sdkwrapperconfig accessible ([#188](https://github.com/customerio/customerio-ios/issues/188)) ([f996a68](https://github.com/customerio/customerio-ios/commit/f996a682dd1eedfc4f37bbd82644541423f4b8d6))
+
 ## [1.2.0-alpha.2](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.1...1.2.0-alpha.2) (2022-07-26)
 
 
