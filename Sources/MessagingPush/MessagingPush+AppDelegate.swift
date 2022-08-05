@@ -1,4 +1,5 @@
 import Foundation
+import Common
 #if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
 import UserNotifications

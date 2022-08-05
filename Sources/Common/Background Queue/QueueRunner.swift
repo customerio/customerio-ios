@@ -25,6 +25,14 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        if let queueTaskType = QueueTaskType(rawValue: task.type) {
+            switch queueTaskType {
+            case .trackDeliveryMetric: trackDeliveryMetric(task, onComplete: onComplete)
+            }
+
+            return
+        }
+
         var hookHandled = false
 
         hooks.queueRunnerHooks.forEach { hook in
@@ -42,5 +50,23 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
 
             onComplete(.failure(.noRequestMade(nil)))
         }
+    }
+}
+
+private extension CioQueueRunner {
+    private func trackDeliveryMetric(_ task: QueueTask,
+                                     onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: TrackDeliveryEventRequestBody.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        guard let bodyData = jsonAdapter.toJson(taskData) else {
+            return
+        }
+
+        let httpParams = HttpRequestParams(endpoint: .trackDeliveryMetrics,
+                                           headers: nil, body: bodyData)
+
+        performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 }

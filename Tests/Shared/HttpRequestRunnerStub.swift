@@ -1,4 +1,4 @@
-import Common
+@testable import Common
 import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking

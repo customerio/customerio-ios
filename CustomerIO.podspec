@@ -41,4 +41,8 @@ Pod::Spec.new do |spec|
   spec.subspec "MessagingPushFCM" do |ss|
     ss.dependency "CustomerIOMessagingPushFCM", "= #{spec.version.to_s}"
   end
+
+  spec.subspec "MessagingInApp" do |ss|
+    ss.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
+  end
 end

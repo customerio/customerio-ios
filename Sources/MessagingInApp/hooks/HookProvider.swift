@@ -1,7 +1,8 @@
 import Common
 import Foundation
 
-class TrackingModuleHookProvider: ModuleHookProvider {
+// sourcery: InjectRegister = "ModuleHookProvider"
+class MessagingInAppModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
     private var diGraph: DIGraph {
@@ -13,11 +14,11 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        nil
+        MessagingInApp.shared
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraph.queueRunnerHook
+        nil
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {
@@ -25,6 +26,6 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
-        nil
+        MessagingInApp.shared
     }
 }
