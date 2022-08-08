@@ -30,7 +30,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tagBranchOrCommitToPush }}
       - name: Install cocoapods 
-        run: gem install cocoapods 
+        run: gem install cocoapods
+      - name: Push CustomerIOCommon
+        run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
       - name: Push CustomerIOTracking
         run: ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
       - name: Push CustomerIOMessagingPush 
