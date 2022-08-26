@@ -49,9 +49,8 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    internal let messagingPush: MessagingPush
     internal let customerIO: CustomerIOInstance!
-
+    internal let messagingPush: MessagingPush
     public init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
         self.messagingPush = MessagingPush(customerIO: customerIO)
@@ -89,7 +88,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+        (messagingPush as MessagingPushInstance).didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
@@ -97,7 +96,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      Stop all network requests and modifying and show the push for what it looks like now.
      */
     public func serviceExtensionTimeWillExpire() {
-        messagingPush.serviceExtensionTimeWillExpire()
+        (messagingPush as MessagingPushInstance).serviceExtensionTimeWillExpire()
     }
 
     @available(iOSApplicationExtension, unavailable)
