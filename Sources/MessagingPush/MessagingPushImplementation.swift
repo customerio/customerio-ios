@@ -80,12 +80,14 @@ internal class MessagingPushImplementation: MessagingPushInstance {
             return
         }
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
-        // and iOS should always be non-nil.
-        guard let deviceOsName = deviceInfo.osName else {
+        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check is
+        // required to prevent SDK execution for unsupported OS.
+        if deviceInfo.osName == nil {
             logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
             return
         }
-
+        // Consolidate all Apple platforms under iOS
+        let deviceOsName = "iOS"
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
 
