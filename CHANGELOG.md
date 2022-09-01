@@ -1,3 +1,11 @@
+## [1.2.0-alpha.4](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.3...1.2.0-alpha.4) (2022-09-01)
+
+
+### Bug Fixes
+
+* consolidate all apple platforms under ios ([423f050](https://github.com/customerio/customerio-ios/commit/423f05037fcfbfc7035e8317a52865b64601f8b4))
+* image not shown in rich push notification ([9fb8490](https://github.com/customerio/customerio-ios/commit/9fb8490ae7bc068dd8ab11348b5cf1290da5b79e))
+
 ## [1.2.0-alpha.3](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.2...1.2.0-alpha.3) (2022-08-05)
 
 
