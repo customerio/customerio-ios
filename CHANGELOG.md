@@ -1,3 +1,25 @@
+## [1.2.0-beta.1](https://github.com/customerio/customerio-ios/compare/1.1.1...1.2.0-beta.1) (2022-09-08)
+
+
+### Features
+
+* allow option to handle deep link yourself ([#177](https://github.com/customerio/customerio-ios/issues/177)) ([b8167ea](https://github.com/customerio/customerio-ios/commit/b8167ea6c34f5f863b597ee7e365377ff5c33dea))
+* delete expired queue tasks ([dc22280](https://github.com/customerio/customerio-ios/commit/dc22280afd3c7a9e721e7e1105954f9656cbc7ea))
+* in-app into develop to promote to alpha ([2b2712c](https://github.com/customerio/customerio-ios/commit/2b2712c09be4baf7dabd27af5af00d8a5e2d859d))
+* sdk wrappers modify user-agent ([5c127e5](https://github.com/customerio/customerio-ios/commit/5c127e5f32a16e568f4fd969094223130de42e36))
+
+
+### Bug Fixes
+
+* cocoapods compiling of SDK ([a20e583](https://github.com/customerio/customerio-ios/commit/a20e58342bf5175cd42934cb778cedd1402dcb0f))
+* compile sdk without xcode error app extensions ([#185](https://github.com/customerio/customerio-ios/issues/185)) ([5fc0fd5](https://github.com/customerio/customerio-ios/commit/5fc0fd5809ac6be4002605bb28a7649b664272f1))
+* consolidate all apple platforms under ios ([423f050](https://github.com/customerio/customerio-ios/commit/423f05037fcfbfc7035e8317a52865b64601f8b4))
+* image not shown in rich push notification ([9fb8490](https://github.com/customerio/customerio-ios/commit/9fb8490ae7bc068dd8ab11348b5cf1290da5b79e))
+* improve reliability of screen view tracking ([60e9289](https://github.com/customerio/customerio-ios/commit/60e9289930485d3394911490bf6f05c7d1af521c))
+* make sdkwrapperconfig accessible ([#188](https://github.com/customerio/customerio-ios/issues/188)) ([f996a68](https://github.com/customerio/customerio-ios/commit/f996a682dd1eedfc4f37bbd82644541423f4b8d6))
+* queue attempts to run all tasks on each run ([80f90e9](https://github.com/customerio/customerio-ios/commit/80f90e97e9f9c76e7d235b2065c799c396414236))
+* some classes not found in tracking module ([45f178e](https://github.com/customerio/customerio-ios/commit/45f178ecd670514864194611506d652a5e8cd4b9))
+
 ## [1.2.0-alpha.4](https://github.com/customerio/customerio-ios/compare/1.2.0-alpha.3...1.2.0-alpha.4) (2022-09-01)
 
 
