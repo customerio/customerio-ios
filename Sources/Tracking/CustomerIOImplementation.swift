@@ -245,11 +245,13 @@ extension CustomerIOImplementation {
         )
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
-                                    data: queueData,
-                                    blockingGroups: [
-                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
-                                    ])
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: queueData,
+            blockingGroups: [
+                .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
+            ]
+        )
 
         return true
     }

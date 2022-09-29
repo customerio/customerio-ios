@@ -1318,13 +1318,19 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
-                                                         session: URLSession,
-                                                         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    internal private(set) var requestReceivedArguments: (
+        params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
+        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
-                                                            session: URLSession,
-                                                            onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    internal private(set) var requestReceivedInvocations: [(
+        params: HttpRequestParams,
+        httpBaseUrls: HttpBaseUrls,
+        session: URLSession,
+        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1361,11 +1367,19 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession,
-                                                              onComplete: (URL?) -> Void)?
+    internal private(set) var downloadFileReceivedArguments: (
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: (URL?) -> Void
+    )?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
-                                                                 session: URLSession, onComplete: (URL?) -> Void)] = []
+    internal private(set) var downloadFileReceivedInvocations: [(
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: (URL?) -> Void
+    )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */

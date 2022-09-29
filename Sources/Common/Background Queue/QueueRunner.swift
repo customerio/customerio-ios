@@ -64,8 +64,11 @@ private extension CioQueueRunner {
             return
         }
 
-        let httpParams = HttpRequestParams(endpoint: .trackDeliveryMetrics,
-                                           headers: nil, body: bodyData)
+        let httpParams = HttpRequestParams(
+            endpoint: .trackDeliveryMetrics,
+            headers: nil,
+            body: bodyData
+        )
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }
