@@ -161,6 +161,7 @@ public class CustomerIO: CustomerIOInstance {
      This is the recommended method for code bases containing
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
+    @available(*, deprecated, message: "You must initialize Customer.io SDK using the shared instance")
     public init(siteId: String, apiKey: String, region: Region = Region.US) {
         setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
