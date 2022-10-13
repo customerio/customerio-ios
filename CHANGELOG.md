@@ -1,3 +1,10 @@
+## [1.2.0-beta.4](https://github.com/customerio/customerio-ios/compare/1.2.0-beta.3...1.2.0-beta.4) (2022-10-13)
+
+
+### Bug Fixes
+
+* restricting create own instance ([085735c](https://github.com/customerio/customerio-ios/commit/085735ca08eb21b012f586ea6008d7e732a4e66f))
+
 ## [1.2.0-beta.3](https://github.com/customerio/customerio-ios/compare/1.2.0-beta.2...1.2.0-beta.3) (2022-10-07)
 
 
