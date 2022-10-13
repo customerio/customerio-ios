@@ -209,15 +209,6 @@ public class CustomerIO: CustomerIOInstance {
         }
     }
 
-    private func getActiveWorkspaceInstances() -> [CustomerIO] {
-        InMemoryActiveWorkspaces.getInstance().activeWorkspaces.map { siteId in
-            let diGraph = DIGraph.getInstance(siteId: siteId)
-            let credentialsStore = diGraph.sdkCredentialsStore.credentials
-
-            return CustomerIO(siteId: siteId, apiKey: credentialsStore.apiKey, region: credentialsStore.region)
-        }
-    }
-
     /**
      Sets credentials on shared or non-shared instance.
      */
@@ -425,8 +416,6 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        getActiveWorkspaceInstances().forEach { _ in
-            implementation?.screen(name: name, data: data)
-        }
+        implementation?.screen(name: name, data: data)
     }
 } // swiftlint:disable:this file_length
