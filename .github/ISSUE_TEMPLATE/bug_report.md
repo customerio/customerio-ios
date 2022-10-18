@@ -12,7 +12,7 @@ assignees: ''
 **SDK version:** The SDK version that you're currently using.
 
 **Are logs available?** 
-<!-- Enable logs but using `CustomerIO.config {$0.logLevel = .debug}` when initializing the CustomerIO SDK.-->
+<!-- Enable logs by using `CustomerIO.config {$0.logLevel = .debug}` when initializing the CustomerIO SDK. Attach the logs to this issue or send them to win@customer.io to help with troubleshooting.-->
 
 **Describe the bug**
 A clear and concise description of what the bug is.
