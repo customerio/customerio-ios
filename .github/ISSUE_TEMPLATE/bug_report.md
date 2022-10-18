@@ -10,6 +10,7 @@ assignees: ''
 <!-- For time-sensitive or urgent requests, reach out to our Technical Support team at win@customer.io with the details below instead of submitting an issue here.  -->
 
 **SDK version:** The SDK version that you're currently using.
+
 **Environment:** Development or Production
 
 **Are logs available?** 
