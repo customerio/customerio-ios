@@ -21,4 +21,4 @@ assignees: ''
 <!-- If applicable, add screenshots to help explain your problem. -->
 
 **Additional context**
-<!-- Add any other context about the problem here, including links to any campaigns, broadcasts, or profiles related to this bug. -->
+<!-- Add any other context about the problem here, including links to any campaigns, broadcasts, or profiles related to this bug. If it's required or relevant, include code! -->
