@@ -1,7 +1,7 @@
 ---
 name: General Support & Troubleshooting
 about: Request help with setup or troubleshooting
-title: "<-- Include a helpful description -->"
+title: ''
 labels: 'support'
 assignees: ''
 
