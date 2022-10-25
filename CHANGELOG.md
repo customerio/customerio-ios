@@ -1,3 +1,10 @@
+### [1.2.1](https://github.com/customerio/customerio-ios/compare/1.2.0...1.2.1) (2022-10-25)
+
+
+### Bug Fixes
+
+* added expo and flutter values in source enum ([274aa1c](https://github.com/customerio/customerio-ios/commit/274aa1ca6911636e285a8a3a509a891434d16614))
+
 ## [1.2.0](https://github.com/customerio/customerio-ios/compare/1.1.1...1.2.0) (2022-10-17)
 
 
