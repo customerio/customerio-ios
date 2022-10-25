@@ -13,6 +13,8 @@ public struct SdkWrapperConfig {
     /// to expand this to include more Sources besides ones that we use internally.
     public enum Source: String {
         case reactNative = "ReactNative"
+        case expo = "Expo"
+        case flutter = "Flutter"
     }
     public init(source: Source, version: String) {
         self.source = source
