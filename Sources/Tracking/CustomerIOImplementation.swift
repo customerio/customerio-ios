@@ -214,9 +214,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
 extension CustomerIOImplementation {
     // returns if an event was tracked. If no event was tracked (request was ignored), false will be returned.
-    private func trackEvent<RequestBody: Encodable>(type: EventType,
-                                                    name: String,
-                                                    data: RequestBody?) -> Bool {
+    private func trackEvent<RequestBody: Encodable>(
+        type: EventType,
+        name: String,
+        data: RequestBody?
+    ) -> Bool {
         let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
 
         logger.info("\(eventTypeDescription) \(name)")
@@ -245,11 +247,13 @@ extension CustomerIOImplementation {
         )
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(type: QueueTaskType.trackEvent.rawValue,
-                                    data: queueData,
-                                    blockingGroups: [
-                                        .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
-                                    ])
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: queueData,
+            blockingGroups: [
+                .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
+            ]
+        )
 
         return true
     }

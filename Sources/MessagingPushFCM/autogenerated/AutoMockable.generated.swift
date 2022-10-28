@@ -153,7 +153,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var registerDeviceTokenClosure: ((String?) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `registerDeviceToken(fcmToken: String?)`. Your opportunity to return a mocked value and
+    /// check result of mock in test code.
     public func registerDeviceToken(fcmToken: String?) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
@@ -180,7 +181,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var didReceiveRegistrationTokenClosure: ((Any, String?) -> Void)?
 
-    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your
+    /// opportunity to return a mocked value and check result of mock in test code.
     public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
         mockCalled = true
         didReceiveRegistrationTokenCallsCount += 1
@@ -210,7 +212,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error) -> Void)?
 
-    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error:
+    /// Error)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         mockCalled = true
         didFailToRegisterForRemoteNotificationsCallsCount += 1
@@ -233,7 +236,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in
+    /// test code.
     public func deleteDeviceToken() {
         mockCalled = true
         deleteDeviceTokenCallsCount += 1
@@ -259,7 +263,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to
+    /// return a mocked value and check result of mock in test code.
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         mockCalled = true
         trackMetricCallsCount += 1
@@ -299,7 +304,9 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, (UNNotificationContent) -> Void) -> Bool)?
 
-    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping
+    /// (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test
+    /// code.
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,
@@ -329,7 +336,8 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var serviceExtensionTimeWillExpireClosure: (() -> Void)?
 
-    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check
+    /// result of mock in test code.
     public func serviceExtensionTimeWillExpire() {
         mockCalled = true
         serviceExtensionTimeWillExpireCallsCount += 1
