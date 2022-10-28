@@ -16,13 +16,7 @@ public class MessagingPush: MessagingPushInstance {
     public let customerIO: CustomerIOInstance!
     internal var implementation: MessagingPushImplementation?
 
-    /**
-     Create a new instance of the `MessagingPush` class.
-
-     - Parameters:
-       - customerIO: Instance of `CustomerIO` class.
-     */
-    public init(customerIO: CustomerIOInstance) {
+    internal init(customerIO: CustomerIOInstance) {
         self.customerIO = customerIO
         // XXX: customers may want to know if siteId nil. Log it to them to help debug.
         if let siteId = customerIO.siteId {

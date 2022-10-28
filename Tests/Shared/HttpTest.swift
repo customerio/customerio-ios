@@ -18,7 +18,6 @@ import XCTest
  */
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner?
-    public var customerIO: CustomerIO?
     public var deviceInfoMock = DeviceInfoMock()
     public var session: URLSession?
 
@@ -31,7 +30,6 @@ open class HttpTest: UnitTest {
          */
         if let siteId = getEnvironmentVariable("SITE_ID"), let apiKey = getEnvironmentVariable("API_KEY") {
             runner = UrlRequestHttpRequestRunner()
-            customerIO = CustomerIO(siteId: siteId, apiKey: apiKey, region: Region.US)
             session = CIOHttpClient.getSession(
                 siteId: siteId,
                 apiKey: apiKey,

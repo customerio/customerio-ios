@@ -4,9 +4,9 @@
 
 1. Make sure that the mobile app that you are testing with has SDK logging enabled. This is done with the following code:
 ```swift
-let cio = CustomerIO(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: region)
+CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: region)
 
-cio.config {
+CustomerIO.config {
     $0.logLevel = .debug
 }
 ```

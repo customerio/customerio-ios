@@ -18,21 +18,6 @@ class CustomerIOTest: UnitTest {
 
     // MARK: init
 
-    func test_init_setCredentials_expectAppendSiteId() {
-        let sharedGivenSiteId = String.random
-        let instanceGivenSiteId = String.random
-
-        CustomerIO.initialize(siteId: sharedGivenSiteId, apiKey: String.random, region: Region.EU)
-        XCTAssertEqual(CustomerIO.shared.globalData.siteIds, [sharedGivenSiteId])
-
-        _ = CustomerIO(siteId: instanceGivenSiteId, apiKey: String.random)
-
-        XCTAssertEqualEither([
-            [sharedGivenSiteId, instanceGivenSiteId],
-            [instanceGivenSiteId, sharedGivenSiteId]
-        ], actual: CustomerIO.shared.globalData.siteIds)
-    }
-
     func test_sharedInstance_expectImplementationLoadedAfterInitialize() {
         XCTAssertNil(CustomerIO.shared.implementation)
 
@@ -63,19 +48,10 @@ class CustomerIOTest: UnitTest {
         XCTAssertEqual(CustomerIO.shared.siteId, givenSiteId)
     }
 
-    func test_newInstance_expectInitializedInstance() {
-        let givenSiteId = String.random
-
-        let actual = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
-
-        XCTAssertNotNil(actual.implementation)
-        XCTAssertEqual(actual.siteId, givenSiteId)
-    }
-
     func test_initializeSdk_givenNoConfig_expectSetDefaultConfigOptions() {
         let givenSiteId = String.random
 
-        _ = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
+        CustomerIO.initialize(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
 
         let config = DIGraph.getInstance(siteId: givenSiteId).sdkConfigStore.config
 
@@ -83,21 +59,11 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_initialize_expectAddModuleHooks_expectRunCleanup() {
-        _ = CustomerIO(siteId: testSiteId, apiKey: String.random, region: Region.EU)
+        CustomerIO.initialize(siteId: testSiteId, apiKey: String.random, region: Region.EU)
 
         XCTAssertEqual(hooksManagerMock.addCallsCount, 1)
         XCTAssertEqual(hooksManagerMock.addReceivedArguments?.key, .tracking)
 
         XCTAssertEqual(cleanupRepositoryMock.cleanupCallsCount, 1)
-    }
-
-    // MARK: deinit
-
-    func test_givenNilObject_expectDeinit() {
-        var cio: CustomerIO? = CustomerIO(siteId: String.random, apiKey: String.random)
-
-        cio = nil
-
-        XCTAssertNil(cio)
     }
 }

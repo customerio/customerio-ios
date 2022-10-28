@@ -10,23 +10,21 @@ import UserNotifications
   */
 extension MessagingPush: MessagingPushAPNInstance {
     public func registerDeviceToken(apnDeviceToken: Data) {
-        MessagingPushAPN(customerIO: customerIO).registerDeviceToken(apnDeviceToken: apnDeviceToken)
+        MessagingPushAPN.shared.registerDeviceToken(apnDeviceToken: apnDeviceToken)
     }
 
     public func application(
         _ application: Any,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        MessagingPushAPN(customerIO: customerIO)
-            .application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        MessagingPushAPN.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
 
     public func application(
         _ application: Any,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        MessagingPushAPN(customerIO: customerIO)
-            .application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+        MessagingPushAPN.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
     }
 
     #if canImport(UserNotifications)
@@ -35,12 +33,11 @@ extension MessagingPush: MessagingPushAPNInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        MessagingPushAPN(customerIO: customerIO)
-            .didReceive(request, withContentHandler: contentHandler)
+        MessagingPushAPN.shared.didReceive(request, withContentHandler: contentHandler)
     }
 
     public func serviceExtensionTimeWillExpire() {
-        MessagingPushAPN(customerIO: customerIO).serviceExtensionTimeWillExpire()
+        MessagingPushAPN.shared.serviceExtensionTimeWillExpire()
     }
     #endif
 }

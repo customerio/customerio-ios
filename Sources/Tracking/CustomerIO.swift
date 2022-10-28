@@ -80,15 +80,7 @@ public extension CustomerIOInstance {
  Welcome to the Customer.io iOS SDK!
 
  This class is where you begin to use the SDK.
- You must have an instance of `CustomerIO` to use the features of the SDK.
-
- To get an instance, you have 2 options:
- 1. Use the already provided singleton shared instance: `CustomerIO.instance`.
- This method is provided for convenience and is the easiest way to get started.
-
- 2. Create your own instance: `CustomerIO(siteId: "XXX", apiKey: "XXX", region: Region.US)`
- This method is recommended for code bases containing
- automated tests, dependency injection, or sending data to multiple Workspaces.
+ You must call `CustomerIO.initialize` to use the features of the SDK.
  */
 public class CustomerIO: CustomerIOInstance {
     public var siteId: String? {
@@ -157,22 +149,9 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-     Create an instance of `CustomerIO`.
-
-     This is the recommended method for code bases containing
-     automated tests, dependency injection, or sending data to multiple Workspaces.
+     Initialize the shared `instance` of `CustomerIO`.
+     Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    @available(*, deprecated, message: "You must initialize Customer.io SDK using the shared instance")
-    public init(siteId: String, apiKey: String, region: Region = Region.US) {
-        setCredentials(siteId: siteId, apiKey: apiKey, region: region)
-
-        self.implementation = CustomerIOImplementation(siteId: siteId)
-
-        postInitialize(siteId: siteId)
-
-        logger?.info("Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)")
-    }
-
     public static func initialize(
         siteId: String,
         apiKey: String,
@@ -188,7 +167,7 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.logger?
             .info(
-                "shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)"
+                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
     }
 
