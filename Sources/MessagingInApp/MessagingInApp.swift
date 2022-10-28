@@ -110,7 +110,7 @@ extension MessagingInApp: GistDelegate {
         logger.error("error with in-app message. \(message.describeForLogs)")
     }
 
-    public func action(message: Message, currentRoute: String, action: String) {
+    public func action(message: Message, currentRoute: String, action: String, name: String) {
         logger.debug("in-app action made. \(action), \(message.describeForLogs)")
 
         // a close action does not count as a clicked action.
