@@ -1,3 +1,10 @@
+### [1.2.2](https://github.com/customerio/customerio-ios/compare/1.2.1...1.2.2) (2022-10-31)
+
+
+### Bug Fixes
+
+* updating gist dependency version ([0b8569c](https://github.com/customerio/customerio-ios/commit/0b8569ce0d11feb35e62be30d2788077f94f6016))
+
 ### [1.2.1](https://github.com/customerio/customerio-ios/compare/1.2.0...1.2.1) (2022-10-25)
 
 
