@@ -1,3 +1,4 @@
+import CioTracking
 import Common
 import Foundation
 #if canImport(UserNotifications)
@@ -20,8 +21,8 @@ internal class RichPushRequestHandler {
 
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
+        guard let diGraph = CustomerIO.shared.diGraph else { return }
 
-        let diGraph = DIGraph.getInstance(siteId: siteId)
         let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(

@@ -40,7 +40,7 @@ public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
     private let siteId: SiteId
-    private let sdkConfigStore: SdkConfigStore
+    private let sdkConfig: SdkConfig
     private let logger: Logger
     private let dateUtil: DateUtil
 
@@ -51,14 +51,14 @@ public class FileManagerQueueStorage: QueueStorage {
         fileStorage: FileStorage,
         jsonAdapter: JsonAdapter,
         lockManager: LockManager,
-        sdkConfigStore: SdkConfigStore,
+        sdkConfig: SdkConfig,
         logger: Logger,
         dateUtil: DateUtil
     ) {
         self.siteId = siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
-        self.sdkConfigStore = sdkConfigStore
+        self.sdkConfig = sdkConfig
         self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
@@ -178,7 +178,7 @@ public class FileManagerQueueStorage: QueueStorage {
         logger.debug("deleting expired tasks from the queue")
 
         var tasksToDelete: Set<QueueTaskMetadata> = Set()
-        let queueTaskExpiredThreshold = Date().subtract(sdkConfigStore.config.backgroundQueueExpiredSeconds, .second)
+        let queueTaskExpiredThreshold = Date().subtract(sdkConfig.backgroundQueueExpiredSeconds, .second)
         logger.debug("""
         deleting tasks older then \(queueTaskExpiredThreshold.string(format: .iso8601noMilliseconds)),
         current time is: \(Date().string(format: .iso8601noMilliseconds))

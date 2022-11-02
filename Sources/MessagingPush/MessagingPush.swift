@@ -11,26 +11,23 @@ import UserNotifications
   */
 
 public class MessagingPush: MessagingPushInstance {
-    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
+    @Atomic public private(set) static var shared = MessagingPush()
 
-    public let customerIO: CustomerIOInstance!
     internal var implementation: MessagingPushImplementation?
 
-    internal init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
-        // XXX: customers may want to know if siteId nil. Log it to them to help debug.
-        if let siteId = customerIO.siteId {
-            let diGraphTracking = DIGraph.getInstance(siteId: siteId)
-            let logger = diGraphTracking.logger
+    // TODO: test that using mocked CustomerIOInstance will not break this code.
+    internal init() {
+        if let diGraph = CustomerIO.shared.diGraph, let siteId = CustomerIO.shared.siteId {
+            let logger = diGraph.logger
 
             logger.info("MessagingPush module setup with SDK")
             // Register MessagingPush module hooks now that the module is being initialized.
-            let hooks = diGraphTracking.hooksManager
+            let hooks = diGraph.hooksManager
             let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)
 
             hooks.add(key: .messagingPush, provider: moduleHookProvider)
 
-            self.implementation = MessagingPushImplementation(siteId: siteId)
+            self.implementation = MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
         }
     }
 

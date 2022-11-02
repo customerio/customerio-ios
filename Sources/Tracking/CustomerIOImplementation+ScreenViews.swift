@@ -3,6 +3,9 @@ import Foundation
 import UIKit
 
 extension CustomerIOImplementation {
+    // Swizzled methods for screen view tracking will call UIKit
+    // UIApplication.shared which is unavailable to iOS app extensions.
+    @available(iOSApplicationExtension, unavailable)
     func setupAutoScreenviewTracking() {
         swizzle(
             forClass: UIViewController.self,

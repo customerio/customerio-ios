@@ -12,7 +12,6 @@ class MessagingPushImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let queueMock = QueueMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
-    private let sdkConfigStoreMock = SdkConfigStoreMock()
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let deviceInfoMock = DeviceInfoMock()
 
@@ -26,7 +25,7 @@ class MessagingPushImplementationTest: UnitTest {
             backgroundQueue: queueMock,
             globalDataStore: globalDataStoreMock,
             logger: log,
-            sdkConfigStore: sdkConfigStoreMock,
+            sdkConfig: sdkConfig,
             jsonAdapter: jsonAdapter,
             deviceAttributesProvider: deviceAttributesMock,
             dateUtil: dateUtilStub,

@@ -2,18 +2,12 @@ import Common
 import Foundation
 
 /**
- Welcome to the Customer.io iOS SDK!
-
- This class is where you begin to use the SDK.
- You must have an instance of `CustomerIO` to use the features of the SDK.
-
- To get an instance, you have 2 options:
- 1. Use the already provided singleton shared instance: `CustomerIO.instance`.
- This method is provided for convenience and is the easiest way to get started.
-
- 2. Create your own instance: `CustomerIO(siteId: "XXX", apiKey: "XXX", region: Region.US)`
- This method is recommended for code bases containing
- automated tests, dependency injection, or sending data to multiple Workspaces.
+ Because of `CustomerIO.shared` being a singleton API, there is always a use-case
+ of calling any of the public functions on `CustomerIO` class *before* the SDK has
+ been initialized. To make this use case easy to handle, we separate the logic of
+ the CustomerIO class into this class. Therefore, it's assumed that as long as
+ there is an instance of `CustomerIOImplementation` present, the SDK has been
+ initialized successfully.
  */
 internal class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
@@ -21,13 +15,17 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     }
 
     private let _siteId: String
+    // This is the *only* strong reference to the DIGraph in the SDK.
+    // It should be *locally* referenced in methods in of top-level classse in each module of this project.
+    internal let diGraph: DIGraph
 
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
-    private var sdkConfigStore: SdkConfigStore
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
+    // strong reference to repository to prevent garbage collection as it runs tasks in async.
+    //    private var cleanupRepository: CleanupRepository?
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -36,40 +34,43 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
      Try loading the credentials previously saved for the singleton instance.
      */
-    internal init(siteId: String) {
+    internal init(siteId: String, diGraph: DIGraph) {
         self._siteId = siteId
+        self.diGraph = diGraph
 
-        let diGraph = DIGraph.getInstance(siteId: siteId)
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
-        self.sdkConfigStore = diGraph.sdkConfigStore
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
     }
 
-    /**
-     Configure the Customer.io SDK.
+    // Call from CustomerIO after SDK initialized. Not calling automatically
+    // to make tests noisey.
+    internal func postInitialize() {
+        // TODO: enable some of these features.
 
-     This will configure the given non-singleton instance of CustomerIO.
-     Configuration changes will only impact this 1 instance of the CustomerIO class.
+        // Register Tracking module hooks now that the module is being initialized.
+//        let hooksManager = diGraph.hooksManager
+//        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
+//
+//        cleanupRepository = diGraph.cleanupRepository
+//
+//        // run cleanup in background to prevent locking the UI thread
+//        threadUtil?.runBackground { [weak self] in
+//            self?.cleanupRepository?.cleanup()
+//            self?.cleanupRepository = nil
+//        }
+//
+//        Self.shared.logger?
+//            .info(
+//                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
+//            )
+    }
 
-     Example use:
-     ```
-     CustomerIO.config {
-     $0.trackingApiUrl = "https://example.com"
-     }
-     ```
-     */
     @available(iOSApplicationExtension, unavailable)
-    public func config(_ handler: (inout SdkConfig) -> Void) {
-        var configToModify = sdkConfigStore.config
-
-        handler(&configToModify)
-
-        sdkConfigStore.config = configToModify
-
-        if sdkConfigStore.config.autoTrackScreenViews {
+    internal func alterSdkFromConfig(_ config: SdkConfig) {
+        if config.autoTrackDeviceAttributes {
             setupAutoScreenviewTracking()
         }
     }

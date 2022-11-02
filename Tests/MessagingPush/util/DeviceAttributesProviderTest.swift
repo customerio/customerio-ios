@@ -6,20 +6,20 @@ import XCTest
 
 class DeviceAttributesProviderTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
-    private let sdkConfigStoreMock = SdkConfigStoreMock()
 
     private var provider: DeviceAttributesProvider!
 
     override func setUp() {
         super.setUp()
 
-        provider = SdkDeviceAttributesProvider(sdkConfigStore: sdkConfigStoreMock, deviceInfo: deviceInfoMock)
+        provider = SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfoMock)
     }
 
+    // TODO: fix this. it needs to modify sdkconfig before constructing test class
     private func enableTrackDeviceAttributesSdkConfig(_ enable: Bool) {
-        var givenConfig = SdkConfig()
-        givenConfig.autoTrackDeviceAttributes = enable
-        sdkConfigStoreMock.underlyingConfig = givenConfig
+//        var givenConfig = SdkConfig()
+//        givenConfig.autoTrackDeviceAttributes = enable
+//        sdkConfigStoreMock.underlyingConfig = givenConfig
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {

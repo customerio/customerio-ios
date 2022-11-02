@@ -20,10 +20,15 @@ public protocol KeyValueStorage: AutoMockable {
  */
 // sourcery: InjectRegister = "KeyValueStorage"
 public class UserDefaultsKeyValueStorage: KeyValueStorage {
-    private let siteId: String
+    private let siteId: String?
 
     init(siteId: SiteId) {
         self.siteId = siteId
+    }
+
+    // Used for global data storing for *all* of the site-ids.
+    init() {
+        self.siteId = nil
     }
 
     /**
@@ -39,7 +44,14 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
             appUniqueIdentifier = ".\(appBundleId)"
         }
 
-        return UserDefaults(suiteName: "io.customer.sdk\(appUniqueIdentifier).\(siteId)")
+        // TODO: make test for this function
+
+        var siteIdPart = ".shared"
+        if let siteId = siteId {
+            siteIdPart = ".\(siteId)"
+        }
+
+        return UserDefaults(suiteName: "io.customer.sdk\(appUniqueIdentifier)\(siteIdPart)")
     }
 
     public func integer(_ key: KeyValueStorageKey) -> Int? {

@@ -2,14 +2,12 @@ import Common
 import Foundation
 
 class TrackingModuleHookProvider: ModuleHookProvider {
-    private let siteId: SiteId
+    private var diGraph: DIGraph? {
+        // TODO: I want to try and reference the di graph in only 1 class.
+        // this class might need a refactor?
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
-    }
-
-    init(siteId: SiteId) {
-        self.siteId = siteId
+//        CustomerIO.shared.diGraph
+        nil
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
@@ -17,7 +15,7 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraph.queueRunnerHook
+        diGraph?.queueRunnerHook
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {

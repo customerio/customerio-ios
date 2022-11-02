@@ -29,13 +29,13 @@ class TrackingAPITest: UnitTest {
         // Initialize
         CustomerIO.initialize(siteId: "", apiKey: "")
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
+            config.autoTrackPushEvents = false
+        }
 
         // Reference some objects that should be public in the Tracking module
         let region: Region = .EU
         let loglevel: CioLogLevel = .debug
-
-        // config
-        CustomerIO.config { _ in }
 
         // Identify
         CustomerIO.shared.identify(identifier: "")
@@ -81,14 +81,14 @@ class TrackingAPITest: UnitTest {
     func test_allPublicSdkConfigOptions() throws {
         try skipRunningTest()
 
-        CustomerIO.config {
-            $0.trackingApiUrl = ""
-            $0.autoTrackPushEvents = true
-            $0.backgroundQueueMinNumberOfTasks = 10
-            $0.backgroundQueueSecondsDelay = 10
-            $0.logLevel = .error
-            $0.autoTrackPushEvents = false
-            $0.autoScreenViewBody = { [:] }
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
+            config.trackingApiUrl = ""
+            config.autoTrackPushEvents = true
+            config.backgroundQueueMinNumberOfTasks = 10
+            config.backgroundQueueSecondsDelay = 10
+            config.logLevel = .error
+            config.autoTrackPushEvents = false
+            config.autoScreenViewBody = { [:] }
         }
     }
 }

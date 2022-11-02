@@ -5,8 +5,10 @@ import Foundation
 class MessagingPushModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
+    private var diGraph: DIGraph? {
+        // TODO: like other providers
+//        DIGraph.getInstance(siteId: siteId)
+        nil
     }
 
     init(siteId: SiteId) {
@@ -14,15 +16,15 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        MessagingPushImplementation(siteId: siteId)
+        MessagingPushImplementation(siteId: siteId, diGraph: diGraph!)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraph.queueRunnerHook
+        diGraph?.queueRunnerHook
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {
-        MessagingPushImplementation(siteId: siteId)
+        MessagingPushImplementation(siteId: siteId, diGraph: diGraph!)
     }
 
     var screenTrackingHook: ScreenTrackingHook? {

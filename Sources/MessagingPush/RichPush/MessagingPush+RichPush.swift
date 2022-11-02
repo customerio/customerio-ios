@@ -51,7 +51,7 @@ extension MessagingPushImplementation {
         logger.info("did recieve notification request. Checking if message was a rich push sent from Customer.io...")
         logger.debug("notification request: \(request.content.userInfo)")
 
-        if sdkConfigStore.config.autoTrackPushEvents,
+        if sdkConfig.autoTrackPushEvents,
            let deliveryID: String = request.content.userInfo["CIO-Delivery-ID"] as? String,
            let deviceToken: String = request.content.userInfo["CIO-Delivery-Token"] as? String {
             logger.info("automatically tracking push metric: delivered")

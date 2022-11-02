@@ -16,8 +16,10 @@ open class UnitTest: XCTestCase {
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely
     // to real app.
     public let testSiteId = "testing"
-    public var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: testSiteId)
+    public var diGraph: DIGraph!
+
+    public var sdkConfig: SdkConfig {
+        diGraph!.sdkConfig
     }
 
     public var keyValueStorage: KeyValueStorage {
@@ -46,8 +48,31 @@ open class UnitTest: XCTestCase {
         LockManager()
     }
 
+    /**
+     Perform setup before each test function runs in your test class.
+     Example:
+     ```
+     override func setUp() {
+       super.setUp() // <-- this line calls this function in UnitTest file.
+
+       // do some setup logic, here.
+     }
+     ```
+
+     @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
+     */
     override open func setUp() {
-        deleteAll()
+        setUp(enableLogs: false)
+    }
+
+    public func setUp(enableLogs: Bool) {
+        deleteAllPersistantData()
+
+        var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
+        if enableLogs {
+            newSdkConfig.logLevel = CioLogLevel.debug
+        }
+        diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
@@ -62,30 +87,19 @@ open class UnitTest: XCTestCase {
         super.setUp()
     }
 
-    // If logs would help you with debugging a test, enable logs. It's recommended to disable them when running tests as
-    // there are so many logs, it's unhelpful.
-    // Enabling logs and running 1 test function is helpful.
-    public func enableLogs() {
-        var sdkConfigStore = diGraph.sdkConfigStore
-        var sdkConfig = sdkConfigStore.config
-        sdkConfig.logLevel = CioLogLevel.debug
-        sdkConfigStore.config = sdkConfig
-    }
-
     override open func tearDown() {
         Mocks.shared.resetAll()
 
-        deleteAll()
+        deleteAllPersistantData()
 
         diGraph.reset()
 
         super.tearDown()
     }
 
-    public func deleteAll() {
+    public func deleteAllPersistantData() {
         deleteKeyValueStorage()
         CustomerIO.resetSharedInstance()
-        CioGlobalDataStore().keyValueStorage.deleteAll()
         deleteAllFiles()
     }
 
@@ -123,6 +137,7 @@ open class UnitTest: XCTestCase {
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
         keyValueStorage.deleteAll()
+        UserDefaultsKeyValueStorage().deleteAll() // delete global data
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

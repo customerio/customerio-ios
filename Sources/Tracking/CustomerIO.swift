@@ -94,46 +94,16 @@ public class CustomerIO: CustomerIOInstance {
      */
     @Atomic public private(set) static var shared = CustomerIO()
 
+    // Only assign a value to this *when the SDK is initialzied*.
+    // It's assumed that if this instance is not-nil, the SDK has been initialized.
     internal var implementation: CustomerIOImplementation?
 
-    internal var globalData: GlobalDataStore = CioGlobalDataStore()
-
-    // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    private var cleanupRepository: CleanupRepository?
-
-    private var threadUtil: ThreadUtil? {
-        guard let siteId = siteId else { return nil }
-
-        return DIGraph.getInstance(siteId: siteId).threadUtil
+    public var diGraph: DIGraph? {
+        implementation?.diGraph
     }
 
-    private var logger: Logger? {
-        guard let siteId = siteId else { return nil }
-
-        return DIGraph.getInstance(siteId: siteId).logger
-    }
-
-    /**
-     Constructor for singleton, only.
-
-     Try loading the credentials previously saved for the singleton instance.
-     */
-    internal init() {
-        if let siteId = globalData.sharedInstanceSiteId {
-            let diGraph = DIGraph.getInstance(siteId: siteId)
-            let credentialsStore = diGraph.sdkCredentialsStore
-            let logger = diGraph.logger
-
-            // if credentials are not available, we should not set implementation
-            if credentialsStore.load() != nil {
-                logger.info("shared instance of Customer.io loaded and ready to use")
-
-                self.implementation = CustomerIOImplementation(siteId: siteId)
-            } else {
-                logger.info("shared instance of Customer.io needs to be initialized before ready to use")
-            }
-        }
-    }
+    // private constructor to force use of singleton API
+    private init() {}
 
     // Constructor for testing.
     internal init(implementation: CustomerIOImplementation) {
@@ -149,119 +119,69 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-     Initialize the shared `instance` of `CustomerIO`.
+     Initialize the shared `instance` of `CustomerIO` from within a Notification Service Extension when setting up rich push.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    public static func initialize(
-        siteId: String,
-        apiKey: String,
-        region: Region = Region.US
-    ) {
-        Self.shared.globalData.sharedInstanceSiteId = siteId
-
-        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
-
-        Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
-
-        Self.shared.postInitialize(siteId: siteId)
-
-        Self.shared.logger?
-            .info(
-                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
-            )
-    }
-
-    /**
-     Initialize the shared `instance` of `CustomerIO`.
-     Call this function when your app launches, before using `CustomerIO.instance`.
-     */
-    @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
+    @available(iOSApplicationExtension, introduced: 10)
+    @available(iOS, unavailable)
+    public static func initializeFromRichPush(
         siteId: String,
         apiKey: String,
         region: Region = Region.US,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        Self.initialize(siteId: siteId, apiKey: apiKey, region: region)
+        Self.initialize(
+            siteId: siteId,
+            apiKey: apiKey,
+            region: region,
+            configureHandler: configureHandler,
+            fromRichPush: true
+        )
+    }
+
+    /**
+     Initialize the shared `instance` of `CustomerIO`.
+     Call this function when your app launches, before using `CustomerIO.instance`.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    @available(iOS, introduced: 13)
+    public static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region = Region.US,
+        configure configureHandler: ((inout SdkConfig) -> Void)? = nil
+    ) {
+        Self.initialize(
+            siteId: siteId,
+            apiKey: apiKey,
+            region: region,
+            configureHandler: configureHandler,
+            fromRichPush: false
+        )
+    }
+
+    private static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region,
+        configureHandler: ((inout SdkConfig) -> Void)?,
+        fromRichPush: Bool
+    ) {
+        var newSdkConfig = SdkConfig.Factory.create(region: region)
 
         if let configureHandler = configureHandler {
-            Self.config(configureHandler)
+            configureHandler(&newSdkConfig)
         }
-    }
 
-    /**
-     Sets credentials on shared or non-shared instance.
-     */
-    internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
-        var credentialsStore = diGraph.sdkCredentialsStore
+        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: newSdkConfig)
 
-        credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
+        Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
-        // Some default values of the SDK configuration may depend on credentials. Reset default values.
-        var configStore = diGraph.sdkConfigStore
-        var config = configStore.config
-
-        if config.trackingApiUrl.isEmpty {
-            config.trackingApiUrl = region.productionTrackingUrl
+        if newSdkConfig.autoTrackDeviceAttributes, !fromRichPush {
+            Self.shared.implementation?.setupAutoScreenviewTracking()
         }
-        configStore.config = config
 
-        globalData.appendSiteId(siteId)
-
-        InMemoryActiveWorkspaces.getInstance().addWorkspace(siteId: siteId)
-    }
-
-    private func postInitialize(siteId: String) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
-
-        // Register Tracking module hooks now that the module is being initialized.
-        let hooksManager = diGraph.hooksManager
-        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
-
-        cleanupRepository = diGraph.cleanupRepository
-
-        // run cleanup in background to prevent locking the UI thread
-        threadUtil?.runBackground { [weak self] in
-            self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
-        }
-    }
-
-    /**
-     Configure the Customer.io SDK.
-
-     This will configure the singleton shared instance of the CustomerIO class. It will also be the default
-     configuration for all future non-singleton instances of the CustomerIO class.
-
-     Example use:
-     ```
-     CustomerIO.config {
-       $0.trackingApiUrl = "https://example.com"
-     }
-     ```
-     */
-    @available(iOSApplicationExtension, unavailable)
-    public static func config(_ handler: (inout SdkConfig) -> Void) {
-        shared.config(handler)
-    }
-
-    /**
-     Configure the Customer.io SDK.
-
-     This will configure the given non-singleton instance of CustomerIO.
-     Cofiguration changes will only impact this 1 instance of the CustomerIO class.
-
-     Example use:
-     ```
-     CustomerIO.config {
-       $0.trackingApiUrl = "https://example.com"
-     }
-     ```
-     */
-    @available(iOSApplicationExtension, unavailable)
-    public func config(_ handler: (inout SdkConfig) -> Void) {
-        implementation?.config(handler)
+        Self.shared.implementation?.postInitialize()
     }
 
     /**
@@ -314,8 +234,6 @@ public class CustomerIO: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        // XXX: notify developer if SDK not initialized yet
-
         implementation?.identify(identifier: identifier, body: body)
     }
 
@@ -349,8 +267,6 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
-        // XXX: notify developer if SDK not initialized yet
-
         implementation?.track(name: name, data: data)
     }
 
@@ -375,8 +291,6 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        // XXX: notify developer if SDK not initialized yet
-
         implementation?.screen(name: name, data: data)
     }
 

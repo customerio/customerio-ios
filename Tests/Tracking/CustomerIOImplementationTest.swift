@@ -25,22 +25,8 @@ class CustomerIOImplementationTest: UnitTest {
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
-        implementation = CustomerIOImplementation(siteId: diGraph.siteId)
+        implementation = CustomerIOImplementation(siteId: diGraph.siteId, diGraph: diGraph)
         customerIO = CustomerIO(implementation: implementation)
-    }
-
-    // MARK: config
-
-    func test_config_givenModifyConfig_expectSetConfigOnInstance() {
-        let givenTrackingApiUrl = String.random
-
-        customerIO.config {
-            $0.trackingApiUrl = givenTrackingApiUrl
-        }
-
-        let sdkConfig = diGraph.sdkConfigStore.config
-
-        XCTAssertEqual(sdkConfig.trackingApiUrl, givenTrackingApiUrl)
     }
 
     // MARK: identify

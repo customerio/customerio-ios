@@ -25,13 +25,3 @@ public enum Region: String, Equatable {
 }
 
 // swiftlint:enable identifier_name
-
-public struct SdkCredentials: AutoLenses, Equatable {
-    public let apiKey: String
-    public let region: Region
-
-    public init(apiKey: String, region: Region) {
-        self.apiKey = apiKey
-        self.region = region
-    }
-}

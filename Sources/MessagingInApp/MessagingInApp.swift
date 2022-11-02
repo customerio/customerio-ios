@@ -18,7 +18,11 @@ public class MessagingInApp: MessagingInAppInstance {
 
     private var diGraphOverride: DIGraph?
     private var diGraph: DIGraph {
-        diGraphOverride ?? DIGraph.getInstance(siteId: siteId)
+        // TODO: finish implementing Real instance of digraph.
+        // create MessagingInAppImpleementation class that takes in DiGraph instance
+        // this class then calls impleentation? for all public SDK calls.
+        /// therefore, we probably dont need this variable at all!
+        diGraphOverride! // ?? DIGraph.getInstance(siteId: siteId)
     }
 
     private var queue: Queue {

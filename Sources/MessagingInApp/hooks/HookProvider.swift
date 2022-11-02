@@ -5,8 +5,10 @@ import Foundation
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
+    private var diGraph: DIGraph? {
+//        DIGraph.getInstance(siteId: siteId)
+        // TODO: just like other hook providers. do that.
+        nil
     }
 
     init(siteId: SiteId) {

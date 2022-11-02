@@ -290,14 +290,12 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var didReceiveNotificationRequestReceivedArguments: (
         request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent)
-            -> Void
+        contentHandler: (UNNotificationContent) -> Void
     )?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var didReceiveNotificationRequestReceivedInvocations: [(
         request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent)
-            -> Void
+        contentHandler: (UNNotificationContent) -> Void
     )] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!

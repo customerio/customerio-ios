@@ -9,20 +9,18 @@ class QueueTest: UnitTest {
 
     private let storageMock = QueueStorageMock()
     private let runRequestMock = QueueRunRequestMock()
-    private let sdkConfigStoreMock = SdkConfigStoreMock()
     private let queueTimerMock = SingleScheduleTimerMock()
 
     override func setUp() {
         super.setUp()
 
-        sdkConfigStoreMock.config = SdkConfig()
         queue = CioQueue(
             siteId: testSiteId,
             storage: storageMock,
             runRequest: runRequestMock,
             jsonAdapter: jsonAdapter,
             logger: log,
-            sdkConfigStore: sdkConfigStoreMock,
+            sdkConfig: sdkConfig,
             queueTimer: queueTimerMock,
             dateUtil: dateUtilStub
         )
@@ -50,10 +48,12 @@ class QueueTest: UnitTest {
         XCTAssertEqual(queueTimerMock.scheduleIfNotAlreadyCallsCount, 1)
     }
 
+    // TODO: some test functions need to have sdk config modifed.
+
     func test_addTask_expectDoNotStartQueueIfNotMeetingCriteria_expectScheduleQueueInstead() {
-        var config = SdkConfig()
-        config.backgroundQueueMinNumberOfTasks = 10
-        sdkConfigStoreMock.config = config
+//        var config = SdkConfig()
+//        config.backgroundQueueMinNumberOfTasks = 10
+//        sdkConfigStoreMock.config = config
         storageMock.createReturnValue = (
             success: true,
             queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
@@ -74,9 +74,9 @@ class QueueTest: UnitTest {
     }
 
     func test_addTask_expectStartQueueAfterSuccessfullyAddingTask_expectDoNotScheduleTimer_expectCancelTimer() {
-        var config = SdkConfig()
-        config.backgroundQueueMinNumberOfTasks = 1
-        sdkConfigStoreMock.config = config
+//        var config = SdkConfig()
+//        config.backgroundQueueMinNumberOfTasks = 1
+//        sdkConfigStoreMock.config = config
         storageMock.createReturnValue = (
             success: true,
             queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)

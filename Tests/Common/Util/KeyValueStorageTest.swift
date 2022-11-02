@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class KeyValueStorageTests: UnitTest {
-    let defaultKey = KeyValueStorageKey.sharedInstanceSiteId
+    let defaultKey = KeyValueStorageKey.identifiedProfileId
     lazy var defaultStorage: KeyValueStorage = getStorage(siteId: "test")
 
     private func getStorage(siteId: String) -> KeyValueStorage {
@@ -12,7 +12,7 @@ class KeyValueStorageTests: UnitTest {
     }
 
     override func setUp() {
-        super.setUp()
+        super.setUp(enableLogs: true)
 
         defaultStorage.deleteAll()
     }

@@ -1,34 +1,18 @@
 import Foundation
 
 public class DIGraph {
+    public let siteId: SiteId
+    public let apiKey: String
+    public let sdkConfig: SdkConfig
+
+    public init(siteId: SiteId, apiKey: String, sdkConfig: SdkConfig) {
+        self.siteId = siteId
+        self.apiKey = apiKey
+        self.sdkConfig = sdkConfig
+    }
+
     public var overrides: [String: Any] = [:]
     public var singletons: [String: Any] = [:]
-
-    public let siteId: SiteId
-    internal init(siteId: String) {
-        self.siteId = siteId
-    }
-
-    class Store {
-        var instances: [String: DIGraph] = [:]
-        func getInstance(siteId: String) -> DIGraph {
-            if let existingInstance = instances[siteId] {
-                return existingInstance
-            }
-            let newInstance = DIGraph(siteId: siteId)
-            instances[siteId] = newInstance
-            return newInstance
-        }
-    }
-
-    @Atomic internal static var store = Store()
-    public static func getInstance(siteId: String) -> DIGraph {
-        Self.store.getInstance(siteId: siteId)
-    }
-
-    public static func getAllWorkspacesSharedInstance() -> DIGraph {
-        Self.store.getInstance(siteId: "shared")
-    }
 
     /**
      Designed to be used only in test classes to override dependencies.

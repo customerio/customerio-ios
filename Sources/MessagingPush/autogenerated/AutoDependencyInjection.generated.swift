@@ -90,6 +90,6 @@ extension DIGraph {
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(sdkConfigStore: sdkConfigStore, deviceInfo: deviceInfo)
+        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
     }
 }
