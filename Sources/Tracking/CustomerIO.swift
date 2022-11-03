@@ -122,20 +122,16 @@ public class CustomerIO: CustomerIOInstance {
      Initialize the shared `instance` of `CustomerIO` from within a Notification Service Extension when setting up rich push.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
-    @available(iOSApplicationExtension, introduced: 10)
-    @available(iOS, unavailable)
-    public static func initializeFromRichPush(
+    public static func initialize(
         siteId: String,
         apiKey: String,
-        region: Region = Region.US,
-        configure configureHandler: ((inout SdkConfig) -> Void)?
+        region: Region = Region.US
     ) {
         Self.initialize(
             siteId: siteId,
             apiKey: apiKey,
             region: region,
-            configureHandler: configureHandler,
-            fromRichPush: true
+            configureHandler: nil
         )
     }
 
@@ -144,7 +140,6 @@ public class CustomerIO: CustomerIOInstance {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
-    @available(iOS, introduced: 13)
     public static func initialize(
         siteId: String,
         apiKey: String,
@@ -155,8 +150,7 @@ public class CustomerIO: CustomerIOInstance {
             siteId: siteId,
             apiKey: apiKey,
             region: region,
-            configureHandler: configureHandler,
-            fromRichPush: false
+            configureHandler: configureHandler
         )
     }
 
@@ -164,8 +158,7 @@ public class CustomerIO: CustomerIOInstance {
         siteId: String,
         apiKey: String,
         region: Region,
-        configureHandler: ((inout SdkConfig) -> Void)?,
-        fromRichPush: Bool
+        configureHandler: ((inout SdkConfig) -> Void)?
     ) {
         var newSdkConfig = SdkConfig.Factory.create(region: region)
 
@@ -177,7 +170,11 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
-        if newSdkConfig.autoTrackDeviceAttributes, !fromRichPush {
+        if newSdkConfig.autoTrackScreenViews {
+            // Function not available for rich push (Notification Service Extension). Only call when not possibly being
+            // called from that.
+            // You must enable screen view tracking through configuring the SDK. You cannot configure the SDK (at this
+            // time) from a NSE.
             Self.shared.implementation?.setupAutoScreenviewTracking()
         }
 
