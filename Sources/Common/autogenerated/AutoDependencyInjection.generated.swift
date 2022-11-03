@@ -65,6 +65,7 @@ extension DIGraph {
         _ = threadUtil
         _ = logger
         _ = httpRetryPolicy
+        _ = deviceMetricsGrabber
         _ = fileStorage
         _ = queueStorage
         _ = jsonAdapter
@@ -333,6 +334,18 @@ extension DIGraph {
         CustomerIOAPIHttpRetryPolicy()
     }
 
+    // DeviceMetricsGrabber
+    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
+        if let overridenDep = overrides[String(describing: DeviceMetricsGrabber.self)] {
+            return overridenDep as! DeviceMetricsGrabber
+        }
+        return newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
+    }
+
     // FileStorage
     public var fileStorage: FileStorage {
         if let overridenDep = overrides[String(describing: FileStorage.self)] {
@@ -437,6 +450,6 @@ extension DIGraph {
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId)
+        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }

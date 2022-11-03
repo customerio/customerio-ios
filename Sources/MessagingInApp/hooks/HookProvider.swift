@@ -1,3 +1,4 @@
+import CioTracking
 import Common
 import Foundation
 
@@ -5,10 +6,10 @@ import Foundation
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
     private let siteId: SiteId
 
+    private let sdkInitializedUtil = SdkInitializedUtilImpl()
+
     private var diGraph: DIGraph? {
-//        DIGraph.getInstance(siteId: siteId)
-        // TODO: just like other hook providers. do that.
-        nil
+        sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     init(siteId: SiteId) {

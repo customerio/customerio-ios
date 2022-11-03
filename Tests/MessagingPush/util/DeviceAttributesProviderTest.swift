@@ -9,22 +9,9 @@ class DeviceAttributesProviderTest: UnitTest {
 
     private var provider: DeviceAttributesProvider!
 
-    override func setUp() {
-        super.setUp()
-
-        provider = SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfoMock)
-    }
-
-    // TODO: fix this. it needs to modify sdkconfig before constructing test class
-    private func enableTrackDeviceAttributesSdkConfig(_ enable: Bool) {
-//        var givenConfig = SdkConfig()
-//        givenConfig.autoTrackDeviceAttributes = enable
-//        sdkConfigStoreMock.underlyingConfig = givenConfig
-    }
-
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
         let expected: [String: String] = [:]
-        enableTrackDeviceAttributesSdkConfig(false)
+        setupTest(autoTrackDeviceAttributes: false)
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
@@ -57,7 +44,7 @@ class DeviceAttributesProviderTest: UnitTest {
         deviceInfoMock.isPushSubscribedClosure = { onComplete in
             onComplete(true)
         }
-        enableTrackDeviceAttributesSdkConfig(true)
+        setupTest(autoTrackDeviceAttributes: true)
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
@@ -67,5 +54,15 @@ class DeviceAttributesProviderTest: UnitTest {
         }
 
         waitForExpectations()
+    }
+}
+
+extension DeviceAttributesProviderTest {
+    func setupTest(autoTrackDeviceAttributes: Bool) {
+        super.setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        })
+
+        provider = SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfoMock)
     }
 }

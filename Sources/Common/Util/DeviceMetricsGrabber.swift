@@ -1,7 +1,12 @@
 import Foundation
 
-internal enum DeviceMetricsGrabber {
-    static var appBundleId: String? {
+protocol DeviceMetricsGrabber: AutoMockable {
+    var appBundleId: String? { get }
+}
+
+// sourcery: InjectRegister = "DeviceMetricsGrabber"
+internal class DeviceMetricsGrabberImpl: DeviceMetricsGrabber {
+    var appBundleId: String? {
         Bundle.main.bundleIdentifier
     }
 }

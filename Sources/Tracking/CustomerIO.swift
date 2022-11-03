@@ -96,8 +96,10 @@ public class CustomerIO: CustomerIOInstance {
 
     // Only assign a value to this *when the SDK is initialzied*.
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
-    internal var implementation: CustomerIOImplementation?
+    // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
+    private var implementation: CustomerIOImplementation?
 
+    // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
     public var diGraph: DIGraph? {
         implementation?.diGraph
     }

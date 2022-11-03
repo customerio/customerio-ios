@@ -2,12 +2,10 @@ import Common
 import Foundation
 
 class TrackingModuleHookProvider: ModuleHookProvider {
-    private var diGraph: DIGraph? {
-        // TODO: I want to try and reference the di graph in only 1 class.
-        // this class might need a refactor?
+    private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
-//        CustomerIO.shared.diGraph
-        nil
+    private var diGraph: DIGraph? {
+        sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {

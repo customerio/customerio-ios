@@ -31,12 +31,9 @@ public class CioGlobalDataStore: GlobalDataStore {
         }
     }
 
-    public init() {
-        self.keyValueStorage = UserDefaultsKeyValueStorage()
-    }
-
-    // for testing
     public init(keyValueStorage: KeyValueStorage) {
         self.keyValueStorage = keyValueStorage
+
+        self.keyValueStorage.switchToGlobalDataStore()
     }
 }

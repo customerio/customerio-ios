@@ -25,7 +25,8 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     private var hooks: HooksManager
     private let logger: Logger
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    //    private var cleanupRepository: CleanupRepository?
+    private var cleanupRepository: CleanupRepository?
+    private let threadUtil: ThreadUtil
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -43,29 +44,26 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
+        self.cleanupRepository = diGraph.cleanupRepository
+        self.threadUtil = diGraph.threadUtil
     }
 
     // Call from CustomerIO after SDK initialized. Not calling automatically
     // to make tests noisey.
     internal func postInitialize() {
-        // TODO: enable some of these features.
-
         // Register Tracking module hooks now that the module is being initialized.
-//        let hooksManager = diGraph.hooksManager
-//        hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
-//
-//        cleanupRepository = diGraph.cleanupRepository
-//
-//        // run cleanup in background to prevent locking the UI thread
-//        threadUtil?.runBackground { [weak self] in
-//            self?.cleanupRepository?.cleanup()
-//            self?.cleanupRepository = nil
-//        }
-//
-//        Self.shared.logger?
-//            .info(
-//                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
-//            )
+        hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
+
+        // run cleanup in background to prevent locking the UI thread
+        threadUtil.runBackground { [weak self] in
+            self?.cleanupRepository?.cleanup()
+            self?.cleanupRepository = nil
+        }
+
+        logger
+            .info(
+                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(_siteId)"
+            )
     }
 
     @available(iOSApplicationExtension, unavailable)

@@ -15,6 +15,7 @@ class CustomerIOImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let hooksMock = HooksManagerMock()
     private let profileIdentifyHookMock = ProfileIdentifyHookMock()
+    private let cleanupRepositoryMock = CleanupRepositoryMock()
 
     override func setUp() {
         super.setUp()
@@ -22,11 +23,21 @@ class CustomerIOImplementationTest: UnitTest {
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: hooksMock, forType: HooksManager.self)
+        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
         implementation = CustomerIOImplementation(siteId: diGraph.siteId, diGraph: diGraph)
         customerIO = CustomerIO(implementation: implementation)
+    }
+
+    func test_postInitialize_expectAddModuleHooks_expectRunCleanup() {
+        implementation.postInitialize()
+
+        XCTAssertEqual(hooksMock.addCallsCount, 1)
+        XCTAssertEqual(hooksMock.addReceivedArguments?.key, .tracking)
+
+        XCTAssertEqual(cleanupRepositoryMock.cleanupCallsCount, 1)
     }
 
     // MARK: identify

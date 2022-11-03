@@ -3,7 +3,9 @@ import Foundation
 /**
  Stores data in key/value pairs.
  */
-public protocol KeyValueStorage: AutoMockable {
+public protocol KeyValueStorage {
+    func switchToGlobalDataStore()
+
     func integer(_ key: KeyValueStorageKey) -> Int?
     func setInt(_ value: Int?, forKey key: KeyValueStorageKey)
     func double(_ key: KeyValueStorageKey) -> Double?
@@ -20,15 +22,21 @@ public protocol KeyValueStorage: AutoMockable {
  */
 // sourcery: InjectRegister = "KeyValueStorage"
 public class UserDefaultsKeyValueStorage: KeyValueStorage {
-    private let siteId: String?
+    private var siteId: String?
+    private let deviceMetricsGrabber: DeviceMetricsGrabber
 
-    init(siteId: SiteId) {
+    private var userDefaults: UserDefaults? {
+        UserDefaults(suiteName: getFileName())
+    }
+
+    init(siteId: SiteId, deviceMetricsGrabber: DeviceMetricsGrabber) {
         self.siteId = siteId
+        self.deviceMetricsGrabber = deviceMetricsGrabber
     }
 
     // Used for global data storing for *all* of the site-ids.
-    init() {
-        self.siteId = nil
+    public func switchToGlobalDataStore() {
+        siteId = nil
     }
 
     /**
@@ -36,52 +44,50 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
      Therefore, we use the app's bundle ID to be unique to the app and the siteId to separate all of the sites.
 
      We also need to have 1 set of UserPreferences that all workspaces of an app share.
-     For these moments, use `sharedSiteId` as the `siteId` parameter.
+     For these moments, use `shared` as the `siteId` parameter.e
      */
-    private func getUserDefaults() -> UserDefaults? {
+    internal func getFileName() -> String {
         var appUniqueIdentifier = ""
-        if let appBundleId = DeviceMetricsGrabber.appBundleId {
+        if let appBundleId = deviceMetricsGrabber.appBundleId {
             appUniqueIdentifier = ".\(appBundleId)"
         }
 
-        // TODO: make test for this function
-
-        var siteIdPart = ".shared"
-        if let siteId = siteId {
+        var siteIdPart = ".shared" // used for storing global data used for all site-ids.
+        if let siteId = siteId { // if a siteid is given to this instance, we dont store global data with this instance.
             siteIdPart = ".\(siteId)"
         }
 
-        return UserDefaults(suiteName: "io.customer.sdk\(appUniqueIdentifier)\(siteIdPart)")
+        return "io.customer.sdk\(appUniqueIdentifier)\(siteIdPart)"
     }
 
     public func integer(_ key: KeyValueStorageKey) -> Int? {
-        let value = getUserDefaults()?.integer(forKey: key.rawValue)
+        let value = userDefaults?.integer(forKey: key.rawValue)
         return value == 0 ? nil : value
     }
 
     public func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
-        getUserDefaults()?.set(value, forKey: key.rawValue)
+        userDefaults?.set(value, forKey: key.rawValue)
     }
 
     public func double(_ key: KeyValueStorageKey) -> Double? {
-        let value = getUserDefaults()?.double(forKey: key.rawValue)
+        let value = userDefaults?.double(forKey: key.rawValue)
         return value == 0 ? nil : value
     }
 
     public func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
-        getUserDefaults()?.set(value, forKey: key.rawValue)
+        userDefaults?.set(value, forKey: key.rawValue)
     }
 
     public func string(_ key: KeyValueStorageKey) -> String? {
-        getUserDefaults()?.string(forKey: key.rawValue)
+        userDefaults?.string(forKey: key.rawValue)
     }
 
     public func setString(_ value: String?, forKey key: KeyValueStorageKey) {
-        getUserDefaults()?.set(value, forKey: key.rawValue)
+        userDefaults?.set(value, forKey: key.rawValue)
     }
 
     public func date(_ key: KeyValueStorageKey) -> Date? {
-        guard let millis = getUserDefaults()?.double(forKey: key.rawValue), millis > 0 else {
+        guard let millis = userDefaults?.double(forKey: key.rawValue), millis > 0 else {
             return nil
         }
 
@@ -89,10 +95,10 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
     }
 
     public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
-        getUserDefaults()?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
+        userDefaults?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
     }
 
     public func deleteAll() {
-        getUserDefaults()?.deleteAll()
+        userDefaults?.deleteAll()
     }
 }

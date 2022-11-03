@@ -65,13 +65,16 @@ open class UnitTest: XCTestCase {
         setUp(enableLogs: false)
     }
 
-    public func setUp(enableLogs: Bool) {
+    public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
         deleteAllPersistantData()
 
         var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
+
+        modifySdkConfig?(&newSdkConfig)
+
         diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
@@ -136,8 +139,11 @@ open class UnitTest: XCTestCase {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
+
         keyValueStorage.deleteAll()
-        UserDefaultsKeyValueStorage().deleteAll() // delete global data
+
+        keyValueStorage.switchToGlobalDataStore()
+        keyValueStorage.deleteAll()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
