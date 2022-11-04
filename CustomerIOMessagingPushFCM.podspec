@@ -20,6 +20,5 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/MessagingPushFCM/**/*"
   spec.module_name = "CioMessagingPushFCM" # the `import X` name when using SDK in Swift files 
   
-  spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
-  spec.dependency "FirebaseMessaging", '~> 8.10.0'
+  spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"  
 end
