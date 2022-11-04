@@ -28,16 +28,7 @@ class CustomerIOImplementationTest: UnitTest {
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
         implementation = CustomerIOImplementation(siteId: diGraph.siteId, diGraph: diGraph)
-        customerIO = CustomerIO(implementation: implementation)
-    }
-
-    func test_postInitialize_expectAddModuleHooks_expectRunCleanup() {
-        implementation.postInitialize()
-
-        XCTAssertEqual(hooksMock.addCallsCount, 1)
-        XCTAssertEqual(hooksMock.addReceivedArguments?.key, .tracking)
-
-        XCTAssertEqual(cleanupRepositoryMock.cleanupCallsCount, 1)
+        customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
 
     // MARK: identify

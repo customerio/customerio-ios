@@ -6,7 +6,7 @@ import SharedTests
 import XCTest
 
 class MessagingInAppTest: UnitTest {
-    private var messagingInApp: MessagingInApp!
+    private var messagingInApp: MessagingInAppImplementation!
 
     private let inAppProviderMock = InAppProviderMock()
 
@@ -15,7 +15,7 @@ class MessagingInAppTest: UnitTest {
 
         diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
 
-        messagingInApp = MessagingInApp(diGraph: diGraph, siteId: testSiteId)
+        messagingInApp = MessagingInAppImplementation(siteId: testSiteId, diGraph: diGraph)
     }
 
     // MARK: initialize

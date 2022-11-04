@@ -15,18 +15,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     }
 
     private let _siteId: String
-    // This is the *only* strong reference to the DIGraph in the SDK.
-    // It should be *locally* referenced in methods in of top-level classse in each module of this project.
-    internal let diGraph: DIGraph
 
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
-    // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    private var cleanupRepository: CleanupRepository?
-    private let threadUtil: ThreadUtil
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -37,40 +31,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
      */
     internal init(siteId: String, diGraph: DIGraph) {
         self._siteId = siteId
-        self.diGraph = diGraph
 
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
-        self.cleanupRepository = diGraph.cleanupRepository
-        self.threadUtil = diGraph.threadUtil
-    }
-
-    // Call from CustomerIO after SDK initialized. Not calling automatically
-    // to make tests noisey.
-    internal func postInitialize() {
-        // Register Tracking module hooks now that the module is being initialized.
-        hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
-
-        // run cleanup in background to prevent locking the UI thread
-        threadUtil.runBackground { [weak self] in
-            self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
-        }
-
-        logger
-            .info(
-                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(_siteId)"
-            )
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    internal func alterSdkFromConfig(_ config: SdkConfig) {
-        if config.autoTrackDeviceAttributes {
-            setupAutoScreenviewTracking()
-        }
     }
 
     public var profileAttributes: [String: Any] {

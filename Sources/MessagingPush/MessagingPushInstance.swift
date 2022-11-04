@@ -35,7 +35,7 @@ public protocol MessagingPushInstance: AutoMockable {
 
     #if canImport(UserNotifications) && canImport(UIKit)
 
-    /**
+    /*
      A push notification was interacted with.
 
      - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.

@@ -10,12 +10,11 @@ open class IntegrationTest: UnitTest {
     public var httpRequestRunnerStub: HttpRequestRunnerStub!
 
     override open func setUp() {
-        super.setUp()
+        super.setUp(enableLogs: true)
 
-        // Integration tests have a high chance of throwing an exception if the SDK has not been initialized because the
-        // SDK assumes that if certain classes in the SDK are executing, the SDK has already been initialized.
-        // Therefore, to prevent these errors from occurring, initialize the SDK with random credentials.
-        CustomerIO.initialize(siteId: testSiteId, apiKey: String.random)
+        // Because integration tests try to test in an environment that is as to production as possible, we need to
+        // initialize the SDK.
+        CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
         httpRequestRunnerStub = HttpRequestRunnerStub()

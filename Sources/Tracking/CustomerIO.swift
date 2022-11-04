@@ -97,19 +97,22 @@ public class CustomerIO: CustomerIOInstance {
     // Only assign a value to this *when the SDK is initialzied*.
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
-    private var implementation: CustomerIOImplementation?
+    private var implementation: CustomerIOInstance?
 
+    // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    public var diGraph: DIGraph? {
-        implementation?.diGraph
-    }
+    internal var diGraph: DIGraph?
+
+    // strong reference to repository to prevent garbage collection as it runs tasks in async.
+    private var cleanupRepository: CleanupRepository?
 
     // private constructor to force use of singleton API
     private init() {}
 
-    // Constructor for testing.
-    internal init(implementation: CustomerIOImplementation) {
+    // Constructor for unit testing. Just overriding some
+    internal init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
+        self.diGraph = diGraph
     }
 
     /**
@@ -118,6 +121,18 @@ public class CustomerIO: CustomerIOInstance {
      */
     internal static func resetSharedInstance() {
         Self.shared = CustomerIO()
+    }
+
+    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // between the SDK classes and test class.
+    internal static func initializeIntegrationTests(
+        siteId: String,
+        diGraph: DIGraph
+    ) {
+        let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
+        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+
+        Self.shared.postInitialize(siteId: diGraph.siteId, diGraph: diGraph)
     }
 
     /**
@@ -170,17 +185,43 @@ public class CustomerIO: CustomerIOInstance {
 
         let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: newSdkConfig)
 
+        Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
-        if newSdkConfig.autoTrackScreenViews {
+        Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
+    }
+
+    // Call from CustomerIO after SDK initialized. Not calling automatically
+    // to make tests noisey.
+    internal func postInitialize(siteId: SiteId, diGraph: DIGraph) {
+        let hooks = diGraph.hooksManager
+        let threadUtil = diGraph.threadUtil
+        let logger = diGraph.logger
+        let sdkConfig = diGraph.sdkConfig
+
+        if sdkConfig.autoTrackScreenViews {
             // Function not available for rich push (Notification Service Extension). Only call when not possibly being
             // called from that.
             // You must enable screen view tracking through configuring the SDK. You cannot configure the SDK (at this
             // time) from a NSE.
-            Self.shared.implementation?.setupAutoScreenviewTracking()
+            setupAutoScreenviewTracking()
         }
 
-        Self.shared.implementation?.postInitialize()
+        cleanupRepository = diGraph.cleanupRepository
+
+        // Register Tracking module hooks now that the module is being initialized.
+        hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
+
+        // run cleanup in background to prevent locking the UI thread
+        threadUtil.runBackground { [weak self] in
+            self?.cleanupRepository?.cleanup()
+            self?.cleanupRepository = nil
+        }
+
+        logger
+            .info(
+                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
+            )
     }
 
     /**
@@ -311,4 +352,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.screen(name: name, data: data)
     }
-} // swiftlint:disable:this file_length
+}

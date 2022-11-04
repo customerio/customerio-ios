@@ -66,8 +66,6 @@ open class UnitTest: XCTestCase {
     }
 
     public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        deleteAllPersistantData()
-
         var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
@@ -86,6 +84,8 @@ open class UnitTest: XCTestCase {
         // HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
+
+        deleteAllPersistantData()
 
         super.setUp()
     }

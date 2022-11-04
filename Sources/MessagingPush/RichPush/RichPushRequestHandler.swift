@@ -21,8 +21,12 @@ internal class RichPushRequestHandler {
 
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
-        guard let diGraph = CustomerIO.shared.diGraph else { return }
 
+        let sdkInitializedUtil = SdkInitializedUtilImpl()
+
+        guard let postSdkInitializedData = sdkInitializedUtil.postInitializedData else { return }
+
+        let diGraph = postSdkInitializedData.diGraph
         let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(

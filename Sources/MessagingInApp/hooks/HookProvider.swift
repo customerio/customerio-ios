@@ -17,7 +17,7 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        MessagingInApp.shared
+        MessagingInAppImplementation(siteId: siteId, diGraph: diGraph!)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
@@ -29,6 +29,6 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
-        MessagingInApp.shared
+        MessagingInAppImplementation(siteId: siteId, diGraph: diGraph!)
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-extension CustomerIOImplementation {
+extension CustomerIO {
     // Swizzled methods for screen view tracking will call UIKit
     // UIApplication.shared which is unavailable to iOS app extensions.
     @available(iOSApplicationExtension, unavailable)
