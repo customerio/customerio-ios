@@ -52,5 +52,9 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    func testDependenciesAbleToResolve() {}
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
+        return countDependenciesResolved
+    }
 }

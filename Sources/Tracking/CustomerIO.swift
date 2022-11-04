@@ -109,7 +109,8 @@ public class CustomerIO: CustomerIOInstance {
     // private constructor to force use of singleton API
     private init() {}
 
-    // Constructor for unit testing. Just overriding some
+    // Constructor for unit testing. Just for overriding dependencies and not running logic.
+    // See CustomerIO.shared.initializeIntegrationTests for integration testing
     internal init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
         self.diGraph = diGraph
@@ -124,7 +125,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     // Special initialize used for integration tests. Mostly to be able to shared a DI graph
-    // between the SDK classes and test class.
+    // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
         siteId: String,
         diGraph: DIGraph
@@ -136,7 +137,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-     Initialize the shared `instance` of `CustomerIO` from within a Notification Service Extension when setting up rich push.
+     Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     public static func initialize(
@@ -188,24 +189,24 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
+        let isSdkInitializedNotFromRichPush = configureHandler != nil
+        if isSdkInitializedNotFromRichPush, newSdkConfig.autoTrackScreenViews {
+            // Setting up screen view tracking is not available for rich push (Notification Service Extension).
+            // Only call this code when not possibly being called from a NSE.
+            //
+            // How this is currently done is by only running when the SDK configuration handler is *not* nil.
+            // At this time, the SDK cannot be configured from a NSE.
+            Self.shared.setupAutoScreenviewTracking()
+        }
+
         Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
     }
 
-    // Call from CustomerIO after SDK initialized. Not calling automatically
-    // to make tests noisey.
+    // Contains all logic shared between all of the initialize() functions.
     internal func postInitialize(siteId: SiteId, diGraph: DIGraph) {
         let hooks = diGraph.hooksManager
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
-        let sdkConfig = diGraph.sdkConfig
-
-        if sdkConfig.autoTrackScreenViews {
-            // Function not available for rich push (Notification Service Extension). Only call when not possibly being
-            // called from that.
-            // You must enable screen view tracking through configuring the SDK. You cannot configure the SDK (at this
-            // time) from a NSE.
-            setupAutoScreenviewTracking()
-        }
 
         cleanupRepository = diGraph.cleanupRepository
 

@@ -10,6 +10,7 @@ public protocol MessagingInAppInstance: AutoMockable {
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
     @Atomic public private(set) static var shared = MessagingInApp()
 
+    // testing constructor
     override internal init(implementation: MessagingInAppInstance, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
@@ -25,7 +26,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
         // Register MessagingPush module hooks now that the module is being initialized.
         let hooks = diGraph.hooksManager
-        let moduleHookProvider = MessagingInAppModuleHookProvider(siteId: siteId)
+        let moduleHookProvider = MessagingInAppModuleHookProvider()
         hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
         let newInstance = MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)

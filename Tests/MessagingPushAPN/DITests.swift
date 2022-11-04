@@ -1,11 +1,7 @@
-@testable import CioMessagingPushAPN
-import Common
-import Foundation
 import SharedTests
-import XCTest
 
-class DIGraphTests: IntegrationTest {
+class DIGraphTests: BaseDIGraphTest {
     func testDependencyGraphComplete() {
-        diGraph.testDependenciesAbleToResolve() // test will fail if an exception occurs while running this function
+        runTest_expectDiGraphResolvesAllDependenciesWithoutError()
     }
 }

@@ -10,10 +10,10 @@ open class IntegrationTest: UnitTest {
     public var httpRequestRunnerStub: HttpRequestRunnerStub!
 
     override open func setUp() {
-        super.setUp(enableLogs: true)
+        super.setUp()
 
         // Because integration tests try to test in an environment that is as to production as possible, we need to
-        // initialize the SDK.
+        // initialize the SDK. This is especially important to have the Tracking module setup.
         CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.

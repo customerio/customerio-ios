@@ -13,6 +13,7 @@ import UserNotifications
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
 
+    // testing constructor
     override internal init(implementation: MessagingPushInstance, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
@@ -28,7 +29,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
         // Register MessagingPush module hooks now that the module is being initialized.
         let hooks = diGraph.hooksManager
-        let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)
+        let moduleHookProvider = MessagingPushModuleHookProvider()
         hooks.add(key: .messagingPush, provider: moduleHookProvider)
 
         let newInstance = MessagingPushImplementation(siteId: siteId, diGraph: diGraph)

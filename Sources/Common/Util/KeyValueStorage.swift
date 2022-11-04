@@ -34,17 +34,18 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
         self.deviceMetricsGrabber = deviceMetricsGrabber
     }
 
-    // Used for global data storing for *all* of the site-ids.
+    // Used for global data that's relevant to *all* of the site-ids (not sandboxed).
+    // Instead of the more common way the SDK stores data by sandboxing all of that data by site-id.
     public func switchToGlobalDataStore() {
         siteId = nil
     }
 
     /**
-     We want to separate all of the data for each CIO workspace and app.
+     We want to sandbox all of the data for each CIO workspace and app.
      Therefore, we use the app's bundle ID to be unique to the app and the siteId to separate all of the sites.
 
      We also need to have 1 set of UserPreferences that all workspaces of an app share.
-     For these moments, use `shared` as the `siteId` parameter.e
+     For these moments, use `shared` as the `siteId` value.
      */
     internal func getFileName() -> String {
         var appUniqueIdentifier = ""

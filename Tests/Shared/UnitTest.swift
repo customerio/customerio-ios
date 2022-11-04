@@ -60,6 +60,7 @@ open class UnitTest: XCTestCase {
      ```
 
      @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
+     @param modifySdkConfig Allows you to change configuration options before the SDKConfig instnace is created for you.
      */
     override open func setUp() {
         setUp(enableLogs: false)

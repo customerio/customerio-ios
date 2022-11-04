@@ -1,6 +1,13 @@
 import Common
 import Foundation
 
+// Base class meant to be subclassed by top-level classes such as `MessagingPush` and `MessagingInApp`. Provides some
+// boilerplate logic to creating an implementation object
+// once the SDK has finally been initialized.
+//
+// Top-level class meaning it contains public facing SDK functions called by customers.
+// There isn't a constructor populated via dependency injection. It's at the top node
+// of dependencies.
 open class ModuleTopLevelObject<ImplementationClass> {
     private(set) var alreadyCreatedImplementation: ImplementationClass?
     public var implementation: ImplementationClass? {

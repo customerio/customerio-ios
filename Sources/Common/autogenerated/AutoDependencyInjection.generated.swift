@@ -49,30 +49,79 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    internal func testDependenciesAbleToResolve() {
+    internal func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
         _ = deviceInfo
+        countDependenciesResolved += 1
+
         _ = httpClient
+        countDependenciesResolved += 1
+
         _ = globalDataStore
+        countDependenciesResolved += 1
+
         _ = hooksManager
+        countDependenciesResolved += 1
+
         _ = profileStore
+        countDependenciesResolved += 1
+
         _ = queue
+        countDependenciesResolved += 1
+
         _ = queueQueryRunner
+        countDependenciesResolved += 1
+
         _ = queueRequestManager
+        countDependenciesResolved += 1
+
         _ = queueRunRequest
+        countDependenciesResolved += 1
+
         _ = queueRunner
+        countDependenciesResolved += 1
+
         _ = simpleTimer
+        countDependenciesResolved += 1
+
         _ = singleScheduleTimer
+        countDependenciesResolved += 1
+
         _ = threadUtil
+        countDependenciesResolved += 1
+
         _ = logger
+        countDependenciesResolved += 1
+
         _ = httpRetryPolicy
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
+        countDependenciesResolved += 1
+
         _ = fileStorage
+        countDependenciesResolved += 1
+
         _ = queueStorage
+        countDependenciesResolved += 1
+
         _ = jsonAdapter
+        countDependenciesResolved += 1
+
         _ = lockManager
+        countDependenciesResolved += 1
+
         _ = dateUtil
+        countDependenciesResolved += 1
+
         _ = httpRequestRunner
+        countDependenciesResolved += 1
+
         _ = keyValueStorage
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
     }
 
     // DeviceInfo

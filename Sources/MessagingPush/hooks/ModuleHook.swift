@@ -4,20 +4,20 @@ import Foundation
 
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingPushModuleHookProvider: ModuleHookProvider {
-    private let siteId: SiteId
-
     private let sdkInitializedUtil = SdkInitializedUtilImpl()
+
+    private var siteId: SiteId? {
+        diGraph?.siteId
+    }
 
     private var diGraph: DIGraph? {
         sdkInitializedUtil.postInitializedData?.diGraph
     }
 
-    init(siteId: SiteId) {
-        self.siteId = siteId
-    }
-
     var profileIdentifyHook: ProfileIdentifyHook? {
-        MessagingPushImplementation(siteId: siteId, diGraph: diGraph!)
+        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+
+        return MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
@@ -25,7 +25,9 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {
-        MessagingPushImplementation(siteId: siteId, diGraph: diGraph!)
+        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+
+        return MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
     }
 
     var screenTrackingHook: ScreenTrackingHook? {

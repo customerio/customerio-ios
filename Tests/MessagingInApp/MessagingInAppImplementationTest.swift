@@ -5,7 +5,7 @@ import Gist
 import SharedTests
 import XCTest
 
-class MessagingInAppTest: UnitTest {
+class MessagingInAppImplementationTest: UnitTest {
     private var messagingInApp: MessagingInAppImplementation!
 
     private let inAppProviderMock = InAppProviderMock()

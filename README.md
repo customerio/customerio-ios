@@ -59,6 +59,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // You can optionally provide a Region to set the Region for your Workspace:
         CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU)
 
+        // You can optionally configure the behavior of the SDK: 
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU) { config in 
+          config.autoTrackPushEvents = false 
+        }
+
         return true
     }
 }

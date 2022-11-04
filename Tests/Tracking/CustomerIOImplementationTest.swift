@@ -15,7 +15,6 @@ class CustomerIOImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let hooksMock = HooksManagerMock()
     private let profileIdentifyHookMock = ProfileIdentifyHookMock()
-    private let cleanupRepositoryMock = CleanupRepositoryMock()
 
     override func setUp() {
         super.setUp()
@@ -23,7 +22,6 @@ class CustomerIOImplementationTest: UnitTest {
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: hooksMock, forType: HooksManager.self)
-        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 

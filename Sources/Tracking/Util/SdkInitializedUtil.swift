@@ -6,6 +6,8 @@ public protocol SdkInitializedUtil: AutoMockable {
     var postInitializedData: (siteId: String, diGraph: DIGraph)? { get }
 }
 
+// Used by SDK modules to determine if the SDK has been initialized or not.
+// This is the safe way to get data you need *after* the SDK is initialized.
 public class SdkInitializedUtilImpl: SdkInitializedUtil {
     // Try to not use dependencies in this class as it's contructed before
     // DI graph could be populated. So, production code calls this constructor.
