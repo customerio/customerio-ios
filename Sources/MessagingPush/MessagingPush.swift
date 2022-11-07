@@ -23,6 +23,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         super.init()
     }
 
+    // for testing
+    internal static func resetSharedInstance() {
+        Self.shared = MessagingPush()
+    }
+
     public static func initialize() {
         MessagingPush.shared.initialize()
     }

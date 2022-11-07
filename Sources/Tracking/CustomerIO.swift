@@ -83,7 +83,9 @@ public extension CustomerIOInstance {
  You must call `CustomerIO.initialize` to use the features of the SDK.
  */
 public class CustomerIO: CustomerIOInstance {
-    public var siteId: String?
+    public var siteId: String? {
+        diGraph?.siteId
+    }
 
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
@@ -99,11 +101,7 @@ public class CustomerIO: CustomerIOInstance {
 
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    internal var diGraph: DIGraph? {
-        didSet {
-            siteId = diGraph?.siteId
-        }
-    }
+    internal var diGraph: DIGraph?
 
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?

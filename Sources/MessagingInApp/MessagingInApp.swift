@@ -20,8 +20,22 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         super.init()
     }
 
-    public static func initialize() {
-        MessagingInApp.shared.initialize()
+    // for testing
+    internal static func resetSharedInstance() {
+        Self.shared = MessagingInApp()
+    }
+
+    // Initialize SDK module
+    public static func initialize(organizationId: String) {
+        Self.shared.initialize(organizationId: organizationId)
+    }
+
+    // This function remains here for backwards compatability since it was introduced in previous versions of SDK. Other
+    // modules use only a static initialize() function.
+    public func initialize(organizationId: String) {
+        initialize() // enables features such as setting up hooks
+
+        implementation?.initialize(organizationId: organizationId)
     }
 
     override public func inititlize(siteId: SiteId, diGraph: DIGraph) {
@@ -38,9 +52,5 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingInAppInstance {
         MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
-    }
-
-    public func initialize(organizationId: String) {
-        implementation?.initialize(organizationId: organizationId)
     }
 }
