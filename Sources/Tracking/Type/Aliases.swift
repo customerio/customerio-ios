@@ -10,3 +10,5 @@ import Foundation
 
 public typealias Region = Common.Region
 public typealias CioLogLevel = Common.CioLogLevel
+public typealias CioSdkConfig = Common.SdkConfig
+public typealias Metric = Common.Metric

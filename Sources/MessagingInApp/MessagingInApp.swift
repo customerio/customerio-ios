@@ -20,7 +20,11 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         super.init()
     }
 
-    override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingInAppInstance {
+    public static func initialize() {
+        MessagingInApp.shared.initialize()
+    }
+
+    override public func inititlize(siteId: SiteId, diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingInApp module...")
 
@@ -29,11 +33,11 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         let moduleHookProvider = MessagingInAppModuleHookProvider()
         hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
-        let newInstance = MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
-
         logger.info("MessagingInApp module setup with SDK")
+    }
 
-        return newInstance
+    override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingInAppInstance {
+        MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
     }
 
     public func initialize(organizationId: String) {

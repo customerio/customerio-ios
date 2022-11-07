@@ -23,7 +23,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         super.init()
     }
 
-    override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingPushInstance {
+    public static func initialize() {
+        MessagingPush.shared.initialize()
+    }
+
+    override public func inititlize(siteId: SiteId, diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
@@ -32,11 +36,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let moduleHookProvider = MessagingPushModuleHookProvider()
         hooks.add(key: .messagingPush, provider: moduleHookProvider)
 
-        let newInstance = MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
-
         logger.info("MessagingPush module setup with SDK")
+    }
 
-        return newInstance
+    override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingPushInstance {
+        MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
     }
 
     /**

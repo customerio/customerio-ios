@@ -38,8 +38,8 @@ class MessagingPushFCMAPITest: UnitTest {
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
 
-        MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        MessagingPush.shared.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
     }
 
     func test_richPushPublicFunctions() throws {
