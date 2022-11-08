@@ -4,7 +4,7 @@ import Foundation
 import Gist
 
 public protocol MessagingInAppInstance: AutoMockable {
-    func initialize(organizationId: String)
+    func initialize(organizationId: String, eventListener: InAppEventListener?)
 }
 
 /**
@@ -20,6 +20,8 @@ public class MessagingInApp: MessagingInAppInstance {
     private var diGraph: DIGraph {
         diGraphOverride ?? DIGraph.getInstance(siteId: siteId)
     }
+
+    private var eventListener: InAppEventListener?
 
     private var queue: Queue {
         diGraph.queue
@@ -38,9 +40,10 @@ public class MessagingInApp: MessagingInAppInstance {
     }
 
     // for testing
-    internal init(diGraph: DIGraph, siteId: String) {
+    internal init(diGraph: DIGraph, siteId: String, eventListener: InAppEventListener?) {
         self.diGraphOverride = diGraph
         self.siteId = siteId
+        self.eventListener = eventListener
     }
 
     private init() {
@@ -57,8 +60,10 @@ public class MessagingInApp: MessagingInAppInstance {
         }
     }
 
-    public func initialize(organizationId: String) {
-        logger.debug("gist SDK being setup \(organizationId)")
+    public func initialize(organizationId: String, eventListener: InAppEventListener? = nil) {
+        logger.debug("In-app module being setup \(organizationId)")
+
+        self.eventListener = eventListener
 
         inAppProvider.initialize(organizationId: organizationId, delegate: self)
     }
@@ -100,14 +105,20 @@ extension MessagingInApp: GistDelegate {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
         }
+
+        eventListener?.messageOpened(message: InAppMessage(gistMessage: message))
     }
 
     public func messageDismissed(message: Message) {
         logger.debug("in-app message dismissed. \(message.describeForLogs)")
+
+        eventListener?.messageDismissed(message: InAppMessage(gistMessage: message))
     }
 
     public func messageError(message: Message) {
         logger.error("error with in-app message. \(message.describeForLogs)")
+
+        eventListener?.errorWithMessage(message: InAppMessage(gistMessage: message))
     }
 
     public func action(message: Message, currentRoute: String, action: String, name: String) {
@@ -122,6 +133,13 @@ extension MessagingInApp: GistDelegate {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked)
         }
+
+        eventListener?.messageActionTaken(
+            message: InAppMessage(gistMessage: message),
+            currentRoute: currentRoute,
+            action: action,
+            name: name
+        )
     }
 
     private func getDeliveryId(from message: Message) -> String? {

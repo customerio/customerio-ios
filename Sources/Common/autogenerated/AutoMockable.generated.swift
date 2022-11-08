@@ -2375,7 +2375,6 @@ public class QueueMock: Queue, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTaskReturnValue`
      */
-
     public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?) -> ModifyQueueResult)?
 
     /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,

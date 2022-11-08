@@ -65,45 +65,25 @@ extension QueueTask {
     static let storageIdLens = Lens<QueueTask, String>(
         get: { $0.storageId },
         set: { storageId, existing in
-            QueueTask(
-                storageId: storageId,
-                type: existing.type,
-                data: existing.data,
-                runResults: existing.runResults
-            )
+            QueueTask(storageId: storageId, type: existing.type, data: existing.data, runResults: existing.runResults)
         }
     )
     static let typeLens = Lens<QueueTask, String>(
         get: { $0.type },
         set: { type, existing in
-            QueueTask(
-                storageId: existing.storageId,
-                type: type,
-                data: existing.data,
-                runResults: existing.runResults
-            )
+            QueueTask(storageId: existing.storageId, type: type, data: existing.data, runResults: existing.runResults)
         }
     )
     static let dataLens = Lens<QueueTask, Data>(
         get: { $0.data },
         set: { data, existing in
-            QueueTask(
-                storageId: existing.storageId,
-                type: existing.type,
-                data: data,
-                runResults: existing.runResults
-            )
+            QueueTask(storageId: existing.storageId, type: existing.type, data: data, runResults: existing.runResults)
         }
     )
     static let runResultsLens = Lens<QueueTask, QueueTaskRunResults>(
         get: { $0.runResults },
         set: { runResults, existing in
-            QueueTask(
-                storageId: existing.storageId,
-                type: existing.type,
-                data: existing.data,
-                runResults: runResults
-            )
+            QueueTask(storageId: existing.storageId, type: existing.type, data: existing.data, runResults: runResults)
         }
     )
 
@@ -132,12 +112,9 @@ extension QueueTaskMetadata {
             QueueTaskMetadata(
                 taskPersistedId: taskPersistedId,
                 taskType: existing.taskType,
-                groupStart: existing
-                    .groupStart,
-                groupMember: existing
-                    .groupMember,
-                createdAt: existing
-                    .createdAt
+                groupStart: existing.groupStart,
+                groupMember: existing.groupMember,
+                createdAt: existing.createdAt
             )
         }
     )
@@ -145,8 +122,7 @@ extension QueueTaskMetadata {
         get: { $0.taskType },
         set: { taskType, existing in
             QueueTaskMetadata(
-                taskPersistedId: existing
-                    .taskPersistedId,
+                taskPersistedId: existing.taskPersistedId,
                 taskType: taskType,
                 groupStart: existing.groupStart,
                 groupMember: existing.groupMember,
@@ -158,12 +134,10 @@ extension QueueTaskMetadata {
         get: { $0.groupStart },
         set: { groupStart, existing in
             QueueTaskMetadata(
-                taskPersistedId: existing
-                    .taskPersistedId,
+                taskPersistedId: existing.taskPersistedId,
                 taskType: existing.taskType,
                 groupStart: groupStart,
-                groupMember: existing
-                    .groupMember,
+                groupMember: existing.groupMember,
                 createdAt: existing.createdAt
             )
         }
@@ -172,11 +146,9 @@ extension QueueTaskMetadata {
         get: { $0.groupMember },
         set: { groupMember, existing in
             QueueTaskMetadata(
-                taskPersistedId: existing
-                    .taskPersistedId,
+                taskPersistedId: existing.taskPersistedId,
                 taskType: existing.taskType,
-                groupStart: existing
-                    .groupStart,
+                groupStart: existing.groupStart,
                 groupMember: groupMember,
                 createdAt: existing.createdAt
             )
@@ -186,8 +158,7 @@ extension QueueTaskMetadata {
         get: { $0.createdAt },
         set: { createdAt, existing in
             QueueTaskMetadata(
-                taskPersistedId: existing
-                    .taskPersistedId,
+                taskPersistedId: existing.taskPersistedId,
                 taskType: existing.taskType,
                 groupStart: existing.groupStart,
                 groupMember: existing.groupMember,
