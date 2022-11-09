@@ -19,12 +19,8 @@ public extension XCTestCase {
         ProcessInfo.processInfo.environment[key]
     }
 
-    func XCTAssertEqualEither<T: Equatable>(
-        _ expected: [T],
-        actual: T,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) {
+    func XCTAssertEqualEither<T: Equatable>(_ expected: [T], actual: T, file: StaticString = #file,
+                                            line: UInt = #line) {
         let matches = expected.contains { value in
             value == actual
         }
@@ -34,12 +30,8 @@ public extension XCTestCase {
         }
     }
 
-    func XCTAssertMatches(
-        _ actual: String?,
-        regex: String,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) {
+    func XCTAssertMatches(_ actual: String?, regex: String, file: StaticString = #file,
+                          line: UInt = #line) {
         XCTAssertNotNil(actual, file: file, line: line)
 
         let matches = actual!.matches(regex: regex)
@@ -49,10 +41,8 @@ public extension XCTestCase {
         }
     }
 
-    func skipRunningTest(
-        file: StaticString = #file,
-        line: UInt = #line
-    ) throws {
+    func skipRunningTest(file: StaticString = #file,
+                         line: UInt = #line) throws {
         try XCTSkipIf(true, nil, file: file, line: line)
     }
 }

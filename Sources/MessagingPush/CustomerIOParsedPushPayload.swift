@@ -95,10 +95,8 @@ public class CustomerIOParsedPushPayload {
     public let mutableNotificationContent: UNMutableNotificationContent
     public let notificationContent: UNNotificationContent
 
-    public static func parse(
-        notificationContent: UNNotificationContent,
-        jsonAdapter: JsonAdapter
-    ) -> CustomerIOParsedPushPayload? {
+    public static func parse(notificationContent: UNNotificationContent,
+                             jsonAdapter: JsonAdapter) -> CustomerIOParsedPushPayload? {
         let raw = notificationContent.userInfo
 
         guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],

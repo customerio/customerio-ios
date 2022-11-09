@@ -16,7 +16,6 @@ public struct SdkWrapperConfig {
         case expo = "Expo"
         case flutter = "Flutter"
     }
-
     public init(source: Source, version: String) {
         self.source = source
         self.version = version

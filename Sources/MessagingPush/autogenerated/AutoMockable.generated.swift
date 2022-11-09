@@ -122,8 +122,7 @@ internal class DeviceAttributesProviderMock: DeviceAttributesProvider, Mock {
      */
     internal var getDefaultDeviceAttributesClosure: ((([String: Any]) -> Void) -> Void)?
 
-    /// Mocked function for `getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
         mockCalled = true
         getDefaultDeviceAttributesCallsCount += 1

@@ -12,9 +12,7 @@ open class IntegrationTest: UnitTest {
     override open func setUp() {
         super.setUp()
 
-        // Integration tests have a high chance of throwing an exception if the SDK has not been initialized because the
-        // SDK assumes that if certain classes in the SDK are executing, the SDK has already been initialized.
-        // Therefore, to prevent these errors from occurring, initialize the SDK with random credentials.
+        // Integration tests have a high chance of throwing an exception if the SDK has not been initialized because the SDK assumes that if certain classes in the SDK are executing, the SDK has already been initialized. Therefore, to prevent these errors from occurring, initialize the SDK with random credentials.
         CustomerIO.initialize(siteId: testSiteId, apiKey: String.random)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
