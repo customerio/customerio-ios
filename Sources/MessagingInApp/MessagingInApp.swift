@@ -106,7 +106,7 @@ extension MessagingInApp: GistDelegate {
             _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
         }
 
-        eventListener?.messageOpened(message: InAppMessage(gistMessage: message))
+        eventListener?.messageShown(message: InAppMessage(gistMessage: message))
     }
 
     public func messageDismissed(message: Message) {

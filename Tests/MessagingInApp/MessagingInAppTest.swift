@@ -72,10 +72,10 @@ class MessagingInAppTest: UnitTest {
         )
 
         // Message opened
-        XCTAssertFalse(eventListenerMock.messageOpenedCalled)
+        XCTAssertFalse(eventListenerMock.messageShownCalled)
         messagingInApp.messageShown(message: givenGistMessage)
-        XCTAssertEqual(eventListenerMock.messageOpenedCallsCount, 1)
-        XCTAssertEqual(eventListenerMock.messageOpenedReceivedArguments, expectedInAppMessage)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
+        XCTAssertEqual(eventListenerMock.messageShownReceivedArguments, expectedInAppMessage)
 
         // message dismissed
         XCTAssertFalse(eventListenerMock.messageDismissedCalled)
@@ -116,11 +116,11 @@ class MessagingInAppTest: UnitTest {
         )
 
         // Message opened
-        XCTAssertEqual(eventListenerMock.messageOpenedCallsCount, 0)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 0)
         messagingInApp.messageShown(message: givenGistMessage)
-        XCTAssertEqual(eventListenerMock.messageOpenedCallsCount, 1)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
         messagingInApp.messageShown(message: givenGistMessage)
-        XCTAssertEqual(eventListenerMock.messageOpenedCallsCount, 2)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 2)
 
         // message dismissed
         XCTAssertEqual(eventListenerMock.messageDismissedCallsCount, 0)

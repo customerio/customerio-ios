@@ -98,9 +98,9 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     }
 
     public func resetMock() {
-        messageOpenedCallsCount = 0
-        messageOpenedReceivedArguments = nil
-        messageOpenedReceivedInvocations = []
+        messageShownCallsCount = 0
+        messageShownReceivedArguments = nil
+        messageShownReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         messageDismissedCallsCount = 0
@@ -120,32 +120,32 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - messageOpened
+    // MARK: - messageShown
 
     /// Number of times the function was called.
-    public private(set) var messageOpenedCallsCount = 0
+    public private(set) var messageShownCallsCount = 0
     /// `true` if the function was ever called.
-    public var messageOpenedCalled: Bool {
-        messageOpenedCallsCount > 0
+    public var messageShownCalled: Bool {
+        messageShownCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageOpenedReceivedArguments: InAppMessage?
+    public private(set) var messageShownReceivedArguments: InAppMessage?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageOpenedReceivedInvocations: [InAppMessage] = []
+    public private(set) var messageShownReceivedInvocations: [InAppMessage] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var messageOpenedClosure: ((InAppMessage) -> Void)?
+    public var messageShownClosure: ((InAppMessage) -> Void)?
 
-    /// Mocked function for `messageOpened(message: InAppMessage)`. Your opportunity to return a mocked value and check
+    /// Mocked function for `messageShown(message: InAppMessage)`. Your opportunity to return a mocked value and check
     /// result of mock in test code.
-    public func messageOpened(message: InAppMessage) {
+    public func messageShown(message: InAppMessage) {
         mockCalled = true
-        messageOpenedCallsCount += 1
-        messageOpenedReceivedArguments = message
-        messageOpenedReceivedInvocations.append(message)
-        messageOpenedClosure?(message)
+        messageShownCallsCount += 1
+        messageShownReceivedArguments = message
+        messageShownReceivedInvocations.append(message)
+        messageShownClosure?(message)
     }
 
     // MARK: - messageDismissed
