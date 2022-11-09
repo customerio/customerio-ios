@@ -104,8 +104,10 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
 
     @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                       didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) -> CustomerIOParsedPushPayload? {
         messagingPush.userNotificationCenter(center, didReceive: response)
     }
 

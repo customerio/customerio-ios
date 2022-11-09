@@ -123,16 +123,25 @@ public class CioQueue: Queue {
     }
 
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
-        addTask(type: QueueTaskType.trackDeliveryMetric.rawValue,
-                data: TrackDeliveryEventRequestBody(type: .inApp,
-                                                    payload: DeliveryPayload(deliveryId: deliveryId,
-                                                                             event: event,
-                                                                             timestamp: dateUtil.now)))
+        addTask(
+            type: QueueTaskType.trackDeliveryMetric.rawValue,
+            data: TrackDeliveryEventRequestBody(
+                type: .inApp,
+                payload: DeliveryPayload(
+                    deliveryId: deliveryId,
+                    event: event,
+                    timestamp: dateUtil.now
+                )
+            )
+        )
     }
 
-    public func addTask<T: Codable>(type: String, data: T,
-                                    groupStart: QueueTaskGroup?,
-                                    blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult {
+    public func addTask<T: Codable>(
+        type: String,
+        data: T,
+        groupStart: QueueTaskGroup?,
+        blockingGroups: [QueueTaskGroup]?
+    ) -> ModifyQueueResult {
         logger.info("adding queue task \(type)")
 
         guard let data = jsonAdapter.toJson(data, encoder: nil) else {

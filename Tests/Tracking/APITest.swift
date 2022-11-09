@@ -79,6 +79,7 @@ class TrackingAPITest: UnitTest {
 
         checkDeviceProfileAttributes()
     }
+
     func checkDeviceProfileAttributes() {
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
