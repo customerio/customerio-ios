@@ -22,7 +22,7 @@ refactor!: remove onComplete callback from async functions
 // The SDK is deployed to multiple dependency management softwares (Cocoapods and Swift Package Manager). 
 // This code tries to prevent forgetting to update metadata files for one but not the other. 
 let isSPMFilesModified = danger.git.modified_files.includes('Package.swift') || danger.git.modified_files.includes('Package.resolved')
-let isCococapodsFilesModified = danger.git.modified_files.filter((filePath) => filePath.endsWith('.podspec'))
+let isCococapodsFilesModified = danger.git.modified_files.filter((filePath) => filePath.endsWith('.podspec')) > 0
 
 if (isSPMFilesModified || isCococapodsFilesModified) {
   if (!isSPMFilesModified) { warn("Cocoapods files (*.podspec) were modified but Swift Package Manager files (Package.*) files were not. This is error-prone when updating dependencies in one service but not the other. Double-check that you updated all of the correct files.") }
