@@ -4,7 +4,9 @@ import Foundation
 import Gist
 
 public protocol MessagingInAppInstance: AutoMockable {
-    func initialize(organizationId: String, eventListener: InAppEventListener?)
+    func initialize(organizationId: String)
+    // sourcery:Name=initializeEventListener
+    func initialize(organizationId: String, eventListener: InAppEventListener)
 }
 
 /**
@@ -60,12 +62,16 @@ public class MessagingInApp: MessagingInAppInstance {
         }
     }
 
-    public func initialize(organizationId: String, eventListener: InAppEventListener? = nil) {
+    public func initialize(organizationId: String) {
         logger.debug("In-app module being setup \(organizationId)")
 
+        inAppProvider.initialize(organizationId: organizationId, delegate: self)
+    }
+
+    public func initialize(organizationId: String, eventListener: InAppEventListener) {
         self.eventListener = eventListener
 
-        inAppProvider.initialize(organizationId: organizationId, delegate: self)
+        initialize(organizationId: organizationId)
     }
 }
 

@@ -408,6 +408,11 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        initializeEventListenerCallsCount = 0
+        initializeEventListenerReceivedArguments = nil
+        initializeEventListenerReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - initialize
@@ -420,24 +425,56 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var initializeReceivedArguments: (organizationId: String, eventListener: InAppEventListener?)?
+    public private(set) var initializeReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeReceivedInvocations: [(
+    public private(set) var initializeReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var initializeClosure: ((String) -> Void)?
+
+    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check
+    /// result of mock in test code.
+    public func initialize(organizationId: String) {
+        mockCalled = true
+        initializeCallsCount += 1
+        initializeReceivedArguments = organizationId
+        initializeReceivedInvocations.append(organizationId)
+        initializeClosure?(organizationId)
+    }
+
+    // MARK: - initialize
+
+    /// Number of times the function was called.
+    public private(set) var initializeEventListenerCallsCount = 0
+    /// `true` if the function was ever called.
+    public var initializeEventListenerCalled: Bool {
+        initializeEventListenerCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var initializeEventListenerReceivedArguments: (
         organizationId: String,
-        eventListener: InAppEventListener?
+        eventListener: InAppEventListener
+    )?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var initializeEventListenerReceivedInvocations: [(
+        organizationId: String,
+        eventListener: InAppEventListener
     )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var initializeClosure: ((String, InAppEventListener?) -> Void)?
+    public var initializeEventListenerClosure: ((String, InAppEventListener) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener?)`. Your opportunity
-    /// to return a mocked value and check result of mock in test code.
-    public func initialize(organizationId: String, eventListener: InAppEventListener?) {
+    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener)`. Your opportunity to
+    /// return a mocked value and check result of mock in test code.
+    public func initialize(organizationId: String, eventListener: InAppEventListener) {
         mockCalled = true
-        initializeCallsCount += 1
-        initializeReceivedArguments = (organizationId: organizationId, eventListener: eventListener)
-        initializeReceivedInvocations.append((organizationId: organizationId, eventListener: eventListener))
-        initializeClosure?(organizationId, eventListener)
+        initializeEventListenerCallsCount += 1
+        initializeEventListenerReceivedArguments = (organizationId: organizationId, eventListener: eventListener)
+        initializeEventListenerReceivedInvocations
+            .append((organizationId: organizationId, eventListener: eventListener))
+        initializeEventListenerClosure?(organizationId, eventListener)
     }
 }
