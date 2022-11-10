@@ -2,6 +2,7 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
+@available(iOSApplicationExtension, unavailable)
 extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
         swizzle(
@@ -23,6 +24,7 @@ extension CustomerIOImplementation {
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 internal extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
