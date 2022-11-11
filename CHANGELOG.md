@@ -1,3 +1,10 @@
+### [1.2.4](https://github.com/customerio/customerio-ios/compare/1.2.3...1.2.4) (2022-11-11)
+
+
+### Bug Fixes
+
+* updated gist version in podspec ([ab231b1](https://github.com/customerio/customerio-ios/commit/ab231b169208fb869fb1083869ee4c0cb854728b))
+
 ### [1.2.3](https://github.com/customerio/customerio-ios/compare/1.2.2...1.2.3) (2022-11-10)
 
 
