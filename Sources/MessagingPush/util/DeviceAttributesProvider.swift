@@ -20,6 +20,10 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
             onComplete([:])
             return
         }
+        var sdkVersion = deviceInfo.sdkVersion
+        if let sdkWrapperConfig = sdkConfigStore.config._sdkWrapperConfig {
+            sdkVersion = sdkWrapperConfig.version
+        }
 
         var deviceAttributes = [
             "cio_sdk_version": deviceInfo.sdkVersion,
