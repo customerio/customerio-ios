@@ -21,7 +21,6 @@ class DeviceAttributesProviderTest: UnitTest {
         givenConfig.autoTrackDeviceAttributes = enable
         sdkConfigStoreMock.underlyingConfig = givenConfig
     }
-    
     private func setSDKWrapperConfig() {
         var givenConfig = SdkConfig()
         givenConfig._sdkWrapperConfig = SdkWrapperConfig(source: .reactNative, version: wrapperMockVersion )
@@ -74,7 +73,6 @@ class DeviceAttributesProviderTest: UnitTest {
 
         waitForExpectations()
     }
-    
     func test_getDefaultDeviceAttributes_givenSDKWrapperConfig_expectWrapperVersionWithSomeAttributes() {
         let givenSdkVersion = wrapperMockVersion
         let givenAppVersion = String.random
