@@ -30,8 +30,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         Self.shared.initialize(organizationId: organizationId)
     }
 
-    // This function remains here for backwards compatability since it was introduced in previous versions of SDK. Other
-    // modules use only a static initialize() function.
     public func initialize(organizationId: String) {
         initialize() // enables features such as setting up hooks
 
