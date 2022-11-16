@@ -6,18 +6,14 @@ import Foundation
 class MessagingPushModuleHookProvider: ModuleHookProvider {
     private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
-    private var siteId: SiteId? {
-        diGraph?.siteId
-    }
-
     private var diGraph: DIGraph? {
         sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+        guard let diGraph = diGraph else { return nil }
 
-        return MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
+        return MessagingPushImplementation(diGraph: diGraph)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
@@ -25,9 +21,9 @@ class MessagingPushModuleHookProvider: ModuleHookProvider {
     }
 
     var deviceAttributesHook: DeviceAttributesHook? {
-        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+        guard let diGraph = diGraph else { return nil }
 
-        return MessagingPushImplementation(siteId: siteId, diGraph: diGraph)
+        return MessagingPushImplementation(diGraph: diGraph)
     }
 
     var screenTrackingHook: ScreenTrackingHook? {

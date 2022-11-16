@@ -43,9 +43,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.deviceInfo = deviceInfo
     }
 
-    internal init(siteId: String, diGraph: DIGraph) {
-        self.siteId = siteId
-
+    internal init(diGraph: DIGraph) {
+        self.siteId = diGraph.siteId
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore

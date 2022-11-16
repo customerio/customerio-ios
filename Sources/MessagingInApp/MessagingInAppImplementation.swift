@@ -9,7 +9,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
 
-    init(siteId: SiteId, diGraph: DIGraph) {
+    init(diGraph: DIGraph) {
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
@@ -52,7 +52,6 @@ extension MessagingInAppImplementation: GistDelegate {
 
     // Aka: message opened
     public func messageShown(message: Message) {
-        // the state of the SDK does not change if adding this queue task isn't successful so ignore result
         logger.debug("in-app message opened. \(message.describeForLogs)")
 
         if let deliveryId = getDeliveryId(from: message) {
@@ -85,11 +84,6 @@ extension MessagingInAppImplementation: GistDelegate {
 
     private func getDeliveryId(from message: Message) -> String? {
         guard let deliveryId = message.gistProperties.campaignId else {
-            logger
-                .error("""
-                in-app message opened but does not contain a delivery id.
-                Not able to track event. \(message.describeForLogs)
-                """)
             return nil
         }
 

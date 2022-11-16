@@ -36,6 +36,7 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
 
     // Used for global data that's relevant to *all* of the site-ids (not sandboxed).
     // Instead of the more common way the SDK stores data by sandboxing all of that data by site-id.
+    // See `GlobalDataStore` for data that is relevant for *all* site-ids in the SDK.
     public func switchToGlobalDataStore() {
         siteId = nil
     }

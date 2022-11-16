@@ -15,7 +15,7 @@ class MessagingInAppImplementationTest: UnitTest {
 
         diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
 
-        messagingInApp = MessagingInAppImplementation(siteId: testSiteId, diGraph: diGraph)
+        messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
     }
 
     // MARK: initialize

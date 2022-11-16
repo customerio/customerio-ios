@@ -141,8 +141,10 @@ open class UnitTest: XCTestCase {
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
 
+        // delete key value data that belongs to the site-id.
         keyValueStorage.deleteAll()
 
+        // delete key value data that is global to all site-ids in the SDK.
         keyValueStorage.switchToGlobalDataStore()
         keyValueStorage.deleteAll()
     }

@@ -38,7 +38,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         implementation?.initialize(organizationId: organizationId)
     }
 
-    override public func inititlize(siteId: SiteId, diGraph: DIGraph) {
+    override public func inititlize(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingInApp module...")
 
@@ -50,7 +50,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         logger.info("MessagingInApp module setup with SDK")
     }
 
-    override public func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> MessagingInAppInstance {
-        MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
+    override public func getImplementationInstance(diGraph: DIGraph) -> MessagingInAppInstance {
+        MessagingInAppImplementation(diGraph: diGraph)
     }
 }

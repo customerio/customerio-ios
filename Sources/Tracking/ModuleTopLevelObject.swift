@@ -33,10 +33,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
             return nil
         }
 
-        let newInstance = getImplementationInstance(
-            siteId: postSdkInitializedData.siteId,
-            diGraph: postSdkInitializedData.diGraph
-        )
+        let newInstance = getImplementationInstance(diGraph: postSdkInitializedData.diGraph)
         alreadyCreatedImplementation = newInstance
         return newInstance
     }
@@ -49,14 +46,14 @@ open class ModuleTopLevelObject<ImplementationClass> {
             return
         }
 
-        inititlize(siteId: postSdkInitializedData.siteId, diGraph: postSdkInitializedData.diGraph)
+        inititlize(diGraph: postSdkInitializedData.diGraph)
     }
 
-    open func inititlize(siteId: SiteId, diGraph: DIGraph) {
+    open func inititlize(diGraph: DIGraph) {
         fatalError("forgot to override in subclass")
     }
 
-    open func getImplementationInstance(siteId: SiteId, diGraph: DIGraph) -> ImplementationClass {
+    open func getImplementationInstance(diGraph: DIGraph) -> ImplementationClass {
         fatalError("forgot to override in subclass")
     }
 }

@@ -6,18 +6,14 @@ import Foundation
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
     private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
-    private var siteId: SiteId? {
-        diGraph?.siteId
-    }
-
     private var diGraph: DIGraph? {
         sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+        guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
+        return MessagingInAppImplementation(diGraph: diGraph)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
@@ -29,8 +25,8 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
-        guard let siteId = siteId, let diGraph = diGraph else { return nil }
+        guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(siteId: siteId, diGraph: diGraph)
+        return MessagingInAppImplementation(diGraph: diGraph)
     }
 }
