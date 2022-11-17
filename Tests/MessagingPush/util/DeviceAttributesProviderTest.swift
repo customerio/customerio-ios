@@ -85,6 +85,8 @@ class DeviceAttributesProviderTest: UnitTest {
             "push_enabled": "true",
             "device_manufacturer": givenDeviceManufacturer
         ]
+        let givenSdkVersion = String.random
+        let givenWrapperSdkVersion = wrapperMockVersion
         deviceInfoMock.underlyingSdkVersion = givenSdkVersion
         deviceInfoMock.underlyingCustomerAppVersion = givenAppVersion
         deviceInfoMock.underlyingDeviceLocale = givenDeviceLocale
