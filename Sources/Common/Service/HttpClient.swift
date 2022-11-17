@@ -147,12 +147,8 @@ public class CIOHttpClient: HttpClient {
 }
 
 extension CIOHttpClient {
-    static func getSession(
-        siteId: String,
-        apiKey: String,
-        deviceInfo: DeviceInfo,
-        sdkWrapperConfig: SdkWrapperConfig?
-    ) -> URLSession {
+    static func getSession(siteId: String, apiKey: String, deviceInfo: DeviceInfo,
+                           sdkWrapperConfig: SdkWrapperConfig?) -> URLSession {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 

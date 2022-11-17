@@ -54,10 +54,8 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
 }
 
 private extension CioQueueRunner {
-    private func trackDeliveryMetric(
-        _ task: QueueTask,
-        onComplete: @escaping (Result<Void, HttpRequestError>) -> Void
-    ) {
+    private func trackDeliveryMetric(_ task: QueueTask,
+                                     onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let taskData = getTaskData(task, type: TrackDeliveryEventRequestBody.self) else {
             return onComplete(failureIfDontDecodeTaskData)
         }
@@ -66,11 +64,8 @@ private extension CioQueueRunner {
             return
         }
 
-        let httpParams = HttpRequestParams(
-            endpoint: .trackDeliveryMetrics,
-            headers: nil,
-            body: bodyData
-        )
+        let httpParams = HttpRequestParams(endpoint: .trackDeliveryMetrics,
+                                           headers: nil, body: bodyData)
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
     }

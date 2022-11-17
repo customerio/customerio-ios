@@ -46,10 +46,8 @@ struct Lens<Whole, Part> {
 }
 
 func * <A, B, C>(lhs: Lens<A, B>, rhs: Lens<B, C>) -> Lens<A, C> {
-    Lens<A, C>(
-        get: { a in rhs.get(lhs.get(a)) },
-        set: { c, a in lhs.set(rhs.set(c, lhs.get(a)), a) }
-    )
+    Lens<A, C>(get: { a in rhs.get(lhs.get(a)) },
+               set: { c, a in lhs.set(rhs.set(c, lhs.get(a)), a) })
 }
 
 func *~ <A, B>(lhs: Lens<A, B>, rhs: B) -> (A) -> A {
