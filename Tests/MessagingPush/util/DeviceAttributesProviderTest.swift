@@ -73,7 +73,7 @@ class DeviceAttributesProviderTest: UnitTest {
 
         waitForExpectations()
     }
-    func test_getDefaultDeviceAttributes_givenSDKWrapperConfig_expectWrapperVersionWithSomeAttributes() {
+    func test_getDefaultDeviceAttributes_givenSDKWrapperConfig_expectSDKWrapperVersionOverridesSDKVersion() {
         let givenSdkVersion = wrapperMockVersion
         let givenAppVersion = String.random
         let givenDeviceLocale = String.random
