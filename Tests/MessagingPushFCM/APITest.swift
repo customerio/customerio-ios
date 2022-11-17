@@ -81,7 +81,8 @@ class MessagingPushFCMAPITest: UnitTest {
         try skipRunningTest()
 
         #if canImport(UserNotifications)
-        // Cannot guarantee instance or mock will have userNotificationCenter() function as that function is not available to app extensions.
+        // Cannot guarantee instance or mock will have userNotificationCenter() function as that function is not
+        // available to app extensions.
         _ = MessagingPush.shared.userNotificationCenter(
             .current(),
             didReceive: UNNotificationResponse.testInstance,

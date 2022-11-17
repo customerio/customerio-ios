@@ -20,13 +20,9 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
             onComplete([:])
             return
         }
-        var sdkVersion = deviceInfo.sdkVersion
-        if let sdkWrapperConfig = sdkConfigStore.config._sdkWrapperConfig {
-            sdkVersion = sdkWrapperConfig.version
-        }
 
         var deviceAttributes = [
-            "cio_sdk_version": sdkVersion,
+            "cio_sdk_version": getSdkVersionAttribute(),
             "app_version": deviceInfo.customerAppVersion,
             "device_locale": deviceInfo.deviceLocale,
             "device_manufacturer": deviceInfo.deviceManufacturer
@@ -42,5 +38,16 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
 
             onComplete(deviceAttributes)
         }
+    }
+
+    internal func getSdkVersionAttribute() -> String {
+        var sdkVersion = deviceInfo.sdkVersion
+
+        // Allow SDK wrapper to override the SDK version
+        if let sdkWrapperConfig = sdkConfigStore.config._sdkWrapperConfig {
+            sdkVersion = sdkWrapperConfig.version
+        }
+
+        return sdkVersion
     }
 }
