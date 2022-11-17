@@ -2,11 +2,9 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-@available(
-    iOSApplicationExtension,
-    unavailable
-) // screen view tracking is not available for notification service extension. disable all functions having to deal with
+// screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
+@available(iOSApplicationExtension, unavailable)
 extension CustomerIO {
     func setupAutoScreenviewTracking() {
         swizzle(
@@ -28,11 +26,9 @@ extension CustomerIO {
     }
 }
 
-@available(
-    iOSApplicationExtension,
-    unavailable
-) // screen view tracking is not available for notification service extension. disable all functions having to deal with
+// screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
+@available(iOSApplicationExtension, unavailable)
 internal extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
