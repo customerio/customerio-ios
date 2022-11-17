@@ -1,3 +1,24 @@
+### [1.2.5](https://github.com/customerio/customerio-ios/compare/1.2.4...1.2.5) (2022-11-14)
+
+
+### Bug Fixes
+
+* fix compile time errors notification service extensions ([#216](https://github.com/customerio/customerio-ios/issues/216)) ([6e8484a](https://github.com/customerio/customerio-ios/commit/6e8484af6fc72c0e77cfd3d60bbb3fe808d067a8))
+
+### [1.2.4](https://github.com/customerio/customerio-ios/compare/1.2.3...1.2.4) (2022-11-11)
+
+
+### Bug Fixes
+
+* updated gist version in podspec ([ab231b1](https://github.com/customerio/customerio-ios/commit/ab231b169208fb869fb1083869ee4c0cb854728b))
+
+### [1.2.3](https://github.com/customerio/customerio-ios/compare/1.2.2...1.2.3) (2022-11-10)
+
+
+### Bug Fixes
+
+* install in-app bug fix via gist 2.2.1 ([38d64fd](https://github.com/customerio/customerio-ios/commit/38d64fd69ce5947a097c5cb3d249d40f74149ff0))
+
 ### [1.2.2](https://github.com/customerio/customerio-ios/compare/1.2.1...1.2.2) (2022-10-31)
 
 
