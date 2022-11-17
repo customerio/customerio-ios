@@ -50,15 +50,15 @@ public class ConsoleLogger: Logger {
     private let logCategory = "CIO"
 
     private let siteId: SiteId
-    private let sdkConfigStore: SdkConfigStore
+    private let sdkConfig: SdkConfig
 
     private var minLogLevel: CioLogLevel {
-        sdkConfigStore.config.logLevel
+        sdkConfig.logLevel
     }
 
-    init(siteId: SiteId, sdkConfigStore: SdkConfigStore) {
+    init(siteId: SiteId, sdkConfig: SdkConfig) {
         self.siteId = siteId
-        self.sdkConfigStore = sdkConfigStore
+        self.sdkConfig = sdkConfig
     }
 
     #if canImport(os)

@@ -15,19 +15,15 @@ import XCTest
 class MessagingPushAPNAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = MessagingPushAPNInstanceMock()
-    // Test that all public functions are accessible by non-singleton instances
-    let instance: MessagingPushAPNInstance = MessagingPushAPN(customerIO: CustomerIO(siteId: "", apiKey: ""))
 
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())
         mock.registerDeviceToken(apnDeviceToken: Data())
-        instance.registerDeviceToken(apnDeviceToken: Data())
 
         MessagingPush.shared.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
         mock.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
-        instance.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
 
         MessagingPush.shared.application(
             "",
@@ -39,19 +35,12 @@ class MessagingPushAPNAPITest: UnitTest {
             didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
                 .notInitialized
         )
-        instance.application(
-            "",
-            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                .notInitialized
-        )
 
         MessagingPush.shared.deleteDeviceToken()
-        instance.deleteDeviceToken()
         mock.deleteDeviceToken()
 
         MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
         mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
-        instance.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
     }
 
     func test_richPushPublicFunctions() throws {
@@ -69,14 +58,8 @@ class MessagingPushAPNAPITest: UnitTest {
             content: UNNotificationContent(),
             trigger: nil
         )) { _ in }
-        instance.didReceive(UNNotificationRequest(
-            identifier: "",
-            content: UNNotificationContent(),
-            trigger: nil
-        )) { _ in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
-        instance.serviceExtensionTimeWillExpire()
         mock.serviceExtensionTimeWillExpire()
         #endif
     }

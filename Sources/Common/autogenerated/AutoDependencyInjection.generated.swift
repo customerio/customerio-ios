@@ -49,32 +49,79 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    internal func testDependenciesAbleToResolve() {
+    internal func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
         _ = deviceInfo
+        countDependenciesResolved += 1
+
         _ = httpClient
-        _ = sdkCredentialsStore
+        countDependenciesResolved += 1
+
         _ = globalDataStore
+        countDependenciesResolved += 1
+
         _ = hooksManager
+        countDependenciesResolved += 1
+
         _ = profileStore
+        countDependenciesResolved += 1
+
         _ = queue
+        countDependenciesResolved += 1
+
         _ = queueQueryRunner
+        countDependenciesResolved += 1
+
         _ = queueRequestManager
+        countDependenciesResolved += 1
+
         _ = queueRunRequest
+        countDependenciesResolved += 1
+
         _ = queueRunner
+        countDependenciesResolved += 1
+
         _ = simpleTimer
+        countDependenciesResolved += 1
+
         _ = singleScheduleTimer
+        countDependenciesResolved += 1
+
         _ = threadUtil
+        countDependenciesResolved += 1
+
         _ = logger
+        countDependenciesResolved += 1
+
         _ = httpRetryPolicy
+        countDependenciesResolved += 1
+
+        _ = deviceMetricsGrabber
+        countDependenciesResolved += 1
+
         _ = fileStorage
+        countDependenciesResolved += 1
+
         _ = queueStorage
-        _ = activeWorkspacesManager
-        _ = sdkConfigStore
+        countDependenciesResolved += 1
+
         _ = jsonAdapter
+        countDependenciesResolved += 1
+
         _ = lockManager
+        countDependenciesResolved += 1
+
         _ = dateUtil
+        countDependenciesResolved += 1
+
         _ = httpRequestRunner
+        countDependenciesResolved += 1
+
         _ = keyValueStorage
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
     }
 
     // DeviceInfo
@@ -100,8 +147,8 @@ extension DIGraph {
     private var newHttpClient: HttpClient {
         CIOHttpClient(
             siteId: siteId,
-            sdkCredentialsStore: sdkCredentialsStore,
-            configStore: sdkConfigStore,
+            apiKey: apiKey,
+            sdkConfig: sdkConfig,
             jsonAdapter: jsonAdapter,
             httpRequestRunner: httpRequestRunner,
             globalDataStore: globalDataStore,
@@ -110,18 +157,6 @@ extension DIGraph {
             retryPolicy: httpRetryPolicy,
             deviceInfo: deviceInfo
         )
-    }
-
-    // SdkCredentialsStore
-    public var sdkCredentialsStore: SdkCredentialsStore {
-        if let overridenDep = overrides[String(describing: SdkCredentialsStore.self)] {
-            return overridenDep as! SdkCredentialsStore
-        }
-        return newSdkCredentialsStore
-    }
-
-    private var newSdkCredentialsStore: SdkCredentialsStore {
-        CIOSdkCredentialsStore(keyValueStorage: keyValueStorage)
     }
 
     // GlobalDataStore
@@ -133,7 +168,7 @@ extension DIGraph {
     }
 
     private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore()
+        CioGlobalDataStore(keyValueStorage: keyValueStorage)
     }
 
     // HooksManager (singleton)
@@ -190,7 +225,7 @@ extension DIGraph {
             runRequest: queueRunRequest,
             jsonAdapter: jsonAdapter,
             logger: logger,
-            sdkConfigStore: sdkConfigStore,
+            sdkConfig: sdkConfig,
             queueTimer: singleScheduleTimer,
             dateUtil: dateUtil
         )
@@ -333,7 +368,7 @@ extension DIGraph {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger(siteId: siteId, sdkConfigStore: sdkConfigStore)
+        ConsoleLogger(siteId: siteId, sdkConfig: sdkConfig)
     }
 
     // HttpRetryPolicy
@@ -346,6 +381,18 @@ extension DIGraph {
 
     private var newHttpRetryPolicy: HttpRetryPolicy {
         CustomerIOAPIHttpRetryPolicy()
+    }
+
+    // DeviceMetricsGrabber
+    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
+        if let overridenDep = overrides[String(describing: DeviceMetricsGrabber.self)] {
+            return overridenDep as! DeviceMetricsGrabber
+        }
+        return newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
     }
 
     // FileStorage
@@ -374,65 +421,10 @@ extension DIGraph {
             fileStorage: fileStorage,
             jsonAdapter: jsonAdapter,
             lockManager: lockManager,
-            sdkConfigStore: sdkConfigStore,
+            sdkConfig: sdkConfig,
             logger: logger,
             dateUtil: dateUtil
         )
-    }
-
-    // ActiveWorkspacesManager (singleton)
-    public var activeWorkspacesManager: ActiveWorkspacesManager {
-        if let overridenDep = overrides[String(describing: ActiveWorkspacesManager.self)] {
-            return overridenDep as! ActiveWorkspacesManager
-        }
-        return sharedActiveWorkspacesManager
-    }
-
-    public var sharedActiveWorkspacesManager: ActiveWorkspacesManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1
-        // shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_ActiveWorkspacesManager_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: ActiveWorkspacesManager.self)] {
-                return overridenDep as! ActiveWorkspacesManager
-            }
-            let existingSingletonInstance = self
-                .singletons[String(describing: ActiveWorkspacesManager.self)] as? ActiveWorkspacesManager
-            let instance = existingSingletonInstance ?? _get_activeWorkspacesManager()
-            self.singletons[String(describing: ActiveWorkspacesManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_activeWorkspacesManager() -> ActiveWorkspacesManager {
-        InMemoryActiveWorkspaces()
-    }
-
-    // SdkConfigStore (singleton)
-    public var sdkConfigStore: SdkConfigStore {
-        if let overridenDep = overrides[String(describing: SdkConfigStore.self)] {
-            return overridenDep as! SdkConfigStore
-        }
-        return sharedSdkConfigStore
-    }
-
-    public var sharedSdkConfigStore: SdkConfigStore {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1
-        // shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_SdkConfigStore_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: SdkConfigStore.self)] {
-                return overridenDep as! SdkConfigStore
-            }
-            let existingSingletonInstance = self.singletons[String(describing: SdkConfigStore.self)] as? SdkConfigStore
-            let instance = existingSingletonInstance ?? _get_sdkConfigStore()
-            self.singletons[String(describing: SdkConfigStore.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_sdkConfigStore() -> SdkConfigStore {
-        InMemorySdkConfigStore()
     }
 
     // JsonAdapter
@@ -507,6 +499,6 @@ extension DIGraph {
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId)
+        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }

@@ -7,16 +7,16 @@ internal protocol DeviceAttributesProvider: AutoMockable {
 
 // sourcery: InjectRegister = "DeviceAttributesProvider"
 internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
-    private let sdkConfigStore: SdkConfigStore
+    private let sdkConfig: SdkConfig
     private let deviceInfo: DeviceInfo
 
-    init(sdkConfigStore: SdkConfigStore, deviceInfo: DeviceInfo) {
-        self.sdkConfigStore = sdkConfigStore
+    init(sdkConfig: SdkConfig, deviceInfo: DeviceInfo) {
+        self.sdkConfig = sdkConfig
         self.deviceInfo = deviceInfo
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
-        if !sdkConfigStore.config.autoTrackDeviceAttributes {
+        if !sdkConfig.autoTrackDeviceAttributes {
             onComplete([:])
             return
         }

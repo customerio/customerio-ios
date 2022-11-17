@@ -1,28 +1,22 @@
 @testable import CioMessagingPush
-@testable import CioTracking
+import Common
 import Foundation
 import SharedTests
 import XCTest
 
-class MessagingPushTest: UnitTest {
-    private var mockCustomerIO = CustomerIOInstanceMock()
-    private var messagingPush: MessagingPush!
+class MessagingPushTest: IntegrationTest {
+    private let hooksMock = HooksManagerMock()
 
     override func setUp() {
         super.setUp()
 
-        messagingPush = MessagingPush(customerIO: mockCustomerIO)
+        diGraph.override(value: hooksMock, forType: HooksManager.self)
     }
 
-    // MARK: deinit
+    func test_initialize_expectCallModuleInitializeCode() {
+        MessagingPush.initialize()
 
-    func test_givenNilObject_expectDeinit() {
-        let cio = CustomerIO(siteId: String.random, apiKey: String.random)
-
-        var messagingPush: MessagingPush? = MessagingPush(customerIO: cio)
-
-        messagingPush = nil
-
-        XCTAssertNil(messagingPush)
+        XCTAssertTrue(hooksMock.addCalled)
+        XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingPush)
     }
 }

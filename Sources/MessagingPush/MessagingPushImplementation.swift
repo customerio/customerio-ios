@@ -1,3 +1,4 @@
+import CioTracking
 import Common
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
@@ -11,7 +12,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     let backgroundQueue: Queue
     var globalDataStore: GlobalDataStore
     let logger: Logger
-    let sdkConfigStore: SdkConfigStore
+    let sdkConfig: SdkConfig
     let jsonAdapter: JsonAdapter
     let deviceAttributesProvider: DeviceAttributesProvider
     let dateUtil: DateUtil
@@ -24,7 +25,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         backgroundQueue: Queue,
         globalDataStore: GlobalDataStore,
         logger: Logger,
-        sdkConfigStore: SdkConfigStore,
+        sdkConfig: SdkConfig,
         jsonAdapter: JsonAdapter,
         deviceAttributesProvider: DeviceAttributesProvider,
         dateUtil: DateUtil,
@@ -35,22 +36,20 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.backgroundQueue = backgroundQueue
         self.globalDataStore = globalDataStore
         self.logger = logger
-        self.sdkConfigStore = sdkConfigStore
+        self.sdkConfig = sdkConfig
         self.jsonAdapter = jsonAdapter
         self.deviceAttributesProvider = deviceAttributesProvider
         self.dateUtil = dateUtil
         self.deviceInfo = deviceInfo
     }
 
-    init(siteId: String) {
-        self.siteId = siteId
-        let diGraph = DIGraph.getInstance(siteId: siteId)
-
+    internal init(diGraph: DIGraph) {
+        self.siteId = diGraph.siteId
         self.profileStore = diGraph.profileStore
         self.backgroundQueue = diGraph.queue
         self.globalDataStore = diGraph.globalDataStore
         self.logger = diGraph.logger
-        self.sdkConfigStore = diGraph.sdkConfigStore
+        self.sdkConfig = diGraph.sdkConfig
         self.jsonAdapter = diGraph.jsonAdapter
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil

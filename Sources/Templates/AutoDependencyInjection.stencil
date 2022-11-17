@@ -67,11 +67,16 @@ DIGraph().reset()
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions. 
     // internal scope so each module can provide their own version of the function with the same name. 
-    internal func testDependenciesAbleToResolve() {
+    internal func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
     {% for dep in types.all where dep|annotated:"InjectRegister" %}
     {% set class %}{{ dep.annotations["InjectRegister"] }}{% endset %}    
-        _ = self.{{ class|lowerFirstLetter }}    
+        _ = self.{{ class|lowerFirstLetter }}
+        countDependenciesResolved += 1
+
     {% endfor %}
+        return countDependenciesResolved    
     }
 
     {% for dep in types.all where dep|annotated:"InjectRegister" %}

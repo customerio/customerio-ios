@@ -8,8 +8,6 @@ import XCTest
 
 class HttpClientTest: UnitTest {
     private var requestRunnerMock = HttpRequestRunnerMock()
-    private var credentialsStoreMock = SdkCredentialsStoreMock()
-    private var configStoreMock = SdkConfigStoreMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let timerMock = SimpleTimerMock()
     private let deviceInfoMock = DeviceInfoMock()
@@ -21,15 +19,12 @@ class HttpClientTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        credentialsStoreMock.credentials = SdkCredentials(apiKey: String.random, region: Region.EU)
         deviceInfoMock.underlyingSdkVersion = "1.0.0" // HttpClient uses this during initialization. Needed to set now.
-
-        configStoreMock.config = SdkConfig()
 
         client = CIOHttpClient(
             siteId: SiteId.random,
-            sdkCredentialsStore: credentialsStoreMock,
-            configStore: configStoreMock,
+            apiKey: String.random,
+            sdkConfig: sdkConfig,
             jsonAdapter: jsonAdapter,
             httpRequestRunner: requestRunnerMock,
             globalDataStore: globalDataStoreMock,

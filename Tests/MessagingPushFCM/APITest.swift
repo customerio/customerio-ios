@@ -15,23 +15,18 @@ import XCTest
 class MessagingPushFCMAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = MessagingPushFCMInstanceMock()
-    // Test that all public functions are accessible by non-singleton instances
-    let instance: MessagingPushFCMInstance = MessagingPushFCM(customerIO: CustomerIO(siteId: "", apiKey: ""))
 
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
         MessagingPush.shared.registerDeviceToken(fcmToken: "")
         mock.registerDeviceToken(fcmToken: "")
-        instance.registerDeviceToken(fcmToken: "")
 
         MessagingPush.shared.messaging("", didReceiveRegistrationToken: "token")
         mock.messaging("", didReceiveRegistrationToken: "token")
-        instance.messaging("", didReceiveRegistrationToken: "token")
 
         MessagingPush.shared.messaging("", didReceiveRegistrationToken: nil)
         mock.messaging("", didReceiveRegistrationToken: nil)
-        instance.messaging("", didReceiveRegistrationToken: nil)
 
         MessagingPush.shared.application(
             "",
@@ -39,15 +34,12 @@ class MessagingPushFCMAPITest: UnitTest {
                 .notInitialized
         )
         mock.application("", didFailToRegisterForRemoteNotificationsWithError: CustomerIOError.notInitialized)
-        instance.application("", didFailToRegisterForRemoteNotificationsWithError: CustomerIOError.notInitialized)
 
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
-        instance.deleteDeviceToken()
 
-        MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
-        instance.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        MessagingPush.shared.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
     }
 
     func test_richPushPublicFunctions() throws {
@@ -65,14 +57,8 @@ class MessagingPushFCMAPITest: UnitTest {
             content: UNNotificationContent(),
             trigger: nil
         )) { _ in }
-        instance.didReceive(UNNotificationRequest(
-            identifier: "",
-            content: UNNotificationContent(),
-            trigger: nil
-        )) { _ in }
 
         MessagingPush.shared.serviceExtensionTimeWillExpire()
-        instance.serviceExtensionTimeWillExpire()
         mock.serviceExtensionTimeWillExpire()
         #endif
     }

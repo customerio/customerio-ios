@@ -4,11 +4,21 @@ import SharedTests
 import XCTest
 
 class KeyValueStorageTests: UnitTest {
-    let defaultKey = KeyValueStorageKey.sharedInstanceSiteId
-    lazy var defaultStorage: KeyValueStorage = getStorage(siteId: "test")
+    let defaultKey = KeyValueStorageKey.identifiedProfileId
+    lazy var defaultStorage: KeyValueStorage = getSiteStorageInstance(siteId: "test")
+    let deviceMetricsGrabberMock = DeviceMetricsGrabberMock()
 
-    private func getStorage(siteId: String) -> KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId)
+    private func getSiteStorageInstance(siteId: String) -> UserDefaultsKeyValueStorage {
+        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabberMock)
+    }
+
+    private func getGlobalStorageInstance() -> UserDefaultsKeyValueStorage {
+        let newInstance = UserDefaultsKeyValueStorage(
+            siteId: testSiteId,
+            deviceMetricsGrabber: deviceMetricsGrabberMock
+        )
+        newInstance.switchToGlobalDataStore()
+        return newInstance
     }
 
     override func setUp() {
@@ -20,8 +30,8 @@ class KeyValueStorageTests: UnitTest {
     // MARK: integration tests
 
     func test_givenDifferentSites_expectDataSavedSeparatedFromEachOther() {
-        let storage1 = getStorage(siteId: String.random)
-        let storage2 = getStorage(siteId: String.random)
+        let storage1 = getSiteStorageInstance(siteId: String.random)
+        let storage2 = getSiteStorageInstance(siteId: String.random)
         // storage3 is UserDefaults.standard. We test this because a customer app might be using it.
 
         let value = "value-here-for-testing"
@@ -40,6 +50,25 @@ class KeyValueStorageTests: UnitTest {
         XCTAssertEqual(storage1.string(defaultKey), nextSetValue)
         XCTAssertEqual(storage2.string(defaultKey), value)
         XCTAssertEqual(UserDefaults.standard.string(forKey: defaultKey.rawValue), value)
+    }
+
+    // MARK: getFileName
+
+    func test_getFileName_givenGlobalDataStore_expectGetFileNameForGloballyStoredData() {
+        let givenAppBundleId = "com.foo.bar"
+        deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
+        let storage = getGlobalStorageInstance()
+
+        XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.shared")
+    }
+
+    func test_getFileName_givenNotGlobalStore_expectGetFileNameForSiteIdStoredData() {
+        let givenSiteId: SiteId = "485895958"
+        let givenAppBundleId = "com.foo.bar"
+        deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
+        let storage = getSiteStorageInstance(siteId: givenSiteId)
+
+        XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.485895958")
     }
 
     // MARK: double
@@ -121,7 +150,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: deleteAll
 
     func test_deleteAll_givenNoDataSaved_expectFunctionRuns() {
-        let storage = getStorage(siteId: String.random)
+        let storage = getSiteStorageInstance(siteId: String.random)
 
         storage.deleteAll()
     }
@@ -139,8 +168,8 @@ class KeyValueStorageTests: UnitTest {
     }
 
     func test_deleteAll_givenMultipleSites_expectOnlyDeletesDataFromOneSite() {
-        let storage1 = getStorage(siteId: String.random)
-        let storage2 = getStorage(siteId: String.random)
+        let storage1 = getSiteStorageInstance(siteId: String.random)
+        let storage2 = getSiteStorageInstance(siteId: String.random)
 
         let value = "value-here-for-testing"
 

@@ -27,8 +27,8 @@ public class CIOHttpClient: HttpClient {
 
     init(
         siteId: SiteId,
-        sdkCredentialsStore: SdkCredentialsStore,
-        configStore: SdkConfigStore,
+        apiKey: ApiKey,
+        sdkConfig: SdkConfig,
         jsonAdapter: JsonAdapter,
         httpRequestRunner: HttpRequestRunner,
         globalDataStore: GlobalDataStore,
@@ -40,11 +40,11 @@ public class CIOHttpClient: HttpClient {
         self.httpRequestRunner = httpRequestRunner
         self.session = Self.getSession(
             siteId: siteId,
-            apiKey: sdkCredentialsStore.credentials.apiKey,
+            apiKey: apiKey,
             deviceInfo: deviceInfo,
-            sdkWrapperConfig: configStore.config._sdkWrapperConfig
+            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
         )
-        self.baseUrls = configStore.config.httpBaseUrls
+        self.baseUrls = sdkConfig.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
         self.logger = logger

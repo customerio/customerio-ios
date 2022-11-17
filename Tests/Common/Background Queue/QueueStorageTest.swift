@@ -16,7 +16,7 @@ class QueueStorageTest: UnitTest {
             fileStorage: fileStorageMock,
             jsonAdapter: jsonAdapter,
             lockManager: lockManager,
-            sdkConfigStore: diGraph.sdkConfigStore,
+            sdkConfig: sdkConfig,
             logger: log,
             dateUtil: dateUtilStub
         )
@@ -189,7 +189,7 @@ class QueueStorageIntegrationTest: UnitTest {
             fileStorage: diGraph.fileStorage,
             jsonAdapter: jsonAdapter,
             lockManager: lockManager,
-            sdkConfigStore: diGraph.sdkConfigStore,
+            sdkConfig: sdkConfig,
             logger: log,
             dateUtil: dateUtilStub
         )

@@ -5,12 +5,20 @@ import Foundation
  See `CustomerIO.config()` to configurate the SDK.
  */
 public struct SdkConfig {
+    // Used to create new instance of SdkConfig when the SDK is initialized.
+    // Then, each property of the SdkConfig object can be modified by the user.
+    public enum Factory {
+        public static func create(region: Region) -> SdkConfig {
+            SdkConfig(trackingApiUrl: region.productionTrackingUrl)
+        }
+    }
+
     /**
      Base URL to use for the Customer.io track API. You will more then likely not modify this value.
 
      If you override this value, `Region` set when initializing the SDK will be ignored.
      */
-    public var trackingApiUrl: String = ""
+    public var trackingApiUrl: String
 
     /**
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
@@ -55,6 +63,7 @@ public struct SdkConfig {
      operating system, device locale, device model, app version etc
      */
     public var autoTrackDeviceAttributes: Bool = true
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
@@ -65,14 +74,4 @@ public struct SdkConfig {
      as a wrapper/bridge such as with ReactNative.
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
-}
-
-public protocol SdkConfigStore: AutoMockable {
-    var config: SdkConfig { get set }
-}
-
-// sourcery: InjectRegister = "SdkConfigStore"
-// sourcery: InjectSingleton
-public class InMemorySdkConfigStore: SdkConfigStore {
-    @Atomic public var config = SdkConfig()
 }

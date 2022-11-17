@@ -51,10 +51,19 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    internal func testDependenciesAbleToResolve() {
+    internal func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
         _ = moduleHookProvider
+        countDependenciesResolved += 1
+
         _ = queueRunnerHook
+        countDependenciesResolved += 1
+
         _ = deviceAttributesProvider
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
     }
 
     // ModuleHookProvider
@@ -66,7 +75,7 @@ extension DIGraph {
     }
 
     private var newModuleHookProvider: ModuleHookProvider {
-        MessagingPushModuleHookProvider(siteId: siteId)
+        MessagingPushModuleHookProvider()
     }
 
     // QueueRunnerHook
@@ -90,6 +99,6 @@ extension DIGraph {
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(sdkConfigStore: sdkConfigStore, deviceInfo: deviceInfo)
+        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
     }
 }

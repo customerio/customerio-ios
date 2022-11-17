@@ -5,39 +5,47 @@ import Foundation
 import UIKit
 import UserNotifications
 #endif
+
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
  So, performing an HTTP request to the API with a device token goes here.
   */
+public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
+    @Atomic public private(set) static var shared = MessagingPush()
 
-public class MessagingPush: MessagingPushInstance {
-    @Atomic public private(set) static var shared = MessagingPush(customerIO: CustomerIO.shared)
+    // testing constructor
+    override internal init(implementation: MessagingPushInstance, sdkInitializedUtil: SdkInitializedUtil) {
+        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
+    }
 
-    public let customerIO: CustomerIOInstance!
-    internal var implementation: MessagingPushImplementation?
+    // singleton constructor
+    override private init() {
+        super.init()
+    }
 
-    /**
-     Create a new instance of the `MessagingPush` class.
+    // for testing
+    internal static func resetSharedInstance() {
+        Self.shared = MessagingPush()
+    }
 
-     - Parameters:
-       - customerIO: Instance of `CustomerIO` class.
-     */
-    public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
-        // XXX: customers may want to know if siteId nil. Log it to them to help debug.
-        if let siteId = customerIO.siteId {
-            let diGraphTracking = DIGraph.getInstance(siteId: siteId)
-            let logger = diGraphTracking.logger
+    public static func initialize() {
+        MessagingPush.shared.initialize()
+    }
 
-            logger.info("MessagingPush module setup with SDK")
-            // Register MessagingPush module hooks now that the module is being initialized.
-            let hooks = diGraphTracking.hooksManager
-            let moduleHookProvider = MessagingPushModuleHookProvider(siteId: siteId)
+    override public func inititlize(diGraph: DIGraph) {
+        let logger = diGraph.logger
+        logger.debug("Setting up MessagingPush module...")
 
-            hooks.add(key: .messagingPush, provider: moduleHookProvider)
+        // Register MessagingPush module hooks now that the module is being initialized.
+        let hooks = diGraph.hooksManager
+        let moduleHookProvider = MessagingPushModuleHookProvider()
+        hooks.add(key: .messagingPush, provider: moduleHookProvider)
 
-            self.implementation = MessagingPushImplementation(siteId: siteId)
-        }
+        logger.info("MessagingPush module setup with SDK")
+    }
+
+    override public func getImplementationInstance(diGraph: DIGraph) -> MessagingPushInstance {
+        MessagingPushImplementation(diGraph: diGraph)
     }
 
     /**
