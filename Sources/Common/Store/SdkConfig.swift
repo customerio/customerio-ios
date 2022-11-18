@@ -75,3 +75,35 @@ public struct SdkConfig {
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }
+
+public struct RichPushSdkConfig {
+    public var trackingApiUrl: String
+    public var autoTrackPushEvents: Bool
+    public var logLevel: CioLogLevel
+    public var autoTrackDeviceAttributes: Bool
+
+    // Used to create new instance when the SDK is initialized.
+    // Then, each property can be modified by the user.
+    public enum Factory {
+        public static func create(region: Region) -> RichPushSdkConfig {
+            let defaultSdkConfig = SdkConfig.Factory.create(region: region)
+
+            return RichPushSdkConfig(
+                trackingApiUrl: defaultSdkConfig.trackingApiUrl,
+                autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
+                logLevel: defaultSdkConfig.logLevel,
+                autoTrackDeviceAttributes: defaultSdkConfig.autoTrackDeviceAttributes
+            )
+        }
+    }
+
+    public func toSdkConfig() -> SdkConfig {
+        var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
+
+        sdkConfig.autoTrackPushEvents = autoTrackPushEvents
+        sdkConfig.logLevel = logLevel
+        sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+
+        return sdkConfig
+    }
+}
