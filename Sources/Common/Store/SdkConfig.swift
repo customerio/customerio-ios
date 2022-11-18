@@ -31,15 +31,18 @@ public struct SdkConfig {
      This is mostly used during development to test configuration is setup. We do not recommend
      modifying this value because it impacts battery life of mobile device.
      */
+    @available(iOSApplicationExtension, unavailable)
     public var backgroundQueueMinNumberOfTasks = 10
 
     /// The number of seconds to delay running queue after a task has been added to it.
+    @available(iOSApplicationExtension, unavailable)
     public var backgroundQueueSecondsDelay: Seconds = 30
     /**
      * The number of seconds old a queue task is when it is "expired" and should be deleted.
      * We do not recommend modifying this value because it risks losing data or taking up too much
      * space on the user's device.
      */
+    @available(iOSApplicationExtension, unavailable)
     public var backgroundQueueExpiredSeconds: Seconds = Seconds.secondsFromDays(3)
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
@@ -50,12 +53,14 @@ public struct SdkConfig {
      Automatic tracking of screen views will generate `screen`-type events on every screen transition within
         your application.
      */
+    @available(iOSApplicationExtension, unavailable)
     public var autoTrackScreenViews: Bool = false
 
     /**
      Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
      this to override our defaults and pass custom values in the body of the `screen` event
      */
+    @available(iOSApplicationExtension, unavailable)
     public var autoScreenViewBody: (() -> [String: Any])?
 
     /**
@@ -74,36 +79,4 @@ public struct SdkConfig {
      as a wrapper/bridge such as with ReactNative.
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
-}
-
-public struct RichPushSdkConfig {
-    public var trackingApiUrl: String
-    public var autoTrackPushEvents: Bool
-    public var logLevel: CioLogLevel
-    public var autoTrackDeviceAttributes: Bool
-
-    // Used to create new instance when the SDK is initialized.
-    // Then, each property can be modified by the user.
-    public enum Factory {
-        public static func create(region: Region) -> RichPushSdkConfig {
-            let defaultSdkConfig = SdkConfig.Factory.create(region: region)
-
-            return RichPushSdkConfig(
-                trackingApiUrl: defaultSdkConfig.trackingApiUrl,
-                autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
-                logLevel: defaultSdkConfig.logLevel,
-                autoTrackDeviceAttributes: defaultSdkConfig.autoTrackDeviceAttributes
-            )
-        }
-    }
-
-    public func toSdkConfig() -> SdkConfig {
-        var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
-
-        sdkConfig.autoTrackPushEvents = autoTrackPushEvents
-        sdkConfig.logLevel = logLevel
-        sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
-
-        return sdkConfig
-    }
 }
