@@ -140,6 +140,8 @@ public class CustomerIO: CustomerIOInstance {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
+    @available(iOSApplicationExtension, unavailable)
+    @available(iOS 13, *)
     public static func initialize(
         siteId: String,
         apiKey: String,
@@ -152,12 +154,57 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: newSdkConfig)
+        Self.initialize(
+            siteId: siteId,
+            apiKey: apiKey,
+            region: region,
+            isFromiOSApplicationExtension: false,
+            config: newSdkConfig
+        )
+    }
+
+    /**
+     Initialize the shared `instance` of `CustomerIO`.
+     Call this function in your Notification Service Extension for the rich push feature.
+     */
+    @available(iOS, unavailable)
+    @available(iOSApplicationExtension 13, *)
+    public static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region = Region.US,
+        configure configureHandler: ((inout RichPushSdkConfig) -> Void)? = nil
+    ) {
+        var newSdkConfig = RichPushSdkConfig.Factory.create(region: region)
+
+        if let configureHandler = configureHandler {
+            configureHandler(&newSdkConfig)
+        }
+
+        Self.initialize(
+            siteId: siteId,
+            apiKey: apiKey,
+            region: region,
+            isFromiOSApplicationExtension: true,
+            config: newSdkConfig.toSdkConfig()
+        )
+    }
+
+    // private shared logic initialize to avoid copy/paste between the different
+    // public initialize functions.
+    private static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region,
+        isFromiOSApplicationExtension: Bool,
+        config: SdkConfig
+    ) {
+        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
-        if newSdkConfig.autoTrackScreenViews {
+        if !isFromiOSApplicationExtension, config.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
             // Only call this code when not possibly being called from a NSE.
             Self.shared.setupAutoScreenviewTracking()
