@@ -104,6 +104,10 @@ public struct RichPushSdkConfig {
         sdkConfig.logLevel = logLevel
         sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
 
+        // Default to running tasks added to the BQ immediately.
+        sdkConfig.backgroundQueueMinNumberOfTasks = 1
+        sdkConfig.backgroundQueueSecondsDelay = 0
+
         return sdkConfig
     }
 }

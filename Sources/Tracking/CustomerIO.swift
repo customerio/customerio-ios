@@ -141,7 +141,6 @@ public class CustomerIO: CustomerIOInstance {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
-    @available(iOS 13, *)
     public static func initialize(
         siteId: String,
         apiKey: String,
@@ -167,9 +166,7 @@ public class CustomerIO: CustomerIOInstance {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function in your Notification Service Extension for the rich push feature.
      */
-    @available(iOS, unavailable)
-    @available(iOSApplicationExtension 13, *)
-    public static func initialize(
+    public static func initializeRichPush(
         siteId: String,
         apiKey: String,
         region: Region = Region.US,
