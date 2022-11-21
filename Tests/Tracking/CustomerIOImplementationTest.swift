@@ -389,11 +389,3 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
     }
 }
-
-extension QueueMock {
-    var deviceTokensDeleted: [String] {
-        addTaskReceivedInvocations.map {
-            ($0.data.value as? DeletePushNotificationQueueTaskData)?.deviceToken
-        }.filter { $0 != nil }.map { $0! }
-    }
-}

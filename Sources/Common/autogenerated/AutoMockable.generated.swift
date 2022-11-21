@@ -1893,11 +1893,13 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, Mock {
     /// The arguments from the *last* time the function was called.
     internal private(set) var getNextTaskReceivedArguments: (
         queue: [QueueTaskMetadata],
+        lastRanTask: QueueTaskMetadata?,
         lastFailedTask: QueueTaskMetadata?
     )?
     /// Arguments from *all* of the times that the function was called.
     internal private(set) var getNextTaskReceivedInvocations: [(
         queue: [QueueTaskMetadata],
+        lastRanTask: QueueTaskMetadata?,
         lastFailedTask: QueueTaskMetadata?
     )] = []
     /// Value to return from the mocked function.
@@ -1907,16 +1909,23 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getNextTaskReturnValue`
      */
-    internal var getNextTaskClosure: (([QueueTaskMetadata], QueueTaskMetadata?) -> QueueTaskMetadata?)?
+    internal var getNextTaskClosure: (
+        ([QueueTaskMetadata], QueueTaskMetadata?, QueueTaskMetadata?)
+            -> QueueTaskMetadata?
+    )?
 
-    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
-    internal func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
+    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastRanTask: QueueTaskMetadata?, lastFailedTask:
+    /// QueueTaskMetadata?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func getNextTask(
+        _ queue: [QueueTaskMetadata],
+        lastRanTask: QueueTaskMetadata?,
+        lastFailedTask: QueueTaskMetadata?
+    ) -> QueueTaskMetadata? {
         mockCalled = true
         getNextTaskCallsCount += 1
-        getNextTaskReceivedArguments = (queue: queue, lastFailedTask: lastFailedTask)
-        getNextTaskReceivedInvocations.append((queue: queue, lastFailedTask: lastFailedTask))
-        return getNextTaskClosure.map { $0(queue, lastFailedTask) } ?? getNextTaskReturnValue
+        getNextTaskReceivedArguments = (queue: queue, lastRanTask: lastRanTask, lastFailedTask: lastFailedTask)
+        getNextTaskReceivedInvocations.append((queue: queue, lastRanTask: lastRanTask, lastFailedTask: lastFailedTask))
+        return getNextTaskClosure.map { $0(queue, lastRanTask, lastFailedTask) } ?? getNextTaskReturnValue
     }
 
     // MARK: - reset
@@ -2325,7 +2334,7 @@ public class QueueStorageMock: QueueStorage, Mock {
         blockingGroups: [QueueTaskGroup]?
     )] = []
     /// Value to return from the mocked function.
-    public var createReturnValue: (success: Bool, queueStatus: QueueStatus)!
+    public var createReturnValue: (success: Bool, queueStatus: QueueStatus, createdTask: QueueTaskMetadata?)!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
@@ -2333,7 +2342,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var createClosure: (
         (String, Data, QueueTaskGroup?, [QueueTaskGroup]?)
-            -> (success: Bool, queueStatus: QueueStatus)
+            -> (success: Bool, queueStatus: QueueStatus, createdTask: QueueTaskMetadata?)
     )?
 
     /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups:
@@ -2343,7 +2352,9 @@ public class QueueStorageMock: QueueStorage, Mock {
         data: Data,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    )
+        -> (success: Bool, queueStatus: QueueStatus, createdTask: QueueTaskMetadata?)
+    {
         mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)

@@ -23,7 +23,8 @@ class QueueTest: UnitTest {
     func test_addTask_givenFailCreateQueueTask_expectFailStatus_expectScheduleQueueToRun() {
         storageMock.createReturnValue = (
             success: false,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0),
+            createdTask: nil
         )
         storageMock.getInventoryReturnValue = []
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
@@ -42,11 +43,13 @@ class QueueTest: UnitTest {
 
     func test_addTask_expectDoNotStartQueueIfNotMeetingCriteria_expectScheduleQueueInstead() {
         setupTest(backgroundQueueMinNumberOfTasks: 10)
+        let givenCreatedTask = QueueTaskMetadata.random
         storageMock.createReturnValue = (
             success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
+            createdTask: givenCreatedTask
         )
-        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
+        storageMock.getInventoryReturnValue = [givenCreatedTask]
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
         _ = queue.addTask(
@@ -63,11 +66,13 @@ class QueueTest: UnitTest {
 
     func test_addTask_expectStartQueueAfterSuccessfullyAddingTask_expectDoNotScheduleTimer_expectCancelTimer() {
         setupTest(backgroundQueueMinNumberOfTasks: 1)
+        let givenCreatedTask = QueueTaskMetadata.random
         storageMock.createReturnValue = (
             success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
+            createdTask: givenCreatedTask
         )
-        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
+        storageMock.getInventoryReturnValue = [givenCreatedTask]
 
         _ = queue.addTask(
             type: String.random,

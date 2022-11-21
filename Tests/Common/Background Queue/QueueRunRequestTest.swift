@@ -119,3 +119,117 @@ class QueueRunRequestTest: UnitTest {
         XCTAssertEqual(storageMock.deleteCallsCount, 2)
     }
 }
+
+class QueueRunRequestIntegrationTest: IntegrationTest {
+    private var runRequest: CioQueueRunRequest!
+
+    private let runnerMock = QueueRunnerMock()
+
+    var queueStorage: QueueStorage {
+        diGraph.queueStorage
+    }
+
+    override func setUp() {
+        super.setUp()
+
+        diGraph.override(value: runnerMock, forType: QueueRunner.self)
+
+        runRequest = CioQueueRunRequest(
+            runner: diGraph.queueRunner,
+            storage: diGraph.queueStorage,
+            requestManager: diGraph.queueRequestManager,
+            logger: diGraph.logger,
+            queryRunner: diGraph.queueQueryRunner
+        )
+    }
+
+    func test_noTasksInInventory_expectRunNoTasks() {
+        let expect = expectation(description: "expect to complete running")
+        runRequest.start {
+            expect.fulfill()
+        }
+
+        waitForExpectations()
+
+        XCTAssertFalse(runnerMock.runTaskCalled)
+    }
+
+    func test_given1Task_givenTasksRunSuccessfully_expectNoTasksInInventory() {
+        _ = addQueueTask()
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.success(()))
+        }
+
+        let expect = expectation(description: "expect to complete running")
+        runRequest.start {
+            expect.fulfill()
+        }
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 1)
+        XCTAssertTrue(queueStorage.getInventory().isEmpty)
+    }
+
+    func test_given1Task_givenTasksRunFailed_expectNoTasksLeft_expectTasksStillInInventory() {
+        let givenTaskAdded = addQueueTask()
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.failure(.noOrBadNetwork(URLError(URLError.badServerResponse))))
+        }
+
+        let expect = expectation(description: "expect to complete running")
+        runRequest.start {
+            expect.fulfill()
+        }
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 1)
+        XCTAssertEqual(queueStorage.getInventory(), [givenTaskAdded])
+    }
+
+    func test_givenMultipleTasks_givenTasksRunSuccessfully_expectNoTasksInInventory() {
+        _ = addQueueTask()
+        _ = addQueueTask()
+
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.success(()))
+        }
+
+        let expect = expectation(description: "expect to complete running")
+        runRequest.start {
+            expect.fulfill()
+        }
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertTrue(queueStorage.getInventory().isEmpty)
+    }
+
+    func test_givenMultipleTasks_givenTasksRunFailed_expectNoTasksLeft_expectTasksStillInInventory() {
+        let givenTask1 = addQueueTask()
+        let givenTask2 = addQueueTask()
+
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.failure(.noOrBadNetwork(URLError(URLError.badServerResponse))))
+        }
+
+        let expect = expectation(description: "expect to complete running")
+        runRequest.start {
+            expect.fulfill()
+        }
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertEqual(queueStorage.getInventory(), [givenTask1, givenTask2])
+    }
+}
+
+extension QueueRunRequestIntegrationTest {
+    private func addQueueTask() -> QueueTaskMetadata {
+        queueStorage.create(
+            type: String.random,
+            data: "".data,
+            groupStart: nil,
+            blockingGroups: nil
+        ).createdTask!
+    }
+}

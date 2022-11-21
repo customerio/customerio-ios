@@ -17,7 +17,7 @@ class QueueQueryRunnerTest: UnitTest {
     func test_getNextTask_givenEmptyQueue_expectNil() {
         let queue: [QueueTaskMetadata] = []
 
-        XCTAssertNil(runner.getNextTask(queue, lastFailedTask: nil))
+        XCTAssertNil(runner.getNextTask(queue, lastRanTask: nil, lastFailedTask: nil))
     }
 
     func test_getNextTask_givenNoLastFailedTask_expectGetNextItemInQueue() {
@@ -27,7 +27,19 @@ class QueueQueryRunnerTest: UnitTest {
         ]
         let expected = queue[0]
 
-        let actual = runner.getNextTask(queue, lastFailedTask: nil)
+        let actual = runner.getNextTask(queue, lastRanTask: nil, lastFailedTask: nil)
+
+        XCTAssertEqual(expected, actual)
+    }
+
+    func test_getNextTask_givenLastRanTask_expectGetNextItemInQueueAfterLastRanTask() {
+        let queue = [
+            QueueTaskMetadata.random,
+            QueueTaskMetadata.random
+        ]
+        let expected = queue[1]
+
+        let actual = runner.getNextTask(queue, lastRanTask: queue[0], lastFailedTask: nil)
 
         XCTAssertEqual(expected, actual)
     }
@@ -41,7 +53,7 @@ class QueueQueryRunnerTest: UnitTest {
         ]
         let expected = queue[1]
 
-        let actual = runner.getNextTask(queue, lastFailedTask: givenFailedTask)
+        let actual = runner.getNextTask(queue, lastRanTask: nil, lastFailedTask: givenFailedTask)
 
         XCTAssertEqual(expected, actual)
     }
@@ -54,7 +66,7 @@ class QueueQueryRunnerTest: UnitTest {
         ]
         let expected = queue[0]
 
-        let actual = runner.getNextTask(queue, lastFailedTask: givenFailedTask)
+        let actual = runner.getNextTask(queue, lastRanTask: nil, lastFailedTask: givenFailedTask)
 
         XCTAssertEqual(expected, actual)
     }
