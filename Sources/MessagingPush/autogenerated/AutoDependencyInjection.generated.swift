@@ -51,54 +51,9 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = moduleHookProvider
-        countDependenciesResolved += 1
-
-        _ = queueRunnerHook
-        countDependenciesResolved += 1
-
-        _ = deviceAttributesProvider
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
-    }
-
-    // ModuleHookProvider
-    internal var moduleHookProvider: ModuleHookProvider {
-        if let overridenDep = overrides[String(describing: ModuleHookProvider.self)] {
-            return overridenDep as! ModuleHookProvider
-        }
-        return newModuleHookProvider
-    }
-
-    private var newModuleHookProvider: ModuleHookProvider {
-        MessagingPushModuleHookProvider()
-    }
-
-    // QueueRunnerHook
-    public var queueRunnerHook: QueueRunnerHook {
-        if let overridenDep = overrides[String(describing: QueueRunnerHook.self)] {
-            return overridenDep as! QueueRunnerHook
-        }
-        return newQueueRunnerHook
-    }
-
-    private var newQueueRunnerHook: QueueRunnerHook {
-        MessagingPushQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
-    }
-
-    // DeviceAttributesProvider
-    internal var deviceAttributesProvider: DeviceAttributesProvider {
-        if let overridenDep = overrides[String(describing: DeviceAttributesProvider.self)] {
-            return overridenDep as! DeviceAttributesProvider
-        }
-        return newDeviceAttributesProvider
-    }
-
-    private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
     }
 }

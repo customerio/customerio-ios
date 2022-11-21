@@ -51,9 +51,15 @@ public protocol CustomerIOInstance: AutoMockable {
     var profileAttributes: [String: Any] { get set }
     var deviceAttributes: [String: Any] { get set }
 
-    // Any of the config functions not needed for mocking because config is designed to be called during application
-    // runtime during app startup.
-    // Also, config() is not available for app extensions so we must make this function optional to inherit.
+    func registerDeviceToken(_ deviceToken: String)
+
+    func deleteDeviceToken()
+
+    func trackMetric(
+        deliveryID: String,
+        event: Metric,
+        deviceToken: String
+    )
 }
 
 public extension CustomerIOInstance {
@@ -360,5 +366,31 @@ public class CustomerIO: CustomerIOInstance {
         data: RequestBody
     ) {
         implementation?.screen(name: name, data: data)
+    }
+
+    /**
+     Register a new device token with Customer.io, associated with the current active customer. If there
+     is no active customer, this will fail to register the device
+     */
+    public func registerDeviceToken(_ deviceToken: String) {
+        implementation?.registerDeviceToken(deviceToken)
+    }
+
+    /**
+     Delete the currently registered device token
+     */
+    public func deleteDeviceToken() {
+        implementation?.deleteDeviceToken()
+    }
+
+    /**
+     Track a push metric
+     */
+    public func trackMetric(
+        deliveryID: String,
+        event: Metric,
+        deviceToken: String
+    ) {
+        implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 }

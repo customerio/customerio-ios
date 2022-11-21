@@ -65,6 +65,19 @@ class TrackingAPITest: UnitTest {
         CustomerIO.shared.screen(name: "", data: encodableData)
         mock.screen(name: "", data: encodableData)
 
+        // register push token
+        CustomerIO.shared.registerDeviceToken("")
+        mock.registerDeviceToken("")
+
+        // delete push token
+        CustomerIO.shared.deleteDeviceToken()
+        mock.deleteDeviceToken()
+
+        // track push metric
+        let metric = Metric.delivered
+        CustomerIO.shared.trackMetric(deliveryID: "", event: metric, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
+
         checkDeviceProfileAttributes()
     }
 

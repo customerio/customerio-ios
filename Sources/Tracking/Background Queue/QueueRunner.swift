@@ -21,6 +21,9 @@ internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
         switch queueTaskType {
         case .identifyProfile: identify(task, onComplete: onComplete)
         case .trackEvent: track(task, onComplete: onComplete)
+        case .registerPushToken: registerPushToken(task, onComplete: onComplete)
+        case .deletePushToken: deletePushToken(task, onComplete: onComplete)
+        case .trackPushMetric: trackPushMetric(task, onComplete: onComplete)
         }
 
         return true
@@ -54,5 +57,50 @@ extension TrackingQueueRunner {
         )
 
         performHttpRequest(params: httpParams, onComplete: onComplete)
+    }
+
+    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: RegisterPushNotificationQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        let httpParams = HttpRequestParams(
+            endpoint: .registerDevice(identifier: taskData.profileIdentifier),
+            headers: nil,
+            body: taskData.attributesJsonString?.data
+        )
+
+        performHttpRequest(params: httpParams, onComplete: onComplete)
+    }
+
+    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: DeletePushNotificationQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        let httpParams = HttpRequestParams(
+            endpoint: .deleteDevice(
+                identifier: taskData.profileIdentifier,
+                deviceToken: taskData.deviceToken
+            ),
+            headers: nil,
+            body: nil
+        )
+
+        performHttpRequest(params: httpParams, onComplete: onComplete)
+    }
+
+    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: MetricRequest.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        guard let bodyData = jsonAdapter.toJson(taskData) else {
+            return
+        }
+
+        let httpRequestParameters = HttpRequestParams(endpoint: .pushMetrics, headers: nil, body: bodyData)
+
+        performHttpRequest(params: httpRequestParameters, onComplete: onComplete)
     }
 }

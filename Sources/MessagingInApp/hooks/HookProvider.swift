@@ -20,10 +20,6 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
         nil
     }
 
-    var deviceAttributesHook: DeviceAttributesHook? {
-        nil
-    }
-
     var screenTrackingHook: ScreenTrackingHook? {
         guard let diGraph = diGraph else { return nil }
 
