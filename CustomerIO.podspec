@@ -24,25 +24,39 @@ Pod::Spec.new do |spec|
 
   spec.default_subspec = "Tracking"
 
+  spec.subspec "Common" do |ss|
+    ss.source_files  = "Sources/Common/**/*"
+    ss.module_name = "Common" # the `import X` name when using SDK in Swift files
+  end
+
   spec.subspec "Tracking" do |ss|
-    # Using `= X.X.X` is required for pre-release versions of an SDK (alpha, beta) 
-    # In the future, we can use: `~> X.X.X` which matches by semantic version rules. 
-    ss.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
+    ss.source_files  = "Sources/Tracking/**/*"
+    ss.module_name = "CioTracking" # the `import X` name when using SDK in Swift files  
+    ss.dependency "CustomerIO/Common"
   end
 
   spec.subspec "MessagingPush" do |ss|
-    ss.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
+    ss.source_files  = "Sources/MessagingPush/**/*"
+    ss.module_name = "CioMessagingPush"  # the `import X` name when using SDK in Swift files
+    ss.dependency "CustomerIO/Tracking"
   end
 
   spec.subspec "MessagingPushAPN" do |ss|
-    ss.dependency "CustomerIOMessagingPushAPN", "= #{spec.version.to_s}"
+    ss.source_files  = "Sources/MessagingPushAPN/**/*"
+    ss.module_name = "CioMessagingPushAPN" # the `import X` name when using SDK in Swift files  
+    ss.dependency "CustomerIO/MessagingPush"
   end
 
   spec.subspec "MessagingPushFCM" do |ss|
-    ss.dependency "CustomerIOMessagingPushFCM", "= #{spec.version.to_s}"
+    ss.source_files  = "Sources/MessagingPushFCM/**/*"
+    ss.module_name = "CioMessagingPushFCM" # the `import X` name when using SDK in Swift files   
+    ss.dependency "CustomerIO/MessagingPush"
   end
 
   spec.subspec "MessagingInApp" do |ss|
-    ss.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
+    ss.source_files  = "Sources/MessagingInApp/**/*"
+    ss.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files    
+    ss.dependency "CustomerIO/Tracking"
+    ss.dependency "Gist", '~> 2.2.1'
   end
 end
