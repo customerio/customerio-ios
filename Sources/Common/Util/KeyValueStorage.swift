@@ -17,7 +17,7 @@ public protocol KeyValueStorage {
     func deleteAll()
 }
 
-/**
+/*
  Uses UserDefaults to store data in key/value pairs.
  */
 // sourcery: InjectRegister = "KeyValueStorage"

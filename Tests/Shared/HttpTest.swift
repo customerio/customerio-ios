@@ -24,7 +24,7 @@ open class HttpTest: UnitTest {
     override open func setUp() {
         super.setUp()
 
-        /**
+        /*
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
          we see environment variables set in XCode.
          */
@@ -41,7 +41,7 @@ open class HttpTest: UnitTest {
 
     override open func tearDown() {
         runner = nil
-        /// assert there isn't a memory leak and the runner can be deconstructed.
+        // assert there isn't a memory leak and the runner can be deconstructed.
         XCTAssertNil(runner)
 
         super.tearDown()

@@ -28,7 +28,7 @@ public protocol QueueStorage: AutoMockable {
     func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
     func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus, createdTask: QueueTaskMetadata?)
+        -> CreateTaskResult
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
@@ -91,7 +91,7 @@ public class FileManagerQueueStorage: QueueStorage {
         data: Data,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus, createdTask: QueueTaskMetadata?) {
+    ) -> CreateTaskResult {
         lock.lock()
         defer { lock.unlock() }
 
@@ -107,7 +107,7 @@ public class FileManagerQueueStorage: QueueStorage {
         )
 
         if !update(queueTask: newQueueTask) {
-            return (success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+            return CreateTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
         let newQueueItem = QueueTaskMetadata(
@@ -123,7 +123,7 @@ public class FileManagerQueueStorage: QueueStorage {
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
         if !saveInventory(existingInventory) {
-            return (success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+            return CreateTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
         // It's more accurate for us to get the inventory item from the inventory instead of just returning
@@ -133,10 +133,10 @@ public class FileManagerQueueStorage: QueueStorage {
         let createdTask = getInventory().last!
         if createdTask.taskPersistedId != newQueueItem.taskPersistedId {
             logger.error("expected last item in inventory is task just added but it wasn't.")
-            return (success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+            return CreateTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
-        return (success: true, queueStatus: afterCreateQueueStatus, createdTask: createdTask)
+        return CreateTaskResult(success: true, queueStatus: afterCreateQueueStatus, createdTask: createdTask)
     }
 
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
@@ -233,5 +233,11 @@ public extension FileManagerQueueStorage {
         }
 
         return fileStorage.save(type: .queueTask, contents: data, fileId: queueTask.storageId)
+    }
+
+    struct CreateTaskResult {
+        let success: Bool
+        let queueStatus: QueueStatus
+        let createdTask: QueueTaskMetadata?
     }
 }

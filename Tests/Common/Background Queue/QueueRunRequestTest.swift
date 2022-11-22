@@ -144,7 +144,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
     }
 
     func test_noTasksInInventory_expectRunNoTasks() {
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertFalse(runnerMock.runTaskCalled)
@@ -154,7 +154,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         _ = addQueueTask()
         runnerMock.setupRunAllTasksSuccessfully()
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 1)
@@ -165,7 +165,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         let givenTaskAdded = addQueueTask()
         runnerMock.setupRunAllTasksFailure()
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 1)
@@ -177,7 +177,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         _ = addQueueTask()
         runnerMock.setupRunAllTasksSuccessfully()
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
@@ -189,7 +189,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         let givenTask2 = addQueueTask()
         runnerMock.setupRunAllTasksFailure()
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
@@ -203,7 +203,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
             onComplete(.failure(.requestsPaused))
         }
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 1) // should have only ran 1 task, quit early
@@ -224,7 +224,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
             onComplete(.success(()))
         }
 
-        runRequest.start(onComplete: onComplete_expectation)
+        runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)

@@ -13,7 +13,7 @@ public enum HookModule: String {
     case messagingInApp
 }
 
-/**
+/*
  Singleton because we are storing objects in-memory set at runtime.
 
  As long as `ModuleHookProvider` subclasses are limiting thier use
