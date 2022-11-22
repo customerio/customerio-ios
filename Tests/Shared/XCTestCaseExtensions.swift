@@ -55,4 +55,17 @@ public extension XCTestCase {
     ) throws {
         try XCTSkipIf(true, nil, file: file, line: line)
     }
+
+    // Convenience when wanting to run async code with a onComplete callback.
+    // Example:
+    // ```
+    // foo.run(onComplete: onComplete_expectation)
+    // waitForExpectations()
+    // ```
+    var onComplete_expectation: () -> Void {
+        let expectation = expectation(description: "expect to complete")
+        return {
+            expectation.fulfill()
+        }
+    }
 }
