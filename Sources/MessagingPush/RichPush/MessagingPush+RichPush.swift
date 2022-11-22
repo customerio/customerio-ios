@@ -81,15 +81,17 @@ extension MessagingPushImplementation {
             request,
             content: pushContent,
             siteId: siteId
-        ) { [weak self] notificationContent in
-            self?.logger.debug("rich push was composed.")
+        ) { notificationContent in
+            self.logger.debug("rich push was composed \(notificationContent).")
 
-            self?.logger
+            self.logger
                 .debug(
                     "running all background queue tasks and waiting until complete to prevent OS from killing notification service extension before all HTTP requests have been performed"
                 )
-            self?.backgroundQueue.run {
-                self?.logger.debug("all background queue tasks done running. rich push processing is done!")
+            self.backgroundQueue.run {
+                self.logger.debug("all background queue tasks done running.")
+                self.logger.info("Customer.io rich push processing is done!")
+
                 contentHandler(notificationContent)
             }
         }

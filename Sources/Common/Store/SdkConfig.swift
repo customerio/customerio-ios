@@ -76,10 +76,25 @@ public struct SdkConfig {
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }
 
+/**
+ We have a separate SDK config just for rich push because:
+ 1. Instance of SDK inside of a Notification Service Extension does not have as many features to provide
+    compared to running in a host app. Therefore, we don't need to expose as many SDK config options to customers.
+ 2. The SDK code needs to override some configuration options when running inside of a Notication Service Extension.
+    We don't want customers to modify some of these overriden config options as it may effect some features of rich push.
+
+ Note: To not make the SDK code more complex, convert `RichPushSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
+ The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
+ */
+/// SDK configuration just for rich push feature of the SDK.
 public struct RichPushSdkConfig {
+    /// See `SdkConfig.trackingApiUrl`
     public var trackingApiUrl: String
+    /// See `SdkConfig.autoTrackPushEvents`
     public var autoTrackPushEvents: Bool
+    /// See `SdkConfig.logLevel`
     public var logLevel: CioLogLevel
+    /// See `SdkConfig.autoTrackDeviceAttributes`
     public var autoTrackDeviceAttributes: Bool
 
     // Used to create new instance when the SDK is initialized.
@@ -105,6 +120,12 @@ public struct RichPushSdkConfig {
         sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
 
         // Default to running tasks added to the BQ immediately.
+        // Since a Notification Service Extension is only in memory for a small amount of time,
+        // we need to bypass the background queue default behavior to make sure that HTTP tasks
+        // have an opportunity to execute before the OS kills the Notification Service Extension.
+        //
+        // Customers should not be able to modify these values in a Notification Service Extension.
+        // Or, they may experience some events (such as push metrics) not being delivered as expected to CIO.
         sdkConfig.backgroundQueueMinNumberOfTasks = 1
         sdkConfig.backgroundQueueSecondsDelay = 0
 

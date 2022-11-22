@@ -63,9 +63,11 @@ public extension XCTestCase {
     // waitForExpectations()
     // ```
     var onComplete_expectation: () -> Void {
-        let expectation = expectation(description: "expect to complete")
-        return {
-            expectation.fulfill()
+        let expect = expectation(description: "expect to complete")
+        let onComplete: () -> Void = {
+            expect.fulfill()
         }
+
+        return onComplete
     }
 }

@@ -84,9 +84,3 @@ struct QueueQueryCriteria {
         excludeGroups.removeAll()
     }
 }
-
-struct QueueQueryNextTaskResult {
-    let queueInventory: [QueueTaskMetadata]
-    let queueTasksLeftToExecute: [QueueTaskMetadata]
-    let nextTaskToRun: QueueTaskMetadata?
-}

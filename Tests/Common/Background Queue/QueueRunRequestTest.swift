@@ -211,7 +211,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
     }
 
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {
-        let givenTaskAddedBeforeRun = addQueueTask()
+        _ = addQueueTask()
 
         var addedNewTaskDuringRun = false
         runnerMock.runTaskClosure = { _, onComplete in
