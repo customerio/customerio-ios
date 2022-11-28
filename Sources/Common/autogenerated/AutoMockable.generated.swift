@@ -2334,13 +2334,13 @@ public class QueueStorageMock: QueueStorage, Mock {
         blockingGroups: [QueueTaskGroup]?
     )] = []
     /// Value to return from the mocked function.
-    public var createReturnValue: CreateTaskResult!
+    public var createReturnValue: CreateQueueStorageTaskResult!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `createReturnValue`
      */
-    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?) -> CreateTaskResult)?
+    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?) -> CreateQueueStorageTaskResult)?
 
     /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups:
     /// [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
@@ -2349,7 +2349,7 @@ public class QueueStorageMock: QueueStorage, Mock {
         data: Data,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> CreateTaskResult {
+    ) -> CreateQueueStorageTaskResult {
         mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)

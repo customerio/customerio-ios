@@ -21,7 +21,7 @@ class QueueTest: UnitTest {
     // MARK: addTask
 
     func test_addTask_givenFailCreateQueueTask_expectFailStatus_expectScheduleQueueToRun() {
-        storageMock.createReturnValue = (
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: false,
             queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0),
             createdTask: nil
@@ -44,7 +44,7 @@ class QueueTest: UnitTest {
     func test_addTask_expectDoNotStartQueueIfNotMeetingCriteria_expectScheduleQueueInstead() {
         setupTest(backgroundQueueMinNumberOfTasks: 10)
         let givenCreatedTask = QueueTaskMetadata.random
-        storageMock.createReturnValue = (
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: true,
             queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
             createdTask: givenCreatedTask
@@ -67,7 +67,7 @@ class QueueTest: UnitTest {
     func test_addTask_expectStartQueueAfterSuccessfullyAddingTask_expectDoNotScheduleTimer_expectCancelTimer() {
         setupTest(backgroundQueueMinNumberOfTasks: 1)
         let givenCreatedTask = QueueTaskMetadata.random
-        storageMock.createReturnValue = (
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: true,
             queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
             createdTask: givenCreatedTask
