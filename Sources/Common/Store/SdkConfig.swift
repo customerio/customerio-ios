@@ -3,6 +3,15 @@ import Foundation
 /**
  Configuration options for the Customer.io SDK.
  See `CustomerIO.config()` to configurate the SDK.
+
+ Example use case:
+ ```
+ // create a new instance
+ let sdkConfigInstance = SdkConfig.Factory.create(region: .US)
+ // now, you can modify it
+ sdkConfigInstance.trackingApiUrl = "https..."
+ sdkConfigInstance.autoTrackPushEvents = false
+ ```
  */
 public struct SdkConfig {
     // Used to create new instance of SdkConfig when the SDK is initialized.
@@ -77,6 +86,10 @@ public struct SdkConfig {
 }
 
 /**
+ SDK configuration just for rich push feature of the SDK.
+
+ Construct an instance like you would `SdkConfig`.
+
  We have a separate SDK config just for rich push because:
  1. Instance of SDK inside of a Notification Service Extension does not have as many features to provide
     compared to running in a host app. Therefore, we don't need to expose as many SDK config options to customers.
@@ -86,7 +99,6 @@ public struct SdkConfig {
  Note: To not make the SDK code more complex, convert `RichPushSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
  The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
  */
-/// SDK configuration just for rich push feature of the SDK.
 public struct RichPushSdkConfig {
     /// See `SdkConfig.trackingApiUrl`
     public var trackingApiUrl: String
@@ -112,6 +124,9 @@ public struct RichPushSdkConfig {
         }
     }
 
+    /// Convert `RichPushSdkConfig` to `SdkConfig` to be used in the SDK. Instead of making the SDK code
+    /// have logic to handle `SdkConfig` and `RichPushSdkConfig`, by converting to `SdkConfig`, the SDK code does not
+    /// need to be modified to work with `RichPushSdkConfig`.
     public func toSdkConfig() -> SdkConfig {
         var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
 

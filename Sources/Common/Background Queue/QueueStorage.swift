@@ -130,9 +130,9 @@ public class FileManagerQueueStorage: QueueStorage {
         // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
         // such as removing milliseconds from Date. By getting the inventory item directly from device storage,
         // we return the most accurate data on the inventory item.
-        let createdTask = getInventory().last!
-        if createdTask.taskPersistedId != newQueueItem.taskPersistedId {
-            logger.error("expected last item in inventory is task just added but it wasn't.")
+        guard let createdTask = getInventory().first(where: { $0.taskPersistedId == newQueueItem.taskPersistedId })
+        else {
+            logger.error("expected to find task \(newQueueItem) to be in the inventory but it wasn't")
             return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
