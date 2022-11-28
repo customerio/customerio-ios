@@ -55,6 +55,21 @@ class DeviceAttributesProviderTest: UnitTest {
 
         waitForExpectations()
     }
+
+    func test_getSdkVersionAttribute_givenNotUsingSdkWrapper_expectGetSDKVersion() {
+        setUp(useSdkWrapper: false)
+        let givenSdkVersion = String.random
+        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
+
+        XCTAssertEqual(provider.getSdkVersionAttribute(), givenSdkVersion)
+    }
+
+    func test_getSdkVersionAttribute_expectSDKWrapperVersionOverridesSDKVersion() {
+        setUp(useSdkWrapper: true)
+        deviceInfoMock.underlyingSdkVersion = String.random
+
+        XCTAssertEqual(provider.getSdkVersionAttribute(), wrapperMockVersion)
+    }
 }
 
 extension DeviceAttributesProviderTest {
