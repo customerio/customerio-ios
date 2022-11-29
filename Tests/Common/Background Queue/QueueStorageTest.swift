@@ -55,12 +55,18 @@ class QueueStorageTest: UnitTest {
             blockingGroups: [.identifiedProfile(identifier: String.random)]
         )
 
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call
+        XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call, not trying to update inventory
         XCTAssertFalse(actual.success)
-        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
+        XCTAssertEqual(actual.queueStatus, QueueStatus(
+            queueId: testSiteId,
+            numTasksInQueue: 0
+        )) // Number of tasks should be 0 since creating a task failed.
     }
 
     func test_create_givenFileStorageDoesNotUpdateInventory_expectFalse() {
+        // We want the saveInventory task to fail.
+        // To do that, the first call to fileStorage.save is successful (we are saving the task) but the second call is
+        // failed (we are saving the inventory).
         var returnValues = [true, false]
         fileStorageMock.saveClosure = { _, _, _ in
             returnValues.removeFirst()
@@ -76,9 +82,17 @@ class QueueStorageTest: UnitTest {
             blockingGroups: [.identifiedProfile(identifier: String.random)]
         )
 
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 2)
+        XCTAssertEqual(
+            fileStorageMock.saveCallsCount,
+            2
+        ) // 2 save *attempts* were made: try to save task, try to save inventory
+        // Since saving the inventory failed, we expect `storage.create()` to have failed entirely like the request to
+        // `storage.create()` was ignored.
         XCTAssertFalse(actual.success)
-        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
+        XCTAssertEqual(actual.queueStatus, QueueStatus(
+            queueId: testSiteId,
+            numTasksInQueue: 0
+        )) // Number of tasks should be 0 since creating a task failed.
     }
 }
 

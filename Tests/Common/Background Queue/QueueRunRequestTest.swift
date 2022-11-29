@@ -228,6 +228,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         waitForExpectations()
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertTrue(queueStorage.getInventory().isEmpty)
     }
 }
 
