@@ -27,11 +27,14 @@ class TrackingAPITest: UnitTest {
         try skipRunningTest()
 
         // Initialize
-        CustomerIO.initialize(siteId: "", apiKey: "")
-        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
-        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioSdkConfig) in
             config.autoTrackPushEvents = false
         }
+        // There is another `initialize()` function that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioRichPushSdkConfig) in }
 
         // Reference some objects that should be public in the Tracking module
         let region: Region = .EU

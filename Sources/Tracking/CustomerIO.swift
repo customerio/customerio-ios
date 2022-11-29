@@ -150,8 +150,8 @@ public class CustomerIO: CustomerIOInstance {
     public static func initialize(
         siteId: String,
         apiKey: String,
-        region: Region = Region.US,
-        configure configureHandler: ((inout SdkConfig) -> Void)? = nil
+        region: Region,
+        configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
         var newSdkConfig = SdkConfig.Factory.create(region: region)
 
@@ -172,11 +172,13 @@ public class CustomerIO: CustomerIOInstance {
      Initialize the shared `instance` of `CustomerIO`.
      Call this function in your Notification Service Extension for the rich push feature.
      */
-    public static func initializeRichPush(
+    @available(iOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    public static func initialize(
         siteId: String,
         apiKey: String,
-        region: Region = Region.US,
-        configure configureHandler: ((inout RichPushSdkConfig) -> Void)? = nil
+        region: Region,
+        configure configureHandler: ((inout RichPushSdkConfig) -> Void)?
     ) {
         var newSdkConfig = RichPushSdkConfig.Factory.create(region: region)
 
