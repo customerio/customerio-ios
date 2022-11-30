@@ -163,7 +163,7 @@ public class CioQueue: Queue {
         )
         processQueueStatus(addTaskResult.queueStatus)
 
-        return addTaskResult
+        return (success: addTaskResult.success, queueStatus: addTaskResult.queueStatus)
     }
 
     public func run(onComplete: @escaping () -> Void) {

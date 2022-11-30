@@ -38,27 +38,35 @@ public class CioQueueRunRequest: QueueRunRequest {
     }
 
     private func startNewRequestRun() {
-        let inventory = storage.getInventory()
-
-        runTasks(queueInventory: inventory, queryTotalNumberTasks: inventory.count)
+        runTasks(lastRanTask: nil)
     }
 
     // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
     // Many of the lines of this function are logging related.
     // swiftlint:disable:next function_body_length
     private func runTasks(
-        queueInventory: [QueueTaskMetadata],
-        queryTotalNumberTasks: Int,
+        lastRanTask: QueueTaskMetadata?,
         lastFailedTask: QueueTaskMetadata? = nil
     ) {
-        guard let nextTaskToRunInventoryItem = queryRunner.getNextTask(queueInventory, lastFailedTask: lastFailedTask)
+        // get the inventory before running each task. If a task was added to the queue while the last task was being
+        // executed, we can assert that new task will execute during this run.
+        let queueInventory = storage.getInventory()
+
+        guard let nextTaskToRunInventoryItem = queryRunner.getNextTask(
+            queueInventory,
+            lastRanTask: lastRanTask,
+            lastFailedTask: lastFailedTask
+        )
         else {
             // we hit the end of the current inventory. Done!
-            logger.debug("queue out of tasks to run.")
+            return doneRunning()
+        }
 
-            queryRunner.reset()
+        // call when you're done with task
+        func goToNextTask(didTaskFail: Bool) {
+            let lastFailedTask = didTaskFail ? nextTaskToRunInventoryItem : nil
 
-            return requestManager.requestComplete()
+            runTasks(lastRanTask: nextTaskToRunInventoryItem, lastFailedTask: lastFailedTask)
         }
 
         let nextTaskStorageId = nextTaskToRunInventoryItem.taskPersistedId
@@ -67,14 +75,10 @@ public class CioQueueRunRequest: QueueRunRequest {
             logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
 
             // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
-            return goToNextTask(
-                queueInventory: queueInventory,
-                queryTotalNumberTasks: queryTotalNumberTasks,
-                lastFailedTask: nextTaskToRunInventoryItem
-            )
+            return goToNextTask(didTaskFail: true)
         }
 
-        logger.debug("queue tasks left to run: \(queueInventory.count) out of \(queryTotalNumberTasks)")
+        logger.debug("queue tasks left to run: \(queueInventory.count)")
         logger.debug("""
         queue next task to run: \(shortTaskId(nextTaskStorageId)),
         \(nextTaskToRun.type), \(nextTaskToRun.data.string ?? ""), \(nextTaskToRun.runResults)
@@ -94,11 +98,7 @@ public class CioQueueRunRequest: QueueRunRequest {
                 self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
                 _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
-                return self.goToNextTask(
-                    queueInventory: queueInventory,
-                    queryTotalNumberTasks: queryTotalNumberTasks,
-                    lastFailedTask: nil
-                )
+                return goToNextTask(didTaskFail: false)
             case .failure(let error):
                 self.logger
                     .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
@@ -112,11 +112,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                     """)
 
                     self.logger.info("queue is quitting early because all HTTP requests are paused.")
-                    return self.goToNextTask(
-                        queueInventory: [],
-                        queryTotalNumberTasks: queryTotalNumberTasks,
-                        lastFailedTask: nil
-                    )
+
+                    return self.doneRunning()
                 } else {
                     let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
@@ -131,26 +128,16 @@ public class CioQueueRunRequest: QueueRunRequest {
                     )
                 }
 
-                return self.goToNextTask(
-                    queueInventory: queueInventory,
-                    queryTotalNumberTasks: queryTotalNumberTasks,
-                    lastFailedTask: nextTaskToRunInventoryItem
-                )
+                return goToNextTask(didTaskFail: true)
             }
         }
     }
 
-    private func goToNextTask(
-        queueInventory: [QueueTaskMetadata],
-        queryTotalNumberTasks: Int,
-        lastFailedTask: QueueTaskMetadata?
-    ) {
-        var newInventory = queueInventory
-        newInventory.removeFirst()
-        runTasks(
-            queueInventory: newInventory,
-            queryTotalNumberTasks: queryTotalNumberTasks,
-            lastFailedTask: lastFailedTask
-        )
+    private func doneRunning() {
+        logger.debug("queue out of tasks to run.")
+
+        queryRunner.reset()
+
+        return requestManager.requestComplete()
     }
 }

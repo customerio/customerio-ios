@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -56,6 +56,9 @@ extension DIGraph {
         _ = cleanupRepository
         countDependenciesResolved += 1
 
+        _ = deviceAttributesProvider
+        countDependenciesResolved += 1
+
         _ = queueRunnerHook
         countDependenciesResolved += 1
 
@@ -72,6 +75,18 @@ extension DIGraph {
 
     private var newCleanupRepository: CleanupRepository {
         CioCleanupRepository(queue: queue)
+    }
+
+    // DeviceAttributesProvider
+    var deviceAttributesProvider: DeviceAttributesProvider {
+        if let overridenDep = overrides[String(describing: DeviceAttributesProvider.self)] {
+            return overridenDep as! DeviceAttributesProvider
+        }
+        return newDeviceAttributesProvider
+    }
+
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
     }
 
     // QueueRunnerHook

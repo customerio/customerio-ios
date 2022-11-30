@@ -28,6 +28,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         Self.shared = MessagingPush()
     }
 
+    // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
+    // currently no module initialization to perform.
     public static func initialize() {
         MessagingPush.shared.initialize()
     }
@@ -35,11 +37,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     override public func inititlize(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
-
-        // Register MessagingPush module hooks now that the module is being initialized.
-        let hooks = diGraph.hooksManager
-        let moduleHookProvider = MessagingPushModuleHookProvider()
-        hooks.add(key: .messagingPush, provider: moduleHookProvider)
 
         logger.info("MessagingPush module setup with SDK")
     }

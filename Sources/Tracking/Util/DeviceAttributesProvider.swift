@@ -44,7 +44,7 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         var sdkVersion = deviceInfo.sdkVersion
 
         // Allow SDK wrapper to override the SDK version
-        if let sdkWrapperConfig = sdkConfigStore.config._sdkWrapperConfig {
+        if let sdkWrapperConfig = sdkConfig._sdkWrapperConfig {
             sdkVersion = sdkWrapperConfig.version
         }
 

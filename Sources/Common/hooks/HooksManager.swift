@@ -4,7 +4,6 @@ public protocol HooksManager: AutoMockable {
     func add(key: HookModule, provider: ModuleHookProvider)
     var profileIdentifyHooks: [ProfileIdentifyHook] { get }
     var queueRunnerHooks: [QueueRunnerHook] { get }
-    var deviceAttributesHooks: [DeviceAttributesHook] { get }
     var screenViewHooks: [ScreenTrackingHook] { get }
 }
 
@@ -14,7 +13,7 @@ public enum HookModule: String {
     case messagingInApp
 }
 
-/**
+/*
  Singleton because we are storing objects in-memory set at runtime.
 
  As long as `ModuleHookProvider` subclasses are limiting thier use
@@ -37,10 +36,6 @@ public class CioHooksManager: HooksManager {
 
     public var queueRunnerHooks: [QueueRunnerHook] {
         hookProviders.filter { $0.value.queueRunnerHook != nil }.map { $0.value.queueRunnerHook! }
-    }
-
-    public var deviceAttributesHooks: [DeviceAttributesHook] {
-        hookProviders.filter { $0.value.deviceAttributesHook != nil }.map { $0.value.deviceAttributesHook! }
     }
 
     public var screenViewHooks: [ScreenTrackingHook] {
