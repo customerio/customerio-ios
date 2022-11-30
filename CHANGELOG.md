@@ -1,3 +1,23 @@
+## [2.0.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.2.6...2.0.0-alpha.1) (2022-11-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* make delivered push metric more reliable
+* remove FCM dependency from cocoapods (#210)
+* singleton API only way to use SDK now (#209)
+
+### Bug Fixes
+
+* fix compile time errors notification service extensions ([#214](https://github.com/customerio/customerio-ios/issues/214)) ([bd5911b](https://github.com/customerio/customerio-ios/commit/bd5911b1401e26112a900c6a0c6f132c3ab2c27a))
+* make delivered push metric more reliable ([0478e52](https://github.com/customerio/customerio-ios/commit/0478e5273017867ecff194905d130cbf32d588ac))
+
+
+### Code Refactoring
+
+* remove FCM dependency from cocoapods ([#210](https://github.com/customerio/customerio-ios/issues/210)) ([3547076](https://github.com/customerio/customerio-ios/commit/3547076a3694c211f1b11b2a61db7d6debe05a6b))
+* singleton API only way to use SDK now ([#209](https://github.com/customerio/customerio-ios/issues/209)) ([72b7477](https://github.com/customerio/customerio-ios/commit/72b7477b16c490b9839fd48f51487e657440a75c))
+
 ### [1.2.6](https://github.com/customerio/customerio-ios/compare/1.2.5...1.2.6) (2022-11-17)
 
 
