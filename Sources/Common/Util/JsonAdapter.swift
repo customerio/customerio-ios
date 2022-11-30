@@ -1,6 +1,6 @@
 import Foundation
 
-/**
+/*
  Convert between Swift structs and JSON strings and vice-versa.
 
  Note: When writing tests to check that JSON is equal to other JSON, you need to

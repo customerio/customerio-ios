@@ -22,23 +22,23 @@ class CustomerIOMockTest: UnitTest {
         let givenFirstName = "Dana"
         let givenBody = ExampleIdentifyRequestBody(firstName: givenFirstName)
 
-        /// Call your code under test
+        // Call your code under test
         let expect = expectation(description: "Expect login to complete")
         repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
             expect.fulfill()
         }
 
-        /// wait for your function under test to complete
+        // wait for your function under test to complete
         waitForExpectations(0.3)
 
-        /// You can now check the Customer.io mock to see if it behaved as you wished.
+        // You can now check the Customer.io mock to see if it behaved as you wished.
         XCTAssertTrue(cioMock.identifyCalled)
 
-        /// You can receive the generic `body` that was sent to the Customer.io `identify()` call.
-        /// Because of Swift generics, you must get the `.value` and cast it:
+        // You can receive the generic `body` that was sent to the Customer.io `identify()` call.
+        // Because of Swift generics, you must get the `.value` and cast it:
         let actualBody: ExampleIdentifyRequestBody? = cioMock.identifyEncodableReceivedArguments?.body
             .value as? ExampleIdentifyRequestBody
-        /// Now, you can run checks against the `body` that was actually passed to `identify()`.
+        // Now, you can run checks against the `body` that was actually passed to `identify()`.
         XCTAssertNotNil(actualBody)
         XCTAssertEqual(actualBody?.firstName, givenBody.firstName)
     }

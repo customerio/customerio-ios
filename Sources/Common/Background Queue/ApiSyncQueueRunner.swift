@@ -16,13 +16,13 @@ open class ApiSyncQueueRunner {
         self.httpClient = httpClient
     }
 
-    /// (1) less code for `runTask` function to decode JSON and (2) one place to do error logging if decoding wrong.
+    // (1) less code for `runTask` function to decode JSON and (2) one place to do error logging if decoding wrong.
     public func getTaskData<T: Decodable>(_ task: QueueTask, type: T.Type) -> T? {
         let taskData: T? = jsonAdapter.fromJson(task.data, decoder: nil)
 
         if taskData == nil {
-            /// log as error because it's a developer error since SDK is who encoded the TaskData in the first place
-            /// we should always be able to decode it without problem.
+            // log as error because it's a developer error since SDK is who encoded the TaskData in the first place
+            // we should always be able to decode it without problem.
             logger.error("Failure decoding: \(task.data.string ?? "()") to \(type)")
         }
 

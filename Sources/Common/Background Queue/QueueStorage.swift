@@ -28,7 +28,7 @@ public protocol QueueStorage: AutoMockable {
     func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
     func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus)
+        -> CreateQueueStorageTaskResult
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
@@ -91,7 +91,7 @@ public class FileManagerQueueStorage: QueueStorage {
         data: Data,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    ) -> CreateQueueStorageTaskResult {
         lock.lock()
         defer { lock.unlock() }
 
@@ -107,7 +107,7 @@ public class FileManagerQueueStorage: QueueStorage {
         )
 
         if !update(queueTask: newQueueTask) {
-            return (success: false, queueStatus: beforeCreateQueueStatus)
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
         let newQueueItem = QueueTaskMetadata(
@@ -123,10 +123,24 @@ public class FileManagerQueueStorage: QueueStorage {
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
         if !saveInventory(existingInventory) {
-            return (success: false, queueStatus: beforeCreateQueueStatus)
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
-        return (success: true, queueStatus: afterCreateQueueStatus)
+        // It's more accurate for us to get the inventory item from the inventory instead of just returning
+        // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
+        // such as removing milliseconds from Date. By getting the inventory item directly from device storage,
+        // we return the most accurate data on the inventory item.
+        guard let createdTask = getInventory().first(where: { $0.taskPersistedId == newQueueItem.taskPersistedId })
+        else {
+            logger.error("expected to find task \(newQueueItem) to be in the inventory but it wasn't")
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+        }
+
+        return CreateQueueStorageTaskResult(
+            success: true,
+            queueStatus: afterCreateQueueStatus,
+            createdTask: createdTask
+        )
     }
 
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
@@ -224,4 +238,10 @@ public extension FileManagerQueueStorage {
 
         return fileStorage.save(type: .queueTask, contents: data, fileId: queueTask.storageId)
     }
+}
+
+public struct CreateQueueStorageTaskResult {
+    public let success: Bool
+    public let queueStatus: QueueStatus
+    public let createdTask: QueueTaskMetadata?
 }

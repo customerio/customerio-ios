@@ -21,6 +21,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
+    private var globalDataStore: GlobalDataStore
+    private let sdkConfig: SdkConfig
+    private let deviceAttributesProvider: DeviceAttributesProvider
+    private let dateUtil: DateUtil
+    private let deviceInfo: DeviceInfo
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -37,6 +42,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
+        self.globalDataStore = diGraph.globalDataStore
+        self.sdkConfig = diGraph.sdkConfig
+        self.deviceAttributesProvider = diGraph.deviceAttributesProvider
+        self.dateUtil = diGraph.dateUtil
+        self.deviceInfo = diGraph.deviceInfo
     }
 
     public var profileAttributes: [String: Any] {
@@ -56,12 +66,15 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             [:]
         }
         set {
-            hooks.deviceAttributesHooks.forEach { hook in
-                hook.customDeviceAttributesAdded(attributes: newValue)
-            }
+            guard let deviceToken = globalDataStore.pushDeviceToken else { return }
+            let attributes = newValue
+            addDeviceAttributes(deviceToken: deviceToken, customAttributes: attributes)
         }
     }
 
+    // this function could use a refactor. It's long and complex. Our automated tests are what keeps us feeling
+    // confident in the code, but the code here is difficult to maintain.
+    // swiftlint:disable:next function_body_length
     public func identify<RequestBody: Encodable>(
         identifier: String,
         body: RequestBody
@@ -76,6 +89,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
            isChangingIdentifiedProfile {
             logger.info("changing profile from id \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
+
+            logger
+                .debug(
+                    "deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with."
+                )
+            deleteDeviceToken()
 
             logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
@@ -120,6 +139,13 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         profileStore.identifier = identifier
 
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
+            if let existingDeviceToken = globalDataStore.pushDeviceToken {
+                logger.debug("registering existing device token to newly identified profile: \(identifier)")
+                // this code assumes that the newly identified profile has been saved to device storage. only call this
+                // function until after the SDK stores the new profile identifier
+                registerDeviceToken(existingDeviceToken)
+            }
+
             logger.debug("running hooks profile identified \(identifier)")
             hooks.profileIdentifyHooks.forEach { hook in
                 hook.profileIdentified(identifier: identifier)
@@ -137,6 +163,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             return
         }
+
+        logger
+            .debug(
+                "delete device token from \(currentlyIdentifiedProfileIdentifier) to stop sending push to a profile that is no longer identified"
+            )
+        deleteDeviceToken()
 
         logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfileIdentifier)")
         hooks.profileIdentifyHooks.forEach { hook in
@@ -174,6 +206,121 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 hook.screenViewed(name: name)
             }
         }
+    }
+
+    /**
+     Register a new device token with Customer.io, associated with the current active customer. If there
+     is no active customer, this will fail to register the device
+     */
+    public func registerDeviceToken(_ deviceToken: String) {
+        addDeviceAttributes(deviceToken: deviceToken)
+    }
+
+    /**
+     Adds device default and custom attributes and registers device token.
+     */
+    private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
+        logger.info("registering device token \(deviceToken)")
+        logger.debug("storing device token to device storage \(deviceToken)")
+        // no matter what, save the device token for use later. if a customer is identified later,
+        // we can reference the token and register it to a new profile.
+        globalDataStore.pushDeviceToken = deviceToken
+
+        guard let identifier = profileStore.identifier else {
+            logger.info("no profile identified, so not registering device token to a profile")
+            return
+        }
+        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
+        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
+        // is
+        // required to prevent SDK execution for unsupported OS.
+        if deviceInfo.osName == nil {
+            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
+            return
+        }
+        // Consolidate all Apple platforms under iOS
+        let deviceOsName = "iOS"
+        deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
+            let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
+
+            let encodableBody =
+                StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
+            let requestBody = RegisterDeviceRequest(device: Device(
+                token: deviceToken,
+                platform: deviceOsName,
+                lastUsed: self.dateUtil.now,
+                attributes: encodableBody
+            ))
+
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
+                return
+            }
+            let queueTaskData = RegisterPushNotificationQueueTaskData(
+                profileIdentifier: identifier,
+                attributesJsonString: jsonBodyString
+            )
+
+            _ = self.backgroundQueue.addTask(
+                type: QueueTaskType.registerPushToken.rawValue,
+                data: queueTaskData,
+                groupStart: .registeredPushToken(token: deviceToken),
+                blockingGroups: [.identifiedProfile(identifier: identifier)]
+            )
+        }
+    }
+
+    /**
+     Delete the currently registered device token
+     */
+    public func deleteDeviceToken() {
+        logger.info("deleting device token request made")
+
+        guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
+            logger.info("no device token exists so ignoring request to delete")
+            return // no device token to delete, ignore request
+        }
+        // Do not delete push token from device storage. The token is valid
+        // once given to SDK. We need it for future profile identifications.
+
+        guard let identifiedProfileId = profileStore.identifier else {
+            logger.info("no profile identified so not removing device token from profile")
+            return // no profile to delete token from, ignore request
+        }
+
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.deletePushToken.rawValue,
+            data: DeletePushNotificationQueueTaskData(
+                profileIdentifier: identifiedProfileId,
+                deviceToken: existingDeviceToken
+            ),
+            blockingGroups: [
+                .registeredPushToken(token: existingDeviceToken),
+                .identifiedProfile(identifier: identifiedProfileId)
+            ]
+        )
+    }
+
+    /**
+     Track a push metric
+     */
+    public func trackMetric(
+        deliveryID: String,
+        event: Metric,
+        deviceToken: String
+    ) {
+        logger.info("push metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
+        _ = backgroundQueue.addTask(
+            type: QueueTaskType.trackPushMetric.rawValue,
+            data: MetricRequest(
+                deliveryId: deliveryID,
+                event: event,
+                deviceToken: deviceToken,
+                timestamp: Date()
+            )
+        )
     }
 }
 

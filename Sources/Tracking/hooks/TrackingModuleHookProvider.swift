@@ -16,10 +16,6 @@ class TrackingModuleHookProvider: ModuleHookProvider {
         diGraph?.queueRunnerHook
     }
 
-    var deviceAttributesHook: DeviceAttributesHook? {
-        nil
-    }
-
     var screenTrackingHook: ScreenTrackingHook? {
         nil
     }

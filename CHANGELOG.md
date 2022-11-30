@@ -1,3 +1,10 @@
+### [1.2.6](https://github.com/customerio/customerio-ios/compare/1.2.5...1.2.6) (2022-11-17)
+
+
+### Bug Fixes
+
+* device attributes shows sdk version instead of wrapper version ([e2462b9](https://github.com/customerio/customerio-ios/commit/e2462b9408fdaba2b690e3d1209aa17680457d92))
+
 ### [1.2.5](https://github.com/customerio/customerio-ios/compare/1.2.4...1.2.5) (2022-11-14)
 
 

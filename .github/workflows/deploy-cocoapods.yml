@@ -43,6 +43,9 @@ jobs:
           payload: |
             {
               "text": "iOS SDK deployed to Maven Central",
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#squad-mobile",
               "blocks": [
                   {
                       "type": "section",
@@ -77,6 +80,9 @@ jobs:
           payload: |
             {
               "text": "iOS SDK deployment failure",
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#squad-mobile",
               "blocks": [
                   {
                       "type": "section",

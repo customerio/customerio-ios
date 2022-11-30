@@ -22,25 +22,6 @@ class QueueStorageTest: UnitTest {
         )
     }
 
-    // MARK: getInventory
-
-    func test_getInventory_givenNeverSavedInventoryBefore_expectEmpty() {
-        fileStorageMock.getReturnValue = nil
-
-        let actual = storage.getInventory()
-
-        XCTAssertEqual(actual, [])
-    }
-
-    func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
-        let expected = [QueueTaskMetadata.random]
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(expected, encoder: nil)
-
-        let actual = storage.getInventory()
-
-        XCTAssertEqual(actual, expected)
-    }
-
     // MARK: saveInventory
 
     func test_saveInventory_givenSaveSuccessful_expectTrue() {
@@ -61,24 +42,6 @@ class QueueStorageTest: UnitTest {
 
     // MARK: create
 
-    func test_create_expectSaveNewTaskToStorage_expectUpdateInventory_expectTrue() {
-        fileStorageMock.saveReturnValue = true
-
-        let givenData = "hello ami!".data!
-        let givenType = String.random
-
-        let actual = storage.create(
-            type: givenType,
-            data: givenData,
-            groupStart: .identifiedProfile(identifier: String.random),
-            blockingGroups: [.identifiedProfile(identifier: String.random)]
-        )
-
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 2) // create task and update inventory
-        XCTAssertTrue(actual.success)
-        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
-    }
-
     func test_create_givenFileStorageDoesNotSaveTask_expectDoNotUpdateInventory_expectFalse() {
         fileStorageMock.saveReturnValue = false
 
@@ -92,12 +55,18 @@ class QueueStorageTest: UnitTest {
             blockingGroups: [.identifiedProfile(identifier: String.random)]
         )
 
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call
+        XCTAssertEqual(fileStorageMock.saveCallsCount, 1) // only create task call, not trying to update inventory
         XCTAssertFalse(actual.success)
-        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
+        XCTAssertEqual(actual.queueStatus, QueueStatus(
+            queueId: testSiteId,
+            numTasksInQueue: 0
+        )) // Number of tasks should be 0 since creating a task failed.
     }
 
     func test_create_givenFileStorageDoesNotUpdateInventory_expectFalse() {
+        // We want the saveInventory task to fail.
+        // To do that, the first call to fileStorage.save is successful (we are saving the task) but the second call is
+        // failed (we are saving the inventory).
         var returnValues = [true, false]
         fileStorageMock.saveClosure = { _, _, _ in
             returnValues.removeFirst()
@@ -113,65 +82,17 @@ class QueueStorageTest: UnitTest {
             blockingGroups: [.identifiedProfile(identifier: String.random)]
         )
 
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 2)
+        XCTAssertEqual(
+            fileStorageMock.saveCallsCount,
+            2
+        ) // 2 save *attempts* were made: try to save task, try to save inventory
+        // Since saving the inventory failed, we expect `storage.create()` to have failed entirely like the request to
+        // `storage.create()` was ignored.
         XCTAssertFalse(actual.success)
-        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 0))
-    }
-
-    // MARK: update
-
-    func test_update_givenNoTaskSaved_expectFalse() {
-        fileStorageMock.getReturnValue = nil
-
-        let actual = storage.update(storageId: String.random, runResults: QueueTaskRunResults(totalRuns: 1))
-
-        XCTAssertFalse(actual)
-    }
-
-    func test_update_expectUpdateTaskToStorage_expectInventoryNotUpdated_expectTrue() {
-        let givenTask = QueueTask(
-            storageId: String.random,
-            type: String.random,
-            data: "".data,
-            runResults: QueueTaskRunResults(totalRuns: 1)
-        )
-        let givenUpdatedRunResults = QueueTaskRunResults(totalRuns: givenTask.runResults.totalRuns + 1)
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)
-        fileStorageMock.saveReturnValue = true
-
-        let actual = storage.update(storageId: givenTask.storageId, runResults: givenUpdatedRunResults)
-
-        XCTAssertEqual(fileStorageMock.saveCallsCount, 1)
-        let actualQueueTask: QueueTask = jsonAdapter.fromJson(
-            fileStorageMock.saveReceivedArguments!.contents,
-            decoder: nil
-        )!
-        let actualRunResults = actualQueueTask.runResults
-        XCTAssertEqual(actualRunResults, givenUpdatedRunResults)
-        XCTAssertTrue(actual)
-    }
-
-    // MARK: get
-
-    func test_get_givenNoTaskInStorage_expectNil() {
-        fileStorageMock.getReturnValue = nil
-
-        XCTAssertNil(storage.get(storageId: String.random))
-    }
-
-    func test_get_givenTaskInStorage_expectGetSavedTask() {
-        let givenTask = QueueTask(
-            storageId: String.random,
-            type: String.random,
-            data: "".data,
-            runResults: QueueTaskRunResults(totalRuns: 1)
-        )
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)!
-
-        let actual = storage.get(storageId: givenTask.storageId)
-
-        XCTAssertNotNil(actual)
-        XCTAssertEqual(actual, givenTask)
+        XCTAssertEqual(actual.queueStatus, QueueStatus(
+            queueId: testSiteId,
+            numTasksInQueue: 0
+        )) // Number of tasks should be 0 since creating a task failed.
     }
 }
 
@@ -193,6 +114,106 @@ class QueueStorageIntegrationTest: UnitTest {
             logger: log,
             dateUtil: dateUtilStub
         )
+    }
+
+    // MARK: getInventory
+
+    func test_getInventory_givenNeverSavedInventoryBefore_expectEmpty() {
+        let actual = storage.getInventory()
+
+        XCTAssertEqual(actual, [])
+    }
+
+    func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
+        let expected = [QueueTaskMetadata.random]
+        _ = storage.saveInventory(expected)
+
+        let actual = storage.getInventory()
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    // MARK: create
+
+    func test_create_expectSaveNewTaskToStorage_expectUpdateInventory_expectTrue() {
+        let givenData = "hello ami!".data!
+        let givenType = String.random
+
+        let actual = storage.create(
+            type: givenType,
+            data: givenData,
+            groupStart: .identifiedProfile(identifier: String.random),
+            blockingGroups: [.identifiedProfile(identifier: String.random)]
+        )
+
+        XCTAssertTrue(actual.success)
+        XCTAssertEqual(actual.queueStatus, QueueStatus(queueId: testSiteId, numTasksInQueue: 1))
+
+        let expectedInventory = [actual.createdTask]
+        let actualInventory = storage.getInventory()
+
+        XCTAssertEqual(expectedInventory, actualInventory)
+    }
+
+    // MARK: update
+
+    func test_update_givenNoTaskSaved_expectFalse() {
+        let actual = storage.update(storageId: String.random, runResults: QueueTaskRunResults(totalRuns: 1))
+
+        XCTAssertFalse(actual)
+    }
+
+    func test_update_expectUpdateTaskToStorage_expectInventoryNotUpdated_expectTrue() {
+        let givenType = String.random
+        let givenData = String.random.data!
+        let givenCreatedTask = storage.create(type: givenType, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        let expectedInventory = storage.getInventory() // we do not expect inventory to be updated after updating task
+
+        let runResultsBeforeUpdate = storage.get(storageId: givenCreatedTask.taskPersistedId)!.runResults
+        let expectedUpdateTaskValue = QueueTaskRunResults(totalRuns: runResultsBeforeUpdate.totalRuns + 1)
+        XCTAssertNotEqual(runResultsBeforeUpdate, expectedUpdateTaskValue)
+
+        let actualUpdatedTaskSuccess = storage.update(
+            storageId: givenCreatedTask.taskPersistedId,
+            runResults: expectedUpdateTaskValue
+        )
+
+        let runResultsAfterUpdate = storage.get(storageId: givenCreatedTask.taskPersistedId)!.runResults
+
+        XCTAssertTrue(actualUpdatedTaskSuccess)
+        XCTAssertEqual(storage.getInventory(), expectedInventory)
+        XCTAssertEqual(expectedUpdateTaskValue, runResultsAfterUpdate)
+    }
+
+    // MARK: get
+
+    func test_get_givenNoTaskInStorage_expectNil() {
+        _ = storage.create(type: .random, data: "".data, groupStart: nil, blockingGroups: nil)
+
+        XCTAssertNil(storage.get(storageId: String.random))
+    }
+
+    func test_get_givenTaskInStorage_expectGetSavedTask() {
+        let givenType = String.random
+        let givenData = String.random.data!
+        let createdTaskInventoryItem = storage.create(
+            type: givenType,
+            data: givenData,
+            groupStart: nil,
+            blockingGroups: nil
+        ).createdTask!
+        let expected = QueueTask(
+            storageId: createdTaskInventoryItem.taskPersistedId,
+            type: givenType,
+            data: givenData,
+            runResults: QueueTaskRunResults(totalRuns: 0)
+        )
+
+        let actual = storage.get(storageId: createdTaskInventoryItem.taskPersistedId)
+
+        XCTAssertNotNil(actual)
+        XCTAssertEqual(actual, expected)
     }
 
     // MARK: delete
