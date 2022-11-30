@@ -96,10 +96,10 @@ public struct SdkConfig {
  2. The SDK code needs to override some configuration options when running inside of a Notication Service Extension.
     We don't want customers to modify some of these overriden config options as it may effect some features of rich push.
 
- Note: To not make the SDK code more complex, convert `RichPushSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
+ Note: To not make the SDK code more complex, convert `NotificationServiceExtensionSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
  The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
  */
-public struct RichPushSdkConfig {
+public struct NotificationServiceExtensionSdkConfig {
     /// See `SdkConfig.trackingApiUrl`
     public var trackingApiUrl: String
     /// See `SdkConfig.autoTrackPushEvents`
@@ -112,10 +112,10 @@ public struct RichPushSdkConfig {
     // Used to create new instance when the SDK is initialized.
     // Then, each property can be modified by the user.
     public enum Factory {
-        public static func create(region: Region) -> RichPushSdkConfig {
+        public static func create(region: Region) -> NotificationServiceExtensionSdkConfig {
             let defaultSdkConfig = SdkConfig.Factory.create(region: region)
 
-            return RichPushSdkConfig(
+            return NotificationServiceExtensionSdkConfig(
                 trackingApiUrl: defaultSdkConfig.trackingApiUrl,
                 autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
                 logLevel: defaultSdkConfig.logLevel,
@@ -124,9 +124,10 @@ public struct RichPushSdkConfig {
         }
     }
 
-    /// Convert `RichPushSdkConfig` to `SdkConfig` to be used in the SDK. Instead of making the SDK code
-    /// have logic to handle `SdkConfig` and `RichPushSdkConfig`, by converting to `SdkConfig`, the SDK code does not
-    /// need to be modified to work with `RichPushSdkConfig`.
+    /// Convert to `SdkConfig` before being used in the SDK. For make the SDK code base easier to maintain, the SDK is
+    /// designed to only handle a `SdkCofig` object.
+    /// Therefore, we need to convert this object to an `SdkConfig` instance in SDK initialization so the SDK can use
+    /// it.
     public func toSdkConfig() -> SdkConfig {
         var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
 

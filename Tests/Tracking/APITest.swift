@@ -34,7 +34,7 @@ class TrackingAPITest: UnitTest {
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
-        // CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioRichPushSdkConfig) in }
+        // CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioNotificationServiceExtensionSdkConfig) in }
 
         // Reference some objects that should be public in the Tracking module
         let region: Region = .EU

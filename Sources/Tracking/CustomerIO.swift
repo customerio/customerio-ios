@@ -178,9 +178,9 @@ public class CustomerIO: CustomerIOInstance {
         siteId: String,
         apiKey: String,
         region: Region,
-        configure configureHandler: ((inout RichPushSdkConfig) -> Void)?
+        configure configureHandler: ((inout NotificationServiceExtensionSdkConfig) -> Void)?
     ) {
-        var newSdkConfig = RichPushSdkConfig.Factory.create(region: region)
+        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
