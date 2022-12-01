@@ -163,9 +163,14 @@ public class CustomerIO: CustomerIOInstance {
             siteId: siteId,
             apiKey: apiKey,
             region: region,
-            isFromiOSApplicationExtension: false,
             config: newSdkConfig
         )
+
+        if newSdkConfig.autoTrackScreenViews {
+            // Setting up screen view tracking is not available for rich push (Notification Service Extension).
+            // Only call this code when not possibly being called from a NSE.
+            Self.shared.setupAutoScreenviewTracking()
+        }
     }
 
     /**
@@ -190,7 +195,6 @@ public class CustomerIO: CustomerIOInstance {
             siteId: siteId,
             apiKey: apiKey,
             region: region,
-            isFromiOSApplicationExtension: true,
             config: newSdkConfig.toSdkConfig()
         )
     }
@@ -201,19 +205,12 @@ public class CustomerIO: CustomerIOInstance {
         siteId: String,
         apiKey: String,
         region: Region,
-        isFromiOSApplicationExtension: Bool,
         config: SdkConfig
     ) {
         let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
-
-        if !isFromiOSApplicationExtension, config.autoTrackScreenViews {
-            // Setting up screen view tracking is not available for rich push (Notification Service Extension).
-            // Only call this code when not possibly being called from a NSE.
-            Self.shared.setupAutoScreenviewTracking()
-        }
 
         Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
     }
