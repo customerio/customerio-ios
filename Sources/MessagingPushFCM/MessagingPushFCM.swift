@@ -90,7 +90,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+        (messagingPush as MessagingPushInstance).didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
