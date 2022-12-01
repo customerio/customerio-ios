@@ -34,7 +34,7 @@ for i in $(seq 1 $NUMBER_RETRIES); do
         echo "Push attempt $i..."
         pod repo update;
         # if the push is successful, it will set PUSH_SUCCESS which will prevent from trying to push again. Else, sleep 30 seconds and try again. 
-        pod trunk push "$PODSPEC" --allow-warnings && PUSH_SUCCESS="true" || sleep 30;
+        pod trunk push "$PODSPEC" --allow-warnings --synchronous && PUSH_SUCCESS="true" || sleep 30;
         echo "Failed to push. Sleeping, then will try again."
 
         if [ $i -eq $NUMBER_RETRIES ]; then 
