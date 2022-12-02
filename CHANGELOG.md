@@ -1,3 +1,10 @@
+## [2.0.0-alpha.2](https://github.com/customerio/customerio-ios/compare/2.0.0-alpha.1...2.0.0-alpha.2) (2022-12-02)
+
+
+### Bug Fixes
+
+* sdk not able to compile in ios app ([#225](https://github.com/customerio/customerio-ios/issues/225)) ([e4d1b3f](https://github.com/customerio/customerio-ios/commit/e4d1b3f2b4bda91862151947e480b0644d5cc704))
+
 ## [2.0.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.2.6...2.0.0-alpha.1) (2022-11-30)
 
 
