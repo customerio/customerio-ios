@@ -49,12 +49,10 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    internal let customerIO: CustomerIOInstance!
-    internal let messagingPush: MessagingPushInstance
+    internal static let shared = MessagingPushAPN()
 
-    public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
-        self.messagingPush = MessagingPush(customerIO: customerIO)
+    internal var messagingPush: MessagingPushInstance {
+        MessagingPush.shared
     }
 
     public func registerDeviceToken(apnDeviceToken: Data) {
@@ -89,7 +87,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+        (messagingPush as MessagingPushInstance).didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
@@ -97,14 +95,12 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      Stop all network requests and modifying and show the push for what it looks like now.
      */
     public func serviceExtensionTimeWillExpire() {
-        messagingPush.serviceExtensionTimeWillExpire()
+        (messagingPush as MessagingPushInstance).serviceExtensionTimeWillExpire()
     }
 
     @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload? {
+    public func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                       didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
         messagingPush.userNotificationCenter(center, didReceive: response)
     }
 

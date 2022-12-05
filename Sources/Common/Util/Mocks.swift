@@ -3,8 +3,7 @@ import Foundation
 // Mock classes are generated automatically in this project.
 // To make using mocks easier in our test classes, this class exists to manage all of the mocks in the project.
 //
-// This class is only used for tests but must exist in `Common` module because mock classes are generated in the source
-// code
+// This class is only used for tests but must exist in `Common` module because mock classes are generated in the source code
 // directory and not the test code directory of the project.
 public class Mocks {
     public static var shared: Mocks = .init()

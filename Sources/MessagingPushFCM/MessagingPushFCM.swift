@@ -47,12 +47,11 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
-    internal let messagingPush: MessagingPushInstance
+    internal let messagingPush: MessagingPush
     public let customerIO: CustomerIOInstance!
 
-    public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
-        self.messagingPush = MessagingPush(customerIO: customerIO)
+    internal var messagingPush: MessagingPushInstance {
+        MessagingPush.shared
     }
 
     public func registerDeviceToken(fcmToken: String?) {
@@ -104,10 +103,8 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     }
 
     @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload? {
+    public func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                       didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
         messagingPush.userNotificationCenter(center, didReceive: response)
     }
 

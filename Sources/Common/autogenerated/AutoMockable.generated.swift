@@ -158,8 +158,7 @@ public class ActiveWorkspacesManagerMock: ActiveWorkspacesManager, Mock {
      */
     public var addWorkspaceClosure: ((SiteId) -> Void)?
 
-    /// Mocked function for `addWorkspace(siteId: SiteId)`. Your opportunity to return a mocked value and check result
-    /// of mock in test code.
+    /// Mocked function for `addWorkspace(siteId: SiteId)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func addWorkspace(siteId: SiteId) {
         mockCalled = true
         addWorkspaceCallsCount += 1
@@ -210,8 +209,7 @@ public class DeviceAttributesHookMock: DeviceAttributesHook, Mock {
      */
     public var customDeviceAttributesAddedClosure: (([String: Any]) -> Void)?
 
-    /// Mocked function for `customDeviceAttributesAdded(attributes: [String: Any])`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `customDeviceAttributesAdded(attributes: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func customDeviceAttributesAdded(attributes: [String: Any]) {
         mockCalled = true
         customDeviceAttributesAddedCallsCount += 1
@@ -607,8 +605,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
      */
     public var isPushSubscribedClosure: (((Bool) -> Void) -> Void)?
 
-    /// Mocked function for `isPushSubscribed(completion: @escaping (Bool) -> Void)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `isPushSubscribed(completion: @escaping (Bool) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
         mockCalled = true
         isPushSubscribedCallsCount += 1
@@ -673,8 +670,7 @@ public class FileStorageMock: FileStorage, Mock {
      */
     public var saveClosure: ((FileType, Data, String?) -> Bool)?
 
-    /// Mocked function for `save(type: FileType, contents: Data, fileId: String?)`. Your opportunity to return a mocked
-    /// value and check result of mock in test code.
+    /// Mocked function for `save(type: FileType, contents: Data, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func save(type: FileType, contents: Data, fileId: String?) -> Bool {
         mockCalled = true
         saveCallsCount += 1
@@ -705,8 +701,7 @@ public class FileStorageMock: FileStorage, Mock {
      */
     public var getClosure: ((FileType, String?) -> Data?)?
 
-    /// Mocked function for `get(type: FileType, fileId: String?)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `get(type: FileType, fileId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func get(type: FileType, fileId: String?) -> Data? {
         mockCalled = true
         getCallsCount += 1
@@ -737,8 +732,7 @@ public class FileStorageMock: FileStorage, Mock {
      */
     public var deleteClosure: ((FileType, String) -> Bool)?
 
-    /// Mocked function for `delete(type: FileType, fileId: String)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `delete(type: FileType, fileId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func delete(type: FileType, fileId: String) -> Bool {
         mockCalled = true
         deleteCallsCount += 1
@@ -944,8 +938,7 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
      */
     public var appendSiteIdClosure: ((String) -> Void)?
 
-    /// Mocked function for `appendSiteId(_ siteId: String)`. Your opportunity to return a mocked value and check result
-    /// of mock in test code.
+    /// Mocked function for `appendSiteId(_ siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func appendSiteId(_ siteId: String) {
         mockCalled = true
         appendSiteIdCallsCount += 1
@@ -1148,8 +1141,7 @@ public class HooksManagerMock: HooksManager, Mock {
      */
     public var addClosure: ((HookModule, ModuleHookProvider) -> Void)?
 
-    /// Mocked function for `add(key: HookModule, provider: ModuleHookProvider)`. Your opportunity to return a mocked
-    /// value and check result of mock in test code.
+    /// Mocked function for `add(key: HookModule, provider: ModuleHookProvider)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func add(key: HookModule, provider: ModuleHookProvider) {
         mockCalled = true
         addCallsCount += 1
@@ -1216,8 +1208,7 @@ public class HttpClientMock: HttpClient, Mock {
      */
     public var requestClosure: ((HttpRequestParams, (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>)
-    /// -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
         mockCalled = true
         requestCallsCount += 1
@@ -1252,8 +1243,7 @@ public class HttpClientMock: HttpClient, Mock {
      */
     public var downloadFileClosure: ((URL, DownloadFileType, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`.
-    /// Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
         mockCalled = true
         downloadFileCallsCount += 1
@@ -1280,8 +1270,7 @@ public class HttpClientMock: HttpClient, Mock {
      */
     public var cancelClosure: ((Bool) -> Void)?
 
-    /// Mocked function for `cancel(finishTasks: Bool)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `cancel(finishTasks: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func cancel(finishTasks: Bool) {
         mockCalled = true
         cancelCallsCount += 1
@@ -1329,32 +1318,20 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var requestReceivedArguments: (
-        params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
-        session: URLSession,
-        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
-    )?
+    internal private(set) var requestReceivedArguments: (params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                         session: URLSession,
+                                                         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var requestReceivedInvocations: [(
-        params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
-        session: URLSession,
-        onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
-    )] = []
+    internal private(set) var requestReceivedInvocations: [(params: HttpRequestParams, httpBaseUrls: HttpBaseUrls,
+                                                            session: URLSession,
+                                                            onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var requestClosure: ((
-        HttpRequestParams,
-        HttpBaseUrls,
-        URLSession,
-        (Data?, HTTPURLResponse?, Error?) -> Void
-    ) -> Void)?
+    internal var requestClosure: ((HttpRequestParams, HttpBaseUrls, URLSession,
+                                   (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
-    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession,
-    /// onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func request(
         _ params: HttpRequestParams,
         httpBaseUrls: HttpBaseUrls,
@@ -1384,26 +1361,17 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var downloadFileReceivedArguments: (
-        url: URL,
-        fileType: DownloadFileType,
-        session: URLSession,
-        onComplete: (URL?) -> Void
-    )?
+    internal private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession,
+                                                              onComplete: (URL?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var downloadFileReceivedInvocations: [(
-        url: URL,
-        fileType: DownloadFileType,
-        session: URLSession,
-        onComplete: (URL?) -> Void
-    )] = []
+    internal private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType,
+                                                                 session: URLSession, onComplete: (URL?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     internal var downloadFileClosure: ((URL, DownloadFileType, URLSession, (URL?) -> Void) -> Void)?
 
-    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete:
-    /// @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func downloadFile(
         url: URL,
         fileType: DownloadFileType,
@@ -1559,8 +1527,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var integerClosure: ((KeyValueStorageKey) -> Int?)?
 
-    /// Mocked function for `integer(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `integer(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func integer(_ key: KeyValueStorageKey) -> Int? {
         mockCalled = true
         integerCallsCount += 1
@@ -1587,8 +1554,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var setIntClosure: ((Int?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setInt(_ value: Int?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked
-    /// value and check result of mock in test code.
+    /// Mocked function for `setInt(_ value: Int?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
         mockCalled = true
         setIntCallsCount += 1
@@ -1619,8 +1585,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var doubleClosure: ((KeyValueStorageKey) -> Double?)?
 
-    /// Mocked function for `double(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `double(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func double(_ key: KeyValueStorageKey) -> Double? {
         mockCalled = true
         doubleCallsCount += 1
@@ -1647,8 +1612,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var setDoubleClosure: ((Double?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setDouble(_ value: Double?, forKey key: KeyValueStorageKey)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `setDouble(_ value: Double?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
         mockCalled = true
         setDoubleCallsCount += 1
@@ -1679,8 +1643,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var stringClosure: ((KeyValueStorageKey) -> String?)?
 
-    /// Mocked function for `string(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `string(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func string(_ key: KeyValueStorageKey) -> String? {
         mockCalled = true
         stringCallsCount += 1
@@ -1707,8 +1670,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var setStringClosure: ((String?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setString(_ value: String?, forKey key: KeyValueStorageKey)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `setString(_ value: String?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setString(_ value: String?, forKey key: KeyValueStorageKey) {
         mockCalled = true
         setStringCallsCount += 1
@@ -1739,8 +1701,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var dateClosure: ((KeyValueStorageKey) -> Date?)?
 
-    /// Mocked function for `date(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `date(_ key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func date(_ key: KeyValueStorageKey) -> Date? {
         mockCalled = true
         dateCallsCount += 1
@@ -1767,8 +1728,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var setDateClosure: ((Date?, KeyValueStorageKey) -> Void)?
 
-    /// Mocked function for `setDate(_ value: Date?, forKey key: KeyValueStorageKey)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `setDate(_ value: Date?, forKey key: KeyValueStorageKey)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
         mockCalled = true
         setDateCallsCount += 1
@@ -1791,8 +1751,7 @@ public class KeyValueStorageMock: KeyValueStorage, Mock {
      */
     public var deleteAllClosure: (() -> Void)?
 
-    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
+    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteAll() {
         mockCalled = true
         deleteAllCallsCount += 1
@@ -1851,8 +1810,7 @@ public class LoggerMock: Logger, Mock {
      */
     public var debugClosure: ((String) -> Void)?
 
-    /// Mocked function for `debug(_ message: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `debug(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func debug(_ message: String) {
         mockCalled = true
         debugCallsCount += 1
@@ -1879,8 +1837,7 @@ public class LoggerMock: Logger, Mock {
      */
     public var infoClosure: ((String) -> Void)?
 
-    /// Mocked function for `info(_ message: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `info(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func info(_ message: String) {
         mockCalled = true
         infoCallsCount += 1
@@ -1907,8 +1864,7 @@ public class LoggerMock: Logger, Mock {
      */
     public var errorClosure: ((String) -> Void)?
 
-    /// Mocked function for `error(_ message: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `error(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func error(_ message: String) {
         mockCalled = true
         errorCallsCount += 1
@@ -2150,8 +2106,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, Mock {
      */
     public var beforeIdentifiedProfileChangeClosure: ((String, String) -> Void)?
 
-    /// Mocked function for `beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {
         mockCalled = true
         beforeIdentifiedProfileChangeCallsCount += 1
@@ -2179,8 +2134,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, Mock {
      */
     public var profileIdentifiedClosure: ((String) -> Void)?
 
-    /// Mocked function for `profileIdentified(identifier: String)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `profileIdentified(identifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func profileIdentified(identifier: String) {
         mockCalled = true
         profileIdentifiedCallsCount += 1
@@ -2207,8 +2161,7 @@ public class ProfileIdentifyHookMock: ProfileIdentifyHook, Mock {
      */
     public var beforeProfileStoppedBeingIdentifiedClosure: ((String) -> Void)?
 
-    /// Mocked function for `beforeProfileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `beforeProfileStoppedBeingIdentified(oldIdentifier: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
         mockCalled = true
         beforeProfileStoppedBeingIdentifiedCallsCount += 1
@@ -2335,8 +2288,7 @@ public class QueueMock: Queue, Mock {
      */
     public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> ModifyQueueResult)?
 
-    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
@@ -2378,15 +2330,10 @@ public class QueueMock: Queue, Mock {
 
     public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?) -> ModifyQueueResult)?
 
-    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
-    /// blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
-    public func addTask<TaskData: Codable>(
-        type: String,
-        data: TaskData,
-        groupStart: QueueTaskGroup?,
-        blockingGroups: [QueueTaskGroup]?
-    ) -> ModifyQueueResult {
+    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?,
+                                           blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult
+    {
         mockCalled = true
         addTaskCallsCount += 1
         addTaskReceivedArguments = (
@@ -2418,8 +2365,7 @@ public class QueueMock: Queue, Mock {
      */
     public var runClosure: ((() -> Void) -> Void)?
 
-    /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func run(onComplete: @escaping () -> Void) {
         mockCalled = true
         runCallsCount += 1
@@ -2442,8 +2388,7 @@ public class QueueMock: Queue, Mock {
      */
     public var deleteExpiredTasksClosure: (() -> Void)?
 
-    /// Mocked function for `deleteExpiredTasks()`. Your opportunity to return a mocked value and check result of mock
-    /// in test code.
+    /// Mocked function for `deleteExpiredTasks()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteExpiredTasks() {
         mockCalled = true
         deleteExpiredTasksCallsCount += 1
@@ -2505,8 +2450,7 @@ internal class QueueQueryRunnerMock: QueueQueryRunner, Mock {
      */
     internal var getNextTaskClosure: (([QueueTaskMetadata], QueueTaskMetadata?) -> QueueTaskMetadata?)?
 
-    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
         mockCalled = true
         getNextTaskCallsCount += 1
@@ -2577,8 +2521,7 @@ public class QueueRequestManagerMock: QueueRequestManager, Mock {
      */
     public var requestCompleteClosure: (() -> Void)?
 
-    /// Mocked function for `requestComplete()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `requestComplete()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func requestComplete() {
         mockCalled = true
         requestCompleteCallsCount += 1
@@ -2607,8 +2550,7 @@ public class QueueRequestManagerMock: QueueRequestManager, Mock {
      */
     public var startRequestClosure: ((() -> Void) -> Bool)?
 
-    /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value
-    /// and check result of mock in test code.
+    /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func startRequest(onComplete: @escaping () -> Void) -> Bool {
         mockCalled = true
         startRequestCallsCount += 1
@@ -2659,8 +2601,7 @@ public class QueueRunRequestMock: QueueRunRequest, Mock {
      */
     public var startClosure: ((() -> Void) -> Void)?
 
-    /// Mocked function for `start(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `start(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func start(onComplete: @escaping () -> Void) {
         mockCalled = true
         startCallsCount += 1
@@ -2717,8 +2658,7 @@ public class QueueRunnerMock: QueueRunner, Mock {
      */
     public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Void)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) ->
-    /// Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         mockCalled = true
         runTaskCallsCount += 1
@@ -2779,8 +2719,7 @@ public class QueueRunnerHookMock: QueueRunnerHook, Mock {
      */
     public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Bool)?
 
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) ->
-    /// Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
         mockCalled = true
         runTaskCallsCount += 1
@@ -2857,8 +2796,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var getInventoryClosure: (() -> [QueueTaskMetadata])?
 
-    /// Mocked function for `getInventory()`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
+    /// Mocked function for `getInventory()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func getInventory() -> [QueueTaskMetadata] {
         mockCalled = true
         getInventoryCallsCount += 1
@@ -2887,8 +2825,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var saveInventoryClosure: (([QueueTaskMetadata]) -> Bool)?
 
-    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value
-    /// and check result of mock in test code.
+    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
         mockCalled = true
         saveInventoryCallsCount += 1
@@ -2932,14 +2869,10 @@ public class QueueStorageMock: QueueStorage, Mock {
             -> (success: Bool, queueStatus: QueueStatus)
     )?
 
-    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups:
-    /// [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func create(
-        type: String,
-        data: Data,
-        groupStart: QueueTaskGroup?,
-        blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func create(type: String, data: Data, groupStart: QueueTaskGroup?,
+                       blockingGroups: [QueueTaskGroup]?) -> (success: Bool, queueStatus: QueueStatus)
+    {
         mockCalled = true
         createCallsCount += 1
         createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)
@@ -2970,8 +2903,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var updateClosure: ((String, QueueTaskRunResults) -> Bool)?
 
-    /// Mocked function for `update(storageId: String, runResults: QueueTaskRunResults)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `update(storageId: String, runResults: QueueTaskRunResults)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
         mockCalled = true
         updateCallsCount += 1
@@ -3002,8 +2934,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var getClosure: ((String) -> QueueTask?)?
 
-    /// Mocked function for `get(storageId: String)`. Your opportunity to return a mocked value and check result of mock
-    /// in test code.
+    /// Mocked function for `get(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func get(storageId: String) -> QueueTask? {
         mockCalled = true
         getCallsCount += 1
@@ -3034,8 +2965,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var deleteClosure: ((String) -> Bool)?
 
-    /// Mocked function for `delete(storageId: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `delete(storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func delete(storageId: String) -> Bool {
         mockCalled = true
         deleteCallsCount += 1
@@ -3062,8 +2992,7 @@ public class QueueStorageMock: QueueStorage, Mock {
      */
     public var deleteExpiredClosure: (() -> [QueueTaskMetadata])?
 
-    /// Mocked function for `deleteExpired()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `deleteExpired()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteExpired() -> [QueueTaskMetadata] {
         mockCalled = true
         deleteExpiredCallsCount += 1
@@ -3112,8 +3041,7 @@ public class ScreenTrackingHookMock: ScreenTrackingHook, Mock {
      */
     public var screenViewedClosure: ((String) -> Void)?
 
-    /// Mocked function for `screenViewed(name: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `screenViewed(name: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func screenViewed(name: String) {
         mockCalled = true
         screenViewedCallsCount += 1
@@ -3314,8 +3242,7 @@ internal class SimpleTimerMock: SimpleTimer, Mock {
      */
     internal var scheduleAndCancelPreviousClosure: ((Seconds, () -> Void) -> Void)?
 
-    /// Mocked function for `scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity
-    /// to return a mocked value and check result of mock in test code.
+    /// Mocked function for `scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void) {
         mockCalled = true
         scheduleAndCancelPreviousCallsCount += 1
@@ -3346,8 +3273,7 @@ internal class SimpleTimerMock: SimpleTimer, Mock {
      */
     internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
 
-    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
         mockCalled = true
         scheduleIfNotAlreadyCallsCount += 1
@@ -3426,8 +3352,7 @@ internal class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
      */
     internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
 
-    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
         mockCalled = true
         scheduleIfNotAlreadyCallsCount += 1

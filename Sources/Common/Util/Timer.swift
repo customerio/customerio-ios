@@ -38,7 +38,7 @@ internal class CioSimpleTimer: SimpleTimer {
 
             self.log("making a timer for \(seconds) seconds.")
 
-            self.timer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false, block: { _ in
+            self.timer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false, block: { timer in
                 self.timerAlreadyScheduled = false
                 self.timer = nil
 
