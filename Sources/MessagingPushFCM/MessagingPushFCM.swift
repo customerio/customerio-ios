@@ -50,9 +50,8 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     internal let messagingPush: MessagingPush
     public let customerIO: CustomerIOInstance!
 
-    public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
-        self.messagingPush = MessagingPush(customerIO: customerIO)
+    internal var messagingPush: MessagingPushInstance {
+        MessagingPush.shared
     }
 
     public func registerDeviceToken(fcmToken: String?) {
