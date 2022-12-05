@@ -50,8 +50,9 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     internal let messagingPush: MessagingPush
     public let customerIO: CustomerIOInstance!
 
-    internal var messagingPush: MessagingPushInstance {
-        MessagingPush.shared
+    public init(customerIO: CustomerIOInstance) {
+        self.customerIO = customerIO
+        self.messagingPush = MessagingPush(customerIO: customerIO)
     }
 
     public func registerDeviceToken(fcmToken: String?) {
@@ -91,7 +92,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+        (messagingPush as MessagingPushInstance).didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
@@ -99,7 +100,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
      Stop all network requests and modifying and show the push for what it looks like now.
      */
     public func serviceExtensionTimeWillExpire() {
-        messagingPush.serviceExtensionTimeWillExpire()
+        (messagingPush as MessagingPushInstance).serviceExtensionTimeWillExpire()
     }
 
     @available(iOSApplicationExtension, unavailable)

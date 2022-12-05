@@ -49,10 +49,12 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    internal static let shared = MessagingPushAPN()
+    internal let customerIO: CustomerIOInstance!
+    internal let messagingPush: MessagingPush
 
-    internal var messagingPush: MessagingPushInstance {
-        MessagingPush.shared
+    public init(customerIO: CustomerIOInstance) {
+        self.customerIO = customerIO        
+        self.messagingPush = MessagingPush(customerIO: customerIO)
     }
 
     public func registerDeviceToken(apnDeviceToken: Data) {
