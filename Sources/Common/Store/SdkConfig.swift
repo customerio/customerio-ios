@@ -108,6 +108,12 @@ public struct NotificationServiceExtensionSdkConfig {
     public var logLevel: CioLogLevel
     /// See `SdkConfig.autoTrackDeviceAttributes`
     public var autoTrackDeviceAttributes: Bool
+    // property is used internally so disable swiftlint rule
+    /**
+     Used internally at Customer.io to override some information in the SDK when the SDK is being used
+     as a wrapper/bridge such as with ReactNative.
+     */
+    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 
     // Used to create new instance when the SDK is initialized.
     // Then, each property can be modified by the user.
@@ -134,6 +140,7 @@ public struct NotificationServiceExtensionSdkConfig {
         sdkConfig.autoTrackPushEvents = autoTrackPushEvents
         sdkConfig.logLevel = logLevel
         sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        sdkConfig._sdkWrapperConfig = _sdkWrapperConfig
 
         // Default to running tasks added to the BQ immediately.
         // Since a Notification Service Extension is only in memory for a small amount of time,
