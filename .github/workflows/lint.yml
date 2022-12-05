@@ -2,6 +2,10 @@ name: Lint
 
 on: [pull_request]
 
+concurrency: # If you push a commit while CI already running, cancel it and just run your recent push. 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   SwiftLint:
     runs-on: ubuntu-latest
