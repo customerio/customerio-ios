@@ -49,7 +49,7 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 public class MessagingPushFCM: MessagingPushFCMInstance {
     internal static let shared = MessagingPushFCM()
 
-    internal var messagingPush: MessagingPush {
+    internal var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 
@@ -90,7 +90,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        (messagingPush as MessagingPushInstance).didReceive(request, withContentHandler: contentHandler)
+        messagingPush.didReceive(request, withContentHandler: contentHandler)
     }
 
     /**

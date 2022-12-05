@@ -51,7 +51,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 public class MessagingPushAPN: MessagingPushAPNInstance {
     internal static let shared = MessagingPushAPN()
 
-    internal var messagingPush: MessagingPush {
+    internal var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 
