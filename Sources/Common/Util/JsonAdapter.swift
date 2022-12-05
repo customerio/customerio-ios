@@ -57,8 +57,10 @@ public class JsonAdapter {
         self.log = log
     }
 
-    public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any],
-                                             decoder override: JSONDecoder? = nil) -> T? {
+    public func fromDictionary<T: Decodable>(
+        _ dictionary: [AnyHashable: Any],
+        decoder override: JSONDecoder? = nil
+    ) -> T? {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: dictionary)
 
@@ -95,8 +97,11 @@ public class JsonAdapter {
      expect to get an error. If we need this functionality, perhaps we should create a 2nd set of
      methods to this class that `throw` so you choose which function to use?
      */
-    public func fromJson<T: Decodable>(_ json: Data, decoder override: JSONDecoder? = nil,
-                                       logErrors: Bool = true) -> T? {
+    public func fromJson<T: Decodable>(
+        _ json: Data,
+        decoder override: JSONDecoder? = nil,
+        logErrors: Bool = true
+    ) -> T? {
         var errorStringToLog: String?
 
         do {
@@ -109,18 +114,24 @@ public class JsonAdapter {
             """
         } catch DecodingError.valueNotFound(let type, let context) {
             errorStringToLog = """
-            Decode non-optional value not found. Value: \(type), Json path: \(context.codingPath), json: \(json
-                .string ?? "(error getting json string)")
+            Decode non-optional value not found. Value: \(type), Json path: \(context.codingPath), json: \(
+                json
+                    .string ?? "(error getting json string)"
+            )
             """
         } catch DecodingError.typeMismatch(let type, let context) {
             errorStringToLog = """
-            Decode type did not match payload. Type: \(type), Json path: \(context.codingPath), json: \(json
-                .string ?? "(error getting json string)")
+            Decode type did not match payload. Type: \(type), Json path: \(context.codingPath), json: \(
+                json
+                    .string ?? "(error getting json string)"
+            )
             """
         } catch DecodingError.dataCorrupted(let context) {
             errorStringToLog = """
-            Decode data corrupted. Json path: \(context.codingPath), json: \(json
-                .string ?? "(error getting json string)")
+            Decode data corrupted. Json path: \(context.codingPath), json: \(
+                json
+                    .string ?? "(error getting json string)"
+            )
             """
         } catch {
             errorStringToLog = """
@@ -153,9 +164,11 @@ public class JsonAdapter {
 
     // default values for parameters are designed for creating JSON strings to send to our API.
     // They are to meet the requirements of our API.
-    public func toJsonString<T: Encodable>(_ obj: T,
-                                           convertKeysToSnakecase: Bool = true,
-                                           nilIfEmpty: Bool = true) -> String? {
+    public func toJsonString<T: Encodable>(
+        _ obj: T,
+        convertKeysToSnakecase: Bool = true,
+        nilIfEmpty: Bool = true
+    ) -> String? {
         guard let data = toJson(obj, encoder: getEncoder(convertKeysToSnakecase: convertKeysToSnakecase))
         else { return nil }
 
