@@ -2,6 +2,10 @@ name: Test cocoapods
 
 on: [push, pull_request]
 
+concurrency: # If you push a commit while CI already running, cancel it and just run your recent push. 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 # By testing each in parallel, we can reduce wait time on CI to merge a PR. 
 jobs:
   build-common:
