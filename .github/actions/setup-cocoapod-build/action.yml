@@ -1,0 +1,12 @@
+# Setup to be able to build a cocoapod library. 
+name: Setup to build a cocoaopod library
+description: Perform all setup steps so you can just build the cocoapod in your job 
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v2      
+    - name: Instal/update cocoapods 
+      run: gem install cocoapods 
+      shell: bash
+    - run: pod --version 
+      shell: bash 
