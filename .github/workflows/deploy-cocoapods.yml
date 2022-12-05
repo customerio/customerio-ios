@@ -21,9 +21,9 @@ jobs:
     name: Deploy SDK to Cocoapods 
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Checkout existing tag if manually running CI task  
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         # If input is not given, that probably means this CI task was run automatically by a new 
         # git tag being pushed. Skip this step and try to deploy pods for new tag. 
         if: ${{ github.event.inputs.tagBranchOrCommitToPush != '' }}
