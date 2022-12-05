@@ -7,35 +7,42 @@ jobs:
   build-common:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2      
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOCommon.podspec 
   build-tracking:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2  
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOTracking.podspec
   build-messaging-push:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2   
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOMessagingPush.podspec 
   build-messaging-push-apn:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2      
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOMessagingPushAPN.podspec
   build-messaging-push-fcm:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2  
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOMessagingPushFCM.podspec
   build-inapp:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2  
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIOMessagingInApp.podspec
   build-cio:
     runs-on: macos-latest
     steps: 
+      - uses: actions/checkout@v2  
       - uses: ./.github/actions/setup-cocoapod-build
       - run: pod spec lint --allow-warnings CustomerIO.podspec
