@@ -51,8 +51,9 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 public class MessagingPushAPN: MessagingPushAPNInstance {
     internal let customerIO: CustomerIOInstance!
     internal let messagingPush: MessagingPush
+
     public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO
+        self.customerIO = customerIO        
         self.messagingPush = MessagingPush(customerIO: customerIO)
     }
 
