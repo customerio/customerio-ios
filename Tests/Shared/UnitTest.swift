@@ -145,8 +145,7 @@ open class UnitTest: XCTestCase {
         keyValueStorage.deleteAll()
 
         // delete key value data that is global to all site-ids in the SDK.
-        keyValueStorage.switchToGlobalDataStore()
-        keyValueStorage.deleteAll()
+        diGraph.globalDataStore.deleteAll()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

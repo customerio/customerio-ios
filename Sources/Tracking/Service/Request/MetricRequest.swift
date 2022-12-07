@@ -9,9 +9,9 @@ internal struct MetricRequest: Codable {
     let timestamp: Date
 
     enum CodingKeys: String, CodingKey {
-        case deliveryId
+        case deliveryId = "delivery_id"
         case event
-        case deviceToken = "deviceId"
+        case deviceToken = "device_id"
         case timestamp
     }
 }

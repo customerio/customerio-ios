@@ -252,7 +252,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 attributes: encodableBody
             ))
 
-            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, convertKeysToSnakecase: false) else {
                 return
             }
             let queueTaskData = RegisterPushNotificationQueueTaskData(
@@ -347,7 +347,7 @@ extension CustomerIOImplementation {
         let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
 
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: dateUtil.now)
-        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
+        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, convertKeysToSnakecase: false) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return false
         }

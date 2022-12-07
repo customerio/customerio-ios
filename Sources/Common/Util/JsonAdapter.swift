@@ -37,7 +37,7 @@ public class JsonAdapter {
 
     var encoder: JSONEncoder {
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.keyEncodingStrategy = .useDefaultKeys
         encoder.outputFormatting = .sortedKeys
         // We are using custom date encoding because if there are milliseconds in Date object,
         // the default `secondsSince1970` will give a unix time with a decimal. The
@@ -148,9 +148,13 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toJson<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil) -> Data? {
+    public func toJson<T: Encodable>(
+        _ obj: T,
+        convertKeysToSnakecase: Bool = true,
+        encoder override: JSONEncoder? = nil
+    ) -> Data? {
         do {
-            let value = try (override ?? encoder).encode(obj)
+            let value = try (override ?? getEncoder(convertKeysToSnakecase: convertKeysToSnakecase)).encode(obj)
             return value
         } catch EncodingError.invalidValue(let value, let context) {
             self.log
@@ -188,7 +192,7 @@ public class JsonAdapter {
     private func getEncoder(convertKeysToSnakecase: Bool) -> JSONEncoder {
         let modifiedEncoder = encoder
         if convertKeysToSnakecase {
-            modifiedEncoder.keyEncodingStrategy = .convertToSnakeCase
+//            modifiedEncoder.keyEncodingStrategy = .convertToSnakeCase
         } else {
             modifiedEncoder.keyEncodingStrategy = .useDefaultKeys
         }
