@@ -7,7 +7,8 @@ import FoundationNetworking
 public class HttpRequestRunnerStub {
     private var responseQueue: [HttpResponse] = []
 
-    public var requestCallsCount: Int = 0
+    public private(set) var requestCallsCount: Int = 0
+    public private(set) var requestsParams: [HttpRequestParams] = []
 
     public func queueNoRequestMade() {
         responseQueue.append(HttpResponse(data: nil, response: nil, error: URLError(.cancelled)))
@@ -42,6 +43,7 @@ extension HttpRequestRunnerStub: HttpRequestRunner {
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     ) {
         requestCallsCount += 1
+        requestsParams.append(params)
 
         let queueNextResponse = responseQueue.removeFirst()
 

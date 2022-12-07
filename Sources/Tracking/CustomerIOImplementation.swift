@@ -346,7 +346,7 @@ extension CustomerIOImplementation {
         // API returns 400 "event data must be a hash" for that. `"data":{}` is a better default.
         let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
 
-        let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: Date())
+        let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: dateUtil.now)
         guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return false

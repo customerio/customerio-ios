@@ -9,15 +9,23 @@ import XCTest
 open class IntegrationTest: UnitTest {
     public var httpRequestRunnerStub: HttpRequestRunnerStub!
 
+    // You get access to properties and functions in UnitTest, too!
+
+    public let givenTimestampNow: Int = .init(TimeInterval(1670443977))
+    public lazy var givenTimestampDateNow: Date = .init(timeIntervalSince1970: TimeInterval(givenTimestampNow))
+
     override open func setUp() {
         super.setUp()
-
-        // Because integration tests try to test in an environment that is as to production as possible, we need to
-        // initialize the SDK. This is especially important to have the Tracking module setup.
-        CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
         httpRequestRunnerStub = HttpRequestRunnerStub()
         diGraph.override(value: httpRequestRunnerStub, forType: HttpRequestRunner.self)
+
+        dateUtilStub.givenNow = givenTimestampDateNow
+        diGraph.override(value: dateUtilStub, forType: DateUtil.self)
+
+        // Because integration tests try to test in an environment that is as to production as possible, we need to
+        // initialize the SDK. This is especially important to have the Tracking module setup.
+        CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
     }
 }
