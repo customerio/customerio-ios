@@ -31,7 +31,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -46,7 +46,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -61,7 +61,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -76,7 +76,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -97,7 +97,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }

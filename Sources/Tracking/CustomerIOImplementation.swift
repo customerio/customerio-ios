@@ -105,8 +105,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             }
         }
 
-        // Custom attributes so do not modify keys in JSON string
-        let jsonBodyString = jsonAdapter.toJsonString(body, convertKeysToSnakecase: false)
+        let jsonBodyString = jsonAdapter.toJsonString(body)
         logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
 
         let queueTaskData = IdentifyProfileQueueTaskData(
@@ -252,7 +251,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 attributes: encodableBody
             ))
 
-            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody, convertKeysToSnakecase: false) else {
+            guard let jsonBodyString = self.jsonAdapter.toJsonString(requestBody) else {
                 return
             }
             let queueTaskData = RegisterPushNotificationQueueTaskData(
@@ -347,7 +346,7 @@ extension CustomerIOImplementation {
         let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
 
         let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: dateUtil.now)
-        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody, convertKeysToSnakecase: false) else {
+        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
             logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
             return false
         }

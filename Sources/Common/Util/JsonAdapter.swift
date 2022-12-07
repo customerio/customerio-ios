@@ -30,15 +30,15 @@ import Foundation
 public class JsonAdapter {
     var decoder: JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
 
     var encoder: JSONEncoder {
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .useDefaultKeys
-        encoder.outputFormatting = .sortedKeys
+        encoder
+            .outputFormatting =
+            .sortedKeys // for automated tests to compare JSON strings, makes keys never in a random order
         // We are using custom date encoding because if there are milliseconds in Date object,
         // the default `secondsSince1970` will give a unix time with a decimal. The
         // Customer.io API does not accept timestamps with a decimal value unix time.
@@ -47,7 +47,6 @@ public class JsonAdapter {
             let seconds = Int(date.timeIntervalSince1970)
             try container.encode(seconds)
         }
-        encoder.outputFormatting = .sortedKeys
         return encoder
     }
 
@@ -57,14 +56,11 @@ public class JsonAdapter {
         self.log = log
     }
 
-    public func fromDictionary<T: Decodable>(
-        _ dictionary: [AnyHashable: Any],
-        decoder override: JSONDecoder? = nil
-    ) -> T? {
+    public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any]) -> T? {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: dictionary)
 
-            return fromJson(jsonData, decoder: decoder)
+            return fromJson(jsonData)
         } catch {
             log.error("\(error.localizedDescription), dictionary: \(dictionary)")
         }
@@ -72,8 +68,8 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toDictionary<T: Encodable>(_ obj: T, encoder override: JSONEncoder? = nil) -> [AnyHashable: Any]? {
-        guard let data = toJson(obj, encoder: encoder) else {
+    public func toDictionary<T: Encodable>(_ obj: T) -> [AnyHashable: Any]? {
+        guard let data = toJson(obj) else {
             return nil
         }
 
@@ -97,15 +93,11 @@ public class JsonAdapter {
      expect to get an error. If we need this functionality, perhaps we should create a 2nd set of
      methods to this class that `throw` so you choose which function to use?
      */
-    public func fromJson<T: Decodable>(
-        _ json: Data,
-        decoder override: JSONDecoder? = nil,
-        logErrors: Bool = true
-    ) -> T? {
+    public func fromJson<T: Decodable>(_ json: Data, logErrors: Bool = true) -> T? {
         var errorStringToLog: String?
 
         do {
-            let value = try (override ?? decoder).decode(T.self, from: json)
+            let value = try decoder.decode(T.self, from: json)
             return value
         } catch DecodingError.keyNotFound(let key, let context) {
             errorStringToLog = """
@@ -148,13 +140,9 @@ public class JsonAdapter {
         return nil
     }
 
-    public func toJson<T: Encodable>(
-        _ obj: T,
-        convertKeysToSnakecase: Bool = true,
-        encoder override: JSONEncoder? = nil
-    ) -> Data? {
+    public func toJson<T: Encodable>(_ obj: T) -> Data? {
         do {
-            let value = try (override ?? getEncoder(convertKeysToSnakecase: convertKeysToSnakecase)).encode(obj)
+            let value = try encoder.encode(obj)
             return value
         } catch EncodingError.invalidValue(let value, let context) {
             self.log
@@ -170,10 +158,9 @@ public class JsonAdapter {
     // They are to meet the requirements of our API.
     public func toJsonString<T: Encodable>(
         _ obj: T,
-        convertKeysToSnakecase: Bool = true,
         nilIfEmpty: Bool = true
     ) -> String? {
-        guard let data = toJson(obj, encoder: getEncoder(convertKeysToSnakecase: convertKeysToSnakecase))
+        guard let data = toJson(obj)
         else { return nil }
 
         let jsonString = data.string
@@ -186,17 +173,5 @@ public class JsonAdapter {
         }
 
         return jsonString
-    }
-
-    // modify the default encoder to change it's behavior for certain use cases.
-    private func getEncoder(convertKeysToSnakecase: Bool) -> JSONEncoder {
-        let modifiedEncoder = encoder
-        if convertKeysToSnakecase {
-//            modifiedEncoder.keyEncodingStrategy = .convertToSnakeCase
-        } else {
-            modifiedEncoder.keyEncodingStrategy = .useDefaultKeys
-        }
-
-        return modifiedEncoder
     }
 }

@@ -111,13 +111,11 @@ public class CIOHttpClient: HttpClient {
         // we are bound to fail more often and don't want to log errors that are not super helpful to us.
         if let errorMessageBody: ErrorMessageResponse = jsonAdapter.fromJson(
             data,
-            decoder: nil,
             logErrors: false
         ) {
             errorBodyString = errorMessageBody.meta.error
         } else if let errorMessageBody: ErrorsMessageResponse = jsonAdapter.fromJson(
             data,
-            decoder: nil,
             logErrors: false
         ) {
             errorBodyString = errorMessageBody.meta.errors.joined(separator: ",")
