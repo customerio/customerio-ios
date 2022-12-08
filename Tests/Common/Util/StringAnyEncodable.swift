@@ -27,7 +27,7 @@ class StringAnyEncodableTest: UnitTest {
     func test_stringanyencodable_handles_unencodable_data() {
         let expect = #"{}"#
 
-        let data = ["foo": Unencodable(data: 12345)] as [String: Any]
+        let data = ["fooBar": Unencodable(data: 12345)] as [String: Any]
 
         let json = StringAnyEncodable(data)
 
@@ -40,9 +40,9 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringstring() {
-        let expect = #"{"foo":"bar"}"#
+        let expect = #"{"fooBar":"bar"}"#
 
-        let data = ["foo": "bar"] as [String: String]
+        let data = ["fooBar": "bar"] as [String: String]
 
         let json = StringAnyEncodable(data)
 
@@ -55,9 +55,9 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringdouble() {
-        let expect = #"{"foo":1.2}"#
+        let expect = #"{"fooBar":1.2}"#
 
-        let data = ["foo": 1.2] as [String: Double]
+        let data = ["fooBar": 1.2] as [String: Double]
 
         let json = StringAnyEncodable(data)
 
@@ -70,9 +70,9 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_nested_data() {
-        let expect = #"{"foo":{"bar":1000}}"#
+        let expect = #"{"fooBar":{"bar":1000}}"#
 
-        let data = ["foo": ["bar": 1000] as [String: Int]] as [String: Any]
+        let data = ["fooBar": ["bar": 1000] as [String: Int]] as [String: Any]
 
         let json = StringAnyEncodable(data)
 
