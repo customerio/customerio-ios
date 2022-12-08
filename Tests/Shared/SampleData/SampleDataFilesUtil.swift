@@ -11,6 +11,13 @@ import XCTest
 // test.
 // That means that at runtime in tests, when `FileManager` in the SDK runs, it can read files just like it's running an
 // an iOS app.
+//
+// In order to obtain sample files:
+// 1. Plug iPhone into your Computer.
+// 2. Run a sample iPhone app to make it save files that you care about into the app's file storage.
+// 3. Open Xcode > Window > Devices and Simulators > Select your iPhone that's plugged in > Select app in Installed App
+// section > Select "..." icon > Download container.
+// 4. You can now browse the files saved to the app. Copy and paste files from there that you care about.
 public class SampleDataFilesUtil {
     private let fileStore: FileStorage
 
