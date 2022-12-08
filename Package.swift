@@ -45,7 +45,10 @@ let package = Package(
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
                 dependencies: ["CioTracking"],
-                path: "Tests/Shared"),
+                path: "Tests/Shared",
+                resources: [
+                    .copy("DataArchive")
+                ]),
 
         // Messaging Push 
         .target(name: "CioMessagingPush",

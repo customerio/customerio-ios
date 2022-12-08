@@ -101,4 +101,18 @@ class CustomerIOIntegrationTests: IntegrationTest {
 
         XCTAssertEqual(expectedRequestBodyString, actualRequestBodyString)
     }
+
+    // MARK: Test backwards compatability from v1 to v2 of SDK as the way JSON data is generated in v2 got changed
+
+    func test_givenExistingQueueTasksv1SDK_expectBeAbleToRunThoseTasksInV2() {
+        httpRequestRunnerStub.alwaysReturnSuccessfulResponse()
+
+        XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
+        DataArchiveUtil().saveSdkV1QueueFiles(fileStore: diGraph.fileStorage)
+        XCTAssertGreaterThan(diGraph.queueStorage.getInventory().count, 0)
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
+    }
 }

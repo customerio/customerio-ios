@@ -4,4 +4,9 @@ import Foundation
 public enum InAppMetric: String, Codable {
     case opened
     case clicked
+
+    enum CodingKeys: String, CodingKey {
+        case opened
+        case clicked
+    }
 }

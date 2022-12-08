@@ -5,7 +5,9 @@ import FoundationNetworking
 #endif
 
 public class HttpRequestRunnerStub {
+    // Runner either uses queue, or always returns the same response.
     private var responseQueue: [HttpResponse] = []
+    private var responseToAlwaysReturn: HttpResponse?
 
     public private(set) var requestCallsCount: Int = 0
     public private(set) var requestsParams: [HttpRequestParams] = []
@@ -22,7 +24,17 @@ public class HttpRequestRunnerStub {
     }
 
     public func queueSuccessfulResponse(code: Int, data: Data) {
-        responseQueue.append(HttpResponse(
+        responseQueue.append(getHttpResponse(code: code, data: data))
+    }
+
+    // Careful when using this. Should be used only when the HTTP request is not relevant in the test function.
+    // It's preferred to use one of the `queueX()` functions to better test the logic of the code under test.
+    public func alwaysReturnSuccessfulResponse() {
+        responseToAlwaysReturn = getHttpResponse(code: 200, data: "".data)
+    }
+
+    private func getHttpResponse(code: Int, data: Data) -> HttpResponse {
+        HttpResponse(
             data: data,
             response: HTTPURLResponse(
                 url: "https://customer.io".url!,
@@ -31,7 +43,7 @@ public class HttpRequestRunnerStub {
                 headerFields: nil
             ),
             error: nil
-        ))
+        )
     }
 }
 
@@ -45,7 +57,7 @@ extension HttpRequestRunnerStub: HttpRequestRunner {
         requestCallsCount += 1
         requestsParams.append(params)
 
-        let queueNextResponse = responseQueue.removeFirst()
+        let queueNextResponse = responseToAlwaysReturn ?? responseQueue.removeFirst()
 
         onComplete(queueNextResponse.data, queueNextResponse.response, queueNextResponse.error)
     }
