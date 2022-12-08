@@ -147,13 +147,13 @@ open class UnitTest: XCTestCase {
         // delete key value data that is global to all site-ids in the SDK.
         diGraph.globalDataStore.deleteAll()
     }
-}
 
-open extension UnitTest {
-    func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
+    open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(0.5)
     }
+}
 
+public extension UnitTest {
     func waitForQueueToFinishRunningTasks(
         _ queue: Queue,
         file: StaticString = #file,
