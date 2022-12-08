@@ -36,6 +36,9 @@ public class JsonAdapter {
 
     var encoder: JSONEncoder {
         let encoder = JSONEncoder()
+        // Do not modify the casing of JSON keys. It modifies custom attributes that customers give us.
+        // Instead, add `CodingKeys` to your `Codable/Encodable` struct that JsonAdapter serializes to json.
+        // encoder.keyEncodingStrategy = .convertToSnakeCase
         encoder
             .outputFormatting =
             .sortedKeys // for automated tests to compare JSON strings, makes keys never in a random order

@@ -7,13 +7,12 @@ import XCTest
  Extension of `UnitTest` but performs some tasks that sets the environment for integration tests. Unit test classes should have a predictable environment for easier debugging. Integration tests have more SDK code involved and may require some modification to the test environment before tests run.
  */
 open class IntegrationTest: UnitTest {
+    // We want to mock/stub as little as possible in our integration tests.
+    // This class contains a default set of mocks/stubs that *all* integration tests
+    // in the code use.
     public private(set) var httpRequestRunnerStub: HttpRequestRunnerStub!
     public private(set) var deviceInfoStub: DeviceInfoStub!
-
-    // You get access to properties and functions in UnitTest, too!
-
-    public let givenTimestampNow: Int = .init(TimeInterval(1670443977))
-    public lazy var givenTimestampDateNow: Date = .init(timeIntervalSince1970: TimeInterval(givenTimestampNow))
+    // Date util stub is available in UnitTest
 
     override open func setUp() {
         super.setUp()
@@ -22,9 +21,12 @@ open class IntegrationTest: UnitTest {
         httpRequestRunnerStub = HttpRequestRunnerStub()
         diGraph.override(value: httpRequestRunnerStub, forType: HttpRequestRunner.self)
 
-        dateUtilStub.givenNow = givenTimestampDateNow
+        // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in
+        // test functions is possible.
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
 
+        // Mock device info since we are running tests, not running the app on a device. Tests crash when trying to
+        // execute the code in the real device into implementation.
         deviceInfoStub = DeviceInfoStub()
         diGraph.override(value: deviceInfoStub, forType: DeviceInfo.self)
 
