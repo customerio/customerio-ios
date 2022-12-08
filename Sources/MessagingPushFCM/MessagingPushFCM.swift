@@ -49,7 +49,7 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 public class MessagingPushFCM: MessagingPushFCMInstance {
     internal static let shared = MessagingPushFCM()
 
-    internal var messagingPush: MessagingPush {
+    internal var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 
