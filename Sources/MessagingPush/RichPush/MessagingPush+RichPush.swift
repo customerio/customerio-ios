@@ -48,7 +48,7 @@ extension MessagingPushImplementation {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        logger.info("did recieve notification request. Checking if message was a push sent from Customer.io...")
+        logger.info("did receive notification request. Checking if message was a push sent from Customer.io...")
         logger.debug("notification request: \(request.content.userInfo)")
 
         guard let deliveryID: String = request.content.userInfo["CIO-Delivery-ID"] as? String,
