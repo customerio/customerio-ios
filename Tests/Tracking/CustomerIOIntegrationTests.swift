@@ -113,6 +113,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
 
         waitForQueueToFinishRunningTasks(queue)
 
+        XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 0)
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
     }
 }

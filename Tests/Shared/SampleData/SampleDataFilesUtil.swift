@@ -29,65 +29,33 @@ public class SampleDataFilesUtil {
             subdirectory: queueSnapshotFilesDirectoryName
         )
 
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "FD677E99-B774-4B12-A30A-B2315D497D36.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "DD1F8FE7-ADDB-4015-849F-4BBD0E537A2C.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "D687EAA8-396F-4DEE-B983-B8CFF723A1B2.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "BDE6D050-3A26-4A4D-B923-B1C52901090E.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "AA6418AC-40D0-4580-93B9-C6262257BAA3.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "A4E62708-F263-4562-8503-CB55B4AE8E39.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "3143DAD0-E28A-42E6-84B1-D9F6779DCF91.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "940DDFFB-BDC6-4452-8895-A43906E75FC2.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "8C686475-FDD4-44BE-B423-B974D4EDF83A.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "6C0BEF56-E407-4176-89D3-A498CBEA671F.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
-        saveFileAssertSuccess(
-            type: .queueTask,
-            fileName: "0F3F3BBB-9C04-4CEE-9267-54FEE574CF4B.json",
-            subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks"
-        )
+        saveFilesInDirectoryAssertSuccess(type: .queueTask, fileNames: [
+            "FD677E99-B774-4B12-A30A-B2315D497D36.json",
+            "DD1F8FE7-ADDB-4015-849F-4BBD0E537A2C.json",
+            "D687EAA8-396F-4DEE-B983-B8CFF723A1B2.json",
+            "BDE6D050-3A26-4A4D-B923-B1C52901090E.json",
+            "AA6418AC-40D0-4580-93B9-C6262257BAA3.json",
+            "A4E62708-F263-4562-8503-CB55B4AE8E39.json",
+            "3143DAD0-E28A-42E6-84B1-D9F6779DCF91.json",
+            "940DDFFB-BDC6-4452-8895-A43906E75FC2.json",
+            "8C686475-FDD4-44BE-B423-B974D4EDF83A.json",
+            "6C0BEF56-E407-4176-89D3-A498CBEA671F.json",
+            "0F3F3BBB-9C04-4CEE-9267-54FEE574CF4B.json"
+        ], subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks")
     }
 }
 
 private extension SampleDataFilesUtil {
+    func saveFilesInDirectoryAssertSuccess(
+        type: FileType,
+        fileNames: [String],
+        subdirectory: String
+    ) {
+        fileNames.forEach { fileName in
+            saveFileAssertSuccess(type: type, fileName: fileName, subdirectory: subdirectory)
+        }
+    }
+
     func saveFileAssertSuccess(
         type: FileType,
         fileName: String,
@@ -126,6 +94,10 @@ private extension SampleDataFilesUtil {
             )
         }
 
-        return try! String(contentsOf: pathString, encoding: .utf8)
+        guard let fileContentsString = try? String(contentsOf: pathString, encoding: .utf8) else {
+            fatalError("File \(pathString.absoluteString) not able to read it as a String")
+        }
+
+        return fileContentsString
     }
 }
