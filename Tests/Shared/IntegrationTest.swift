@@ -13,9 +13,12 @@ open class IntegrationTest: UnitTest {
     public private(set) var httpRequestRunnerStub: HttpRequestRunnerStub!
     public private(set) var deviceInfoStub: DeviceInfoStub!
     // Date util stub is available in UnitTest
+    public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUp() {
         super.setUp()
+
+        sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
         httpRequestRunnerStub = HttpRequestRunnerStub()

@@ -108,7 +108,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
         httpRequestRunnerStub.alwaysReturnSuccessfulResponse()
 
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
-        DataArchiveUtil().saveSdkV1QueueFiles(fileStore: diGraph.fileStorage)
+        sampleDataFilesUtil.saveSdkV1QueueFiles()
         XCTAssertGreaterThan(diGraph.queueStorage.getInventory().count, 0)
 
         waitForQueueToFinishRunningTasks(queue)

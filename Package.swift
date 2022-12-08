@@ -47,7 +47,7 @@ let package = Package(
                 dependencies: ["CioTracking"],
                 path: "Tests/Shared",
                 resources: [
-                    .copy("DataArchive")
+                    .copy("SampleDataFiles") // static files that are used in test funnctions.
                 ]),
 
         // Messaging Push 
