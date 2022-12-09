@@ -135,7 +135,7 @@ public class CioQueue: Queue {
                                     blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult {
         logger.info("adding queue task \(type)")
 
-        guard let data = jsonAdapter.toJson(data, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(data) else {
             logger.error("fail adding queue task, json encoding fail.")
 
             return (

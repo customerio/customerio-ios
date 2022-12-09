@@ -70,7 +70,7 @@ public class FileManagerQueueStorage: QueueStorage {
 
         guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
 
-        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data, decoder: nil) ?? []
+        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
 
         return inventory
     }
@@ -79,7 +79,7 @@ public class FileManagerQueueStorage: QueueStorage {
         lock.lock()
         defer { lock.unlock() }
 
-        guard let data = jsonAdapter.toJson(inventory, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(inventory) else {
             return false
         }
 
@@ -147,7 +147,7 @@ public class FileManagerQueueStorage: QueueStorage {
         defer { lock.unlock() }
 
         guard let data = fileStorage.get(type: .queueTask, fileId: storageId),
-              let task: QueueTask = jsonAdapter.fromJson(data, decoder: nil)
+              let task: QueueTask = jsonAdapter.fromJson(data)
         else {
             return nil
         }
@@ -218,7 +218,7 @@ public class FileManagerQueueStorage: QueueStorage {
 
 public extension FileManagerQueueStorage {
     private func update(queueTask: QueueTask) -> Bool {
-        guard let data = jsonAdapter.toJson(queueTask, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(queueTask) else {
             return false
         }
 

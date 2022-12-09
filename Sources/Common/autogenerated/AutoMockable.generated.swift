@@ -750,6 +750,10 @@ public class FileStorageMock: FileStorage, Mock {
  See the SDK documentation to learn the basics behind using the mock classes in the SDK.
  */
 public class GlobalDataStoreMock: GlobalDataStore, Mock {
+    public func appendSiteId(_ siteId: String) {
+        
+    }
+    
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
@@ -913,38 +917,32 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         httpRequestsPauseEnds = nil
         httpRequestsPauseEndsGetCallsCount = 0
         httpRequestsPauseEndsSetCallsCount = 0
-        appendSiteIdCallsCount = 0
-        appendSiteIdReceivedArguments = nil
-        appendSiteIdReceivedInvocations = []
+        deleteAllCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - appendSiteId
+
+    // MARK: - deleteAll
 
     /// Number of times the function was called.
-    public private(set) var appendSiteIdCallsCount = 0
+    public private(set) var deleteAllCallsCount = 0
     /// `true` if the function was ever called.
-    public var appendSiteIdCalled: Bool {
-        appendSiteIdCallsCount > 0
+    public var deleteAllCalled: Bool {
+        deleteAllCallsCount > 0
     }
 
-    /// The arguments from the *last* time the function was called.
-    public private(set) var appendSiteIdReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var appendSiteIdReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var appendSiteIdClosure: ((String) -> Void)?
+    public var deleteAllClosure: (() -> Void)?
 
-    /// Mocked function for `appendSiteId(_ siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func appendSiteId(_ siteId: String) {
+    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test
+    /// code.
+    public func deleteAll() {
         mockCalled = true
-        appendSiteIdCallsCount += 1
-        appendSiteIdReceivedArguments = siteId
-        appendSiteIdReceivedInvocations.append(siteId)
-        appendSiteIdClosure?(siteId)
+        deleteAllCallsCount += 1
+        deleteAllClosure?()
     }
 }
 

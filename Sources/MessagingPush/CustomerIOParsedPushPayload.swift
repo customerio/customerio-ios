@@ -132,5 +132,14 @@ struct CioPushPayload: Codable {
     struct Push: Codable, AutoLenses {
         let link: String?
         let image: String?
+
+        enum CodingKeys: String, CodingKey {
+            case link
+            case image
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case push
     }
 }

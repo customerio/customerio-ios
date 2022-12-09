@@ -117,10 +117,30 @@ open class UnitTest: XCTestCase {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
+
+        // delete key value data that belongs to the site-id.
         keyValueStorage.deleteAll()
+
+        // delete key value data that is global to all site-ids in the SDK.
+        diGraph.globalDataStore.deleteAll()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(0.5)
+    }
+}
+
+public extension UnitTest {
+    func waitForQueueToFinishRunningTasks(
+        _ queue: Queue,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        let queueExpectation = expectation(description: "Expect queue to run all tasks.")
+        queue.run {
+            queueExpectation.fulfill()
+        }
+
+        waitForExpectations(for: [queueExpectation], file: file, line: line)
     }
 }

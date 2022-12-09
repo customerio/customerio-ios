@@ -1,5 +1,10 @@
 # Rules: https://realm.github.io/SwiftLint/rule-directory.html
-# Config file learn more: https://github.com/realm/SwiftLint#configuration=
+# Config file learn more: https://github.com/realm/SwiftLint#configuration
+
+disabled_rules: 
+  - line_length # The swiftformat tool formats the swift code for us to not have super long lines. This rule after swiftformat has become more of an annoyance then a value where most errors are error message strings being too long. 
+  - unused_optional_binding # `let _ =` can be easier to read sometimes then `!= nil` which is what this rule is trying to catch. 
+  - nesting # It can be easier to read code when a class has many nested classes inside of it (example: JSON Codable structs for deserializing JSON). 
 
 excluded: # paths or files to ignore during linting. Takes precedence over `included`.  
   - .build
