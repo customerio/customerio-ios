@@ -758,6 +758,31 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         httpRequestsPauseEnds = nil
         httpRequestsPauseEndsGetCallsCount = 0
         httpRequestsPauseEndsSetCallsCount = 0
+        deleteAllCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - deleteAll
+
+    /// Number of times the function was called.
+    public private(set) var deleteAllCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteAllCalled: Bool {
+        deleteAllCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var deleteAllClosure: (() -> Void)?
+
+    /// Mocked function for `deleteAll()`. Your opportunity to return a mocked value and check result of mock in test
+    /// code.
+    public func deleteAll() {
+        mockCalled = true
+        deleteAllCallsCount += 1
+        deleteAllClosure?()
     }
 }
 

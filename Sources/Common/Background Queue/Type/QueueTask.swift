@@ -47,6 +47,13 @@ public struct QueueTask: Codable, AutoLenses, Equatable {
     public let data: Data
     /// the current run results of the task. keeping track of the history of the task
     public let runResults: QueueTaskRunResults
+
+    enum CodingKeys: String, CodingKey {
+        case storageId = "storage_id"
+        case type
+        case data
+        case runResults = "run_results"
+    }
 }
 
 internal extension QueueTask {

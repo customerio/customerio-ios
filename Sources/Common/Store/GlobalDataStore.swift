@@ -7,6 +7,9 @@ public protocol GlobalDataStore: AutoMockable {
     // HTTP requests can be paused to avoid spamming the API too hard.
     // This Date is when a pause is able to be lifted.
     var httpRequestsPauseEnds: Date? { get set }
+
+    // Used for testing
+    func deleteAll()
 }
 
 // sourcery: InjectRegister = "GlobalDataStore"
@@ -35,5 +38,9 @@ public class CioGlobalDataStore: GlobalDataStore {
         self.keyValueStorage = keyValueStorage
 
         self.keyValueStorage.switchToGlobalDataStore()
+    }
+
+    public func deleteAll() {
+        keyValueStorage.deleteAll()
     }
 }
