@@ -85,4 +85,8 @@ public class CioGlobalDataStore: GlobalDataStore {
     public func deleteAll() {
         keyValueStorage.deleteAll()
     }
+
+    public func deleteAll() {
+        keyValueStorage.deleteAll()
+    }
 }

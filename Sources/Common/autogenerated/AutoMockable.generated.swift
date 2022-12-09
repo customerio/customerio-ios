@@ -922,7 +922,6 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-
     // MARK: - deleteAll
 
     /// Number of times the function was called.

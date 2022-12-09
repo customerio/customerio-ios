@@ -70,7 +70,7 @@ public class JsonAdapter {
 
         return nil
     }
-    
+
     public func toDictionary<T: Encodable>(_ obj: T) -> [AnyHashable: Any]? {
         guard let data = toJson(obj) else {
             return nil
