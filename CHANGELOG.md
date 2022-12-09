@@ -1,3 +1,10 @@
+### [1.2.7](https://github.com/customerio/customerio-ios/compare/1.2.6...1.2.7) (2022-12-06)
+
+
+### Bug Fixes
+
+* push images and processing simple push ([#230](https://github.com/customerio/customerio-ios/issues/230)) ([f109f04](https://github.com/customerio/customerio-ios/commit/f109f04d04e2b87ef75707a15818050c7c84b45a))
+
 ### [1.2.6](https://github.com/customerio/customerio-ios/compare/1.2.5...1.2.6) (2022-11-17)
 
 
