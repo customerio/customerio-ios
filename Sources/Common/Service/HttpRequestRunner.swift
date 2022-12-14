@@ -13,7 +13,12 @@ internal protocol HttpRequestRunner: AutoMockable {
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     )
-    func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)
+    func downloadFile(
+        url: URL,
+        fileType: DownloadFileType,
+        session: URLSession,
+        onComplete: @escaping (URL?, HTTPURLResponse?, Error?) -> Void
+    )
 }
 
 // sourcery: InjectRegister = "HttpRequestRunner"
@@ -58,13 +63,22 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
         url: URL,
         fileType: DownloadFileType,
         session: URLSession,
-        onComplete: @escaping (URL?) -> Void
+        onComplete: @escaping (URL?, HTTPURLResponse?, Error?) -> Void
     ) {
         let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
 
-        session.downloadTask(with: url) { tempLocation, response, _ in
-            guard let tempLocation = tempLocation, let uniqueFileName = response?.suggestedFilename else {
-                return onComplete(nil)
+        session.downloadTask(with: url) { tempLocation, response, error in
+            if let error = error {
+                return onComplete(nil, nil, error)
+            }
+
+            // the cast should always be successful as long as the response is not nil
+            guard let response = response as? HTTPURLResponse else {
+                return onComplete(nil, nil, nil)
+            }
+
+            guard let tempLocation = tempLocation, let uniqueFileName = response.suggestedFilename else {
+                return onComplete(nil, response, nil)
             }
 
             let destinationURL = directoryURL
@@ -79,12 +93,10 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
                 )
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
             } catch {
-                // XXX: log error when error handling for the customer enabled
-
-                return onComplete(nil)
+                return onComplete(nil, response, error)
             }
 
-            onComplete(destinationURL)
+            onComplete(destinationURL, response, nil)
         }.resume()
     }
 

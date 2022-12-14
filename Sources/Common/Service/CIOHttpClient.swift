@@ -3,20 +3,16 @@ import Foundation
 import FoundationNetworking
 #endif
 
-public typealias HttpHeaders = [String: String]
-
 public protocol HttpClient: AutoMockable {
     func request(
         _ params: HttpRequestParams,
         onComplete: @escaping (Result<Data, HttpRequestError>) -> Void
     )
-    func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)
     func cancel(finishTasks: Bool)
 }
 
 // sourcery: InjectRegister = "HttpClient"
-public class CIOHttpClient: HttpClient {
-    private let session: URLSession
+public class CIOHttpClient: BaseHttpClient, HttpClient {
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
@@ -38,26 +34,23 @@ public class CIOHttpClient: HttpClient {
         deviceInfo: DeviceInfo
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(
-            siteId: siteId,
-            apiKey: apiKey,
-            deviceInfo: deviceInfo,
-            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
-        )
         self.baseUrls = sdkConfig.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
         self.logger = logger
         self.retryPolicyTimer = timer
         self.retryPolicy = retryPolicy
+
+        super.init(session: Self.getSession(
+            siteId: siteId,
+            apiKey: apiKey,
+            deviceInfo: deviceInfo,
+            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
+        ))
     }
 
     deinit {
         self.cancel(finishTasks: true)
-    }
-
-    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        httpRequestRunner.downloadFile(url: url, fileType: fileType, session: session, onComplete: onComplete)
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -122,26 +115,6 @@ public class CIOHttpClient: HttpClient {
         }
         return errorBodyString
     }
-
-    public func cancel(finishTasks: Bool) {
-        if finishTasks {
-            session.finishTasksAndInvalidate()
-        } else {
-            session.invalidateAndCancel()
-        }
-    }
-
-    private func isUrlError(_ error: Error) -> HttpRequestError? {
-        guard let urlError = error as? URLError else { return nil }
-
-        switch urlError.code {
-        case .notConnectedToInternet, .networkConnectionLost, .timedOut:
-            return .noOrBadNetwork(urlError)
-        case .cancelled:
-            return .cancelled
-        default: return nil
-        }
-    }
 }
 
 extension CIOHttpClient {
@@ -151,12 +124,9 @@ extension CIOHttpClient {
         deviceInfo: DeviceInfo,
         sdkWrapperConfig: SdkWrapperConfig?
     ) -> URLSession {
-        let urlSessionConfig = URLSessionConfiguration.ephemeral
+        let urlSessionConfig = Self.getBasicSession().configuration
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
-        urlSessionConfig.allowsCellularAccess = true
-        urlSessionConfig.timeoutIntervalForResource = 30
-        urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
                                                   "User-Agent": getUserAgent(
