@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -98,6 +98,9 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = deviceMetricsGrabber
+        countDependenciesResolved += 1
+
+        _ = fileDownloadHttpClient
         countDependenciesResolved += 1
 
         _ = fileStorage
@@ -393,6 +396,18 @@ extension DIGraph {
 
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
         DeviceMetricsGrabberImpl()
+    }
+
+    // FileDownloadHttpClient
+    public var fileDownloadHttpClient: FileDownloadHttpClient {
+        if let overridenDep = overrides[String(describing: FileDownloadHttpClient.self)] {
+            return overridenDep as! FileDownloadHttpClient
+        }
+        return newFileDownloadHttpClient
+    }
+
+    private var newFileDownloadHttpClient: FileDownloadHttpClient {
+        FileDownloadHttpClientImpl(httpRequestRunner: httpRequestRunner, logger: logger)
     }
 
     // FileStorage

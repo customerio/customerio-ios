@@ -66,7 +66,7 @@ extension HttpRequestRunnerStub: HttpRequestRunner {
         url: URL,
         fileType: DownloadFileType,
         session: URLSession,
-        onComplete: @escaping (URL?) -> Void
+        onComplete: @escaping (URL?, HTTPURLResponse?, Error?) -> Void
     ) {}
 
     private struct HttpResponse {

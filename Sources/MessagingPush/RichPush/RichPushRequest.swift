@@ -6,12 +6,12 @@ import UserNotifications
 internal class RichPushRequest {
     private let completionHandler: (UNNotificationContent) -> Void
     private let pushContent: CustomerIOParsedPushPayload
-    private let httpClient: HttpClient
+    private let httpClient: FileDownloadHttpClient
 
     init(
         pushContent: CustomerIOParsedPushPayload,
         request: UNNotificationRequest,
-        httpClient: HttpClient,
+        httpClient: FileDownloadHttpClient,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
         self.completionHandler = completionHandler

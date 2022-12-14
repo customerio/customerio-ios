@@ -27,7 +27,7 @@ internal class RichPushRequestHandler {
         guard let postSdkInitializedData = sdkInitializedUtil.postInitializedData else { return }
 
         let diGraph = postSdkInitializedData.diGraph
-        let httpClient = diGraph.httpClient
+        let httpClient = diGraph.fileDownloadHttpClient
 
         let newRequest = RichPushRequest(
             pushContent: content,
