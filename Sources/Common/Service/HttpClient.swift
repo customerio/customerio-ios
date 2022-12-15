@@ -16,7 +16,6 @@ public protocol HttpClient: AutoMockable {
 
 // sourcery: InjectRegister = "HttpClient"
 public class CIOHttpClient: HttpClient {
-    private let session: URLSession
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
@@ -24,6 +23,11 @@ public class CIOHttpClient: HttpClient {
     private let logger: Logger
     private let retryPolicyTimer: SimpleTimer
     private let retryPolicy: HttpRetryPolicy
+    private let cioApiSession: URLSession // only used to call the CIO API.
+    private let publicSession: URLSession // session used to call servers accessible to the public (such as CDNs)
+    private var allSessions: [URLSession] {
+        [cioApiSession, publicSession]
+    }
 
     init(
         siteId: SiteId,
@@ -38,18 +42,20 @@ public class CIOHttpClient: HttpClient {
         deviceInfo: DeviceInfo
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(
-            siteId: siteId,
-            apiKey: apiKey,
-            deviceInfo: deviceInfo,
-            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
-        )
         self.baseUrls = sdkConfig.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
         self.logger = logger
         self.retryPolicyTimer = timer
         self.retryPolicy = retryPolicy
+
+        self.cioApiSession = Self.getCIOApiSession(
+            siteId: siteId,
+            apiKey: apiKey,
+            deviceInfo: deviceInfo,
+            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
+        )
+        self.publicSession = Self.getBasicSession()
     }
 
     deinit {
@@ -57,7 +63,12 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        httpRequestRunner.downloadFile(url: url, fileType: fileType, session: session, onComplete: onComplete)
+        httpRequestRunner.downloadFile(
+            url: url,
+            fileType: fileType,
+            session: getSessionForRequest(url: url),
+            onComplete: onComplete
+        )
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -66,8 +77,17 @@ public class CIOHttpClient: HttpClient {
             return onComplete(.failure(.noRequestMade(nil)))
         }
 
+        guard let url = params.endpoint.getUrl(baseUrls: baseUrls) else {
+            let error = HttpRequestError.urlConstruction(params.endpoint.getUrlString(baseUrls: baseUrls))
+            return onComplete(.failure(error))
+        }
+
         httpRequestRunner
-            .request(params, httpBaseUrls: baseUrls, session: session) { [weak self] data, response, error in
+            .request(
+                url: url,
+                params: params,
+                session: getSessionForRequest(url: url)
+            ) { [weak self] data, response, error in
                 guard let self = self else { return }
 
                 if let error = error {
@@ -125,9 +145,9 @@ public class CIOHttpClient: HttpClient {
 
     public func cancel(finishTasks: Bool) {
         if finishTasks {
-            session.finishTasksAndInvalidate()
+            allSessions.forEach { $0.finishTasksAndInvalidate() }
         } else {
-            session.invalidateAndCancel()
+            allSessions.forEach { $0.invalidateAndCancel() }
         }
     }
 
@@ -145,18 +165,25 @@ public class CIOHttpClient: HttpClient {
 }
 
 extension CIOHttpClient {
-    static func getSession(
+    static func getBasicSession() -> URLSession {
+        let urlSessionConfig = URLSessionConfiguration.ephemeral
+
+        urlSessionConfig.allowsCellularAccess = true
+        urlSessionConfig.timeoutIntervalForResource = 30
+        urlSessionConfig.timeoutIntervalForRequest = 60
+
+        return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
+    }
+
+    static func getCIOApiSession(
         siteId: String,
         apiKey: String,
         deviceInfo: DeviceInfo,
         sdkWrapperConfig: SdkWrapperConfig?
     ) -> URLSession {
-        let urlSessionConfig = URLSessionConfiguration.ephemeral
+        let urlSessionConfig = getBasicSession().configuration
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
-        urlSessionConfig.allowsCellularAccess = true
-        urlSessionConfig.timeoutIntervalForResource = 30
-        urlSessionConfig.timeoutIntervalForRequest = 60
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
                                                   "User-Agent": getUserAgent(
@@ -165,6 +192,14 @@ extension CIOHttpClient {
                                                   )]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
+    }
+
+    private func getSessionForRequest(url: URL) -> URLSession {
+        let cioApiHostname = URL(string: baseUrls.trackingApi)!.host
+        let requestHostname = url.host
+        let isRequestToCIOApi = cioApiHostname == requestHostname
+
+        return (isRequestToCIOApi) ? cioApiSession : publicSession
     }
 
     static func getBasicAuthHeaderString(siteId: String, apiKey: String) -> String {

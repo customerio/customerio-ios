@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -1123,48 +1123,40 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
 
     /// The arguments from the *last* time the function was called.
     internal private(set) var requestReceivedArguments: (
+        url: URL,
         params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
         session: URLSession,
         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
     )?
     /// Arguments from *all* of the times that the function was called.
     internal private(set) var requestReceivedInvocations: [(
+        url: URL,
         params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
         session: URLSession,
         onComplete: (Data?, HTTPURLResponse?, Error?) -> Void
     )] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var requestClosure: ((
-        HttpRequestParams,
-        HttpBaseUrls,
-        URLSession,
-        (Data?, HTTPURLResponse?, Error?) -> Void
-    ) -> Void)?
+    internal var requestClosure: (
+        (URL, HttpRequestParams, URLSession, (Data?, HTTPURLResponse?, Error?) -> Void)
+            -> Void
+    )?
 
-    /// Mocked function for `request(_ params: HttpRequestParams, httpBaseUrls: HttpBaseUrls, session: URLSession,
-    /// onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `request(url: URL, params: HttpRequestParams, session: URLSession, onComplete: @escaping
+    /// (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock
+    /// in test code.
     internal func request(
-        _ params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
+        url: URL,
+        params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     ) {
         mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (
-            params: params,
-            httpBaseUrls: httpBaseUrls,
-            session: session,
-            onComplete: onComplete
-        )
-        requestReceivedInvocations
-            .append((params: params, httpBaseUrls: httpBaseUrls, session: session, onComplete: onComplete))
-        requestClosure?(params, httpBaseUrls, session, onComplete)
+        requestReceivedArguments = (url: url, params: params, session: session, onComplete: onComplete)
+        requestReceivedInvocations.append((url: url, params: params, session: session, onComplete: onComplete))
+        requestClosure?(url, params, session, onComplete)
     }
 
     // MARK: - downloadFile

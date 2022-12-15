@@ -22,8 +22,8 @@ class HttpRequestRunnerTest: HttpTest {
         let requestParams = HttpRequestParams(endpoint: endpoint, headers: nil, body: nil)
         runner
             .request(
-                requestParams,
-                httpBaseUrls: HttpBaseUrls.getProduction(region: Region.US),
+                url: endpoint.getUrl(baseUrls: HttpBaseUrls.getProduction(region: Region.US))!,
+                params: requestParams,
                 session: session
             ) { data, response, _ in
                 print(response!)
