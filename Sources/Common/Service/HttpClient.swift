@@ -39,7 +39,7 @@ public class CIOHttpClient: HttpClient {
         logger: Logger,
         timer: SimpleTimer,
         retryPolicy: HttpRetryPolicy,
-        deviceInfo: DeviceInfo
+        userAgentUtil: UserAgentUtil
     ) {
         self.httpRequestRunner = httpRequestRunner
         self.baseUrls = sdkConfig.httpBaseUrls
@@ -52,8 +52,7 @@ public class CIOHttpClient: HttpClient {
         self.cioApiSession = Self.getCIOApiSession(
             siteId: siteId,
             apiKey: apiKey,
-            deviceInfo: deviceInfo,
-            sdkWrapperConfig: sdkConfig._sdkWrapperConfig
+            userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
         )
         self.publicSession = Self.getBasicSession()
     }
@@ -77,16 +76,10 @@ public class CIOHttpClient: HttpClient {
             return onComplete(.failure(.noRequestMade(nil)))
         }
 
-        guard let url = params.endpoint.getUrl(baseUrls: baseUrls) else {
-            let error = HttpRequestError.urlConstruction(params.endpoint.getUrlString(baseUrls: baseUrls))
-            return onComplete(.failure(error))
-        }
-
         httpRequestRunner
             .request(
-                url: url,
                 params: params,
-                session: getSessionForRequest(url: url)
+                session: getSessionForRequest(url: params.url)
             ) { [weak self] data, response, error in
                 guard let self = self else { return }
 
@@ -178,18 +171,14 @@ extension CIOHttpClient {
     static func getCIOApiSession(
         siteId: String,
         apiKey: String,
-        deviceInfo: DeviceInfo,
-        sdkWrapperConfig: SdkWrapperConfig?
+        userAgentHeaderValue: String
     ) -> URLSession {
         let urlSessionConfig = getBasicSession().configuration
         let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
         urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
                                                   "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": getUserAgent(
-                                                      deviceInfo: deviceInfo,
-                                                      sdkWrapperConfig: sdkWrapperConfig
-                                                  )]
+                                                  "User-Agent": userAgentHeaderValue]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -207,33 +196,6 @@ extension CIOHttpClient {
         let encodedRawHeader = rawHeader.data(using: .utf8)!
 
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
-    }
-
-    /**
-     * getUserAgent - To get `user-agent` header value. This value depends on SDK version
-     * and device detail such as OS version, device model, customer's app name etc
-     *
-     * In case, UIKit is available then this function returns value in following format :
-     * `Customer.io iOS Client/1.0.0-alpha.16 (iPhone 11 Pro; iOS 14.5) User App/1.0`
-     *
-     * Otherwise will return
-     * `Customer.io iOS Client/1.0.0-alpha.16`
-     */
-    static func getUserAgent(deviceInfo: DeviceInfo, sdkWrapperConfig: SdkWrapperConfig?) -> String {
-        var userAgent = "Customer.io iOS Client/\(deviceInfo.sdkVersion)"
-
-        if let sdkWrapperConfig = sdkWrapperConfig {
-            userAgent = "Customer.io \(sdkWrapperConfig.source.rawValue) Client/\(sdkWrapperConfig.version)"
-        }
-
-        if let deviceModel = deviceInfo.deviceModel,
-           let deviceOsVersion = deviceInfo.osVersion,
-           let deviceOsName = deviceInfo.osName {
-            userAgent += " (\(deviceModel); \(deviceOsName) \(deviceOsVersion))"
-            userAgent += " \(deviceInfo.customerBundleId)/\(deviceInfo.customerAppVersion)"
-        }
-
-        return userAgent
     }
 
     // In certain scenarios, it makes sense for us to pause making any HTTP requests to the

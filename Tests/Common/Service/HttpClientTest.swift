@@ -10,7 +10,8 @@ class HttpClientTest: UnitTest {
     private var requestRunnerMock = HttpRequestRunnerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let timerMock = SimpleTimerMock()
-    private let deviceInfoMock = DeviceInfoMock()
+    private let baseHttpUrls = HttpBaseUrls.getProduction(region: .US)
+    private let userAgentUtilMock = UserAgentUtilMock()
 
     private var client: HttpClient!
 
@@ -19,7 +20,9 @@ class HttpClientTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        deviceInfoMock.underlyingSdkVersion = "1.0.0" // HttpClient uses this during initialization. Needed to set now.
+        userAgentUtilMock
+            .getUserAgentHeaderValueReturnValue =
+            "user-agent-here" // HttpClient uses this during initialization. Needed to set now.
 
         client = CIOHttpClient(
             siteId: SiteId.random,
@@ -31,16 +34,8 @@ class HttpClientTest: UnitTest {
             logger: log,
             timer: timerMock,
             retryPolicy: retryPolicyMock,
-            deviceInfo: deviceInfoMock
+            userAgentUtil: userAgentUtilMock
         )
-    }
-
-    private func assertHttpRequestsPaused(paused: Bool) {
-        if paused {
-            XCTAssertTrue(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
-        } else {
-            XCTAssertFalse(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
-        }
     }
 
     // MARK: request
@@ -48,12 +43,17 @@ class HttpClientTest: UnitTest {
     func test_request_givenErrorDuringRequest_expectError() {
         let givenError = URLError(.notConnectedToInternet)
 
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, nil, givenError)
+        mockRequestResponse {
+            (body: nil, response: nil, failure: givenError)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             guard case .noOrBadNetwork(let actualError) = result.error!,
@@ -69,12 +69,17 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoResponse_expectError() {
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(Data(), nil, nil)
+        mockRequestResponse {
+            (body: "".data, response: nil, failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             guard case .noRequestMade = result.error! else {
@@ -88,12 +93,21 @@ class HttpClientTest: UnitTest {
     }
 
     func test_request_givenNoData_expectError() {
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), nil)
+        mockRequestResponse {
+            (
+                body: nil,
+                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                failure: nil
+            )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             guard case .noRequestMade = result.error! else {
@@ -109,16 +123,21 @@ class HttpClientTest: UnitTest {
     func test_request_givenSuccessfulResponse_expectGetResponseBody() {
         let expected = #"{ "message": "Success!" }"#.data!
 
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                expected,
-                HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                nil
+        mockRequestResponse {
+            (
+                body: expected,
+                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                failure: nil
             )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNil(result.error)
@@ -137,7 +156,12 @@ class HttpClientTest: UnitTest {
         globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().add(10, .minute)
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             guard case .noRequestMade = result.error! else {
                 return XCTFail("expect no request was made")
@@ -154,16 +178,21 @@ class HttpClientTest: UnitTest {
     func test_request_givenHttpRequestsPauseExpired_expectMakeRequest() {
         globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
 
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                Data(),
-                HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                nil
+        mockRequestResponse {
+            (
+                body: "".data,
+                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
+                failure: nil
             )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { _ in
             expectComplete.fulfill()
         }
@@ -176,12 +205,21 @@ class HttpClientTest: UnitTest {
     // MARK: test 401 status codes
 
     func test_request_given401_expectPauseRequests_expectReturnError() {
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), nil)
+        mockRequestResponse {
+            (
+                body: nil,
+                response: HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil),
+                failure: nil
+            )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertTrue(self.requestRunnerMock.requestCalled)
             XCTAssertNotNil(result.error)
@@ -201,12 +239,21 @@ class HttpClientTest: UnitTest {
     // MARK: test 4xx status codes
 
     func test_request_given4xx_expectPauseRequets_expectReturnError() {
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(nil, HTTPURLResponse(url: self.url, statusCode: 403, httpVersion: nil, headerFields: nil), nil)
+        mockRequestResponse {
+            (
+                body: nil,
+                response: HTTPURLResponse(url: self.url, statusCode: 403, httpVersion: nil, headerFields: nil),
+                failure: nil
+            )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertNotNil(result.error)
 
@@ -241,16 +288,17 @@ class HttpClientTest: UnitTest {
             onComplete()
         }
 
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                #"{"meta": { "error": "invalid id" }}"#.data,
-                httpRequestRunnerResponse,
-                nil
-            )
+        mockRequestResponse {
+            (body: #"{"meta": { "error": "invalid id" }}"#.data, response: httpRequestRunnerResponse, failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             guard case .success = result else { // expect get success after retrying.
                 return XCTFail("expect get success after retrying")
@@ -277,16 +325,21 @@ class HttpClientTest: UnitTest {
             onComplete()
         }
 
-        requestRunnerMock.requestClosure = { _, _, _, onComplete in
-            onComplete(
-                #"{"meta": { "error": "invalid id" }}"#.data,
-                HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
-                nil
+        mockRequestResponse {
+            (
+                body: #"{"meta": { "error": "invalid id" }}"#.data,
+                response: HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
+                failure: nil
             )
         }
 
         let expectComplete = expectation(description: "Expect to complete")
-        let params = HttpRequestParams(endpoint: .identifyCustomer(identifier: ""), headers: nil, body: nil)
+        let params = HttpRequestParams(
+            endpoint: .identifyCustomer(identifier: ""),
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!
         client.request(params) { result in
             XCTAssertNotNil(result.error)
 
@@ -310,55 +363,24 @@ class HttpClientTest: UnitTest {
 
         XCTAssertEqual(actual, expected)
     }
+}
 
-    // MARK: getUserAgent
-
-    func test_getUserAgent_givenDeviceInfoNotAvailable_expectShortUserAgent() {
-        let expected = "Customer.io iOS Client/1.0.1"
-        deviceInfoMock.underlyingSdkVersion = "1.0.1"
-        deviceInfoMock.underlyingDeviceModel = nil
-
-        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock, sdkWrapperConfig: nil)
-
-        XCTAssertEqual(expected, actual)
+extension HttpClientTest {
+    private func assertHttpRequestsPaused(paused: Bool) {
+        if paused {
+            XCTAssertTrue(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
+        } else {
+            XCTAssertFalse(globalDataStoreMock.httpRequestsPauseEndsSetCalled)
+        }
     }
 
-    func test_getUserAgent_givenDeviceInfoAvailable_expectLongUserAgent() {
-        let expected = "Customer.io iOS Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
-        deviceInfoMock.underlyingSdkVersion = "1.0.1"
-        deviceInfoMock.underlyingDeviceModel = "iPhone12"
-        deviceInfoMock.underlyingOsVersion = "14.1"
-        deviceInfoMock.underlyingOsName = "iOS"
-        deviceInfoMock.underlyingCustomerAppName = "SuperAwesomeStore"
-        deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
-        deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
-
-        let actual = CIOHttpClient.getUserAgent(deviceInfo: deviceInfoMock, sdkWrapperConfig: nil)
-
-        XCTAssertEqual(expected, actual)
-    }
-
-    func test_getUserAgent_givenSdkWrapperConfig_expectModifiedUserAgentForWrapper() {
-        let givenWrapperVersion = "2.0.0"
-        let givenSdkVersion = "1.0.0" // make sure this value is different from the given wrapper value
-
-        let expected = "Customer.io ReactNative Client/2.0.0 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
-        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
-        deviceInfoMock.underlyingDeviceModel = "iPhone12"
-        deviceInfoMock.underlyingOsVersion = "14.1"
-        deviceInfoMock.underlyingOsName = "iOS"
-        deviceInfoMock.underlyingCustomerAppName = "SuperAwesomeStore"
-        deviceInfoMock.underlyingCustomerBundleId = "io.customer.superawesomestore"
-        deviceInfoMock.underlyingCustomerAppVersion = "3.4.5"
-
-        let actual = CIOHttpClient.getUserAgent(
-            deviceInfo: deviceInfoMock,
-            sdkWrapperConfig: SdkWrapperConfig(
-                source: .reactNative,
-                version: givenWrapperVersion
-            )
-        )
-
-        XCTAssertEqual(expected, actual)
+    private func mockRequestResponse(
+        onComplete: @escaping ()
+            -> (body: Data?, response: HTTPURLResponse?, failure: Error?)
+    ) {
+        requestRunnerMock.requestClosure = { _, _, actualOnComplete in
+            let result = onComplete()
+            actualOnComplete(result.body, result.response, result.failure)
+        }
     }
 }

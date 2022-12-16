@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class HttpEndpointTest: UnitTest {
-    private let defaultEndpoint = HttpEndpoint.findAccountRegion
+    private let defaultEndpoint = CIOApiEndpoint.findAccountRegion
     private var httpBaseUrls: HttpBaseUrls!
 
     override func setUp() {

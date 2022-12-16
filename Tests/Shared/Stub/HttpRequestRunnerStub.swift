@@ -49,7 +49,6 @@ public class HttpRequestRunnerStub {
 
 extension HttpRequestRunnerStub: HttpRequestRunner {
     public func request(
-        url: URL,
         params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void

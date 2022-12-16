@@ -18,11 +18,13 @@ import XCTest
  */
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner?
-    public var deviceInfoMock = DeviceInfoMock()
+    public var userAgentUtil: UserAgentUtil!
     public var session: URLSession?
 
     override open func setUp() {
         super.setUp()
+
+        userAgentUtil = diGraph.userAgentUtil
 
         /*
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
@@ -33,8 +35,7 @@ open class HttpTest: UnitTest {
             session = CIOHttpClient.getCIOApiSession(
                 siteId: siteId,
                 apiKey: apiKey,
-                deviceInfo: deviceInfoMock,
-                sdkWrapperConfig: nil
+                userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
             )
         }
     }

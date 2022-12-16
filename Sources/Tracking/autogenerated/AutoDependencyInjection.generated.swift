@@ -98,6 +98,12 @@ extension DIGraph {
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {
-        TrackingQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
+        TrackingQueueRunner(
+            siteId: siteId,
+            jsonAdapter: jsonAdapter,
+            logger: logger,
+            httpClient: httpClient,
+            sdkConfig: sdkConfig
+        )
     }
 }

@@ -16,13 +16,18 @@ class HttpRequestRunnerTest: HttpTest {
     func test_getAccountRegion() throws {
         guard let runner = runner, let session = session else { return try XCTSkipIf(true) }
 
-        let endpoint = HttpEndpoint.findAccountRegion
+        let endpoint = CIOApiEndpoint.findAccountRegion
 
         let expectComplete = expectation(description: "Expect to complete")
-        let requestParams = HttpRequestParams(endpoint: endpoint, headers: nil, body: nil)
+        let requestParams = HttpRequestParams(
+            endpoint: endpoint,
+            baseUrls: HttpBaseUrls.getProduction(region: Region.US),
+            headers: nil,
+            body: nil
+        )!
+
         runner
             .request(
-                url: endpoint.getUrl(baseUrls: HttpBaseUrls.getProduction(region: Region.US))!,
                 params: requestParams,
                 session: session
             ) { data, response, _ in

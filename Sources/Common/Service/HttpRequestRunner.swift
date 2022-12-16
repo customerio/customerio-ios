@@ -8,7 +8,6 @@ import FoundationNetworking
  */
 internal protocol HttpRequestRunner: AutoMockable {
     func request(
-        url: URL,
         params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
@@ -22,13 +21,12 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
      Note: When mocking request, open JSON file, convert to `Data`.
      */
     func request(
-        url: URL,
         params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     ) {
-        var request = URLRequest(url: url)
-        request.httpMethod = params.endpoint.method
+        var request = URLRequest(url: params.url)
+        request.httpMethod = params.method
         request.httpBody = params.body
         params.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)

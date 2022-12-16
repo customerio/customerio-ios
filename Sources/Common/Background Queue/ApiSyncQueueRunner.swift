@@ -6,14 +6,22 @@ open class ApiSyncQueueRunner {
     public let siteId: SiteId
     public let logger: Logger
     private let httpClient: HttpClient
+    private let baseHttpUrls: HttpBaseUrls
 
     public let failureIfDontDecodeTaskData: Result<Void, HttpRequestError> = .failure(.noRequestMade(nil))
 
-    public init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
+    public init(
+        siteId: SiteId,
+        jsonAdapter: JsonAdapter,
+        logger: Logger,
+        httpClient: HttpClient,
+        sdkConfig: SdkConfig
+    ) {
         self.siteId = siteId
         self.jsonAdapter = jsonAdapter
         self.logger = logger
         self.httpClient = httpClient
+        self.baseHttpUrls = sdkConfig.httpBaseUrls
     }
 
     // (1) less code for `runTask` function to decode JSON and (2) one place to do error logging if decoding wrong.
@@ -30,10 +38,21 @@ open class ApiSyncQueueRunner {
     }
 
     public func performHttpRequest(
-        params: HttpRequestParams,
+        endpoint: CIOApiEndpoint,
+        requestBody: Data?,
         onComplete: @escaping (Result<Void, HttpRequestError>) -> Void
     ) {
-        httpClient.request(params) { result in
+        guard let httpParams = HttpRequestParams(
+            endpoint: endpoint,
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: requestBody
+        ) else {
+            logger.error("Error constructing HTTP request. Endpoint: \(endpoint), baseUrls: \(baseHttpUrls)")
+            return onComplete(.failure(.noRequestMade(nil)))
+        }
+
+        httpClient.request(httpParams) { result in
             switch result {
             case .success: onComplete(.success(()))
             case .failure(let httpError): onComplete(.failure(httpError))
