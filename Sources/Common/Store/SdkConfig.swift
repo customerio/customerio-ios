@@ -65,6 +65,8 @@ public struct SdkConfig {
      as a wrapper/bridge such as with ReactNative.
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
+    
+    public var disableCustomAttributeSnakeCasing: Bool = false
 }
 
 public protocol SdkConfigStore: AutoMockable {
