@@ -66,6 +66,11 @@ public struct SdkConfig {
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
     
+    /**
+     SDK snake cases custom attributes by default. Enable this property if you want the SDK
+     to modify your custom attributes. For example, {"FirstName" : "John"} is modified as
+     {"first_name" : "John"}
+     */
     public var disableCustomAttributeSnakeCasing: Bool = false
 }
 
