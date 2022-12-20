@@ -13,7 +13,7 @@ class HttpClientTest: UnitTest {
     private let baseHttpUrls = HttpBaseUrls.getProduction(region: .US)
     private let userAgentUtilMock = UserAgentUtilMock()
 
-    private var client: HttpClient!
+    private var client: CIOHttpClient!
 
     private let url = URL(string: "https://customer.io")!
 
@@ -362,6 +362,34 @@ class HttpClientTest: UnitTest {
         let actual = CIOHttpClient.getBasicAuthHeaderString(siteId: givenSiteId, apiKey: givenApiKey)
 
         XCTAssertEqual(actual, expected)
+    }
+
+    // MARK: getSessionForRequest
+
+    func test_getSessionForRequest_givenCIOApiEndpoint_expectGetCIOApiSession() {
+        let cioApiEndpointUrl = HttpRequestParams(
+            endpoint: .trackDeliveryMetrics,
+            baseUrls: baseHttpUrls,
+            headers: nil,
+            body: nil
+        )!.url
+
+        let actualSession = client.getSessionForRequest(url: cioApiEndpointUrl)
+
+        let containsAuthorizationHeader = actualSession.configuration.httpAdditionalHeaders!["Authorization"] != nil
+        XCTAssertTrue(containsAuthorizationHeader)
+    }
+
+    func test_getSessionForRequest_givenCIOAssetLibraryEndpoint_expectPublicSession() {
+        let actualSession = client
+            .getSessionForRequest(
+                url: URL(
+                    string: "https://storage.googleapis.com/cio-asset-manager-standalone/1670599791846_frederick_adoption_day.jpg"
+                )!
+            )
+
+        let containsAuthorizationHeader = actualSession.configuration.httpAdditionalHeaders!["Authorization"] != nil
+        XCTAssertFalse(containsAuthorizationHeader)
     }
 }
 

@@ -49,6 +49,8 @@ public class CIOHttpClient: HttpClient {
         self.retryPolicyTimer = timer
         self.retryPolicy = retryPolicy
 
+        // Construct the URLSessions when the object is initialized and re-use them for all HTTP requests in the
+        // lifecycle of this object.
         self.cioApiSession = Self.getCIOApiSession(
             siteId: siteId,
             apiKey: apiKey,
@@ -164,6 +166,7 @@ extension CIOHttpClient {
         urlSessionConfig.allowsCellularAccess = true
         urlSessionConfig.timeoutIntervalForResource = 30
         urlSessionConfig.timeoutIntervalForRequest = 60
+        urlSessionConfig.httpAdditionalHeaders = [:]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
@@ -183,7 +186,10 @@ extension CIOHttpClient {
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }
 
-    private func getSessionForRequest(url: URL) -> URLSession {
+    // Each URLSession used in this object are designed to request specific servers. Mostly in the HTTP header values
+    // being added.
+    // Choose what URLSession at runtime by the hostname of the URL being contacted in the request.
+    func getSessionForRequest(url: URL) -> URLSession {
         let cioApiHostname = URL(string: baseUrls.trackingApi)!.host
         let requestHostname = url.host
         let isRequestToCIOApi = cioApiHostname == requestHostname
