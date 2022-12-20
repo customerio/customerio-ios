@@ -170,7 +170,9 @@ public class CustomerIO: CustomerIOInstance {
         diGraph: DIGraph
     ) {
         
-        // COMPLETE THIS
+        // LEVI : Should we use diGraph in CustomerIOImplementation and add a new parameter ?
+        // Might result in lot of changes which I assume are specific to 'removing own instance' capability
+        
 //        let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
 //        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
 //
