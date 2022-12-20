@@ -28,7 +28,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     private var profileStore: ProfileStore
     private var hooks: HooksManager
     private let logger: Logger
-
+    private let dateUtil: DateUtil
     static var autoScreenViewBody: (() -> [String: Any])?
 
     /**
@@ -46,6 +46,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.profileStore = diGraph.profileStore
         self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
+        self.dateUtil = diGraph.dateUtil
     }
 
     /**

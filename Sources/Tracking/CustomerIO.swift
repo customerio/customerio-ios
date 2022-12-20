@@ -91,7 +91,7 @@ public extension CustomerIOInstance {
  */
 public class CustomerIO: CustomerIOInstance {
     public var siteId: String? {
-        implementation?.siteId
+        diGraph?.siteId
     }
 
     /**
@@ -101,19 +101,25 @@ public class CustomerIO: CustomerIOInstance {
      */
     @Atomic public private(set) static var shared = CustomerIO()
 
-    internal var implementation: CustomerIOImplementation?
+    // Only assign a value to this *when the SDK is initialzied*.
+    // It's assumed that if this instance is not-nil, the SDK has been initialized.
+    // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
+    private var implementation: CustomerIOImplementation?
+    
+    // The 1 place that DiGraph is strongly stored in memory for the SDK.
+    // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
+    internal var diGraph: DIGraph?
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
-
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
-
-    private var threadUtil: ThreadUtil? {
-        guard let siteId = siteId else { return nil }
-
-        return DIGraph.getInstance(siteId: siteId).threadUtil
-    }
-
+//
+//    private var threadUtil: ThreadUtil? {
+//        guard let siteId = siteId else { return nil }
+//
+//        return DIGraph.getInstance(siteId: siteId).threadUtil
+//    }
+//
     private var logger: Logger? {
         guard let siteId = siteId else { return nil }
 
@@ -141,10 +147,12 @@ public class CustomerIO: CustomerIOInstance {
             }
         }
     }
-
-    // Constructor for testing.
-    internal init(implementation: CustomerIOImplementation) {
+    
+    // Constructor for unit testing. Just for overriding dependencies and not running logic.
+    // See CustomerIO.shared.initializeIntegrationTests for integration testing
+    internal init(implementation: CustomerIOImplementation, diGraph: DIGraph) {
         self.implementation = implementation
+        self.diGraph = diGraph
     }
 
     /**
@@ -155,6 +163,20 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared = CustomerIO()
     }
 
+    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
+    internal static func initializeIntegrationTests(
+        siteId: String,
+        diGraph: DIGraph
+    ) {
+        
+        // COMPLETE THIS
+//        let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
+//        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+//
+        Self.shared.postInitialize(siteId: diGraph.siteId)
+    }
+    
     /**
      Create an instance of `CustomerIO`.
 
@@ -234,7 +256,8 @@ public class CustomerIO: CustomerIOInstance {
 
     private func postInitialize(siteId: String) {
         let diGraph = DIGraph.getInstance(siteId: siteId)
-
+        let threadUtil = diGraph.threadUtil
+        
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
         hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
@@ -242,7 +265,7 @@ public class CustomerIO: CustomerIOInstance {
         cleanupRepository = diGraph.cleanupRepository
 
         // run cleanup in background to prevent locking the UI thread
-        threadUtil?.runBackground { [weak self] in
+        threadUtil.runBackground { [weak self] in
             self?.cleanupRepository?.cleanup()
             self?.cleanupRepository = nil
         }
