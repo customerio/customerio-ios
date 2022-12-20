@@ -351,7 +351,7 @@ extension DIGraph {
         return self.newJsonAdapter
     }
     private var newJsonAdapter: JsonAdapter {    
-        return JsonAdapter(log: self.logger)
+        return JsonAdapter(log: self.logger, sdkConfigStore: self.sdkConfigStore)
     }
     // LockManager (singleton)
     public var lockManager: LockManager {  
