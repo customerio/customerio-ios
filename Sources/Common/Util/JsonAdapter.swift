@@ -39,6 +39,14 @@ public class JsonAdapter {
         // Do not modify the casing of JSON keys. It modifies custom attributes that customers give us.
         // Instead, add `CodingKeys` to your `Codable/Encodable` struct that JsonAdapter serializes to json.
         // encoder.keyEncodingStrategy = .convertToSnakeCase
+        
+        // Backwards compatible bug fix
+        // https://github.com/customerio/issues/issues/8724
+        let shouldModifyKeysToSnakeCase = !sdkConfigStore.config.disableCustomAttributeSnakeCasing
+
+        if shouldModifyKeysToSnakeCase {
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+        }
         encoder
             .outputFormatting =
             .sortedKeys // for automated tests to compare JSON strings, makes keys never in a random order
@@ -54,9 +62,11 @@ public class JsonAdapter {
     }
 
     private let log: Logger
-
-    init(log: Logger) {
+    private let sdkConfigStore: SdkConfigStore
+    
+    init(log: Logger, sdkConfigStore: SdkConfigStore) {
         self.log = log
+        self.sdkConfigStore = sdkConfigStore
     }
 
     public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any]) -> T? {
