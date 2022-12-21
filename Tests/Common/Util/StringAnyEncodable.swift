@@ -40,7 +40,10 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringstring() {
-        let expect = #"{"fooBar":"bar"}"#
+        // With backward compatibility of making snake casing configurable
+        // and with default value of `disableCustomAttributeSnakeCasing` false i.e
+        // SDK will snake case the attributes
+        let expect = #"{"foo_bar":"bar"}"#
 
         let data = ["fooBar": "bar"] as [String: String]
 
@@ -55,7 +58,7 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringdouble() {
-        let expect = #"{"fooBar":1.2}"#
+        let expect = #"{"foo_bar":1.2}"#
 
         let data = ["fooBar": 1.2] as [String: Double]
 
@@ -70,7 +73,7 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_nested_data() {
-        let expect = #"{"fooBar":{"bar":1000}}"#
+        let expect = #"{"foo_bar":{"bar":1000}}"#
 
         let data = ["fooBar": ["bar": 1000] as [String: Int]] as [String: Any]
 
