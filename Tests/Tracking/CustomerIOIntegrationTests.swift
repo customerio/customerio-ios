@@ -77,31 +77,6 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(expectedRequestBodyString, actualRequestBodyString)
     }
 
-    func test_registerDeviceToken_givenCustomAttributes_expectDoNotModifyCustomAttributes() {
-        httpRequestRunnerStub.queueSuccessfulResponse() // for identify
-        httpRequestRunnerStub.queueSuccessfulResponse() // for register token
-        httpRequestRunnerStub.queueSuccessfulResponse() // for 2nd call to register token with custom attributes
-        let givenDeviceToken = String.random
-
-        CustomerIO.shared.identify(identifier: .random) // can't track until you identify
-        CustomerIO.shared.registerDeviceToken(givenDeviceToken)
-        CustomerIO.shared.deviceAttributes = givenCustomAttributes
-
-        waitForQueueToFinishRunningTasks(queue)
-
-        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
-
-        let requestParams = httpRequestRunnerStub.requestsParams[2]
-        let actualRequestBodyString = requestParams.body!.string!
-        let expectedRequestBodyString = """
-        {"device":{"attributes":{"app_version":"1.30.887","cio_sdk_version":"2.0.3","device_locale":"en-US","device_manufacturer":"Apple","device_model":"iPhone 14","device_os":"14","firstName":"Dana","HOBBY":"football","last_name":"Green","nested":{"age":20,"is adult":true},"push_enabled":"false"},"id":"\(
-            givenDeviceToken
-        )","last_used":\(dateUtilStub.nowSeconds),"platform":"iOS"}}
-        """.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        XCTAssertEqual(expectedRequestBodyString, actualRequestBodyString)
-    }
-
     // MARK: Test backwards compatability from v1 to v2 of SDK as the way JSON data is generated in v2 got changed
 
     func test_givenExistingQueueTasksv1SDK_expectBeAbleToRunThoseTasksInV2() {
