@@ -32,7 +32,7 @@ open class UnitTest: XCTestCase {
     }
 
     public var jsonAdapter: JsonAdapter {
-        JsonAdapter(log: log)
+        JsonAdapter(log: log, sdkConfigStore: diGraph.sdkConfigStore)
     }
 
     public var retryPolicyMock: HttpRetryPolicyMock!
