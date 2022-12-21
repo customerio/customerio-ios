@@ -104,7 +104,7 @@ public class CustomerIO: CustomerIOInstance {
     // Only assign a value to this *when the SDK is initialzied*.
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
-    private var implementation: CustomerIOImplementation?
+    internal var implementation: CustomerIOImplementation?
     
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
