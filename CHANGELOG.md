@@ -1,3 +1,10 @@
+### [1.2.8](https://github.com/customerio/customerio-ios/compare/1.2.7...1.2.8) (2022-12-22)
+
+
+### Bug Fixes
+
+* snake_case bug fix via configuration ([#238](https://github.com/customerio/customerio-ios/issues/238)) ([b1f3729](https://github.com/customerio/customerio-ios/commit/b1f37296871419a269a45d56bea3d2cd9ec39aac))
+
 ### [1.2.7](https://github.com/customerio/customerio-ios/compare/1.2.6...1.2.7) (2022-12-06)
 
 
