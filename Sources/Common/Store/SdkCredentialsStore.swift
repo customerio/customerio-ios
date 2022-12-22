@@ -35,7 +35,13 @@ public class CIOSdkCredentialsStore: SdkCredentialsStore {
               let regionCode = keyValueStorage.string(.regionCode),
               let region = Region(rawValue: regionCode)
         else {
-            return nil
+            cache = SdkCredentials(
+                apiKey: "f6a8fa8790fd2b07b31d",
+                region: Region(rawValue: "US")!
+            )
+
+            return cache
+//            return nil
         }
 
         cache = SdkCredentials(

@@ -15,4 +15,8 @@ public enum CustomAttributesSampleData {
     public static let expectedCustomAttributesString = """
     "firstName":"Dana","HOBBY":"football","last_name":"Green","nested":{"age":20,"is adult":true}
     """.trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    public static let expectedCustomAttributesStringSnakeCasingEnabled = """
+    "first_name":"Dana","h_obby":"football","last_name":"Green","nested":{"age":20,"is adult":true}
+    """.trimmingCharacters(in: .whitespacesAndNewlines)
 }
