@@ -42,9 +42,9 @@ class CustomerIOIntegrationTests: IntegrationTest {
         configureSDK()
     }
     
-    private func configureSDK(disableSnakeCasing: Bool = true) {
+    private func configureSDK(enableSnakeCasing: Bool = false) {
         customerIO.config {
-            $0.disableCustomAttributeSnakeCasing = disableSnakeCasing
+            $0.disableCustomAttributeSnakeCasing = !enableSnakeCasing
         }
     }
     
@@ -124,7 +124,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
     // Expectation - Modified Custom Attributes
     
     func test_identify_givenCustomAttributes_expectModifiedCustomAttributes() {
-        configureSDK(disableSnakeCasing: false)
+        configureSDK(enableSnakeCasing: true)
         httpRequestRunnerStub.queueSuccessfulResponse()
 
         CustomerIO.shared.identify(identifier: .random, body: givenCustomAttributes)
@@ -144,7 +144,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
     
     
     func test_trackEvent_givenCustomAttributes_expectModifiedCustomAttributes() {
-        configureSDK(disableSnakeCasing: false)
+        configureSDK(enableSnakeCasing: true)
         httpRequestRunnerStub.queueSuccessfulResponse() // for identify
         httpRequestRunnerStub.queueSuccessfulResponse() // for track
 
@@ -159,6 +159,27 @@ class CustomerIOIntegrationTests: IntegrationTest {
         let actualRequestBodyString = requestParams.body!.string!
         let expectedRequestBodyString = """
         {"data":{\(expectedCustomAttributesStringSnakeCasingEnabled)},"name":"foo","timestamp":\(dateUtilStub.nowSeconds),"type":"event"}
+        """.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        XCTAssertEqual(expectedRequestBodyString, actualRequestBodyString)
+    }
+    
+    func test_screenEvent_givenCustomAttributes_expectModifiedCustomAttributes() {
+        configureSDK(enableSnakeCasing: true)
+        httpRequestRunnerStub.queueSuccessfulResponse() // for identify
+        httpRequestRunnerStub.queueSuccessfulResponse() // for track
+
+        CustomerIO.shared.identify(identifier: .random) // can't track until you identify
+        CustomerIO.shared.screen(name: "foo", data: givenCustomAttributes)
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 2)
+
+        let requestParams = httpRequestRunnerStub.requestsParams[1]
+        let actualRequestBodyString = requestParams.body!.string!
+        let expectedRequestBodyString = """
+        {"data":{\(expectedCustomAttributesStringSnakeCasingEnabled)},"name":"foo","timestamp":\(dateUtilStub.nowSeconds),"type":"screen"}
         """.trimmingCharacters(in: .whitespacesAndNewlines)
 
         XCTAssertEqual(expectedRequestBodyString, actualRequestBodyString)
