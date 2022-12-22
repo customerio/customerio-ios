@@ -39,12 +39,14 @@ class CustomerIOIntegrationTests: IntegrationTest {
         
         // Set `disableCustomAttributeSnakeCasing` as true so that custom
         // attributes do not get modified
-        customerIO.config {
-            $0.disableCustomAttributeSnakeCasing = true
-        }
+        configureSDK()
     }
     
-    private func configureSDK_disableSnakeCasing(
+    private func configureSDK(disableSnakeCasing: Bool = true) {
+        customerIO.config {
+            $0.disableCustomAttributeSnakeCasing = disableSnakeCasing
+        }
+    }
     
 //    func test_config_givenModifyConfig_expectSetConfigOnInstance() {
 //        let givenStateOfSnakeCasing = true
@@ -122,10 +124,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
     // Expectation - Modified Custom Attributes
     
     func test_identify_givenCustomAttributes_expectModifiedCustomAttributes() {
-        customerIO.config {
-            $0.disableCustomAttributeSnakeCasing = false
-        }
-        
+        configureSDK(disableSnakeCasing: false)
         httpRequestRunnerStub.queueSuccessfulResponse()
 
         CustomerIO.shared.identify(identifier: .random, body: givenCustomAttributes)
@@ -145,6 +144,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
     
     
     func test_trackEvent_givenCustomAttributes_expectModifiedCustomAttributes() {
+        configureSDK(disableSnakeCasing: false)
         httpRequestRunnerStub.queueSuccessfulResponse() // for identify
         httpRequestRunnerStub.queueSuccessfulResponse() // for track
 
