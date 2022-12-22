@@ -373,10 +373,9 @@ extension HttpClientTest {
         }
     }
 
-    private func mockRequestResponse(
-        onComplete: @escaping ()
-            -> (body: Data?, response: HTTPURLResponse?, failure: Error?)
-    ) {
+    // OK with a large tuple since this is just setting up a test. No need to make a custom data type just to setup test functions.
+    // swiftlint:disable:next large_tuple
+    private func mockRequestResponse(onComplete: @escaping () -> (body: Data?, response: HTTPURLResponse?, failure: Error?)) {
         requestRunnerMock.requestClosure = { _, _, actualOnComplete in
             let result = onComplete()
             actualOnComplete(result.body, result.response, result.failure)
