@@ -6,6 +6,10 @@ on:
   push:
     branches: [main, beta, alpha, v1]
 
+permissions:
+  contents: write # access to push the git tag 
+  issues: write # Bot creates an issue if there is an issue during deployment process 
+
 jobs:
   deploy-sdk:
     name: Deploy git tag
@@ -38,7 +42,7 @@ jobs:
           # Needs to push git commits to repo. Needs write access. 
           # github access token to Ami CI shared github account. 
           # token scoped to just public repositories and is added as a collaborator to the project so it can push code. 
-          GITHUB_TOKEN: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       # This step is required before the action-sync-branches step as a merge commit might be made. 
       - name: Prepare to sync branches 
@@ -59,7 +63,7 @@ jobs:
           ahead: main 
           # github access token to Ami CI shared github account. 
           # token scoped to just public repositories and is added as a collaborator to the project so it can push code. 
-          githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify team of git tag being created 
         uses: slackapi/slack-github-action@v1.18.0        
