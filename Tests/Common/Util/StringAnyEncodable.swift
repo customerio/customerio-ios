@@ -13,7 +13,7 @@ struct DummyData: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case boolean
         case numeric
-        case testValue
+        case testValue = "test_value"
         case dict
         case array
     }
@@ -27,11 +27,11 @@ class StringAnyEncodableTest: UnitTest {
     func test_stringanyencodable_handles_unencodable_data() {
         let expect = #"{}"#
 
-        let data = ["foo": Unencodable(data: 12345)] as [String: Any]
+        let data = ["fooBar": Unencodable(data: 12345)] as [String: Any]
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -40,13 +40,16 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringstring() {
-        let expect = #"{"foo":"bar"}"#
+        // With backward compatibility of making snake casing configurable
+        // and with default value of `disableCustomAttributeSnakeCasing` false i.e
+        // SDK will snake case the attributes
+        let expect = #"{"foo_bar":"bar"}"#
 
-        let data = ["foo": "bar"] as [String: String]
+        let data = ["fooBar": "bar"] as [String: String]
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -55,13 +58,13 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_stringdouble() {
-        let expect = #"{"foo":1.2}"#
+        let expect = #"{"foo_bar":1.2}"#
 
-        let data = ["foo": 1.2] as [String: Double]
+        let data = ["fooBar": 1.2] as [String: Double]
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -70,13 +73,13 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_nested_data() {
-        let expect = #"{"foo":{"bar":1000}}"#
+        let expect = #"{"foo_bar":{"bar":1000}}"#
 
-        let data = ["foo": ["bar": 1000] as [String: Int]] as [String: Any]
+        let data = ["fooBar": ["bar": 1000] as [String: Int]] as [String: Any]
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }
@@ -97,7 +100,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let json = StringAnyEncodable(data)
 
-        guard let actual = jsonAdapter.toJson(json, encoder: nil) else {
+        guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
             return
         }

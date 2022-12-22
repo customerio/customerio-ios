@@ -10,7 +10,7 @@ internal struct Device<T: Encodable>: Encodable {
     enum CodingKeys: String, CodingKey {
         case platform
         case token = "id"
-        case lastUsed
+        case lastUsed = "last_used"
         case attributes
     }
 }

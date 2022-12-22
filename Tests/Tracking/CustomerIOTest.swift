@@ -49,29 +49,6 @@ class CustomerIOTest: UnitTest {
         XCTAssertNil(CustomerIO.shared.implementation)
     }
 
-    func test_sharedInstance_givenInitializeBefore_expectLoadCredentialsOnInit() {
-        let givenSiteId = String.random
-
-        XCTAssertNil(CustomerIO.shared.implementation)
-
-        // First, set the credentials on the shared instance
-        CustomerIO.initialize(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
-        CustomerIO.resetSharedInstance()
-        _ = CustomerIO()
-
-        XCTAssertNotNil(CustomerIO.shared.implementation)
-        XCTAssertEqual(CustomerIO.shared.siteId, givenSiteId)
-    }
-
-    func test_newInstance_expectInitializedInstance() {
-        let givenSiteId = String.random
-
-        let actual = CustomerIO(siteId: givenSiteId, apiKey: String.random, region: Region.EU)
-
-        XCTAssertNotNil(actual.implementation)
-        XCTAssertEqual(actual.siteId, givenSiteId)
-    }
-
     func test_initializeSdk_givenNoConfig_expectSetDefaultConfigOptions() {
         let givenSiteId = String.random
 

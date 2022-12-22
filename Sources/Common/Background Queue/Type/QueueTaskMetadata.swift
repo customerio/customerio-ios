@@ -14,6 +14,14 @@ public struct QueueTaskMetadata: Codable, Equatable, Hashable, AutoLenses {
     let groupMember: [String]?
     /// Populated when the task is added to the queue.
     let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case taskPersistedId = "task_persisted_id"
+        case taskType = "task_type"
+        case groupStart = "group_start"
+        case groupMember = "group_member"
+        case createdAt = "created_at"
+    }
 }
 
 internal extension QueueTaskMetadata {

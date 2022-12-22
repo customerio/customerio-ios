@@ -34,8 +34,7 @@ class QueueStorageTest: UnitTest {
 
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
         let expected = [QueueTaskMetadata.random]
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(expected, encoder: nil)
-
+        fileStorageMock.getReturnValue = jsonAdapter.toJson(expected)
         let actual = storage.getInventory()
 
         XCTAssertEqual(actual, expected)
@@ -136,16 +135,14 @@ class QueueStorageTest: UnitTest {
             runResults: QueueTaskRunResults(totalRuns: 1)
         )
         let givenUpdatedRunResults = QueueTaskRunResults(totalRuns: givenTask.runResults.totalRuns + 1)
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)
+        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask)
         fileStorageMock.saveReturnValue = true
 
         let actual = storage.update(storageId: givenTask.storageId, runResults: givenUpdatedRunResults)
 
         XCTAssertEqual(fileStorageMock.saveCallsCount, 1)
         let actualQueueTask: QueueTask = jsonAdapter.fromJson(
-            fileStorageMock.saveReceivedArguments!.contents,
-            decoder: nil
-        )!
+            fileStorageMock.saveReceivedArguments!.contents)!
         let actualRunResults = actualQueueTask.runResults
         XCTAssertEqual(actualRunResults, givenUpdatedRunResults)
         XCTAssertTrue(actual)
@@ -166,7 +163,7 @@ class QueueStorageTest: UnitTest {
             data: "".data,
             runResults: QueueTaskRunResults(totalRuns: 1)
         )
-        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask, encoder: nil)!
+        fileStorageMock.getReturnValue = jsonAdapter.toJson(givenTask)!
 
         let actual = storage.get(storageId: givenTask.storageId)
 

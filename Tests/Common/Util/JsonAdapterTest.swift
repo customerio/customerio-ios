@@ -12,7 +12,9 @@ class JsonAdapterTest: UnitTest {
      */
     private let givenSecondsSince1970: TimeInterval = 1629743524.100
 
-    func test_snakeCase_givenObjectInCamelCase_expectJsonStringSnakeCase() {
+    // MARK: toJson
+
+    func test_toJson_givenObject_expectJsonString() {
         let given = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
         let expected = #"{"bar_date":1629743524}"#
 
@@ -21,7 +23,9 @@ class JsonAdapterTest: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
-    func test_snakeCase_givenStringInSnakeCase_expectObjectInCamelCase() {
+    // MARK: fromJson
+
+    func test_fromJson_givenString_expectGetObject() {
         let givenString = #"{"bar_date":1629743524.100}"#
         let expected = TestCase(barDate: Date(timeIntervalSince1970: givenSecondsSince1970))
 
@@ -30,12 +34,7 @@ class JsonAdapterTest: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
-    struct TestCase: Codable, Equatable {
-        // make sure property name is camelCase
-        let barDate: Date
-    }
-
-    func test_fromJson_givenNotValidJsonString_expectGetNil() {
+    func test_fromJson_givenInValidJsonString_expectGetNil() {
         let givenJson = #"{"foo": "111"}"#
 
         let actual: TestCase? = jsonAdapter.fromJson(givenJson.data)
@@ -116,5 +115,14 @@ class JsonAdapterTest: UnitTest {
         let actual = jsonAdapter.toDictionary(given) as? [String: String]
 
         XCTAssertEqual(expected, actual)
+    }
+}
+
+struct TestCase: Codable, Equatable {
+    // make sure property name is camelCase
+    let barDate: Date
+
+    enum CodingKeys: String, CodingKey {
+        case barDate = "bar_date"
     }
 }

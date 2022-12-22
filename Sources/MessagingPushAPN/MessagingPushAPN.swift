@@ -53,7 +53,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     internal let messagingPush: MessagingPush
 
     public init(customerIO: CustomerIOInstance) {
-        self.customerIO = customerIO        
+        self.customerIO = customerIO
         self.messagingPush = MessagingPush(customerIO: customerIO)
     }
 
