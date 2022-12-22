@@ -3,7 +3,8 @@
     "branches": [
         "main",
         { "name": "beta", "prerelease": true },
-        { "name": "alpha", "prerelease": true }
+        { "name": "alpha", "prerelease": true },
+        { "name": "v1", "range": "1.x" }
     ],
     "plugins": [
         ["@semantic-release/commit-analyzer", {
