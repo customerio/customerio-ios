@@ -94,11 +94,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_givenNoData_expectError() {
         mockRequestResponse {
-            (
-                body: nil,
-                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: nil, response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -124,11 +120,7 @@ class HttpClientTest: UnitTest {
         let expected = #"{ "message": "Success!" }"#.data!
 
         mockRequestResponse {
-            (
-                body: expected,
-                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: expected, response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -179,11 +171,7 @@ class HttpClientTest: UnitTest {
         globalDataStoreMock.underlyingHttpRequestsPauseEnds = Date().subtract(10, .minute)
 
         mockRequestResponse {
-            (
-                body: "".data,
-                response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: "".data, response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -206,11 +194,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_given401_expectPauseRequests_expectReturnError() {
         mockRequestResponse {
-            (
-                body: nil,
-                response: HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: nil, response: HTTPURLResponse(url: self.url, statusCode: 401, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -240,11 +224,7 @@ class HttpClientTest: UnitTest {
 
     func test_request_given4xx_expectPauseRequets_expectReturnError() {
         mockRequestResponse {
-            (
-                body: nil,
-                response: HTTPURLResponse(url: self.url, statusCode: 403, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: nil, response: HTTPURLResponse(url: self.url, statusCode: 403, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -326,11 +306,7 @@ class HttpClientTest: UnitTest {
         }
 
         mockRequestResponse {
-            (
-                body: #"{"meta": { "error": "invalid id" }}"#.data,
-                response: HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil),
-                failure: nil
-            )
+            (body: #"{"meta": { "error": "invalid id" }}"#.data, response: HTTPURLResponse(url: self.url, statusCode: 500, httpVersion: nil, headerFields: nil), failure: nil)
         }
 
         let expectComplete = expectation(description: "Expect to complete")
@@ -381,12 +357,7 @@ class HttpClientTest: UnitTest {
     }
 
     func test_getSessionForRequest_givenCIOAssetLibraryEndpoint_expectPublicSession() {
-        let actualSession = client
-            .getSessionForRequest(
-                url: URL(
-                    string: "https://storage.googleapis.com/cio-asset-manager-standalone/1670599791846_frederick_adoption_day.jpg"
-                )!
-            )
+        let actualSession = client.getSessionForRequest(url: URL(string: "https://storage.googleapis.com/cio-asset-manager-standalone/1670599791846_frederick_adoption_day.jpg")!)
 
         let containsAuthorizationHeader = actualSession.configuration.httpAdditionalHeaders!["Authorization"] != nil
         XCTAssertFalse(containsAuthorizationHeader)
