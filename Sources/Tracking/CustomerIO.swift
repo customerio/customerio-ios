@@ -105,7 +105,6 @@ public class CustomerIO: CustomerIOInstance {
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
     internal var implementation: CustomerIOImplementation?
-    
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
     internal var diGraph: DIGraph?
@@ -147,7 +146,6 @@ public class CustomerIO: CustomerIOInstance {
             }
         }
     }
-    
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
     // See CustomerIO.shared.initializeIntegrationTests for integration testing
     internal init(implementation: CustomerIOImplementation, diGraph: DIGraph) {
@@ -174,10 +172,8 @@ public class CustomerIO: CustomerIOInstance {
 
         Self.shared.postInitialize(siteId: diGraph.siteId)
     }
-    
     /**
      Create an instance of `CustomerIO`.
-
      This is the recommended method for code bases containing
      automated tests, dependency injection, or sending data to multiple Workspaces.
      */
@@ -255,11 +251,9 @@ public class CustomerIO: CustomerIOInstance {
     private func postInitialize(siteId: String) {
         let diGraph = DIGraph.getInstance(siteId: siteId)
         let threadUtil = diGraph.threadUtil
-        
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
         hooksManager.add(key: .tracking, provider: TrackingModuleHookProvider(siteId: siteId))
-
         cleanupRepository = diGraph.cleanupRepository
 
         // run cleanup in background to prevent locking the UI thread

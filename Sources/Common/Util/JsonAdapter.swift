@@ -39,7 +39,6 @@ public class JsonAdapter {
         // Do not modify the casing of JSON keys. It modifies custom attributes that customers give us.
         // Instead, add `CodingKeys` to your `Codable/Encodable` struct that JsonAdapter serializes to json.
         // encoder.keyEncodingStrategy = .convertToSnakeCase
-        
         // Backwards compatible bug fix
         // https://github.com/customerio/issues/issues/8724
         let shouldModifyKeysToSnakeCase = !sdkConfigStore.config.disableCustomAttributeSnakeCasing
@@ -63,7 +62,6 @@ public class JsonAdapter {
 
     private let log: Logger
     private let sdkConfigStore: SdkConfigStore
-    
     init(log: Logger, sdkConfigStore: SdkConfigStore) {
         self.log = log
         self.sdkConfigStore = sdkConfigStore

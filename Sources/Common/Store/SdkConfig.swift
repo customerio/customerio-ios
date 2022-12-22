@@ -65,7 +65,6 @@ public struct SdkConfig {
      as a wrapper/bridge such as with ReactNative.
      */
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
-    
     /**
      SDK snake cases custom attributes by default. Enable this property if you want the SDK
      NOT to modify your custom attributes. For example, if false, {"FirstName" : "John"} is modified as

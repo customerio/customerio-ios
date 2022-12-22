@@ -35,7 +35,6 @@ class QueueStorageTest: UnitTest {
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
         let expected = [QueueTaskMetadata.random]
         fileStorageMock.getReturnValue = jsonAdapter.toJson(expected)
-        
         let actual = storage.getInventory()
 
         XCTAssertEqual(actual, expected)
