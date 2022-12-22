@@ -13,7 +13,7 @@ struct DummyData: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case boolean
         case numeric
-        case testValue
+        case testValue = "test_value"
         case dict
         case array
     }
