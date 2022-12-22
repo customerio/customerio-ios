@@ -1,3 +1,10 @@
+### [2.0.1](https://github.com/customerio/customerio-ios/compare/2.0.0...2.0.1) (2022-12-22)
+
+
+### Bug Fixes
+
+* download rich push images from CDN ([#237](https://github.com/customerio/customerio-ios/issues/237)) ([b30cf02](https://github.com/customerio/customerio-ios/commit/b30cf02f2a27a210fe07e8bea61dc618c5c57b2d))
+
 ## [2.0.0](https://github.com/customerio/customerio-ios/compare/1.2.7...2.0.0) (2022-12-13)
 
 
