@@ -30,6 +30,12 @@ class MessagingPushIntegrationTests: IntegrationTest {
         }
     }
     
+    override func setUp() {
+        super.setUp()
+        
+        _ = MessagingPush(customerIO: CustomerIO.shared) // must do this to start module hooks so Http requests to register device tokens will work
+    }
+    
     // MARK: tests for all public SDK functions that customers can send us custom attributes. Assert that SDK does not modify the passed in custom attributes in anyway including converting JSON keys from camelCase to snake_case, for example.
     
     // MARK: disable snake_case bug fix - expect to modify custom attributes keys to snake_case
@@ -91,8 +97,6 @@ class MessagingPushIntegrationTests: IntegrationTest {
 
     // MARK: Test backwards compatability from v1 to v2 of SDK as the way JSON data is generated in v2 got changed
     func test_givenExistingQueueTasksv1SDK_expectBeAbleToRunThoseTasksInV2() {
-        _ = MessagingPush(customerIO: CustomerIO.shared) // must do this to start module hooks
-        
         httpRequestRunnerStub.alwaysReturnSuccessfulResponse()
         
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 0)
