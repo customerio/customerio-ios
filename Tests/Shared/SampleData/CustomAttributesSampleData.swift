@@ -12,10 +12,10 @@ public enum CustomAttributesSampleData {
             "age": 20
         ]
     ]
-    public static let expectedCustomAttributesString = """
+    public static let expectedNotModifiedString = """
     "firstName":"Dana","HOBBY":"football","last_name":"Green","nested":{"age":20,"is adult":true}
     """.trimmingCharacters(in: .whitespacesAndNewlines)
-    public static let expectedCustomAttributesSnakeCasedString = """
+    public static let expectedSnakeCaseModifiedString = """
     "first_name":"Dana","h_obby":"football","last_name":"Green","nested":{"age":20,"is adult":true}
     """.trimmingCharacters(in: .whitespacesAndNewlines)
 }
