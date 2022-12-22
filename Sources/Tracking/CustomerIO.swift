@@ -165,11 +165,14 @@ public class CustomerIO: CustomerIOInstance {
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
         siteId: String,
+        apiKey: String,
         diGraph: DIGraph
     ) {
+        // Set credentials first because constructing instances below require credentials set in config
+        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: .US, diGraph: diGraph)
+        
         let implementation = CustomerIOImplementation(siteId: siteId)
         Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
-
         Self.shared.postInitialize(siteId: diGraph.siteId)
     }
     /**
@@ -179,7 +182,7 @@ public class CustomerIO: CustomerIOInstance {
      */
     @available(*, deprecated, message: "You must initialize Customer.io SDK using the shared instance")
     public init(siteId: String, apiKey: String, region: Region = Region.US) {
-        setCredentials(siteId: siteId, apiKey: apiKey, region: region)
+        setCredentials(siteId: siteId, apiKey: apiKey, region: region, diGraph: DIGraph.getInstance(siteId: siteId))
 
         self.implementation = CustomerIOImplementation(siteId: siteId)
 
@@ -195,7 +198,7 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         Self.shared.globalData.sharedInstanceSiteId = siteId
 
-        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
+        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region, diGraph: DIGraph.getInstance(siteId: siteId))
 
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
 
@@ -228,8 +231,7 @@ public class CustomerIO: CustomerIOInstance {
     /**
      Sets credentials on shared or non-shared instance.
      */
-    internal func setCredentials(siteId: String, apiKey: String, region: Region) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
+    internal func setCredentials(siteId: String, apiKey: String, region: Region, diGraph: DIGraph) {
         var credentialsStore = diGraph.sdkCredentialsStore
 
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)

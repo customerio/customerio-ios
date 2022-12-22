@@ -14,6 +14,8 @@ open class IntegrationTest: UnitTest {
     public private(set) var deviceInfoStub: DeviceInfoStub!
     // Date util stub is available in UnitTest
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
+    
+    public let testApiKey = "test-api-key"
 
     override open func setUp() {
         super.setUp()
@@ -35,6 +37,6 @@ open class IntegrationTest: UnitTest {
 
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
-        CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
+        CustomerIO.initializeIntegrationTests(siteId: testSiteId, apiKey: testApiKey, diGraph: diGraph)
     }
 }
