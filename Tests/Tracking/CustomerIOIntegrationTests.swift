@@ -17,6 +17,12 @@ class CustomerIOIntegrationTests: IntegrationTest {
         CustomAttributesSampleData.expectedCustomAttributesString
     }
 
+    override func setUp() {
+        super.setUp(enableLogs: false) { config in
+            config.backgroundQueueMinNumberOfTasks = 1000
+        }
+    }
+
     // MARK: tests for all public SDK functions that customers can send us custom attributes. Assert that SDK does not modify the passed in custom attributes in anyway including converting JSON keys from camelCase to snake_case, for example.
 
     func test_identify_givenCustomAttributes_expectDoNotModifyCustomAttributes() {
@@ -115,5 +121,21 @@ class CustomerIOIntegrationTests: IntegrationTest {
 
         XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 0)
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
+    }
+
+    // reproduce: https://github.com/customerio/issues/issues/8917
+    // and https://github.com/customerio/customerio-reactnative/issues/54
+    func test_causeStackoverflow() {
+        httpRequestRunnerStub.alwaysReturnResponse(code: 403, data: "".data)
+
+        CustomerIO.shared.identify(identifier: .random)
+
+        for x in 0 ... 1000 {
+            CustomerIO.shared.track(name: .random)
+        }
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 1000)
     }
 }

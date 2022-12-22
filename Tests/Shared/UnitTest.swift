@@ -66,7 +66,7 @@ open class UnitTest: XCTestCase {
         setUp(enableLogs: false)
     }
 
-    public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+    open func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
         var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
@@ -164,6 +164,7 @@ public extension UnitTest {
             queueExpectation.fulfill()
         }
 
-        waitForExpectations(for: [queueExpectation], file: file, line: line)
+        waitForExpectations(30.0)
+//        waitForExpectations(for: [queueExpectation], timeout: 30.0, file: file, line: line)
     }
 }
