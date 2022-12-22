@@ -37,8 +37,6 @@ class CustomerIOIntegrationTests: IntegrationTest {
         implementation = CustomerIOImplementation(siteId: diGraph.siteId)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
         
-        // Set `disableCustomAttributeSnakeCasing` as true so that custom
-        // attributes do not get modified
         configureSDK()
     }
     
@@ -47,18 +45,6 @@ class CustomerIOIntegrationTests: IntegrationTest {
             $0.disableCustomAttributeSnakeCasing = !enableSnakeCasing
         }
     }
-    
-//    func test_config_givenModifyConfig_expectSetConfigOnInstance() {
-//        let givenStateOfSnakeCasing = true
-//
-//        customerIO.config {
-//            $0.sn = givenTrackingApiUrl
-//        }
-//
-//        let sdkConfig = diGraph.sdkConfigStore.config
-//
-//        XCTAssertEqual(sdkConfig.trackingApiUrl, givenTrackingApiUrl)
-//    }
     
     // MARK: tests for all public SDK functions that customers can send us custom attributes. Assert that SDK does not modify the passed in custom attributes in anyway including converting JSON keys from camelCase to snake_case, for example.
 
