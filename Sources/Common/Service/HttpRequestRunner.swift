@@ -8,8 +8,7 @@ import FoundationNetworking
  */
 internal protocol HttpRequestRunner: AutoMockable {
     func request(
-        _ params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
+        params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     )
@@ -22,19 +21,12 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
      Note: When mocking request, open JSON file, convert to `Data`.
      */
     func request(
-        _ params: HttpRequestParams,
-        httpBaseUrls: HttpBaseUrls,
+        params: HttpRequestParams,
         session: URLSession,
         onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
     ) {
-        guard let url = getUrl(endpoint: params.endpoint, baseUrls: httpBaseUrls) else {
-            let error = HttpRequestError.urlConstruction(params.endpoint.getUrlString(baseUrls: httpBaseUrls))
-            onComplete(nil, nil, error)
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = params.endpoint.method
+        var request = URLRequest(url: params.url)
+        request.httpMethod = params.method
         request.httpBody = params.body
         params.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
@@ -86,9 +78,5 @@ internal class UrlRequestHttpRequestRunner: HttpRequestRunner {
 
             onComplete(destinationURL)
         }.resume()
-    }
-
-    private func getUrl(endpoint: HttpEndpoint, baseUrls: HttpBaseUrls) -> URL? {
-        endpoint.getUrl(baseUrls: baseUrls)
     }
 }

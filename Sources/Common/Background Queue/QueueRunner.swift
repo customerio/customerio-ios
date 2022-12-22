@@ -18,10 +18,23 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     // hook instance needs to call completion handler so hold strong reference
     private var currentlyRunningHook: QueueRunnerHook?
 
-    init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient, hooksManager: HooksManager) {
+    init(
+        siteId: SiteId,
+        jsonAdapter: JsonAdapter,
+        logger: Logger,
+        httpClient: HttpClient,
+        hooksManager: HooksManager,
+        sdkConfig: SdkConfig
+    ) {
         self.hooks = hooksManager
 
-        super.init(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
+        super.init(
+            siteId: siteId,
+            jsonAdapter: jsonAdapter,
+            logger: logger,
+            httpClient: httpClient,
+            sdkConfig: sdkConfig
+        )
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -66,12 +79,6 @@ private extension CioQueueRunner {
             return
         }
 
-        let httpParams = HttpRequestParams(
-            endpoint: .trackDeliveryMetrics,
-            headers: nil,
-            body: bodyData
-        )
-
-        performHttpRequest(params: httpParams, onComplete: onComplete)
+        performHttpRequest(endpoint: .trackDeliveryMetrics, requestBody: bodyData, onComplete: onComplete)
     }
 }

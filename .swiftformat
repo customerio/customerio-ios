@@ -12,9 +12,6 @@
 --commas inline
 --header strip
 
-# makes swiftlint happy. 120 matches what swiftlint is configured for
---maxwidth 120 
-
 --disable unusedArguments
 
 --enable isEmpty

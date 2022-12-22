@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -118,6 +118,9 @@ extension DIGraph {
         _ = httpRequestRunner
         countDependenciesResolved += 1
 
+        _ = userAgentUtil
+        countDependenciesResolved += 1
+
         _ = keyValueStorage
         countDependenciesResolved += 1
 
@@ -155,7 +158,7 @@ extension DIGraph {
             logger: logger,
             timer: simpleTimer,
             retryPolicy: httpRetryPolicy,
-            deviceInfo: deviceInfo
+            userAgentUtil: userAgentUtil
         )
     }
 
@@ -303,7 +306,8 @@ extension DIGraph {
             jsonAdapter: jsonAdapter,
             logger: logger,
             httpClient: httpClient,
-            hooksManager: hooksManager
+            hooksManager: hooksManager,
+            sdkConfig: sdkConfig
         )
     }
 
@@ -488,6 +492,18 @@ extension DIGraph {
 
     private var newHttpRequestRunner: HttpRequestRunner {
         UrlRequestHttpRequestRunner()
+    }
+
+    // UserAgentUtil
+    public var userAgentUtil: UserAgentUtil {
+        if let overridenDep = overrides[String(describing: UserAgentUtil.self)] {
+            return overridenDep as! UserAgentUtil
+        }
+        return newUserAgentUtil
+    }
+
+    private var newUserAgentUtil: UserAgentUtil {
+        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
 
     // KeyValueStorage

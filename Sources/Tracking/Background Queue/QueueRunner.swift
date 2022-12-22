@@ -4,12 +4,19 @@ import Foundation
 // Queue tasks for the Tracking module.
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
-    override init(siteId: SiteId, jsonAdapter: JsonAdapter, logger: Logger, httpClient: HttpClient) {
+    override init(
+        siteId: SiteId,
+        jsonAdapter: JsonAdapter,
+        logger: Logger,
+        httpClient: HttpClient,
+        sdkConfig: SdkConfig
+    ) {
         super.init(
             siteId: siteId,
             jsonAdapter: jsonAdapter,
             logger: logger,
-            httpClient: httpClient
+            httpClient: httpClient,
+            sdkConfig: sdkConfig
         )
     }
 
@@ -36,13 +43,11 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
+        performHttpRequest(
             endpoint: .identifyCustomer(identifier: taskData.identifier),
-            headers: nil,
-            body: taskData.attributesJsonString?.data
+            requestBody: taskData.attributesJsonString?.data,
+            onComplete: onComplete
         )
-
-        performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
     private func track(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -50,13 +55,11 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
+        performHttpRequest(
             endpoint: .trackCustomerEvent(identifier: taskData.identifier),
-            headers: nil,
-            body: taskData.attributesJsonString.data
+            requestBody: taskData.attributesJsonString.data,
+            onComplete: onComplete
         )
-
-        performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
     private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -64,13 +67,11 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
+        performHttpRequest(
             endpoint: .registerDevice(identifier: taskData.profileIdentifier),
-            headers: nil,
-            body: taskData.attributesJsonString?.data
+            requestBody: taskData.attributesJsonString?.data,
+            onComplete: onComplete
         )
-
-        performHttpRequest(params: httpParams, onComplete: onComplete)
     }
 
     private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -78,16 +79,10 @@ extension TrackingQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
-        let httpParams = HttpRequestParams(
-            endpoint: .deleteDevice(
-                identifier: taskData.profileIdentifier,
-                deviceToken: taskData.deviceToken
-            ),
-            headers: nil,
-            body: nil
-        )
-
-        performHttpRequest(params: httpParams, onComplete: onComplete)
+        performHttpRequest(endpoint: .deleteDevice(
+            identifier: taskData.profileIdentifier,
+            deviceToken: taskData.deviceToken
+        ), requestBody: nil, onComplete: onComplete)
     }
 
     private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -99,8 +94,6 @@ extension TrackingQueueRunner {
             return
         }
 
-        let httpRequestParameters = HttpRequestParams(endpoint: .pushMetrics, headers: nil, body: bodyData)
-
-        performHttpRequest(params: httpRequestParameters, onComplete: onComplete)
+        performHttpRequest(endpoint: .pushMetrics, requestBody: bodyData, onComplete: onComplete)
     }
 }
