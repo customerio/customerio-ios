@@ -4,7 +4,7 @@ name: Deploy git tag
 # bot account runs write operations on the github repo to push a tag. 
 on:
   push:
-    branches: [main, beta, alpha]
+    branches: [main, beta, alpha, v1]
 
 jobs:
   deploy-sdk:
