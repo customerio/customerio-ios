@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -98,6 +98,12 @@ extension DIGraph {
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {
-        TrackingQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
+        TrackingQueueRunner(
+            siteId: siteId,
+            jsonAdapter: jsonAdapter,
+            logger: logger,
+            httpClient: httpClient,
+            sdkConfig: sdkConfig
+        )
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum HttpEndpoint {
+public enum CIOApiEndpoint {
     case findAccountRegion
     case identifyCustomer(identifier: String)
     case registerDevice(identifier: String)
@@ -37,7 +37,7 @@ public enum HttpEndpoint {
     }
 }
 
-public extension HttpEndpoint {
+public extension CIOApiEndpoint {
     func getUrl(baseUrls: HttpBaseUrls) -> URL? {
         URL(string: getUrlString(baseUrls: baseUrls))
     }

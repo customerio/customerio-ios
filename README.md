@@ -18,6 +18,10 @@ You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios]
 
 **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 
+### Using version 1 of our SDK? 
+
+It's recommended to upgrade to using version 2 of the iOS SDK. [Check out our migration docs to learn how to update your app.](https://customer.io/docs/sdk/ios/migrate-upgrade/)
+
 ## Summary
 
 To get started, you need to install and initialize the relevant SDK packages in your project. 
@@ -54,10 +58,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY")
-
-        // You can optionally provide a Region to set the Region for your Workspace:
-        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU)        
+        CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.EU) { config in 
+          // optionally, configure the SDK for your app's needs
+        }
 
         return true
     }
