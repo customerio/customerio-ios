@@ -107,22 +107,15 @@ public class CustomerIO: CustomerIOInstance {
     internal var implementation: CustomerIOImplementation?
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    internal var diGraph: DIGraph?
+    // This property might be populated when `implementation` is still nil. Do not use this value to check if SDK is initialized or not.
+    internal var diGraph: DIGraph!
 
     internal var globalData: GlobalDataStore = CioGlobalDataStore()
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
-//
-//    private var threadUtil: ThreadUtil? {
-//        guard let siteId = siteId else { return nil }
-//
-//        return DIGraph.getInstance(siteId: siteId).threadUtil
-//    }
-//
-    private var logger: Logger? {
-        guard let siteId = siteId else { return nil }
 
-        return DIGraph.getInstance(siteId: siteId).logger
+    private var logger: Logger {
+        return diGraph.logger
     }
 
     /**
@@ -132,7 +125,8 @@ public class CustomerIO: CustomerIOInstance {
      */
     internal init() {
         if let siteId = globalData.sharedInstanceSiteId {
-            let diGraph = DIGraph.getInstance(siteId: siteId)
+            self.diGraph = DIGraph.getInstance(siteId: siteId)
+            
             let credentialsStore = diGraph.sdkCredentialsStore
             let logger = diGraph.logger
 
@@ -169,11 +163,12 @@ public class CustomerIO: CustomerIOInstance {
         diGraph: DIGraph
     ) {
         // Set credentials first because constructing instances below require credentials set in config
-        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: .US, diGraph: diGraph)
+        Self.shared.diGraph = diGraph
+        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: .US)
         
         let implementation = CustomerIOImplementation(siteId: siteId)
         Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
-        Self.shared.postInitialize(siteId: diGraph.siteId)
+        Self.shared.postInitialize(siteId: siteId)
     }
     /**
      Create an instance of `CustomerIO`.
@@ -182,13 +177,14 @@ public class CustomerIO: CustomerIOInstance {
      */
     @available(*, deprecated, message: "You must initialize Customer.io SDK using the shared instance")
     public init(siteId: String, apiKey: String, region: Region = Region.US) {
-        setCredentials(siteId: siteId, apiKey: apiKey, region: region, diGraph: DIGraph.getInstance(siteId: siteId))
+        self.diGraph = DIGraph.getInstance(siteId: siteId)
+        setCredentials(siteId: siteId, apiKey: apiKey, region: region)
 
         self.implementation = CustomerIOImplementation(siteId: siteId)
 
         postInitialize(siteId: siteId)
 
-        logger?.info("Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)")
+        logger.info("Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)")
     }
 
     public static func initialize(
@@ -197,14 +193,15 @@ public class CustomerIO: CustomerIOInstance {
         region: Region = Region.US
     ) {
         Self.shared.globalData.sharedInstanceSiteId = siteId
+        Self.shared.diGraph = DIGraph.getInstance(siteId: siteId)
 
-        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region, diGraph: DIGraph.getInstance(siteId: siteId))
-
+        Self.shared.setCredentials(siteId: siteId, apiKey: apiKey, region: region)
+        
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId)
 
         Self.shared.postInitialize(siteId: siteId)
 
-        Self.shared.logger?
+        Self.shared.logger
             .info(
                 "shared Customer.io SDK \(SdkVersion.version) instance initialized and ready to use for site id: \(siteId)"
             )
@@ -231,7 +228,7 @@ public class CustomerIO: CustomerIOInstance {
     /**
      Sets credentials on shared or non-shared instance.
      */
-    internal func setCredentials(siteId: String, apiKey: String, region: Region, diGraph: DIGraph) {
+    internal func setCredentials(siteId: String, apiKey: String, region: Region) {
         var credentialsStore = diGraph.sdkCredentialsStore
 
         credentialsStore.credentials = SdkCredentials(apiKey: apiKey, region: region)
@@ -251,7 +248,6 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     private func postInitialize(siteId: String) {
-        let diGraph = DIGraph.getInstance(siteId: siteId)
         let threadUtil = diGraph.threadUtil
         // Register Tracking module hooks now that the module is being initialized.
         let hooksManager = diGraph.hooksManager
