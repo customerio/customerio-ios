@@ -26,8 +26,12 @@ pod 'CustomerIO/MessagingPushFCM', "~> 2.0.0"
 branch_name = 'demo-bug-fix'
 pod 'CustomerIOCommon', :git => 'https://github.com/customerio/customerio-ios.git', :branch => branch_name
 pod 'CustomerIOMessagingPush', :git => 'https://github.com/customerio/customerio-ios.git', :branch => branch_name
+
 pod 'CustomerIOTracking', :git => 'https://github.com/customerio/customerio-ios.git', :branch => branch_name
+# If using FCM for push notifications, add the FCM module:
 pod 'CustomerIOMessagingPushFCM', :git => 'https://github.com/customerio/customerio-ios.git', :branch => branch_name
+# Or, use the APN push notifications module:
+pod 'CustomerIOMessagingPushAPN', :git => 'https://github.com/customerio/customerio-ios.git', :branch => branch_name
 # Do not forget to include "CustomerIOCommon" and "CustomerIOMessagingPush" as shown above. They are required 
 # when installing branch builds. 
 ```
