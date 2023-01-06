@@ -123,10 +123,10 @@ class CustomerIOIntegrationTests: IntegrationTest {
     // Issues reported in the past where BQ caused a stackoverflow it too many tasks inside of it: https://github.com/customerio/issues/issues/8917
     func test_backgroundQueueCanHandleLotsOfTasksInQueue() {
         let numberOfTasksToAddToQueue = 1000
-        httpRequestRunnerStub.alwaysReturnResponse(code: 403, data: "".data)
         setUp { config in
             config.backgroundQueueMinNumberOfTasks = numberOfTasksToAddToQueue
         }
+        httpRequestRunnerStub.alwaysReturnResponse(code: 403, data: "".data)
 
         CustomerIO.shared.identify(identifier: .random) // to allow us to add other tasks to the BQ
 
