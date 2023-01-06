@@ -1,3 +1,10 @@
+### [2.0.2](https://github.com/customerio/customerio-ios/compare/2.0.1...2.0.2) (2023-01-06)
+
+
+### Bug Fixes
+
+* prevent stackoverflow while executing background queue with lots of tasks in it ([#245](https://github.com/customerio/customerio-ios/issues/245)) ([ef0c428](https://github.com/customerio/customerio-ios/commit/ef0c4285bbe1a908e9695258f84cde26b62eeb80))
+
 ### [2.0.1](https://github.com/customerio/customerio-ios/compare/2.0.0...2.0.1) (2022-12-22)
 
 
