@@ -1,3 +1,10 @@
+### [1.2.9](https://github.com/customerio/customerio-ios/compare/1.2.8...1.2.9) (2023-01-06)
+
+
+### Bug Fixes
+
+* 1.2.8 initialize in-app with debug logs no longer crashes SDK ([#243](https://github.com/customerio/customerio-ios/issues/243)) ([98962f7](https://github.com/customerio/customerio-ios/commit/98962f76ef70536c68ebccc809e9eaab86931aae))
+
 ### [1.2.8](https://github.com/customerio/customerio-ios/compare/1.2.7...1.2.8) (2022-12-22)
 
 
