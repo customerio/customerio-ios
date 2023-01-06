@@ -17,12 +17,6 @@ class CustomerIOIntegrationTests: IntegrationTest {
         CustomAttributesSampleData.expectedCustomAttributesString
     }
 
-    override func setUp() {
-        super.setUp(enableLogs: true) { config in
-            config.backgroundQueueMinNumberOfTasks = 1000
-        }
-    }
-
     // MARK: tests for all public SDK functions that customers can send us custom attributes. Assert that SDK does not modify the passed in custom attributes in anyway including converting JSON keys from camelCase to snake_case, for example.
 
     func test_identify_givenCustomAttributes_expectDoNotModifyCustomAttributes() {
@@ -123,19 +117,25 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
     }
 
-    // reproduce: https://github.com/customerio/issues/issues/8917
-    // and https://github.com/customerio/customerio-reactnative/issues/54
-    func test_causeStackoverflow() {
+    // MARK: Misc tests
+
+    // Test BQ can process lots of tasks inside of it.
+    // Issues reported in the past where BQ caused a stackoverflow it too many tasks inside of it: https://github.com/customerio/issues/issues/8917
+    func test_backgroundQueueCanHandleLotsOfTasksInQueue() {
+        let numberOfTasksToAddToQueue = 1000
         httpRequestRunnerStub.alwaysReturnResponse(code: 403, data: "".data)
+        setUp { config in
+            config.backgroundQueueMinNumberOfTasks = numberOfTasksToAddToQueue
+        }
 
-        CustomerIO.shared.identify(identifier: .random)
+        CustomerIO.shared.identify(identifier: .random) // to allow us to add other tasks to the BQ
 
-        for x in 0 ... 1000 {
+        for _ in 0 ... numberOfTasksToAddToQueue {
             CustomerIO.shared.track(name: .random)
         }
 
         waitForQueueToFinishRunningTasks(queue)
 
-        XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 1000)
+        XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, numberOfTasksToAddToQueue)
     }
 }
