@@ -156,6 +156,7 @@ open class UnitTest: XCTestCase {
 public extension UnitTest {
     func waitForQueueToFinishRunningTasks(
         _ queue: Queue,
+        timeout: TimeInterval = 0.5,
         file: StaticString = #file,
         line: UInt = #line
     ) {
@@ -164,7 +165,6 @@ public extension UnitTest {
             queueExpectation.fulfill()
         }
 
-        waitForExpectations(30.0)
-//        waitForExpectations(for: [queueExpectation], timeout: 30.0, file: file, line: line)
+        waitForExpectations(for: [queueExpectation], timeout: timeout, file: file, line: line)
     }
 }

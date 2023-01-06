@@ -134,7 +134,8 @@ class CustomerIOIntegrationTests: IntegrationTest {
             CustomerIO.shared.track(name: .random)
         }
 
-        waitForQueueToFinishRunningTasks(queue)
+        // 30 second timeout because this test takes a while to execute.
+        waitForQueueToFinishRunningTasks(queue, timeout: 30.0)
 
         XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, numberOfTasksToAddToQueue)
     }
