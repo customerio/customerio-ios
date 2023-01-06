@@ -18,7 +18,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
     }
 
     override func setUp() {
-        super.setUp(enableLogs: false) { config in
+        super.setUp(enableLogs: true) { config in
             config.backgroundQueueMinNumberOfTasks = 1000
         }
     }
