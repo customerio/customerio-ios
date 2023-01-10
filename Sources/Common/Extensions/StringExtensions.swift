@@ -29,7 +29,7 @@ public extension String {
 
     /**
      Checks if the string matches the regex pattern.
-     
+
      Will only return true if the *full string* is matched, not a substring.
      */
     func matches(regex: String) -> Bool {
@@ -74,9 +74,9 @@ public extension String {
 
     func getRegion() -> Region {
         switch self {
-        case "us" :
+        case "us":
             return Region.US
-        case "eu" :
+        case "eu":
             return Region.EU
         default:
             return Region.US
@@ -99,6 +99,6 @@ public extension String {
     }
 
     func getEvent() -> Metric? {
-        return Metric(rawValue: self.lowercased())
+        Metric(rawValue: lowercased())
     }
 }
