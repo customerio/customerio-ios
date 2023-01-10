@@ -23,11 +23,11 @@ public struct SdkConfig {
 
         public static func create(region: Region, params: [String: Any]) -> SdkConfig {
             var config = SdkConfig(trackingApiUrl: region.productionTrackingUrl)
-            config.autoTrackDeviceAttributes = params[CustomerIOBuilderConfigKeys.Config.autoTrackDeviceAttributes] as! Bool
-            config.logLevel = (params[CustomerIOBuilderConfigKeys.Config.logLevel] as! String).getCioLogLevel()
-            config.autoTrackPushEvents = params[CustomerIOBuilderConfigKeys.Config.autoTrackPushEvents] as! Bool
-            config.backgroundQueueMinNumberOfTasks = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueMinNumberOfTasks] as! Int
-            config.backgroundQueueSecondsDelay = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueSecondsDelay] as! Seconds
+            config.autoTrackDeviceAttributes = params[CustomerIOBuilderConfigKeys.Config.autoTrackDeviceAttributes] as? Bool ?? config.autoTrackDeviceAttributes
+            config.logLevel = (params[CustomerIOBuilderConfigKeys.Config.logLevel] as? String)?.getCioLogLevel() ?? config.logLevel
+            config.autoTrackPushEvents = params[CustomerIOBuilderConfigKeys.Config.autoTrackPushEvents] as? Bool ?? config.autoTrackPushEvents
+            config.backgroundQueueMinNumberOfTasks = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueMinNumberOfTasks] as? Int ?? config.backgroundQueueMinNumberOfTasks
+            config.backgroundQueueSecondsDelay = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueSecondsDelay] as? Seconds ?? config.backgroundQueueSecondsDelay
             if let trackingApiUrl = params[CustomerIOBuilderConfigKeys.Config.trackingApiUrl] as? String, !trackingApiUrl.isEmpty {
                 config.trackingApiUrl = trackingApiUrl
             }
