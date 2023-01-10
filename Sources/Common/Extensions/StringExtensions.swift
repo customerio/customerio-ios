@@ -29,7 +29,7 @@ public extension String {
 
     /**
      Checks if the string matches the regex pattern.
-
+     
      Will only return true if the *full string* is matched, not a substring.
      */
     func matches(regex: String) -> Bool {
@@ -70,5 +70,35 @@ public extension String {
     subscript(_ range: CountablePartialRangeFrom<Int>) -> String {
         let start = index(startIndex, offsetBy: max(0, range.lowerBound))
         return String(self[start...])
+    }
+
+    func getRegion() -> Region {
+        switch self {
+        case "us" :
+            return Region.US
+        case "eu" :
+            return Region.EU
+        default:
+            return Region.US
+        }
+    }
+
+    func getCioLogLevel() -> CioLogLevel {
+        switch self {
+        case "none":
+            return .none
+        case "error":
+            return .error
+        case "info":
+            return .info
+        case "debug":
+            return .debug
+        default:
+            return .error
+        }
+    }
+
+    func getEvent() -> Metric? {
+        return Metric(rawValue: self.lowercased())
     }
 }

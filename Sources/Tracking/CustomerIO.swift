@@ -174,6 +174,38 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
+     Initialize the shared `instance` of `CustomerIO` with `configParams`.
+     Call this function when your app launches, before using `CustomerIO.instance`.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    public static func initialize(
+        siteId: String,
+        apiKey: String,
+        region: Region,
+        params: [String: Any],
+        configure configureHandler: ((inout SdkConfig) -> Void)?
+    ) {
+        var newSdkConfig = SdkConfig.Factory.create(region: region, params: params)
+
+        if let configureHandler = configureHandler {
+            configureHandler(&newSdkConfig)
+        }
+
+        Self.initialize(
+            siteId: siteId,
+            apiKey: apiKey,
+            region: region,
+            config: newSdkConfig
+        )
+
+        if newSdkConfig.autoTrackScreenViews {
+            // Setting up screen view tracking is not available for rich push (Notification Service Extension).
+            // Only call this code when not possibly being called from a NSE.
+            Self.shared.setupAutoScreenviewTracking()
+        }
+    }
+
+    /**
      Initialize the shared `instance` of `CustomerIO`.
      Call this function in your Notification Service Extension for the rich push feature.
      */

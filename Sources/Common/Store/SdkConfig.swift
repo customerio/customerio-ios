@@ -20,6 +20,19 @@ public struct SdkConfig {
         public static func create(region: Region) -> SdkConfig {
             SdkConfig(trackingApiUrl: region.productionTrackingUrl)
         }
+
+        public static func create(region: Region, params: [String: Any]) -> SdkConfig {
+            var config = SdkConfig(trackingApiUrl: region.productionTrackingUrl)
+            config.autoTrackDeviceAttributes = params[CustomerIOBuilderConfigKeys.Config.autoTrackDeviceAttributes] as! Bool
+            config.logLevel = (params[CustomerIOBuilderConfigKeys.Config.logLevel] as! String).getCioLogLevel()
+            config.autoTrackPushEvents = params[CustomerIOBuilderConfigKeys.Config.autoTrackPushEvents] as! Bool
+            config.backgroundQueueMinNumberOfTasks = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueMinNumberOfTasks] as! Int
+            config.backgroundQueueSecondsDelay = params[CustomerIOBuilderConfigKeys.Config.backgroundQueueSecondsDelay] as! Seconds
+            if let trackingApiUrl = params[CustomerIOBuilderConfigKeys.Config.trackingApiUrl] as? String, !trackingApiUrl.isEmpty {
+                config.trackingApiUrl = trackingApiUrl
+            }
+            return config
+        }
     }
 
     /**
