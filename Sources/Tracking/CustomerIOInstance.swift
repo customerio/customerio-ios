@@ -1,5 +1,5 @@
-import Foundation
 import Common
+import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
