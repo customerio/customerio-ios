@@ -33,10 +33,6 @@ public class HttpRequestRunnerStub {
         responseToAlwaysReturn = getHttpResponse(code: 200, data: "".data)
     }
 
-    public func alwaysReturnResponse(code: Int, data: Data) {
-        responseToAlwaysReturn = getHttpResponse(code: code, data: data)
-    }
-
     private func getHttpResponse(code: Int, data: Data) -> HttpResponse {
         HttpResponse(
             data: data,
