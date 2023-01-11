@@ -8,12 +8,11 @@ public extension XCTestCase {
 
     func waitForExpectations(
         for expectations: [XCTestExpectation],
-        timeout: TimeInterval = 0.5,
         enforceOrder: Bool = false,
         file _: StaticString = #file,
         line _: UInt = #line
     ) {
-        wait(for: expectations, timeout: timeout, enforceOrder: enforceOrder)
+        wait(for: expectations, timeout: 0.5, enforceOrder: enforceOrder)
     }
 
     func getEnvironmentVariable(_ key: String) -> String? {

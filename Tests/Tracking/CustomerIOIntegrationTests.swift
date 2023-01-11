@@ -116,27 +116,4 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 0)
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
     }
-
-    // MARK: Misc tests
-
-    // Test BQ can process lots of tasks inside of it.
-    // Issues reported in the past where BQ caused a stackoverflow it too many tasks inside of it: https://github.com/customerio/issues/issues/8917
-    func test_backgroundQueueCanHandleLotsOfTasksInQueue() {
-        let numberOfTasksToAddToQueue = 1000
-        setUp { config in
-            config.backgroundQueueMinNumberOfTasks = numberOfTasksToAddToQueue
-        }
-        httpRequestRunnerStub.alwaysReturnResponse(code: 403, data: "".data)
-
-        CustomerIO.shared.identify(identifier: .random) // to allow us to add other tasks to the BQ
-
-        for _ in 0 ... numberOfTasksToAddToQueue {
-            CustomerIO.shared.track(name: .random)
-        }
-
-        // 30 second timeout because this test takes a while to execute.
-        waitForQueueToFinishRunningTasks(queue, timeout: 30.0)
-
-        XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, numberOfTasksToAddToQueue)
-    }
 }

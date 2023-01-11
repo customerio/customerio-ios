@@ -15,9 +15,8 @@ open class IntegrationTest: UnitTest {
     // Date util stub is available in UnitTest
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
-    // setup should match that of UnitTest so that when a subclass calls setUp, it should call this function instead UnitTest's version.
-    override open func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        super.setUp(enableLogs: enableLogs, modifySdkConfig: modifySdkConfig)
+    override open func setUp() {
+        super.setUp()
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 

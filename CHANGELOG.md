@@ -1,3 +1,10 @@
+### [2.0.3](https://github.com/customerio/customerio-ios/compare/2.0.2...2.0.3) (2023-01-11)
+
+
+### Bug Fixes
+
+* revert 2.0.2 as it was found unstable ([#249](https://github.com/customerio/customerio-ios/issues/249)) ([51b5831](https://github.com/customerio/customerio-ios/commit/51b58314705eaa336e2eeb3579b3ca7df0cfcaab))
+
 ### [2.0.2](https://github.com/customerio/customerio-ios/compare/2.0.1...2.0.2) (2023-01-06)
 
 
