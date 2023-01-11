@@ -2139,7 +2139,7 @@ public class QueueRunnerMock: QueueRunner, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Void)?
+    public var runTaskClosure: ((QueueTask, @escaping (Result<Void, HttpRequestError>) -> Void) -> Void)?
 
     /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) ->
     /// Void)`. Your opportunity to return a mocked value and check result of mock in test code.

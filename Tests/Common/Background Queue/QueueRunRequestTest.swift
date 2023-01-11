@@ -118,6 +118,79 @@ class QueueRunRequestTest: UnitTest {
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
         XCTAssertEqual(storageMock.deleteCallsCount, 2)
     }
+
+    // MARK: runTasks
+
+    // runTasks() performs async operations inside of it. A stackoverflow/infinite loop can occur if these async operations do not run in sequential order.
+    func test_runTasks_expectAsyncOperationsToPerformSequentially() {
+        // add 3 tasks to BQ
+        // expect order:
+        // get inventory
+        // run the task, task finish
+        // get inventory
+        // run the task, task finish
+
+        // if the while loop is broken, you should see
+        // get inventory
+        // run task
+        // get inventory
+        // get inventory
+        // task finish
+
+        let expectGetInventoryTask1 = expectation(description: "")
+        let finishRunningTask1 = expectation(description: "")
+        let expectGetInventoryTask2 = expectation(description: "")
+        let finishRunningTask2 = expectation(description: "")
+        let expectGetInventoryTask3 = expectation(description: "")
+        let finishRunningTask3 = expectation(description: "")
+
+        var inventory = [
+            QueueTaskMetadata.random.taskPersistedIdSet(.random),
+            QueueTaskMetadata.random.taskPersistedIdSet(.random),
+            QueueTaskMetadata.random.taskPersistedIdSet(.random)
+        ]
+
+        storageMock.getInventoryClosure = {
+            switch inventory.count {
+            case 3: expectGetInventoryTask1.fulfill()
+            case 2: expectGetInventoryTask2.fulfill()
+            case 1: expectGetInventoryTask3.fulfill()
+            default: break
+            }
+
+            return inventory
+        }
+
+        runnerMock.runTaskClosure = { _, onComplete in
+            switch inventory.count {
+            case 3: finishRunningTask1.fulfill()
+            case 2: finishRunningTask2.fulfill()
+            case 1: finishRunningTask3.fulfill()
+            default: break
+            }
+
+            let seconds = 0.5
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                inventory.removeFirst()
+                onComplete(.success(()))
+            }
+        }
+
+        requestManagerMock.startRequestReturnValue = false
+        storageMock.getReturnValue = QueueTask.random
+        storageMock.deleteReturnValue = true
+
+        runRequest.start {}
+
+        waitForExpectations(for: [
+            expectGetInventoryTask1,
+            finishRunningTask1,
+            expectGetInventoryTask2,
+            finishRunningTask2,
+            expectGetInventoryTask3,
+            finishRunningTask3
+        ], enforceOrder: true)
+    }
 }
 
 class QueueRunRequestIntegrationTest: IntegrationTest {
