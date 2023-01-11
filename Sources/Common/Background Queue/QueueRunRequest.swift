@@ -44,13 +44,14 @@ public class CioQueueRunRequest: QueueRunRequest {
     // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
     // Many of the lines of this function are logging related.
     // swiftlint:disable:next function_body_length
-    private func runTasks() {
+    internal func runTasks() {
         var lastRanTask: QueueTaskMetadata?
         var lastFailedTask: QueueTaskMetadata?
         var continueRunnning = true
+        let whileLoopWait = DispatchGroup()
 
         // call when you're done with task
-        func goToNextTask(didTaskFail: Bool, taskJustExecuted: QueueTaskMetadata) {
+        func updateWhileLoopLogicVariables(didTaskFail: Bool, taskJustExecuted: QueueTaskMetadata) {
             lastFailedTask = didTaskFail ? taskJustExecuted : nil
             lastRanTask = taskJustExecuted
         }
@@ -86,7 +87,7 @@ public class CioQueueRunRequest: QueueRunRequest {
                 logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
 
                 // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
-                goToNextTask(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
+                updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                 break
             }
 
@@ -96,6 +97,7 @@ public class CioQueueRunRequest: QueueRunRequest {
             \(nextTaskToRun.type), \(nextTaskToRun.data.string ?? ""), \(nextTaskToRun.runResults)
             """)
 
+            whileLoopWait.enter() // Call right before the async operation begins.
             // we are not using [weak self] because if the task is currently running,
             // we dont want the result handler to get garbage collected which could
             // make the task run again when it shouldn't.
@@ -110,7 +112,7 @@ public class CioQueueRunRequest: QueueRunRequest {
                     self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
                     _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
-                    goToNextTask(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
+                    updateWhileLoopLogicVariables(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
                 case .failure(let error):
                     self.logger
                         .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
@@ -141,9 +143,14 @@ public class CioQueueRunRequest: QueueRunRequest {
                         )
                     }
 
-                    goToNextTask(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
+                    updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                 }
+
+                // make sure to update the variables for the while loop logic before running the while loop again.
+                whileLoopWait.leave()
             }
+
+            whileLoopWait.wait()
         }
     }
 }

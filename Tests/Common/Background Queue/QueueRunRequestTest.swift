@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class QueueRunRequestTest: UnitTest {
-    private var runRequest: QueueRunRequest!
+    private var runRequest: CioQueueRunRequest!
 
     private let runnerMock = QueueRunnerMock()
     private let storageMock = QueueStorageMock()
@@ -24,6 +24,15 @@ class QueueRunRequestTest: UnitTest {
             logger: log,
             queryRunner: queryRunner
         )
+
+        // Boilerplate defaults:
+
+        // Setup storage to successfully update and delete by default. Override in test function to test other behaviors.
+        storageMock.updateReturnValue = true
+        storageMock.deleteReturnValue = true
+
+        // Not already running a queue run request. When you want to start a new one, start it.
+        requestManagerMock.startRequestReturnValue = false
     }
 
     // our indictor if run request is running the queue
@@ -52,7 +61,6 @@ class QueueRunRequestTest: UnitTest {
     }
 
     func test_start_givenRunTaskSuccess_expectDeleteTask() {
-        requestManagerMock.startRequestReturnValue = false
         let givenQueueTask = QueueTask.random
         let givenStorageId = givenQueueTask.storageId
         storageMock.getReturnValue = givenQueueTask
@@ -64,7 +72,6 @@ class QueueRunRequestTest: UnitTest {
             inventory.removeFirst()
             onComplete(.success(()))
         }
-        storageMock.deleteReturnValue = true
 
         runRequest.start {}
 
@@ -75,7 +82,6 @@ class QueueRunRequestTest: UnitTest {
     }
 
     func test_start_givenRunTaskFailure_expectDontDeleteTask_expectUpdateTask() {
-        requestManagerMock.startRequestReturnValue = false
         let givenQueueTask = QueueTask.random
         let givenStorageId = givenQueueTask.storageId
         storageMock.getReturnValue = givenQueueTask
@@ -87,7 +93,6 @@ class QueueRunRequestTest: UnitTest {
             inventory.removeFirst()
             onComplete(.failure(.getGenericFailure()))
         }
-        storageMock.updateReturnValue = true
 
         runRequest.start {}
 
@@ -98,7 +103,6 @@ class QueueRunRequestTest: UnitTest {
     }
 
     func test_start_givenTasksToRun_expectToRunTask_expectToCompleteAfterRunningAllTasks() {
-        requestManagerMock.startRequestReturnValue = false
         storageMock.getReturnValue = QueueTask.random
         var inventory = [
             QueueTaskMetadata.random,
@@ -109,7 +113,6 @@ class QueueRunRequestTest: UnitTest {
             inventory.removeFirst()
             onComplete(.success(()))
         }
-        storageMock.deleteReturnValue = true
 
         runRequest.start {}
 
@@ -123,26 +126,13 @@ class QueueRunRequestTest: UnitTest {
 
     // runTasks() performs async operations inside of it. A stackoverflow/infinite loop can occur if these async operations do not run in sequential order.
     func test_runTasks_expectAsyncOperationsToPerformSequentially() {
-        // add 3 tasks to BQ
-        // expect order:
-        // get inventory
-        // run the task, task finish
-        // get inventory
-        // run the task, task finish
-
-        // if the while loop is broken, you should see
-        // get inventory
-        // run task
-        // get inventory
-        // get inventory
-        // task finish
-
-        let expectGetInventoryTask1 = expectation(description: "")
-        let finishRunningTask1 = expectation(description: "")
-        let expectGetInventoryTask2 = expectation(description: "")
-        let finishRunningTask2 = expectation(description: "")
-        let expectGetInventoryTask3 = expectation(description: "")
-        let finishRunningTask3 = expectation(description: "")
+        // Events, in order, that are expected to happen
+        let expectGetInventoryTask1 = expectation(description: "expect to ask for item 1 from inventory")
+        let finishRunningTask1 = expectation(description: "expect task 1 to begin running")
+        let expectGetInventoryTask2 = expectation(description: "expect to ask for item 2 from inventory")
+        let finishRunningTask2 = expectation(description: "expect task 2 to begin running")
+        let expectGetInventoryTask3 = expectation(description: "expect to ask for item 3 from inventory")
+        let finishRunningTask3 = expectation(description: "expect task 3 to begin running")
 
         var inventory = [
             QueueTaskMetadata.random.taskPersistedIdSet(.random),
@@ -169,18 +159,15 @@ class QueueRunRequestTest: UnitTest {
             default: break
             }
 
-            let seconds = 0.5
-            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+            self.runAfterDelay(seconds: 0.5) { // simulate a network call in running a task
+                // task is done! Delete task from the inventory since it is now done.
                 inventory.removeFirst()
                 onComplete(.success(()))
             }
         }
-
-        requestManagerMock.startRequestReturnValue = false
         storageMock.getReturnValue = QueueTask.random
-        storageMock.deleteReturnValue = true
 
-        runRequest.start {}
+        runRequest.runTasks()
 
         waitForExpectations(for: [
             expectGetInventoryTask1,
