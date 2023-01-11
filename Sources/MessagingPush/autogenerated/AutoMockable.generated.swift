@@ -156,8 +156,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      */
     public var registerDeviceTokenClosure: ((String) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func registerDeviceToken(_ deviceToken: String) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
@@ -180,8 +179,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      */
     public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteDeviceToken() {
         mockCalled = true
         deleteDeviceTokenCallsCount += 1
@@ -200,15 +198,13 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] =
-        []
+    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         mockCalled = true
         trackMetricCallsCount += 1
@@ -228,15 +224,9 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent) -> Void
-    )?
+    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent) -> Void
-    )] = []
+    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**
@@ -244,22 +234,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `didReceiveNotificationRequestReturnValue`
      */
-    public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, (UNNotificationContent) -> Void) -> Bool)?
+    public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, @escaping (UNNotificationContent) -> Void) -> Bool)?
 
-    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping
-    /// (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
+    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
+    public func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) -> Bool {
         mockCalled = true
         didReceiveNotificationRequestCallsCount += 1
         didReceiveNotificationRequestReceivedArguments = (request: request, contentHandler: contentHandler)
         didReceiveNotificationRequestReceivedInvocations.append((request: request, contentHandler: contentHandler))
-        return didReceiveNotificationRequestClosure
-            .map { $0(request, contentHandler) } ?? didReceiveNotificationRequestReturnValue
+        return didReceiveNotificationRequestClosure.map { $0(request, contentHandler) } ?? didReceiveNotificationRequestReturnValue
     }
     #endif
 
@@ -278,8 +262,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      */
     public var serviceExtensionTimeWillExpireClosure: (() -> Void)?
 
-    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func serviceExtensionTimeWillExpire() {
         mockCalled = true
         serviceExtensionTimeWillExpireCallsCount += 1
@@ -298,17 +281,9 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenter_withCompletionReceivedArguments: (
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse,
-        completionHandler: () -> Void
-    )?
+    public private(set) var userNotificationCenter_withCompletionReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenter_withCompletionReceivedInvocations: [(
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse,
-        completionHandler: () -> Void
-    )] = []
+    public private(set) var userNotificationCenter_withCompletionReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)] = []
     /// Value to return from the mocked function.
     public var userNotificationCenter_withCompletionReturnValue: Bool!
     /**
@@ -316,31 +291,15 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `userNotificationCenter_withCompletionReturnValue`
      */
-    public var userNotificationCenter_withCompletionClosure: ((
-        UNUserNotificationCenter,
-        UNNotificationResponse,
-        () -> Void
-    ) -> Bool)?
+    public var userNotificationCenter_withCompletionClosure: ((UNUserNotificationCenter, UNNotificationResponse, @escaping () -> Void) -> Bool)?
 
-    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response:
-    /// UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
+    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) -> Bool {
         mockCalled = true
         userNotificationCenter_withCompletionCallsCount += 1
-        userNotificationCenter_withCompletionReceivedArguments = (
-            center: center,
-            response: response,
-            completionHandler: completionHandler
-        )
-        userNotificationCenter_withCompletionReceivedInvocations
-            .append((center: center, response: response, completionHandler: completionHandler))
-        return userNotificationCenter_withCompletionClosure
-            .map { $0(center, response, completionHandler) } ?? userNotificationCenter_withCompletionReturnValue
+        userNotificationCenter_withCompletionReceivedArguments = (center: center, response: response, completionHandler: completionHandler)
+        userNotificationCenter_withCompletionReceivedInvocations.append((center: center, response: response, completionHandler: completionHandler))
+        return userNotificationCenter_withCompletionClosure.map { $0(center, response, completionHandler) } ?? userNotificationCenter_withCompletionReturnValue
     }
     #endif
 
@@ -355,15 +314,9 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedArguments: (
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse
-    )?
+    public private(set) var userNotificationCenterReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedInvocations: [(
-        center: UNUserNotificationCenter,
-        response: UNNotificationResponse
-    )] = []
+    public private(set) var userNotificationCenterReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse)] = []
     /// Value to return from the mocked function.
     public var userNotificationCenterReturnValue: CustomerIOParsedPushPayload?
     /**
@@ -371,17 +324,10 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `userNotificationCenterReturnValue`
      */
-    public var userNotificationCenterClosure: (
-        (UNUserNotificationCenter, UNNotificationResponse)
-            -> CustomerIOParsedPushPayload?
-    )?
+    public var userNotificationCenterClosure: ((UNUserNotificationCenter, UNNotificationResponse) -> CustomerIOParsedPushPayload?)?
 
-    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response:
-    /// UNNotificationResponse)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload? {
+    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
         mockCalled = true
         userNotificationCenterCallsCount += 1
         userNotificationCenterReceivedArguments = (center: center, response: response)
