@@ -45,10 +45,11 @@ public class CioQueueRunRequest: QueueRunRequest {
     // Many of the lines of this function are logging related.
     // swiftlint:disable:next function_body_length
     internal func runTasks() {
+        // Variables that power the logic of the queue run loop
         var lastRanTask: QueueTaskMetadata?
         var lastFailedTask: QueueTaskMetadata?
         var continueRunnning = true
-        let whileLoopWait = DispatchGroup()
+        let whileLoopWait = DispatchGroup() // make async operations perform synchronously in while loop
 
         // call when you're done with task
         func updateWhileLoopLogicVariables(didTaskFail: Bool, taskJustExecuted: QueueTaskMetadata) {
@@ -65,6 +66,7 @@ public class CioQueueRunRequest: QueueRunRequest {
             return requestManager.requestComplete()
         }
 
+        // The queue runs a continuous loop until it has determined that it has reached the end of the queue and has processed all the tasks that it can at this time.
         while continueRunnning {
             // get the inventory before running each task. If a task was added to the queue while the last task was being
             // executed, we can assert that new task will execute during this run.
@@ -150,6 +152,7 @@ public class CioQueueRunRequest: QueueRunRequest {
                 whileLoopWait.leave()
             }
 
+            // wait to end the while loop until the async operation has completed.
             whileLoopWait.wait()
         }
     }
