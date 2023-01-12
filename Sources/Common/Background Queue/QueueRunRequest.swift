@@ -12,6 +12,7 @@ public class CioQueueRunRequest: QueueRunRequest {
     private let requestManager: QueueRequestManager
     private let logger: Logger
     private let queryRunner: QueueQueryRunner
+    private let threadUtil: ThreadUtil
 
     private let shortTaskId: (String) -> String = { $0[0 ..< 5] }
 
@@ -20,13 +21,15 @@ public class CioQueueRunRequest: QueueRunRequest {
         storage: QueueStorage,
         requestManager: QueueRequestManager,
         logger: Logger,
-        queryRunner: QueueQueryRunner
+        queryRunner: QueueQueryRunner,
+        threadUtil: ThreadUtil
     ) {
         self.runner = runner
         self.storage = storage
         self.requestManager = requestManager
         self.logger = logger
         self.queryRunner = queryRunner
+        self.threadUtil = threadUtil
     }
 
     public func start(onComplete: @escaping () -> Void) {
@@ -38,7 +41,9 @@ public class CioQueueRunRequest: QueueRunRequest {
     }
 
     private func startNewRequestRun() {
-        runTasks()
+        threadUtil.runBackground {
+            self.runTasks()
+        }
     }
 
     // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
