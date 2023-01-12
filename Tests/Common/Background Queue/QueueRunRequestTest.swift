@@ -22,7 +22,8 @@ class QueueRunRequestTest: UnitTest {
             storage: storageMock,
             requestManager: requestManagerMock,
             logger: log,
-            queryRunner: queryRunner
+            queryRunner: queryRunner,
+            threadUtil: threadUtilStub
         )
 
         // Boilerplate defaults:
@@ -199,7 +200,8 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
             storage: diGraph.queueStorage,
             requestManager: diGraph.queueRequestManager,
             logger: diGraph.logger,
-            queryRunner: diGraph.queueQueryRunner
+            queryRunner: diGraph.queueQueryRunner,
+            threadUtil: threadUtilStub
         )
     }
 
