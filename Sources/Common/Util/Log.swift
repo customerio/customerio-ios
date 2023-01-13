@@ -27,7 +27,7 @@ public enum CioLogLevel {
     case info
     case debug
 
-    #if canImport(os)
+#if canImport(os)
     func shouldLog(_ level: OSLogType) -> Bool {
         switch self {
         case .none: return false
@@ -39,7 +39,7 @@ public enum CioLogLevel {
             return true
         }
     }
-    #endif
+#endif
 }
 
 // log messages to console.
@@ -61,7 +61,7 @@ public class ConsoleLogger: Logger {
         self.sdkConfig = sdkConfig
     }
 
-    #if canImport(os)
+#if canImport(os)
     // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
     // This means we can view logs in xcode console + Console app.
     private func printMessage(_ message: String, _ level: OSLogType) {
@@ -89,12 +89,44 @@ public class ConsoleLogger: Logger {
     public func error(_ message: String) {
         printMessage("🛑 \(message)", .error)
     }
-    #else
+#else
     // At this time, Linux cannot use `os.log` or `OSLog`. Instead, use: https://github.com/apple/swift-log/
     // As we don't officially support Linux at this time, no need to add a dependency to the project.
     // therefore, we are not logging if can't import os.log
     public func debug(_ message: String) {}
     public func info(_ message: String) {}
     public func error(_ message: String) {}
-    #endif
+#endif
+}
+
+extension CioLogLevel {
+    static func getLogLevel(for value: Int) -> CioLogLevel {
+        switch value {
+        case 1:
+            return .none
+        case 2:
+            return .error
+        case 3:
+            return .info
+        case 4:
+            return .debug
+        default:
+            return .error
+        }
+    }
+
+    static func getLogLevel(for value: String) -> CioLogLevel {
+        switch value.lowercased() {
+        case "none":
+            return .none
+        case "error":
+            return .error
+        case "info":
+            return .info
+        case "debug":
+            return .debug
+        default:
+            return .error
+        }
+    }
 }

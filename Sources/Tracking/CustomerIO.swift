@@ -113,7 +113,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-     Initialize the shared `instance` of `CustomerIO` with `configParams`.
+     Initialize the shared `instance` of `CustomerIO` with optional `configParams`.
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
@@ -121,9 +121,10 @@ public class CustomerIO: CustomerIOInstance {
         siteId: String,
         apiKey: String,
         region: Region,
-        params: [String: Any],
+        params: [String: Any] = [:],
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
+
         var newSdkConfig = SdkConfig.Factory.create(region: region, params: params)
 
         if let configureHandler = configureHandler {

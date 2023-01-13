@@ -72,33 +72,4 @@ public extension String {
         return String(self[start...])
     }
 
-    func getRegion() -> Region {
-        switch self {
-        case "us":
-            return Region.US
-        case "eu":
-            return Region.EU
-        default:
-            return Region.US
-        }
-    }
-
-    func getCioLogLevel() -> CioLogLevel {
-        switch self {
-        case "none":
-            return .none
-        case "error":
-            return .error
-        case "info":
-            return .info
-        case "debug":
-            return .debug
-        default:
-            return .error
-        }
-    }
-
-    func getEvent() -> Metric? {
-        Metric(rawValue: lowercased())
-    }
 }
