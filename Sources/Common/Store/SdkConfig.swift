@@ -48,8 +48,8 @@ public struct SdkConfig {
             if let backgroundQueueMinNumberOfTasks = params[Config.backgroundQueueMinNumberOfTasks] as? Int {
                 config.backgroundQueueMinNumberOfTasks = backgroundQueueMinNumberOfTasks
             }
-            if let backgroundQueueSecondsDelay = params[Config.backgroundQueueSecondsDelay] as? Seconds {
-                config.backgroundQueueSecondsDelay = backgroundQueueSecondsDelay
+            if let backgroundQueueSecondsDelay = params[Config.backgroundQueueSecondsDelay] as? Int {
+                config.backgroundQueueSecondsDelay = Seconds(backgroundQueueSecondsDelay)
             }
             if let trackingApiUrl = params[Config.trackingApiUrl] as? String, !trackingApiUrl.isEmpty {
                 config.trackingApiUrl = trackingApiUrl
