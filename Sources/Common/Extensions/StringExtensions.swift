@@ -71,5 +71,4 @@ public extension String {
         let start = index(startIndex, offsetBy: max(0, range.lowerBound))
         return String(self[start...])
     }
-
 }

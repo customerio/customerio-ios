@@ -3,7 +3,7 @@ import Foundation
 /**
  Configuration options for the Customer.io SDK.
  See `CustomerIO.config()` to configurate the SDK.
- 
+
  Example use case:
  ```
  // create a new instance
@@ -14,7 +14,6 @@ import Foundation
  ```
  */
 public struct SdkConfig {
-
     public enum Environment {
         static let siteId = "siteId"
         static let apiKey = "apiKey"
@@ -33,7 +32,6 @@ public struct SdkConfig {
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
-
         public static func create(region: Region, params: [String: Any] = [:]) -> SdkConfig {
             var config = SdkConfig(trackingApiUrl: region.productionTrackingUrl)
             if let autoTrackDeviceAttributes = params[Config.autoTrackDeviceAttributes] as? Bool {
@@ -60,7 +58,7 @@ public struct SdkConfig {
 
     /**
      Base URL to use for the Customer.io track API. You will more then likely not modify this value.
-     
+
      If you override this value, `Region` set when initializing the SDK will be ignored.
      */
     public var trackingApiUrl: String
@@ -123,15 +121,15 @@ public struct SdkConfig {
 
 /**
  SDK configuration just for rich push feature of the SDK.
- 
+
  Construct an instance like you would `SdkConfig`.
- 
+
  We have a separate SDK config just for rich push because:
  1. Instance of SDK inside of a Notification Service Extension does not have as many features to provide
  compared to running in a host app. Therefore, we don't need to expose as many SDK config options to customers.
  2. The SDK code needs to override some configuration options when running inside of a Notication Service Extension.
  We don't want customers to modify some of these overriden config options as it may effect some features of rich push.
- 
+
  Note: To not make the SDK code more complex, convert `NotificationServiceExtensionSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
  The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
  */

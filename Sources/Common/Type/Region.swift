@@ -4,7 +4,7 @@ import Foundation
 // swiftlint:disable identifier_name
 /**
  Region that your Customer.io Workspace is located in.
- 
+
  The SDK will route traffic to the correct data center location depending on the `Region` that you use.
  */
 public enum Region: String, Equatable {
@@ -27,9 +27,9 @@ public enum Region: String, Equatable {
 extension Region {
     static func getRegion(from regionStr: String) -> Region {
         switch regionStr.uppercased() {
-        case "US" :
+        case "US":
             return Region.US
-        case "EU" :
+        case "EU":
             return Region.EU
         default:
             return Region.US
