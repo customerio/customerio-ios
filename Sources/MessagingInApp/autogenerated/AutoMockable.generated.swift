@@ -136,8 +136,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var initializeClosure: ((String, GistDelegate) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func initialize(organizationId: String, delegate: GistDelegate) {
         mockCalled = true
         initializeCallsCount += 1
@@ -164,8 +163,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var setProfileIdentifierClosure: ((String) -> Void)?
 
-    /// Mocked function for `setProfileIdentifier(_ id: String)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `setProfileIdentifier(_ id: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func setProfileIdentifier(_ id: String) {
         mockCalled = true
         setProfileIdentifierCallsCount += 1
@@ -188,8 +186,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var clearIdentifyClosure: (() -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func clearIdentify() {
         mockCalled = true
         clearIdentifyCallsCount += 1
@@ -214,8 +211,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var setRouteClosure: ((String) -> Void)?
 
-    /// Mocked function for `setRoute(_ route: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `setRoute(_ route: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func setRoute(_ route: String) {
         mockCalled = true
         setRouteCallsCount += 1
@@ -266,8 +262,7 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
      */
     public var initializeClosure: ((String) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func initialize(organizationId: String) {
         mockCalled = true
         initializeCallsCount += 1
