@@ -70,4 +70,11 @@ public extension XCTestCase {
 
         return onComplete
     }
+
+    // Run block after a delay. Valuable for testing async code.
+    func runAfterDelay(seconds: TimeInterval, block: @escaping () -> Void) {
+        DispatchQueue(label: .random).asyncAfter(deadline: .now() + seconds) {
+            block()
+        }
+    }
 }
