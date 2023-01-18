@@ -8,12 +8,11 @@ public extension XCTestCase {
 
     func waitForExpectations(
         for expectations: [XCTestExpectation],
-        timeout: TimeInterval = 0.5,
         enforceOrder: Bool = false,
         file _: StaticString = #file,
         line _: UInt = #line
     ) {
-        wait(for: expectations, timeout: timeout, enforceOrder: enforceOrder)
+        wait(for: expectations, timeout: 0.5, enforceOrder: enforceOrder)
     }
 
     func getEnvironmentVariable(_ key: String) -> String? {
@@ -70,5 +69,12 @@ public extension XCTestCase {
         }
 
         return onComplete
+    }
+
+    // Run block after a delay. Valuable for testing async code.
+    func runAfterDelay(seconds: TimeInterval, block: @escaping () -> Void) {
+        DispatchQueue(label: .random).asyncAfter(deadline: .now() + seconds) {
+            block()
+        }
     }
 }

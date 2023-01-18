@@ -285,7 +285,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `didReceiveNotificationRequestReturnValue`
      */
-    public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, (UNNotificationContent) -> Void) -> Bool)?
+    public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, @escaping (UNNotificationContent) -> Void) -> Bool)?
 
     /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     @discardableResult

@@ -463,7 +463,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var isPushSubscribedClosure: (((Bool) -> Void) -> Void)?
+    public var isPushSubscribedClosure: ((@escaping (Bool) -> Void) -> Void)?
 
     /// Mocked function for `isPushSubscribed(completion: @escaping (Bool) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func isPushSubscribed(completion: @escaping (Bool) -> Void) {
@@ -995,7 +995,7 @@ public class HttpClientMock: HttpClient, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var requestClosure: ((HttpRequestParams, (Result<Data, HttpRequestError>) -> Void) -> Void)?
+    public var requestClosure: ((HttpRequestParams, @escaping (Result<Data, HttpRequestError>) -> Void) -> Void)?
 
     /// Mocked function for `request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -1022,7 +1022,7 @@ public class HttpClientMock: HttpClient, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var downloadFileClosure: ((URL, DownloadFileType, (URL?) -> Void) -> Void)?
+    public var downloadFileClosure: ((URL, DownloadFileType, @escaping (URL?) -> Void) -> Void)?
 
     /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
@@ -1105,7 +1105,7 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var requestClosure: ((HttpRequestParams, URLSession, (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
+    internal var requestClosure: ((HttpRequestParams, URLSession, @escaping (Data?, HTTPURLResponse?, Error?) -> Void) -> Void)?
 
     /// Mocked function for `request(params: HttpRequestParams, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func request(params: HttpRequestParams, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void) {
@@ -1132,7 +1132,7 @@ internal class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var downloadFileClosure: ((URL, DownloadFileType, URLSession, (URL?) -> Void) -> Void)?
+    internal var downloadFileClosure: ((URL, DownloadFileType, URLSession, @escaping (URL?) -> Void) -> Void)?
 
     /// Mocked function for `downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void) {
@@ -1740,7 +1740,7 @@ public class QueueMock: Queue, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var runClosure: ((() -> Void) -> Void)?
+    public var runClosure: ((@escaping () -> Void) -> Void)?
 
     /// Mocked function for `run(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func run(onComplete: @escaping () -> Void) {
@@ -1919,7 +1919,7 @@ public class QueueRequestManagerMock: QueueRequestManager, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `startRequestReturnValue`
      */
-    public var startRequestClosure: ((() -> Void) -> Bool)?
+    public var startRequestClosure: ((@escaping () -> Void) -> Bool)?
 
     /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func startRequest(onComplete: @escaping () -> Void) -> Bool {
@@ -1970,7 +1970,7 @@ public class QueueRunRequestMock: QueueRunRequest, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var startClosure: ((() -> Void) -> Void)?
+    public var startClosure: ((@escaping () -> Void) -> Void)?
 
     /// Mocked function for `start(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func start(onComplete: @escaping () -> Void) {
@@ -2021,7 +2021,7 @@ public class QueueRunnerMock: QueueRunner, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Void)?
+    public var runTaskClosure: ((QueueTask, @escaping (Result<Void, HttpRequestError>) -> Void) -> Void)?
 
     /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -2076,7 +2076,7 @@ public class QueueRunnerHookMock: QueueRunnerHook, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `runTaskReturnValue`
      */
-    public var runTaskClosure: ((QueueTask, (Result<Void, HttpRequestError>) -> Void) -> Bool)?
+    public var runTaskClosure: ((QueueTask, @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool)?
 
     /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
@@ -2441,7 +2441,7 @@ internal class SimpleTimerMock: SimpleTimer, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var scheduleAndCancelPreviousClosure: ((Seconds, () -> Void) -> Void)?
+    internal var scheduleAndCancelPreviousClosure: ((Seconds, @escaping () -> Void) -> Void)?
 
     /// Mocked function for `scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void) {
@@ -2472,7 +2472,7 @@ internal class SimpleTimerMock: SimpleTimer, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `scheduleIfNotAlreadyReturnValue`
      */
-    internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
+    internal var scheduleIfNotAlreadyClosure: ((Seconds, @escaping () -> Void) -> Bool)?
 
     /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {
@@ -2551,7 +2551,7 @@ internal class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `scheduleIfNotAlreadyReturnValue`
      */
-    internal var scheduleIfNotAlreadyClosure: ((Seconds, () -> Void) -> Bool)?
+    internal var scheduleIfNotAlreadyClosure: ((Seconds, @escaping () -> Void) -> Bool)?
 
     /// Mocked function for `scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool {

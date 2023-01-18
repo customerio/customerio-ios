@@ -576,7 +576,7 @@ internal class DeviceAttributesProviderMock: DeviceAttributesProvider, Mock {
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var getDefaultDeviceAttributesClosure: ((([String: Any]) -> Void) -> Void)?
+    internal var getDefaultDeviceAttributesClosure: ((@escaping ([String: Any]) -> Void) -> Void)?
 
     /// Mocked function for `getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {

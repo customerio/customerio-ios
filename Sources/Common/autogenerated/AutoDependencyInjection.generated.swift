@@ -260,7 +260,7 @@ extension DIGraph {
     }
 
     private var newQueueRunRequest: QueueRunRequest {
-        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager, logger: logger, queryRunner: queueQueryRunner)
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager, logger: logger, queryRunner: queueQueryRunner, threadUtil: threadUtil)
     }
 
     // QueueRunner
