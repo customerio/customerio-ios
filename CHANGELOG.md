@@ -1,3 +1,98 @@
+### [2.0.2](https://github.com/customerio/customerio-ios/compare/2.0.1...2.0.2) (2023-01-06)
+
+
+### Bug Fixes
+
+* prevent stackoverflow while executing background queue with lots of tasks in it ([#245](https://github.com/customerio/customerio-ios/issues/245)) ([ef0c428](https://github.com/customerio/customerio-ios/commit/ef0c4285bbe1a908e9695258f84cde26b62eeb80))
+
+### [2.0.1](https://github.com/customerio/customerio-ios/compare/2.0.0...2.0.1) (2022-12-22)
+
+
+### Bug Fixes
+
+* download rich push images from CDN ([#237](https://github.com/customerio/customerio-ios/issues/237)) ([b30cf02](https://github.com/customerio/customerio-ios/commit/b30cf02f2a27a210fe07e8bea61dc618c5c57b2d))
+
+## [2.0.0](https://github.com/customerio/customerio-ios/compare/1.2.7...2.0.0) (2022-12-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* make delivered push metric more reliable
+* remove FCM dependency from cocoapods (#210)
+* singleton API only way to use SDK now (#209)
+
+### Bug Fixes
+
+* add sdkwrapperconfig to rich push SDK config ([#226](https://github.com/customerio/customerio-ios/issues/226)) ([e43b4cf](https://github.com/customerio/customerio-ios/commit/e43b4cfe30c38e118b1c622675bab48c41072d30))
+* do not modify custom attributes casing ([#234](https://github.com/customerio/customerio-ios/issues/234)) ([8160fdf](https://github.com/customerio/customerio-ios/commit/8160fdfb07f29a3e450cb8a5481b3ca75622cdce))
+* fix compile time errors notification service extensions ([#214](https://github.com/customerio/customerio-ios/issues/214)) ([bd5911b](https://github.com/customerio/customerio-ios/commit/bd5911b1401e26112a900c6a0c6f132c3ab2c27a))
+* make delivered push metric more reliable ([0478e52](https://github.com/customerio/customerio-ios/commit/0478e5273017867ecff194905d130cbf32d588ac))
+* sdk not able to compile in ios app ([#225](https://github.com/customerio/customerio-ios/issues/225)) ([e4d1b3f](https://github.com/customerio/customerio-ios/commit/e4d1b3f2b4bda91862151947e480b0644d5cc704))
+
+
+### Code Refactoring
+
+* remove FCM dependency from cocoapods ([#210](https://github.com/customerio/customerio-ios/issues/210)) ([3547076](https://github.com/customerio/customerio-ios/commit/3547076a3694c211f1b11b2a61db7d6debe05a6b))
+* singleton API only way to use SDK now ([#209](https://github.com/customerio/customerio-ios/issues/209)) ([72b7477](https://github.com/customerio/customerio-ios/commit/72b7477b16c490b9839fd48f51487e657440a75c))
+
+## [2.0.0-beta.1](https://github.com/customerio/customerio-ios/compare/1.2.7...2.0.0-beta.1) (2022-12-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* make delivered push metric more reliable
+* remove FCM dependency from cocoapods (#210)
+* singleton API only way to use SDK now (#209)
+
+### Bug Fixes
+
+* add sdkwrapperconfig to rich push SDK config ([#226](https://github.com/customerio/customerio-ios/issues/226)) ([e43b4cf](https://github.com/customerio/customerio-ios/commit/e43b4cfe30c38e118b1c622675bab48c41072d30))
+* do not modify custom attributes casing ([#234](https://github.com/customerio/customerio-ios/issues/234)) ([8160fdf](https://github.com/customerio/customerio-ios/commit/8160fdfb07f29a3e450cb8a5481b3ca75622cdce))
+* fix compile time errors notification service extensions ([#214](https://github.com/customerio/customerio-ios/issues/214)) ([bd5911b](https://github.com/customerio/customerio-ios/commit/bd5911b1401e26112a900c6a0c6f132c3ab2c27a))
+* make delivered push metric more reliable ([0478e52](https://github.com/customerio/customerio-ios/commit/0478e5273017867ecff194905d130cbf32d588ac))
+* sdk not able to compile in ios app ([#225](https://github.com/customerio/customerio-ios/issues/225)) ([e4d1b3f](https://github.com/customerio/customerio-ios/commit/e4d1b3f2b4bda91862151947e480b0644d5cc704))
+
+
+### Code Refactoring
+
+* remove FCM dependency from cocoapods ([#210](https://github.com/customerio/customerio-ios/issues/210)) ([3547076](https://github.com/customerio/customerio-ios/commit/3547076a3694c211f1b11b2a61db7d6debe05a6b))
+* singleton API only way to use SDK now ([#209](https://github.com/customerio/customerio-ios/issues/209)) ([72b7477](https://github.com/customerio/customerio-ios/commit/72b7477b16c490b9839fd48f51487e657440a75c))
+
+### [1.2.7](https://github.com/customerio/customerio-ios/compare/1.2.6...1.2.7) (2022-12-06)
+
+
+### Bug Fixes
+
+* push images and processing simple push ([#230](https://github.com/customerio/customerio-ios/issues/230)) ([f109f04](https://github.com/customerio/customerio-ios/commit/f109f04d04e2b87ef75707a15818050c7c84b45a))
+
+### [1.2.6](https://github.com/customerio/customerio-ios/compare/1.2.5...1.2.6) (2022-11-17)
+
+
+### Bug Fixes
+
+* device attributes shows sdk version instead of wrapper version ([e2462b9](https://github.com/customerio/customerio-ios/commit/e2462b9408fdaba2b690e3d1209aa17680457d92))
+
+### [1.2.5](https://github.com/customerio/customerio-ios/compare/1.2.4...1.2.5) (2022-11-14)
+
+
+### Bug Fixes
+
+* fix compile time errors notification service extensions ([#216](https://github.com/customerio/customerio-ios/issues/216)) ([6e8484a](https://github.com/customerio/customerio-ios/commit/6e8484af6fc72c0e77cfd3d60bbb3fe808d067a8))
+
+### [1.2.4](https://github.com/customerio/customerio-ios/compare/1.2.3...1.2.4) (2022-11-11)
+
+
+### Bug Fixes
+
+* updated gist version in podspec ([ab231b1](https://github.com/customerio/customerio-ios/commit/ab231b169208fb869fb1083869ee4c0cb854728b))
+
+### [1.2.3](https://github.com/customerio/customerio-ios/compare/1.2.2...1.2.3) (2022-11-10)
+
+
+### Bug Fixes
+
+* install in-app bug fix via gist 2.2.1 ([38d64fd](https://github.com/customerio/customerio-ios/commit/38d64fd69ce5947a097c5cb3d249d40f74149ff0))
+
 ### [1.2.2](https://github.com/customerio/customerio-ios/compare/1.2.1...1.2.2) (2022-10-31)
 
 

@@ -10,14 +10,16 @@ import XCTest
  We use a base class instead of simply a utility class because we can't access `setup` and `teardown` functions with a util class.
  */
 open class UnitTest: XCTestCase {
-    /**
+    /*
      Handy objects tests might need to use
      */
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely
     // to real app.
     public let testSiteId = "testing"
-    public var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: testSiteId)
+    public var diGraph: DIGraph!
+
+    public var sdkConfig: SdkConfig {
+        diGraph!.sdkConfig
     }
 
     public var keyValueStorage: KeyValueStorage {
@@ -46,8 +48,33 @@ open class UnitTest: XCTestCase {
         LockManager()
     }
 
+    /**
+     Perform setup before each test function runs in your test class.
+     Example:
+     ```
+     override func setUp() {
+       super.setUp() // <-- this line calls this function in UnitTest file.
+
+       // do some setup logic, here.
+     }
+     ```
+
+     @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
+     @param modifySdkConfig Allows you to change configuration options before the SDKConfig instnace is created for you.
+     */
     override open func setUp() {
-        deleteAll()
+        setUp(enableLogs: false)
+    }
+
+    open func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
+        if enableLogs {
+            newSdkConfig.logLevel = CioLogLevel.debug
+        }
+
+        modifySdkConfig?(&newSdkConfig)
+
+        diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
@@ -59,33 +86,24 @@ open class UnitTest: XCTestCase {
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
 
-        super.setUp()
-    }
+        deleteAllPersistantData()
 
-    // If logs would help you with debugging a test, enable logs. It's recommended to disable them when running tests as
-    // there are so many logs, it's unhelpful.
-    // Enabling logs and running 1 test function is helpful.
-    public func enableLogs() {
-        var sdkConfigStore = diGraph.sdkConfigStore
-        var sdkConfig = sdkConfigStore.config
-        sdkConfig.logLevel = CioLogLevel.debug
-        sdkConfigStore.config = sdkConfig
+        super.setUp()
     }
 
     override open func tearDown() {
         Mocks.shared.resetAll()
 
-        deleteAll()
+        deleteAllPersistantData()
 
         diGraph.reset()
 
         super.tearDown()
     }
 
-    public func deleteAll() {
+    public func deleteAllPersistantData() {
         deleteKeyValueStorage()
         CustomerIO.resetSharedInstance()
-        CioGlobalDataStore().keyValueStorage.deleteAll()
         deleteAllFiles()
     }
 
@@ -122,10 +140,31 @@ open class UnitTest: XCTestCase {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
+
+        // delete key value data that belongs to the site-id.
         keyValueStorage.deleteAll()
+
+        // delete key value data that is global to all site-ids in the SDK.
+        diGraph.globalDataStore.deleteAll()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(0.5)
+    }
+}
+
+public extension UnitTest {
+    func waitForQueueToFinishRunningTasks(
+        _ queue: Queue,
+        timeout: TimeInterval = 0.5,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        let queueExpectation = expectation(description: "Expect queue to run all tasks.")
+        queue.run {
+            queueExpectation.fulfill()
+        }
+
+        waitForExpectations(for: [queueExpectation], timeout: timeout, file: file, line: line)
     }
 }

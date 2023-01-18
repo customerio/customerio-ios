@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -50,9 +50,19 @@ import Foundation
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
-    func testDependenciesAbleToResolve() {
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
         _ = cleanupRepository
+        countDependenciesResolved += 1
+
+        _ = deviceAttributesProvider
+        countDependenciesResolved += 1
+
         _ = queueRunnerHook
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
     }
 
     // CleanupRepository
@@ -67,6 +77,18 @@ extension DIGraph {
         CioCleanupRepository(queue: queue)
     }
 
+    // DeviceAttributesProvider
+    var deviceAttributesProvider: DeviceAttributesProvider {
+        if let overridenDep = overrides[String(describing: DeviceAttributesProvider.self)] {
+            return overridenDep as! DeviceAttributesProvider
+        }
+        return newDeviceAttributesProvider
+    }
+
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
+    }
+
     // QueueRunnerHook
     var queueRunnerHook: QueueRunnerHook {
         if let overridenDep = overrides[String(describing: QueueRunnerHook.self)] {
@@ -76,6 +98,12 @@ extension DIGraph {
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {
-        TrackingQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient)
+        TrackingQueueRunner(
+            siteId: siteId,
+            jsonAdapter: jsonAdapter,
+            logger: logger,
+            httpClient: httpClient,
+            sdkConfig: sdkConfig
+        )
     }
 }

@@ -8,11 +8,12 @@ public extension XCTestCase {
 
     func waitForExpectations(
         for expectations: [XCTestExpectation],
+        timeout: TimeInterval = 0.5,
         enforceOrder: Bool = false,
         file _: StaticString = #file,
         line _: UInt = #line
     ) {
-        wait(for: expectations, timeout: 0.5, enforceOrder: enforceOrder)
+        wait(for: expectations, timeout: timeout, enforceOrder: enforceOrder)
     }
 
     func getEnvironmentVariable(_ key: String) -> String? {
@@ -54,5 +55,20 @@ public extension XCTestCase {
         line: UInt = #line
     ) throws {
         try XCTSkipIf(true, nil, file: file, line: line)
+    }
+
+    // Convenience when wanting to run async code with a onComplete callback.
+    // Example:
+    // ```
+    // foo.run(onComplete: onComplete_expectation)
+    // waitForExpectations()
+    // ```
+    var onCompleteExpectation: () -> Void {
+        let expect = expectation(description: "expect to complete")
+        let onComplete: () -> Void = {
+            expect.fulfill()
+        }
+
+        return onComplete
     }
 }

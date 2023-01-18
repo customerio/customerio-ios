@@ -1,7 +1,8 @@
 import Foundation
 
 internal protocol QueueQueryRunner: AutoMockable {
-    func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata?
+    func getNextTask(_ queue: [QueueTaskMetadata], lastRanTask: QueueTaskMetadata?, lastFailedTask: QueueTaskMetadata?)
+        -> QueueTaskMetadata?
     func reset()
 }
 
@@ -15,10 +16,15 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         self.logger = logger
     }
 
-    func getNextTask(_ queue: [QueueTaskMetadata], lastFailedTask: QueueTaskMetadata?) -> QueueTaskMetadata? {
-        guard !queue.isEmpty else {
+    func getNextTask(
+        _ inventory: [QueueTaskMetadata],
+        lastRanTask: QueueTaskMetadata?,
+        lastFailedTask: QueueTaskMetadata?
+    ) -> QueueTaskMetadata? {
+        guard !inventory.isEmpty else {
             return nil
         }
+        let inventory = getInventoryTasksLeftToRun(inventory: inventory, lastRanTask: lastRanTask)
         if let lastFailedTask = lastFailedTask {
             updateCriteria(lastFailedTask: lastFailedTask)
         }
@@ -26,13 +32,28 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         // log *after* updating the criteria
         logger.debug("queue querying next task. criteria: \(queryCriteria)")
 
-        return queue.first(where: { doesTaskPassCriteria($0) })
+        return inventory.first(where: { doesTaskPassCriteria($0) })
     }
 
     func reset() {
         logger.debug("resetting queue tasks query criteria")
 
         queryCriteria.reset()
+    }
+
+    internal func getInventoryTasksLeftToRun(
+        inventory: [QueueTaskMetadata],
+        lastRanTask: QueueTaskMetadata?
+    ) -> [QueueTaskMetadata] {
+        guard let lastRanTask = lastRanTask else {
+            return inventory
+        }
+
+        guard let indexOfLastRanTask = inventory.firstIndex(of: lastRanTask) else {
+            return inventory
+        }
+
+        return Array(inventory.suffix(from: indexOfLastRanTask + 1))
     }
 
     internal func updateCriteria(lastFailedTask: QueueTaskMetadata) {

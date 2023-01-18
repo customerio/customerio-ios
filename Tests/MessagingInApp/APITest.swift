@@ -18,8 +18,8 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.shared.initialize(organizationId: "")
-        MessagingInApp.shared.initialize(organizationId: "", eventListener: self)
+        MessagingInApp.initialize(organizationId: "")
+        MessagingInApp.initialize(organizationId: "", eventListener: self)
         mock.initialize(organizationId: "")
         mock.initialize(organizationId: "", eventListener: self)
     }

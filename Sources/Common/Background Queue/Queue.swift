@@ -94,12 +94,12 @@ public class CioQueue: Queue {
     private let runRequest: QueueRunRequest
     private let jsonAdapter: JsonAdapter
     private let logger: Logger
-    private let sdkConfigStore: SdkConfigStore
+    private let sdkConfig: SdkConfig
     private let queueTimer: SingleScheduleTimer
     private let dateUtil: DateUtil
 
     private var numberSecondsToScheduleTimer: Seconds {
-        sdkConfigStore.config.backgroundQueueSecondsDelay
+        sdkConfig.backgroundQueueSecondsDelay
     }
 
     init(
@@ -108,7 +108,7 @@ public class CioQueue: Queue {
         runRequest: QueueRunRequest,
         jsonAdapter: JsonAdapter,
         logger: Logger,
-        sdkConfigStore: SdkConfigStore,
+        sdkConfig: SdkConfig,
         queueTimer: SingleScheduleTimer,
         dateUtil: DateUtil
     ) {
@@ -117,7 +117,7 @@ public class CioQueue: Queue {
         self.runRequest = runRequest
         self.jsonAdapter = jsonAdapter
         self.logger = logger
-        self.sdkConfigStore = sdkConfigStore
+        self.sdkConfig = sdkConfig
         self.queueTimer = queueTimer
         self.dateUtil = dateUtil
     }
@@ -144,7 +144,7 @@ public class CioQueue: Queue {
     ) -> ModifyQueueResult {
         logger.info("adding queue task \(type)")
 
-        guard let data = jsonAdapter.toJson(data, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(data) else {
             logger.error("fail adding queue task, json encoding fail.")
 
             return (
@@ -163,7 +163,7 @@ public class CioQueue: Queue {
         )
         processQueueStatus(addTaskResult.queueStatus)
 
-        return addTaskResult
+        return (success: addTaskResult.success, queueStatus: addTaskResult.queueStatus)
     }
 
     public func run(onComplete: @escaping () -> Void) {
@@ -178,7 +178,7 @@ public class CioQueue: Queue {
     /// the device battery life so we try to do that when we can.
     private func processQueueStatus(_ status: QueueStatus) {
         logger.debug("processing queue status \(status).")
-        let isManyTasksInQueue = status.numTasksInQueue >= sdkConfigStore.config.backgroundQueueMinNumberOfTasks
+        let isManyTasksInQueue = status.numTasksInQueue >= sdkConfig.backgroundQueueMinNumberOfTasks
 
         if isManyTasksInQueue {
             logger.info("queue met criteria to run automatically")

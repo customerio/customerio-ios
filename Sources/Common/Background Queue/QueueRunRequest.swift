@@ -38,22 +38,25 @@ public class CioQueueRunRequest: QueueRunRequest {
     }
 
     private func startNewRequestRun() {
-        let inventory = storage.getInventory()
-
-        runTasks(queueInventory: inventory, queryTotalNumberTasks: inventory.count)
+        runTasks()
     }
 
     // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
     // Many of the lines of this function are logging related.
     // swiftlint:disable:next function_body_length
-    private func runTasks(
-        queueInventory: [QueueTaskMetadata],
-        queryTotalNumberTasks: Int,
-        lastFailedTask: QueueTaskMetadata? = nil
-    ) {
-        guard let nextTaskToRunInventoryItem = queryRunner.getNextTask(queueInventory, lastFailedTask: lastFailedTask)
-        else {
-            // we hit the end of the current inventory. Done!
+    private func runTasks() {
+        var lastRanTask: QueueTaskMetadata?
+        var lastFailedTask: QueueTaskMetadata?
+        var continueRunnning = true
+
+        // call when you're done with task
+        func goToNextTask(didTaskFail: Bool, taskJustExecuted: QueueTaskMetadata) {
+            lastFailedTask = didTaskFail ? taskJustExecuted : nil
+            lastRanTask = taskJustExecuted
+        }
+
+        func doneRunning() {
+            continueRunnning = false
             logger.debug("queue out of tasks to run.")
 
             queryRunner.reset()
@@ -61,96 +64,86 @@ public class CioQueueRunRequest: QueueRunRequest {
             return requestManager.requestComplete()
         }
 
-        let nextTaskStorageId = nextTaskToRunInventoryItem.taskPersistedId
-        guard let nextTaskToRun = storage.get(storageId: nextTaskStorageId) else {
-            // log error. this scenario shouldn't happen where task can't be found.
-            logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
+        while continueRunnning {
+            // get the inventory before running each task. If a task was added to the queue while the last task was being
+            // executed, we can assert that new task will execute during this run.
+            let queueInventory = storage.getInventory()
 
-            // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
-            return goToNextTask(
-                queueInventory: queueInventory,
-                queryTotalNumberTasks: queryTotalNumberTasks,
-                lastFailedTask: nextTaskToRunInventoryItem
+            guard let nextTaskToRunInventoryItem = queryRunner.getNextTask(
+                queueInventory,
+                lastRanTask: lastRanTask,
+                lastFailedTask: lastFailedTask
             )
-        }
+            else {
+                // we hit the end of the current inventory. Done!
+                doneRunning()
+                break
+            }
 
-        logger.debug("queue tasks left to run: \(queueInventory.count) out of \(queryTotalNumberTasks)")
-        logger.debug("""
-        queue next task to run: \(shortTaskId(nextTaskStorageId)),
-        \(nextTaskToRun.type), \(nextTaskToRun.data.string ?? ""), \(nextTaskToRun.runResults)
-        """)
+            let nextTaskStorageId = nextTaskToRunInventoryItem.taskPersistedId
+            guard let nextTaskToRun = storage.get(storageId: nextTaskStorageId) else {
+                // log error. this scenario shouldn't happen where task can't be found.
+                logger.error("Tried to get queue task with storage id: \(nextTaskStorageId), but storage couldn't find it.")
 
-        // we are not using [weak self] because if the task is currently running,
-        // we dont want the result handler to get garbage collected which could
-        // make the task run again when it shouldn't.
-        //
-        // if we wanted to use [weak self] then we should allow running a task to cancel
-        // while executing which would then allow this to use [weak self].
-        runner.runTask(nextTaskToRun) { result in
-            switch result {
-            case .success:
-                self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) ran successfully")
+                // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
+                goToNextTask(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
+                break
+            }
 
-                self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
-                _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+            logger.debug("queue tasks left to run: \(queueInventory.count)")
+            logger.debug("""
+            queue next task to run: \(shortTaskId(nextTaskStorageId)),
+            \(nextTaskToRun.type), \(nextTaskToRun.data.string ?? ""), \(nextTaskToRun.runResults)
+            """)
 
-                return self.goToNextTask(
-                    queueInventory: queueInventory,
-                    queryTotalNumberTasks: queryTotalNumberTasks,
-                    lastFailedTask: nil
-                )
-            case .failure(let error):
-                self.logger
-                    .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
+            // we are not using [weak self] because if the task is currently running,
+            // we dont want the result handler to get garbage collected which could
+            // make the task run again when it shouldn't.
+            //
+            // if we wanted to use [weak self] then we should allow running a task to cancel
+            // while executing which would then allow this to use [weak self].
+            runner.runTask(nextTaskToRun) { result in
+                switch result {
+                case .success:
+                    self.logger.debug("queue task \(self.shortTaskId(nextTaskStorageId)) ran successfully")
 
-                let previousRunResults = nextTaskToRun.runResults
+                    self.logger.debug("queue deleting task \(self.shortTaskId(nextTaskStorageId))")
+                    _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
 
-                // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
-                if case .requestsPaused = error {
-                    self.logger.debug("""
-                    queue task \(self.shortTaskId(nextTaskStorageId)) didn't run because all HTTP requests paused.
-                    """)
+                    goToNextTask(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
+                case .failure(let error):
+                    self.logger
+                        .debug("queue task \(self.shortTaskId(nextTaskStorageId)) run failed \(error.localizedDescription)")
 
-                    self.logger.info("queue is quitting early because all HTTP requests are paused.")
-                    return self.goToNextTask(
-                        queueInventory: [],
-                        queryTotalNumberTasks: queryTotalNumberTasks,
-                        lastFailedTask: nil
-                    )
-                } else {
-                    let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
+                    let previousRunResults = nextTaskToRun.runResults
 
-                    self.logger.debug("""
-                    queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
-                    from: \(nextTaskToRun.runResults) to: \(newRunResults)
-                    """)
+                    // When a HTTP request isn't made, dont update the run history to give us inaccurate data.
+                    if case .requestsPaused = error {
+                        self.logger.debug("""
+                        queue task \(self.shortTaskId(nextTaskStorageId)) didn't run because all HTTP requests paused.
+                        """)
 
-                    _ = self.storage.update(
-                        storageId: nextTaskToRunInventoryItem.taskPersistedId,
-                        runResults: newRunResults
-                    )
+                        self.logger.info("queue is quitting early because all HTTP requests are paused.")
+
+                        doneRunning()
+                        break
+                    } else {
+                        let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
+
+                        self.logger.debug("""
+                        queue task \(self.shortTaskId(nextTaskStorageId)) updating run history
+                        from: \(nextTaskToRun.runResults) to: \(newRunResults)
+                        """)
+
+                        _ = self.storage.update(
+                            storageId: nextTaskToRunInventoryItem.taskPersistedId,
+                            runResults: newRunResults
+                        )
+                    }
+
+                    goToNextTask(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                 }
-
-                return self.goToNextTask(
-                    queueInventory: queueInventory,
-                    queryTotalNumberTasks: queryTotalNumberTasks,
-                    lastFailedTask: nextTaskToRunInventoryItem
-                )
             }
         }
-    }
-
-    private func goToNextTask(
-        queueInventory: [QueueTaskMetadata],
-        queryTotalNumberTasks: Int,
-        lastFailedTask: QueueTaskMetadata?
-    ) {
-        var newInventory = queueInventory
-        newInventory.removeFirst()
-        runTasks(
-            queueInventory: newInventory,
-            queryTotalNumberTasks: queryTotalNumberTasks,
-            lastFailedTask: lastFailedTask
-        )
     }
 }

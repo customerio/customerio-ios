@@ -1,31 +1,28 @@
+import CioTracking
 import Common
 import Foundation
 
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
-    private let siteId: SiteId
+    private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
-    }
-
-    init(siteId: SiteId) {
-        self.siteId = siteId
+    private var diGraph: DIGraph? {
+        sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
-        MessagingInApp.shared
+        guard let diGraph = diGraph else { return nil }
+
+        return MessagingInAppImplementation(diGraph: diGraph)
     }
 
     var queueRunnerHook: QueueRunnerHook? {
         nil
     }
 
-    var deviceAttributesHook: DeviceAttributesHook? {
-        nil
-    }
-
     var screenTrackingHook: ScreenTrackingHook? {
-        MessagingInApp.shared
+        guard let diGraph = diGraph else { return nil }
+
+        return MessagingInAppImplementation(diGraph: diGraph)
     }
 }

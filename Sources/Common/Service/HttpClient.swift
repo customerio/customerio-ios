@@ -16,7 +16,6 @@ public protocol HttpClient: AutoMockable {
 
 // sourcery: InjectRegister = "HttpClient"
 public class CIOHttpClient: HttpClient {
-    private let session: URLSession
     private let baseUrls: HttpBaseUrls
     private var httpRequestRunner: HttpRequestRunner
     private let jsonAdapter: JsonAdapter
@@ -24,32 +23,40 @@ public class CIOHttpClient: HttpClient {
     private let logger: Logger
     private let retryPolicyTimer: SimpleTimer
     private let retryPolicy: HttpRetryPolicy
+    private let cioApiSession: URLSession // only used to call the CIO API.
+    private let publicSession: URLSession // session used to call servers accessible to the public (such as CDNs)
+    private var allSessions: [URLSession] {
+        [cioApiSession, publicSession]
+    }
 
     init(
         siteId: SiteId,
-        sdkCredentialsStore: SdkCredentialsStore,
-        configStore: SdkConfigStore,
+        apiKey: ApiKey,
+        sdkConfig: SdkConfig,
         jsonAdapter: JsonAdapter,
         httpRequestRunner: HttpRequestRunner,
         globalDataStore: GlobalDataStore,
         logger: Logger,
         timer: SimpleTimer,
         retryPolicy: HttpRetryPolicy,
-        deviceInfo: DeviceInfo
+        userAgentUtil: UserAgentUtil
     ) {
         self.httpRequestRunner = httpRequestRunner
-        self.session = Self.getSession(
-            siteId: siteId,
-            apiKey: sdkCredentialsStore.credentials.apiKey,
-            deviceInfo: deviceInfo,
-            sdkWrapperConfig: configStore.config._sdkWrapperConfig
-        )
-        self.baseUrls = configStore.config.httpBaseUrls
+        self.baseUrls = sdkConfig.httpBaseUrls
         self.jsonAdapter = jsonAdapter
         self.globalDataStore = globalDataStore
         self.logger = logger
         self.retryPolicyTimer = timer
         self.retryPolicy = retryPolicy
+
+        // Construct the URLSessions when the object is initialized and re-use them for all HTTP requests in the
+        // lifecycle of this object.
+        self.cioApiSession = Self.getCIOApiSession(
+            siteId: siteId,
+            apiKey: apiKey,
+            userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
+        )
+        self.publicSession = Self.getBasicSession()
     }
 
     deinit {
@@ -57,7 +64,12 @@ public class CIOHttpClient: HttpClient {
     }
 
     public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        httpRequestRunner.downloadFile(url: url, fileType: fileType, session: session, onComplete: onComplete)
+        httpRequestRunner.downloadFile(
+            url: url,
+            fileType: fileType,
+            session: getSessionForRequest(url: url),
+            onComplete: onComplete
+        )
     }
 
     public func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Void) {
@@ -67,7 +79,10 @@ public class CIOHttpClient: HttpClient {
         }
 
         httpRequestRunner
-            .request(params, httpBaseUrls: baseUrls, session: session) { [weak self] data, response, error in
+            .request(
+                params: params,
+                session: getSessionForRequest(url: params.url)
+            ) { [weak self] data, response, error in
                 guard let self = self else { return }
 
                 if let error = error {
@@ -111,13 +126,11 @@ public class CIOHttpClient: HttpClient {
         // we are bound to fail more often and don't want to log errors that are not super helpful to us.
         if let errorMessageBody: ErrorMessageResponse = jsonAdapter.fromJson(
             data,
-            decoder: nil,
             logErrors: false
         ) {
             errorBodyString = errorMessageBody.meta.error
         } else if let errorMessageBody: ErrorsMessageResponse = jsonAdapter.fromJson(
             data,
-            decoder: nil,
             logErrors: false
         ) {
             errorBodyString = errorMessageBody.meta.errors.joined(separator: ",")
@@ -127,9 +140,9 @@ public class CIOHttpClient: HttpClient {
 
     public func cancel(finishTasks: Bool) {
         if finishTasks {
-            session.finishTasksAndInvalidate()
+            allSessions.forEach { $0.finishTasksAndInvalidate() }
         } else {
-            session.invalidateAndCancel()
+            allSessions.forEach { $0.invalidateAndCancel() }
         }
     }
 
@@ -147,26 +160,41 @@ public class CIOHttpClient: HttpClient {
 }
 
 extension CIOHttpClient {
-    static func getSession(
-        siteId: String,
-        apiKey: String,
-        deviceInfo: DeviceInfo,
-        sdkWrapperConfig: SdkWrapperConfig?
-    ) -> URLSession {
+    static func getBasicSession() -> URLSession {
         let urlSessionConfig = URLSessionConfiguration.ephemeral
-        let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
 
         urlSessionConfig.allowsCellularAccess = true
         urlSessionConfig.timeoutIntervalForResource = 30
         urlSessionConfig.timeoutIntervalForRequest = 60
-        urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
-                                                  "Authorization": basicAuthHeaderString,
-                                                  "User-Agent": getUserAgent(
-                                                      deviceInfo: deviceInfo,
-                                                      sdkWrapperConfig: sdkWrapperConfig
-                                                  )]
+        urlSessionConfig.httpAdditionalHeaders = [:]
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
+    }
+
+    static func getCIOApiSession(
+        siteId: String,
+        apiKey: String,
+        userAgentHeaderValue: String
+    ) -> URLSession {
+        let urlSessionConfig = getBasicSession().configuration
+        let basicAuthHeaderString = "Basic \(getBasicAuthHeaderString(siteId: siteId, apiKey: apiKey))"
+
+        urlSessionConfig.httpAdditionalHeaders = ["Content-Type": "application/json; charset=utf-8",
+                                                  "Authorization": basicAuthHeaderString,
+                                                  "User-Agent": userAgentHeaderValue]
+
+        return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
+    }
+
+    // Each URLSession used in this object are designed to request specific servers. Mostly in the HTTP header values
+    // being added.
+    // Choose what URLSession at runtime by the hostname of the URL being contacted in the request.
+    func getSessionForRequest(url: URL) -> URLSession {
+        let cioApiHostname = URL(string: baseUrls.trackingApi)!.host
+        let requestHostname = url.host
+        let isRequestToCIOApi = cioApiHostname == requestHostname
+
+        return (isRequestToCIOApi) ? cioApiSession : publicSession
     }
 
     static func getBasicAuthHeaderString(siteId: String, apiKey: String) -> String {
@@ -174,33 +202,6 @@ extension CIOHttpClient {
         let encodedRawHeader = rawHeader.data(using: .utf8)!
 
         return encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
-    }
-
-    /**
-     * getUserAgent - To get `user-agent` header value. This value depends on SDK version
-     * and device detail such as OS version, device model, customer's app name etc
-     *
-     * In case, UIKit is available then this function returns value in following format :
-     * `Customer.io iOS Client/1.0.0-alpha.16 (iPhone 11 Pro; iOS 14.5) User App/1.0`
-     *
-     * Otherwise will return
-     * `Customer.io iOS Client/1.0.0-alpha.16`
-     */
-    static func getUserAgent(deviceInfo: DeviceInfo, sdkWrapperConfig: SdkWrapperConfig?) -> String {
-        var userAgent = "Customer.io iOS Client/\(deviceInfo.sdkVersion)"
-
-        if let sdkWrapperConfig = sdkWrapperConfig {
-            userAgent = "Customer.io \(sdkWrapperConfig.source.rawValue) Client/\(sdkWrapperConfig.version)"
-        }
-
-        if let deviceModel = deviceInfo.deviceModel,
-           let deviceOsVersion = deviceInfo.osVersion,
-           let deviceOsName = deviceInfo.osName {
-            userAgent += " (\(deviceModel); \(deviceOsName) \(deviceOsVersion))"
-            userAgent += " \(deviceInfo.customerBundleId)/\(deviceInfo.customerAppVersion)"
-        }
-
-        return userAgent
     }
 
     // In certain scenarios, it makes sense for us to pause making any HTTP requests to the

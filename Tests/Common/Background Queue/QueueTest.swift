@@ -9,31 +9,22 @@ class QueueTest: UnitTest {
 
     private let storageMock = QueueStorageMock()
     private let runRequestMock = QueueRunRequestMock()
-    private let sdkConfigStoreMock = SdkConfigStoreMock()
     private let queueTimerMock = SingleScheduleTimerMock()
 
     override func setUp() {
         super.setUp()
 
-        sdkConfigStoreMock.config = SdkConfig()
-        queue = CioQueue(
-            siteId: testSiteId,
-            storage: storageMock,
-            runRequest: runRequestMock,
-            jsonAdapter: jsonAdapter,
-            logger: log,
-            sdkConfigStore: sdkConfigStoreMock,
-            queueTimer: queueTimerMock,
-            dateUtil: dateUtilStub
-        )
+        // setting a default for tests. Call again from test function to change
+        setupTest(backgroundQueueMinNumberOfTasks: sdkConfig.backgroundQueueMinNumberOfTasks)
     }
 
     // MARK: addTask
 
     func test_addTask_givenFailCreateQueueTask_expectFailStatus_expectScheduleQueueToRun() {
-        storageMock.createReturnValue = (
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: false,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 0),
+            createdTask: nil
         )
         storageMock.getInventoryReturnValue = []
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
@@ -51,14 +42,14 @@ class QueueTest: UnitTest {
     }
 
     func test_addTask_expectDoNotStartQueueIfNotMeetingCriteria_expectScheduleQueueInstead() {
-        var config = SdkConfig()
-        config.backgroundQueueMinNumberOfTasks = 10
-        sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = (
+        setupTest(backgroundQueueMinNumberOfTasks: 10)
+        let givenCreatedTask = QueueTaskMetadata.random
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
+            createdTask: givenCreatedTask
         )
-        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
+        storageMock.getInventoryReturnValue = [givenCreatedTask]
         queueTimerMock.scheduleIfNotAlreadyReturnValue = true
 
         _ = queue.addTask(
@@ -74,14 +65,14 @@ class QueueTest: UnitTest {
     }
 
     func test_addTask_expectStartQueueAfterSuccessfullyAddingTask_expectDoNotScheduleTimer_expectCancelTimer() {
-        var config = SdkConfig()
-        config.backgroundQueueMinNumberOfTasks = 1
-        sdkConfigStoreMock.config = config
-        storageMock.createReturnValue = (
+        setupTest(backgroundQueueMinNumberOfTasks: 1)
+        let givenCreatedTask = QueueTaskMetadata.random
+        storageMock.createReturnValue = CreateQueueStorageTaskResult(
             success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1)
+            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
+            createdTask: givenCreatedTask
         )
-        storageMock.getInventoryReturnValue = [QueueTaskMetadata.random]
+        storageMock.getInventoryReturnValue = [givenCreatedTask]
 
         _ = queue.addTask(
             type: String.random,
@@ -111,5 +102,24 @@ class QueueTest: UnitTest {
         waitForExpectations()
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
+    }
+}
+
+extension QueueTest {
+    func setupTest(backgroundQueueMinNumberOfTasks: Int) {
+        super.setUp(modifySdkConfig: { config in
+            config.backgroundQueueMinNumberOfTasks = backgroundQueueMinNumberOfTasks
+        })
+
+        queue = CioQueue(
+            siteId: testSiteId,
+            storage: storageMock,
+            runRequest: runRequestMock,
+            jsonAdapter: jsonAdapter,
+            logger: log,
+            sdkConfig: sdkConfig,
+            queueTimer: queueTimerMock,
+            dateUtil: dateUtilStub
+        )
     }
 }

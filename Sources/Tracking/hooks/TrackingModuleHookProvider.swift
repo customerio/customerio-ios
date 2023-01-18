@@ -2,14 +2,10 @@ import Common
 import Foundation
 
 class TrackingModuleHookProvider: ModuleHookProvider {
-    private let siteId: SiteId
+    private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
-    private var diGraph: DIGraph {
-        DIGraph.getInstance(siteId: siteId)
-    }
-
-    init(siteId: SiteId) {
-        self.siteId = siteId
+    private var diGraph: DIGraph? {
+        sdkInitializedUtil.postInitializedData?.diGraph
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
@@ -17,11 +13,7 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var queueRunnerHook: QueueRunnerHook? {
-        diGraph.queueRunnerHook
-    }
-
-    var deviceAttributesHook: DeviceAttributesHook? {
-        nil
+        diGraph?.queueRunnerHook
     }
 
     var screenTrackingHook: ScreenTrackingHook? {

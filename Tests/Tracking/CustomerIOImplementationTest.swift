@@ -15,6 +15,9 @@ class CustomerIOImplementationTest: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let hooksMock = HooksManagerMock()
     private let profileIdentifyHookMock = ProfileIdentifyHookMock()
+    private let deviceAttributesMock = DeviceAttributesProviderMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
+    private let deviceInfoMock = DeviceInfoMock()
 
     override func setUp() {
         super.setUp()
@@ -22,25 +25,14 @@ class CustomerIOImplementationTest: UnitTest {
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: hooksMock, forType: HooksManager.self)
+        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
+        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
-        implementation = CustomerIOImplementation(siteId: diGraph.siteId)
-        customerIO = CustomerIO(implementation: implementation)
-    }
-
-    // MARK: config
-
-    func test_config_givenModifyConfig_expectSetConfigOnInstance() {
-        let givenTrackingApiUrl = String.random
-
-        customerIO.config {
-            $0.trackingApiUrl = givenTrackingApiUrl
-        }
-
-        let sdkConfig = diGraph.sdkConfigStore.config
-
-        XCTAssertEqual(sdkConfig.trackingApiUrl, givenTrackingApiUrl)
+        implementation = CustomerIOImplementation(siteId: diGraph.siteId, diGraph: diGraph)
+        customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
 
     // MARK: identify
@@ -87,9 +79,11 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData?.attributesJsonString, jsonAdapter.toJsonString(givenBody))
     }
 
-    func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks() {
+    func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectDeleteDeviceToken() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = String.random
+        let givenDeviceToken = String.random
+        globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
         backgroundQueueMock.addTaskReturnValue = (
             success: true,
@@ -98,12 +92,14 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 2)
         XCTAssertEqual(profileIdentifyHookMock.beforeIdentifiedProfileChangeCallsCount, 1)
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
+
+        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted.count, 1)
+        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted, [givenDeviceToken])
     }
 
-    func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks() {
+    func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = givenIdentifier
         profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
@@ -115,6 +111,8 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertFalse(hooksMock.mockCalled)
+
+        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
     }
 
     func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
@@ -257,5 +255,137 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
         XCTAssertTrue(hooksMock.screenViewHooksCalled)
         XCTAssertEqual(hooksMock.screenViewHooksGetCallsCount, 1)
+    }
+
+    // MARK: registerDeviceToken
+
+    func test_registerDeviceToken_givenNoCustomerIdentified_expectNoAddingToQueue_expectStoreDeviceToken() {
+        let givenDeviceToken = String.random
+        profileStoreMock.identifier = nil
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
+    func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
+        let givenDeviceToken = String.random
+        let givenIdentifier = String.random
+        let givenDefaultAttributes = ["foo": "bar"]
+        profileStoreMock.identifier = givenIdentifier
+        deviceInfoMock.underlyingOsName = "iOS"
+        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
+            onComplete(givenDefaultAttributes)
+        }
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.registerPushToken.rawValue)
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data
+            .value as? RegisterPushNotificationQueueTaskData
+
+        XCTAssertNotNil(actualQueueTaskData)
+        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
+        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(
+            device:
+            Device(
+                token: givenDeviceToken,
+                platform: "iOS",
+                lastUsed: dateUtilStub
+                    .givenNow,
+                attributes: StringAnyEncodable(givenDefaultAttributes)
+            )
+        ))
+        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)
+
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
+    func test_registerDeviceToken_givenNoOsNameAvailable_expectNoAddingToQueue() {
+        let givenDeviceToken = String.random
+        deviceInfoMock.underlyingOsName = nil
+        profileStoreMock.identifier = String.random
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
+    // MARK: deleteDeviceToken
+
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+        globalDataStoreMock.pushDeviceToken = nil
+        profileStoreMock.identifier = nil
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+        globalDataStoreMock.pushDeviceToken = nil
+        profileStoreMock.identifier = String.random
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
+        globalDataStoreMock.pushDeviceToken = String.random
+        profileStoreMock.identifier = nil
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue() {
+        let givenDeviceToken = String.random
+        let givenIdentifier = String.random
+
+        globalDataStoreMock.pushDeviceToken = givenDeviceToken
+        profileStoreMock.identifier = givenIdentifier
+        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.deleteDeviceToken()
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.deletePushToken.rawValue)
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data
+            .value as? DeletePushNotificationQueueTaskData
+
+        XCTAssertNotNil(actualQueueTaskData)
+        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
+        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
+
+        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
+    }
+
+    // MARK: trackMetric
+
+    func test_trackMetric_expectAddTaskToQueue() {
+        let givenDeliveryId = String.random
+        let givenEvent = Metric.delivered
+        let givenDeviceToken = String.random
+        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
+
+        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
+        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
+        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data.value as? MetricRequest
+
+        XCTAssertNotNil(actualQueueTaskData)
+        XCTAssertEqual(actualQueueTaskData?.deliveryId, givenDeliveryId)
+        XCTAssertEqual(actualQueueTaskData?.event, givenEvent)
+        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
     }
 }

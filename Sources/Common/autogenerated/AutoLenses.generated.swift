@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.6.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -230,29 +230,5 @@ extension QueueTaskRunResults {
     // Convenient set functions to edit a property of the immutable object
     func totalRunsSet(_ totalRuns: Int) -> QueueTaskRunResults {
         QueueTaskRunResults(totalRuns: totalRuns)
-    }
-}
-
-extension SdkCredentials {
-    static let apiKeyLens = Lens<SdkCredentials, String>(
-        get: { $0.apiKey },
-        set: { apiKey, existing in
-            SdkCredentials(apiKey: apiKey, region: existing.region)
-        }
-    )
-    static let regionLens = Lens<SdkCredentials, Region>(
-        get: { $0.region },
-        set: { region, existing in
-            SdkCredentials(apiKey: existing.apiKey, region: region)
-        }
-    )
-
-    // Convenient set functions to edit a property of the immutable object
-    func apiKeySet(_ apiKey: String) -> SdkCredentials {
-        SdkCredentials(apiKey: apiKey, region: region)
-    }
-
-    func regionSet(_ region: Region) -> SdkCredentials {
-        SdkCredentials(apiKey: apiKey, region: region)
     }
 }

@@ -24,7 +24,7 @@ let package = Package(
     dependencies: [
         // Help for the format of declaring SPM dependencies:
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
-        .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.2.0"),
+        .package(name: "Gist", url: "https://gitlab.com/bourbonltd/gist-apple.git", from: "2.2.1"),
     ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
@@ -45,7 +45,10 @@ let package = Package(
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
                 dependencies: ["CioTracking"],
-                path: "Tests/Shared"),
+                path: "Tests/Shared",
+                resources: [
+                    .copy("SampleDataFiles") // static files that are used in test funnctions.
+                ]),
 
         // Messaging Push 
         .target(name: "CioMessagingPush",

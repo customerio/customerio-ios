@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPushFCM"
-  spec.version      = "1.2.2" # Don't modify this line - it's automatically updated
+  spec.version      = "2.0.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -20,6 +20,5 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/MessagingPushFCM/**/*"
   spec.module_name = "CioMessagingPushFCM" # the `import X` name when using SDK in Swift files 
   
-  spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
-  spec.dependency "FirebaseMessaging", '~> 8.10.0'
+  spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"  
 end

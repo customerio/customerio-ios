@@ -11,6 +11,14 @@ public class ErrorMessageResponse: Codable {
 
     public class Meta: Codable {
         let error: String
+
+        enum CodingKeys: String, CodingKey {
+            case error
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case meta
     }
 }
 
@@ -25,5 +33,13 @@ public class ErrorsMessageResponse: Codable {
 
     public class Meta: Codable {
         let errors: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case errors
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case meta
     }
 }

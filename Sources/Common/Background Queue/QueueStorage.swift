@@ -28,7 +28,7 @@ public protocol QueueStorage: AutoMockable {
     func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
     func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
-        -> (success: Bool, queueStatus: QueueStatus)
+        -> CreateQueueStorageTaskResult
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
@@ -40,7 +40,7 @@ public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
     private let siteId: SiteId
-    private let sdkConfigStore: SdkConfigStore
+    private let sdkConfig: SdkConfig
     private let logger: Logger
     private let dateUtil: DateUtil
 
@@ -51,14 +51,14 @@ public class FileManagerQueueStorage: QueueStorage {
         fileStorage: FileStorage,
         jsonAdapter: JsonAdapter,
         lockManager: LockManager,
-        sdkConfigStore: SdkConfigStore,
+        sdkConfig: SdkConfig,
         logger: Logger,
         dateUtil: DateUtil
     ) {
         self.siteId = siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
-        self.sdkConfigStore = sdkConfigStore
+        self.sdkConfig = sdkConfig
         self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
@@ -70,7 +70,7 @@ public class FileManagerQueueStorage: QueueStorage {
 
         guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
 
-        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data, decoder: nil) ?? []
+        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
 
         return inventory
     }
@@ -79,7 +79,7 @@ public class FileManagerQueueStorage: QueueStorage {
         lock.lock()
         defer { lock.unlock() }
 
-        guard let data = jsonAdapter.toJson(inventory, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(inventory) else {
             return false
         }
 
@@ -91,7 +91,7 @@ public class FileManagerQueueStorage: QueueStorage {
         data: Data,
         groupStart: QueueTaskGroup?,
         blockingGroups: [QueueTaskGroup]?
-    ) -> (success: Bool, queueStatus: QueueStatus) {
+    ) -> CreateQueueStorageTaskResult {
         lock.lock()
         defer { lock.unlock() }
 
@@ -107,7 +107,7 @@ public class FileManagerQueueStorage: QueueStorage {
         )
 
         if !update(queueTask: newQueueTask) {
-            return (success: false, queueStatus: beforeCreateQueueStatus)
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
         let newQueueItem = QueueTaskMetadata(
@@ -123,10 +123,24 @@ public class FileManagerQueueStorage: QueueStorage {
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
         if !saveInventory(existingInventory) {
-            return (success: false, queueStatus: beforeCreateQueueStatus)
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
-        return (success: true, queueStatus: afterCreateQueueStatus)
+        // It's more accurate for us to get the inventory item from the inventory instead of just returning
+        // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
+        // such as removing milliseconds from Date. By getting the inventory item directly from device storage,
+        // we return the most accurate data on the inventory item.
+        guard let createdTask = getInventory().first(where: { $0.taskPersistedId == newQueueItem.taskPersistedId })
+        else {
+            logger.error("expected to find task \(newQueueItem) to be in the inventory but it wasn't")
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+        }
+
+        return CreateQueueStorageTaskResult(
+            success: true,
+            queueStatus: afterCreateQueueStatus,
+            createdTask: createdTask
+        )
     }
 
     public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
@@ -147,7 +161,7 @@ public class FileManagerQueueStorage: QueueStorage {
         defer { lock.unlock() }
 
         guard let data = fileStorage.get(type: .queueTask, fileId: storageId),
-              let task: QueueTask = jsonAdapter.fromJson(data, decoder: nil)
+              let task: QueueTask = jsonAdapter.fromJson(data)
         else {
             return nil
         }
@@ -178,7 +192,7 @@ public class FileManagerQueueStorage: QueueStorage {
         logger.debug("deleting expired tasks from the queue")
 
         var tasksToDelete: Set<QueueTaskMetadata> = Set()
-        let queueTaskExpiredThreshold = Date().subtract(sdkConfigStore.config.backgroundQueueExpiredSeconds, .second)
+        let queueTaskExpiredThreshold = Date().subtract(sdkConfig.backgroundQueueExpiredSeconds, .second)
         logger.debug("""
         deleting tasks older then \(queueTaskExpiredThreshold.string(format: .iso8601noMilliseconds)),
         current time is: \(Date().string(format: .iso8601noMilliseconds))
@@ -218,10 +232,16 @@ public class FileManagerQueueStorage: QueueStorage {
 
 public extension FileManagerQueueStorage {
     private func update(queueTask: QueueTask) -> Bool {
-        guard let data = jsonAdapter.toJson(queueTask, encoder: nil) else {
+        guard let data = jsonAdapter.toJson(queueTask) else {
             return false
         }
 
         return fileStorage.save(type: .queueTask, contents: data, fileId: queueTask.storageId)
     }
+}
+
+public struct CreateQueueStorageTaskResult {
+    public let success: Bool
+    public let queueStatus: QueueStatus
+    public let createdTask: QueueTaskMetadata?
 }

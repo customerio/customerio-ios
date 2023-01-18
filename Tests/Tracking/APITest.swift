@@ -20,8 +20,6 @@ class TrackingAPITest: UnitTest {
 
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
-    // Test that all public functions are accessible by non-singleton instances
-    var instance: CustomerIOInstance = CustomerIO(siteId: "", apiKey: "")
 
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
@@ -29,53 +27,59 @@ class TrackingAPITest: UnitTest {
         try skipRunningTest()
 
         // Initialize
-        CustomerIO.initialize(siteId: "", apiKey: "")
-        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU)
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioSdkConfig) in
+            config.autoTrackPushEvents = false
+        }
+        // There is another `initialize()` function that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioNotificationServiceExtensionSdkConfig) in }
 
         // Reference some objects that should be public in the Tracking module
         let region: Region = .EU
         let loglevel: CioLogLevel = .debug
 
-        // config
-        CustomerIO.config { _ in }
-
         // Identify
         CustomerIO.shared.identify(identifier: "")
         mock.identify(identifier: "")
-        instance.identify(identifier: "")
         CustomerIO.shared.identify(identifier: "", body: dictionaryData)
         mock.identify(identifier: "", body: dictionaryData)
-        instance.identify(identifier: "", body: dictionaryData)
         CustomerIO.shared.identify(identifier: "", body: encodableData)
         mock.identify(identifier: "", body: encodableData)
-        instance.identify(identifier: "", body: encodableData)
 
         // clear identify
         CustomerIO.shared.clearIdentify()
         mock.clearIdentify()
-        instance.clearIdentify()
 
         // event tracking
         CustomerIO.shared.track(name: "")
         mock.track(name: "")
-        instance.track(name: "")
         CustomerIO.shared.track(name: "", data: dictionaryData)
         mock.track(name: "", data: dictionaryData)
-        instance.track(name: "", data: dictionaryData)
         CustomerIO.shared.track(name: "", data: encodableData)
         mock.track(name: "", data: encodableData)
-        instance.track(name: "", data: encodableData)
 
         // screen tracking
         CustomerIO.shared.screen(name: "")
         mock.screen(name: "")
-        instance.screen(name: "")
         CustomerIO.shared.screen(name: "", data: dictionaryData)
         mock.screen(name: "", data: dictionaryData)
-        instance.screen(name: "", data: dictionaryData)
         CustomerIO.shared.screen(name: "", data: encodableData)
         mock.screen(name: "", data: encodableData)
-        instance.screen(name: "", data: encodableData)
+
+        // register push token
+        CustomerIO.shared.registerDeviceToken("")
+        mock.registerDeviceToken("")
+
+        // delete push token
+        CustomerIO.shared.deleteDeviceToken()
+        mock.deleteDeviceToken()
+
+        // track push metric
+        let metric = Metric.delivered
+        CustomerIO.shared.trackMetric(deliveryID: "", event: metric, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
 
         checkDeviceProfileAttributes()
     }
@@ -84,25 +88,23 @@ class TrackingAPITest: UnitTest {
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
         mock.profileAttributes = dictionaryData
-        instance.profileAttributes = dictionaryData
 
         // device attributes
         CustomerIO.shared.deviceAttributes = dictionaryData
         mock.deviceAttributes = dictionaryData
-        instance.deviceAttributes = dictionaryData
     }
 
     func test_allPublicSdkConfigOptions() throws {
         try skipRunningTest()
 
-        CustomerIO.config {
-            $0.trackingApiUrl = ""
-            $0.autoTrackPushEvents = true
-            $0.backgroundQueueMinNumberOfTasks = 10
-            $0.backgroundQueueSecondsDelay = 10
-            $0.logLevel = .error
-            $0.autoTrackPushEvents = false
-            $0.autoScreenViewBody = { [:] }
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
+            config.trackingApiUrl = ""
+            config.autoTrackPushEvents = true
+            config.backgroundQueueMinNumberOfTasks = 10
+            config.backgroundQueueSecondsDelay = 10
+            config.logLevel = .error
+            config.autoTrackPushEvents = false
+            config.autoScreenViewBody = { [:] }
         }
     }
 }

@@ -3,14 +3,31 @@ import Foundation
 /**
  Configuration options for the Customer.io SDK.
  See `CustomerIO.config()` to configurate the SDK.
+
+ Example use case:
+ ```
+ // create a new instance
+ let sdkConfigInstance = SdkConfig.Factory.create(region: .US)
+ // now, you can modify it
+ sdkConfigInstance.trackingApiUrl = "https..."
+ sdkConfigInstance.autoTrackPushEvents = false
+ ```
  */
 public struct SdkConfig {
+    // Used to create new instance of SdkConfig when the SDK is initialized.
+    // Then, each property of the SdkConfig object can be modified by the user.
+    public enum Factory {
+        public static func create(region: Region) -> SdkConfig {
+            SdkConfig(trackingApiUrl: region.productionTrackingUrl)
+        }
+    }
+
     /**
      Base URL to use for the Customer.io track API. You will more then likely not modify this value.
 
      If you override this value, `Region` set when initializing the SDK will be ignored.
      */
-    public var trackingApiUrl: String = ""
+    public var trackingApiUrl: String
 
     /**
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
@@ -55,6 +72,7 @@ public struct SdkConfig {
      operating system, device locale, device model, app version etc
      */
     public var autoTrackDeviceAttributes: Bool = true
+
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
@@ -67,12 +85,73 @@ public struct SdkConfig {
     public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }
 
-public protocol SdkConfigStore: AutoMockable {
-    var config: SdkConfig { get set }
-}
+/**
+ SDK configuration just for rich push feature of the SDK.
 
-// sourcery: InjectRegister = "SdkConfigStore"
-// sourcery: InjectSingleton
-public class InMemorySdkConfigStore: SdkConfigStore {
-    @Atomic public var config = SdkConfig()
+ Construct an instance like you would `SdkConfig`.
+
+ We have a separate SDK config just for rich push because:
+ 1. Instance of SDK inside of a Notification Service Extension does not have as many features to provide
+    compared to running in a host app. Therefore, we don't need to expose as many SDK config options to customers.
+ 2. The SDK code needs to override some configuration options when running inside of a Notication Service Extension.
+    We don't want customers to modify some of these overriden config options as it may effect some features of rich push.
+
+ Note: To not make the SDK code more complex, convert `NotificationServiceExtensionSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
+ The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
+ */
+public struct NotificationServiceExtensionSdkConfig {
+    /// See `SdkConfig.trackingApiUrl`
+    public var trackingApiUrl: String
+    /// See `SdkConfig.autoTrackPushEvents`
+    public var autoTrackPushEvents: Bool
+    /// See `SdkConfig.logLevel`
+    public var logLevel: CioLogLevel
+    /// See `SdkConfig.autoTrackDeviceAttributes`
+    public var autoTrackDeviceAttributes: Bool
+    // property is used internally so disable swiftlint rule
+    /**
+     Used internally at Customer.io to override some information in the SDK when the SDK is being used
+     as a wrapper/bridge such as with ReactNative.
+     */
+    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
+
+    // Used to create new instance when the SDK is initialized.
+    // Then, each property can be modified by the user.
+    public enum Factory {
+        public static func create(region: Region) -> NotificationServiceExtensionSdkConfig {
+            let defaultSdkConfig = SdkConfig.Factory.create(region: region)
+
+            return NotificationServiceExtensionSdkConfig(
+                trackingApiUrl: defaultSdkConfig.trackingApiUrl,
+                autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
+                logLevel: defaultSdkConfig.logLevel,
+                autoTrackDeviceAttributes: defaultSdkConfig.autoTrackDeviceAttributes
+            )
+        }
+    }
+
+    /// Convert to `SdkConfig` before being used in the SDK. For make the SDK code base easier to maintain, the SDK is
+    /// designed to only handle a `SdkCofig` object.
+    /// Therefore, we need to convert this object to an `SdkConfig` instance in SDK initialization so the SDK can use
+    /// it.
+    public func toSdkConfig() -> SdkConfig {
+        var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
+
+        sdkConfig.autoTrackPushEvents = autoTrackPushEvents
+        sdkConfig.logLevel = logLevel
+        sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        sdkConfig._sdkWrapperConfig = _sdkWrapperConfig
+
+        // Default to running tasks added to the BQ immediately.
+        // Since a Notification Service Extension is only in memory for a small amount of time,
+        // we need to bypass the background queue default behavior to make sure that HTTP tasks
+        // have an opportunity to execute before the OS kills the Notification Service Extension.
+        //
+        // Customers should not be able to modify these values in a Notification Service Extension.
+        // Or, they may experience some events (such as push metrics) not being delivered as expected to CIO.
+        sdkConfig.backgroundQueueMinNumberOfTasks = 1
+        sdkConfig.backgroundQueueSecondsDelay = 0
+
+        return sdkConfig
+    }
 }

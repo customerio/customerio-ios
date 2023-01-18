@@ -32,4 +32,27 @@ class ArrayExtensionTest: UnitTest {
         XCTAssertEqual(actual2, 2)
         XCTAssertNil(actual3)
     }
+
+    // MARK: mapNonNil
+
+    func test_mapNonNil_givenArrayNoNilValues_expectGetArray() {
+        let given: [String?] = ["cio", "rocks"]
+        let expected: [String] = ["cio", "rocks"]
+
+        XCTAssertEqual(given.mapNonNil(), expected)
+    }
+
+    func test_mapNonNil_givenEmptyArray_expectGetEmptyArray() {
+        let given: [String?] = []
+        let expected: [String] = []
+
+        XCTAssertEqual(given.mapNonNil(), expected)
+    }
+
+    func test_mapNonNil_givenArrayContainingNilValues_expectGetNonNilValuesOnly() {
+        let given: [String?] = [nil, "cio", nil]
+        let expected = ["cio"]
+
+        XCTAssertEqual(given.mapNonNil(), expected)
+    }
 }

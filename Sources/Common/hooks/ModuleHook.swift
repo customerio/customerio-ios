@@ -6,7 +6,6 @@ import Foundation
 public protocol ModuleHookProvider: AutoMockable {
     var profileIdentifyHook: ProfileIdentifyHook? { get }
     var queueRunnerHook: QueueRunnerHook? { get }
-    var deviceAttributesHook: DeviceAttributesHook? { get }
     var screenTrackingHook: ScreenTrackingHook? { get }
 }
 
@@ -28,11 +27,6 @@ public protocol QueueRunnerHook: AutoMockable {
     /// called from background queue in `Tracking` module.
     /// return `true` if the `task` belongs to that module.
     func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool
-}
-
-// Hook to send custom device attributes to workspace
-public protocol DeviceAttributesHook: AutoMockable {
-    func customDeviceAttributesAdded(attributes: [String: Any])
 }
 
 // Hook for when a screen view track event is sent
