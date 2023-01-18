@@ -138,8 +138,7 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
      */
     public var messageShownClosure: ((InAppMessage) -> Void)?
 
-    /// Mocked function for `messageShown(message: InAppMessage)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `messageShown(message: InAppMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func messageShown(message: InAppMessage) {
         mockCalled = true
         messageShownCallsCount += 1
@@ -166,8 +165,7 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
      */
     public var messageDismissedClosure: ((InAppMessage) -> Void)?
 
-    /// Mocked function for `messageDismissed(message: InAppMessage)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `messageDismissed(message: InAppMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func messageDismissed(message: InAppMessage) {
         mockCalled = true
         messageDismissedCallsCount += 1
@@ -194,8 +192,7 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
      */
     public var errorWithMessageClosure: ((InAppMessage) -> Void)?
 
-    /// Mocked function for `errorWithMessage(message: InAppMessage)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `errorWithMessage(message: InAppMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func errorWithMessage(message: InAppMessage) {
         mockCalled = true
         errorWithMessageCallsCount += 1
@@ -214,33 +211,21 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageActionTakenReceivedArguments: (
-        message: InAppMessage,
-        currentRoute: String,
-        action: String,
-        name: String
-    )?
+    public private(set) var messageActionTakenReceivedArguments: (message: InAppMessage, action: String, name: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageActionTakenReceivedInvocations: [(
-        message: InAppMessage,
-        currentRoute: String,
-        action: String,
-        name: String
-    )] = []
+    public private(set) var messageActionTakenReceivedInvocations: [(message: InAppMessage, action: String, name: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var messageActionTakenClosure: ((InAppMessage, String, String, String) -> Void)?
+    public var messageActionTakenClosure: ((InAppMessage, String, String) -> Void)?
 
-    /// Mocked function for `messageActionTaken(message: InAppMessage, currentRoute: String, action: String, name:
-    /// String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func messageActionTaken(message: InAppMessage, currentRoute: String, action: String, name: String) {
+    /// Mocked function for `messageActionTaken(message: InAppMessage, action: String, name: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func messageActionTaken(message: InAppMessage, action: String, name: String) {
         mockCalled = true
         messageActionTakenCallsCount += 1
-        messageActionTakenReceivedArguments = (message: message, currentRoute: currentRoute, action: action, name: name)
-        messageActionTakenReceivedInvocations
-            .append((message: message, currentRoute: currentRoute, action: action, name: name))
-        messageActionTakenClosure?(message, currentRoute, action, name)
+        messageActionTakenReceivedArguments = (message: message, action: action, name: name)
+        messageActionTakenReceivedInvocations.append((message: message, action: action, name: name))
+        messageActionTakenClosure?(message, action, name)
     }
 }
 
@@ -298,8 +283,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var initializeClosure: ((String, GistDelegate) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a
-    /// mocked value and check result of mock in test code.
+    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func initialize(organizationId: String, delegate: GistDelegate) {
         mockCalled = true
         initializeCallsCount += 1
@@ -326,8 +310,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var setProfileIdentifierClosure: ((String) -> Void)?
 
-    /// Mocked function for `setProfileIdentifier(_ id: String)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `setProfileIdentifier(_ id: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func setProfileIdentifier(_ id: String) {
         mockCalled = true
         setProfileIdentifierCallsCount += 1
@@ -350,8 +333,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var clearIdentifyClosure: (() -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func clearIdentify() {
         mockCalled = true
         clearIdentifyCallsCount += 1
@@ -376,8 +358,7 @@ internal class InAppProviderMock: InAppProvider, Mock {
      */
     internal var setRouteClosure: ((String) -> Void)?
 
-    /// Mocked function for `setRoute(_ route: String)`. Your opportunity to return a mocked value and check result of
-    /// mock in test code.
+    /// Mocked function for `setRoute(_ route: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func setRoute(_ route: String) {
         mockCalled = true
         setRouteCallsCount += 1
@@ -433,8 +414,7 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
      */
     public var initializeClosure: ((String) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func initialize(organizationId: String) {
         mockCalled = true
         initializeCallsCount += 1
@@ -453,28 +433,20 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var initializeEventListenerReceivedArguments: (
-        organizationId: String,
-        eventListener: InAppEventListener
-    )?
+    public private(set) var initializeEventListenerReceivedArguments: (organizationId: String, eventListener: InAppEventListener)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeEventListenerReceivedInvocations: [(
-        organizationId: String,
-        eventListener: InAppEventListener
-    )] = []
+    public private(set) var initializeEventListenerReceivedInvocations: [(organizationId: String, eventListener: InAppEventListener)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var initializeEventListenerClosure: ((String, InAppEventListener) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func initialize(organizationId: String, eventListener: InAppEventListener) {
         mockCalled = true
         initializeEventListenerCallsCount += 1
         initializeEventListenerReceivedArguments = (organizationId: organizationId, eventListener: eventListener)
-        initializeEventListenerReceivedInvocations
-            .append((organizationId: organizationId, eventListener: eventListener))
+        initializeEventListenerReceivedInvocations.append((organizationId: organizationId, eventListener: eventListener))
         initializeEventListenerClosure?(organizationId, eventListener)
     }
 }

@@ -115,8 +115,7 @@ internal class CleanupRepositoryMock: CleanupRepository, Mock {
      */
     internal var cleanupClosure: (() -> Void)?
 
-    /// Mocked function for `cleanup()`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
+    /// Mocked function for `cleanup()`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func cleanup() {
         mockCalled = true
         cleanupCallsCount += 1
@@ -318,8 +317,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var identifyClosure: ((String, [String: Any]) -> Void)?
 
-    /// Mocked function for `identify(identifier: String, body: [String: Any])`. Your opportunity to return a mocked
-    /// value and check result of mock in test code.
+    /// Mocked function for `identify(identifier: String, body: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify(identifier: String, body: [String: Any]) {
         mockCalled = true
         identifyCallsCount += 1
@@ -339,8 +337,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity
-    /// to return a mocked value and check result of mock in test code.
+    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
         mockCalled = true
         identifyCallsCount += 1
@@ -363,8 +360,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var clearIdentifyClosure: (() -> Void)?
 
-    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `clearIdentify()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func clearIdentify() {
         mockCalled = true
         clearIdentifyCallsCount += 1
@@ -389,8 +385,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var trackClosure: ((String, [String: Any]) -> Void)?
 
-    /// Mocked function for `track(name: String, data: [String: Any])`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `track(name: String, data: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track(name: String, data: [String: Any]) {
         mockCalled = true
         trackCallsCount += 1
@@ -410,8 +405,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var trackEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func track<RequestBody: Encodable>(name: String, data: RequestBody?) {
         mockCalled = true
         trackCallsCount += 1
@@ -438,8 +432,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var screenClosure: ((String, [String: Any]) -> Void)?
 
-    /// Mocked function for `screen(name: String, data: [String: Any])`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `screen(name: String, data: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
     public func screen(name: String, data: [String: Any]) {
         mockCalled = true
         screenCallsCount += 1
@@ -459,8 +452,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
         mockCalled = true
         screenCallsCount += 1
@@ -487,8 +479,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var registerDeviceTokenClosure: ((String) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `registerDeviceToken(_ deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func registerDeviceToken(_ deviceToken: String) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
@@ -511,8 +502,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteDeviceToken() {
         mockCalled = true
         deleteDeviceTokenCallsCount += 1
@@ -531,15 +521,13 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] =
-        []
+    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         mockCalled = true
         trackMetricCallsCount += 1
@@ -590,8 +578,7 @@ internal class DeviceAttributesProviderMock: DeviceAttributesProvider, Mock {
      */
     internal var getDefaultDeviceAttributesClosure: ((([String: Any]) -> Void) -> Void)?
 
-    /// Mocked function for `getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     internal func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
         mockCalled = true
         getDefaultDeviceAttributesCallsCount += 1

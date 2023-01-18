@@ -28,7 +28,6 @@ class MessagingInAppAPITest: UnitTest {
 extension MessagingInAppAPITest: InAppEventListener {
     func messageShown(message: InAppMessage) {
         // make sure all properties of InAppMessage are accessible
-        _ = message.instanceId
         _ = message.messageId
         _ = message.deliveryId
     }
@@ -37,5 +36,5 @@ extension MessagingInAppAPITest: InAppEventListener {
 
     func errorWithMessage(message: InAppMessage) {}
 
-    func messageActionTaken(message: InAppMessage, currentRoute: String, action: String, name: String) {}
+    func messageActionTaken(message: InAppMessage, action: String, name: String) {}
 }

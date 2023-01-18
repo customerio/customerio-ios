@@ -153,8 +153,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var registerDeviceTokenClosure: ((String?) -> Void)?
 
-    /// Mocked function for `registerDeviceToken(fcmToken: String?)`. Your opportunity to return a mocked value and
-    /// check result of mock in test code.
+    /// Mocked function for `registerDeviceToken(fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func registerDeviceToken(fcmToken: String?) {
         mockCalled = true
         registerDeviceTokenCallsCount += 1
@@ -181,8 +180,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var didReceiveRegistrationTokenClosure: ((Any, String?) -> Void)?
 
-    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your
-    /// opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
         mockCalled = true
         didReceiveRegistrationTokenCallsCount += 1
@@ -203,17 +201,13 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(
-        application: Any,
-        error: Error
-    )] = []
+    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any, error: Error)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var didFailToRegisterForRemoteNotificationsClosure: ((Any, Error) -> Void)?
 
-    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error:
-    /// Error)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         mockCalled = true
         didFailToRegisterForRemoteNotificationsCallsCount += 1
@@ -236,8 +230,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var deleteDeviceTokenClosure: (() -> Void)?
 
-    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in
-    /// test code.
+    /// Mocked function for `deleteDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func deleteDeviceToken() {
         mockCalled = true
         deleteDeviceTokenCallsCount += 1
@@ -256,15 +249,13 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] =
-        []
+    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var trackMetricClosure: ((String, Metric, String) -> Void)?
 
-    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to
-    /// return a mocked value and check result of mock in test code.
+    /// Mocked function for `trackMetric(deliveryID: String, event: Metric, deviceToken: String)`. Your opportunity to return a mocked value and check result of mock in test code.
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         mockCalled = true
         trackMetricCallsCount += 1
@@ -284,15 +275,9 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent) -> Void
-    )?
+    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(
-        request: UNNotificationRequest,
-        contentHandler: (UNNotificationContent) -> Void
-    )] = []
+    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**
@@ -302,20 +287,14 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, (UNNotificationContent) -> Void) -> Bool)?
 
-    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping
-    /// (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test
-    /// code.
+    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
+    public func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) -> Bool {
         mockCalled = true
         didReceiveNotificationRequestCallsCount += 1
         didReceiveNotificationRequestReceivedArguments = (request: request, contentHandler: contentHandler)
         didReceiveNotificationRequestReceivedInvocations.append((request: request, contentHandler: contentHandler))
-        return didReceiveNotificationRequestClosure
-            .map { $0(request, contentHandler) } ?? didReceiveNotificationRequestReturnValue
+        return didReceiveNotificationRequestClosure.map { $0(request, contentHandler) } ?? didReceiveNotificationRequestReturnValue
     }
     #endif
 
@@ -334,8 +313,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
      */
     public var serviceExtensionTimeWillExpireClosure: (() -> Void)?
 
-    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check
-    /// result of mock in test code.
+    /// Mocked function for `serviceExtensionTimeWillExpire()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func serviceExtensionTimeWillExpire() {
         mockCalled = true
         serviceExtensionTimeWillExpireCallsCount += 1

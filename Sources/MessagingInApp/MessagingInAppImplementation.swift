@@ -93,7 +93,6 @@ extension MessagingInAppImplementation: GistDelegate {
 
         eventListener?.messageActionTaken(
             message: InAppMessage(gistMessage: message),
-            currentRoute: currentRoute,
             action: action,
             name: name
         )

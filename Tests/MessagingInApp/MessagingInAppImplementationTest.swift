@@ -105,7 +105,6 @@ class MessagingInAppImplementationTest: UnitTest {
         )
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
-        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.currentRoute, givenCurrentRoute)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.action, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.name, givenName)
     }
