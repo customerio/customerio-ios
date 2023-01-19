@@ -100,7 +100,7 @@ public class ConsoleLogger: Logger {
 }
 
 extension CioLogLevel {
-    static func getLogLevel(for value: Int) -> CioLogLevel {
+    static func getLogLevel(for value: Int) -> CioLogLevel? {
         switch value {
         case 1:
             return .none
@@ -111,11 +111,11 @@ extension CioLogLevel {
         case 4:
             return .debug
         default:
-            return .error
+            return nil
         }
     }
 
-    static func getLogLevel(for value: String) -> CioLogLevel {
+    static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
         case "none":
             return .none
@@ -126,7 +126,7 @@ extension CioLogLevel {
         case "debug":
             return .debug
         default:
-            return .error
+            return nil
         }
     }
 }

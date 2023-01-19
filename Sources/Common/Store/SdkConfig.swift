@@ -14,54 +14,43 @@ import Foundation
  ```
  */
 public struct SdkConfig {
-    public enum Environment {
-        static let siteId = "siteId"
-        static let apiKey = "apiKey"
-        static let region = "region"
-    }
-
-    public enum Config {
-        static let trackingApiUrl = "trackingApiUrl"
-        static let autoTrackDeviceAttributes = "autoTrackDeviceAttributes"
-        static let logLevel = "logLevel"
-        static let autoTrackPushEvents = "autoTrackPushEvents"
-        static let backgroundQueueMinNumberOfTasks = "backgroundQueueMinNumberOfTasks"
-        static let backgroundQueueSecondsDelay = "backgroundQueueSecondsDelay"
-    }
-
-    public enum Package {
-        static let source = "source"
-        static let sourceVersion = "version"
-    }
-
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
         public static func create(region: Region, params: [String: Any] = [:]) -> SdkConfig {
-            var config = SdkConfig(trackingApiUrl: region.productionTrackingUrl)
-            if let autoTrackDeviceAttributes = params[Config.autoTrackDeviceAttributes] as? Bool {
-                config.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+            // Each SDK config option should be able to be set from `param` map.
+            // If one isn't provided, use the default value instead.
+
+            // If a parameter takes more logic to calculate, perform the logic up here.
+            var backgroundQueueExpiredSeconds = Seconds.secondsFromDays(3)
+            if let numberOfSeconds = params["backgroundQueueExpiredSeconds"] as? Int {
+                backgroundQueueExpiredSeconds = Seconds(numberOfSeconds)
             }
-            if let logLevel = params[Config.logLevel] as? String {
-                config.logLevel = CioLogLevel.getLogLevel(for: logLevel)
-            } else if let logLevel = params[Config.logLevel] as? Int {
-                config.logLevel = CioLogLevel.getLogLevel(for: logLevel)
+
+            var logLevel = CioLogLevel.error
+            if let logLevelStringValue = params["logLevel"] as? String, let paramLogLevel = CioLogLevel.getLogLevel(for: logLevelStringValue) {
+                logLevel = paramLogLevel
             }
-            if let autoTrackPushEvents = params[Config.autoTrackPushEvents] as? Bool {
-                config.autoTrackPushEvents = autoTrackPushEvents
-            }
-            if let backgroundQueueMinNumberOfTasks = params[Config.backgroundQueueMinNumberOfTasks] as? Int {
-                config.backgroundQueueMinNumberOfTasks = backgroundQueueMinNumberOfTasks
-            }
-            if let backgroundQueueSecondsDelay = params[Config.backgroundQueueSecondsDelay] as? Int {
-                config.backgroundQueueSecondsDelay = Seconds(backgroundQueueSecondsDelay)
-            }
-            if let sdkSource = params[Package.source] as? String, let pversion = params[Package.sourceVersion] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
+
+            // Construct object with all required parameters. Each config option should be provided from `params` or a default value.
+            // Define default values here in constructor instead of in struct properties. This is by design so in the future if we add
+            // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
+            // add a way for `params` to override the SDK config option.
+            var config = SdkConfig(
+                trackingApiUrl: (params["trackingApiUrl"] as? String) ?? region.productionTrackingUrl,
+                autoTrackPushEvents: (params["autoTrackPushEvents"] as? Bool) ?? true,
+                backgroundQueueMinNumberOfTasks: (params["backgroundQueueMinNumberOfTasks"] as? Int) ?? 10,
+                backgroundQueueSecondsDelay: Seconds(params["backgroundQueueSecondsDelay"] as? Int ?? 30),
+                backgroundQueueExpiredSeconds: backgroundQueueExpiredSeconds,
+                logLevel: logLevel,
+                autoTrackScreenViews: params["autoTrackScreenViews"] as? Bool ?? false,
+                autoTrackDeviceAttributes: params["autoTrackDeviceAttributes"] as? Bool ?? true
+            )
+
+            if let sdkSource = params["source"] as? String, let pversion = params["version"] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
                 config._sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
             }
-            if let trackingApiUrl = params[Config.trackingApiUrl] as? String, !trackingApiUrl.isEmpty {
-                config.trackingApiUrl = trackingApiUrl
-            }
+
             return config
         }
     }
@@ -77,33 +66,33 @@ public struct SdkConfig {
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
      for push notifications sent by Customer.io
      */
-    public var autoTrackPushEvents: Bool = true
+    public var autoTrackPushEvents: Bool
 
     /**
      Number of tasks in the background queue before the queue begins operating.
      This is mostly used during development to test configuration is setup. We do not recommend
      modifying this value because it impacts battery life of mobile device.
      */
-    public var backgroundQueueMinNumberOfTasks = 10
+    public var backgroundQueueMinNumberOfTasks: Int
 
     /// The number of seconds to delay running queue after a task has been added to it.
-    public var backgroundQueueSecondsDelay: Seconds = 30
+    public var backgroundQueueSecondsDelay: Seconds
     /**
      * The number of seconds old a queue task is when it is "expired" and should be deleted.
      * We do not recommend modifying this value because it risks losing data or taking up too much
      * space on the user's device.
      */
-    public var backgroundQueueExpiredSeconds: Seconds = Seconds.secondsFromDays(3)
+    public var backgroundQueueExpiredSeconds: Seconds
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
-    public var logLevel: CioLogLevel = .error
+    public var logLevel: CioLogLevel
 
     /**
      Automatic tracking of screen views will generate `screen`-type events on every screen transition within
      your application.
      */
-    public var autoTrackScreenViews: Bool = false
+    public var autoTrackScreenViews: Bool
 
     /**
      Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
@@ -115,7 +104,7 @@ public struct SdkConfig {
      Enable this property if you want SDK to automatic tracking of device attributes such as
      operating system, device locale, device model, app version etc
      */
-    public var autoTrackDeviceAttributes: Bool = true
+    public var autoTrackDeviceAttributes: Bool
 
     internal var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
@@ -144,6 +133,8 @@ public struct SdkConfig {
  The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
  */
 public struct NotificationServiceExtensionSdkConfig {
+    /// Keep reference to region as it's needed for `toSdkConfig()`
+    private var region: Region
     /// See `SdkConfig.trackingApiUrl`
     public var trackingApiUrl: String
     /// See `SdkConfig.autoTrackPushEvents`
@@ -166,6 +157,7 @@ public struct NotificationServiceExtensionSdkConfig {
             let defaultSdkConfig = SdkConfig.Factory.create(region: region)
 
             return NotificationServiceExtensionSdkConfig(
+                region: region,
                 trackingApiUrl: defaultSdkConfig.trackingApiUrl,
                 autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
                 logLevel: defaultSdkConfig.logLevel,
@@ -179,7 +171,7 @@ public struct NotificationServiceExtensionSdkConfig {
     /// Therefore, we need to convert this object to an `SdkConfig` instance in SDK initialization so the SDK can use
     /// it.
     public func toSdkConfig() -> SdkConfig {
-        var sdkConfig = SdkConfig(trackingApiUrl: trackingApiUrl)
+        var sdkConfig = SdkConfig.Factory.create(region: region)
 
         sdkConfig.autoTrackPushEvents = autoTrackPushEvents
         sdkConfig.logLevel = logLevel
