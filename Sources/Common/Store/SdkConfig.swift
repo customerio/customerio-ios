@@ -22,11 +22,6 @@ public struct SdkConfig {
             // If one isn't provided, use the default value instead.
 
             // If a parameter takes more logic to calculate, perform the logic up here.
-            var backgroundQueueExpiredSeconds = Seconds.secondsFromDays(3)
-            if let numberOfSeconds = params["backgroundQueueExpiredSeconds"] as? Int {
-                backgroundQueueExpiredSeconds = Seconds(numberOfSeconds)
-            }
-
             var logLevel = CioLogLevel.error
             if let logLevelStringValue = params["logLevel"] as? String, let paramLogLevel = CioLogLevel.getLogLevel(for: logLevelStringValue) {
                 logLevel = paramLogLevel
@@ -40,8 +35,8 @@ public struct SdkConfig {
                 trackingApiUrl: (params["trackingApiUrl"] as? String) ?? region.productionTrackingUrl,
                 autoTrackPushEvents: (params["autoTrackPushEvents"] as? Bool) ?? true,
                 backgroundQueueMinNumberOfTasks: (params["backgroundQueueMinNumberOfTasks"] as? Int) ?? 10,
-                backgroundQueueSecondsDelay: Seconds(params["backgroundQueueSecondsDelay"] as? Int ?? 30),
-                backgroundQueueExpiredSeconds: backgroundQueueExpiredSeconds,
+                backgroundQueueSecondsDelay: params["backgroundQueueSecondsDelay"] as? Seconds ?? 30,
+                backgroundQueueExpiredSeconds: params["backgroundQueueExpiredSeconds"] as? Seconds ?? Seconds.secondsFromDays(3),
                 logLevel: logLevel,
                 autoTrackScreenViews: params["autoTrackScreenViews"] as? Bool ?? false,
                 autoTrackDeviceAttributes: params["autoTrackDeviceAttributes"] as? Bool ?? true
