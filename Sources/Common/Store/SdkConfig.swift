@@ -29,6 +29,11 @@ public struct SdkConfig {
         static let backgroundQueueSecondsDelay = "backgroundQueueSecondsDelay"
     }
 
+    public enum Package {
+        static let source = "source"
+        static let sourceVersion = "version"
+       }
+
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
@@ -50,6 +55,9 @@ public struct SdkConfig {
             }
             if let backgroundQueueSecondsDelay = params[Config.backgroundQueueSecondsDelay] as? Int {
                 config.backgroundQueueSecondsDelay = Seconds(backgroundQueueSecondsDelay)
+            }
+            if let sdkSource = params[Package.source] as? String, let pversion = params[Package.sourceVersion]  as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
+                config._sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
             }
             if let trackingApiUrl = params[Config.trackingApiUrl] as? String, !trackingApiUrl.isEmpty {
                 config.trackingApiUrl = trackingApiUrl

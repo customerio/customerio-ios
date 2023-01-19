@@ -23,7 +23,7 @@ public extension CustomerIOInstance {
 
 /**
  Welcome to the Customer.io iOS SDK!
-
+ 
  This class is where you begin to use the SDK.
  You must call `CustomerIO.initialize` to use the features of the SDK.
  */
@@ -34,7 +34,7 @@ public class CustomerIO: CustomerIOInstance {
 
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
-
+     
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
     @Atomic public private(set) static var shared = CustomerIO()
@@ -92,39 +92,24 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region)
-
-        if let configureHandler = configureHandler {
-            configureHandler(&newSdkConfig)
-        }
-
-        Self.initialize(
-            siteId: siteId,
-            apiKey: apiKey,
-            region: region,
-            config: newSdkConfig
-        )
-
-        if newSdkConfig.autoTrackScreenViews {
-            // Setting up screen view tracking is not available for rich push (Notification Service Extension).
-            // Only call this code when not possibly being called from a NSE.
-            Self.shared.setupAutoScreenviewTracking()
-        }
+        initialize(siteId: siteId, apiKey: apiKey, region: region, configParams: [:], configure: configureHandler)
     }
 
     /**
-     Initialize the shared `instance` of `CustomerIO` with optional `configParams`.
+     Initialize the shared `instance` of `CustomerIO` with optional `configParams` to intialize SdkConfig.
      Call this function when your app launches, before using `CustomerIO.instance`.
+     
+     Currently this constructor is of internal use only.
      */
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(
         siteId: String,
         apiKey: String,
         region: Region,
-        params: [String: Any] = [:],
+        configParams: [String: Any] = [:],
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region, params: params)
+        var newSdkConfig = SdkConfig.Factory.create(region: region, params: configParams)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
@@ -210,9 +195,9 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-      Modify attributes to an already identified profile.
-
-      Note: The getter of this field returns an empty dictionary. This is a setter only field.
+     Modify attributes to an already identified profile.
+     
+     Note: The getter of this field returns an empty dictionary. This is a setter only field.
      */
     public var profileAttributes: [String: Any] {
         get {
@@ -226,7 +211,7 @@ public class CustomerIO: CustomerIOInstance {
     /**
      Use `deviceAttributes` to provide additional and custom device attributes
      apart from the ones the SDK is programmed to send to customer workspace.
-
+     
      Example use:
      ```
      CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
@@ -243,12 +228,12 @@ public class CustomerIO: CustomerIOInstance {
 
     /**
      Identify a customer (aka: Add or update a profile).
-
+     
      [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
-
+     
      Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
      the previously identified profile will be removed. Only the latest identified customer is persisted.
-
+     
      - Parameters:
      - identifier: ID you want to assign to the customer.
      This value can be an internal ID that your system uses or an email address.
@@ -269,10 +254,10 @@ public class CustomerIO: CustomerIOInstance {
     /**
      Stop identifying the currently persisted customer. All future calls to the SDK will no longer
      be associated with the previously identified customer.
-
+     
      Note: If you simply want to identify a *new* customer, this function call is optional. Simply
      call `identify()` again to identify the new customer profile over the existing.
-
+     
      If no profile has been identified yet, this function will ignore your request.
      */
     public func clearIdentify() {
@@ -281,9 +266,9 @@ public class CustomerIO: CustomerIOInstance {
 
     /**
      Track an event
-
+     
      [Learn more](https://customer.io/docs/events/) about events in Customer.io
-
+     
      - Parameters:
      - name: Name of the event you want to track.
      - data: Optional event body data
@@ -305,9 +290,9 @@ public class CustomerIO: CustomerIOInstance {
 
     /**
      Track a a screen view
-
+     
      [Learn more](https://customer.io/docs/events/) about events in Customer.io
-
+     
      - Parameters:
      - name: Name of the currently active screen
      - data: Optional event body data
