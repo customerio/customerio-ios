@@ -107,4 +107,44 @@ class TrackingAPITest: UnitTest {
             config.autoScreenViewBody = { [:] }
         }
     }
+
+    // SDK wrappers can configure the SDK from a Map.
+    // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
+    func test_createSdkConfigFromMap() {
+        let trackingApiUrl = String.random
+        let autoTrackPushEvents = false
+        let backgroundQueueMinNumberOfTasks = 10000
+        let backgroundQueueSecondsDelay: TimeInterval = 100000
+        let backgroundQueueExpiredSeconds: TimeInterval = 100000
+        let logLevel = "info"
+        let autoTrackScreenViews = true
+        let autoTrackDeviceAttributes = false
+        let sdkWrapperSource = "Flutter"
+        let sdkWrapperVersion = "1000.33333.4444"
+
+        let givenParamsFromSdkWrapper: [String: Any] = [
+            "trackingApiUrl": trackingApiUrl,
+            "autoTrackPushEvents": false,
+            "backgroundQueueMinNumberOfTasks": backgroundQueueMinNumberOfTasks,
+            "backgroundQueueSecondsDelay": backgroundQueueSecondsDelay,
+            "backgroundQueueExpiredSeconds": backgroundQueueExpiredSeconds,
+            "logLevel": logLevel,
+            "autoTrackScreenViews": autoTrackScreenViews,
+            "autoTrackDeviceAttributes": autoTrackDeviceAttributes,
+            "source": sdkWrapperSource,
+            "version": sdkWrapperVersion
+        ]
+
+        let actual = CioSdkConfig.Factory.create(region: .US, params: givenParamsFromSdkWrapper)
+
+        XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
+        XCTAssertEqual(actual.autoTrackPushEvents, autoTrackPushEvents)
+        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, backgroundQueueMinNumberOfTasks)
+        XCTAssertEqual(actual.backgroundQueueSecondsDelay, backgroundQueueSecondsDelay)
+        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, backgroundQueueExpiredSeconds)
+        XCTAssertEqual(actual.logLevel.rawValue, logLevel)
+        XCTAssertEqual(actual.autoTrackScreenViews, autoTrackScreenViews)
+        XCTAssertEqual(actual.autoTrackDeviceAttributes, autoTrackDeviceAttributes)
+        XCTAssertNotNil(actual._sdkWrapperConfig)
+    }
 }
