@@ -23,14 +23,14 @@ class MessagingInAppTest: UnitTest {
     }
 
     func test_initialize_noEventListener_expectCallModuleInitializeCode() {
-        MessagingInApp.initialize(organizationId: String.random, eventListener: nil, implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
+        MessagingInApp.initialize(eventListener: nil, implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
     }
 
     func test_initialize_givenEventListener_expectCallModuleInitializeCode() {
-        MessagingInApp.initialize(organizationId: String.random, eventListener: InAppEventListenerMock(), implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
+        MessagingInApp.initialize(eventListener: InAppEventListenerMock(), implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
@@ -39,7 +39,7 @@ class MessagingInAppTest: UnitTest {
     func test_initialize_sdkNotInitialized_expectInAppModuleNotInitialized() {
         sdkInitializedUtilMock.underlyingPostInitializedData = nil // the SDK is no longer initialized
 
-        MessagingInApp.initialize(organizationId: String.random, eventListener: nil, implementation: nil, sdkInitializedUtil: sdkInitializedUtilMock)
+        MessagingInApp.initialize(eventListener: nil, implementation: nil, sdkInitializedUtil: sdkInitializedUtilMock)
 
         XCTAssertFalse(hooksMock.addCalled)
         XCTAssertFalse(hooksMock.mockCalled)

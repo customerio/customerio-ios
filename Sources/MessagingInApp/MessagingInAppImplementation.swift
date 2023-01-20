@@ -4,6 +4,8 @@ import Foundation
 import Gist
 
 internal class MessagingInAppImplementation: MessagingInAppInstance {
+    private let siteId: SiteId
+    private let region: Region
     private let logger: Logger
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
@@ -11,19 +13,29 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var eventListener: InAppEventListener?
 
     init(diGraph: DIGraph) {
+        self.siteId = diGraph.siteId
+        self.region = diGraph.region
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
     }
 
+    func initialize() {
+        inAppProvider.initialize(siteId: siteId, region: region, delegate: self)
+    }
+
+    func initialize(eventListener: InAppEventListener) {
+        self.eventListener = eventListener
+        initialize()
+    }
+
     func initialize(organizationId: String) {
-        inAppProvider.initialize(organizationId: organizationId, delegate: self)
+        initialize()
     }
 
     func initialize(organizationId: String, eventListener: InAppEventListener) {
-        self.eventListener = eventListener
-        initialize(organizationId: organizationId)
+        initialize(eventListener: eventListener)
     }
 }
 

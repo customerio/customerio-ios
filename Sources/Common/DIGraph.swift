@@ -3,11 +3,13 @@ import Foundation
 public class DIGraph {
     public let siteId: SiteId
     public let apiKey: String
+    public let region: Region
     public let sdkConfig: SdkConfig
 
-    public init(siteId: SiteId, apiKey: String, sdkConfig: SdkConfig) {
+    public init(siteId: SiteId, apiKey: String, region: Region, sdkConfig: SdkConfig) {
         self.siteId = siteId
         self.apiKey = apiKey
+        self.region = region
         self.sdkConfig = sdkConfig
     }
 

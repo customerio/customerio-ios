@@ -74,7 +74,7 @@ open class UnitTest: XCTestCase {
 
         modifySdkConfig?(&newSdkConfig)
 
-        diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
+        diGraph = DIGraph(siteId: testSiteId, apiKey: "", region: .US, sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()

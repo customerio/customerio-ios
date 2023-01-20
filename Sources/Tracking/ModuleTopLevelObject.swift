@@ -41,16 +41,16 @@ open class ModuleTopLevelObject<ImplementationClass> {
 
     // We want each top level module to have an initialize function so that features like hooks get setup as soon as the
     // SDK is initialized.
-    public func initialize() {
+    public func initializeModuleIfSdkInitialized() {
         guard let postSdkInitializedData = sdkInitializedUtil.postInitializedData else {
             // SDK not yet initialized. Don't run the code.
             return
         }
 
-        inititlize(diGraph: postSdkInitializedData.diGraph)
+        inititlizeModule(diGraph: postSdkInitializedData.diGraph)
     }
 
-    open func inititlize(diGraph: DIGraph) {
+    open func inititlizeModule(diGraph: DIGraph) {
         fatalError("forgot to override in subclass")
     }
 

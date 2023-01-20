@@ -4,8 +4,17 @@ import Foundation
 import Gist
 
 public protocol MessagingInAppInstance: AutoMockable {
-    func initialize(organizationId: String)
+    // sourcery:Name=initialize
+    func initialize()
     // sourcery:Name=initializeEventListener
+    func initialize(eventListener: InAppEventListener)
+
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
+    // sourcery:Name=initializeOrganizationId
+    func initialize(organizationId: String)
+
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
+    // sourcery:Name=initializeOrganizationIdEventListener
     func initialize(organizationId: String, eventListener: InAppEventListener)
 }
 
@@ -27,48 +36,68 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     }
 
     // testing constructor
-    internal static func initialize(organizationId: String, eventListener: InAppEventListener?, implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
+    internal static func initialize(eventListener: InAppEventListener?, implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         Self.shared = MessagingInApp(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
 
         if let eventListener = eventListener {
-            Self.initialize(organizationId: organizationId, eventListener: eventListener)
+            Self.initialize(eventListener: eventListener)
         } else {
-            Self.initialize(organizationId: organizationId)
+            Self.initialize()
         }
     }
 
     // Initialize SDK module
+    public static func initialize() {
+        Self.shared.initialize()
+    }
+
+    public static func initialize(eventListener: InAppEventListener) {
+        Self.shared.initialize(eventListener: eventListener)
+    }
+
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public static func initialize(organizationId: String) {
         Self.shared.initialize(organizationId: organizationId)
     }
 
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public static func initialize(organizationId: String, eventListener: InAppEventListener) {
         Self.shared.initialize(organizationId: organizationId, eventListener: eventListener)
     }
 
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String) {
-        guard let implementation = implementation else {
-            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
-            return
-        }
-
         initialize()
-
-        implementation.initialize(organizationId: organizationId)
     }
 
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String, eventListener: InAppEventListener) {
+        initialize(eventListener: eventListener)
+    }
+
+    public func initialize() {
         guard let implementation = implementation else {
             sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
             return
         }
 
-        initialize()
+        initializeModuleIfSdkInitialized()
 
-        implementation.initialize(organizationId: organizationId, eventListener: eventListener)
+        implementation.initialize()
     }
 
-    override public func inititlize(diGraph: DIGraph) {
+    public func initialize(eventListener: InAppEventListener) {
+        guard let implementation = implementation else {
+            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
+            return
+        }
+
+        initializeModuleIfSdkInitialized()
+
+        implementation.initialize(eventListener: eventListener)
+    }
+
+    override public func inititlizeModule(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up in-app module...")
 
