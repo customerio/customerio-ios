@@ -19,7 +19,7 @@ public protocol MessagingInAppInstance: AutoMockable {
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
-    @Atomic public private(set) static var shared = MessagingInApp()
+    @Atomic public internal(set) static var shared = MessagingInApp()
 
     override internal init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
@@ -33,17 +33,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // for testing
     internal static func resetSharedInstance() {
         Self.shared = MessagingInApp()
-    }
-
-    // testing constructor
-    internal static func initialize(eventListener: InAppEventListener?, implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
-        Self.shared = MessagingInApp(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
-
-        if let eventListener = eventListener {
-            Self.initialize(eventListener: eventListener)
-        } else {
-            Self.initialize()
-        }
     }
 
     // Initialize SDK module
