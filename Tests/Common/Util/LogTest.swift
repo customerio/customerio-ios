@@ -4,7 +4,6 @@ import SharedTests
 import XCTest
 
 class LogTest: UnitTest {
-
     func test_getLogLevel_givenAllStringValues_expectLogLevel() {
         for logLevelCase in CioLogLevel.allCases {
             let givenString = logLevelCase.rawValue
@@ -20,5 +19,4 @@ class LogTest: UnitTest {
 
         XCTAssertEqual(givenLogLevelError, expectedLogLevelError)
     }
-
 }

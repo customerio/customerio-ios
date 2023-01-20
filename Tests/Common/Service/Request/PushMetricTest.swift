@@ -4,7 +4,6 @@ import SharedTests
 import XCTest
 
 class PushMetricTest: UnitTest {
-
     func test_metric_givenLowercasedString_expectMetric() {
         let givenDeliveredMetric = Metric.delivered
         let expectedDeliveredMetric = Metric.getEvent(from: "delivered")
@@ -13,7 +12,6 @@ class PushMetricTest: UnitTest {
     }
 
     func test_metric_givenUppercasedString_expectMetric() {
-
         let givenOpeneMetric = Metric.opened
         let expectedOpenedMetric = Metric.getEvent(from: "OPENED")
 
@@ -21,7 +19,6 @@ class PushMetricTest: UnitTest {
     }
 
     func test_metric_givenRawString_expectMetric() {
-
         let givenOpeneMetric = Metric.opened
         let expectedOpenedMetric = Metric.getEvent(from: Metric.opened.rawValue)
 

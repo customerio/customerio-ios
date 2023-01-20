@@ -1,8 +1,8 @@
 import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
+@testable import Common
 import Foundation
 import SharedTests
 import XCTest
-@testable import Common
 
 /**
  Contains an example of every public facing SDK function call. This file helps
@@ -188,7 +188,6 @@ class TrackingAPITest: UnitTest {
     }
 
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
-
         let trackingApiUrl = String.random
         let autoTrackPushEvents = false
         let backgroundQueueMinNumberOfTasks = 10000
@@ -225,5 +224,4 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
-
 }

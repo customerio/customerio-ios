@@ -4,7 +4,6 @@ import SharedTests
 import XCTest
 
 class RegionTest: UnitTest {
-
     func test_from_givenUppercaseString_expectGetRegion() {
         let given = Region.getRegion(from: "US")
         let expected = Region.US

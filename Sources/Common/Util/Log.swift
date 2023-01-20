@@ -100,7 +100,6 @@ public class ConsoleLogger: Logger {
 }
 
 extension CioLogLevel {
-
     static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
         case "none":
