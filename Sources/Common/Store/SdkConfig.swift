@@ -3,7 +3,7 @@ import Foundation
 /**
  Configuration options for the Customer.io SDK.
  See `CustomerIO.config()` to configurate the SDK.
-
+ 
  Example use case:
  ```
  // create a new instance
@@ -23,7 +23,8 @@ public struct SdkConfig {
 
             // If a parameter takes more logic to calculate, perform the logic up here.
             var logLevel = CioLogLevel.error
-            if let logLevelStringValue = params["logLevel"] as? String, let paramLogLevel = CioLogLevel.getLogLevel(for: logLevelStringValue) {
+            if let logLevelStringValue = params[Keys.logLevel.rawValue] as? String, let paramLogLevel =
+                CioLogLevel.getLogLevel(for: logLevelStringValue) {
                 logLevel = paramLogLevel
             }
 
@@ -32,17 +33,16 @@ public struct SdkConfig {
             // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
             // add a way for `params` to override the SDK config option.
             var config = SdkConfig(
-                trackingApiUrl: (params["trackingApiUrl"] as? String) ?? region.productionTrackingUrl,
-                autoTrackPushEvents: (params["autoTrackPushEvents"] as? Bool) ?? true,
-                backgroundQueueMinNumberOfTasks: (params["backgroundQueueMinNumberOfTasks"] as? Int) ?? 10,
-                backgroundQueueSecondsDelay: params["backgroundQueueSecondsDelay"] as? Seconds ?? 30,
-                backgroundQueueExpiredSeconds: params["backgroundQueueExpiredSeconds"] as? Seconds ?? Seconds.secondsFromDays(3),
+                trackingApiUrl: (params[Keys.trackingApiUrl.rawValue] as? String) ?? region.productionTrackingUrl,
+                autoTrackPushEvents: (params[Keys.autoTrackPushEvents.rawValue] as? Bool) ?? true,
+                backgroundQueueMinNumberOfTasks: (params[Keys.backgroundQueueMinNumberOfTasks.rawValue] as? Int) ?? 10, backgroundQueueSecondsDelay: params[Keys.backgroundQueueSecondsDelay.rawValue] as? Seconds ?? 30,
+                backgroundQueueExpiredSeconds: params[Keys.backgroundQueueExpiredSeconds.rawValue] as? Seconds ?? Seconds.secondsFromDays(3),
                 logLevel: logLevel,
-                autoTrackScreenViews: params["autoTrackScreenViews"] as? Bool ?? false,
-                autoTrackDeviceAttributes: params["autoTrackDeviceAttributes"] as? Bool ?? true
+                autoTrackScreenViews: params[Keys.autoTrackScreenViews.rawValue] as? Bool ?? false,
+                autoTrackDeviceAttributes: params[Keys.autoTrackDeviceAttributes.rawValue] as? Bool ?? true
             )
 
-            if let sdkSource = params["source"] as? String, let pversion = params["version"] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
+            if let sdkSource = params[Keys.source.rawValue] as? String, let pversion = params[Keys.sourceVersion.rawValue] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
                 config._sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
             }
 
@@ -50,9 +50,28 @@ public struct SdkConfig {
         }
     }
 
+    public enum Keys: String { // Constants used to map each of the options in SdkConfig
+        // configure workspace environment
+        case siteId
+        case apiKey
+        case region
+        // config features
+        case trackingApiUrl
+        case autoTrackDeviceAttributes
+        case autoTrackScreenViews
+        case logLevel
+        case autoTrackPushEvents
+        case backgroundQueueMinNumberOfTasks
+        case backgroundQueueSecondsDelay
+        case backgroundQueueExpiredSeconds
+        // SDK wrapper config
+        case source
+        case sourceVersion = "version"
+    }
+
     /**
      Base URL to use for the Customer.io track API. You will more then likely not modify this value.
-
+     
      If you override this value, `Region` set when initializing the SDK will be ignored.
      */
     public var trackingApiUrl: String
@@ -115,15 +134,15 @@ public struct SdkConfig {
 
 /**
  SDK configuration just for rich push feature of the SDK.
-
+ 
  Construct an instance like you would `SdkConfig`.
-
+ 
  We have a separate SDK config just for rich push because:
  1. Instance of SDK inside of a Notification Service Extension does not have as many features to provide
  compared to running in a host app. Therefore, we don't need to expose as many SDK config options to customers.
  2. The SDK code needs to override some configuration options when running inside of a Notication Service Extension.
  We don't want customers to modify some of these overriden config options as it may effect some features of rich push.
-
+ 
  Note: To not make the SDK code more complex, convert `NotificationServiceExtensionSdkConfig` to an instance of `SdkConfig` when SDK is initialized.
  The SDK should not have conditional logic handling different SDK config objects. The SDK should only have to handle `SdkConfig`.
  */

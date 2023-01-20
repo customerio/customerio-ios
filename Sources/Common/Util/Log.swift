@@ -21,7 +21,7 @@ public protocol Logger: AutoMockable {
 /// error - only log when there is an error in the SDK (default)
 /// info - basic SDK informion. Somewhat noisy. Recommended to start debugging SDK.
 /// debug - most noisy. See all of the logs made from the SDK.
-public enum CioLogLevel: String {
+public enum CioLogLevel: String, CaseIterable {
     case none
     case error
     case info
@@ -100,20 +100,6 @@ public class ConsoleLogger: Logger {
 }
 
 extension CioLogLevel {
-    static func getLogLevel(for value: Int) -> CioLogLevel? {
-        switch value {
-        case 1:
-            return CioLogLevel.none
-        case 2:
-            return .error
-        case 3:
-            return .info
-        case 4:
-            return .debug
-        default:
-            return nil
-        }
-    }
 
     static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
