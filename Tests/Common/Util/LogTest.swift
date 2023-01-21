@@ -19,8 +19,8 @@ class LogTest: UnitTest {
 
         XCTAssertEqual(expected, actual)
     }
-    
-    func test_LogMappingForKeys(){
+
+    func test_LogMappingForKeys() {
         XCTAssertEqual(CioLogLevel.getLogLevel(for: "debug"), CioLogLevel.debug)
         XCTAssertEqual(CioLogLevel.getLogLevel(for: "none"), CioLogLevel.none)
         XCTAssertEqual(CioLogLevel.getLogLevel(for: "error"), CioLogLevel.error)

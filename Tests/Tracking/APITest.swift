@@ -185,5 +185,4 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
-    
 }
