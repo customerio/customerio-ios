@@ -17,6 +17,7 @@ public struct SdkConfig {
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
+        
         public static func create(region: Region, params: [String: Any] = [:]) -> SdkConfig {
             // Each SDK config option should be able to be set from `param` map.
             // If one isn't provided, use the default value instead.

@@ -154,24 +154,7 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        initialize(siteId: siteId, apiKey: apiKey, region: region, configParams: [:], configure: configureHandler)
-    }
-
-    /**
-     Initialize the shared `instance` of `CustomerIO` with optional `configParams` to intialize SdkConfig.
-     Call this function when your app launches, before using `CustomerIO.instance`.
-
-     Currently this constructor is of internal use only.
-     */
-    @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
-        siteId: String,
-        apiKey: String,
-        region: Region,
-        configParams: [String: Any] = [:],
-        configure configureHandler: ((inout SdkConfig) -> Void)?
-    ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region, params: configParams)
+        var newSdkConfig = SdkConfig.Factory.create(region: region, params: [:])
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)

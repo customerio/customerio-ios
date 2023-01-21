@@ -14,9 +14,16 @@ class LogTest: UnitTest {
     }
 
     func test_loglevel_givenIncorrectString_expectLogLevel() {
-        let givenLogLevelError: CioLogLevel? = nil
-        let expectedLogLevelError = CioLogLevel.getLogLevel(for: "debuggable")
+        let expected: CioLogLevel? = nil
+        let actual = CioLogLevel.getLogLevel(for: "debuggable")
 
-        XCTAssertEqual(givenLogLevelError, expectedLogLevelError)
+        XCTAssertEqual(expected, actual)
+    }
+    
+    func test_LogMappingForKeys(){
+        XCTAssertEqual(CioLogLevel.getLogLevel(for: "debug"), CioLogLevel.debug)
+        XCTAssertEqual(CioLogLevel.getLogLevel(for: "none"), CioLogLevel.none)
+        XCTAssertEqual(CioLogLevel.getLogLevel(for: "error"), CioLogLevel.error)
+        XCTAssertEqual(CioLogLevel.getLogLevel(for: "info"), CioLogLevel.info)
     }
 }

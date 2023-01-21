@@ -102,13 +102,13 @@ public class ConsoleLogger: Logger {
 extension CioLogLevel {
     static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
-        case "none":
+        case CioLogLevel.none.rawValue:
             return CioLogLevel.none
-        case "error":
+        case CioLogLevel.error.rawValue:
             return .error
-        case "info":
+        case CioLogLevel.info.rawValue:
             return .info
-        case "debug":
+        case CioLogLevel.debug.rawValue:
             return .debug
         default:
             return nil
