@@ -135,7 +135,8 @@ class TrackingAPITest: UnitTest {
             "version": sdkWrapperVersion
         ]
 
-        let actual = CioSdkConfig.Factory.create(region: .US, params: givenParamsFromSdkWrapper)
+        var actual = CioSdkConfig.Factory.create(region: .US)
+        actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, autoTrackPushEvents)
@@ -173,7 +174,8 @@ class TrackingAPITest: UnitTest {
             "versionWrong": sdkWrapperVersion
         ]
 
-        let actual = CioSdkConfig.Factory.create(region: .US, params: givenParamsFromSdkWrapper)
+        var actual = CioSdkConfig.Factory.create(region: .US)
+        actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, true)
@@ -185,4 +187,20 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
+
+    func test_SdkConfig_givenNoModification_expectDefaults() {
+
+        let actual = CioSdkConfig.Factory.create(region: .US)
+
+        XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
+        XCTAssertEqual(actual.autoTrackPushEvents, true)
+        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, 10)
+        XCTAssertEqual(actual.backgroundQueueSecondsDelay, 30)
+        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
+        XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
+        XCTAssertEqual(actual.autoTrackScreenViews, false)
+        XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
+        XCTAssertNil(actual._sdkWrapperConfig)
+    }
+
 }

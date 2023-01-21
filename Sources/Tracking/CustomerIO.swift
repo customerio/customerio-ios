@@ -154,7 +154,7 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region, params: [:])
+        var newSdkConfig = SdkConfig.Factory.create(region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
