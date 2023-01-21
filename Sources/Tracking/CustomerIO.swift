@@ -1,7 +1,6 @@
 import Common
 import Foundation
 
-// swiftlint:disable file_length
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
 
