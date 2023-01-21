@@ -189,7 +189,6 @@ class TrackingAPITest: UnitTest {
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
-
         let actual = CioSdkConfig.Factory.create(region: .US)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
@@ -202,5 +201,4 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
-
 }
