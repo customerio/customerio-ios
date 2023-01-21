@@ -23,7 +23,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     func initialize(organizationId: String) {
         inAppProvider.initialize(organizationId: organizationId, delegate: self)
 
-        if let identifier {
+        if let identifier = identifier {
             inAppProvider.setProfileIdentifier(identifier)
         }
     }
