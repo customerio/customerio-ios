@@ -10,15 +10,22 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var inAppProvider: InAppProvider
     private var eventListener: InAppEventListener?
 
+    private var identifier: String?
+
     init(diGraph: DIGraph) {
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
+        self.identifier = diGraph.profileStore.identifier
     }
 
     func initialize(organizationId: String) {
         inAppProvider.initialize(organizationId: organizationId, delegate: self)
+
+        if let identifier {
+            inAppProvider.setProfileIdentifier(identifier)
+        }
     }
 
     func initialize(organizationId: String, eventListener: InAppEventListener) {
