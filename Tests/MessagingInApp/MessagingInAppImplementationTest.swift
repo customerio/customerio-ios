@@ -17,7 +17,7 @@ class MessagingInAppImplementationTest: UnitTest {
         super.setUp()
 
         diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self )
+        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
         messagingInApp.initialize(organizationId: .random, eventListener: eventListenerMock)
