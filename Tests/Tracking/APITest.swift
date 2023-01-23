@@ -124,7 +124,7 @@ class TrackingAPITest: UnitTest {
 
         let givenParamsFromSdkWrapper: [String: Any] = [
             "trackingApiUrl": trackingApiUrl,
-            "autoTrackPushEvents": false,
+            "autoTrackPushEvents": autoTrackPushEvents,
             "backgroundQueueMinNumberOfTasks": backgroundQueueMinNumberOfTasks,
             "backgroundQueueSecondsDelay": backgroundQueueSecondsDelay,
             "backgroundQueueExpiredSeconds": backgroundQueueExpiredSeconds,
