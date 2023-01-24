@@ -24,4 +24,17 @@ public enum Region: String, Equatable {
     }
 }
 
+extension Region {
+    static func getRegion(from regionStr: String) -> Region {
+        switch regionStr.uppercased() {
+        case "US":
+            return Region.US
+        case "EU":
+            return Region.EU
+        default:
+            return Region.US
+        }
+    }
+}
+
 // swiftlint:enable identifier_name
