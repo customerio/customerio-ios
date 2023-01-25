@@ -37,7 +37,12 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         }
     }
 
-    // Initialize SDK module
+    // MARK: static initialized functions for customers.
+
+    // static functions are identical to initialize functions in InAppInstance protocol to try and make a more convenient
+    // API for customers. Customers can use `MessagingInApp.initialize(...)` instead of `MessagingInApp.shared.initialize(...)`.
+    // Trying to follow the same API as `CustomerIO` class with `initialize()`.
+
     public static func initialize(organizationId: String) {
         Self.shared.initialize(organizationId: organizationId)
     }
@@ -45,6 +50,10 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     public static func initialize(organizationId: String, eventListener: InAppEventListener) {
         Self.shared.initialize(organizationId: organizationId, eventListener: eventListener)
     }
+
+    // MARK: initialize functions to initialize module.
+
+    // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
 
     public func initialize(organizationId: String) {
         guard let implementation = implementation else {
