@@ -10,15 +10,24 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var inAppProvider: InAppProvider
     private var eventListener: InAppEventListener?
 
+    private var profileStore: ProfileStore?
+
     init(diGraph: DIGraph) {
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
+        self.profileStore = diGraph.profileStore
     }
 
     func initialize(organizationId: String) {
         inAppProvider.initialize(organizationId: organizationId, delegate: self)
+
+        // if identifier is already present, set the userToken again so in case if the customer was already identified and
+        // module was added later on, we can notify gist about it.
+        if let identifier = profileStore?.identifier {
+            inAppProvider.setProfileIdentifier(identifier)
+        }
     }
 
     func initialize(organizationId: String, eventListener: InAppEventListener) {
