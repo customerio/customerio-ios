@@ -78,12 +78,12 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String) {
-        initialize()
+        commonInitialize(eventListener: nil)
     }
 
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String, eventListener: InAppEventListener) {
-        initialize(eventListener: eventListener)
+        commonInitialize(eventListener: eventListener)
     }
 
     private func commonInitialize(eventListener: InAppEventListener?) {

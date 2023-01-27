@@ -38,25 +38,29 @@ class MessagingInAppTest: UnitTest {
     func test_initialize_givenSdkInitialized_expectModuleIsInitialized() {
         MessagingInApp.initialize()
 
-        assertModuleInitialized(isInitialized: true)
+        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
     }
 
     func test_initializeEventListener_givenSdkInitialized_expectModuleIsInitialized() {
-        MessagingInApp.initialize(eventListener: InAppEventListenerMock())
+        let givenListener = InAppEventListenerMock()
 
-        assertModuleInitialized(isInitialized: true)
+        MessagingInApp.initialize(eventListener: givenListener)
+
+        assertModuleInitialized(isInitialized: true, givenEventListener: givenListener)
     }
 
     func test_initializeOrganizationId_givenSdkInitialized_expectModuleIsInitialized() {
         MessagingInApp.initialize(organizationId: .random)
 
-        assertModuleInitialized(isInitialized: true)
+        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
     }
 
     func test_initializeOrganizationIdEventListener_givenSdkInitialized_expectModuleIsInitialized() {
-        MessagingInApp.initialize(organizationId: .random, eventListener: InAppEventListenerMock())
+        let givenListener = InAppEventListenerMock()
 
-        assertModuleInitialized(isInitialized: true)
+        MessagingInApp.initialize(organizationId: .random, eventListener: givenListener)
+
+        assertModuleInitialized(isInitialized: true, givenEventListener: givenListener)
     }
 
     // MARK: initialize functions with SDK not initialized
@@ -66,15 +70,16 @@ class MessagingInAppTest: UnitTest {
 
         MessagingInApp.initialize()
 
-        assertModuleInitialized(isInitialized: false)
+        assertModuleInitialized(isInitialized: false, givenEventListener: nil)
     }
 
     func test_initializeEventListener_givenSdkNotInitialized_expectModuleNotInitialized() {
         sdkInitializedUtilMock.underlyingIsInitlaized = false
+        let givenListener = InAppEventListenerMock()
 
-        MessagingInApp.initialize(eventListener: InAppEventListenerMock())
+        MessagingInApp.initialize(eventListener: givenListener)
 
-        assertModuleInitialized(isInitialized: false)
+        assertModuleInitialized(isInitialized: false, givenEventListener: givenListener)
     }
 
     func test_initializeOrganizationId_givenSdkNotInitialized_expectModuleNotInitialized() {
@@ -82,54 +87,36 @@ class MessagingInAppTest: UnitTest {
 
         MessagingInApp.initialize(organizationId: .random)
 
-        assertModuleInitialized(isInitialized: false)
+        assertModuleInitialized(isInitialized: false, givenEventListener: nil)
     }
 
     func test_initializeOrganizationIdEventListener_givenSdkNotInitialized_expectModuleNotInitialized() {
         sdkInitializedUtilMock.underlyingIsInitlaized = false
+        let givenListener = InAppEventListenerMock()
 
-        MessagingInApp.initialize(organizationId: .random, eventListener: InAppEventListenerMock())
+        MessagingInApp.initialize(organizationId: .random, eventListener: givenListener)
 
-        assertModuleInitialized(isInitialized: false)
-    }
-
-    func test_initialize_noEventListener_expectCallModuleInitializeCode() {
-        MessagingInApp.initialize(organizationId: String.random, eventListener: nil, implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
-
-        XCTAssertEqual(hooksMock.addCallsCount, 1)
-        XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
-        XCTAssertEqual(implementationMock.initializeCallsCount, 1)
-        XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 0)
-    }
-
-    func test_initialize_givenEventListener_expectCallModuleInitializeCode() {
-        MessagingInApp.initialize(organizationId: String.random, eventListener: InAppEventListenerMock(), implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
-
-        XCTAssertEqual(hooksMock.addCallsCount, 1)
-        XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
-        XCTAssertEqual(implementationMock.initializeCallsCount, 0)
-        XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 1)
-    }
-
-    func test_initialize_sdkNotInitialized_expectInAppModuleNotInitialized() {
-        sdkInitializedUtilMock.underlyingPostInitializedData = nil // the SDK is no longer initialized
-
-        MessagingInApp.initialize(organizationId: String.random, eventListener: nil, implementation: nil, sdkInitializedUtil: sdkInitializedUtilMock)
-
-        XCTAssertFalse(hooksMock.addCalled)
-        XCTAssertFalse(hooksMock.mockCalled)
-        XCTAssertFalse(implementationMock.mockCalled)
+        assertModuleInitialized(isInitialized: false, givenEventListener: givenListener)
     }
 }
 
 extension MessagingInAppTest {
-    private func assertModuleInitialized(isInitialized: Bool, file: StaticString = #file, line: UInt = #line) {
+    private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, file: StaticString = #file, line: UInt = #line) {
         if isInitialized {
             XCTAssertEqual(hooksMock.addCallsCount, 1, file: file, line: line)
             XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp, file: file, line: line)
+
+            if let givenEventListener = givenEventListener {
+                XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 1)
+                XCTAssertEqual(implementationMock.initializeCallsCount, 0)
+            } else {
+                XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 0)
+                XCTAssertEqual(implementationMock.initializeCallsCount, 1)
+            }
         } else {
             XCTAssertFalse(hooksMock.addCalled, file: file, line: line)
             XCTAssertFalse(hooksMock.mockCalled, file: file, line: line)
+            XCTAssertFalse(implementationMock.initializeCalled || implementationMock.initializeEventListenerCalled)
         }
     }
 }
