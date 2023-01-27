@@ -1,5 +1,6 @@
 @testable import CioMessagingInApp
 @testable import CioTracking
+@testable import Common
 import Foundation
 import Gist
 import SharedTests
@@ -10,11 +11,13 @@ class MessagingInAppImplementationTest: UnitTest {
 
     private let inAppProviderMock = InAppProviderMock()
     private let eventListenerMock = InAppEventListenerMock()
+    private let profileStoreMock = ProfileStoreMock()
 
     override func setUp() {
         super.setUp()
 
         diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
+        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
         messagingInApp.initialize(organizationId: .random, eventListener: eventListenerMock)
@@ -38,6 +41,22 @@ class MessagingInAppImplementationTest: UnitTest {
         instance.initialize(organizationId: givenId, eventListener: eventListenerMock)
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
+    }
+
+    // MARK: initialize given an existing identifier
+
+    func test_initialize_givenIdentifier_expectGistSetProfileIdentifier() {
+        let givenProfileIdentifiedInSdk = String.random
+
+        profileStoreMock.identifier = givenProfileIdentifiedInSdk
+
+        let givenId = String.random
+        let instance = MessagingInAppImplementation(diGraph: diGraph)
+        instance.initialize(organizationId: givenId)
+
+        XCTAssertTrue(inAppProviderMock.initializeCalled)
+        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
+        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
     }
 
     // MARK: profile hooks

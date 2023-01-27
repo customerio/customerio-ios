@@ -39,6 +39,12 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         Self.shared = MessagingInApp()
     }
 
+    // MARK: static initialized functions for customers.
+
+    // static functions are identical to initialize functions in InAppInstance protocol to try and make a more convenient
+    // API for customers. Customers can use `MessagingInApp.initialize(...)` instead of `MessagingInApp.shared.initialize(...)`.
+    // Trying to follow the same API as `CustomerIO` class with `initialize()`.
+
     // Initialize SDK module
     public static func initialize() {
         Self.shared.initialize()
@@ -58,6 +64,18 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         Self.shared.initialize(organizationId: organizationId, eventListener: eventListener)
     }
 
+    // MARK: initialize functions to initialize module.
+
+    // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
+
+    public func initialize() {
+        commonInitialize(eventListener: nil)
+    }
+
+    public func initialize(eventListener: InAppEventListener) {
+        commonInitialize(eventListener: eventListener)
+    }
+
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String) {
         initialize()
@@ -68,7 +86,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         initialize(eventListener: eventListener)
     }
 
-    public func initialize() {
+    private func commonInitialize(eventListener: InAppEventListener?) {
         guard let implementation = implementation else {
             sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
             return
@@ -76,18 +94,11 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
         initializeModuleIfSdkInitialized()
 
-        implementation.initialize()
-    }
-
-    public func initialize(eventListener: InAppEventListener) {
-        guard let implementation = implementation else {
-            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
-            return
+        if let eventListener = eventListener {
+            implementation.initialize(eventListener: eventListener)
+        } else {
+            implementation.initialize()
         }
-
-        initializeModuleIfSdkInitialized()
-
-        implementation.initialize(eventListener: eventListener)
     }
 
     override public func inititlizeModule(diGraph: DIGraph) {

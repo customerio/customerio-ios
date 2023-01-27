@@ -239,9 +239,9 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
-      Modify attributes to an already identified profile.
+     Modify attributes to an already identified profile.
 
-      Note: The getter of this field returns an empty dictionary. This is a setter only field.
+     Note: The getter of this field returns an empty dictionary. This is a setter only field.
      */
     public var profileAttributes: [String: Any] {
         get {

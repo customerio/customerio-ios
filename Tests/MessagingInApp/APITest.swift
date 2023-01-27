@@ -24,11 +24,11 @@ class MessagingInAppAPITest: UnitTest {
         MessagingInApp.initialize(eventListener: self)
         mock.initialize(eventListener: self)
 
-        // Function exists for backwards compatability, but is deprecated.
+        // Function exists for backwards compatibility, but is deprecated.
         MessagingInApp.initialize(organizationId: "")
         mock.initialize(organizationId: "")
 
-        // Function exists for backwards compatability, but is deprecated.
+        // Function exists for backwards compatibility, but is deprecated.
         MessagingInApp.initialize(organizationId: "", eventListener: self)
         mock.initialize(organizationId: "", eventListener: self)
     }
