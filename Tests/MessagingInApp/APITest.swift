@@ -18,7 +18,23 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.shared.initialize(organizationId: "")
+        MessagingInApp.initialize(organizationId: "")
+        MessagingInApp.initialize(organizationId: "", eventListener: self)
         mock.initialize(organizationId: "")
+        mock.initialize(organizationId: "", eventListener: self)
     }
+}
+
+extension MessagingInAppAPITest: InAppEventListener {
+    func messageShown(message: InAppMessage) {
+        // make sure all properties of InAppMessage are accessible
+        _ = message.messageId
+        _ = message.deliveryId
+    }
+
+    func messageDismissed(message: InAppMessage) {}
+
+    func errorWithMessage(message: InAppMessage) {}
+
+    func messageActionTaken(message: InAppMessage, action: String, name: String) {}
 }

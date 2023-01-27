@@ -8,18 +8,31 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
+    private var profileStore: ProfileStore
+
+    private var eventListener: InAppEventListener?
 
     init(diGraph: DIGraph) {
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
+        self.profileStore = diGraph.profileStore
     }
 
     func initialize(organizationId: String) {
-        logger.debug("gist SDK being setup \(organizationId)")
-
         inAppProvider.initialize(organizationId: organizationId, delegate: self)
+
+        // if identifier is already present, set the userToken again so in case if the customer was already identified and
+        // module was added later on, we can notify gist about it.
+        if let identifier = profileStore.identifier {
+            inAppProvider.setProfileIdentifier(identifier)
+        }
+    }
+
+    func initialize(organizationId: String, eventListener: InAppEventListener) {
+        self.eventListener = eventListener
+        initialize(organizationId: organizationId)
     }
 }
 
@@ -54,6 +67,8 @@ extension MessagingInAppImplementation: GistDelegate {
     public func messageShown(message: Message) {
         logger.debug("in-app message opened. \(message.describeForLogs)")
 
+        eventListener?.messageShown(message: InAppMessage(gistMessage: message))
+
         if let deliveryId = getDeliveryId(from: message) {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
@@ -62,10 +77,14 @@ extension MessagingInAppImplementation: GistDelegate {
 
     public func messageDismissed(message: Message) {
         logger.debug("in-app message dismissed. \(message.describeForLogs)")
+
+        eventListener?.messageDismissed(message: InAppMessage(gistMessage: message))
     }
 
     public func messageError(message: Message) {
         logger.error("error with in-app message. \(message.describeForLogs)")
+
+        eventListener?.errorWithMessage(message: InAppMessage(gistMessage: message))
     }
 
     public func action(message: Message, currentRoute: String, action: String, name: String) {
@@ -80,6 +99,12 @@ extension MessagingInAppImplementation: GistDelegate {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked)
         }
+
+        eventListener?.messageActionTaken(
+            message: InAppMessage(gistMessage: message),
+            action: action,
+            name: name
+        )
     }
 
     private func getDeliveryId(from message: Message) -> String? {
