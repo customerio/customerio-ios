@@ -17,7 +17,8 @@ open class ModuleTopLevelObject<ImplementationClass> {
     private let sdkInitializedUtil: SdkInitializedUtil
 
     // for writing tests
-    public init(implementation: ImplementationClass, sdkInitializedUtil: SdkInitializedUtil) {
+    // provide a nil implementation if you want `sdkInitializedUtil` logic to run and real instance of implementation to run in tests
+    public init(implementation: ImplementationClass?, sdkInitializedUtil: SdkInitializedUtil) {
         self.alreadyCreatedImplementation = implementation
         self.sdkInitializedUtil = sdkInitializedUtil
     }

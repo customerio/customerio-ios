@@ -14,7 +14,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var shared = MessagingPush()
 
     // testing constructor
-    override internal init(implementation: MessagingPushInstance, sdkInitializedUtil: SdkInitializedUtil) {
+    override internal init(implementation: MessagingPushInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
 
