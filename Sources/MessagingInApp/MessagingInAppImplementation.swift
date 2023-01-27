@@ -8,9 +8,9 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
-    private var eventListener: InAppEventListener?
+    private var profileStore: ProfileStore
 
-    private var profileStore: ProfileStore?
+    private var eventListener: InAppEventListener?
 
     init(diGraph: DIGraph) {
         self.logger = diGraph.logger
@@ -25,7 +25,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
-        if let identifier = profileStore?.identifier {
+        if let identifier = profileStore.identifier {
             inAppProvider.setProfileIdentifier(identifier)
         }
     }
