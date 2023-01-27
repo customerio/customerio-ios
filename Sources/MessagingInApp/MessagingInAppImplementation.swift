@@ -102,8 +102,8 @@ extension MessagingInAppImplementation: GistDelegate {
 
         eventListener?.messageActionTaken(
             message: InAppMessage(gistMessage: message),
-            action: action,
-            name: name
+            action_value: action,
+            action_name: name
         )
     }
 

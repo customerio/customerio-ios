@@ -36,5 +36,5 @@ extension MessagingInAppAPITest: InAppEventListener {
 
     func errorWithMessage(message: InAppMessage) {}
 
-    func messageActionTaken(message: InAppMessage, action: String, name: String) {}
+    func messageActionTaken(message: InAppMessage, action_value: String, action_name: String) {}
 }
