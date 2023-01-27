@@ -14,15 +14,13 @@ class MessagingInAppTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        MessagingInApp.resetSharedInstance()
-
         // This is where we inject the DI graph into our tests
         sdkInitializedUtilMock.isInitlaized = true
         sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
 
         diGraph.override(value: hooksMock, forType: HooksManager.self)
 
-        // Sets default shared instance.
+        // Sets default shared instance, which injects the DI graph
         MessagingInApp.shared = MessagingInApp(implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
     }
 

@@ -21,10 +21,14 @@ public protocol MessagingInAppInstance: AutoMockable {
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
     @Atomic public internal(set) static var shared = MessagingInApp()
 
+    // constructor that is called by test classes
+    // This function's job is to populate the `shared` property with
+    // overrides such as DI graph.
     override internal init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
 
+    // constructor used in production with default DI graph
     // singleton constructor
     override private init() {
         super.init()
