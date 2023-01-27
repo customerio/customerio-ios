@@ -27,6 +27,8 @@ class MessagingInAppTest: UnitTest {
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
+        XCTAssertEqual(implementationMock.initializeCallsCount, 1)
+        XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 0)
     }
 
     func test_initialize_givenEventListener_expectCallModuleInitializeCode() {
@@ -34,6 +36,8 @@ class MessagingInAppTest: UnitTest {
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp)
+        XCTAssertEqual(implementationMock.initializeCallsCount, 0)
+        XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 1)
     }
 
     func test_initialize_sdkNotInitialized_expectInAppModuleNotInitialized() {
@@ -43,5 +47,6 @@ class MessagingInAppTest: UnitTest {
 
         XCTAssertFalse(hooksMock.addCalled)
         XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertFalse(implementationMock.mockCalled)
     }
 }

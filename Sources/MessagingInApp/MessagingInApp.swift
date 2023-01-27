@@ -56,17 +56,14 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
 
     public func initialize(organizationId: String) {
-        guard let implementation = implementation else {
-            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
-            return
-        }
-
-        initialize()
-
-        implementation.initialize(organizationId: organizationId)
+        commonInitialize(organizationId: organizationId, eventListener: nil)
     }
 
     public func initialize(organizationId: String, eventListener: InAppEventListener) {
+        commonInitialize(organizationId: organizationId, eventListener: eventListener)
+    }
+
+    private func commonInitialize(organizationId: String, eventListener: InAppEventListener?) {
         guard let implementation = implementation else {
             sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
             return
@@ -74,7 +71,11 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
         initialize()
 
-        implementation.initialize(organizationId: organizationId, eventListener: eventListener)
+        if let eventListener = eventListener {
+            implementation.initialize(organizationId: organizationId, eventListener: eventListener)
+        } else {
+            implementation.initialize(organizationId: organizationId)
+        }
     }
 
     override public func inititlize(diGraph: DIGraph) {
