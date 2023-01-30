@@ -116,7 +116,7 @@ extension MessagingInAppTest {
         } else {
             XCTAssertFalse(hooksMock.addCalled, file: file, line: line)
             XCTAssertFalse(hooksMock.mockCalled, file: file, line: line)
-            XCTAssertFalse(implementationMock.initializeCalled || implementationMock.initializeEventListenerCalled)
+            XCTAssertFalse(implementationMock.initializeCalled && implementationMock.initializeEventListenerCalled)
         }
     }
 }

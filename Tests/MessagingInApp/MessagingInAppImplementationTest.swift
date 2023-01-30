@@ -20,7 +20,7 @@ class MessagingInAppImplementationTest: UnitTest {
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
-        messagingInApp.initialize(organizationId: .random, eventListener: eventListenerMock)
+        messagingInApp.initialize(eventListener: eventListenerMock)
     }
 
     // MARK: initialize
