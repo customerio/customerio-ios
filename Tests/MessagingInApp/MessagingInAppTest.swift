@@ -106,7 +106,7 @@ extension MessagingInAppTest {
             XCTAssertEqual(hooksMock.addCallsCount, 1, file: file, line: line)
             XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp, file: file, line: line)
 
-            if let givenEventListener = givenEventListener {
+            if givenEventListener != nil {
                 XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 1)
                 XCTAssertEqual(implementationMock.initializeCallsCount, 0)
             } else {
