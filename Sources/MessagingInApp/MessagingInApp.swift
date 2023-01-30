@@ -12,10 +12,6 @@ public protocol MessagingInAppInstance: AutoMockable {
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     // sourcery:Name=initializeOrganizationId
     func initialize(organizationId: String)
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    // sourcery:Name=initializeOrganizationIdEventListener
-    func initialize(organizationId: String, eventListener: InAppEventListener)
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
@@ -59,11 +55,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         Self.shared.initialize(organizationId: organizationId)
     }
 
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public static func initialize(organizationId: String, eventListener: InAppEventListener) {
-        Self.shared.initialize(organizationId: organizationId, eventListener: eventListener)
-    }
-
     // MARK: initialize functions to initialize module.
 
     // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
@@ -79,11 +70,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public func initialize(organizationId: String) {
         commonInitialize(eventListener: nil)
-    }
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public func initialize(organizationId: String, eventListener: InAppEventListener) {
-        commonInitialize(eventListener: eventListener)
     }
 
     private func commonInitialize(eventListener: InAppEventListener?) {

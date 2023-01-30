@@ -207,7 +207,7 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         config: SdkConfig
     ) {
-        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, region: region, sdkConfig: config)
+        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)

@@ -397,11 +397,6 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        initializeOrganizationIdEventListenerCallsCount = 0
-        initializeOrganizationIdEventListenerReceivedArguments = nil
-        initializeOrganizationIdEventListenerReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - initialize
@@ -478,33 +473,5 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdReceivedArguments = organizationId
         initializeOrganizationIdReceivedInvocations.append(organizationId)
         initializeOrganizationIdClosure?(organizationId)
-    }
-
-    // MARK: - initialize
-
-    /// Number of times the function was called.
-    public private(set) var initializeOrganizationIdEventListenerCallsCount = 0
-    /// `true` if the function was ever called.
-    public var initializeOrganizationIdEventListenerCalled: Bool {
-        initializeOrganizationIdEventListenerCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var initializeOrganizationIdEventListenerReceivedArguments: (organizationId: String, eventListener: InAppEventListener)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeOrganizationIdEventListenerReceivedInvocations: [(organizationId: String, eventListener: InAppEventListener)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var initializeOrganizationIdEventListenerClosure: ((String, InAppEventListener) -> Void)?
-
-    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public func initialize(organizationId: String, eventListener: InAppEventListener) {
-        mockCalled = true
-        initializeOrganizationIdEventListenerCallsCount += 1
-        initializeOrganizationIdEventListenerReceivedArguments = (organizationId: organizationId, eventListener: eventListener)
-        initializeOrganizationIdEventListenerReceivedInvocations.append((organizationId: organizationId, eventListener: eventListener))
-        initializeOrganizationIdEventListenerClosure?(organizationId, eventListener)
     }
 }

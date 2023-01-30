@@ -16,7 +16,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
 
     init(diGraph: DIGraph) {
         self.siteId = diGraph.siteId
-        self.region = diGraph.region
+        self.region = diGraph.sdkConfig.region
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
@@ -42,7 +42,6 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     // Functions deprecated but need to exist for `MessagingInAppInstance` protocol.
     // Do not call these functions but non-deprecated ones.
     func initialize(organizationId: String) {}
-    func initialize(organizationId: String, eventListener: InAppEventListener) {}
 }
 
 extension MessagingInAppImplementation: ProfileIdentifyHook {

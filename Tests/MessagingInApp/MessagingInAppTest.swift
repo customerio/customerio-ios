@@ -55,14 +55,6 @@ class MessagingInAppTest: UnitTest {
         assertModuleInitialized(isInitialized: true, givenEventListener: nil)
     }
 
-    func test_initializeOrganizationIdEventListener_givenSdkInitialized_expectModuleIsInitialized() {
-        let givenListener = InAppEventListenerMock()
-
-        MessagingInApp.initialize(organizationId: .random, eventListener: givenListener)
-
-        assertModuleInitialized(isInitialized: true, givenEventListener: givenListener)
-    }
-
     // MARK: initialize functions with SDK not initialized
 
     func test_initialize_givenSdkNotInitialized_expectModuleNotInitialized() {
@@ -88,15 +80,6 @@ class MessagingInAppTest: UnitTest {
         MessagingInApp.initialize(organizationId: .random)
 
         assertModuleInitialized(isInitialized: false, givenEventListener: nil)
-    }
-
-    func test_initializeOrganizationIdEventListener_givenSdkNotInitialized_expectModuleNotInitialized() {
-        sdkInitializedUtilMock.underlyingIsInitlaized = false
-        let givenListener = InAppEventListenerMock()
-
-        MessagingInApp.initialize(organizationId: .random, eventListener: givenListener)
-
-        assertModuleInitialized(isInitialized: false, givenEventListener: givenListener)
     }
 }
 
