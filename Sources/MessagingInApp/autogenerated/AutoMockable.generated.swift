@@ -211,21 +211,21 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageActionTakenReceivedArguments: (message: InAppMessage, action: String, name: String)?
+    public private(set) var messageActionTakenReceivedArguments: (message: InAppMessage, actionValue: String, actionName: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageActionTakenReceivedInvocations: [(message: InAppMessage, action: String, name: String)] = []
+    public private(set) var messageActionTakenReceivedInvocations: [(message: InAppMessage, actionValue: String, actionName: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     public var messageActionTakenClosure: ((InAppMessage, String, String) -> Void)?
 
-    /// Mocked function for `messageActionTaken(message: InAppMessage, action: String, name: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func messageActionTaken(message: InAppMessage, action: String, name: String) {
+    /// Mocked function for `messageActionTaken(message: InAppMessage, actionValue: String, actionName: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         mockCalled = true
         messageActionTakenCallsCount += 1
-        messageActionTakenReceivedArguments = (message: message, action: action, name: name)
-        messageActionTakenReceivedInvocations.append((message: message, action: action, name: name))
-        messageActionTakenClosure?(message, action, name)
+        messageActionTakenReceivedArguments = (message: message, actionValue: actionValue, actionName: actionName)
+        messageActionTakenReceivedInvocations.append((message: message, actionValue: actionValue, actionName: actionName))
+        messageActionTakenClosure?(message, actionValue, actionName)
     }
 }
 

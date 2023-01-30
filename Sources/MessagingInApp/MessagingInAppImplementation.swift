@@ -110,8 +110,8 @@ extension MessagingInAppImplementation: GistDelegate {
 
         eventListener?.messageActionTaken(
             message: InAppMessage(gistMessage: message),
-            action: action,
-            name: name
+            actionValue: action,
+            actionName: name
         )
     }
 
