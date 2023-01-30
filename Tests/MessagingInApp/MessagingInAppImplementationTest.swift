@@ -20,41 +20,51 @@ class MessagingInAppImplementationTest: UnitTest {
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
-        messagingInApp.initialize(organizationId: .random, eventListener: eventListenerMock)
+        messagingInApp.initialize(eventListener: eventListenerMock)
     }
 
     // MARK: initialize
 
-    func test_initialize_givenOrganizationId_expectInitializeGistSDK() {
-        let givenId = String.random
-
+    func test_initialize_expectInitializeGistSDK() {
         let instance = MessagingInAppImplementation(diGraph: diGraph)
-        instance.initialize(organizationId: givenId)
+        instance.initialize()
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
+        XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
     }
 
-    func test_initialize_givenIdentifier_expectGistSetProfileIdentifier() {
+    func test_initialize_givenEventListener_expectInitializeGistSDK() {
+        let instance = MessagingInAppImplementation(diGraph: diGraph)
+        instance.initialize(eventListener: eventListenerMock)
+
+        XCTAssertTrue(inAppProviderMock.initializeCalled)
+        XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
+    }
+
+    // MARK: initialize given an existing identifier
+
+    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
         let givenProfileIdentifiedInSdk = String.random
 
         profileStoreMock.identifier = givenProfileIdentifiedInSdk
 
-        let givenId = String.random
         let instance = MessagingInAppImplementation(diGraph: diGraph)
-        instance.initialize(organizationId: givenId)
+        instance.initialize()
 
-        XCTAssertTrue(inAppProviderMock.initializeCalled)
         XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
     }
 
-    func test_initialize_givenOrganizationId_givenEventListener_expectInitializeGistSDK() {
-        let givenId = String.random
+    func test_initialize_givenExistingIdentifier_givenEventListener_expectGistSetProfileIdentifier() {
+        let givenProfileIdentifiedInSdk = String.random
+
+        profileStoreMock.identifier = givenProfileIdentifiedInSdk
 
         let instance = MessagingInAppImplementation(diGraph: diGraph)
-        instance.initialize(organizationId: givenId, eventListener: eventListenerMock)
+        instance.initialize(eventListener: eventListenerMock)
 
-        XCTAssertTrue(inAppProviderMock.initializeCalled)
+        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
+        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
     }
 
     // MARK: profile hooks

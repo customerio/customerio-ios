@@ -179,7 +179,7 @@ class ExampleTest: XCTestCase {
     }
 {% else %}
     /// Mocked function for `{{ method.name }}`. Your opportunity to return a mocked value and check result of mock in test code.
-    {% for attribute in method.attributes %}@{{ attribute }} {% endfor %}
+    {% for attributeKey in method.attributes %}{{ method.attributes[attributeKey][0] }}{% endfor %}
     {{ type.accessLevel }} func {{ method.name }}{{ ' throws' if method.throws }}{% if not method.returnTypeName.isVoid %} -> {{ method.returnTypeName }}{% endif %} {
         {% if method.throws %}
         {% call methodThrowableErrorUsage method %}

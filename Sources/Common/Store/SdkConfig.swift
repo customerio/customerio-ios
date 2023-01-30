@@ -19,6 +19,7 @@ public struct SdkConfig {
     public enum Factory {
         public static func create(region: Region) -> SdkConfig {
             SdkConfig(
+                region: region,
                 trackingApiUrl: region.productionTrackingUrl,
                 autoTrackPushEvents: true,
                 backgroundQueueMinNumberOfTasks: 10,
@@ -90,6 +91,9 @@ public struct SdkConfig {
         case source
         case sourceVersion = "version"
     }
+
+    /// Immutable property to store the workspace Region set during SDK initialization.
+    public let region: Region
 
     /**
      Base URL to use for the Customer.io track API. You will more then likely not modify this value.

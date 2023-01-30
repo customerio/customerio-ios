@@ -4,6 +4,8 @@ import Foundation
 import Gist
 
 internal class MessagingInAppImplementation: MessagingInAppInstance {
+    private let siteId: SiteId
+    private let region: Region
     private let logger: Logger
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
@@ -13,6 +15,8 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var eventListener: InAppEventListener?
 
     init(diGraph: DIGraph) {
+        self.siteId = diGraph.siteId
+        self.region = diGraph.sdkConfig.region
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
@@ -20,8 +24,8 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
         self.profileStore = diGraph.profileStore
     }
 
-    func initialize(organizationId: String) {
-        inAppProvider.initialize(organizationId: organizationId, delegate: self)
+    func initialize() {
+        inAppProvider.initialize(siteId: siteId, region: region, delegate: self)
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
@@ -30,10 +34,14 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
         }
     }
 
-    func initialize(organizationId: String, eventListener: InAppEventListener) {
+    func initialize(eventListener: InAppEventListener) {
         self.eventListener = eventListener
-        initialize(organizationId: organizationId)
+        initialize()
     }
+
+    // Functions deprecated but need to exist for `MessagingInAppInstance` protocol.
+    // Do not call these functions but non-deprecated ones.
+    func initialize(organizationId: String) {}
 }
 
 extension MessagingInAppImplementation: ProfileIdentifyHook {

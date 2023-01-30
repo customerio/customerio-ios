@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "Gist",
-        "repositoryURL": "https://gitlab.com/bourbonltd/gist-apple.git",
+        "repositoryURL": "https://github.com/customerio/gist-apple.git",
         "state": {
           "branch": null,
-          "revision": "408077c633807dc00fbce263cf513f69ab40a75b",
-          "version": "2.2.2"
+          "revision": "667cc2942eb94ccd8d2e3706605c8b81eaaa39e6",
+          "version": "3.0.2"
         }
       }
     ]

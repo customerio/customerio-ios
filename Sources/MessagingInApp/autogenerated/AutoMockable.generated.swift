@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -275,21 +275,21 @@ internal class InAppProviderMock: InAppProvider, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var initializeReceivedArguments: (organizationId: String, delegate: GistDelegate)?
+    internal private(set) var initializeReceivedArguments: (siteId: String, region: Region, delegate: GistDelegate)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var initializeReceivedInvocations: [(organizationId: String, delegate: GistDelegate)] = []
+    internal private(set) var initializeReceivedInvocations: [(siteId: String, region: Region, delegate: GistDelegate)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var initializeClosure: ((String, GistDelegate) -> Void)?
+    internal var initializeClosure: ((String, Region, GistDelegate) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func initialize(organizationId: String, delegate: GistDelegate) {
+    /// Mocked function for `initialize(siteId: String, region: Region, delegate: GistDelegate)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func initialize(siteId: String, region: Region, delegate: GistDelegate) {
         mockCalled = true
         initializeCallsCount += 1
-        initializeReceivedArguments = (organizationId: organizationId, delegate: delegate)
-        initializeReceivedInvocations.append((organizationId: organizationId, delegate: delegate))
-        initializeClosure?(organizationId, delegate)
+        initializeReceivedArguments = (siteId: siteId, region: region, delegate: delegate)
+        initializeReceivedInvocations.append((siteId: siteId, region: region, delegate: delegate))
+        initializeClosure?(siteId, region, delegate)
     }
 
     // MARK: - setProfileIdentifier
@@ -385,13 +385,16 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
 
     public func resetMock() {
         initializeCallsCount = 0
-        initializeReceivedArguments = nil
-        initializeReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         initializeEventListenerCallsCount = 0
         initializeEventListenerReceivedArguments = nil
         initializeEventListenerReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        initializeOrganizationIdCallsCount = 0
+        initializeOrganizationIdReceivedArguments = nil
+        initializeOrganizationIdReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -405,22 +408,16 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeCallsCount > 0
     }
 
-    /// The arguments from the *last* time the function was called.
-    public private(set) var initializeReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var initializeClosure: ((String) -> Void)?
+    public var initializeClosure: (() -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func initialize(organizationId: String) {
+    /// Mocked function for `initialize()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func initialize() {
         mockCalled = true
         initializeCallsCount += 1
-        initializeReceivedArguments = organizationId
-        initializeReceivedInvocations.append(organizationId)
-        initializeClosure?(organizationId)
+        initializeClosure?()
     }
 
     // MARK: - initialize
@@ -433,20 +430,48 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var initializeEventListenerReceivedArguments: (organizationId: String, eventListener: InAppEventListener)?
+    public private(set) var initializeEventListenerReceivedArguments: InAppEventListener?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeEventListenerReceivedInvocations: [(organizationId: String, eventListener: InAppEventListener)] = []
+    public private(set) var initializeEventListenerReceivedInvocations: [InAppEventListener] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var initializeEventListenerClosure: ((String, InAppEventListener) -> Void)?
+    public var initializeEventListenerClosure: ((InAppEventListener) -> Void)?
 
-    /// Mocked function for `initialize(organizationId: String, eventListener: InAppEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func initialize(organizationId: String, eventListener: InAppEventListener) {
+    /// Mocked function for `initialize(eventListener: InAppEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func initialize(eventListener: InAppEventListener) {
         mockCalled = true
         initializeEventListenerCallsCount += 1
-        initializeEventListenerReceivedArguments = (organizationId: organizationId, eventListener: eventListener)
-        initializeEventListenerReceivedInvocations.append((organizationId: organizationId, eventListener: eventListener))
-        initializeEventListenerClosure?(organizationId, eventListener)
+        initializeEventListenerReceivedArguments = eventListener
+        initializeEventListenerReceivedInvocations.append(eventListener)
+        initializeEventListenerClosure?(eventListener)
+    }
+
+    // MARK: - initialize
+
+    /// Number of times the function was called.
+    public private(set) var initializeOrganizationIdCallsCount = 0
+    /// `true` if the function was ever called.
+    public var initializeOrganizationIdCalled: Bool {
+        initializeOrganizationIdCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var initializeOrganizationIdReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var initializeOrganizationIdReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var initializeOrganizationIdClosure: ((String) -> Void)?
+
+    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
+    public func initialize(organizationId: String) {
+        mockCalled = true
+        initializeOrganizationIdCallsCount += 1
+        initializeOrganizationIdReceivedArguments = organizationId
+        initializeOrganizationIdReceivedInvocations.append(organizationId)
+        initializeOrganizationIdClosure?(organizationId)
     }
 }
