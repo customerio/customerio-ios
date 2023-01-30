@@ -92,6 +92,7 @@ public struct SdkConfig {
         case sourceVersion = "version"
     }
 
+    /// Immutable property to store the workspace Region set during SDK initialization.
     public let region: Region
 
     /**
