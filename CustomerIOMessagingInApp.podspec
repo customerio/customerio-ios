@@ -21,5 +21,5 @@ Pod::Spec.new do |spec|
   spec.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files
   
   spec.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
-  spec.dependency "Gist", '~> 3.0.2'
+  spec.dependency "Gist", '~> 3.0.4'
 end
