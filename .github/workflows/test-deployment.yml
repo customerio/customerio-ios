@@ -15,18 +15,20 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Get branch name
+      id: branch-name
+      uses: tj-actions/branch-names@v6
+
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
       with: 
         semantic_version: 18 # version numbers below can be in many forms: M, M.m, M.m.p
         dry_run: true 
+        # Provide name of this branch to instruct semantic-release we want to make a (dry-run/test) production deployment. 
+        # If we didn't have this, semantic-release would not run even when using dry-run because this branch is not one of the production branches we use for performing deployments. 
         branches: |
-          [
-            # Provide name of this branch to instruct semantic-release we want to make a (dry-run/test) production deployment. 
-            # If we didn't have this, semantic-release would not run even when using dry-run because this branch is not one of the production branches we use for performing deployments. 
-            # 
-            # Note: might need to use: ${{ github.event.pull_request.head.ref }} when running on a PR. 
-            '${{ github.event.ref }}'
+          [            
+            '${{ steps.branch-name.outputs.current_branch }}'
           ]
         extra_plugins: |
           conventional-changelog-conventionalcommits@4
