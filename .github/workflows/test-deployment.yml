@@ -1,0 +1,44 @@
+name: Test deployment 
+
+on: [pull_request, push] # push can be removed later on but during development of this feature, I will keep it in. 
+
+permissions: read-all
+
+jobs:
+  semantic-release-dry-run:
+    runs-on: ubuntu-latest
+    name: Dry run deployment
+    permissions:
+      contents: write # push git commits and tags 
+      issues: write   # comment on github issues 
+      pull-requests: write # comment and interact with PRs. 
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Get branch name
+      id: branch-name
+      uses: tj-actions/branch-names@v6
+
+    - uses: cycjimmy/semantic-release-action@v3
+      id: semantic-release
+      with: 
+        semantic_version: 18 # version numbers below can be in many forms: M, M.m, M.m.p
+        dry_run: true 
+        # Provide name of this branch to instruct semantic-release we want to make a (dry-run/test) production deployment. 
+        # If we didn't have this, semantic-release would not run even when using dry-run because this branch is not one of the production branches we use for performing deployments. 
+        branches: |
+          [            
+            '${{ steps.branch-name.outputs.current_branch }}'
+          ]
+        extra_plugins: |
+          conventional-changelog-conventionalcommits@4
+          @semantic-release/changelog@6
+          @semantic-release/git@10
+          @semantic-release/github@8
+          @semantic-release/exec@6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Do something when a new release published
+      if: steps.semantic-release.outputs.new_release_published == 'true'
+      run: echo "A new release would have been published"
