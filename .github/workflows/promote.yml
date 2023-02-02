@@ -3,6 +3,9 @@ name: Promote a release
 on: 
   workflow_dispatch: # manually run this Action so you decide when deployments happen
 
+permissions:
+  contents: write # Needed to push merge commits.
+
 jobs:
   promote-release:
     name: Promote a branch to the next release 
@@ -12,10 +15,7 @@ jobs:
         uses: levibostian/action-promote-semantic-release@v1
         with:
           sequence: "develop,alpha,beta,main"
-          githubToken: ${{ secrets.WRITE_ACCESS_BOT_TOKEN }}
-          # Find private email address that github uses for CI account at: https://github.com/settings/emails
-          gitName: "Ami CI"
-          gitEmail: "21171259+ami-ci@users.noreply.github.com"
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify team of failure 
         uses: slackapi/slack-github-action@v1.18.0
