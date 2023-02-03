@@ -29,6 +29,7 @@ jobs:
 #      run: |
     - run: git fetch --depth=1
     - run: git log 
+    - run: git checkout ${{ steps.branch-name.outputs.current_branch }}
     - run: git config user.email "ci@c.io" && git config user.name "CI Server"
     - run: git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
     - run: git log  
