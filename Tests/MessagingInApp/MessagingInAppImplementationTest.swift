@@ -170,11 +170,23 @@ class MessagingInAppImplementationTest: UnitTest {
 
     func test_eventListeners_expectActionListenerForCloseAction() {
         let givenGistMessage = Message.random
-
-        // message action taken
+        let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
+        let givenCurrentRoute = String.random
+        let givenAction = "gist://close"
+        let givenName = String.random
+        
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
-        messagingInApp.action(message: givenGistMessage, currentRoute: .random, action: "gist://close", name: .random)
+
+        messagingInApp.action(
+            message: givenGistMessage,
+            currentRoute: givenCurrentRoute,
+            action: givenAction,
+            name: givenName
+        )
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
-        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, "gist://close")
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
+        
     }
 }
