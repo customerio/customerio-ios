@@ -174,7 +174,7 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenCurrentRoute = String.random
         let givenAction = "gist://close"
         let givenName = String.random
-        
+
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
 
         messagingInApp.action(
@@ -187,6 +187,5 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
-        
     }
 }
