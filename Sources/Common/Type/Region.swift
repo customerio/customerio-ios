@@ -24,7 +24,7 @@ public enum Region: String, Equatable {
     }
 }
 
-extension Region {
+public extension Region {
     static func getRegion(from regionStr: String) -> Region {
         switch regionStr.uppercased() {
         case "US":
