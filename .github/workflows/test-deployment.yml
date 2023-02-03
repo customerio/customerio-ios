@@ -51,6 +51,7 @@ jobs:
           @semantic-release/exec@6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_EVENT_NAME: "push"
     
     - uses: marocchino/sticky-pull-request-comment@v2
       if: steps.semantic-release.outputs.new_release_published == 'true'
