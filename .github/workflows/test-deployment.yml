@@ -49,7 +49,10 @@ jobs:
           @semantic-release/git@10
           @semantic-release/github@8
           @semantic-release/exec@6
-        branch: 'ref/pulls/${{ steps.branch-name.outputs.ref_branch }}'
+        branches: |
+          [
+            'ref/pulls/${{ steps.branch-name.outputs.ref_branch }}'
+          ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
