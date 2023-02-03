@@ -2,6 +2,10 @@ name: PR review
 
 on: [pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Danger is a tool that can help during code reviews. Automate common 
   # code review tasks. https://danger.systems/js/

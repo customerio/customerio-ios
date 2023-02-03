@@ -4,7 +4,6 @@ on: [pull_request]
 
 permissions: read-all
 
-# If you push multiple commits close together, cancel previous runs of CI server of this workflow.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -28,7 +27,7 @@ jobs:
     # Help with how to squash and merge a PR: https://stackoverflow.com/a/5201642
     - name: Squash and merge the current pull request to simulate merging this PR 
       run: |
-        git fetch main --depth=1
+        git fetch --depth=1
         git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
         git checkout main && git pull
         git merge ${{ steps.branch-name.outputs.current_branch }}
