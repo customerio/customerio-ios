@@ -168,7 +168,7 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 2)
     }
 
-    func test_eventListeners_expectActionListenerForCloseAction() {
+    func test_eventListeners_givenCloseAction_expectListenerEvent() {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
         let givenCurrentRoute = String.random

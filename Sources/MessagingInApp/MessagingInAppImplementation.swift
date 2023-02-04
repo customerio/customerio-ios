@@ -101,6 +101,7 @@ extension MessagingInAppImplementation: GistDelegate {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: message) {
+                // the state of the SDK does not change if adding this queue task isn't successful so ignore result
                 _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked)
             }
         }
