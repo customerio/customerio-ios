@@ -38,6 +38,10 @@ jobs:
     - run: git merge ${{ steps.branch-name.outputs.current_branch }}
     - run: git log 
     - run: git branch && git status 
+
+    - run: echo "$GITHUB_EVENT_NAME"
+      env: 
+        GITHUB_EVENT_NAME: 'push'
     
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
