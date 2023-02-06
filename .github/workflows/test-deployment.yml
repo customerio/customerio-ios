@@ -23,7 +23,8 @@ jobs:
     if: needs.find-pr-open-for-branch.outputs.pr_number != '' 
     runs-on: ubuntu-latest
     name: Dry run deployment
-    permissions:
+    permissions: # permissions must match that of a real deployment because auth is tested in dry-run
+      contents: write # for pushing commits and tags 
       issues: write # comment on github issues 
       pull-requests: write # comment and interact with PRs. 
     steps:
