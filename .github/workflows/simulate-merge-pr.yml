@@ -16,15 +16,16 @@ jobs:
     - uses: actions/checkout@v3
 
     # Help with how to squash and merge a PR: https://stackoverflow.com/a/5201642
-    - name: Squash and merge the current pull request to simulate merging this PR 
+    - name: Squash all commits on current branch 
       run: |
-        git fetch --depth=1
-        git checkout -b "${{ steps.branch-name.outputs.current_branch }}"
         git config user.email "ci@c.io" && git config user.name "CI Server"
         git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
         git log
-        git checkout main && git pull && git checkout "simulated_merge_pr_${{ github.event.pull_request.number }}"
-        git log
+    
+    - name: Merge squashed commit to add new PR work onto main branch 
+      run: |
+        git fetch --depth=1
+        git checkout main && git pull && git checkout -b "simulated_merge_pr_${{ github.event.pull_request.number }}"
         git merge "${{ steps.branch-name.outputs.current_branch }}"
         git log
         git branch && git status
