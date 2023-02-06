@@ -52,7 +52,7 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            'ref/pulls/${{ steps.branch-name.outputs.ref_branch }}'
+            'main'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
