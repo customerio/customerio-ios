@@ -37,6 +37,7 @@ jobs:
     - run: git log 
     - run: git merge ${{ steps.branch-name.outputs.current_branch }}
     - run: git log 
+    - run: git branch && git status 
     
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
