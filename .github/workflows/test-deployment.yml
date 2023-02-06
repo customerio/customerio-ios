@@ -20,7 +20,7 @@ jobs:
 
   semantic-release-dry-run:
     needs: find-pr-open-for-branch
-    if: needs.find-pr-open-for-branch.outputs.pr_number !== '' 
+    if: needs.find-pr-open-for-branch.outputs.pr_number != '' 
     runs-on: ubuntu-latest
     name: Dry run deployment
     permissions:
