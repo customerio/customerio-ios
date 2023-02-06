@@ -1,6 +1,5 @@
 {
     "tagFormat": "${version}",
-    "ci": false,
     "branches": [
         "main",
         { "name": "beta", "prerelease": true },

@@ -1,6 +1,6 @@
 name: Test deployment 
 
-on: [pull_request]
+on: [push]
 
 permissions: read-all
 
@@ -37,11 +37,7 @@ jobs:
     - run: git log 
     - run: git merge ${{ steps.branch-name.outputs.current_branch }}
     - run: git log 
-    - run: git branch && git status 
-
-    - run: |
-        echo "GITHUB_EVENT_NAME=push" >> $GITHUB_ENV
-        echo "$GITHUB_EVENT_NAME"
+    - run: git branch && git status
     
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
@@ -56,21 +52,19 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            'main',
-            'refs/pull/${{ steps.branch-name.outputs.ref_branch }}'
+            'main'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_EVENT_NAME: 'push'
-        GITHUB_REF: 'refs/heads/main'
     
-    - uses: marocchino/sticky-pull-request-comment@v2
+    - name: Create commit comment
+      uses: peter-evans/commit-comment@v2
       if: steps.semantic-release.outputs.new_release_published == 'true'
       with:
-        message: |
+        body: |
           # Test deployment results          
 
-          If this PR gets merged and a deployment occurs, this is the result of what will happen: 
+          If this branch gets merged and a deployment occurs, this is the result of what will happen: 
 
           * Previous version: ${{ steps.semantic-release.outputs.last_release_version }}
           * New version: ${{ steps.semantic-release.outputs.new_release_version }}
