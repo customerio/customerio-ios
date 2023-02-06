@@ -27,18 +27,13 @@ jobs:
     # Help with how to squash and merge a PR: https://stackoverflow.com/a/5201642
     # - name: Squash and merge the current pull request to simulate merging this PR 
 #      run: |
-    - run: git log
-    - uses: actions/checkout@v3
-      with:
-        ref: ${{ steps.branch-name.outputs.current_branch }}
-    - run: git config user.email "ci@c.io" && git config user.name "CI Server"
     - run: git fetch --depth=1
+    - run: git log 
+    - run: git checkout ${{ steps.branch-name.outputs.current_branch }}
+    - run: git config user.email "ci@c.io" && git config user.name "CI Server"
     - run: git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
-    - run: git log
-    - uses: actions/checkout@v3 # forces CI server to actually change branch
-      with:
-        ref: main 
-        clean: false 
+    - run: git log  
+    - run: git checkout main && git pull
     - run: git log 
     - run: git merge ${{ steps.branch-name.outputs.current_branch }}
     - run: git log 
@@ -56,7 +51,7 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            'main'
+            'ref/pulls/${{ steps.branch-name.outputs.ref_branch }}'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
