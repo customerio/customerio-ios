@@ -62,7 +62,7 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            'main'
+            '${{ steps.branch-name.outputs.current_branch }}'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
