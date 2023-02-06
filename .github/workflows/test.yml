@@ -1,6 +1,10 @@
 name: Tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+      - simulated_merge_pr_*
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

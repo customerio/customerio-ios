@@ -1,26 +1,16 @@
 name: Test deployment 
 
-on: [push]
-
-permissions: read-all
+on: 
+  push:
+    branches:
+      - simulated_merge_pr_* # only run on pushes to branches that begin with this name. 
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  find-pr-open-for-branch:
-    runs-on: ubuntu-latest
-    outputs:
-      pr_number: ${{ steps.findPr.outputs.number }}
-      pr_title: ${{ steps.findPr.outputs.title }}
-    steps:
-      - uses: jwalton/gh-find-current-pr@v1
-        id: findPr
-
-  semantic-release-dry-run:
-    needs: find-pr-open-for-branch
-    if: needs.find-pr-open-for-branch.outputs.pr_number != '' 
+  semantic-release-dry-run:    
     runs-on: ubuntu-latest
     name: Dry run deployment
     permissions: # permissions must match that of a real deployment because auth is tested in dry-run
@@ -34,22 +24,15 @@ jobs:
       id: branch-name
       uses: tj-actions/branch-names@v6
 
-    # Careful *not* to do a 'git push' anywhere since we are merging commits into production branches here!
-    # Help with how to squash and merge a PR: https://stackoverflow.com/a/5201642
-    # - name: Squash and merge the current pull request to simulate merging this PR 
-#      run: |
-    - run: git fetch --depth=1
-    - run: git log 
-    - run: git checkout -b "${{ steps.branch-name.outputs.current_branch }}-clean"
-    - run: git config user.email "ci@c.io" && git config user.name "CI Server"
-    - run: git reset --soft origin/main && git commit -m "${{ needs.find-pr-open-for-branch.outputs.pr_title }}"
-    - run: git log  
-    - run: git checkout main && git pull
-    - run: git log 
-    - run: git merge "${{ steps.branch-name.outputs.current_branch }}-clean"
-    - run: git log 
-    - run: git branch && git status
-    
+    # the branch name contains the pull request number. Pull it out. 
+    - name: Get the PR number 
+      uses: mad9000/actions-find-and-replace-string@2
+      id: pr-number
+      with:
+        source: ${{ steps.branch-name.outputs.current_branch }}
+        find: 'simulated_merge_pr_'
+        replace: '' # we just want the number at the end 
+
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
       with: 
@@ -72,7 +55,7 @@ jobs:
       uses: peter-evans/create-or-update-comment@v2
       if: steps.semantic-release.outputs.new_release_published == 'true'      
       with:
-        issue-number: ${{ needs.find-pr-open-for-branch.outputs.pr_number }}
+        issue-number: ${{ steps.pr-number.outputs.value }}
         body: |
           # Test deployment results          
 
