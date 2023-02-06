@@ -39,9 +39,9 @@ jobs:
     - run: git log 
     - run: git branch && git status 
 
-    - run: echo "$GITHUB_EVENT_NAME"
-      env: 
-        GITHUB_EVENT_NAME: 'push'
+    - run: |
+        echo "GITHUB_EVENT_NAME=push" >> $GITHUB_ENV
+        echo "$GITHUB_EVENT_NAME"
     
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
