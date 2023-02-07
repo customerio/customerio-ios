@@ -1,3 +1,20 @@
+## [2.1.0-beta.1](https://github.com/customerio/customerio-ios/compare/2.0.4...2.1.0-beta.1) (2023-02-07)
+
+
+### Features
+
+* add in-app event listener ([#211](https://github.com/customerio/customerio-ios/issues/211)) ([737d43b](https://github.com/customerio/customerio-ios/commit/737d43b262cb467d6fb0dfc160d558ce3de09bf7))
+* in-app feature no longer requires orgId ([#252](https://github.com/customerio/customerio-ios/issues/252)) ([acd12da](https://github.com/customerio/customerio-ios/commit/acd12dab64e119546379f52552f2434843252682))
+
+
+### Bug Fixes
+
+* added reusable code for wrapper SDKs ([#247](https://github.com/customerio/customerio-ios/issues/247)) ([36adf15](https://github.com/customerio/customerio-ios/commit/36adf158748b7dc439812807fd4d27a287a82e1a))
+* in-app missing event ([#259](https://github.com/customerio/customerio-ios/issues/259)) ([43b3e97](https://github.com/customerio/customerio-ios/commit/43b3e9706b152fe2dead882336a3f416ba400b73))
+* modify in-app event listener action parameters to new name ([#255](https://github.com/customerio/customerio-ios/issues/255)) ([b46528a](https://github.com/customerio/customerio-ios/commit/b46528a0cd6cda4f8428eef0001032a79338e1cf))
+* region visibility modifier to be used by wrappers ([#260](https://github.com/customerio/customerio-ios/issues/260)) ([f0edfbc](https://github.com/customerio/customerio-ios/commit/f0edfbc52a4694b2cee29a431d8c0943f819815b))
+* update the gist version in podspec ([#256](https://github.com/customerio/customerio-ios/issues/256)) ([5451488](https://github.com/customerio/customerio-ios/commit/545148820187c04938e717fce4e166cd77a78f92))
+
 ### [2.0.4](https://github.com/customerio/customerio-ios/compare/2.0.3...2.0.4) (2023-01-17)
 
 
