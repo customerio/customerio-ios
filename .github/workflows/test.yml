@@ -1,4 +1,5 @@
 name: Tests
+
 on: [push, pull_request]
 
 # Thanks, https://swiftpackageindex.com/docs/builds for help coming up with *how* we build the artifacts. Swift build on Linux, XCode build on mac. Changing the XCode version to a specific version is how to set what version of Swift we want to test against on macOS. This is more real-world but also because I encountered issues with trying to install a Swift version in the macOS environment and try to run tests on it. 

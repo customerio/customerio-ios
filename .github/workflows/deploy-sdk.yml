@@ -1,10 +1,8 @@
-name: Deploy
+name: Deploy SDK
 
-# Only run after a pull request has been merged. This is because
-# bot account runs write operations on the github repo to push a tag.
 on:
   push:
-    branches: [main, beta, alpha]
+    branches: [main, v1] # all branches where deployments currently occur. 
 
 permissions:
   contents: write # access to push the git tag
@@ -18,7 +16,7 @@ jobs:
     outputs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
@@ -43,20 +41,6 @@ jobs:
         env:
           # Needs to push git commits to repo. Needs write access.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # After a production deployment of the software, the 'main' branch will contain some commits in it that 'develop'
-      # branch does not contain. These commits in 'main' are from all of the alpha, beta, and production deployments made.
-      # We need these commits to be merged into 'develop'. If we do not, semantic-release tool will error. The tool requires
-      # git commits and git tags to be in the current branch in order to determine the next semantic version of the software.
-      # Example commit: https://github.com/customerio/customerio-ios/commit/7e945051bd3e2c8b3ed1053a65888d0e8f9860bf
-      - name: Open pull request for syncing main into develop
-        uses: tretuna/sync-branches@1.4.0
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FROM_BRANCH: main
-          TO_BRANCH: develop
-          PULL_REQUEST_TITLE: "Merge main into develop"
-          PULL_REQUEST_BODY: This PR syncs version bump changes committed by _semantic-release_ from the `main` branch into `develop`.
 
       - name: Notify team of git tag being created
         uses: slackapi/slack-github-action@v1.18.0
