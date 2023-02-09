@@ -7,7 +7,7 @@ public enum Metric: String, Codable {
     case converted
 }
 
-extension Metric {
+public extension Metric {
     static func getEvent(from metricStr: String) -> Metric? {
         Metric(rawValue: metricStr.lowercased())
     }
