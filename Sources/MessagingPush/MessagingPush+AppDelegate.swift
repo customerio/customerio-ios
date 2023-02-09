@@ -68,6 +68,8 @@ extension MessagingPushImplementation {
                 // First, try to open the link inside of the host app. This is to keep compatability with Universal Links.
                 // Learn more of edge case: https://github.com/customerio/customerio-ios/issues/262
                 // Fallback to opening the URL system-wide if fail to open link in host app.
+                // Customers with Universal Links in their app will need to add this function to their `AppDelegate` which will get called with deep link:
+                // func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool
 
                 let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
                 openLinkInHostAppActivity.webpageURL = deepLinkurl
