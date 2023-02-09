@@ -1,3 +1,10 @@
+## [2.1.0-beta.2](https://github.com/customerio/customerio-ios/compare/2.1.0-beta.1...2.1.0-beta.2) (2023-02-09)
+
+
+### Bug Fixes
+
+* access modifier for metric ([#263](https://github.com/customerio/customerio-ios/issues/263)) ([e641982](https://github.com/customerio/customerio-ios/commit/e641982c86e5e4347977f0c0af2615d4541ff0e5))
+
 ## [2.1.0-beta.1](https://github.com/customerio/customerio-ios/compare/2.0.4...2.1.0-beta.1) (2023-02-07)
 
 
