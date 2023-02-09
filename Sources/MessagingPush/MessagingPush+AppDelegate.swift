@@ -71,12 +71,18 @@ extension MessagingPushImplementation {
                 // Customers with Universal Links in their app will need to add this function to their `AppDelegate` which will get called with deep link:
                 // func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool
 
-                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-                openLinkInHostAppActivity.webpageURL = deepLinkurl
+                var didHostAppHandleLink = false
+                if deepLinkUtil.isLinkValidNSUserActivityLink(deepLinkurl) {
+                    logger.debug("Found a deep link inside of the push notification. Attempting to open deep link in host app, first.")
 
-                let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
+                    let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+                    openLinkInHostAppActivity.webpageURL = deepLinkurl
+
+                    let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
+                }
 
                 if !didHostAppHandleLink {
+                    logger.debug("Host app didn't handle link yet. Opening the link through a system call.")
                     // fallback to open link, potentially in device browser
                     UIApplication.shared.open(url: deepLinkurl)
                 }
