@@ -65,7 +65,19 @@ extension MessagingPushImplementation {
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkurl = pushContent.deepLink {
-                UIApplication.shared.open(url: deepLinkurl)
+                // First, try to open the link inside of the host app. This is to keep compatability with Universal Links.
+                // Learn more of edge case: https://github.com/customerio/customerio-ios/issues/262
+                // Fallback to opening the URL system-wide if fail to open link in host app.
+
+                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+                openLinkInHostAppActivity.webpageURL = deepLinkurl
+
+                let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
+
+                if !didHostAppHandleLink {
+                    // fallback to open link, potentially in device browser
+                    UIApplication.shared.open(url: deepLinkurl)
+                }
             }
         default: break
         }
