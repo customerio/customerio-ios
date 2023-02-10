@@ -20,6 +20,7 @@ jobs:
       run: |
         git fetch --depth=1
         git checkout -b "temp-squash-commits-branch"
+        git config user.name "CI Server" && git config user.email "ci-server@customer.io"
         git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
         git log
     
