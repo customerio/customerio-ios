@@ -15,13 +15,13 @@ class DeepLinkUtilTest: UnitTest {
     // MARK: isLinkValidNSUserActivityLink
 
     func test_isLinkValidNSUserActivityLink_givenAppSchemeUrl_expectFalse() {
-        let given = "remote-habits://switch_workspace?site_id=AAA&api_key=BBB"
+        let given = URL(string: "remote-habits://switch_workspace?site_id=AAA&api_key=BBB")!
 
         XCTAssertFalse(deepLinkUtil.isLinkValidNSUserActivityLink(given))
     }
 
     func test_isLinkValidNSUserActivityLink_givenUniversalLinkUrl_expectTrue() {
-        let given = "https://remotehabits.com/switch_workspace?site_id=AAA&api_key=BBB"
+        let given = URL(string: "https://remotehabits.com/switch_workspace?site_id=AAA&api_key=BBB")!
 
         XCTAssertTrue(deepLinkUtil.isLinkValidNSUserActivityLink(given))
     }
