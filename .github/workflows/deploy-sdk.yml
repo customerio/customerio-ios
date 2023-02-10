@@ -7,7 +7,6 @@ on:
 permissions:
   contents: write # access to push the git tag
   issues: write # Bot creates an issue if there is an issue during deployment process
-  pull-requests: write # Needed to create PR to sync changes from main to develop
 
 jobs:
   deploy-git-tag:
