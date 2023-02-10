@@ -3,7 +3,7 @@ name: Test deployment
 on: 
   push:
     branches:
-      - simulated_merge_pr_* # only run on pushes to branches that begin with this name. 
+      - temp-simulate_merge_pr_* # only run on pushes to branches that begin with this name. 
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,7 +30,7 @@ jobs:
       id: pr-number
       with:
         source: ${{ steps.branch-name.outputs.current_branch }}
-        find: 'simulated_merge_pr_'
+        find: 'temp-simulated_merge_pr_'
         replace: '' # we just want the number at the end 
 
     - uses: cycjimmy/semantic-release-action@v3
@@ -64,3 +64,13 @@ jobs:
           * Previous version: ${{ steps.semantic-release.outputs.last_release_version }}
           * New version: ${{ steps.semantic-release.outputs.new_release_version }}
           * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
+          
+  delete-branch:
+    needs: semantic-release-dry-run
+    name: Delete branch after no longer need it 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to be able to delete branch
+    steps:
+      - uses: actions/checkout@v3
+      - run: git push origin --delete 

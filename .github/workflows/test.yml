@@ -3,7 +3,7 @@ name: Tests
 on:
   push:
     branches-ignore:
-      - simulated_merge_pr_*
+      - temp-*
   pull_request:
 
 concurrency:
