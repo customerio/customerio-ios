@@ -1,3 +1,10 @@
+### [2.0.5](https://github.com/customerio/customerio-ios/compare/2.0.4...2.0.5) (2023-02-10)
+
+
+### Bug Fixes
+
+* universal links when touch a push notification open host app ([#265](https://github.com/customerio/customerio-ios/issues/265)) ([7dcaf73](https://github.com/customerio/customerio-ios/commit/7dcaf736912e23cbc6dced0206c4a4f53c6e298d))
+
 ### [2.0.4](https://github.com/customerio/customerio-ios/compare/2.0.3...2.0.4) (2023-01-17)
 
 
