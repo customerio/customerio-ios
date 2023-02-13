@@ -6,6 +6,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_${{ env.PR_NUMBER }}"
+
 jobs:
   merge-commits-push-branch:
     runs-on: ubuntu-latest
@@ -26,8 +30,14 @@ jobs:
     
     - name: Merge squashed commit to main branch to simulate merging PR into main 
       run: |
-        git checkout main && git pull && git checkout -b "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
+        git checkout main && git pull && git checkout -b "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
         git merge "temp-squash-commits-branch"
         git log
         git branch && git status
-        git push -u origin "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
+        git push -u origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
+    
+    - name: Trigger another workflow to test the deployment from new branch 
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: test-deployment.yml
+        inputs: '{ "branch_to_checkout": "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}", "pr_number": "${{ env.PR_NUMBER }}" }'

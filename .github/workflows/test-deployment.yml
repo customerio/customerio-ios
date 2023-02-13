@@ -1,13 +1,24 @@
 name: Test deployment 
 
-on: 
-  push:
-    branches:
-      - temp-simulate_merge_pr_* # only run on pushes to branches that begin with this name. 
+# This workflow gets triggered by another workflow. 
+on:
+  workflow_dispatch:
+    inputs:
+      branch_to_checkout:
+        description: 'Branch name to checkout and then run the test deployment from.'
+        required: true
+        type: string
+      pr_number:
+        description: 'Pull request number associated with this test deployment'
+        required: true 
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  LINK_TO_THIS_WORKFLOW_LOGS: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 jobs:
   semantic-release-dry-run:    
@@ -19,19 +30,14 @@ jobs:
       pull-requests: write # comment and interact with PRs. 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Get branch names to use later 
-      id: branch-name
-      uses: tj-actions/branch-names@v6
-
-    # the branch name contains the pull request number. Pull it out. 
-    - name: Get the PR number 
-      uses: mad9000/actions-find-and-replace-string@2
-      id: pr-number
       with:
-        source: ${{ steps.branch-name.outputs.current_branch }}
-        find: 'temp-simulated_merge_pr_'
-        replace: '' # we just want the number at the end 
+        ref: ${{ inputs.branch_to_checkout }}
+
+    - uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        number: ${{ inputs.pr_number }}
+        message: |
+          Simulating a deployment after this PR gets merged...this comment will be updated after the testing has been completed...
 
     - uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
@@ -46,24 +52,44 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            '${{ steps.branch-name.outputs.current_branch }}'
+            '${{ inputs.branch_to_checkout }}'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Create comment
-      uses: peter-evans/create-or-update-comment@v2
-      if: steps.semantic-release.outputs.new_release_published == 'true'      
+    - uses: marocchino/sticky-pull-request-comment@v2
+      if: steps.semantic-release.outputs.new_release_published == "true"
       with:
-        issue-number: ${{ steps.pr-number.outputs.value }}
-        body: |
+        number: ${{ inputs.pr_number }}
+        message: |
           # Test deployment results          
 
-          If this branch gets merged and a deployment occurs, this is the result of what will happen: 
+          If this pull request gets merged, a new release will be made. 
 
           * Previous version: ${{ steps.semantic-release.outputs.last_release_version }}
           * New version: ${{ steps.semantic-release.outputs.new_release_version }}
           * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
+
+          Think this is a mistake? View the [CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+
+    - uses: marocchino/sticky-pull-request-comment@v2
+      if: steps.semantic-release.outputs.new_release_published == "false"
+      with:
+        number: ${{ inputs.pr_number }}
+        message: |
+          # Test deployment results          
+
+          If this pull request gets merged, a new release will *not* be made. 
+
+          Think this is a mistake? View the [CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+    
+    - uses: marocchino/sticky-pull-request-comment@v2
+      if: ${{ failure() }}
+      with:
+        number: ${{ inputs.pr_number }}
+        message: |
+          Testing of a deployment failed to execute. This could mean that there is an issue with the deployment configuration. 
+          It's suggested that you [view the CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
           
   delete-branch:
     needs: semantic-release-dry-run
