@@ -49,8 +49,8 @@ jobs:
       with:
         command_line: git branch --show-current
         contains: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
-    - name: Push new branch 
-      run: git push -u origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
+    - name: Push new branch, force push if the branch already exists 
+      run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
     
     # Run another CI action from this new branch
     - name: Trigger another workflow to test the deployment from new branch 
