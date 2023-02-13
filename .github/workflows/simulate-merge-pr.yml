@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Merge commits push branch 
     env: 
-      BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_${{ env.PR_NUMBER }}"
+      BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_$PR_NUMBER"
     permissions: # permissions must match that of a real deployment because auth is tested in dry-run
       contents: write # for pushing commits and tags 
     steps:
