@@ -26,8 +26,8 @@ jobs:
     
     - name: Merge squashed commit to main branch to simulate merging PR into main 
       run: |
-        git checkout main && git pull && git checkout -b "temp-simulated_merge_pr_${{ github.event.pull_request.number }}"
+        git checkout main && git pull && git checkout -b "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
         git merge "temp-squash-commits-branch"
         git log
         git branch && git status
-        git push -u origin "temp-simulated_merge_pr_${{ github.event.pull_request.number }}"
+        git push -u origin "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
