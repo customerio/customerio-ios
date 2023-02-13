@@ -7,36 +7,52 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
   PR_NUMBER: ${{ github.event.pull_request.number }}
 
 jobs:
   merge-commits-push-branch:
     runs-on: ubuntu-latest
-    name: Merge commits push branch 
-    env: 
-      BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_$PR_NUMBER"
+    name: Merge commits push branch       
     permissions: # permissions must match that of a real deployment because auth is tested in dry-run
       contents: write # for pushing commits and tags 
     steps:
     - uses: actions/checkout@v3
 
+    # Squash all commits of the current branch into 1 commit. Each command below is executed as 1 step in this job 
+    # to act as comments explaining each step of the process. 
     # Help with how to squash and merge a PR: https://stackoverflow.com/a/5201642
-    - name: Squash all commits of the current branch into 1 commit 
-      run: |
-        git fetch --depth=1
-        git checkout -b "temp-squash-commits-branch"
-        git config user.name "CI Server" && git config user.email "ci-server@customer.io"
-        git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
-        git log
+    - name: Fetch all branches so we can reference origin/main branch
+      run: git fetch --depth=1
+    - name: Configure git with name and email or git will throw error when trying to make a commit 
+      run: git config user.name "GitHub" && git config user.email "noreply@github.com"
+    - name: Creating new branch to make the squashed commit on. Must be checked out to a branch or commit will not succeed. 
+      run: git checkout -b "temp-squash-commits-branch"
+    - name: Squash all commits in PR into 1 commit. Using the title of this PR as the commit message. 
+      run: git reset --soft origin/main && git commit -m "${{ github.event.pull_request.title }}"
+    - name: Run git log for debugging purposes to see if 1 commit was created as we expected 
+      run: git log 
     
-    - name: Merge squashed commit to main branch to simulate merging PR into main 
-      run: |
-        git checkout main && git pull && git checkout -b "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
-        git merge "temp-squash-commits-branch"
-        git log
-        git branch && git status
-        git push -u origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
+    # Merge the new squashed commit into the main branch to simulate merging this PR into main branch 
+    - name: Pull the main branch locally so we can use it 
+      run: git checkout main && git pull
+    - name: Checkout a new branch that will represent the result of merging this pull request
+      run: git checkout -b "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
+    - name: Merge the squashed commit that we made into the local main branch 
+      run: git merge "temp-squash-commits-branch"
+    - name: Run git log for debugging purposes to see if the merge shows 1 new squashed commit got merged successfully 
+      run: git log 
+
+    # Push new branch 
+    - name: Assert that we are on the correct branch before pushing. We don't want to overwrite another branch in the repo by accident. 
+      uses: GuillaumeFalourd/assert-command-line-output@v2.1
+      with:
+        command_line: git branch --show-current
+        contains: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
+    - name: Push new branch 
+      run: git push -u origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
     
+    # Run another CI action from this new branch
     - name: Trigger another workflow to test the deployment from new branch 
       uses: benc-uk/workflow-dispatch@v1
       with:

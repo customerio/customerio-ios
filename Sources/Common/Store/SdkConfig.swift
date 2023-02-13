@@ -73,8 +73,8 @@ public struct SdkConfig {
         }
     }
 
-    // Constants that SDK wrappers can use with `modify` function for setting configuration options with strings. 
-    // It's important to keep these values backwards compatible to avoid breaking SDK wrappers. 
+    // Constants that SDK wrappers can use with `modify` function for setting configuration options with strings.
+    // It's important to keep these values backwards compatible to avoid breaking SDK wrappers.
     public enum Keys: String { // Constants used to map each of the options in SdkConfig
         // configure workspace environment
         case siteId
