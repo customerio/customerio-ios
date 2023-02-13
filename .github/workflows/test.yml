@@ -42,6 +42,8 @@ jobs:
         xcode: ["12.4", "12.5", "13.0"]
     runs-on: macos-11
     name: XCode macOS tests (xcode ${{ matrix.xcode }})
+    permissions:
+      checks: write # Need write permission to add test result check.
     steps:
     - uses: actions/checkout@v2
     - name: Set up XCode
@@ -85,10 +87,10 @@ jobs:
       with:
         check_name: XCode macOS tests (xcode ${{ matrix.xcode }}) - Results
         report_paths: test-report.xml
-        github_token: ${{ secrets.READ_ONLY_BOT_TOKEN }}
-        fail_on_failure: true 
-        require_tests: true 
-      if: ${{ always() }} # if running tests fails, we still want to parse the test results   
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        fail_on_failure: true
+        require_tests: true
+      if: ${{ always() }} # if running tests fails, we still want to parse the test results
 
   xcode-test:
     needs: files-changed
@@ -100,6 +102,8 @@ jobs:
         xcode: ["13.3"]
     runs-on: macos-12
     name: XCode macOS tests (xcode ${{ matrix.xcode }})
+    permissions:
+      checks: write # Need write permission to add test result check.
     steps:
     - uses: actions/checkout@v2
     - name: Set up XCode
@@ -143,8 +147,8 @@ jobs:
       with:
         check_name: XCode macOS tests (xcode ${{ matrix.xcode }}) - Results
         report_paths: test-report.xml
-        github_token: ${{ secrets.READ_ONLY_BOT_TOKEN }}
-        fail_on_failure: true 
-        require_tests: true 
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        fail_on_failure: true
+        require_tests: true
       if: ${{ always() }} # if running tests fails, we still want to parse the test results  
       

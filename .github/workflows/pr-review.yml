@@ -5,6 +5,11 @@ on: [pull_request]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+  
+permissions:
+  contents: read # Access needed to checkout the repo.
+  issues: read # Needed to retrieve commits on a pull request.
+  pull-requests: write # Write access needed to create a comment.
 
 jobs:
   # Danger is a tool that can help during code reviews. Automate common 
@@ -18,5 +23,4 @@ jobs:
       - name: Run danger 
         run: npx danger@11 ci --dangerfile dangerfile.js
         env:
-          # Bot runs on every pull request so make sure to only use read-only access token 
-          GITHUB_TOKEN: ${{ secrets.READ_ONLY_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
