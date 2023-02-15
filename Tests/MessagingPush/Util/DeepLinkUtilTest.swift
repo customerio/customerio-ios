@@ -1,28 +1,37 @@
 @testable import CioMessagingPush
+@testable import Common
 import Foundation
 import SharedTests
 import XCTest
 
 class DeepLinkUtilTest: UnitTest {
-    private var deepLinkUtil: DeepLinkUtil!
+    private var deepLinkUtil: DeepLinkUtilImpl!
+
+    private let uiKitMock = UIKitWrapperMock()
 
     override func setUp() {
         super.setUp()
 
-        deepLinkUtil = DeepLinkUtilImpl()
+        deepLinkUtil = DeepLinkUtilImpl(logger: log, uiKitWrapper: uiKitMock)
     }
 
-    // MARK: isLinkValidNSUserActivityLink
+    // MARK: handleDeepLink
 
-    func test_isLinkValidNSUserActivityLink_givenAppSchemeUrl_expectFalse() {
-        let given = URL(string: "remote-habits://switch_workspace?site_id=AAA&api_key=BBB")!
+    func test_handleDeepLink_givenHostAppDoesNotHandleLink_expectOpenLinkSystemCall() {
+        uiKitMock.continueNSUserActivityReturnValue = false
 
-        XCTAssertFalse(deepLinkUtil.isLinkValidNSUserActivityLink(given))
+        deepLinkUtil.handleDeepLink(URL(string: "https://customer.io")!)
+
+        XCTAssertEqual(uiKitMock.continueNSUserActivityCallsCount, 1)
+        XCTAssertEqual(uiKitMock.openCallsCount, 1)
     }
 
-    func test_isLinkValidNSUserActivityLink_givenUniversalLinkUrl_expectTrue() {
-        let given = URL(string: "https://remotehabits.com/switch_workspace?site_id=AAA&api_key=BBB")!
+    func test_handleDeepLink_givenHostAppHandlesLink_expectDoNotOpenLinkSystemCall() {
+        uiKitMock.continueNSUserActivityReturnValue = true
 
-        XCTAssertTrue(deepLinkUtil.isLinkValidNSUserActivityLink(given))
+        deepLinkUtil.handleDeepLink(URL(string: "https://customer.io")!)
+
+        XCTAssertEqual(uiKitMock.continueNSUserActivityCallsCount, 1)
+        XCTAssertFalse(uiKitMock.openCalled)
     }
 }

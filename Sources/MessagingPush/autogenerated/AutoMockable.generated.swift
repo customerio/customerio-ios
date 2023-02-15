@@ -97,42 +97,38 @@ internal class DeepLinkUtilMock: DeepLinkUtil, Mock {
     }
 
     public func resetMock() {
-        isLinkValidNSUserActivityLinkCallsCount = 0
-        isLinkValidNSUserActivityLinkReceivedArguments = nil
-        isLinkValidNSUserActivityLinkReceivedInvocations = []
+        handleDeepLinkCallsCount = 0
+        handleDeepLinkReceivedArguments = nil
+        handleDeepLinkReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - isLinkValidNSUserActivityLink
+    // MARK: - handleDeepLink
 
     /// Number of times the function was called.
-    internal private(set) var isLinkValidNSUserActivityLinkCallsCount = 0
+    internal private(set) var handleDeepLinkCallsCount = 0
     /// `true` if the function was ever called.
-    internal var isLinkValidNSUserActivityLinkCalled: Bool {
-        isLinkValidNSUserActivityLinkCallsCount > 0
+    internal var handleDeepLinkCalled: Bool {
+        handleDeepLinkCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var isLinkValidNSUserActivityLinkReceivedArguments: URL?
+    internal private(set) var handleDeepLinkReceivedArguments: URL?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var isLinkValidNSUserActivityLinkReceivedInvocations: [URL] = []
-    /// Value to return from the mocked function.
-    internal var isLinkValidNSUserActivityLinkReturnValue: Bool!
+    internal private(set) var handleDeepLinkReceivedInvocations: [URL] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `isLinkValidNSUserActivityLinkReturnValue`
      */
-    internal var isLinkValidNSUserActivityLinkClosure: ((URL) -> Bool)?
+    internal var handleDeepLinkClosure: ((URL) -> Void)?
 
-    /// Mocked function for `isLinkValidNSUserActivityLink(_ url: URL)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
+    /// Mocked function for `handleDeepLink(_ deepLinkUrl: URL)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func handleDeepLink(_ deepLinkUrl: URL) {
         mockCalled = true
-        isLinkValidNSUserActivityLinkCallsCount += 1
-        isLinkValidNSUserActivityLinkReceivedArguments = url
-        isLinkValidNSUserActivityLinkReceivedInvocations.append(url)
-        return isLinkValidNSUserActivityLinkClosure.map { $0(url) } ?? isLinkValidNSUserActivityLinkReturnValue
+        handleDeepLinkCallsCount += 1
+        handleDeepLinkReceivedArguments = deepLinkUrl
+        handleDeepLinkReceivedInvocations.append(deepLinkUrl)
+        handleDeepLinkClosure?(deepLinkUrl)
     }
 }
 

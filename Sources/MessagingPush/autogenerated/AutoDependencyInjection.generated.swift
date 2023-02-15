@@ -69,6 +69,6 @@ extension DIGraph {
     }
 
     private var newDeepLinkUtil: DeepLinkUtil {
-        DeepLinkUtilImpl()
+        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 }
