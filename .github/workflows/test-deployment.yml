@@ -4,10 +4,6 @@ name: Test deployment
 on:
   workflow_dispatch:
     inputs:
-      branch_to_checkout:
-        description: 'Branch name to checkout and then run the test deployment from.'
-        required: true
-        type: string
       pr_number:
         description: 'Pull request number associated with this test deployment'
         required: true 
@@ -30,8 +26,10 @@ jobs:
       pull-requests: write # comment and interact with PRs. 
     steps:
     - uses: actions/checkout@v3
-      with:
-        ref: ${{ inputs.branch_to_checkout }}
+
+    - name: Get branch names to use later
+      id: branch-name
+      uses: tj-actions/branch-names@v6
 
     - uses: marocchino/sticky-pull-request-comment@v2
       with:
@@ -52,7 +50,7 @@ jobs:
           @semantic-release/exec@6
         branches: |
           [
-            '${{ inputs.branch_to_checkout }}'
+            '${{ steps.branch-name.outputs.current_branch }}'
           ]
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,7 +60,7 @@ jobs:
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          # Test deployment results          
+          # Simulated deployment results      
 
           If this pull request gets merged, a new release will be made. 
 
@@ -70,27 +68,28 @@ jobs:
           * New version: ${{ steps.semantic-release.outputs.new_release_version }}
           * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
 
-          Think this is a mistake? View the [CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+          Think this is a mistake? View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
 
     - uses: marocchino/sticky-pull-request-comment@v2
       if: ${{ steps.semantic-release.outputs.new_release_published == 'false' }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          # Test deployment results          
+          # Simulated deployment results          
 
           If this pull request gets merged, a new release will *not* be made. 
 
-          Think this is a mistake? View the [CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+          Think this is a mistake? View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
     
     - uses: marocchino/sticky-pull-request-comment@v2
       if: ${{ failure() }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          Testing of a deployment failed to execute. This could mean that there is an issue with the deployment configuration. 
-          It's suggested that you [view the CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
-          
+          **Simulated deployment encountered a failure.** This could mean that there is an issue with the deployment configuration. 
+
+          It's suggested that you [view the CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
+  
   delete-branch:
     needs: semantic-release-dry-run
     name: Delete branch after no longer need it 
@@ -99,5 +98,7 @@ jobs:
       contents: write # to be able to delete branch
     steps:
       - uses: actions/checkout@v3
-      - run: git push origin --delete 
-      
+      - name: Get branch names to use later
+        id: branch-name
+        uses: tj-actions/branch-names@v6
+      - run: git push origin --delete ${{ steps.branch-name.outputs.current_branch }}

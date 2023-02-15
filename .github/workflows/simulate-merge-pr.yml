@@ -67,6 +67,6 @@ jobs:
       uses: benc-uk/workflow-dispatch@v1
       with:
         workflow: test-deployment.yml
-        # ref must be included or github will run workflow from the default branch of the repository. If you make changes to the workflow file, you will not be able to test those changes unless we include ref. 
-        ref: ${{ github.event.pull_request.head.ref }}
-        inputs: '{ "branch_to_checkout": "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}", "pr_number": "${{ env.PR_NUMBER }}" }'
+        # ref is the branch or commit to run test-deployment from. We want to run the workflow from the new branch that we created so the deployment test runs from that branch. 
+        ref: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
+        inputs: '{ "pr_number": "${{ env.PR_NUMBER }}" }'
