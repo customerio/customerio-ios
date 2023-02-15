@@ -24,8 +24,10 @@ jobs:
   semantic-release-dry-run:    
     runs-on: ubuntu-latest
     name: Dry run deployment
-    permissions: write-all # permissions must match that of a real deployment because auth is tested in dry-run
-      
+    permissions: # permissions must match that of a real deployment because auth is tested in dry-run
+      contents: write # for pushing commits and tags 
+      issues: write # comment on github issues 
+      pull-requests: write # comment and interact with PRs. 
     steps:
     - uses: actions/checkout@v3
       with:
@@ -88,6 +90,8 @@ jobs:
         message: |
           Testing of a deployment failed to execute. This could mean that there is an issue with the deployment configuration. 
           It's suggested that you [view the CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
+      env:
+        ACTIONS_STEP_DEBUG: true 
           
   delete-branch:
     needs: semantic-release-dry-run
