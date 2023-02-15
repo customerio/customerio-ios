@@ -58,7 +58,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - uses: marocchino/sticky-pull-request-comment@v2
-      if: steps.semantic-release.outputs.new_release_published == "true"
+      if: ${{ steps.semantic-release.outputs.new_release_published == 'true' }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
@@ -73,7 +73,7 @@ jobs:
           Think this is a mistake? View the [CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
 
     - uses: marocchino/sticky-pull-request-comment@v2
-      if: steps.semantic-release.outputs.new_release_published == "false"
+      if: ${{ steps.semantic-release.outputs.new_release_published == 'false' }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
@@ -100,3 +100,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: git push origin --delete 
+      
