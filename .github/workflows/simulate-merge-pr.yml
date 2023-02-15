@@ -52,9 +52,12 @@ jobs:
     - name: Push new branch, force push if the branch already exists 
       run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
     
-    # Run another CI action from this new branch
-    - name: Trigger another workflow to test the deployment from new branch 
+    # Now that we created a new branch that represents what the git commit history will look like after merging the PR, 
+    # run the deployment test from that new branch. 
+    - name: Run test-deployment workflow to run deployment test from new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
       uses: benc-uk/workflow-dispatch@v1
       with:
         workflow: test-deployment.yml
+        # ref must be included or github will run workflow from the default branch of the repository. If you make changes to the workflow file, you will not be able to test those changes unless we include ref. 
+        ref: ${{ github.event.pull_request.head.ref }}
         inputs: '{ "branch_to_checkout": "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}", "pr_number": "${{ env.PR_NUMBER }}" }'
