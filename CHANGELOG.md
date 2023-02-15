@@ -1,3 +1,10 @@
+### [2.0.6](https://github.com/customerio/customerio-ios/compare/2.0.5...2.0.6) (2023-02-15)
+
+
+### Bug Fixes
+
+* universal links deep links open host app ([#268](https://github.com/customerio/customerio-ios/issues/268)) ([29c95b5](https://github.com/customerio/customerio-ios/commit/29c95b5b9810f6cdec22a15df643f8d1a9fb7d58))
+
 ### [2.0.5](https://github.com/customerio/customerio-ios/compare/2.0.4...2.0.5) (2023-02-10)
 
 
