@@ -90,8 +90,6 @@ jobs:
         message: |
           Testing of a deployment failed to execute. This could mean that there is an issue with the deployment configuration. 
           It's suggested that you [view the CI server logs here](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
-      env:
-        ACTIONS_STEP_DEBUG: true 
           
   delete-branch:
     needs: semantic-release-dry-run

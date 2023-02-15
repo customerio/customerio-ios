@@ -14,8 +14,8 @@ jobs:
   merge-commits-push-branch:
     runs-on: ubuntu-latest
     name: Merge commits push branch       
-    permissions: # permissions must match that of a real deployment because auth is tested in dry-run
-      contents: write # for pushing commits and tags 
+    permissions: write-all # permissions must match that of a real deployment because auth is tested in dry-run
+      #contents: write # for pushing commits and tags 
     steps:
     - uses: actions/checkout@v3
 
@@ -56,6 +56,8 @@ jobs:
     # run the deployment test from that new branch. 
     - name: Run test-deployment workflow to run deployment test from new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
       uses: benc-uk/workflow-dispatch@v1
+      env:
+        ACTIONS_STEP_DEBUG: true 
       with:
         workflow: test-deployment.yml
         # ref must be included or github will run workflow from the default branch of the repository. If you make changes to the workflow file, you will not be able to test those changes unless we include ref. 
