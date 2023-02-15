@@ -24,10 +24,8 @@ jobs:
   semantic-release-dry-run:    
     runs-on: ubuntu-latest
     name: Dry run deployment
-    permissions: # permissions must match that of a real deployment because auth is tested in dry-run
-      contents: write # for pushing commits and tags 
-      issues: write # comment on github issues 
-      pull-requests: write # comment and interact with PRs. 
+    permissions: write-all # permissions must match that of a real deployment because auth is tested in dry-run
+      
     steps:
     - uses: actions/checkout@v3
       with:
