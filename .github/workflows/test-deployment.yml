@@ -29,7 +29,8 @@ jobs:
       id: current-job
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        job_name: semantic-release-dry-run
+        # job_name is the same value as 'semantic-release-dry-run.name' (the name given to this current job)
+        job_name: Dry run deployment
 
     - name: Get branch names to use later
       id: branch-name
@@ -76,7 +77,7 @@ jobs:
           * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
 
           Is this not what you expected? Try these suggestions:
-          1. 1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
+          1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
           2. View the [CI server logs](${{ steps.current-job.outputs.html_url }}) to view the logs of the deployment simulation. Use these logs to better understand why a deployment would not trigger. 
 
     - name: ✏️ Update PR ${{ inputs.pr_number }} comment with message that a deployment will not happen if PR is merged
@@ -90,7 +91,7 @@ jobs:
           ### If this pull request gets merged, **a new release will 🙅‍♀️ *not* 🙅‍♀️ be made**
 
           Is this not what you expected? Try these suggestions:
-          1. 1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
+          1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
           2. View the [CI server logs](${{ steps.current-job.outputs.html_url }}) to view the logs of the deployment simulation. Use these logs to better understand why a deployment would not trigger. 
     
     - name: ✏️ Update PR ${{ inputs.pr_number }} comment with message that the simulated deployment failed to execute
