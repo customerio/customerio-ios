@@ -1,6 +1,9 @@
 name: Simulate merging a PR 
 
-on: [pull_request]
+# Trigger when PR created or when the PR title has been modified since the PR title changes behavior of a simulated merge 
+on:
+  pull_request:
+    types: [opened, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
