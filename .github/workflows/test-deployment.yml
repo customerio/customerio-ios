@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  LINK_TO_THIS_WORKFLOW_LOGS: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  LINK_TO_THIS_WORKFLOW_LOGS: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs/${{ github.job }}
 
 jobs:
   semantic-release-dry-run:    
@@ -31,13 +31,15 @@ jobs:
       id: branch-name
       uses: tj-actions/branch-names@v6
 
-    - uses: marocchino/sticky-pull-request-comment@v2
+    - name: ✏️ Post comment on PR ${{ inputs.pr_number }} saying simulated deploy has begun 
+      uses: marocchino/sticky-pull-request-comment@v2
       with:
         number: ${{ inputs.pr_number }}
         message: |
           Simulating a deployment after this PR gets merged...this comment will be updated after the testing has been completed...
 
-    - uses: cycjimmy/semantic-release-action@v3
+    - name: 🚀 Run simulated deployment 🚀 - View logs of this step to see results of deployment
+      uses: cycjimmy/semantic-release-action@v3
       id: semantic-release
       with: 
         semantic_version: 18 # version numbers below can be in many forms: M, M.m, M.m.p
@@ -55,40 +57,49 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
-    - uses: marocchino/sticky-pull-request-comment@v2
+    - name: ✏️ Update PR ${{ inputs.pr_number }} comment with message that a deployment will happen if PR is merged
+      uses: marocchino/sticky-pull-request-comment@v2
       if: ${{ steps.semantic-release.outputs.new_release_published == 'true' }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          # Simulated deployment results      
+          ## Simulated deployment results      
 
-          If this pull request gets merged, a new release will be made. 
+          ### If this pull request gets merged, 🚢 **a new release will be made** 🚢. 
 
-          * Previous version: ${{ steps.semantic-release.outputs.last_release_version }}
-          * New version: ${{ steps.semantic-release.outputs.new_release_version }}
+          * New version: **${{ steps.semantic-release.outputs.new_release_version }}**
+          * Previous version: **${{ steps.semantic-release.outputs.last_release_version }}**
           * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
 
-          Think this is a mistake? View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+          Is this not what you expected? Try these suggestions:
+          1. 1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
+          2. View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the logs of the deployment simulation. Use these logs to better understand why a deployment would not trigger. 
 
-    - uses: marocchino/sticky-pull-request-comment@v2
+    - name: ✏️ Update PR ${{ inputs.pr_number }} comment with message that a deployment will not happen if PR is merged
+      uses: marocchino/sticky-pull-request-comment@v2
       if: ${{ steps.semantic-release.outputs.new_release_published == 'false' }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          # Simulated deployment results          
+          ## Simulated deployment results
 
-          If this pull request gets merged, a new release will *not* be made. 
+          ### If this pull request gets merged, **a new release will 🙅‍♀️ *not* 🙅‍♀️ be made**
 
-          Think this is a mistake? View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the simulated deployment. 
+          Is this not what you expected? Try these suggestions:
+          1. 1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
+          2. View the [CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to view the logs of the deployment simulation. Use these logs to better understand why a deployment would not trigger. 
     
-    - uses: marocchino/sticky-pull-request-comment@v2
+    - name: ✏️ Update PR ${{ inputs.pr_number }} comment with message that the simulated deployment failed to execute
+      uses: marocchino/sticky-pull-request-comment@v2
       if: ${{ failure() }}
       with:
         number: ${{ inputs.pr_number }}
         message: |
-          **Simulated deployment encountered a failure.** This could mean that there is an issue with the deployment configuration. 
+          ## Simulated deployment encountered a failure ⚠️
+          
+          This could mean that there is an issue with the deployment configuration. 
 
-          It's suggested that you [view the CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. 
+          It's suggested that you [view the CI server logs](${{ env.LINK_TO_THIS_WORKFLOW_LOGS }}) to see what went wrong and fix the issue before merging the PR. Push more commits to this branch to run the simulated deployment again. 
   
   delete-branch:
     needs: semantic-release-dry-run
@@ -102,3 +113,4 @@ jobs:
         id: branch-name
         uses: tj-actions/branch-names@v6
       - run: git push origin --delete ${{ steps.branch-name.outputs.current_branch }}
+

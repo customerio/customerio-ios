@@ -36,7 +36,7 @@ jobs:
     # Merge the new squashed commit into the main branch to simulate merging this PR into main branch 
     - name: Pull the main branch locally so we can use it 
       run: git checkout main && git pull
-    - name: Checkout a new branch that will represent the result of merging this pull request
+    - name: Checkout branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }} that will represent the result of merging this pull request
       run: git checkout -b "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
     - name: Merge the squashed commit that we made into the local main branch 
       run: git merge "temp-squash-commits-branch"
@@ -49,7 +49,7 @@ jobs:
       with:
         command_line: git branch --show-current
         contains: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
-    - name: Push new branch, force push if the branch already exists 
+    - name: Push new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}, force push if the branch already exists 
       run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
 
   # Now that we created a new branch that represents what the git commit history will look like after merging the PR, 
