@@ -10,14 +10,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BRANCH_TO_CREATE_SIMULATING_MERGE: "temp-simulate_merge_pr_${{ github.event.pull_request.number }}"
+  BRANCH_TO_CREATE_SIMULATING_MERGE: "tmp/simulate_merge_pr_${{ github.event.pull_request.number }}"
   PR_NUMBER: ${{ github.event.pull_request.number }}
 
 jobs:
   simulate-merge-pr:
     runs-on: ubuntu-latest
     name: Simulate merging PR
-    permissions: # permissions must match that of a real deployment because auth is tested in dry-run
+    permissions: 
       contents: write # for pushing commits and tags 
     steps:
     - uses: actions/checkout@v3
@@ -56,7 +56,7 @@ jobs:
       run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
 
   # Now that we created a new branch that represents what the git commit history will look like after merging the PR, 
-  # run the deployment test from that new branch. 
+  # run the deployment test from that new branch. Not from the PR branch we are currently on. 
   start-test-deployment-workflow:
     runs-on: ubuntu-latest
     needs: simulate-merge-pr

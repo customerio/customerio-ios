@@ -3,7 +3,7 @@ name: Tests
 on:
   push:
     branches-ignore:
-      - temp-*
+      - tmp/*
   pull_request:
 
 concurrency:
@@ -14,6 +14,7 @@ concurrency:
 # See example commands by choosing a package: https://swiftpackageindex.com/nativedevbr/swift-log/builds and viewing the build information for each environment to see the commands run in that environment. 
 
 jobs:
+  # Running tests can be time consuming on the CI server. Only run them if there were files modified that we determine should run the tests. 
   files-changed:
     name: Detect what files changed
     runs-on: ubuntu-latest
@@ -25,6 +26,7 @@ jobs:
       - uses: dorny/paths-filter@v2
         id: changes
         with:
+          # Are there files that you believe should trigger running tests? Add it to the list of them below in the src list. 
           filters: |
             src:
               - 'Sources/**'
