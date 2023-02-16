@@ -53,7 +53,7 @@ jobs:
         command_line: git branch --show-current
         contains: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
     - name: Push new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}, force push if the branch already exists 
-      run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"        
+      run: git push --force origin "${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}"
 
   # Now that we created a new branch that represents what the git commit history will look like after merging the PR, 
   # run the deployment test from that new branch. 
@@ -63,13 +63,33 @@ jobs:
     name: Start test deployment 
     permissions:
       actions: write # be able to start a new github action workflow 
+      pull-requests: write # to comment on PR 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Start workflow that runs test deployment on new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
+    - name: 🚀 Start workflow that runs test deployment on new branch ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }} 🚀 - View logs from this step to see if there were errors starting the new workflow 
       uses: benc-uk/workflow-dispatch@v1
       with:
         workflow: test-deployment.yml
         # ref is the branch or commit to run test-deployment from. We want to run the workflow from the new branch that we created so the deployment test runs from that branch. 
         ref: ${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}
         inputs: '{ "pr_number": "${{ env.PR_NUMBER }}" }'
+
+    - name: Get GitHub URL linking to this CI run so we can reference later 
+      uses: Tiryoh/gha-jobid-action@v0.1.2
+      id: current-job
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # job_name is the same value as 'start-test-deployment-workflow.name' (the name given to this current job)
+        job_name: Start test deployment
+    
+    - name: ✏️ Update PR ${{ env.PR_NUMBER }} comment with message that a deployment test has begun 
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        number: ${{ env.PR_NUMBER }}
+        header: simulated-deploy
+        message: |
+          A new branch (`${{ env.BRANCH_TO_CREATE_SIMULATING_MERGE }}`) has been automatically created which simulates what would happen to git commit history if this PR got merged. 
+
+          A new CI workflow (`test-deployment`) has been started. This message *should* automatically be updated with the progress of that workflow. If you see this message for longer then a few minutes, then there might have been an issue with starting the workflow. [Link to CI server logs](${{ steps.current-job.outputs.html_url }}) for starting the new workflow. 
+

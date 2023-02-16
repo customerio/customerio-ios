@@ -40,6 +40,7 @@ jobs:
       uses: marocchino/sticky-pull-request-comment@v2
       with:
         number: ${{ inputs.pr_number }}
+        header: simulated-deploy
         message: |
           Simulating a deployment after this PR gets merged...this comment will be updated after the testing has been completed...
 
@@ -67,6 +68,7 @@ jobs:
       if: ${{ steps.semantic-release.outputs.new_release_published == 'true' }}
       with:
         number: ${{ inputs.pr_number }}
+        header: simulated-deploy
         message: |
           ## Simulated deployment results      
 
@@ -74,7 +76,11 @@ jobs:
 
           * New version: **${{ steps.semantic-release.outputs.new_release_version }}**
           * Previous version: **${{ steps.semantic-release.outputs.last_release_version }}**
-          * Release notes: ${{ steps.semantic-release.outputs.new_release_notes }}
+          * Release notes: 
+          
+          ${{ steps.semantic-release.outputs.new_release_notes }}
+
+          --- 
 
           Is this not what you expected? Try these suggestions:
           1. [Modify the title of this pull request](https://www.conventionalcommits.org). Only pull requests prefixed with `feat:` and `fix:` trigger a deployment
@@ -85,6 +91,7 @@ jobs:
       if: ${{ steps.semantic-release.outputs.new_release_published == 'false' }}
       with:
         number: ${{ inputs.pr_number }}
+        header: simulated-deploy
         message: |
           ## Simulated deployment results
 
@@ -99,6 +106,7 @@ jobs:
       if: ${{ failure() }}
       with:
         number: ${{ inputs.pr_number }}
+        header: simulated-deploy
         message: |
           ## Simulated deployment encountered a failure ⚠️
           
