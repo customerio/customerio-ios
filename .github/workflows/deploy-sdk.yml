@@ -2,7 +2,7 @@ name: Deploy SDK
 
 on:
   push:
-    branches: [main, v1] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
+    branches: [beta, main, v1] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
 
 permissions:
   contents: write # access to push the git tag
