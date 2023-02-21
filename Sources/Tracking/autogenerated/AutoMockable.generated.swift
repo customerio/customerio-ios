@@ -302,6 +302,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         showPromptForPushNotificationsCallsCount = 0
 
         self.mockCalled = false // do last as resetting properties above can make this true
+        getDeviceTokenCallsCount = 0
+
+        self.mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - identify
@@ -552,6 +555,30 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         self.mockCalled = true
         showPromptForPushNotificationsCallsCount += 1
         showPromptForPushNotificationsClosure?()
+    }
+
+    // MARK: - getDeviceToken
+
+    /// Number of times the function was called.  
+    public private(set) var getDeviceTokenCallsCount = 0
+    /// `true` if the function was ever called. 
+    public var getDeviceTokenCalled: Bool {
+        return getDeviceTokenCallsCount > 0
+    }    
+    /// Value to return from the mocked function. 
+    public var getDeviceTokenReturnValue: String?
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+     then the mock will attempt to return the value for `getDeviceTokenReturnValue`
+     */
+    public var getDeviceTokenClosure: (() -> String?)?
+
+    /// Mocked function for `getDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getDeviceToken() -> String? {
+        self.mockCalled = true
+        getDeviceTokenCallsCount += 1
+        return getDeviceTokenClosure.map({ $0() }) ?? getDeviceTokenReturnValue
     }
 
 }

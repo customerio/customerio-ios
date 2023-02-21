@@ -62,6 +62,8 @@ public protocol CustomerIOInstance: AutoMockable {
     )
     
     func showPromptForPushNotifications()
+    
+    func getDeviceToken() -> String?
 }
 
 public extension CustomerIOInstance {
@@ -91,6 +93,7 @@ public extension CustomerIOInstance {
  You must call `CustomerIO.initialize` to use the features of the SDK.
  */
 public class CustomerIO: CustomerIOInstance {
+   
     public var siteId: String? {
         diGraph?.siteId
     }
@@ -398,4 +401,9 @@ public class CustomerIO: CustomerIOInstance {
     public func showPromptForPushNotifications() {
         implementation?.showPromptForPushNotifications()
     }
+    
+    public func getDeviceToken() -> String? {
+        return implementation?.getDeviceToken()
+    }
+
 }

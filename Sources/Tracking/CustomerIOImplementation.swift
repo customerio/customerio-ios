@@ -323,11 +323,15 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     }
     
     public func showPromptForPushNotifications() {
-        print("Received")
+        print("Received \(globalDataStore.pushDeviceToken)")
         
         hooks.pushNotificationPromptHooks.forEach { hook in
             hook.showPushNotificationPrompt()
         }
+    }
+    
+    public func getDeviceToken() -> String?{
+        return globalDataStore.pushDeviceToken
     }
 }
 
