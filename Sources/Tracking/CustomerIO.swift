@@ -227,7 +227,7 @@ public class CustomerIO: CustomerIOInstance {
         hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
 
         // run cleanup in background to prevent locking the UI thread
-        threadUtil.runBackground { [weak self] in
+        threadUtil.queueOnBackground { [weak self] in
             self?.cleanupRepository?.cleanup()
             self?.cleanupRepository = nil
         }

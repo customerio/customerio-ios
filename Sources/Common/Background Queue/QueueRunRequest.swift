@@ -41,7 +41,7 @@ public class CioQueueRunRequest: QueueRunRequest {
     }
 
     private func startNewRequestRun() {
-        threadUtil.runBackground {
+        threadUtil.queueOnBackground {
             self.runTasks()
         }
     }

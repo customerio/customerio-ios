@@ -151,7 +151,7 @@ public class CioQueue: Queue {
         blockingGroups: [QueueTaskGroup]?,
         onComplete: @escaping (ModifyQueueResult) -> Void
     ) {
-        threadUtil.runBackground {
+        threadUtil.queueOnBackground {
             self.logger.info("adding queue task \(type)")
 
             guard let data = self.jsonAdapter.toJson(data) else {

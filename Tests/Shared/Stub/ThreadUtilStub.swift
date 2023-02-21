@@ -6,7 +6,7 @@ public class ThreadUtilStub: ThreadUtil {
         block()
     }
 
-    public func runBackground(_ block: @escaping () -> Void) {
+    public func queueOnBackground(_ block: @escaping () -> Void) {
         block()
     }
 }
