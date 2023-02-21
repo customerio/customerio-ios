@@ -60,6 +60,8 @@ public protocol CustomerIOInstance: AutoMockable {
         event: Metric,
         deviceToken: String
     )
+    
+    func showPromptForPushNotifications()
 }
 
 public extension CustomerIOInstance {
@@ -391,5 +393,9 @@ public class CustomerIO: CustomerIOInstance {
         deviceToken: String
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+    
+    public func showPromptForPushNotifications() {
+        implementation?.showPromptForPushNotifications()
     }
 }

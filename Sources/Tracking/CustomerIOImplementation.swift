@@ -321,6 +321,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             )
         )
     }
+    
+    public func showPromptForPushNotifications() {
+        print("Received")
+    }
 }
 
 extension CustomerIOImplementation {
