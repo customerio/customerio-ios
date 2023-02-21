@@ -324,6 +324,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     
     public func showPromptForPushNotifications() {
         print("Received")
+        
+        hooks.pushNotificationPromptHooks.forEach { hook in
+            hook.showPushNotificationPrompt()
+        }
     }
 }
 

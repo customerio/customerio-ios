@@ -86,3 +86,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     }
     #endif
 }
+
+extension MessagingPushImplementation: PushNotificationPromptHook{
+    func showPushNotificationPrompt() {
+        print("Call Received")
+    }
+}

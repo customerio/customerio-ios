@@ -5,6 +5,7 @@ public protocol HooksManager: AutoMockable {
     var profileIdentifyHooks: [ProfileIdentifyHook] { get }
     var queueRunnerHooks: [QueueRunnerHook] { get }
     var screenViewHooks: [ScreenTrackingHook] { get }
+    var pushNotificationPromptHooks : [PushNotificationPromptHook] { get }
 }
 
 public enum HookModule: String {
@@ -22,6 +23,7 @@ public enum HookModule: String {
 // sourcery: InjectRegister = "HooksManager"
 // sourcery: InjectSingleton
 public class CioHooksManager: HooksManager {
+    
     private var hookProviders: [HookModule: ModuleHookProvider] = [:]
 
     /// using key/value pairs enforces that there is only 1 hook provider for each
@@ -40,5 +42,9 @@ public class CioHooksManager: HooksManager {
 
     public var screenViewHooks: [ScreenTrackingHook] {
         hookProviders.filter { $0.value.screenTrackingHook != nil }.map { $0.value.screenTrackingHook! }
+    }
+    
+    public var pushNotificationPromptHooks: [PushNotificationPromptHook] {
+        hookProviders.filter{$0.value.pushNotificationPromptHook != nil }.map {$0.value.pushNotificationPromptHook!}
     }
 }

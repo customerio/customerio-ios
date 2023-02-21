@@ -2,6 +2,7 @@ import Common
 import Foundation
 
 class TrackingModuleHookProvider: ModuleHookProvider {
+    
     private let sdkInitializedUtil = SdkInitializedUtilImpl()
 
     private var diGraph: DIGraph? {
@@ -17,6 +18,10 @@ class TrackingModuleHookProvider: ModuleHookProvider {
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
+        nil
+    }
+    
+    var pushNotificationPromptHook: PushNotificationPromptHook? {
         nil
     }
 }

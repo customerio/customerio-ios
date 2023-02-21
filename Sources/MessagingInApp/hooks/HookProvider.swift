@@ -25,4 +25,8 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
 
         return MessagingInAppImplementation(diGraph: diGraph)
     }
+    
+    var pushNotificationPromptHook: PushNotificationPromptHook? {
+        nil
+    }
 }
