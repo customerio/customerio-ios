@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -1672,25 +1672,21 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric)?
+    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric, onComplete: (ModifyQueueResult) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric)] = []
-    /// Value to return from the mocked function.
-    public var addTrackInAppDeliveryTaskReturnValue: ModifyQueueResult!
+    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric, onComplete: (ModifyQueueResult) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `addTrackInAppDeliveryTaskReturnValue`
      */
-    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> ModifyQueueResult)?
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, @escaping (ModifyQueueResult) -> Void) -> Void)?
 
-    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void) {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
-        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event)
-        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event))
-        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event) } ?? addTrackInAppDeliveryTaskReturnValue
+        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event, onComplete: onComplete)
+        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event, onComplete: onComplete))
+        addTrackInAppDeliveryTaskClosure?(deliveryId, event, onComplete)
     }
 
     // MARK: - addTask<TaskData: Codable>
@@ -1703,25 +1699,21 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)?
+    public private(set) var addTaskReceivedArguments: (type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?, onComplete: (ModifyQueueResult) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)] = []
-    /// Value to return from the mocked function.
-    public var addTaskReturnValue: ModifyQueueResult!
+    public private(set) var addTaskReceivedInvocations: [(type: String, data: AnyEncodable, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?, onComplete: (ModifyQueueResult) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `addTaskReturnValue`
      */
-    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?) -> ModifyQueueResult)?
+    public var addTaskClosure: ((String, AnyEncodable, QueueTaskGroup?, [QueueTaskGroup]?, @escaping (ModifyQueueResult) -> Void) -> Void)?
 
-    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?) -> ModifyQueueResult {
+    /// Mocked function for `addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?, onComplete: @escaping (ModifyQueueResult) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTask<TaskData: Codable>(type: String, data: TaskData, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?, onComplete: @escaping (ModifyQueueResult) -> Void) {
         mockCalled = true
         addTaskCallsCount += 1
-        addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups)
-        addTaskReceivedInvocations.append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups))
-        return addTaskClosure.map { $0(type, AnyEncodable(data), groupStart, blockingGroups) } ?? addTaskReturnValue
+        addTaskReceivedArguments = (type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups, onComplete: onComplete)
+        addTaskReceivedInvocations.append((type: type, data: AnyEncodable(data), groupStart: groupStart, blockingGroups: blockingGroups, onComplete: onComplete))
+        addTaskClosure?(type, AnyEncodable(data), groupStart, blockingGroups, onComplete)
     }
 
     // MARK: - run

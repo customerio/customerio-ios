@@ -120,34 +120,34 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             queueGroupStart = nil
         }
 
-        let queueStatus = backgroundQueue.addTask(
+        backgroundQueue.addTask(
             type: QueueTaskType.identifyProfile.rawValue,
             data: queueTaskData,
             groupStart: queueGroupStart
-        )
-
-        // don't modify the state of the SDK until we confirm we added a background queue task successfully.
-        // XXX: better handle scenario when adding task to queue is not successful
-        guard queueStatus.success else {
+        ) { queueStatus in
+            // don't modify the state of the SDK until we confirm we added a background queue task successfully.
             // XXX: better handle scenario when adding task to queue is not successful
-            logger.debug("failed to enqueue identify task")
-            return
-        }
-
-        logger.debug("storing identifier on device storage \(identifier)")
-        profileStore.identifier = identifier
-
-        if isFirstTimeIdentifying || isChangingIdentifiedProfile {
-            if let existingDeviceToken = globalDataStore.pushDeviceToken {
-                logger.debug("registering existing device token to newly identified profile: \(identifier)")
-                // this code assumes that the newly identified profile has been saved to device storage. only call this
-                // function until after the SDK stores the new profile identifier
-                registerDeviceToken(existingDeviceToken)
+            guard queueStatus.success else {
+                // XXX: better handle scenario when adding task to queue is not successful
+                self.logger.debug("failed to enqueue identify task")
+                return
             }
 
-            logger.debug("running hooks profile identified \(identifier)")
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.profileIdentified(identifier: identifier)
+            self.logger.debug("storing identifier on device storage \(identifier)")
+            self.profileStore.identifier = identifier
+
+            if isFirstTimeIdentifying || isChangingIdentifiedProfile {
+                if let existingDeviceToken = self.globalDataStore.pushDeviceToken {
+                    self.logger.debug("registering existing device token to newly identified profile: \(identifier)")
+                    // this code assumes that the newly identified profile has been saved to device storage. only call this
+                    // function until after the SDK stores the new profile identifier
+                    self.registerDeviceToken(existingDeviceToken)
+                }
+
+                self.logger.debug("running hooks profile identified \(identifier)")
+                self.hooks.profileIdentifyHooks.forEach { hook in
+                    hook.profileIdentified(identifier: identifier)
+                }
             }
         }
     }
@@ -259,12 +259,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 attributesJsonString: jsonBodyString
             )
 
-            _ = self.backgroundQueue.addTask(
+            self.backgroundQueue.addTask(
                 type: QueueTaskType.registerPushToken.rawValue,
                 data: queueTaskData,
                 groupStart: .registeredPushToken(token: deviceToken),
                 blockingGroups: [.identifiedProfile(identifier: identifier)]
-            )
+            ) { _ in }
         }
     }
 
@@ -286,7 +286,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             return // no profile to delete token from, ignore request
         }
 
-        _ = backgroundQueue.addTask(
+        backgroundQueue.addTask(
             type: QueueTaskType.deletePushToken.rawValue,
             data: DeletePushNotificationQueueTaskData(
                 profileIdentifier: identifiedProfileId,
@@ -296,7 +296,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 .registeredPushToken(token: existingDeviceToken),
                 .identifiedProfile(identifier: identifiedProfileId)
             ]
-        )
+        ) { _ in }
     }
 
     /**
@@ -311,7 +311,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
-        _ = backgroundQueue.addTask(
+        backgroundQueue.addTask(
             type: QueueTaskType.trackPushMetric.rawValue,
             data: MetricRequest(
                 deliveryId: deliveryID,
@@ -319,7 +319,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 deviceToken: deviceToken,
                 timestamp: Date()
             )
-        )
+        ) { _ in }
     }
 }
 
@@ -358,13 +358,13 @@ extension CustomerIOImplementation {
         )
 
         // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(
+        backgroundQueue.addTask(
             type: QueueTaskType.trackEvent.rawValue,
             data: queueData,
             blockingGroups: [
                 .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
             ]
-        )
+        ) { _ in }
 
         return true
     }

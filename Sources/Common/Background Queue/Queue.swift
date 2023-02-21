@@ -31,7 +31,7 @@ public protocol Queue: AutoMockable {
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void)
 
     /**
      Add a task to the queue to be performed sometime in the future.
@@ -48,8 +48,9 @@ public protocol Queue: AutoMockable {
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
         groupStart: QueueTaskGroup?,
-        blockingGroups: [QueueTaskGroup]?
-    ) -> ModifyQueueResult
+        blockingGroups: [QueueTaskGroup]?,
+        onComplete: @escaping (ModifyQueueResult) -> Void
+    )
 
     func run(onComplete: @escaping () -> Void)
 
@@ -61,9 +62,10 @@ public extension Queue {
         type: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData
-    ) -> ModifyQueueResult {
-        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil)
+        data: TaskData,
+        onComplete: @escaping (ModifyQueueResult) -> Void
+    ) {
+        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil, onComplete: onComplete)
     }
 
     func addTask<TaskData: Codable>(
@@ -71,9 +73,10 @@ public extension Queue {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
-        groupStart: QueueTaskGroup?
-    ) -> ModifyQueueResult {
-        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil)
+        groupStart: QueueTaskGroup?,
+        onComplete: @escaping (ModifyQueueResult) -> Void
+    ) {
+        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil, onComplete: onComplete)
     }
 
     func addTask<TaskData: Codable>(
@@ -81,9 +84,10 @@ public extension Queue {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
-        blockingGroups: [QueueTaskGroup]?
-    ) -> ModifyQueueResult {
-        addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups)
+        blockingGroups: [QueueTaskGroup]?,
+        onComplete: @escaping (ModifyQueueResult) -> Void
+    ) {
+        addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups, onComplete: onComplete)
     }
 }
 
@@ -97,6 +101,7 @@ public class CioQueue: Queue {
     private let sdkConfig: SdkConfig
     private let queueTimer: SingleScheduleTimer
     private let dateUtil: DateUtil
+    private let threadUtil: ThreadUtil
 
     private var numberSecondsToScheduleTimer: Seconds {
         sdkConfig.backgroundQueueSecondsDelay
@@ -110,7 +115,8 @@ public class CioQueue: Queue {
         logger: Logger,
         sdkConfig: SdkConfig,
         queueTimer: SingleScheduleTimer,
-        dateUtil: DateUtil
+        dateUtil: DateUtil,
+        threadUtil: ThreadUtil
     ) {
         self.storage = storage
         self.siteId = siteId
@@ -120,9 +126,10 @@ public class CioQueue: Queue {
         self.sdkConfig = sdkConfig
         self.queueTimer = queueTimer
         self.dateUtil = dateUtil
+        self.threadUtil = threadUtil
     }
 
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void) {
         addTask(
             type: QueueTaskType.trackDeliveryMetric.rawValue,
             data: TrackDeliveryEventRequestBody(
@@ -132,7 +139,8 @@ public class CioQueue: Queue {
                     event: event,
                     timestamp: dateUtil.now
                 )
-            )
+            ),
+            onComplete: onComplete
         )
     }
 
@@ -140,30 +148,33 @@ public class CioQueue: Queue {
         type: String,
         data: T,
         groupStart: QueueTaskGroup?,
-        blockingGroups: [QueueTaskGroup]?
-    ) -> ModifyQueueResult {
-        logger.info("adding queue task \(type)")
+        blockingGroups: [QueueTaskGroup]?,
+        onComplete: @escaping (ModifyQueueResult) -> Void
+    ) {
+        threadUtil.runBackground {
+            self.logger.info("adding queue task \(type)")
 
-        guard let data = jsonAdapter.toJson(data) else {
-            logger.error("fail adding queue task, json encoding fail.")
+            guard let data = self.jsonAdapter.toJson(data) else {
+                self.logger.error("fail adding queue task, json encoding fail.")
 
-            return (
-                success: false,
-                queueStatus: QueueStatus(queueId: siteId, numTasksInQueue: storage.getInventory().count)
+                return onComplete((
+                    success: false,
+                    queueStatus: QueueStatus(queueId: self.siteId, numTasksInQueue: self.storage.getInventory().count)
+                ))
+            }
+
+            self.logger.debug("added queue task data \(data.string ?? "")")
+
+            let addTaskResult = self.storage.create(
+                type: type,
+                data: data,
+                groupStart: groupStart,
+                blockingGroups: blockingGroups
             )
+            self.processQueueStatus(addTaskResult.queueStatus)
+
+            onComplete((success: addTaskResult.success, queueStatus: addTaskResult.queueStatus))
         }
-
-        logger.debug("added queue task data \(data.string ?? "")")
-
-        let addTaskResult = storage.create(
-            type: type,
-            data: data,
-            groupStart: groupStart,
-            blockingGroups: blockingGroups
-        )
-        processQueueStatus(addTaskResult.queueStatus)
-
-        return (success: addTaskResult.success, queueStatus: addTaskResult.queueStatus)
     }
 
     public func run(onComplete: @escaping () -> Void) {
