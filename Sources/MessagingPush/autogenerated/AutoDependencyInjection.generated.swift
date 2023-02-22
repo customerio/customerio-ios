@@ -58,6 +58,9 @@ extension DIGraph {
         _ = self.deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = self.pushNotificationsUtil
+        countDependenciesResolved += 1
+
         return countDependenciesResolved    
     }
 
@@ -70,5 +73,15 @@ extension DIGraph {
     }
     private var newDeepLinkUtil: DeepLinkUtil {    
         return DeepLinkUtilImpl(logger: self.logger, uiKitWrapper: self.uIKitWrapper)
+    }
+    // PushNotificationsUtil
+    internal var pushNotificationsUtil: PushNotificationsUtil {  
+        if let overridenDep = self.overrides[String(describing: PushNotificationsUtil.self)] {
+            return overridenDep as! PushNotificationsUtil
+        }
+        return self.newPushNotificationsUtil
+    }
+    private var newPushNotificationsUtil: PushNotificationsUtil {    
+        return PushNotificationsImpl(logger: self.logger, uiKitWrapper: self.uIKitWrapper)
     }
 }
