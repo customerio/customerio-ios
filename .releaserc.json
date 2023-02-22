@@ -22,6 +22,10 @@
             "assets": ["CHANGELOG.md", "Sources/Common/Version.swift", "*.podspec"],
             "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}"
         }],
-        "@semantic-release/github"
+        ["@semantic-release/github", {
+            "labels": false,
+            "successComment": false,
+            "failTitle": false
+        }]
     ]
 }
