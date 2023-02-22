@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -54,6 +54,21 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = deepLinkUtil
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
+    }
+
+    // DeepLinkUtil
+    var deepLinkUtil: DeepLinkUtil {
+        if let overridenDep = overrides[String(describing: DeepLinkUtil.self)] {
+            return overridenDep as! DeepLinkUtil
+        }
+        return newDeepLinkUtil
+    }
+
+    private var newDeepLinkUtil: DeepLinkUtil {
+        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 }

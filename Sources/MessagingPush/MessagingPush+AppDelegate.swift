@@ -1,11 +1,10 @@
 import Common
 import Foundation
-#if canImport(UserNotifications) && canImport(UIKit)
-import UIKit
+#if canImport(UserNotifications)
 import UserNotifications
 #endif
 
-#if canImport(UserNotifications) && canImport(UIKit)
+#if canImport(UserNotifications)
 @available(iOSApplicationExtension, unavailable)
 public extension MessagingPush {
     /**
@@ -64,8 +63,8 @@ extension MessagingPushImplementation {
 
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
-            if let deepLinkurl = pushContent.deepLink {
-                UIApplication.shared.open(url: deepLinkurl)
+            if let deepLinkUrl = pushContent.deepLink {
+                deepLinkUtil.handleDeepLink(deepLinkUrl)
             }
         default: break
         }

@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.0 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -113,6 +113,9 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = dateUtil
+        countDependenciesResolved += 1
+
+        _ = uIKitWrapper
         countDependenciesResolved += 1
 
         _ = httpRequestRunner
@@ -433,6 +436,18 @@ extension DIGraph {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
+    }
+
+    // UIKitWrapper
+    public var uIKitWrapper: UIKitWrapper {
+        if let overridenDep = overrides[String(describing: UIKitWrapper.self)] {
+            return overridenDep as! UIKitWrapper
+        }
+        return newUIKitWrapper
+    }
+
+    private var newUIKitWrapper: UIKitWrapper {
+        UIKitWrapperImpl()
     }
 
     // HttpRequestRunner
