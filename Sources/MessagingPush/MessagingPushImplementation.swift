@@ -14,6 +14,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     let backgroundQueue: Queue
     let sdkInitializedUtil: SdkInitializedUtil
     let deepLinkUtil: DeepLinkUtil
+    let pushNotificationsUtil: PushNotificationsUtil
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
@@ -27,7 +28,8 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         sdkConfig: SdkConfig,
         backgroundQueue: Queue,
         sdkInitializedUtil: SdkInitializedUtil,
-        deepLinkUtil: DeepLinkUtil
+        deepLinkUtil: DeepLinkUtil,
+        pushNotificationsUtil: PushNotificationsUtil
     ) {
         self.siteId = siteId
         self.logger = logger
@@ -36,6 +38,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.backgroundQueue = backgroundQueue
         self.sdkInitializedUtil = sdkInitializedUtil
         self.deepLinkUtil = deepLinkUtil
+        self.pushNotificationsUtil = pushNotificationsUtil
     }
 
     internal init(diGraph: DIGraph) {
@@ -46,6 +49,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.backgroundQueue = diGraph.queue
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
         self.deepLinkUtil = diGraph.deepLinkUtil
+        self.pushNotificationsUtil = diGraph.pushNotificationsUtil
     }
 
     func deleteDeviceToken() {
@@ -89,6 +93,9 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
 extension MessagingPushImplementation: PushNotificationPromptHook{
     func showPushNotificationPrompt() {
-        print("Call Received")
+        pushNotificationsUtil.showPromptForPushNotificationPermission(options: ["ios" :["sound": true, "badge" :false]]) { response in
+            
+            print(response)
+        }
     }
 }
