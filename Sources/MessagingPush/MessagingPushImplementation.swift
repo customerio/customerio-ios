@@ -92,10 +92,12 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 }
 
 extension MessagingPushImplementation: PushNotificationPromptHook{
-    func showPushNotificationPrompt() {
-        pushNotificationsUtil.showPromptForPushNotificationPermission(options: ["ios" :["sound": true, "badge" :false]]) { response in
-            
+    func showPushNotificationPrompt(options : [String: Any], onComplete: @escaping (Bool?) -> Void) {
+        pushNotificationsUtil.showPromptForPushNotificationPermission(options: options) { response in
+                
+            // TODO : Callback pending
             print(response)
+            onComplete(true)
         }
     }
 }

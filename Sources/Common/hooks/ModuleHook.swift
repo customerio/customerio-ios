@@ -36,5 +36,5 @@ public protocol ScreenTrackingHook: AutoMockable {
 }
 
 public protocol PushNotificationPromptHook: AutoMockable {
-    func showPushNotificationPrompt()
+    func showPushNotificationPrompt(options : [String: Any], onComplete: @escaping (Bool?) -> Void)
 }
