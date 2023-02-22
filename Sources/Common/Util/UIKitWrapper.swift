@@ -38,9 +38,12 @@ public class UIKitWrapperImpl: UIKitWrapper {
         #endif
     }
     
+    // Register the app to receive notifications
     public func registerForRemoteNotifications() {
         #if canImport(UIKit)
-        UIApplication.shared.registerForRemoteNotifications()
+        if(!UIApplication.shared.isRegisteredForRemoteNotifications) {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
         #endif
     }
 }
