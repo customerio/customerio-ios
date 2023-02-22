@@ -4,10 +4,10 @@ on: [pull_request]
 
 jobs:
   SwiftLint:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Lint via SwiftLint 
-        uses: norio-nomura/action-swiftlint@3.2.1
-        with:
-          args: --strict
+      - name: Install swiftlint 
+        run: brew install swiftlint || brew upgrade swiftlint 
+      - name: Run swiftlint. Fail if any errors. 
+        run: make lint
