@@ -2637,6 +2637,9 @@ public class UIKitWrapperMock: UIKitWrapper, Mock {
         continueNSUserActivityReceivedInvocations = []
 
         self.mockCalled = false // do last as resetting properties above can make this true
+        registerForRemoteNotificationsCallsCount = 0
+
+        self.mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - open
@@ -2693,6 +2696,26 @@ public class UIKitWrapperMock: UIKitWrapper, Mock {
         continueNSUserActivityReceivedArguments = (webpageURL)
         continueNSUserActivityReceivedInvocations.append((webpageURL))
         return continueNSUserActivityClosure.map({ $0(webpageURL) }) ?? continueNSUserActivityReturnValue
+    }
+
+    // MARK: - registerForRemoteNotifications
+
+    /// Number of times the function was called.  
+    public private(set) var registerForRemoteNotificationsCallsCount = 0
+    /// `true` if the function was ever called. 
+    public var registerForRemoteNotificationsCalled: Bool {
+        return registerForRemoteNotificationsCallsCount > 0
+    }    
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+     */
+    public var registerForRemoteNotificationsClosure: (() -> Void)?
+
+    /// Mocked function for `registerForRemoteNotifications()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerForRemoteNotifications() {
+        self.mockCalled = true
+        registerForRemoteNotificationsCallsCount += 1
+        registerForRemoteNotificationsClosure?()
     }
 
 }

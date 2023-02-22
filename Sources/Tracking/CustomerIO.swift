@@ -218,6 +218,8 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
 
         Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
+        
+        newDiGraph.uIKitWrapper.registerForRemoteNotifications()
     }
 
     // Contains all logic shared between all of the initialize() functions.

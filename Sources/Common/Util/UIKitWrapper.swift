@@ -10,6 +10,7 @@ import UIKit
 public protocol UIKitWrapper: AutoMockable {
     func open(url: URL)
     func continueNSUserActivity(webpageURL: URL) -> Bool
+    func registerForRemoteNotifications()
 }
 
 // sourcery: InjectRegister = "UIKitWrapper"
@@ -34,6 +35,12 @@ public class UIKitWrapperImpl: UIKitWrapper {
         return didHostAppHandleLink
         #else
         return false
+        #endif
+    }
+    
+    public func registerForRemoteNotifications() {
+        #if canImport(UIKit)
+        UIApplication.shared.registerForRemoteNotifications()
         #endif
     }
 }
