@@ -14,6 +14,7 @@ jobs:
     name: Deploy git tag
     runs-on: ubuntu-latest
     outputs:
+      new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
@@ -124,6 +125,8 @@ jobs:
     runs-on: macos-12
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
       - name: Install cocoapods
         run: gem install cocoapods
       - name: Push CustomerIOCommon
