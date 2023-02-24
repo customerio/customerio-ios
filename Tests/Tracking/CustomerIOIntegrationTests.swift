@@ -116,4 +116,46 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 0)
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
     }
+
+    // MARK: Background queue behavior
+
+    // Adding of tasks to the SDK's background queue is performed on an OS background thread using an OS provided queue data structure. It's possible for the OS to run these background threads concurrently instead of serially which would add tasks to the background queue in a random order. This could cause HTTP errors as our background queue expects all tasks are in a specific order of events.
+    // This test sends lots of requests to the SDK and then we verify that all tasks added to the background queue are in order.
+    func test_backgroundQueue_givenAddManyRequestsToSDK_expectAddAllRequestsToBackgroundQueueInOrder() {
+        let numberOfTasksToAdd = 500
+
+        setUp { config in
+            // disable the background queue from executing so we don't need to stub HTTP requests in this test. This test is just testing adding tasks to the queue, not executing tasks in the queue.
+            config.backgroundQueueMinNumberOfTasks = numberOfTasksToAdd + 1
+        }
+
+        for i in 0 ..< numberOfTasksToAdd {
+            // Using trackMetric since it does not have requirements such as a profile identified to the SDK.
+            // Use loop index for the data to make it easy to verify queue tasks added in order.
+            CustomerIO.shared.trackMetric(deliveryID: String(i), event: .opened, deviceToken: String(i))
+        }
+
+        // Loop to wait for SDK to finish asynchronously adding tasks to the background queue.
+        while true {
+            let numberOfTasksAddedThusFar = diGraph.queueStorage.getInventory().count
+
+            if numberOfTasksToAdd == numberOfTasksAddedThusFar {
+                break
+            }
+        }
+
+        XCTAssertEqual(diGraph.queueStorage.getInventory().count, numberOfTasksToAdd)
+
+        for (index, queueTaskMetadata) in diGraph.queueStorage.getInventory().enumerated() {
+            let queueTask = diGraph.queueStorage.get(storageId: queueTaskMetadata.taskPersistedId)!
+            let queueTaskData: MetricRequest = jsonAdapter.fromJson(queueTask.data)!
+
+            // This will fail our test if a task was added into the background queue out of order.
+            // We expect the inventory to have tasks: [1, 2, 3...] based on a loop index.
+            XCTAssertEqual(String(index), queueTaskData.deliveryId)
+        }
+
+        // Assert that test function executed using production threading code in the SDK and not mocked.
+        XCTAssertFalse(threadUtilStub.mockCalled)
+    }
 }

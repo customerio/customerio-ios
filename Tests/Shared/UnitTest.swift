@@ -60,13 +60,12 @@ open class UnitTest: XCTestCase {
      ```
 
      @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
+     @param runCodeSyncronously Overrides threading behavior in SDK code to run all asynchronous code in a syncronous way.
      @param modifySdkConfig Allows you to change configuration options before the SDKConfig instnace is created for you.
      */
-    override open func setUp() {
-        setUp(enableLogs: false)
-    }
+    public func setUp(enableLogs: Bool = false, runCodeSyncronously: Bool = true, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        super.setUp()
 
-    public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
         var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
@@ -77,9 +76,13 @@ open class UnitTest: XCTestCase {
         diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
+
         threadUtilStub = ThreadUtilStub()
-        // make default behavior of tests to run async code in synchronous way to make tests more predictable.
-        diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
+        if runCodeSyncronously {
+            // Override thread util to make async code run syncronously. This can make unit tests more predictable and easier to write.
+            // However, not all test functions should run syncronously. You decide what's best based on what your test function is verifying.
+            diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
+        }
 
         // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the
         // HTTP retry policy's real code.

@@ -1,6 +1,5 @@
 import Foundation
 
-// allows us to more easily have automated tests with threading
 public protocol ThreadUtil {
     // It's important that these functions work as a FIFO serial queue. Our code depends on the blocks of code being executed in order, not concurrently.
     // Create new functions if there is a use case for that.
@@ -8,16 +7,22 @@ public protocol ThreadUtil {
     func queueOnMain(_ block: @escaping () -> Void)
 }
 
+// Benefits of this object:
+// 1. Allows us to mock threading behavior in unit tests if appropriate.
+// 2. Our SDK can have a singleton queue that runs blocks of code on a background thread in FIFO order.
+//
+// Important: This class must be a singleton to only 1 queue object is used by the SDK code.
+//
 // sourcery: InjectRegister = "ThreadUtil"
+// sourcery: InjectSingleton
 public class CioThreadUtil: ThreadUtil {
+    private let sharedBackgroundQueue = DispatchQueue(label: "io.customer.sdk.shared_background", qos: .background)
+
     public func queueOnMain(_ block: @escaping () -> Void) {
         DispatchQueue.main.async(execute: block)
     }
 
     public func queueOnBackground(_ block: @escaping () -> Void) {
-        // The global background queue runs in a serial behavior. This is a snippet of the docs:
-        // "For serial tasks, set the target of your serial queue to one of the global concurrent queues." You must add an option to make a queue concurrent.
-        // Docs: https://developer.apple.com/documentation/dispatch/dispatchqueue
-        DispatchQueue.global(qos: .background).async(execute: block)
+        sharedBackgroundQueue.async(execute: block)
     }
 }

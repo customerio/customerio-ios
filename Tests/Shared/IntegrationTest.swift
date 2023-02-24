@@ -16,8 +16,10 @@ open class IntegrationTest: UnitTest {
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     // Override this function so when test functions call setUp(...), this function gets called and not the function from the super class.
-    override public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        super.setUp(enableLogs: enableLogs, modifySdkConfig: modifySdkConfig)
+    //
+    // Note: Integration tests should run as close to production environment as possible. Therefore, the default for running code synchronously is false.
+    override public func setUp(enableLogs: Bool = false, runCodeSyncronously: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        super.setUp(enableLogs: enableLogs, runCodeSyncronously: runCodeSyncronously, modifySdkConfig: modifySdkConfig)
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
@@ -37,9 +39,5 @@ open class IntegrationTest: UnitTest {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
         CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
-    }
-
-    override open func setUp() {
-        setUp(enableLogs: false, modifySdkConfig: nil)
     }
 }

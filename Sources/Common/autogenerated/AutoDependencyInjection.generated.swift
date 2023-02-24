@@ -313,15 +313,29 @@ extension DIGraph {
         CioSingleScheduleTimer(timer: simpleTimer)
     }
 
-    // ThreadUtil
+    // ThreadUtil (singleton)
     public var threadUtil: ThreadUtil {
         if let overridenDep = overrides[String(describing: ThreadUtil.self)] {
             return overridenDep as! ThreadUtil
         }
-        return newThreadUtil
+        return sharedThreadUtil
     }
 
-    private var newThreadUtil: ThreadUtil {
+    public var sharedThreadUtil: ThreadUtil {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_ThreadUtil_singleton_access").sync {
+            if let overridenDep = self.overrides[String(describing: ThreadUtil.self)] {
+                return overridenDep as! ThreadUtil
+            }
+            let existingSingletonInstance = self.singletons[String(describing: ThreadUtil.self)] as? ThreadUtil
+            let instance = existingSingletonInstance ?? _get_threadUtil()
+            self.singletons[String(describing: ThreadUtil.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_threadUtil() -> ThreadUtil {
         CioThreadUtil()
     }
 

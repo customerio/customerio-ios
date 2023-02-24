@@ -157,10 +157,11 @@ public class CioQueue: Queue {
             guard let data = self.jsonAdapter.toJson(data) else {
                 self.logger.error("fail adding queue task, json encoding fail.")
 
-                return onComplete((
-                    success: false,
-                    queueStatus: QueueStatus(queueId: self.siteId, numTasksInQueue: self.storage.getInventory().count)
-                ))
+//                return onComplete((
+//                    success: false,
+//                    queueStatus: QueueStatus(queueId: self.siteId, numTasksInQueue: self.storage.getInventory().count)
+//                ))
+                return
             }
 
             self.logger.debug("added queue task data \(data.string ?? "")")
@@ -173,7 +174,7 @@ public class CioQueue: Queue {
             )
             self.processQueueStatus(addTaskResult.queueStatus)
 
-            onComplete((success: addTaskResult.success, queueStatus: addTaskResult.queueStatus))
+//            onComplete((success: addTaskResult.success, queueStatus: addTaskResult.queueStatus))
         }
     }
 
