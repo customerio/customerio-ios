@@ -119,7 +119,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
 
     // MARK: Background queue behavior
 
-    // Adding of tasks to the SDK's background queue is performed on an OS background thread using an OS provided queue data structure. It's possible for the OS to run these background threads concurrently instead of serially which would add tasks to the background queue in a random order. This could cause HTTP errors as our background queue expects all tasks are in a specific order of events.
+    // Adding of tasks to the SDK's background queue is performed on an OS background thread using an OS provided queue data structure. It's possible to configure the OS to run these background threads concurrently instead of serially which would add tasks to the background queue in a random order. This could cause HTTP errors as our background queue expects all tasks are in a specific order of events.
     // This test sends lots of requests to the SDK and then we verify that all tasks added to the background queue are in order.
     func test_backgroundQueue_givenAddManyRequestsToSDK_expectAddAllRequestsToBackgroundQueueInOrder() {
         let numberOfTasksToAdd = 500

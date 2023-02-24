@@ -59,6 +59,7 @@ public protocol Queue: AutoMockable {
 }
 
 public extension Queue {
+    // convenient addTask alternative that doesn't require you give a value for all parameters
     func addTask<TaskData: Codable>(
         type: String,
         // sourcery:Type=AnyEncodable
@@ -133,8 +134,8 @@ public class CioQueue: Queue {
         blockingGroups: [QueueTaskGroup]?,
         onComplete: @escaping (ModifyQueueResult) -> Void
     ) {
-        threadUtil.queueOnBackground {
-            self.logger.info("adding queue task \(type)")
+        threadUtil.queueOnBackground { // because adding a task to the queue writes to the file system, schedule to run the operation on a background thread to not lock the UI thread.
+            self.logger.info("adding task to the background queue \(type)")
 
             guard let data = self.jsonAdapter.toJson(data) else {
                 self.logger.error("fail adding queue task, json encoding fail.")
