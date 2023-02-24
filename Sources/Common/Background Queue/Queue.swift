@@ -31,10 +31,11 @@ public protocol Queue: AutoMockable {
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void)
+    // the state of the SDK does not change if adding this queue task isn't successful so ignore result
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)
 
     /**
-     Add a task to the queue to be performed sometime in the future.
+     Asynchronously add a task to the queue to be performed sometime in the future.
 
      type - String data type to allow any module to add tasks to the queue. It's
             recommended to avoid hard-coded strings when adding tasks and instead use
@@ -63,31 +64,13 @@ public extension Queue {
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
         data: TaskData,
-        onComplete: @escaping (ModifyQueueResult) -> Void
+        groupStart: QueueTaskGroup? = nil,
+        blockingGroups: [QueueTaskGroup]? = nil,
+        onComplete: ((ModifyQueueResult) -> Void)? = nil
     ) {
-        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil, onComplete: onComplete)
-    }
-
-    func addTask<TaskData: Codable>(
-        type: String,
-        // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData,
-        groupStart: QueueTaskGroup?,
-        onComplete: @escaping (ModifyQueueResult) -> Void
-    ) {
-        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil, onComplete: onComplete)
-    }
-
-    func addTask<TaskData: Codable>(
-        type: String,
-        // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData,
-        blockingGroups: [QueueTaskGroup]?,
-        onComplete: @escaping (ModifyQueueResult) -> Void
-    ) {
-        addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups, onComplete: onComplete)
+        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups) { result in
+            onComplete?(result)
+        }
     }
 }
 
@@ -129,7 +112,7 @@ public class CioQueue: Queue {
         self.threadUtil = threadUtil
     }
 
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void) {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) {
         addTask(
             type: QueueTaskType.trackDeliveryMetric.rawValue,
             data: TrackDeliveryEventRequestBody(
@@ -139,8 +122,7 @@ public class CioQueue: Queue {
                     event: event,
                     timestamp: dateUtil.now
                 )
-            ),
-            onComplete: onComplete
+            )
         )
     }
 
@@ -157,11 +139,10 @@ public class CioQueue: Queue {
             guard let data = self.jsonAdapter.toJson(data) else {
                 self.logger.error("fail adding queue task, json encoding fail.")
 
-//                return onComplete((
-//                    success: false,
-//                    queueStatus: QueueStatus(queueId: self.siteId, numTasksInQueue: self.storage.getInventory().count)
-//                ))
-                return
+                return onComplete((
+                    success: false,
+                    queueStatus: QueueStatus(queueId: self.siteId, numTasksInQueue: self.storage.getInventory().count)
+                ))
             }
 
             self.logger.debug("added queue task data \(data.string ?? "")")
@@ -174,7 +155,7 @@ public class CioQueue: Queue {
             )
             self.processQueueStatus(addTaskResult.queueStatus)
 
-//            onComplete((success: addTaskResult.success, queueStatus: addTaskResult.queueStatus))
+            onComplete((success: addTaskResult.success, queueStatus: addTaskResult.queueStatus))
         }
     }
 

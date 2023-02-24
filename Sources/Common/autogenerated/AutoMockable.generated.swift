@@ -1672,21 +1672,21 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric, onComplete: (ModifyQueueResult) -> Void)?
+    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric, onComplete: (ModifyQueueResult) -> Void)] = []
+    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, @escaping (ModifyQueueResult) -> Void) -> Void)?
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> Void)?
 
-    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, onComplete: @escaping (ModifyQueueResult) -> Void) {
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
-        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event, onComplete: onComplete)
-        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event, onComplete: onComplete))
-        addTrackInAppDeliveryTaskClosure?(deliveryId, event, onComplete)
+        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event)
+        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event))
+        addTrackInAppDeliveryTaskClosure?(deliveryId, event)
     }
 
     // MARK: - addTask<TaskData: Codable>

@@ -2,7 +2,6 @@ import Foundation
 
 public protocol ThreadUtil {
     // It's important that these functions work as a FIFO serial queue. Our code depends on the blocks of code being executed in order, not concurrently.
-    // Create new functions if there is a use case for that.
     func queueOnBackground(_ block: @escaping () -> Void)
     func queueOnMain(_ block: @escaping () -> Void)
 }
@@ -11,7 +10,7 @@ public protocol ThreadUtil {
 // 1. Allows us to mock threading behavior in unit tests if appropriate.
 // 2. Our SDK can have a singleton queue that runs blocks of code on a background thread in FIFO order.
 //
-// Important: This class must be a singleton to only 1 queue object is used by the SDK code.
+// Important: This class must be a singleton so only 1 queue object is used by the SDK code.
 //
 // sourcery: InjectRegister = "ThreadUtil"
 // sourcery: InjectSingleton

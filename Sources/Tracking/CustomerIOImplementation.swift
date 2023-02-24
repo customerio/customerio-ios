@@ -125,11 +125,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             data: queueTaskData,
             groupStart: queueGroupStart
         ) { queueStatus in
-            // don't modify the state of the SDK until we confirm we added a background queue task successfully.
-            // XXX: better handle scenario when adding task to queue is not successful
+            // It's recommended to not modify the state of the SDK (storing the profile identifier for use in future SDK calls) until we confirm we added a background queue task successfully.
+            // If task isn't added to BQ successfully, we run the risk of many future HTTP requests failing (as they depend on profile being identified in API).
+
             guard queueStatus.success else {
-                // XXX: better handle scenario when adding task to queue is not successful
-                self.logger.debug("failed to enqueue identify task")
+                self.logger.error("Failed to identify profile \(identifier) so, request to identify profile has been ignored.")
                 return
             }
 
@@ -264,7 +264,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 data: queueTaskData,
                 groupStart: .registeredPushToken(token: deviceToken),
                 blockingGroups: [.identifiedProfile(identifier: identifier)]
-            ) { _ in }
+            )
         }
     }
 
@@ -296,7 +296,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 .registeredPushToken(token: existingDeviceToken),
                 .identifiedProfile(identifier: identifiedProfileId)
             ]
-        ) { _ in }
+        )
     }
 
     /**
@@ -307,9 +307,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         event: Metric,
         deviceToken: String
     ) {
-        logger.info("push metric \(event.rawValue)")
-
-        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+        logger.info("push metric \(event.rawValue), delivery id \(deliveryID) device token \(deviceToken)")
 
         backgroundQueue.addTask(
             type: QueueTaskType.trackPushMetric.rawValue,
@@ -319,7 +317,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
                 deviceToken: deviceToken,
                 timestamp: Date()
             )
-        ) { _ in }
+        )
     }
 }
 
@@ -357,14 +355,13 @@ extension CustomerIOImplementation {
             attributesJsonString: jsonBodyString
         )
 
-        // XXX: better handle scenario when adding task to queue is not successful
         backgroundQueue.addTask(
             type: QueueTaskType.trackEvent.rawValue,
             data: queueData,
             blockingGroups: [
                 .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
             ]
-        ) { _ in }
+        )
 
         return true
     }
