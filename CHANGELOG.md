@@ -1,3 +1,36 @@
+## [2.1.0](https://github.com/customerio/customerio-ios/compare/2.0.6...2.1.0) (2023-02-22)
+
+
+### Features
+
+* add in-app event listener ([#211](https://github.com/customerio/customerio-ios/issues/211)) ([737d43b](https://github.com/customerio/customerio-ios/commit/737d43b262cb467d6fb0dfc160d558ce3de09bf7))
+* in-app feature no longer requires orgId ([#252](https://github.com/customerio/customerio-ios/issues/252)) ([acd12da](https://github.com/customerio/customerio-ios/commit/acd12dab64e119546379f52552f2434843252682))
+
+
+### Bug Fixes
+
+* access modifier for metric ([#263](https://github.com/customerio/customerio-ios/issues/263)) ([e641982](https://github.com/customerio/customerio-ios/commit/e641982c86e5e4347977f0c0af2615d4541ff0e5))
+* added reusable code for wrapper SDKs ([#247](https://github.com/customerio/customerio-ios/issues/247)) ([36adf15](https://github.com/customerio/customerio-ios/commit/36adf158748b7dc439812807fd4d27a287a82e1a))
+* in-app missing event ([#259](https://github.com/customerio/customerio-ios/issues/259)) ([43b3e97](https://github.com/customerio/customerio-ios/commit/43b3e9706b152fe2dead882336a3f416ba400b73))
+* modify in-app event listener action parameters to new name ([#255](https://github.com/customerio/customerio-ios/issues/255)) ([b46528a](https://github.com/customerio/customerio-ios/commit/b46528a0cd6cda4f8428eef0001032a79338e1cf))
+* region visibility modifier to be used by wrappers ([#260](https://github.com/customerio/customerio-ios/issues/260)) ([f0edfbc](https://github.com/customerio/customerio-ios/commit/f0edfbc52a4694b2cee29a431d8c0943f819815b))
+* update the gist version in podspec ([#256](https://github.com/customerio/customerio-ios/issues/256)) ([5451488](https://github.com/customerio/customerio-ios/commit/545148820187c04938e717fce4e166cd77a78f92))
+
+### [2.0.6](https://github.com/customerio/customerio-ios/compare/2.0.5...2.0.6) (2023-02-15)
+
+
+### Bug Fixes
+
+* universal links deep links open host app ([#268](https://github.com/customerio/customerio-ios/issues/268)) ([29c95b5](https://github.com/customerio/customerio-ios/commit/29c95b5b9810f6cdec22a15df643f8d1a9fb7d58))
+
+### [2.0.5](https://github.com/customerio/customerio-ios/compare/2.0.4...2.0.5) (2023-02-10)
+
+
+### Bug Fixes
+
+* universal links when touch a push notification open host app ([#265](https://github.com/customerio/customerio-ios/issues/265)) ([7dcaf73](https://github.com/customerio/customerio-ios/commit/7dcaf736912e23cbc6dced0206c4a4f53c6e298d))
+
+
 ## [2.1.0-beta.2](https://github.com/customerio/customerio-ios/compare/2.1.0-beta.1...2.1.0-beta.2) (2023-02-09)
 
 
@@ -102,6 +135,34 @@
 ### Bug Fixes
 
 * push images and processing simple push ([#230](https://github.com/customerio/customerio-ios/issues/230)) ([f109f04](https://github.com/customerio/customerio-ios/commit/f109f04d04e2b87ef75707a15818050c7c84b45a))
+
+
+## [2.0.0-alpha.2](https://github.com/customerio/customerio-ios/compare/2.0.0-alpha.1...2.0.0-alpha.2) (2022-12-02)
+
+
+### Bug Fixes
+
+* sdk not able to compile in ios app ([#225](https://github.com/customerio/customerio-ios/issues/225)) ([e4d1b3f](https://github.com/customerio/customerio-ios/commit/e4d1b3f2b4bda91862151947e480b0644d5cc704))
+
+## [2.0.0-alpha.1](https://github.com/customerio/customerio-ios/compare/1.2.6...2.0.0-alpha.1) (2022-11-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* make delivered push metric more reliable
+* remove FCM dependency from cocoapods (#210)
+* singleton API only way to use SDK now (#209)
+
+### Bug Fixes
+
+* fix compile time errors notification service extensions ([#214](https://github.com/customerio/customerio-ios/issues/214)) ([bd5911b](https://github.com/customerio/customerio-ios/commit/bd5911b1401e26112a900c6a0c6f132c3ab2c27a))
+* make delivered push metric more reliable ([0478e52](https://github.com/customerio/customerio-ios/commit/0478e5273017867ecff194905d130cbf32d588ac))
+
+
+### Code Refactoring
+
+* remove FCM dependency from cocoapods ([#210](https://github.com/customerio/customerio-ios/issues/210)) ([3547076](https://github.com/customerio/customerio-ios/commit/3547076a3694c211f1b11b2a61db7d6debe05a6b))
+* singleton API only way to use SDK now ([#209](https://github.com/customerio/customerio-ios/issues/209)) ([72b7477](https://github.com/customerio/customerio-ios/commit/72b7477b16c490b9839fd48f51487e657440a75c))
 
 ### [1.2.6](https://github.com/customerio/customerio-ios/compare/1.2.5...1.2.6) (2022-11-17)
 

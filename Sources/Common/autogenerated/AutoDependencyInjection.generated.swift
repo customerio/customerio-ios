@@ -115,6 +115,9 @@ extension DIGraph {
         _ = dateUtil
         countDependenciesResolved += 1
 
+        _ = uIKitWrapper
+        countDependenciesResolved += 1
+
         _ = httpRequestRunner
         countDependenciesResolved += 1
 
@@ -447,6 +450,18 @@ extension DIGraph {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
+    }
+
+    // UIKitWrapper
+    public var uIKitWrapper: UIKitWrapper {
+        if let overridenDep = overrides[String(describing: UIKitWrapper.self)] {
+            return overridenDep as! UIKitWrapper
+        }
+        return newUIKitWrapper
+    }
+
+    private var newUIKitWrapper: UIKitWrapper {
+        UIKitWrapperImpl()
     }
 
     // HttpRequestRunner
