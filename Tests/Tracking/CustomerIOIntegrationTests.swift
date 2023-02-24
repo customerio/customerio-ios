@@ -154,8 +154,5 @@ class CustomerIOIntegrationTests: IntegrationTest {
             // We expect the inventory to have tasks: [1, 2, 3...] based on a loop index.
             XCTAssertEqual(String(index), queueTaskData.deliveryId)
         }
-
-        // Assert that test function executed using production threading code in the SDK and not mocked.
-        XCTAssertFalse(threadUtilStub.mockCalled)
     }
 }

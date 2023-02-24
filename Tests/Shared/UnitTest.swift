@@ -43,9 +43,16 @@ open class UnitTest: XCTestCase {
     public var dateUtilStub: DateUtilStub!
 
     public var threadUtilStub: ThreadUtilStub!
+    private var runTestFunctionSyncronously: Bool! // gets populated in setUp() so we can use in tearDown()
 
     public var lockManager: LockManager {
         LockManager()
+    }
+
+    // Must override XCTest super class in order for us to customize the test suite.
+    // This method is not meant to be overriden in our own subclasses. Instead, override the other setUp(...) function instead to customize behavior.
+    override open func setUp() {
+        setUp(enableLogs: false) // call other setUp function to run the logic in this subclass.
     }
 
     /**
@@ -78,6 +85,7 @@ open class UnitTest: XCTestCase {
         dateUtilStub = DateUtilStub()
 
         threadUtilStub = ThreadUtilStub()
+        runTestFunctionSyncronously = runCodeSyncronously
         if runCodeSyncronously {
             // Override thread util to make async code run syncronously. This can make unit tests more predictable and easier to write.
             // However, not all test functions should run syncronously. You decide what's best based on what your test function is verifying.
@@ -95,6 +103,11 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
+        // It's very important that the SDK code executes on the thread we expected it to in a test function. This asserts that our test suite was setup correctly to run test function on the intended thread.
+        if !runTestFunctionSyncronously {
+            XCTAssertFalse(threadUtilStub.mockCalled)
+        }
+
         Mocks.shared.resetAll()
 
         deleteAllPersistantData()
