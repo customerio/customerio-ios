@@ -16,22 +16,22 @@ class ThreadUtilTest: UnitTest {
 
     // DispatchQueues in iOS can be serial or concurrent. Our codebase expects a serial behavior so this test is to assert the implementation runs that way.
     func test_queueOnBackground_expectQueueToBeSerial() {
-        let expect: [Int] = Array(0 ..< 1000)
+        let expected: [Int] = Array(0 ..< 1000)
         var actual: [Int] = [] // we will add to this array in test, then compare the results
 
-        let expectation = expectation(description: "Expect all background tasks to complete")
-        expectation.expectedFulfillmentCount = expect.count
+        let expect = expectation(description: "Expect all background tasks to complete")
+        expect.expectedFulfillmentCount = expected.count
 
-        for index in expect {
+        for index in expected {
             util.queueOnBackground {
                 actual.append(index)
 
-                expectation.fulfill()
+                expect.fulfill()
             }
         }
 
         waitForExpectations()
 
-        XCTAssertEqual(expect, actual)
+        XCTAssertEqual(expected, actual)
     }
 }

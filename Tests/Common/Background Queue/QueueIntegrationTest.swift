@@ -17,7 +17,7 @@ class QueueIntegrationTest: IntegrationTest {
 
     #if !os(Linux) // LINUX_DISABLE_FILEMANAGER
     func test_addTask_expectSuccessfullyAdded() {
-        let expectation = expectation(description: "Expected to finish async operation")
+        let expect = expectation(description: "Expected to finish async operation")
 
         queue.addTask(
             type: String.random,
@@ -28,7 +28,7 @@ class QueueIntegrationTest: IntegrationTest {
             XCTAssertTrue(addTaskActual.success)
             XCTAssertEqual(addTaskActual.queueStatus.numTasksInQueue, 1)
 
-            expectation.fulfill()
+            expect.fulfill()
         }
 
         waitForExpectations()
