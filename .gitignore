@@ -1,6 +1,7 @@
 .DS_Store
 test-report.*
 *.xcresult/
+Package.resolved
 
 #############################################################################
 # Below from: https://github.com/github/gitignore/blob/master/Swift.gitignore
