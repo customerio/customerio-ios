@@ -129,10 +129,10 @@ class CustomerIOIntegrationTests: IntegrationTest {
             config.backgroundQueueMinNumberOfTasks = numberOfTasksToAdd + 1
         }
 
-        for i in 0 ..< numberOfTasksToAdd {
+        for index in 0 ..< numberOfTasksToAdd {
             // Using trackMetric since it does not have requirements such as a profile identified to the SDK.
             // Use loop index for the data to make it easy to verify queue tasks added in order.
-            CustomerIO.shared.trackMetric(deliveryID: String(i), event: .opened, deviceToken: String(i))
+            CustomerIO.shared.trackMetric(deliveryID: String(index), event: .opened, deviceToken: String(index))
         }
 
         // Loop to wait for SDK to finish asynchronously adding tasks to the background queue.
