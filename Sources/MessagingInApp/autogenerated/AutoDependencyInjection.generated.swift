@@ -52,6 +52,7 @@ import Gist
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable)
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 

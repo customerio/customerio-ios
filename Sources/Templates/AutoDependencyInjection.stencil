@@ -47,9 +47,13 @@ DIGraph().reset()
 
 */
 
+{# Used, for example, when you want to add @available(iOSApplicationExtension, unavailable) to a property #}
+{% macro addPropertyWrappers object %}{% for key in object.attributes %}{{ object.attributes[key][0] }}{% endfor %}{% endmacro %}
+
 {# Used to create the property getter to get the dependency from the graph #}
 {# Note: We use this for when an InjectCustom exists because custom requires the use of an extension to add the property to the graph. We don't want the developer to be responsible for returning an override for tests. This function exists as the 1 true way to get a dependency from the graph to be safe to use as it gets overrides. #}
 {% macro overrideGetterProperty class type isCustom isSingleton %}
+    {% call addPropertyWrappers type %}
     {{ type.accessLevel }} var {{ class|lowerFirstLetter }}: {{ class }} {  
         if let overridenDep = self.overrides[String(describing: {{ class }}.self)] {
             return overridenDep as! {{ class }}
@@ -67,6 +71,7 @@ DIGraph().reset()
 extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions. 
     // internal scope so each module can provide their own version of the function with the same name. 
+    @available(iOSApplicationExtension, unavailable)
     internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
@@ -107,6 +112,7 @@ extension DIGraph {
     {% else %}
     // {{ class }}
     {% call overrideGetterProperty class dep false false %}
+    {% call addPropertyWrappers dep %}
     private var new{{ class }}: {{ class }} {    
         return {{ dep.name}}({% for initializer in dep.initializers %}{% if not initializer.isConvenienceInitializer %}{% for param in initializer.parameters %}{{ param.name }}: self.{{ param.typeName|lowerFirstLetter }}{% if not forloop.last%}, {% endif %}{% endfor %}{% endif %}{% endfor %})
     }

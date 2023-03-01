@@ -64,7 +64,9 @@ extension MessagingPushImplementation {
         switch response.actionIdentifier {
         case UNNotificationDefaultActionIdentifier: // push notification was touched.
             if let deepLinkUrl = pushContent.deepLink {
-                deepLinkUtil.handleDeepLink(deepLinkUrl)
+                if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
+                    deepLinkUtil.handleDeepLink(deepLinkUrl)
+                }
             }
         default: break
         }

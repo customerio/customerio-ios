@@ -8,6 +8,7 @@ protocol DeepLinkUtil: AutoMockable {
     func handleDeepLink(_ deepLinkUrl: URL)
 }
 
+@available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "DeepLinkUtil"
 class DeepLinkUtilImpl: DeepLinkUtil {
     private let logger: Logger
