@@ -135,7 +135,14 @@ public class CioQueueRunRequest: QueueRunRequest {
                         self.logger.info("queue is quitting early because all HTTP requests are paused.")
 
                         doneRunning()
-                        break
+                    } else if case .badRequest = error {
+                        self.logger.debug("queue task \(nextTaskStorageId) failed with 400")
+
+                        self.logger.debug("queue deleting task \(nextTaskStorageId) because it will always fail")
+                        _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+
+                        // since failed task isn't being saved, no need to update `lastFailedTask`
+                        updateWhileLoopLogicVariables(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
                     } else {
                         let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
@@ -148,9 +155,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                             storageId: nextTaskToRunInventoryItem.taskPersistedId,
                             runResults: newRunResults
                         )
+                        updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                     }
-
-                    updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                 }
 
                 // make sure to update the variables for the while loop logic before running the while loop again.
