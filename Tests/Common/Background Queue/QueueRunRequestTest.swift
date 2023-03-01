@@ -272,6 +272,20 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         XCTAssertEqual(queueStorage.getInventory(), [givenTask1, givenTask2])
     }
 
+    func test_givenHttpBadRequest_expectNoTasksInInventory() {
+        _ = addQueueTask()
+        _ = addQueueTask()
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.failure(.badRequest))
+        }
+
+        runRequest.start(onComplete: onCompleteExpectation)
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertTrue(queueStorage.getInventory().isEmpty)
+    }
+
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {
         _ = addQueueTask()
 
