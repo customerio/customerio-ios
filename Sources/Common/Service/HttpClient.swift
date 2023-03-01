@@ -264,9 +264,11 @@ extension CIOHttpClient {
             pauseHttpRequests()
 
             onComplete(.failure(.unauthorized))
+        case 400:
+            onComplete(.failure(.badRequestMade))
         default:
             logger.error("""
-            4xx HTTP status code response.
+            \(statusCode) HTTP status code response.
             Probably a bug? \(unsuccessfulStatusCodeError.localizedDescription)
             """)
 
