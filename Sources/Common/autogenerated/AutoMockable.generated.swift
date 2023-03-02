@@ -2132,6 +2132,11 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        deleteGroupCallsCount = 0
+        deleteGroupReceivedArguments = nil
+        deleteGroupReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         deleteExpiredCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2315,6 +2320,37 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedArguments = storageId
         deleteReceivedInvocations.append(storageId)
         return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
+    }
+
+    // MARK: - deleteGroup
+
+    /// Number of times the function was called.
+    public private(set) var deleteGroupCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteGroupCalled: Bool {
+        deleteGroupCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var deleteGroupReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var deleteGroupReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
+    public var deleteGroupReturnValue: [QueueTaskMetadata]!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `deleteGroupReturnValue`
+     */
+    public var deleteGroupClosure: ((String) -> [QueueTaskMetadata])?
+
+    /// Mocked function for `deleteGroup(groupStartTask: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteGroup(groupStartTask: String) -> [QueueTaskMetadata] {
+        mockCalled = true
+        deleteGroupCallsCount += 1
+        deleteGroupReceivedArguments = groupStartTask
+        deleteGroupReceivedInvocations.append(groupStartTask)
+        return deleteGroupClosure.map { $0(groupStartTask) } ?? deleteGroupReturnValue
     }
 
     // MARK: - deleteExpired
