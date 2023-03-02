@@ -135,11 +135,17 @@ public class CioQueueRunRequest: QueueRunRequest {
                         self.logger.info("queue is quitting early because all HTTP requests are paused.")
 
                         doneRunning()
-                    } else if case .badRequest = error {
+                    } else if case .badRequest400 = error {
                         self.logger.debug("queue task \(nextTaskStorageId) failed with 400")
 
                         self.logger.debug("queue deleting task \(nextTaskStorageId) because it will always fail")
-                        _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+
+                        // check if its a groupStart task, if so delete the group otherwise just delete the task
+                        if let groupStart = nextTaskToRunInventoryItem.groupStart {
+                            _ = self.storage.deleteGroup(groupStartTask: groupStart)
+                        } else {
+                            _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+                        }
 
                         // since failed task isn't being saved, no need to update `lastFailedTask`
                         updateWhileLoopLogicVariables(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
