@@ -265,7 +265,7 @@ extension CIOHttpClient {
 
             onComplete(.failure(.unauthorized))
         case 400:
-            onComplete(.failure(.badRequest))
+            onComplete(.failure(.badRequest400))
         default:
             logger.error("""
             \(statusCode) HTTP status code response.
