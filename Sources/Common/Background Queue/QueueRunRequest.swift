@@ -136,9 +136,9 @@ public class CioQueueRunRequest: QueueRunRequest {
 
                         doneRunning()
                     } else if case .badRequest400 = error {
-                        self.logger.debug("queue task \(nextTaskStorageId) failed with 400")
+                        self.logger.debug("queue deleting task \(nextTaskStorageId) because it failed with 400 and will always fail")
 
-                        self.logger.debug("queue deleting task \(nextTaskStorageId) because it will always fail")
+                        self.logger.error("Received HTTP 400 response while trying to <queue task type>. 400 responses never succeed and therefore, the SDK is deleting this SDK request and not retry. Error message from API: <error message string>, request data sent: <queue task data JSON>")
 
                         // check if its a groupStart task, if so delete the group otherwise just delete the task
                         if let groupStart = nextTaskToRunInventoryItem.groupStart {
