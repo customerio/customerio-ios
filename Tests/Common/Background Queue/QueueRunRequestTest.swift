@@ -275,8 +275,9 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
     func test_givenHttpBadRequest_expectNoTasksInInventory() {
         _ = addQueueTask()
         _ = addQueueTask()
+
         runnerMock.runTaskClosure = { _, onComplete in
-            onComplete(.failure(.badRequest))
+            onComplete(.failure(.badRequest400))
         }
 
         runRequest.start(onComplete: onCompleteExpectation)
@@ -284,6 +285,30 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
         XCTAssertTrue(queueStorage.getInventory().isEmpty)
+    }
+
+    func test_givenMultipleErrorRequest_expectTasksToBeDeletedFor400BadRequestOnly() {
+        let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
+
+        let givenTaskToFailWith400 = addQueueTask(groupStart: givenStartOfTheGroup)
+        _ = addQueueTask(blockingGroup: [givenStartOfTheGroup])
+        let givenTaskToFailWithGenericError = addQueueTask()
+
+        runnerMock.runTaskClosure = { task, onComplete in
+            if task.storageId == givenTaskToFailWith400.taskPersistedId {
+                onComplete(.failure(.badRequest400))
+            } else {
+                onComplete(.failure(.getGenericFailure()))
+            }
+        }
+
+        runRequest.start(onComplete: onCompleteExpectation)
+        waitForExpectations()
+
+        let inventory = queueStorage.getInventory()
+
+        XCTAssertEqual(inventory.first?.taskPersistedId, givenTaskToFailWithGenericError.taskPersistedId)
+        XCTAssertEqual(inventory.count, 1)
     }
 
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {
@@ -309,12 +334,12 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
 }
 
 extension QueueRunRequestIntegrationTest {
-    private func addQueueTask() -> QueueTaskMetadata {
+    private func addQueueTask(groupStart: QueueTaskGroup? = nil, blockingGroup: [QueueTaskGroup]? = nil) -> QueueTaskMetadata {
         queueStorage.create(
             type: String.random,
             data: "".data,
-            groupStart: nil,
-            blockingGroups: nil
+            groupStart: groupStart,
+            blockingGroups: blockingGroup
         ).createdTask!
     }
 }
