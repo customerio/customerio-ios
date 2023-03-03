@@ -49,7 +49,7 @@ jobs:
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
       uses: actions/cache@v3
       with:
-        path: Pods
+        path: "Apps/${{ matrix.sample-app }}/Pods"
         key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods-${{ hashFiles('**/Podfile.lock') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.sample-app}}-Pods-
