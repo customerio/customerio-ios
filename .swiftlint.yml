@@ -9,6 +9,6 @@ disabled_rules:
 excluded: # paths or files to ignore during linting. Takes precedence over `included`.  
   - .build
   - Package.swift
-  - Apps
+  - Apps/*/Pods
 
 reporter: "emoji" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)

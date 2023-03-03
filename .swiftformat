@@ -1,4 +1,4 @@
---exclude Pods, Package.swift, Apps
+--exclude Pods, Package.swift, Apps/*/Pods
 
 --binarygrouping none 
 --decimalgrouping none 

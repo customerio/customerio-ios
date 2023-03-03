@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
-		F73134642919570600CD43D9 /* test_cocoapodsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* test_cocoapodsApp.swift */; };
+		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* ContentView.swift */; };
 		F73134682919570700CD43D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73134672919570700CD43D9 /* Assets.xcassets */; };
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
@@ -55,7 +55,7 @@
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		F73134632919570600CD43D9 /* test_cocoapodsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = test_cocoapodsApp.swift; sourceTree = "<group>"; };
+		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		F73134652919570600CD43D9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F73134672919570700CD43D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F731346A2919570700CD43D9 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -143,7 +143,7 @@
 			isa = PBXGroup;
 			children = (
 				F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */,
-				F73134632919570600CD43D9 /* test_cocoapodsApp.swift */,
+				F73134632919570600CD43D9 /* App.swift */,
 				F73134652919570600CD43D9 /* ContentView.swift */,
 				F73134672919570700CD43D9 /* Assets.xcassets */,
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
@@ -344,7 +344,7 @@
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
 				F73134662919570600CD43D9 /* ContentView.swift in Sources */,
-				F73134642919570600CD43D9 /* test_cocoapodsApp.swift in Sources */,
+				F73134642919570600CD43D9 /* App.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
