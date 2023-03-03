@@ -18,6 +18,7 @@
 		F73F6C9D2919655500192735 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73F6C9C2919655500192735 /* Env.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
+		F793296629B284EC000E1035 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73F6C9C2919655500192735 /* Env.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */; };
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -357,6 +358,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */,
+				F793296629B284EC000E1035 /* Env.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

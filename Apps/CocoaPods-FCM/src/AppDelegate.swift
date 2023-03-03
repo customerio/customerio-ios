@@ -9,7 +9,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
 
-        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: .US) { config in
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .US) { config in
             config.logLevel = .debug
         }
 

@@ -9,7 +9,7 @@ env:
 jobs:
   build-sample-apps:
     strategy:
-      matrix:
+      matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build! 
         sample-app: 
         # List all sample apps you want to have compiled. 
         # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
@@ -18,8 +18,8 @@ jobs:
     runs-on: macos-12
     name: Building app...${{ matrix.sample-app }}
     defaults:
-      run: 
-        working-directory: "Apps/${{ matrix.sample-app }}"
+      run:       
+        working-directory: "Apps/${{ matrix.sample-app }}" # changes directory into the sample app's directory. That's where we want our commands to run from.  
     steps:
     - uses: actions/checkout@v3
 
@@ -31,8 +31,8 @@ jobs:
     - name: Setup files needed for build 
       run: |
         echo "${{ secrets.FASTLANE_GC_KEYS_FILE_B64 }}" | base64 -d > gc_keys.json
-
-    - name: Install Ruby tools used to build our apps with 
+    
+    - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@v1
       with:
         working-directory: ${{ env.GITHUB_WORKSPACE }}
@@ -44,6 +44,15 @@ jobs:
       uses: andstor/file-existence-action@v1
       with:
         files: "Apps/${{ matrix.sample-app }}/Podfile"
+
+    - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      uses: actions/cache@v3
+      with:
+        path: Pods
+        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods-${{ hashFiles('**/Podfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.sample-app}}-Pods-
 
     - name: pod install if app uses CocoaPods 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
@@ -58,3 +67,4 @@ jobs:
         lane: "ios build_app"
         subdirectory: "Apps/${{ matrix.sample-app }}"
     
+
