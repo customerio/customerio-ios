@@ -15,10 +15,8 @@
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
 		F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7382933291D5C27008ED8CB /* NotificationService.swift */; };
 		F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		F73F6C9D2919655500192735 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73F6C9C2919655500192735 /* Env.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
-		F793296629B284EC000E1035 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73F6C9C2919655500192735 /* Env.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */; };
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -65,7 +63,6 @@
 		F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Rich Push Notification Service Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7382933291D5C27008ED8CB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F7382935291D5C27008ED8CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F73F6C9C2919655500192735 /* Env.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -147,7 +144,6 @@
 			children = (
 				F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */,
 				F73134632919570600CD43D9 /* test_cocoapodsApp.swift */,
-				F73F6C9C2919655500192735 /* Env.swift */,
 				F73134652919570600CD43D9 /* ContentView.swift */,
 				F73134672919570700CD43D9 /* Assets.xcassets */,
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
@@ -347,7 +343,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
-				F73F6C9D2919655500192735 /* Env.swift in Sources */,
 				F73134662919570600CD43D9 /* ContentView.swift in Sources */,
 				F73134642919570600CD43D9 /* test_cocoapodsApp.swift in Sources */,
 			);
@@ -358,7 +353,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */,
-				F793296629B284EC000E1035 /* Env.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
