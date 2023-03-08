@@ -1,3 +1,10 @@
+### [2.1.1](https://github.com/customerio/customerio-ios/compare/2.1.0...2.1.1) (2023-03-08)
+
+
+### Bug Fixes
+
+* cocoapods app extension targets able to compile ([#277](https://github.com/customerio/customerio-ios/issues/277)) ([8dbca8f](https://github.com/customerio/customerio-ios/commit/8dbca8fab912913b5b26652098d5c1958dbdb4fd))
+
 ## [2.1.0](https://github.com/customerio/customerio-ios/compare/2.0.6...2.1.0) (2023-02-22)
 
 
