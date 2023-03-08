@@ -138,17 +138,16 @@ public class CioQueueRunRequest: QueueRunRequest {
                     } else if case .badRequest400 = error {
                         self.logger.debug("queue deleting task \(nextTaskStorageId) because it failed with 400 and will always fail")
 
-                        self.logger.error("Received HTTP 400 response while trying to <queue task type>. 400 responses never succeed and therefore, the SDK is deleting this SDK request and not retry. Error message from API: <error message string>, request data sent: <queue task data JSON>")
+                        self.logger.error("Received HTTP 400 response while trying to \(nextTaskToRun.type). 400 responses never succeed and therefore, the SDK is deleting this SDK request and not retry. Error message from API: \(error.localizedDescription), request data sent: \(nextTaskToRun.data)")
 
-                        // check if its a groupStart task, if so delete the group otherwise just delete the task
+                        _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+                        // check if its a groupStart task, if so delete the group
                         if let groupStart = nextTaskToRunInventoryItem.groupStart {
                             _ = self.storage.deleteGroup(groupStartTask: groupStart)
-                        } else {
-                            _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
                         }
 
                         // since failed task isn't being saved, no need to update `lastFailedTask`
-                        updateWhileLoopLogicVariables(didTaskFail: false, taskJustExecuted: nextTaskToRunInventoryItem)
+                        updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                     } else {
                         let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
