@@ -20,10 +20,10 @@ public class HttpRequestRunnerStub {
         let code = 200
         let data = "".data!
 
-        queueSuccessfulResponse(code: code, data: data)
+        queueResponse(code: code, data: data)
     }
 
-    public func queueSuccessfulResponse(code: Int, data: Data) {
+    public func queueResponse(code: Int, data: Data) {
         responseQueue.append(getHttpResponse(code: code, data: data))
     }
 
