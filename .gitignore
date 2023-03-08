@@ -1,6 +1,8 @@
 .DS_Store
 test-report.*
 *.xcresult/
+gc_keys.json
+app_store_connect_creds.json
 Package.resolved
 
 #############################################################################

@@ -13,7 +13,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     let sdkConfig: SdkConfig
     let backgroundQueue: Queue
     let sdkInitializedUtil: SdkInitializedUtil
-    let deepLinkUtil: DeepLinkUtil
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
@@ -26,8 +25,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
         backgroundQueue: Queue,
-        sdkInitializedUtil: SdkInitializedUtil,
-        deepLinkUtil: DeepLinkUtil
+        sdkInitializedUtil: SdkInitializedUtil
     ) {
         self.siteId = siteId
         self.logger = logger
@@ -35,7 +33,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = sdkConfig
         self.backgroundQueue = backgroundQueue
         self.sdkInitializedUtil = sdkInitializedUtil
-        self.deepLinkUtil = deepLinkUtil
     }
 
     internal init(diGraph: DIGraph) {
@@ -45,7 +42,6 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = diGraph.sdkConfig
         self.backgroundQueue = diGraph.queue
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
-        self.deepLinkUtil = diGraph.deepLinkUtil
     }
 
     func deleteDeviceToken() {
