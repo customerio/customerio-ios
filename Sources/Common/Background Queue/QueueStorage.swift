@@ -192,15 +192,50 @@ public class FileManagerQueueStorage: QueueStorage {
 
         let inventory = getInventory()
 
-        let groupStart = inventory.filter { $0.groupStart == groupStartTask }
-        let groupMember = inventory.filter { task in
-            task.groupMember != nil && task.groupMember!.contains(groupStartTask)
+        // use a set to store the tasks to be deleted
+        var tasksToBeDeleted = Set<QueueTaskMetadata>()
+        var groupsChecked = Set<String>()
+
+        // recursive function to find and delete tasks in the group
+        func deleteGroupRecursively(groupStartTask: String) {
+            if groupsChecked.contains(groupStartTask) {
+                // if the group has already been checked
+                return
+            }
+
+            // find the start of the group. ignore if the group start is null because that is our default too for all tasks
+            let groupStart = inventory.filter { $0.groupStart == groupStartTask }
+
+            // find all tasks that are blocked by the group.
+            let groupMember = inventory.filter { task in
+                // check if group member is not null and the group start is in the group member
+                task.groupMember != nil && task.groupMember!.contains(groupStartTask)
+            }
+
+            // add the tasks to the set of tasks to be deleted
+            tasksToBeDeleted.formUnion(groupStart)
+            tasksToBeDeleted.formUnion(groupMember)
+
+            groupsChecked.insert(groupStartTask)
+
+            // recursively delete group members
+            groupMember.forEach { task in
+                if let start = task.groupStart {
+                    deleteGroupRecursively(groupStartTask: start)
+                }
+            }
         }
 
-        let tasksToBeDeleted = groupStart + groupMember
-        tasksToBeDeleted.forEach { _ = delete(storageId: $0.taskPersistedId) }
+        // call the recursive function to find and mark the tasks for deletion
+        deleteGroupRecursively(groupStartTask: groupStartTask)
 
-        return tasksToBeDeleted
+        // loop through the tasks to be deleted and actually delete them
+        tasksToBeDeleted.forEach { task in
+            _ = delete(storageId: task.taskPersistedId)
+        }
+
+        // convert the set of tasks to an array and return it
+        return Array(tasksToBeDeleted)
     }
 
     public func deleteExpired() -> [QueueTaskMetadata] {
