@@ -277,7 +277,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         _ = addQueueTask()
 
         runnerMock.runTaskClosure = { _, onComplete in
-            onComplete(.failure(.badRequest400))
+            onComplete(.failure(.badRequest400(apiMessage: nil)))
         }
 
         runRequest.start(onComplete: onCompleteExpectation)
@@ -296,7 +296,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
 
         runnerMock.runTaskClosure = { task, onComplete in
             if task.storageId == givenTaskToFailWith400.taskPersistedId {
-                onComplete(.failure(.badRequest400))
+                onComplete(.failure(.badRequest400(apiMessage: nil)))
             } else {
                 onComplete(.failure(.getGenericFailure()))
             }
