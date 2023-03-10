@@ -272,7 +272,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         XCTAssertEqual(queueStorage.getInventory(), [givenTask1, givenTask2])
     }
 
-    func test_givenHttpBadRequest_expectNoTasksInInventory() {
+    func test_given400Response_expectToDeleteTask() {
         _ = addQueueTask()
         _ = addQueueTask()
 
@@ -287,28 +287,28 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         XCTAssertTrue(queueStorage.getInventory().isEmpty)
     }
 
-    func test_givenMultipleErrorRequest_expectTasksToBeDeletedFor400BadRequestOnly() {
-        let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
+    func test_given400Response_givenQueueTaskStartOfGroup_expectToDeleteGroup() {
+        let givenStartOfGroupId = QueueTaskGroup.identifiedProfile(identifier: String.random)
 
-        let givenTaskToFailWith400 = addQueueTask(groupStart: givenStartOfTheGroup)
-        _ = addQueueTask(blockingGroup: [givenStartOfTheGroup])
-        let givenTaskToFailWithGenericError = addQueueTask()
+        _ = addQueueTask(groupStart: givenStartOfGroupId)
+        _ = addQueueTask(blockingGroup: [givenStartOfGroupId])
+        _ = addQueueTask()
 
-        runnerMock.runTaskClosure = { task, onComplete in
-            if task.storageId == givenTaskToFailWith400.taskPersistedId {
-                onComplete(.failure(.badRequest400(apiMessage: nil)))
-            } else {
-                onComplete(.failure(.getGenericFailure()))
-            }
+        let tasksToNotDelete = queueStorage.getInventory().last
+
+        var givenRunTaskResponses: [HttpRequestError] = [
+            .badRequest400(apiMessage: nil),
+            .getGenericFailure()
+        ]
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.failure(givenRunTaskResponses.removeFirst()))
         }
 
         runRequest.start(onComplete: onCompleteExpectation)
         waitForExpectations()
 
-        let inventory = queueStorage.getInventory()
-
-        XCTAssertEqual(inventory.first?.taskPersistedId, givenTaskToFailWithGenericError.taskPersistedId)
-        XCTAssertEqual(inventory.count, 1)
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertEqual(queueStorage.getInventory(), [tasksToNotDelete])
     }
 
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {

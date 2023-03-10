@@ -32,7 +32,7 @@ public protocol QueueStorage: AutoMockable {
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
-    func deleteGroup(groupStartTask: String) -> [QueueTaskMetadata]
+    func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata]
     func deleteExpired() -> [QueueTaskMetadata]
 }
 
@@ -186,56 +186,27 @@ public class FileManagerQueueStorage: QueueStorage {
         return fileStorage.delete(type: .queueTask, fileId: storageId)
     }
 
-    public func deleteGroup(groupStartTask: String) -> [QueueTaskMetadata] {
+    public func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata] {
         lock.lock()
         defer { lock.unlock() }
 
         let inventory = getInventory()
+        var listOfQueueTasksDeleted: [QueueTaskMetadata] = []
 
-        // use a set to store the tasks to be deleted
-        var tasksToBeDeleted = Set<QueueTaskMetadata>()
-        var groupsChecked = Set<String>()
+        inventory.forEach { queueTaskMetadata in
+            if let groupsQueueTaskIsMemberOf = queueTaskMetadata.groupMember {
+                if groupsQueueTaskIsMemberOf.contains(where: { $0 == groupId }) {
+                    _ = self.delete(storageId: queueTaskMetadata.taskPersistedId)
+                    listOfQueueTasksDeleted.append(queueTaskMetadata)
 
-        // recursive function to find and delete tasks in the group
-        func deleteGroupRecursively(groupStartTask: String) {
-            if groupsChecked.contains(groupStartTask) {
-                // if the group has already been checked
-                return
-            }
-
-            // find the start of the group. ignore if the group start is null because that is our default too for all tasks
-            let groupStart = inventory.filter { $0.groupStart == groupStartTask }
-
-            // find all tasks that are blocked by the group.
-            let groupMember = inventory.filter { task in
-                // check if group member is not null and the group start is in the group member
-                task.groupMember != nil && task.groupMember!.contains(groupStartTask)
-            }
-
-            // add the tasks to the set of tasks to be deleted
-            tasksToBeDeleted.formUnion(groupStart)
-            tasksToBeDeleted.formUnion(groupMember)
-
-            groupsChecked.insert(groupStartTask)
-
-            // recursively delete group members
-            groupMember.forEach { task in
-                if let start = task.groupStart {
-                    deleteGroupRecursively(groupStartTask: start)
+                    if let groupIdQueueTaskStarts = queueTaskMetadata.groupStart {
+                        listOfQueueTasksDeleted.append(contentsOf: self.deleteTasksMemberOfGroup(groupId: groupIdQueueTaskStarts))
+                    }
                 }
             }
         }
 
-        // call the recursive function to find and mark the tasks for deletion
-        deleteGroupRecursively(groupStartTask: groupStartTask)
-
-        // loop through the tasks to be deleted and actually delete them
-        tasksToBeDeleted.forEach { task in
-            _ = delete(storageId: task.taskPersistedId)
-        }
-
-        // convert the set of tasks to an array and return it
-        return Array(tasksToBeDeleted)
+        return listOfQueueTasksDeleted
     }
 
     public func deleteExpired() -> [QueueTaskMetadata] {

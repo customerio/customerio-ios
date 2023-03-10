@@ -134,7 +134,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingDeviceModel: String?
+    public var underlyingDeviceModel: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var deviceModelCalled: Bool {
         deviceModelGetCalled || deviceModelSetCalled
@@ -170,7 +170,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingOsVersion: String?
+    public var underlyingOsVersion: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var osVersionCalled: Bool {
         osVersionGetCalled || osVersionSetCalled
@@ -206,7 +206,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingOsName: String?
+    public var underlyingOsName: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var osNameCalled: Bool {
         osNameGetCalled || osNameSetCalled
@@ -494,7 +494,7 @@ internal class DeviceMetricsGrabberMock: DeviceMetricsGrabber, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    internal var underlyingAppBundleId: String?
+    internal var underlyingAppBundleId: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     internal var appBundleIdCalled: Bool {
         appBundleIdGetCalled || appBundleIdSetCalled
@@ -679,7 +679,7 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingPushDeviceToken: String?
+    public var underlyingPushDeviceToken: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var pushDeviceTokenCalled: Bool {
         pushDeviceTokenGetCalled || pushDeviceTokenSetCalled
@@ -715,7 +715,7 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingHttpRequestsPauseEnds: Date?
+    public var underlyingHttpRequestsPauseEnds: Date? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var httpRequestsPauseEndsCalled: Bool {
         httpRequestsPauseEndsGetCalled || httpRequestsPauseEndsSetCalled
@@ -1163,7 +1163,7 @@ internal class HttpRetryPolicyMock: HttpRetryPolicy, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    internal var underlyingNextSleepTime: Seconds?
+    internal var underlyingNextSleepTime: Seconds? = nil
     /// `true` if the getter or setter of property is called at least once.
     internal var nextSleepTimeCalled: Bool {
         nextSleepTimeGetCalled || nextSleepTimeSetCalled
@@ -1336,7 +1336,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingProfileIdentifyHook: ProfileIdentifyHook?
+    public var underlyingProfileIdentifyHook: ProfileIdentifyHook? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var profileIdentifyHookCalled: Bool {
         profileIdentifyHookGetCalled || profileIdentifyHookSetCalled
@@ -1372,7 +1372,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingQueueRunnerHook: QueueRunnerHook?
+    public var underlyingQueueRunnerHook: QueueRunnerHook? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var queueRunnerHookCalled: Bool {
         queueRunnerHookGetCalled || queueRunnerHookSetCalled
@@ -1408,7 +1408,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingScreenTrackingHook: ScreenTrackingHook?
+    public var underlyingScreenTrackingHook: ScreenTrackingHook? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var screenTrackingHookCalled: Bool {
         screenTrackingHookGetCalled || screenTrackingHookSetCalled
@@ -1587,7 +1587,7 @@ public class ProfileStoreMock: ProfileStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingIdentifier: String?
+    public var underlyingIdentifier: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var identifierCalled: Bool {
         identifierGetCalled || identifierSetCalled
@@ -2132,9 +2132,9 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        deleteGroupCallsCount = 0
-        deleteGroupReceivedArguments = nil
-        deleteGroupReceivedInvocations = []
+        deleteTasksMemberOfGroupCallsCount = 0
+        deleteTasksMemberOfGroupReceivedArguments = nil
+        deleteTasksMemberOfGroupReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         deleteExpiredCallsCount = 0
@@ -2322,35 +2322,35 @@ public class QueueStorageMock: QueueStorage, Mock {
         return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
     }
 
-    // MARK: - deleteGroup
+    // MARK: - deleteTasksMemberOfGroup
 
     /// Number of times the function was called.
-    public private(set) var deleteGroupCallsCount = 0
+    public private(set) var deleteTasksMemberOfGroupCallsCount = 0
     /// `true` if the function was ever called.
-    public var deleteGroupCalled: Bool {
-        deleteGroupCallsCount > 0
+    public var deleteTasksMemberOfGroupCalled: Bool {
+        deleteTasksMemberOfGroupCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteGroupReceivedArguments: String?
+    public private(set) var deleteTasksMemberOfGroupReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteGroupReceivedInvocations: [String] = []
+    public private(set) var deleteTasksMemberOfGroupReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
-    public var deleteGroupReturnValue: [QueueTaskMetadata]!
+    public var deleteTasksMemberOfGroupReturnValue: [QueueTaskMetadata]!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `deleteGroupReturnValue`
+     then the mock will attempt to return the value for `deleteTasksMemberOfGroupReturnValue`
      */
-    public var deleteGroupClosure: ((String) -> [QueueTaskMetadata])?
+    public var deleteTasksMemberOfGroupClosure: ((String) -> [QueueTaskMetadata])?
 
-    /// Mocked function for `deleteGroup(groupStartTask: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func deleteGroup(groupStartTask: String) -> [QueueTaskMetadata] {
+    /// Mocked function for `deleteTasksMemberOfGroup(groupId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata] {
         mockCalled = true
-        deleteGroupCallsCount += 1
-        deleteGroupReceivedArguments = groupStartTask
-        deleteGroupReceivedInvocations.append(groupStartTask)
-        return deleteGroupClosure.map { $0(groupStartTask) } ?? deleteGroupReturnValue
+        deleteTasksMemberOfGroupCallsCount += 1
+        deleteTasksMemberOfGroupReceivedArguments = groupId
+        deleteTasksMemberOfGroupReceivedInvocations.append(groupId)
+        return deleteTasksMemberOfGroupClosure.map { $0(groupId) } ?? deleteTasksMemberOfGroupReturnValue
     }
 
     // MARK: - deleteExpired

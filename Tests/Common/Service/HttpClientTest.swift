@@ -247,7 +247,7 @@ class HttpClientTest: UnitTest {
 
     // MARK: test 400 status codes
 
-    func test_request_given400_expectPauseRequetsFalse_expectReturnError() {
+    func test_request_given400_expectPauseRequestsFalse_expectReturn400ErrorClass() {
         mockRequestResponse {
             (body: nil, response: HTTPURLResponse(url: self.url, statusCode: 400, httpVersion: nil, headerFields: nil), failure: nil)
         }
@@ -261,6 +261,9 @@ class HttpClientTest: UnitTest {
         )!
         client.request(params) { result in
             XCTAssertNotNil(result.error)
+            guard case .badRequest400 = result.error else {
+                return XCTFail("expected 400 responses have it's own enum case returned")
+            }
 
             expectComplete.fulfill()
         }

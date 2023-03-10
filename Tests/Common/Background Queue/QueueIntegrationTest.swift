@@ -108,11 +108,7 @@ class QueueIntegrationTest: IntegrationTest {
 
         httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
 
-        let expect = expectation(description: "Expect to complete")
-        queue.run {
-            expect.fulfill()
-        }
-        waitForExpectations()
+        waitForQueueToFinishRunningTasks(queue)
 
         XCTAssertEqual(queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
@@ -125,21 +121,60 @@ class QueueIntegrationTest: IntegrationTest {
         let givenIdentifyGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: givenIdentifier)
         let givenRegisterGroupForTasks = QueueTaskGroup.registeredPushToken(token: givenToken)
 
-        let queueTaskData = RegisterPushNotificationQueueTaskData(
-            profileIdentifier: givenIdentifier,
-            attributesJsonString: nil
+        _ = queue.addTask(
+            type: QueueTaskType.identifyProfile.rawValue,
+            data: IdentifyProfileQueueTaskData(identifier: givenIdentifier, attributesJsonString: nil),
+            groupStart: givenIdentifyGroupForTasks
         )
+        httpRequestRunnerStub.queueSuccessfulResponse()
+
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(
+                identifier: givenIdentifier,
+                attributesJsonString: ""
+            ),
+            blockingGroups: [givenIdentifyGroupForTasks]
+        )
+        httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
+
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(
+                identifier: givenIdentifier,
+                attributesJsonString: ""
+            ),
+            blockingGroups: [givenIdentifyGroupForTasks]
+        )
+        httpRequestRunnerStub.queueResponse(code: 404, data: "".data)
+
+        let expectedTasksToNotDelete = queueStorage.getInventory().last
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertEqual(queueStorage.getInventory(), [expectedTasksToNotDelete])
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
+    }
+
+    func test_givenRunQueueAndFailWith400_givenMemberOfGroupStartOfNewGroup_expectBothGroupsDeleted() {
+        let givenIdentifier = String.random
+        let givenToken = String.random
+
+        let givenIdentifyGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: givenIdentifier)
+        let givenRegisterGroupForTasks = QueueTaskGroup.registeredPushToken(token: givenToken)
 
         _ = queue.addTask(
             type: QueueTaskType.identifyProfile.rawValue,
             data: IdentifyProfileQueueTaskData(identifier: givenIdentifier, attributesJsonString: nil),
-            groupStart: givenRegisterGroupForTasks,
-            blockingGroups: [givenIdentifyGroupForTasks]
+            groupStart: givenIdentifyGroupForTasks
         )
 
         _ = queue.addTask(
             type: QueueTaskType.registerPushToken.rawValue,
-            data: queueTaskData,
+            data: RegisterPushNotificationQueueTaskData(
+                profileIdentifier: givenIdentifier,
+                attributesJsonString: nil
+            ),
             groupStart: givenRegisterGroupForTasks,
             blockingGroups: [givenIdentifyGroupForTasks]
         )
@@ -154,14 +189,9 @@ class QueueIntegrationTest: IntegrationTest {
             ),
             blockingGroups: [givenRegisterGroupForTasks]
         )
-
         httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
 
-        let expect = expectation(description: "Expect to complete")
-        queue.run {
-            expect.fulfill()
-        }
-        waitForExpectations()
+        waitForQueueToFinishRunningTasks(queue)
 
         XCTAssertEqual(queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)

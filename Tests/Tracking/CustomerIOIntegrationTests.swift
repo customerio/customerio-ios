@@ -116,4 +116,26 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertGreaterThan(httpRequestRunnerStub.requestCallsCount, 0)
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
     }
+
+    // MARK: Testing 400 response from API scenarios
+
+    func test_givenSendTestPushNotification_givenHttp400Response_expectDeleteTaskAndNotRetry() {
+        let expectedResponseBodyString = """
+        {
+            "meta": {
+                "errors": [
+                    "malformed delivery id: ."
+                ]
+            }
+        }
+        """.trimmingCharacters(in: .whitespacesAndNewlines)
+        httpRequestRunnerStub.queueResponse(code: 400, data: expectedResponseBodyString.data)
+
+        CustomerIO.shared.trackMetric(deliveryID: "", event: .opened, deviceToken: .random)
+
+        XCTAssertEqual(diGraph.queueStorage.getInventory().count, 1)
+        waitForQueueToFinishRunningTasks(queue)
+        XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
+    }
 }

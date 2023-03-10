@@ -136,14 +136,12 @@ public class CioQueueRunRequest: QueueRunRequest {
 
                         doneRunning()
                     } else if case .badRequest400 = error {
-                        self.logger.debug("queue deleting task \(nextTaskStorageId) because it failed with 400 and will always fail")
-
                         self.logger.error("Received HTTP 400 response while trying to \(nextTaskToRun.type). 400 responses never succeed and therefore, the SDK is deleting this SDK request and not retry. Error message from API: \(error.localizedDescription), request data sent: \(nextTaskToRun.data)")
 
                         _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
                         // Because we deleted the queue task that starts a queue group, we can assume that all members of that group will also get HTTP failed responses. So, delete all members of the group.
                         if let groupStart = nextTaskToRunInventoryItem.groupStart {
-                            _ = self.storage.deleteGroup(groupStartTask: groupStart)
+                            _ = self.storage.deleteTasksMemberOfGroup(groupId: groupStart)
                         }
 
                         updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)

@@ -241,7 +241,7 @@ class QueueStorageIntegrationTest: UnitTest {
 
     // MARK: deleteGroup
 
-    func test_deleteGroup_expectAllTasksInGroupToDelete() {
+    func test_deleteTasksMemberOfGroup_givenTasksMemberOfGroupToDelete_expectAllTasksInGroupToDelete() {
         let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
 
         _ = storage.create(
@@ -265,13 +265,15 @@ class QueueStorageIntegrationTest: UnitTest {
             blockingGroups: [givenStartOfTheGroup]
         )
 
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
+        let inventory = storage.getInventory()
+        let expectedTasksNotDeleted = [inventory[0]]
+        let expectedTasksDeleted = [inventory[1], inventory[2]]
 
-        XCTAssertEqual(itemsDeleted.count, 3)
-        XCTAssertEqual(storage.getInventory().count, 0)
+        XCTAssertEqual(expectedTasksDeleted, storage.deleteTasksMemberOfGroup(groupId: givenStartOfTheGroup.string))
+        XCTAssertEqual(expectedTasksNotDeleted, storage.getInventory())
     }
 
-    func test_deleteGroup_expectTasksNotInGroupNotDeleted() {
+    func test_deleteTasksMemberOfGroup_expectTasksNotInGroupNotDeleted() {
         let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
         let givenStartOfAnotherGroup = QueueTaskGroup.registeredPushToken(token: String.random)
 
@@ -304,16 +306,14 @@ class QueueStorageIntegrationTest: UnitTest {
         )
 
         let inventory = storage.getInventory()
-        let expectedRemainingItems = [inventory[2], inventory[3]]
+        let expectedTasksNotDeleted = [inventory[0], inventory[2], inventory[3]]
+        let expectedTasksDeleted = [inventory[1]]
 
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
-
-        XCTAssertEqual(itemsDeleted.count, 2)
-        XCTAssertEqual(storage.getInventory().count, 2)
-        XCTAssertEqual(storage.getInventory(), expectedRemainingItems)
+        XCTAssertEqual(expectedTasksDeleted, storage.deleteTasksMemberOfGroup(groupId: givenStartOfTheGroup.string))
+        XCTAssertEqual(expectedTasksNotDeleted, storage.getInventory())
     }
 
-    func test_deleteGroup_givenMembersTasksBelongToDifferentGroups_expectAllStartTasksAndTheirMembersToBeDeleted() {
+    func test_deleteTasksMemberOfGroup_givenDeletedTasksStartNewGroup_expectMultipleGroupsBeDeleted() {
         let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
         let givenStartOfAnotherGroup = QueueTaskGroup.registeredPushToken(token: String.random)
 
@@ -343,62 +343,18 @@ class QueueStorageIntegrationTest: UnitTest {
             data: Data(),
             groupStart: nil,
             blockingGroups: [givenStartOfAnotherGroup]
-        )
-
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
-
-        XCTAssertEqual(itemsDeleted.count, 4)
-        XCTAssertEqual(storage.getInventory().count, 0)
-    }
-
-    func test_givenMembersTasksBelongToDifferentGroupsAndOneDoesNotBelongToAnyGroupWithDifferentOrder_expectCorrectTasksToBeDeleted() {
-        let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
-        let givenStartOfAnotherGroup = QueueTaskGroup.registeredPushToken(token: String.random)
-
-        _ = storage.create(
-            type: String.random,
-            data: Data(),
-            groupStart: nil,
-            blockingGroups: [givenStartOfTheGroup]
-        )
-
-        _ = storage.create(
-            type: String.random,
-            data: Data(),
-            groupStart: givenStartOfTheGroup,
-            blockingGroups: nil
-        )
-
-        _ = storage.create(
-            type: String.random,
-            data: Data(),
-            groupStart: nil,
-            blockingGroups: nil
-        )
-
-        _ = storage.create(
-            type: String.random,
-            data: Data(),
-            groupStart: nil,
-            blockingGroups: [givenStartOfAnotherGroup]
-        )
-        _ = storage.create(
-            type: String.random,
-            data: Data(),
-            groupStart: givenStartOfAnotherGroup,
-            blockingGroups: [givenStartOfTheGroup]
         )
 
         let inventory = storage.getInventory()
-        let expectedRemainingItems = inventory[2]
+        let expectedTasksNotDeleted = [inventory[0]]
+        let expectedTasksDeleted = [inventory[1], inventory[2], inventory[3]]
 
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
-        XCTAssertEqual(itemsDeleted.count, 4)
-        XCTAssertEqual(storage.getInventory().count, 1)
-        XCTAssertEqual(storage.getInventory().first, expectedRemainingItems)
+        XCTAssertEqual(expectedTasksDeleted, storage.deleteTasksMemberOfGroup(groupId: givenStartOfTheGroup.string))
+        XCTAssertEqual(expectedTasksNotDeleted, storage.getInventory())
     }
 
-    func test_givenDeleteGroupTask_givenIncorrectTask_expectNotToGetInfiniteLoop() {
+    func test_deleteTasksMemberOfGroup_givenTaskStartsAndBelongsToSameGroup_expectNotToGetInfiniteLoop() {
+        // because task is a member of group to delete, it should be deleted by function. But because it also is the start of the group with the same name, recursion should trigger and not cause an infinite loop.
         let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
         _ = storage.create(
             type: String.random,
@@ -406,12 +362,12 @@ class QueueStorageIntegrationTest: UnitTest {
             groupStart: givenStartOfTheGroup,
             blockingGroups: [givenStartOfTheGroup]
         )
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
+        let itemsDeleted = storage.deleteTasksMemberOfGroup(groupId: givenStartOfTheGroup.string)
         XCTAssertEqual(itemsDeleted.count, 1)
         XCTAssertEqual(storage.getInventory().count, 0)
     }
 
-    func test_givenNoStartGroupPresentInInventory_expectTasksNotDeleted() {
+    func test_deleteTasksMemberOfGroup_givenNoStartGroupPresentInInventory_expectTasksNotDeleted() {
         let givenStartOfTheGroup = QueueTaskGroup.identifiedProfile(identifier: String.random)
         let givenStartOfAnotherGroup = QueueTaskGroup.registeredPushToken(token: String.random)
 
@@ -436,9 +392,10 @@ class QueueStorageIntegrationTest: UnitTest {
             blockingGroups: [givenStartOfAnotherGroup]
         )
 
-        let itemsDeleted = storage.deleteGroup(groupStartTask: givenStartOfTheGroup.string)
-        XCTAssertEqual(itemsDeleted.count, 0)
-        XCTAssertEqual(storage.getInventory().count, 3)
+        let expectedTasksNotDeleted = storage.getInventory()
+
+        XCTAssertEqual([], storage.deleteTasksMemberOfGroup(groupId: givenStartOfTheGroup.string))
+        XCTAssertEqual(expectedTasksNotDeleted, storage.getInventory())
     }
 
     // MARK: deleteExpired
