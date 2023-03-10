@@ -1,0 +1,3 @@
+scheme "test cocoapods"
+workspace "test cocoapods.xcworkspace"
+export_method 'ad-hoc'
