@@ -1,3 +1,10 @@
+### [2.1.2](https://github.com/customerio/customerio-ios/compare/2.1.1...2.1.2) (2023-03-10)
+
+
+### Bug Fixes
+
+* delete tasks that returns http 400 ([#276](https://github.com/customerio/customerio-ios/issues/276)) ([aabfe9e](https://github.com/customerio/customerio-ios/commit/aabfe9ec02ec5b40326c60e973cdfa5f9338f85f))
+
 ### [2.1.1](https://github.com/customerio/customerio-ios/compare/2.1.0...2.1.1) (2023-03-08)
 
 
