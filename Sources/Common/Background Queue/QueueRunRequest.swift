@@ -135,7 +135,12 @@ public class CioQueueRunRequest: QueueRunRequest {
                         self.logger.info("queue is quitting early because all HTTP requests are paused.")
 
                         doneRunning()
-                        break
+                    } else if case .badRequest400 = error {
+                        self.logger.error("Received HTTP 400 response while trying to \(nextTaskToRun.type). 400 responses never succeed and therefore, the SDK is deleting this SDK request and not retry. Error message from API: \(error.localizedDescription), request data sent: \(nextTaskToRun.data)")
+
+                        _ = self.storage.delete(storageId: nextTaskToRunInventoryItem.taskPersistedId)
+
+                        updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                     } else {
                         let newRunResults = previousRunResults.totalRunsSet(previousRunResults.totalRuns + 1)
 
@@ -148,9 +153,8 @@ public class CioQueueRunRequest: QueueRunRequest {
                             storageId: nextTaskToRunInventoryItem.taskPersistedId,
                             runResults: newRunResults
                         )
+                        updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                     }
-
-                    updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
                 }
 
                 // make sure to update the variables for the while loop logic before running the while loop again.

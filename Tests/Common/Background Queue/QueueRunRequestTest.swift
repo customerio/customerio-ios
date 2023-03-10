@@ -272,6 +272,21 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         XCTAssertEqual(queueStorage.getInventory(), [givenTask1, givenTask2])
     }
 
+    func test_given400Response_expectToDeleteTask() {
+        _ = addQueueTask()
+        _ = addQueueTask()
+
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.failure(.badRequest400(apiMessage: "")))
+        }
+
+        runRequest.start(onComplete: onCompleteExpectation)
+        waitForExpectations()
+
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
+        XCTAssertTrue(queueStorage.getInventory().isEmpty)
+    }
+
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {
         _ = addQueueTask()
 
@@ -295,12 +310,12 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
 }
 
 extension QueueRunRequestIntegrationTest {
-    private func addQueueTask() -> QueueTaskMetadata {
+    private func addQueueTask(groupStart: QueueTaskGroup? = nil, blockingGroup: [QueueTaskGroup]? = nil) -> QueueTaskMetadata {
         queueStorage.create(
             type: String.random,
             data: "".data,
-            groupStart: nil,
-            blockingGroups: nil
+            groupStart: groupStart,
+            blockingGroups: blockingGroup
         ).createdTask!
     }
 }

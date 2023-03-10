@@ -21,4 +21,5 @@ disabled_rules:
   # Test classes that contain lots of unit test methods will throw this lint error. 
   # That's not necessarily a bad thing to have lots of unit test functions so this error is OK to ignore 
   # for tests. 
-  - type_body_length 
+  - type_body_length
+  - file_length 

@@ -92,5 +92,58 @@ class QueueIntegrationTest: IntegrationTest {
         XCTAssertEqual(queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
     }
+
+    func test_givenRunQueueAndFailWith400_expectTaskToBeDeleted() {
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: "")
+        )
+        httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertEqual(queueStorage.getInventory(), [])
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
+    }
+
+    func test_givenRunQueueAndFailWith400_expectNon400TasksNotToBeDeleted() {
+        let givenIdentifier = String.random
+
+        let givenIdentifyGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: givenIdentifier)
+
+        _ = queue.addTask(
+            type: QueueTaskType.identifyProfile.rawValue,
+            data: IdentifyProfileQueueTaskData(identifier: givenIdentifier, attributesJsonString: nil),
+            groupStart: givenIdentifyGroupForTasks
+        )
+        httpRequestRunnerStub.queueSuccessfulResponse()
+
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(
+                identifier: givenIdentifier,
+                attributesJsonString: ""
+            ),
+            blockingGroups: [givenIdentifyGroupForTasks]
+        )
+        httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
+
+        _ = queue.addTask(
+            type: QueueTaskType.trackEvent.rawValue,
+            data: TrackEventQueueTaskData(
+                identifier: givenIdentifier,
+                attributesJsonString: ""
+            ),
+            blockingGroups: [givenIdentifyGroupForTasks]
+        )
+        httpRequestRunnerStub.queueResponse(code: 404, data: "".data)
+
+        let expectedTasksToNotDelete = queueStorage.getInventory().last
+
+        waitForQueueToFinishRunningTasks(queue)
+
+        XCTAssertEqual(queueStorage.getInventory(), [expectedTasksToNotDelete])
+        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
+    }
     #endif
 }
