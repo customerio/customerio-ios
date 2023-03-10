@@ -93,33 +93,23 @@ class QueueIntegrationTest: IntegrationTest {
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
     }
 
-    func test_givenRunQueueAndFailWith400_expectAllGroupTasksToBeDeleted() {
-        let givenGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: String.random)
+    func test_givenRunQueueAndFailWith400_expectTaskToBeDeleted() {
         _ = queue.addTask(
             type: QueueTaskType.trackEvent.rawValue,
-            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
-            groupStart: givenGroupForTasks
+            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: "")
         )
-        _ = queue.addTask(
-            type: QueueTaskType.trackEvent.rawValue,
-            data: TrackEventQueueTaskData(identifier: String.random, attributesJsonString: ""),
-            blockingGroups: [givenGroupForTasks]
-        )
-
         httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
 
         waitForQueueToFinishRunningTasks(queue)
 
-        XCTAssertEqual(queueStorage.getInventory().count, 0)
+        XCTAssertEqual(queueStorage.getInventory(), [])
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
     }
 
     func test_givenRunQueueAndFailWith400_expectNon400TasksNotToBeDeleted() {
         let givenIdentifier = String.random
-        let givenToken = String.random
 
         let givenIdentifyGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: givenIdentifier)
-        let givenRegisterGroupForTasks = QueueTaskGroup.registeredPushToken(token: givenToken)
 
         _ = queue.addTask(
             type: QueueTaskType.identifyProfile.rawValue,
@@ -154,47 +144,6 @@ class QueueIntegrationTest: IntegrationTest {
 
         XCTAssertEqual(queueStorage.getInventory(), [expectedTasksToNotDelete])
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 3)
-    }
-
-    func test_givenRunQueueAndFailWith400_givenMemberOfGroupStartOfNewGroup_expectBothGroupsDeleted() {
-        let givenIdentifier = String.random
-        let givenToken = String.random
-
-        let givenIdentifyGroupForTasks = QueueTaskGroup.identifiedProfile(identifier: givenIdentifier)
-        let givenRegisterGroupForTasks = QueueTaskGroup.registeredPushToken(token: givenToken)
-
-        _ = queue.addTask(
-            type: QueueTaskType.identifyProfile.rawValue,
-            data: IdentifyProfileQueueTaskData(identifier: givenIdentifier, attributesJsonString: nil),
-            groupStart: givenIdentifyGroupForTasks
-        )
-
-        _ = queue.addTask(
-            type: QueueTaskType.registerPushToken.rawValue,
-            data: RegisterPushNotificationQueueTaskData(
-                profileIdentifier: givenIdentifier,
-                attributesJsonString: nil
-            ),
-            groupStart: givenRegisterGroupForTasks,
-            blockingGroups: [givenIdentifyGroupForTasks]
-        )
-
-        _ = queue.addTask(
-            type: QueueTaskType.trackPushMetric.rawValue,
-            data: MetricRequest(
-                deliveryId: String.random,
-                event: Metric.opened,
-                deviceToken: givenToken,
-                timestamp: Date()
-            ),
-            blockingGroups: [givenRegisterGroupForTasks]
-        )
-        httpRequestRunnerStub.queueResponse(code: 400, data: "".data)
-
-        waitForQueueToFinishRunningTasks(queue)
-
-        XCTAssertEqual(queueStorage.getInventory().count, 0)
-        XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
     }
     #endif
 }

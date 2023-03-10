@@ -32,7 +32,6 @@ public protocol QueueStorage: AutoMockable {
     func update(storageId: String, runResults: QueueTaskRunResults) -> Bool
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
-    func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata]
     func deleteExpired() -> [QueueTaskMetadata]
 }
 
@@ -184,29 +183,6 @@ public class FileManagerQueueStorage: QueueStorage {
         // if this fails, we at least deleted the task from inventory so
         // it will not run again which is the most important thing
         return fileStorage.delete(type: .queueTask, fileId: storageId)
-    }
-
-    public func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata] {
-        lock.lock()
-        defer { lock.unlock() }
-
-        let inventory = getInventory()
-        var listOfQueueTasksDeleted: [QueueTaskMetadata] = []
-
-        inventory.forEach { queueTaskMetadata in
-            if let groupsQueueTaskIsMemberOf = queueTaskMetadata.groupMember {
-                if groupsQueueTaskIsMemberOf.contains(where: { $0 == groupId }) {
-                    _ = self.delete(storageId: queueTaskMetadata.taskPersistedId)
-                    listOfQueueTasksDeleted.append(queueTaskMetadata)
-
-                    if let groupIdQueueTaskStarts = queueTaskMetadata.groupStart {
-                        listOfQueueTasksDeleted.append(contentsOf: self.deleteTasksMemberOfGroup(groupId: groupIdQueueTaskStarts))
-                    }
-                }
-            }
-        }
-
-        return listOfQueueTasksDeleted
     }
 
     public func deleteExpired() -> [QueueTaskMetadata] {

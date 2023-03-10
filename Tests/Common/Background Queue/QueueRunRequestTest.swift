@@ -277,7 +277,7 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         _ = addQueueTask()
 
         runnerMock.runTaskClosure = { _, onComplete in
-            onComplete(.failure(.badRequest400(apiMessage: nil)))
+            onComplete(.failure(.badRequest400(apiMessage: "")))
         }
 
         runRequest.start(onComplete: onCompleteExpectation)
@@ -285,30 +285,6 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
 
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
         XCTAssertTrue(queueStorage.getInventory().isEmpty)
-    }
-
-    func test_given400Response_givenQueueTaskStartOfGroup_expectToDeleteGroup() {
-        let givenStartOfGroupId = QueueTaskGroup.identifiedProfile(identifier: String.random)
-
-        _ = addQueueTask(groupStart: givenStartOfGroupId)
-        _ = addQueueTask(blockingGroup: [givenStartOfGroupId])
-        _ = addQueueTask()
-
-        let tasksToNotDelete = queueStorage.getInventory().last
-
-        var givenRunTaskResponses: [HttpRequestError] = [
-            .badRequest400(apiMessage: nil),
-            .getGenericFailure()
-        ]
-        runnerMock.runTaskClosure = { _, onComplete in
-            onComplete(.failure(givenRunTaskResponses.removeFirst()))
-        }
-
-        runRequest.start(onComplete: onCompleteExpectation)
-        waitForExpectations()
-
-        XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
-        XCTAssertEqual(queueStorage.getInventory(), [tasksToNotDelete])
     }
 
     func test_givenTaskAddedDuringRun_expectToRunTaskAdded() {
