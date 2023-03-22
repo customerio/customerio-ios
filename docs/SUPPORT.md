@@ -42,17 +42,20 @@ pod 'CustomerIOMessagingPushAPN', :git => 'https://github.com/customerio/custome
 
 > Note: We do not recommend enabling debug logs in production. Instead, enable them during development/testing. 
 
+Every place in your code where `CustomerIO.initialize()` is called, enable the debug log level. This includes in the Notification Service Extension that you [setup for rich push](https://customer.io/docs/sdk/ios/push/#rich-push). 
+
 ```swift
 // During SDK initialization, enable debug logs: 
 CustomerIO.initialize(siteId: "YOUR SITE ID", apiKey: "YOUR API KEY", region: Region.US) { config in
   config.logLevel = .debug 
 }
-// Be sure to enable debug logs every time that you call `CustomerIO.initialize` including in rich push if you use that in your app. 
 ```
 
 * Console (already installed on your mac) - This is a built-in application on your mac where you can view logs made from the SDK. Open up Spotlight or Launchpad on your mac and search "Console" and you will see a screen like this:
 
 ![](img/console-after-open.jpg)
+
+> Note: We recommend that you use Console instead of Xcode to view and capture logs from the SDK because Xcode may not show you all of the logs the SDK generates.
 
 * Next, make sure to go to "Action > Include Info messages" and "Action > Include Debug messages" or you will not see any logs coming from the SDK. 
 
