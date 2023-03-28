@@ -10,6 +10,8 @@
 
 Go through each of the files and edit them to values that are correct for your new iOS app. 
 
+* If your new sample app uses CocoaPods (it's preferred to use Swift Package Manager instead of CocoaPods but some sample apps need to use CocoaPods so we can test that environment), then copy the `Podfile` from `../Apps/CocoaPods-FCM/Podfile`. That file is designed to always install the SDK from the local copy of the SDK which is what all of our sample apps should be doing. 
+
 * Open `../.github/workflows/build-sample-apps.yml`. In this file, you will see code that looks like this:
 
 ```yml
