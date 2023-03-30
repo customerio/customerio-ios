@@ -1,5 +1,0 @@
-# some of these values are not unique to this app and should be moved out into a more global place. 
-# all values here for now while I protototype 
-storage_mode "google_cloud"
-google_cloud_bucket_name "remote-habits-ios-signing"
-readonly true

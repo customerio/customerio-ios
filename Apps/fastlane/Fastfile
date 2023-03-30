@@ -1,0 +1,38 @@
+# Fastfile that is meant to be used by all iOS apps in the organization. 
+# This file is meant to be imported into another `Fastfile` so the functions in this file are usable. 
+# 
+# Import this file in 2 ways:
+# 1. Locally (for all Fastfile files in this repository)
+# Use "import" from these docs: https://docs.fastlane.tools/advanced/Fastfile/#importing-another-fastfile
+#
+# 2. Remotely (for all Fastfile files in a git repository not this one)
+# Add this to your Fastfile:
+# ```
+# import_from_git(
+#  url: "git@github.com:customerio/customerio-ios.git", # The URL of the repository to import the Fastfile from.
+#  branch: "main", # The branch to checkout on the repository.
+#  path: "Apps/fastlane/Fastfile" # The path of the Fastfile in the repository.
+# )
+# ```
+
+before_all do |lane, options|    
+  setup_ci
+end
+
+# Note: I was experiencing issues getting adhoc code signing working for the cocoapods FCM sample app. 
+# For now, we just need to test the app compiles so development code signing is good enough for now until we fix the issue.     
+# For now, do code signing and app compiling using development type. 
+lane :build do |arguments|
+  sync_code_signing(
+    type: "development",
+    readonly: true,
+    storage_mode: "google_cloud",
+    google_cloud_bucket_name: "remote-habits-ios-signing"
+  )
+
+  build_ios_app(
+    export_method: "development",
+    configuration: "Debug",
+    xcodebuild_formatter: "xcbeautify"
+  )
+end
