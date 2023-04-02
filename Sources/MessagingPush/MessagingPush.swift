@@ -38,7 +38,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         logger.debug("Setting up MessagingPush module...")
 
         logger.info("MessagingPush module setup with SDK")
-        
+
         #if canImport(UIKit)
         UIApplication.shared.registerForRemoteNotifications()
         #endif
