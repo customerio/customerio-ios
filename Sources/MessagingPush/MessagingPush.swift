@@ -28,8 +28,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         Self.shared = MessagingPush()
     }
 
-    // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
-    // currently no module initialization to perform.
+    // initialize the module so that it can start automatically fetching device token
     public static func initialize() {
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
@@ -39,6 +38,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         logger.debug("Setting up MessagingPush module...")
 
         logger.info("MessagingPush module setup with SDK")
+        
+        #if canImport(UIKit)
+        UIApplication.shared.registerForRemoteNotifications()
+        #endif
     }
 
     override public func getImplementationInstance(diGraph: DIGraph) -> MessagingPushInstance {
