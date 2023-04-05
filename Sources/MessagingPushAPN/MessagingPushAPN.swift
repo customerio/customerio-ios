@@ -5,11 +5,14 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // Some functions are copied from MessagingPush because
 // 1. This allows the generated mock to contain these functions
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
-public protocol MessagingPushAPNInstance: AutoMockable {
+public protocol MessagingPushAPNInstance: AutoMockable, MessagingPushProvider {
     func registerDeviceToken(apnDeviceToken: Data)
 
     // sourcery:Name=didRegisterForRemoteNotifications
@@ -49,6 +52,12 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
+    public func requestDeviceToken() {
+        #if canImport(UIKit)
+        UIApplication.shared.registerForRemoteNotifications()
+        #endif
+    }
+
     internal static let shared = MessagingPushAPN()
 
     internal var messagingPush: MessagingPushInstance {

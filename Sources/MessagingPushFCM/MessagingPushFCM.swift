@@ -9,7 +9,7 @@ import UserNotifications
 // Some functions are copied from MessagingPush because
 // 1. This allows the generated mock to contain these functions
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushFCM`.
-public protocol MessagingPushFCMInstance: AutoMockable {
+public protocol MessagingPushFCMInstance: AutoMockable, MessagingPushProvider {
     func registerDeviceToken(fcmToken: String?)
 
     // sourcery:Name=didReceiveRegistrationToken
@@ -47,6 +47,20 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
+    public func requestDeviceToken() {
+        // need FCM dependency here
+        /**
+         Messaging.messaging().token { token, error in
+                     if let error = error {
+                         print("Error fetching FCM token: \(error)")
+                     } else if let token = token {
+                        registerDeviceToken(token)
+                     }
+                 }
+
+         */
+    }
+
     internal static let shared = MessagingPushFCM()
 
     internal var messagingPush: MessagingPushInstance {

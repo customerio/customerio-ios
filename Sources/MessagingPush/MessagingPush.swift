@@ -13,6 +13,8 @@ import UserNotifications
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
 
+    public var messagingPushProvider: MessagingPushProvider?
+
     // testing constructor
     override internal init(implementation: MessagingPushInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
@@ -29,7 +31,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     // initialize the module so that it can start automatically fetching device token
-    public static func initialize() {
+    public static func initialize(provider: MessagingPushProvider) {
+        MessagingPush.shared.messagingPushProvider = provider
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
 
@@ -39,9 +42,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
         logger.info("MessagingPush module setup with SDK")
 
-        #if canImport(UIKit)
-        UIApplication.shared.registerForRemoteNotifications()
-        #endif
+        MessagingPush.shared.messagingPushProvider?.requestDeviceToken()
     }
 
     override public func getImplementationInstance(diGraph: DIGraph) -> MessagingPushInstance {

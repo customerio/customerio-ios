@@ -9,6 +9,10 @@ import UserNotifications
  Convenient extensions so singleton instances of `MessagingPush` can access functions from `MessagingPushFCM`.
  */
 extension MessagingPush: MessagingPushFCMInstance {
+    public func requestDeviceToken() {
+        MessagingPushFCM.shared.requestDeviceToken()
+    }
+
     public func registerDeviceToken(fcmToken: String?) {
         MessagingPushFCM.shared.registerDeviceToken(fcmToken: fcmToken)
     }
