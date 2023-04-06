@@ -15,17 +15,11 @@
 # )
 # ```
 
-# Functions for setting up code signing on development machine 
-import_from_git(
-  url: "git@github.com:customerio/apple-code-signing.git", 
-  branch: "main", 
-  path: "fastlane-development-codesigning/Fastfile"
-)
 # Functions for setting up code signing on CI server 
 import_from_git(
-  url: "git@github.com:customerio/apple-code-signing.git", 
-  branch: "levi/setup-ci-codesigning", 
-  path: "fastlane-ci-codesigning/Fastfile"
+  url: "https://github.com/customerio/apple-code-signing.git", 
+  branch: "main", 
+  path: "fastlane/Fastfile"
 )
 
 before_all do |lane, options|    
@@ -36,11 +30,11 @@ end
 # For now, we just need to test the app compiles so development code signing is good enough for now until we fix the issue.     
 # For now, do code signing and app compiling using development type. 
 lane :build do |arguments|
-  download_code_signing_files
+  download_ci_code_signing_files
 
   build_ios_app(
-    export_method: "development",
-    configuration: "Debug",
+    export_method: "ad-hoc",
+    configuration: "Release",
     xcodebuild_formatter: "xcbeautify"
   )
 end
