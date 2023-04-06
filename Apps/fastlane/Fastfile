@@ -15,6 +15,19 @@
 # )
 # ```
 
+# Functions for setting up code signing on development machine 
+import_from_git(
+  url: "git@github.com:customerio/apple-code-signing.git", 
+  branch: "main", 
+  path: "fastlane-development-codesigning/Fastfile"
+)
+# Functions for setting up code signing on CI server 
+import_from_git(
+  url: "git@github.com:customerio/apple-code-signing.git", 
+  branch: "levi/setup-ci-codesigning", 
+  path: "fastlane-ci-codesigning/Fastfile"
+)
+
 before_all do |lane, options|    
   setup_ci
 end
@@ -23,12 +36,7 @@ end
 # For now, we just need to test the app compiles so development code signing is good enough for now until we fix the issue.     
 # For now, do code signing and app compiling using development type. 
 lane :build do |arguments|
-  sync_code_signing(
-    type: "development",
-    readonly: true,
-    storage_mode: "google_cloud",
-    google_cloud_bucket_name: "remote-habits-ios-signing"
-  )
+  download_code_signing_files
 
   build_ios_app(
     export_method: "development",
