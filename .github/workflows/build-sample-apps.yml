@@ -27,10 +27,6 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: ${{ env.XCODE_VERSION_BUILD_APPS }}
-
-    - name: Setup files needed for build 
-      run: |
-        echo "${{ secrets.FASTLANE_GC_KEYS_FILE_B64 }}" | base64 -d > gc_keys.json
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@v1
@@ -66,5 +62,7 @@ jobs:
       with:
         lane: "build"
         subdirectory: "Apps/${{ matrix.sample-app }}"
+      env: 
+        GOOGLE_CLOUD_AUTH_FILE_CONTENTS_B64: ${{ secrets.GOOGLE_CLOUD_AUTH_FILE_CONTENTS_B64 }}
     
 
