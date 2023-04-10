@@ -32,9 +32,16 @@ end
 lane :build do |arguments|
   download_ci_code_signing_files
 
+  uses_cocoapods = File.exists?("../Podfile")
+  if uses_cocoapods 
+    UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
+  end 
+
   build_ios_app(
     export_method: "ad-hoc",
     configuration: "Release",
-    xcodebuild_formatter: "xcbeautify"
+    xcodebuild_formatter: "xcbeautify",
+    disable_package_automatic_updates: true, # force SPM dependencies to install from Package.resolved lock file
+    skip_package_dependencies_resolution: uses_cocoapods, # If using CocoaPods, skip SPM dependency downloading to save build time
   )
 end
