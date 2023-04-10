@@ -17,13 +17,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="iOS Ami App" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="WZv-T2-RIj">
-                                <rect key="frame" x="119.00000000000001" y="141" width="152.33333333333337" height="34.333333333333343"/>
+                                <rect key="frame" x="119.00000000000001" y="126.99999999999999" width="152.33333333333337" height="34.333333333333329"/>
                                 <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="25"/>
                                 <color key="textColor" red="0.24313725490196078" green="0.24313725490196078" blue="0.24313725490196078" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="APNS" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="n6J-Nq-8NP">
-                                <rect key="frame" x="239.33333333333334" y="177.33333333333334" width="32.000000000000028" height="17"/>
+                                <rect key="frame" x="239.33333333333334" y="163.33333333333334" width="32.000000000000028" height="17"/>
                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="12"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
@@ -78,6 +78,11 @@
                                     <constraint firstItem="IaH-JL-VQC" firstAttribute="trailing" secondItem="GCe-Ns-Vy3" secondAttribute="trailing" id="vdU-lA-a7c"/>
                                 </constraints>
                             </view>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="E02-J2-b7Z">
+                                <rect key="frame" x="283" y="67" width="87" height="35"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Settings"/>
+                            </button>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -88,7 +93,9 @@
                             <constraint firstItem="n6J-Nq-8NP" firstAttribute="top" secondItem="WZv-T2-RIj" secondAttribute="bottom" constant="2" id="57T-6R-l8v"/>
                             <constraint firstItem="n6J-Nq-8NP" firstAttribute="trailing" secondItem="WZv-T2-RIj" secondAttribute="trailing" id="94N-1a-Igr"/>
                             <constraint firstItem="RG6-zo-pd6" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="DJt-uO-TkY"/>
-                            <constraint firstItem="WZv-T2-RIj" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="50" id="Gog-90-fBk"/>
+                            <constraint firstItem="WZv-T2-RIj" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="80" id="Gog-90-fBk"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="E02-J2-b7Z" secondAttribute="trailing" constant="20" id="Ten-MD-JIh"/>
+                            <constraint firstItem="E02-J2-b7Z" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="wiC-gA-TM8"/>
                             <constraint firstItem="WZv-T2-RIj" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="zxf-xX-O8v"/>
                         </constraints>
                     </view>
@@ -101,10 +108,9 @@
         <!--Navigation Controller-->
         <scene sceneID="oTp-uZ-GZ6">
             <objects>
-                <navigationController automaticallyAdjustsScrollViewInsets="NO" id="37F-6d-U3o" sceneMemberID="viewController">
+                <navigationController automaticallyAdjustsScrollViewInsets="NO" navigationBarHidden="YES" id="37F-6d-U3o" sceneMemberID="viewController">
                     <toolbarItems/>
                     <navigationBar key="navigationBar" contentMode="scaleToFill" id="9Yw-lQ-rwM">
-                        <rect key="frame" x="0.0" y="47" width="390" height="44"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
