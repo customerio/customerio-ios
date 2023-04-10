@@ -48,9 +48,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: "Apps/${{ matrix.sample-app }}/Pods"
-        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods-${{ hashFiles('**/Podfile.lock') }}
+        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.sample-app}}-Pods-
+          ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
     - name: pod install if app uses CocoaPods 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
