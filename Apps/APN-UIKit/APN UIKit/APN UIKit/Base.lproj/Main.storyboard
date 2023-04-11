@@ -29,9 +29,9 @@
                                 <nil key="highlightedColor"/>
                             </label>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="RG6-zo-pd6">
-                                <rect key="frame" x="15" y="297" width="360" height="250"/>
+                                <rect key="frame" x="15" y="272" width="360" height="300"/>
                                 <subviews>
-                                    <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="XNO-Pm-1m4">
+                                    <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="First Name" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="XNO-Pm-1m4">
                                         <rect key="frame" x="20" y="10" width="320" height="50"/>
                                         <constraints>
                                             <constraint firstAttribute="height" constant="50" id="Kft-mT-bHW"/>
@@ -39,7 +39,7 @@
                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                         <textInputTraits key="textInputTraits"/>
                                     </textField>
-                                    <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="GCe-Ns-Vy3">
+                                    <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Email " textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="GCe-Ns-Vy3">
                                         <rect key="frame" x="20" y="70" width="320" height="50"/>
                                         <constraints>
                                             <constraint firstAttribute="height" constant="50" id="aU3-jx-w98"/>
@@ -47,15 +47,18 @@
                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                         <textInputTraits key="textInputTraits"/>
                                     </textField>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="IaH-JL-VQC">
-                                        <rect key="frame" x="20" y="170" width="320" height="35"/>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="IaH-JL-VQC" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="20" y="170" width="320" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="height" constant="50" id="h3P-vv-6dU"/>
+                                        </constraints>
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
-                                        <buttonConfiguration key="configuration" style="plain" title="Login"/>
+                                        <buttonConfiguration key="configuration" style="plain" title="LOGIN"/>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="iXp-Fu-ehx">
-                                        <rect key="frame" x="20" y="215" width="320" height="35"/>
+                                        <rect key="frame" x="20" y="240" width="320" height="35"/>
                                         <color key="tintColor" red="0.44313725490196076" green="0.19215686274509802" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Generate Random Login"/>
@@ -63,7 +66,7 @@
                                 </subviews>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <constraints>
-                                    <constraint firstAttribute="height" constant="250" id="2dr-Tz-yNd"/>
+                                    <constraint firstAttribute="height" constant="300" id="2dr-Tz-yNd"/>
                                     <constraint firstItem="GCe-Ns-Vy3" firstAttribute="leading" secondItem="XNO-Pm-1m4" secondAttribute="leading" id="3Qv-Ix-3pT"/>
                                     <constraint firstItem="IaH-JL-VQC" firstAttribute="top" secondItem="GCe-Ns-Vy3" secondAttribute="bottom" constant="50" id="D9H-MH-h4i"/>
                                     <constraint firstItem="XNO-Pm-1m4" firstAttribute="top" secondItem="RG6-zo-pd6" secondAttribute="top" constant="10" id="KA0-L5-Ex6"/>
@@ -73,7 +76,7 @@
                                     <constraint firstItem="iXp-Fu-ehx" firstAttribute="trailing" secondItem="IaH-JL-VQC" secondAttribute="trailing" id="icz-Jy-D9O"/>
                                     <constraint firstItem="GCe-Ns-Vy3" firstAttribute="top" secondItem="XNO-Pm-1m4" secondAttribute="bottom" constant="10" id="qNe-Qr-jXx"/>
                                     <constraint firstItem="IaH-JL-VQC" firstAttribute="leading" secondItem="GCe-Ns-Vy3" secondAttribute="leading" id="sZ2-lE-tAQ"/>
-                                    <constraint firstItem="iXp-Fu-ehx" firstAttribute="top" secondItem="IaH-JL-VQC" secondAttribute="bottom" constant="10" id="tDD-Eq-HQj"/>
+                                    <constraint firstItem="iXp-Fu-ehx" firstAttribute="top" secondItem="IaH-JL-VQC" secondAttribute="bottom" constant="20" id="tDD-Eq-HQj"/>
                                     <constraint firstAttribute="trailing" secondItem="XNO-Pm-1m4" secondAttribute="trailing" constant="20" id="uSI-wf-sv9"/>
                                     <constraint firstItem="IaH-JL-VQC" firstAttribute="trailing" secondItem="GCe-Ns-Vy3" secondAttribute="trailing" id="vdU-lA-a7c"/>
                                 </constraints>
@@ -152,7 +155,7 @@
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalCentering" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="AIH-WX-Xne">
                                 <rect key="frame" x="20" y="265" width="350" height="314"/>
                                 <subviews>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW">
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="0.0" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
@@ -163,7 +166,7 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Random Event"/>
                                     </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="rAK-3p-434">
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="rAK-3p-434" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="66" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
@@ -173,7 +176,7 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Custom Event"/>
                                     </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="nOP-Lf-TEx">
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="nOP-Lf-TEx" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="132" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
@@ -183,7 +186,7 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Set Device Attributes"/>
                                     </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5Np-Wp-Fd7">
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5Np-Wp-Fd7" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="198" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
@@ -193,7 +196,7 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Set Profile Attributes"/>
                                     </button>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu">
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="264" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
@@ -251,9 +254,12 @@
                                         <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <nil key="highlightedColor"/>
                                     </label>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="frl-I2-mJf">
-                                        <rect key="frame" x="40" y="264.33333333333331" width="280" height="34.333333333333314"/>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="frl-I2-mJf" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="40" y="264.33333333333331" width="280" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="height" constant="50" id="JkB-FX-Tyf"/>
+                                        </constraints>
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Event"/>
