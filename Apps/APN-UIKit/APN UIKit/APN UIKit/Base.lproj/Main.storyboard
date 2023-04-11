@@ -56,12 +56,18 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="LOGIN"/>
+                                        <connections>
+                                            <action selector="logInToApp:" destination="BYZ-38-t0r" eventType="touchUpInside" id="AEu-Dc-krc"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="iXp-Fu-ehx">
                                         <rect key="frame" x="20" y="240" width="320" height="35"/>
                                         <color key="tintColor" red="0.44313725490196076" green="0.19215686274509802" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Generate Random Login"/>
+                                        <connections>
+                                            <action selector="generateRandomCredentials:" destination="BYZ-38-t0r" eventType="touchUpInside" id="DDE-qj-ezM"/>
+                                        </connections>
                                     </button>
                                 </subviews>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -108,6 +114,10 @@
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="tye-Bb-86N"/>
+                    <connections>
+                        <outlet property="emailTextField" destination="GCe-Ns-Vy3" id="dea-Qv-0T1"/>
+                        <outlet property="firstNameTextField" destination="XNO-Pm-1m4" id="Ys2-bz-1OK"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
