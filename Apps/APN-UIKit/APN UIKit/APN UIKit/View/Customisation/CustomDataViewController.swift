@@ -2,6 +2,15 @@ import UIKit
 
 class CustomDataViewController: UIViewController {
 
+    static func newInstance() -> CustomDataViewController {
+        UIStoryboard.getViewController(identifier: "CustomDataViewController")
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+         super.viewWillAppear(animated)
+        self.navigationController?.isNavigationBarHidden = false
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 

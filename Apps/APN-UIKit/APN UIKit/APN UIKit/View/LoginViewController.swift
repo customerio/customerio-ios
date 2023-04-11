@@ -11,6 +11,11 @@ class LoginViewController: UIViewController {
 
     var loginRouter: LoginRouting?
     
+    override func viewWillAppear(_ animated: Bool) {
+         super.viewWillAppear(animated)
+        self.navigationController?.isNavigationBarHidden = false
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         

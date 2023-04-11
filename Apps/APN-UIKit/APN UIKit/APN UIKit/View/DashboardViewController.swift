@@ -7,6 +7,12 @@ class DashboardViewController: UIViewController {
     }
     
     var dashboardRouter: DashboardRouting?
+    
+    override func viewWillAppear(_ animated: Bool) {
+         super.viewWillAppear(animated)
+        self.navigationController?.isNavigationBarHidden = true
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -30,6 +36,7 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func sendCustomEvent(_ sender: UIButton) {
+        dashboardRouter?.routeToCustomDataScreen()
     }
     
     @IBAction func setDeviceAttributes(_ sender: UIButton) {
