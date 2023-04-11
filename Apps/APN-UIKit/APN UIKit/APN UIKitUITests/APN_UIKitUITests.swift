@@ -1,10 +1,3 @@
-//
-//  APN_UIKitUITests.swift
-//  APN UIKitUITests
-//
-//  Created by Amandeep Kaur on 10/04/23.
-//
-
 import XCTest
 
 final class APN_UIKitUITests: XCTestCase {

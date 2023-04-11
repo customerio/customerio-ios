@@ -1,10 +1,3 @@
-//
-//  APN_UIKitTests.swift
-//  APN UIKitTests
-//
-//  Created by Amandeep Kaur on 10/04/23.
-//
-
 import XCTest
 @testable import APN_UIKit
 
