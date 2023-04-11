@@ -22,8 +22,6 @@ jobs:
         working-directory: "Apps/${{ matrix.sample-app }}" # changes directory into the sample app's directory. That's where we want our commands to run from.  
     steps:
     - uses: actions/checkout@v3
-      with: 
-        persist-credentials: false # fastlane needs to clone github repos. do not persist credentials or you will get permission errors when trying to clone. 
 
     - name: Set up XCode ${{ env.XCODE_VERSION_BUILD_APPS }}
       uses: maxim-lobanov/setup-xcode@v1
