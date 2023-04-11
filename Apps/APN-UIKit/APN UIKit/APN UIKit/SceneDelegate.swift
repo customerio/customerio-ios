@@ -1,10 +1,3 @@
-//
-//  SceneDelegate.swift
-//  APN UIKit
-//
-//  Created by Amandeep Kaur on 10/04/23.
-//
-
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
