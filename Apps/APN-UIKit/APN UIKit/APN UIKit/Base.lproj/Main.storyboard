@@ -140,10 +140,10 @@
             </objects>
             <point key="canvasLocation" x="21.538461538461537" y="3.5545023696682461"/>
         </scene>
-        <!--View Controller-->
+        <!--Dashboard View Controller-->
         <scene sceneID="Q6t-6O-wcp">
             <objects>
-                <viewController id="0ax-47-4zI" customClass="ViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="DashboardViewController" id="0ax-47-4zI" customClass="DashboardViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="LR0-48-7RQ">
                         <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>

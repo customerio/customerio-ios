@@ -20,6 +20,9 @@
 		46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B429E5710E00EAF40B /* ThemeButton.swift */; };
 		46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */; };
 		46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */; };
+		46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */; };
+		46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */; };
+		46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +60,9 @@
 		46D5D9B429E5710E00EAF40B /* ThemeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeButton.swift; sourceTree = "<group>"; };
 		46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTextField.swift; sourceTree = "<group>"; };
 		46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextFieldExtension.swift; sourceTree = "<group>"; };
+		46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryboardExtension.swift; sourceTree = "<group>"; };
+		46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginRouter.swift; sourceTree = "<group>"; };
+		46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +113,7 @@
 		46D5D97F29E459D600EAF40B /* APN UIKit */ = {
 			isa = PBXGroup;
 			children = (
+				46D5D9BD29E58DD900EAF40B /* Router */,
 				46D5D9B029E56DE000EAF40B /* View */,
 				46D5D98029E459D600EAF40B /* AppDelegate.swift */,
 				46D5D98229E459D600EAF40B /* SceneDelegate.swift */,
@@ -142,6 +149,7 @@
 				46D5D9B829E5887A00EAF40B /* Extension */,
 				46D5D9B329E56F1E00EAF40B /* Customisation */,
 				46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */,
+				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -159,8 +167,17 @@
 			isa = PBXGroup;
 			children = (
 				46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */,
+				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
 			);
 			path = Extension;
+			sourceTree = "<group>";
+		};
+		46D5D9BD29E58DD900EAF40B /* Router */ = {
+			isa = PBXGroup;
+			children = (
+				46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */,
+			);
+			path = Router;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -296,9 +313,12 @@
 			files = (
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
+				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
+				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
+				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
 				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
 			);
