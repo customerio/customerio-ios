@@ -25,6 +25,7 @@
 		46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */; };
 		46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */; };
 		46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */; };
+		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 		46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
 		46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardRouter.swift; sourceTree = "<group>"; };
 		46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerExtension.swift; sourceTree = "<group>"; };
+		46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CustomDataViewController.swift; path = Customisation/CustomDataViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -154,6 +156,7 @@
 				46D5D9B329E56F1E00EAF40B /* Customisation */,
 				46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */,
 				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
+				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -328,6 +331,7 @@
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
 				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
+				46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */,
 				46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
