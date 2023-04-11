@@ -175,6 +175,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Random Event"/>
+                                        <connections>
+                                            <action selector="sendRandomEvent:" destination="0ax-47-4zI" eventType="touchUpInside" id="MMF-JF-ZvQ"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="rAK-3p-434" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="66" width="185" height="50"/>
@@ -185,6 +188,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Custom Event"/>
+                                        <connections>
+                                            <action selector="sendCustomEvent:" destination="0ax-47-4zI" eventType="touchUpInside" id="oQh-zA-lBw"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="nOP-Lf-TEx" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="132" width="185" height="50"/>
@@ -195,6 +201,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Set Device Attributes"/>
+                                        <connections>
+                                            <action selector="setDeviceAttributes:" destination="0ax-47-4zI" eventType="touchUpInside" id="2Kb-aN-3Cc"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5Np-Wp-Fd7" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="198" width="185" height="50"/>
@@ -205,6 +214,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Set Profile Attributes"/>
+                                        <connections>
+                                            <action selector="setProfileAttributes:" destination="0ax-47-4zI" eventType="touchUpInside" id="PIF-Uh-xKS"/>
+                                        </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="82.666666666666686" y="264" width="185" height="50"/>

@@ -24,4 +24,16 @@ class DashboardViewController: UIViewController {
     @IBAction func logoutUser(_ sender: UIButton) {
         dashboardRouter?.routeToLogin()
     }
+    
+    @IBAction func sendRandomEvent(_ sender: UIButton) {
+    }
+    
+    @IBAction func sendCustomEvent(_ sender: UIButton) {
+    }
+    
+    @IBAction func setDeviceAttributes(_ sender: UIButton) {
+    }
+    
+    @IBAction func setProfileAttributes(_ sender: UIButton) {
+    }
 }
