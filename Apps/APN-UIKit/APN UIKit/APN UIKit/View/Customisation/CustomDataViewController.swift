@@ -2,6 +2,10 @@ import UIKit
 
 class CustomDataViewController: UIViewController {
 
+    @IBOutlet weak var eventNameTextField: ThemeTextField!
+    @IBOutlet weak var propertyValueTextField: ThemeTextField!
+    @IBOutlet weak var propertyNameTextField: ThemeTextField!
+    
     static func newInstance() -> CustomDataViewController {
         UIStoryboard.getViewController(identifier: "CustomDataViewController")
     }
@@ -17,15 +21,7 @@ class CustomDataViewController: UIViewController {
         // Do any additional setup after loading the view.
     }
     
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
+    // MARK: - Actions
+    
 
 }
