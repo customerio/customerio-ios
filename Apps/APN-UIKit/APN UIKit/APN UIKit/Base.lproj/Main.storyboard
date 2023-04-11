@@ -280,7 +280,7 @@
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="frl-I2-mJf" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="40" y="264.33333333333331" width="280" height="50"/>
+                                        <rect key="frame" x="40" y="250.33333333333331" width="280" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="height" constant="50" id="JkB-FX-Tyf"/>
@@ -289,55 +289,55 @@
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Event"/>
                                     </button>
-                                    <stackView opaque="NO" contentMode="scaleToFill" alignment="top" spacing="7" translatesAutoresizingMaskIntoConstraints="NO" id="go1-R4-suI">
-                                        <rect key="frame" x="20" y="74.333333333333314" width="320" height="170"/>
+                                    <stackView opaque="NO" contentMode="scaleToFill" alignment="top" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="go1-R4-suI">
+                                        <rect key="frame" x="20" y="74.333333333333314" width="320" height="136"/>
                                         <subviews>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" translatesAutoresizingMaskIntoConstraints="NO" id="g0C-Az-c2s">
-                                                <rect key="frame" x="0.0" y="0.0" width="115" height="170"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="109.66666666666667" height="136"/>
                                                 <subviews>
-                                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Event Name" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BBq-Fn-h9P">
-                                                        <rect key="frame" x="0.0" y="0.0" width="115" height="56.666666666666664"/>
-                                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                                        <nil key="textColor"/>
+                                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Event Name" textAlignment="justified" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BBq-Fn-h9P">
+                                                        <rect key="frame" x="0.0" y="0.0" width="109.66666666666667" height="45.333333333333336"/>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                        <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                         <nil key="highlightedColor"/>
                                                     </label>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Property Name" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ShE-Wi-Fox">
-                                                        <rect key="frame" x="0.0" y="56.666666666666686" width="115" height="56.666666666666657"/>
-                                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                                        <nil key="textColor"/>
+                                                        <rect key="frame" x="0.0" y="45.333333333333371" width="109.66666666666667" height="45.333333333333343"/>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                        <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                         <nil key="highlightedColor"/>
                                                     </label>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Property Value" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="hMk-Ty-j8w">
-                                                        <rect key="frame" x="0.0" y="113.33333333333339" width="115" height="56.666666666666671"/>
-                                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                                        <nil key="textColor"/>
+                                                        <rect key="frame" x="0.0" y="90.666666666666686" width="109.66666666666667" height="45.333333333333343"/>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                                                        <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                         <nil key="highlightedColor"/>
                                                     </label>
                                                 </subviews>
                                             </stackView>
-                                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="fJW-n3-XZX">
-                                                <rect key="frame" x="122" y="0.0" width="198" height="170"/>
+                                            <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="fJW-n3-XZX">
+                                                <rect key="frame" x="125.66666666666664" y="0.0" width="194.33333333333337" height="136"/>
                                                 <subviews>
                                                     <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="Vnb-X2-K2D" customClass="ThemeTextField" customModule="APN_UIKit" customModuleProvider="target">
-                                                        <rect key="frame" x="0.0" y="0.0" width="198" height="50"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="194.33333333333334" height="40"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="height" constant="50" id="pBm-0L-UA5"/>
+                                                            <constraint firstAttribute="height" constant="40" id="pBm-0L-UA5"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                                         <textInputTraits key="textInputTraits"/>
                                                     </textField>
                                                     <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="D4J-7b-vyK" customClass="ThemeTextField" customModule="APN_UIKit" customModuleProvider="target">
-                                                        <rect key="frame" x="0.0" y="60" width="198" height="50"/>
+                                                        <rect key="frame" x="0.0" y="48" width="194.33333333333334" height="40"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="height" constant="50" id="KsJ-Hh-ftn"/>
+                                                            <constraint firstAttribute="height" constant="40" id="KsJ-Hh-ftn"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                                         <textInputTraits key="textInputTraits"/>
                                                     </textField>
                                                     <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="lX0-3Y-erR" customClass="ThemeTextField" customModule="APN_UIKit" customModuleProvider="target">
-                                                        <rect key="frame" x="0.0" y="120" width="198" height="50"/>
+                                                        <rect key="frame" x="0.0" y="96" width="194.33333333333334" height="40"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="height" constant="50" id="zQ6-uy-TgK"/>
+                                                            <constraint firstAttribute="height" constant="40" id="zQ6-uy-TgK"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                                         <textInputTraits key="textInputTraits"/>
@@ -362,7 +362,7 @@
                                     <constraint firstItem="6Pd-I5-ES2" firstAttribute="top" secondItem="2e8-CT-ayB" secondAttribute="top" constant="20" id="Lnu-ub-jtC"/>
                                     <constraint firstItem="6Pd-I5-ES2" firstAttribute="leading" secondItem="2e8-CT-ayB" secondAttribute="leading" constant="20" id="Pqz-Mf-ehv"/>
                                     <constraint firstAttribute="trailing" secondItem="frl-I2-mJf" secondAttribute="trailing" constant="40" id="Slj-3b-93y"/>
-                                    <constraint firstItem="frl-I2-mJf" firstAttribute="top" secondItem="go1-R4-suI" secondAttribute="bottom" constant="20" id="dg0-ll-vxL"/>
+                                    <constraint firstItem="frl-I2-mJf" firstAttribute="top" secondItem="go1-R4-suI" secondAttribute="bottom" constant="40" id="dg0-ll-vxL"/>
                                     <constraint firstItem="frl-I2-mJf" firstAttribute="leading" secondItem="2e8-CT-ayB" secondAttribute="leading" constant="40" id="xMa-F7-lx8"/>
                                 </constraints>
                             </view>
