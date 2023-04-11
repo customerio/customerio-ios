@@ -5,21 +5,23 @@ class DashboardViewController: UIViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
+    
+    var dashboardRouter: DashboardRouting?
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Do any additional setup after loading the view.
+        configureDashboardRouter()
     }
     
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
+    func configureDashboardRouter() {
+        let router = DashboardRouter()
+        dashboardRouter = router
+        router.dashboardViewController = self
     }
-    */
-
+    
+    // MARK: - Actions
+    
+    @IBAction func logoutUser(_ sender: UIButton) {
+        dashboardRouter?.routeToLogin()
+    }
 }

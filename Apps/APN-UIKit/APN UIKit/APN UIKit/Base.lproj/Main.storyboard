@@ -215,6 +215,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Logout"/>
+                                        <connections>
+                                            <action selector="logoutUser:" destination="0ax-47-4zI" eventType="touchUpInside" id="OY7-qm-L3A"/>
+                                        </connections>
                                     </button>
                                 </subviews>
                                 <constraints>
