@@ -24,6 +24,7 @@
 		46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */; };
 		46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */; };
 		46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */; };
+		46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 		46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginRouter.swift; sourceTree = "<group>"; };
 		46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
 		46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardRouter.swift; sourceTree = "<group>"; };
+		46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,6 +172,7 @@
 			children = (
 				46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */,
 				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
+				46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -320,6 +323,7 @@
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
+				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
