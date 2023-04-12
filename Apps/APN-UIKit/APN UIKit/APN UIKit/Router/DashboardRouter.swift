@@ -3,7 +3,7 @@ import UIKit
 
 protocol DashboardRouting {
     func routeToLogin()
-    func routeToCustomDataScreen()
+    func routeToCustomDataScreen(forSource source : CustomDataSource)
 }
 
 class DashboardRouter: DashboardRouting {
@@ -15,8 +15,9 @@ class DashboardRouter: DashboardRouting {
         dashboardViewController?.navigationController?.popToRootViewController(animated: true)
     }
     
-    func routeToCustomDataScreen() {
+    func routeToCustomDataScreen(forSource source: CustomDataSource) {
         let viewController = CustomDataViewController.newInstance()
+        viewController.source = source
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }

@@ -36,12 +36,14 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func sendCustomEvent(_ sender: UIButton) {
-        dashboardRouter?.routeToCustomDataScreen()
+        dashboardRouter?.routeToCustomDataScreen(forSource: .customEvents)
     }
     
     @IBAction func setDeviceAttributes(_ sender: UIButton) {
+        dashboardRouter?.routeToCustomDataScreen(forSource: .deviceAttributes)
     }
     
     @IBAction func setProfileAttributes(_ sender: UIButton) {
+        dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
     }
 }

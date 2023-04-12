@@ -55,5 +55,4 @@ class CustomDataViewController: UIViewController {
             self.showInfoAlert(withMessage: "Name = \(eventNameTextField.text ?? "") and property name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
         }
     }
-    
 }
