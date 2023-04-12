@@ -39,7 +39,7 @@ class CustomDataViewController: UIViewController {
             headerLabel.text = "Send Custom Event"
         }
         else {
-            headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Atrribute"
+            headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Attribute"
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
             propertyNameLabel.text = "Attribute Name"
