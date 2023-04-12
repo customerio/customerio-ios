@@ -14,6 +14,8 @@ class LoginViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
          super.viewWillAppear(animated)
         self.navigationController?.isNavigationBarHidden = false
+        emailTextField.clear()
+        firstNameTextField.clear()
     }
     
     override func viewDidLoad() {
