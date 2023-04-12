@@ -142,7 +142,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingSiteId: String? = nil
+    public var underlyingSiteId: String?
     /// `true` if the getter or setter of property is called at least once.
     public var siteIdCalled: Bool {
         siteIdGetCalled || siteIdSetCalled
@@ -607,7 +607,7 @@ public class SdkInitializedUtilMock: SdkInitializedUtil, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingCustomerio: CustomerIO? = nil
+    public var underlyingCustomerio: CustomerIO?
     /// `true` if the getter or setter of property is called at least once.
     public var customerioCalled: Bool {
         customerioGetCalled || customerioSetCalled
@@ -679,7 +679,7 @@ public class SdkInitializedUtilMock: SdkInitializedUtil, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingPostInitializedData: (siteId: String, diGraph: DIGraph)? = nil
+    public var underlyingPostInitializedData: (siteId: String, diGraph: DIGraph)?
     /// `true` if the getter or setter of property is called at least once.
     public var postInitializedDataCalled: Bool {
         postInitializedDataGetCalled || postInitializedDataSetCalled
