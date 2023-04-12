@@ -46,16 +46,7 @@ class CustomDataViewController: UIViewController {
             propertyValueLabel.text = "Attribute Value"
         }
     }
-    
-    func customizeFor(attributeType : CustomDataSource){
-        if attributeType == .deviceAttributes {
-            
-        }
-        eventNameLabel.isHidden = true
-        eventNameTextField.isHidden = true
-        propertyNameLabel.text = "Attribute Name"
-        propertyValueLabel.text = "Attribute Value"
-    }
+
     // MARK: - Actions
     
     @IBAction func sendCustomData(_ sender: UIButton) {
