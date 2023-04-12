@@ -288,6 +288,9 @@
                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Send Event"/>
+                                        <connections>
+                                            <action selector="sendCustomData:" destination="L6G-xX-ThQ" eventType="touchUpInside" id="aJ3-Cr-NYE"/>
+                                        </connections>
                                     </button>
                                     <stackView opaque="NO" contentMode="scaleToFill" alignment="top" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="go1-R4-suI">
                                         <rect key="frame" x="20" y="74.333333333333314" width="320" height="136"/>
@@ -378,8 +381,12 @@
                     </view>
                     <navigationItem key="navigationItem" id="5sY-aY-Qnp"/>
                     <connections>
+                        <outlet property="eventNameLabel" destination="BBq-Fn-h9P" id="Wcc-1E-6Fj"/>
                         <outlet property="eventNameTextField" destination="Vnb-X2-K2D" id="1yR-C2-h4d"/>
+                        <outlet property="headerLabel" destination="6Pd-I5-ES2" id="QqE-7Q-Kel"/>
+                        <outlet property="propertyNameLabel" destination="ShE-Wi-Fox" id="9Qx-Na-2E7"/>
                         <outlet property="propertyNameTextField" destination="D4J-7b-vyK" id="bxg-HT-7TA"/>
+                        <outlet property="propertyValueLabel" destination="hMk-Ty-j8w" id="fnW-en-9i6"/>
                         <outlet property="propertyValueTextField" destination="lX0-3Y-erR" id="UeK-vX-oV2"/>
                     </connections>
                 </viewController>
