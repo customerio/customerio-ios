@@ -49,6 +49,7 @@
 		46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D9A129E459D800EAF40B /* APN_UIKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITests.swift; sourceTree = "<group>"; };
 		46D5D9A329E459D800EAF40B /* APN_UIKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		46D5D9CA29E810BF00EAF40B /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +80,7 @@
 		46D5D97429E459D600EAF40B = {
 			isa = PBXGroup;
 			children = (
+				46D5D9C929E810BF00EAF40B /* Packages */,
 				46D5D97F29E459D600EAF40B /* APN UIKit */,
 				46D5D99629E459D800EAF40B /* APN UIKitTests */,
 				46D5D9A029E459D800EAF40B /* APN UIKitUITests */,
@@ -125,6 +127,14 @@
 				46D5D9A329E459D800EAF40B /* APN_UIKitUITestsLaunchTests.swift */,
 			);
 			path = "APN UIKitUITests";
+			sourceTree = "<group>";
+		};
+		46D5D9C929E810BF00EAF40B /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				46D5D9CA29E810BF00EAF40B /* customerio-ios */,
+			);
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
