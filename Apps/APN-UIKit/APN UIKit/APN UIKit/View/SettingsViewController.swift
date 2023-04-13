@@ -13,4 +13,10 @@ class SettingsViewController: UIViewController {
          super.viewWillAppear(animated)
         self.navigationController?.isNavigationBarHidden = false
     }
+    
+    // MARK: - Actions
+    
+    @IBAction func saveSettings(_ sender: UIButton) {
+        showAlert(withMessage: "Saving settings will require an app restart to bring the changes in effect.")
+    }
 }
