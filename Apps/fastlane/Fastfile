@@ -40,7 +40,7 @@ end
 lane :build do |arguments|
   download_ci_code_signing_files
 
-  new_app_version = values[:version] # default 
+  new_app_version = arguments[:version] # default 
   release_notes = []
   groups = ['all-builds'] # default - always send to these groups. 
 
@@ -113,7 +113,7 @@ lane :build do |arguments|
   upload_symbols_to_crashlytics
 
   service_credentials_file_path = setup_google_bucket_access(
-    setup_google_bucket_access: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
+    environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
   )
   
   firebase_app_distribution(
