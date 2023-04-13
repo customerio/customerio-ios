@@ -60,6 +60,11 @@ jobs:
     - name: Install tools for Fastlane build to use
       run: brew install xcbeautify
 
+    - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
+      uses: crazy-max/ghaction-dump-context@v2        
+    
+    - run: cat $GITHUB_EVENT_PATH
+
     - name: Build app via Fastlane 
       uses: maierj/fastlane-action@v3.0.0
       with:
@@ -67,5 +72,6 @@ jobs:
         subdirectory: "Apps/${{ matrix.sample-app }}"
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
     
 

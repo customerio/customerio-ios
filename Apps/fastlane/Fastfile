@@ -48,7 +48,10 @@ lane :build do |arguments|
   # 1.1.10 (commit-hash)
   # branchname-SNAPSHOT (commit-hash)
 
-  github = GitHub.new(JSON.parse(File.read(ENV["GITHUB_EVENT_PATH"])))
+  github_actions_metadata_path = ENV["GITHUB_EVENT_PATH"]
+  UI.message("GitHub Action metadata file path located: #{github_actions_metadata_path}")  
+
+  github = GitHub.new(JSON.parse(File.open(github_actions_metadata_path).read))
 
   new_build_number = github.commit_hash
 
