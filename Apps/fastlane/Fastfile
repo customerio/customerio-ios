@@ -1,15 +1,20 @@
+require 'json'
+require 'xcodeproj'
+
 # Fastfile that is meant to be used by all iOS apps in the organization. 
 # This file is meant to be imported into another `Fastfile` so the functions in this file are usable. 
 # 
 # Import this file in 2 ways:
-# 1. Locally (for all Fastfile files in this repository)
-# Use "import" from these docs: https://docs.fastlane.tools/advanced/Fastfile/#importing-another-fastfile
+# 1. Locally (for all Fastfile files in this repository) using "import" (https://docs.fastlane.tools/advanced/Fastfile/#importing-another-fastfile)
+# ```
+# import "../../fastlane/Fastfile"
+# ```
 #
 # 2. Remotely (for all Fastfile files in a git repository not this one)
 # Add this to your Fastfile:
 # ```
 # import_from_git(
-#  url: "git@github.com:customerio/customerio-ios.git", # The URL of the repository to import the Fastfile from.
+#  url: "https://github.com/customerio/customerio-ios.git",
 #  branch: "main", # The branch to checkout on the repository.
 #  path: "Apps/fastlane/Fastfile" # The path of the Fastfile in the repository.
 # )
@@ -29,14 +34,74 @@ end
 # Note: I was experiencing issues getting adhoc code signing working for the cocoapods FCM sample app. 
 # For now, we just need to test the app compiles so development code signing is good enough for now until we fix the issue.     
 # For now, do code signing and app compiling using development type. 
+
+# example for main builds: `bundle exec fastlane build version:1.0.0"`
+# example for develoment builds (pull request, push): `bundle exec fastlane build`  
 lane :build do |arguments|
   download_ci_code_signing_files
+
+  new_app_version = values[:version] # default 
+  release_notes = []
+  groups = ['all-builds'] # default - always send to these groups. 
+
+  # for SDK releases:
+  # 1.1.10 (commit-hash)
+  # branchname-SNAPSHOT (commit-hash)
+
+  github = GitHub.new(JSON.parse(File.read(ENV["GITHUB_EVENT_PATH"])))
+
+  new_build_number = github.commit_hash
+
+  if github.is_pull_request
+    UI.message("I see this is a pull request. Build metadata will include helpful PR info.")
+
+    new_app_version = github.source_branch
+
+    release_notes.append(
+      "build type: pull request",
+      "pr title: #{github.pr_title}",
+      "pr number: #{github.pr_number}",
+      "pr author: #{github.author}",
+      "source branch: #{github.source_branch}",
+      "destination branch: #{github.destination_branch}"
+    )
+  elsif github.is_push # assuming that this is a build for a stable release of code base. 
+    UI.message("Deploying a main build of app. Version: #{new_app_version}")
+    
+    groups.append("stable-builds")
+
+    release_notes.append(
+      "build type: release",
+      "version: #{new_app_version}"
+    )
+  else 
+    UI.message("This is not a pull request or push. Going to ignore the event.")        
+    return 
+  end
+
+  release_notes.append(      
+    "commit hash: #{github.commit_hash}"
+  )
+
+  release_notes = release_notes.join("\n")
+  groups = groups.join(", ")
+
+  UI.important("Release notes:\n#{release_notes}")
+  UI.important("New app version: #{new_app_version}")
+  UI.important("Firebase App testing groups: #{groups}")
+
+  update_app_versions(
+    build_number: new_build_number,
+    app_version: new_app_version
+  )
 
   uses_cocoapods = File.exists?("../Podfile")
   if uses_cocoapods 
     UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
   end 
-
+  
+  # prevents builds from being flaky. As app sizese get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
+  ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "10" 
   build_ios_app(
     export_method: "ad-hoc",
     configuration: "Release",
@@ -44,4 +109,113 @@ lane :build do |arguments|
     disable_package_automatic_updates: true, # force SPM dependencies to install from Package.resolved lock file
     skip_package_dependencies_resolution: uses_cocoapods, # If using CocoaPods, skip SPM dependency downloading to save build time
   )
+
+  upload_symbols_to_crashlytics
+
+  service_credentials_file_path = setup_google_bucket_access(
+    setup_google_bucket_access: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
+  )
+  
+  firebase_app_distribution(
+    service_credentials_file: service_credentials_file_path,
+    groups: groups,
+    release_notes: release_notes
+  )     
 end
+
+lane :update_app_versions do |arguments| 
+  new_build_number = arguments[:build_number]
+  new_app_version = arguments[:app_version]
+
+  # We need to update the app before building with the new version and build numbers. This makes builds easier to find by team members and install them onto devices. 
+  # This is usually done by updating Info.plist files. But Xcode 13 removed Info.plist files and made it part of the xcode project. 
+  # Therefore, we attempt both methods to update the version numbers. 
+  # Here, we try to update Info.plist files. 
+  Dir.glob("../**/Info.plist").each { |plist_file_path| 
+    plist_file_path = File.expand_path(plist_file_path, Dir.pwd)
+    UI.message("Found Info.plist file #{plist_file_path} to update versions for.")
+
+    # We only want to modify a value in plist file and not add a new value if it doesn't exist in the file yet. 
+    # Therefore, check if a value already exists and it if does, then set a new value. 
+    if !get_info_plist_value(path: plist_file_path, key: "CFBundleVersion").nil? 
+      UI.message("Build version exists in plist file. Going to set new value")
+      set_info_plist_value(path: plist_file_path, key: "CFBundleVersion", value: new_build_number) 
+    end 
+
+    if !get_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString").nil? 
+      UI.message("Build version string exists in plist file. Going to set new value")
+      set_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString", value: new_app_version)
+    end 
+  }
+
+  # Here, we try to update the xcode project settings. 
+  project_path = Dir.glob("../**/*.xcodeproj").first
+  project_path = File.expand_path(project_path, Dir.pwd)
+  UI.message("Using found Xcode project path: #{project_path}")
+  project = Xcodeproj::Project.open(project_path)
+  project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['MARKETING_VERSION'] = new_app_version
+      config.build_settings['CURRENT_PROJECT_VERSION'] = new_build_number
+    end
+  end
+  project.save  
+end 
+
+# Parse JSON out of GitHub Context JSON when being executed on GitHub Actions. 
+class GitHub 
+  # `event` payload for pushes: https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#push
+  # `event` payload for pull requests: https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#pull_request
+
+  def initialize(github_context)
+    @github_context = github_context
+  end 
+
+  def is_push 
+    @github_context["event"]["commits"] != nil 
+  end 
+
+  def is_pull_request
+    @github_context["event"]["pull_request"] != nil 
+  end 
+
+  def commit_hash
+    if is_push
+      return @github_context["event"]["head_commit"]["id"][0..8]
+    else 
+      return @github_context["sha"][0..8]
+    end    
+  end
+
+  def pr_title 
+    @github_context["event"]["pull_request"]["title"]
+  end 
+
+  def pr_number
+    @github_context["event"]["pull_request"]["number"]
+  end 
+
+  def source_branch
+    @github_context["head_ref"]
+  end 
+
+  def destination_branch
+    @github_context["base_ref"]
+  end 
+
+  def author 
+    if is_push 
+      return @github_context["event"]["head_commit"]["committer"]["username"]      
+    else 
+      return @github_context["event"]["pull_request"]["user"]["login"]
+    end 
+  end 
+
+  def commit_message 
+    @github_context["event"]["head_commit"]["message"]
+  end 
+
+  def branch_name 
+    @github_context["event"]["ref"].split("/").last # getting the last part of `refs/heads/test-dump` is the branch name
+  end 
+end 

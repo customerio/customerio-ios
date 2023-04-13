@@ -190,8 +190,6 @@
 				F7382937291D5C27008ED8CB /* PBXTargetDependency */,
 			);
 			name = "test cocoapods";
-			packageProductDependencies = (
-			);
 			productName = "test cocoapods";
 			productReference = F73134602919570600CD43D9 /* test cocoapods.app */;
 			productType = "com.apple.product-type.application";
@@ -241,8 +239,6 @@
 				Base,
 			);
 			mainGroup = F73134572919570600CD43D9;
-			packageReferences = (
-			);
 			productRefGroup = F73134612919570600CD43D9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -490,7 +486,7 @@
 				CODE_SIGN_ENTITLEMENTS = src/test_cocoapods.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_ASSET_PATHS = "\"src/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
@@ -503,7 +499,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = foo.234;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -527,7 +523,7 @@
 				CODE_SIGN_ENTITLEMENTS = src/test_cocoapods.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_ASSET_PATHS = "\"src/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
@@ -540,7 +536,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = foo.234;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -560,7 +556,7 @@
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -573,7 +569,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = foo.234;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.richpush";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -592,7 +588,7 @@
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -605,7 +601,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = foo.234;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.richpush";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
