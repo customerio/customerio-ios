@@ -15,10 +15,14 @@ class DashboardViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        showPushPermissionPrompt()
         configureDashboardRouter()
     }
     
+    func showPushPermissionPrompt() {
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions, completionHandler: { _, _ in })
+    }
     func configureDashboardRouter() {
         let router = DashboardRouter()
         dashboardRouter = router
