@@ -8,7 +8,7 @@ class LoginViewController: UIViewController {
     // MARK: - Outlets
     @IBOutlet weak var emailTextField: ThemeTextField!
     @IBOutlet weak var firstNameTextField: ThemeTextField!
-    @IBOutlet weak var settingsButton: ThemeButton!
+    @IBOutlet weak var settings: UIImageView!
     
     var loginRouter: LoginRouting?
     
@@ -23,12 +23,24 @@ class LoginViewController: UIViewController {
         super.viewDidLoad()
         
         configureLoginRouter()
+        addUserInteractionToSettingsImageView()
     }
     
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router
         router.loginViewController = self
+    }
+    
+    func addUserInteractionToSettingsImageView() {
+        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
+
+        settings.addGestureRecognizer(gestureOnSettings)
+        settings.isUserInteractionEnabled = true
+    }
+    
+    @objc func settingsTapped() {
+        
     }
 
     

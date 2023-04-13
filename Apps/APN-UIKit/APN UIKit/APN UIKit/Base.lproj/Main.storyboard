@@ -115,6 +115,7 @@
                     <connections>
                         <outlet property="emailTextField" destination="GCe-Ns-Vy3" id="dea-Qv-0T1"/>
                         <outlet property="firstNameTextField" destination="XNO-Pm-1m4" id="Ys2-bz-1OK"/>
+                        <outlet property="settings" destination="HPL-cE-0Qb" id="JLf-yj-ixr"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
