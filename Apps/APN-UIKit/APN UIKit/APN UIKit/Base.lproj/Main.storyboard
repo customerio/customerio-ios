@@ -254,6 +254,9 @@
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="lSD-LL-pFO"/>
+                    <connections>
+                        <outlet property="settings" destination="Kn0-pQ-K5D" id="0cy-hk-K6x"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="7l8-Yk-uny" sceneMemberID="firstResponder"/>
             </objects>

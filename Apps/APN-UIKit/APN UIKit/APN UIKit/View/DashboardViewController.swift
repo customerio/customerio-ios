@@ -6,6 +6,8 @@ class DashboardViewController: UIViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
     
+    @IBOutlet weak var settings: UIImageView!
+    
     var dashboardRouter: DashboardRouting?
     
     override func viewWillAppear(_ animated: Bool) {
@@ -17,6 +19,7 @@ class DashboardViewController: UIViewController {
         super.viewDidLoad()
         showPushPermissionPrompt()
         configureDashboardRouter()
+        addUserInteractionToSettingsImageView()
     }
     
     func showPushPermissionPrompt() {
@@ -27,6 +30,17 @@ class DashboardViewController: UIViewController {
         let router = DashboardRouter()
         dashboardRouter = router
         router.dashboardViewController = self
+    }
+    
+    func addUserInteractionToSettingsImageView() {
+        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
+
+        settings.addGestureRecognizer(gestureOnSettings)
+        settings.isUserInteractionEnabled = true
+    }
+    
+    @objc func settingsTapped() {
+        dashboardRouter?.routeToSettings()
     }
     
     // MARK: - Actions
