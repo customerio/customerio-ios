@@ -8,7 +8,8 @@ class LoginViewController: UIViewController {
     // MARK: - Outlets
     @IBOutlet weak var emailTextField: ThemeTextField!
     @IBOutlet weak var firstNameTextField: ThemeTextField!
-
+    @IBOutlet weak var settingsButton: ThemeButton!
+    
     var loginRouter: LoginRouting?
     
     override func viewWillAppear(_ animated: Bool) {
