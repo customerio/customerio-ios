@@ -36,7 +36,7 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        self.showInfoAlert(withMessage: "Random event tracked successfully")
+        self.showAlert(withMessage: "Random event tracked successfully")
     }
     
     @IBAction func sendCustomEvent(_ sender: UIButton) {

@@ -48,7 +48,7 @@ class LoginViewController: UIViewController {
         emailTextField.text = email
         firstNameTextField.text = name
         
-        showInfoAlert(withMessage: "Random user has been generated.")
+        showAlert(withMessage: "Random user has been generated.")
     }
     
     func userDetailsValid() -> Bool {
