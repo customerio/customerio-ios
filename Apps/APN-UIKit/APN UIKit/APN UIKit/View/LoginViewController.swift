@@ -47,6 +47,7 @@ class LoginViewController: UIViewController {
     @IBAction func logInToApp(_ sender: UIButton) {
         
         if !userDetailsValid() {
+            showAlert(withMessage: "Please fill all fields", .error)
             return
         }
         loginRouter?.routeToDashboard()
