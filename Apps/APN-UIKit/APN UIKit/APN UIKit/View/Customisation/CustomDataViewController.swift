@@ -48,12 +48,11 @@ class CustomDataViewController: UIViewController {
     }
     
     func isAllTextFieldsValid() {
-        var allFieldsValid = true
-        if propertyValueTextField.isTextTrimEmpty || propertyValueTextField.isTextTrimEmpty || (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
-            allFieldsValid = false
-        }
-        if !allFieldsValid {
+        if propertyValueTextField.isTextTrimEmpty ||
+            propertyValueTextField.isTextTrimEmpty ||
+            (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
             showAlert(withMessage: "Please fill all fields", .error)
+            return
         }
     }
 
