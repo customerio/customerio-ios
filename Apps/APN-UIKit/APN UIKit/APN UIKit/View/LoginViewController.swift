@@ -40,7 +40,7 @@ class LoginViewController: UIViewController {
     }
     
     @objc func settingsTapped() {
-        
+        loginRouter?.routeToSettings()
     }
 
     

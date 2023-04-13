@@ -15,6 +15,7 @@ class LoginRouter: LoginRouting {
     }
 
     func routeToSettings() {
-        // TODO: - Settings screen yet to be created
+        let viewController = SettingsViewController.newInstance()
+        loginViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }
