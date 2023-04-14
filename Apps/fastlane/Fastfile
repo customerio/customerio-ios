@@ -175,50 +175,50 @@ class GitHub
   end 
 
   def is_push 
-    @github_context["event"]["commits"] != nil 
+    @github_context["commits"] != nil 
   end 
 
   def is_pull_request
-    @github_context["event"]["pull_request"] != nil 
+    @github_context["pull_request"] != nil 
   end 
 
   def commit_hash
     if is_push
-      return @github_context["event"]["head_commit"]["id"][0..8]
+      return @github_context["head_commit"]["id"][0..8]
     else 
-      return @github_context["sha"][0..8]
-    end    
+      return @github_context["pull_request"]["head"]["sha"][0..8]
+    end 
   end
 
   def pr_title 
-    @github_context["event"]["pull_request"]["title"]
+    @github_context["pull_request"]["title"]
   end 
 
   def pr_number
-    @github_context["event"]["pull_request"]["number"]
+    @github_context["pull_request"]["number"]
   end 
 
   def source_branch
-    @github_context["head_ref"]
+    if is_push
+      return @github_context["base_ref"]
+    else 
+      return @github_context["pull_request"]["head"]["ref"]
+    end 
   end 
 
   def destination_branch
-    @github_context["base_ref"]
+    if is_push
+      return @github_context["base_ref"]
+    else 
+      return @github_context["pull_request"]["base"]["ref"]
+    end 
   end 
 
   def author 
     if is_push 
       return @github_context["event"]["head_commit"]["committer"]["username"]      
     else 
-      return @github_context["event"]["pull_request"]["user"]["login"]
+      return @github_context["pull_request"]["user"]["login"]
     end 
-  end 
-
-  def commit_message 
-    @github_context["event"]["head_commit"]["message"]
-  end 
-
-  def branch_name 
-    @github_context["event"]["ref"].split("/").last # getting the last part of `refs/heads/test-dump` is the branch name
   end 
 end 
