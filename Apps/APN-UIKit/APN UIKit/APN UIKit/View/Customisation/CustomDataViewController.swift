@@ -1,4 +1,5 @@
 import UIKit
+import CioTracking
 
 enum CustomDataSource {
     case customEvents
@@ -61,14 +62,21 @@ class CustomDataViewController: UIViewController {
     @IBAction func sendCustomData(_ sender: UIButton) {
         isAllTextFieldsValid()
         
+        guard let propName = propertyNameTextField.text, let propValue = propertyValueTextField.text else {
+            return
+        }
         if ( source == .customEvents) {
-            self.showAlert(withMessage: "Name = \(eventNameTextField.text ?? "") and property name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            guard let eventName = eventNameTextField.text else { return }
+            CustomerIO.shared.track(name: eventName, data: [propName: propValue])
+            self.showAlert(withMessage: "Custom event tracked successfully")
         }
         else if ( source == .profileAttributes) {
-            self.showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            CustomerIO.shared.deviceAttributes = [propName : propValue]
+            self.showAlert(withMessage: "Device attribute set successfully.")
         }
         else if ( source == .deviceAttributes) {
-            self.showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            CustomerIO.shared.profileAttributes = [propName: propValue]
+            self.showAlert(withMessage: "Profile attribute set successfully.")
         }
     }
     
