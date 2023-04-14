@@ -28,6 +28,11 @@
 		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
 		46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */; };
 		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
+		46EE274F29E9DF120068F9A3 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
+		46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275429E9E2960068F9A3 /* MessagingInApp */; };
+		46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275629E9E2960068F9A3 /* MessagingPushAPN */; };
+		46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275829E9E2960068F9A3 /* MessagingPushFCM */; };
+		46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275A29E9E2960068F9A3 /* Tracking */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +79,8 @@
 		46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
 		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
+		46EE274E29E9DF120068F9A3 /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
+		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +88,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */,
+				46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */,
+				46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */,
+				46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,10 +115,12 @@
 		46D5D97429E459D600EAF40B = {
 			isa = PBXGroup;
 			children = (
+				46EE275029E9E1BA0068F9A3 /* Packages */,
 				46D5D97F29E459D600EAF40B /* APN UIKit */,
 				46D5D99629E459D800EAF40B /* APN UIKitTests */,
 				46D5D9A029E459D800EAF40B /* APN UIKitUITests */,
 				46D5D97E29E459D600EAF40B /* Products */,
+				46EE275329E9E2960068F9A3 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -134,6 +147,7 @@
 				46D5D98929E459D800EAF40B /* Assets.xcassets */,
 				46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */,
 				46D5D98E29E459D800EAF40B /* Info.plist */,
+				46EE274E29E9DF120068F9A3 /* Env.swift */,
 			);
 			path = "APN UIKit";
 			sourceTree = "<group>";
@@ -197,6 +211,21 @@
 			path = Router;
 			sourceTree = "<group>";
 		};
+		46EE275029E9E1BA0068F9A3 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				46EE275129E9E1BA0068F9A3 /* customerio-ios */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		46EE275329E9E2960068F9A3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -213,6 +242,12 @@
 			dependencies = (
 			);
 			name = "APN UIKit";
+			packageProductDependencies = (
+				46EE275429E9E2960068F9A3 /* MessagingInApp */,
+				46EE275629E9E2960068F9A3 /* MessagingPushAPN */,
+				46EE275829E9E2960068F9A3 /* MessagingPushFCM */,
+				46EE275A29E9E2960068F9A3 /* Tracking */,
+			);
 			productName = "APN UIKit";
 			productReference = 46D5D97D29E459D600EAF40B /* APN UIKit.app */;
 			productType = "com.apple.product-type.application";
@@ -341,6 +376,7 @@
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
 				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
+				46EE274F29E9DF120068F9A3 /* Env.swift in Sources */,
 				46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */,
 				46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */,
 			);
@@ -680,6 +716,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		46EE275429E9E2960068F9A3 /* MessagingInApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingInApp;
+		};
+		46EE275629E9E2960068F9A3 /* MessagingPushAPN */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingPushAPN;
+		};
+		46EE275829E9E2960068F9A3 /* MessagingPushFCM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingPushFCM;
+		};
+		46EE275A29E9E2960068F9A3 /* Tracking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Tracking;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 46D5D97529E459D600EAF40B /* Project object */;
 }
