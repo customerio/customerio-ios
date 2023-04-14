@@ -1,4 +1,5 @@
 import UIKit
+import CioTracking
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -13,9 +14,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // provides a device token. In case, registration fails then
         // didFailToRegisterForRemoteNotifications will be called.
         application.registerForRemoteNotifications()
+        
+        initializeCioSDK()
         return true
     }
 
+    func initializeCioSDK() {
+        // Initialise CustomerIO SDK
+        // TODO: - Update this when using local storage for configurations
+        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US, configure: { config in
+            config.logLevel = .debug
+            config.autoTrackScreenViews = true
+        })
+    }
     // MARK: UISceneSession Lifecycle
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
