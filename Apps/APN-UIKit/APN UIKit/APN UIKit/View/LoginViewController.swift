@@ -59,8 +59,7 @@ class LoginViewController: UIViewController {
     }
     
     @IBAction func generateRandomCredentials(_ sender: UIButton) {
-        let letters = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890"
-        let name = (String((0..<15).map{ _ in letters.randomElement()! }))
+        let name = String.generateRandomString()
         let email  = "\(name)@customer.io"
         
         // Set values

@@ -57,18 +57,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
     
-    
     // Delegate called when user responds to a notification. Set delegate in
     // application:didFinishLaunchingWithOptions: method.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-//        let handled = MessagingPush.shared.userNotificationCenter(center, didReceive: response,
-//                                                                  withCompletionHandler: completionHandler)
-//
-//        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
-//        // completion handler. If the SDK did handle it, it called the completion handler for you.
-//        if !handled {
-//            completionHandler()
-//        }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let handled = MessagingPush.shared.userNotificationCenter(center, didReceive: response,
+                                                                  withCompletionHandler: completionHandler)
+
+        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
+        // completion handler. If the SDK did handle it, it called the completion handler for you.
+        if !handled {
+            completionHandler()
+        }
     }
     
     // OPTIONAL: Delegate method only runs when app is active(foreground). If not implemented or delayed, notification won't show in foreground. App can show notification as sound, badge, or alert..
