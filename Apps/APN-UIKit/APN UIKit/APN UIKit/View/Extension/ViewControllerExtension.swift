@@ -7,11 +7,11 @@ enum AlertType : String {
 }
 extension UIViewController {
     
-    func showAlert(withMessage message: String, _ type : AlertType = .info) {
+    func showAlert(withMessage message: String, _ type : AlertType = .info, action buttonAction: @escaping() ->  Void = {}) {
         let dialogMessage = UIAlertController(title: type.rawValue, message: message, preferredStyle: .alert)
         
         let okAction = UIAlertAction(title: "OK", style: .default, handler: { (action) -> Void in
-            print("Ok button tapped")
+            buttonAction()
          })
         dialogMessage.addAction(okAction)
         present(dialogMessage, animated: true, completion: nil)
