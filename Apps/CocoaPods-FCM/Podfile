@@ -1,4 +1,6 @@
-platform :ios, '13.0'
+minimum_ios_version = '13.0'
+
+platform :ios, minimum_ios_version
 use_frameworks!
 
 # Always install the SDK from the local source code so the sample app tests this specific commit of the code. 
@@ -18,3 +20,11 @@ target 'Rich Push Notification Service Extension' do
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
 end 
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum_ios_version
+    end
+  end
+end

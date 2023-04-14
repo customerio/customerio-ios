@@ -105,12 +105,11 @@ lane :build do |arguments|
   build_ios_app(
     export_method: "ad-hoc",
     configuration: "Release",
+    clean: true, # Problems have occurred in the past on CI server with derived data. Clean project before building to avoid these issues. 
     xcodebuild_formatter: "xcbeautify",
     disable_package_automatic_updates: true, # force SPM dependencies to install from Package.resolved lock file
     skip_package_dependencies_resolution: uses_cocoapods, # If using CocoaPods, skip SPM dependency downloading to save build time
   )
-
-  upload_symbols_to_crashlytics
 
   service_credentials_file_path = setup_google_bucket_access(
     environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
@@ -120,7 +119,7 @@ lane :build do |arguments|
     service_credentials_file: service_credentials_file_path,
     groups: groups,
     release_notes: release_notes
-  )     
+  )
 end
 
 lane :update_app_versions do |arguments| 
@@ -149,7 +148,7 @@ lane :update_app_versions do |arguments|
   }
 
   # Here, we try to update the xcode project settings. 
-  project_path = Dir.glob("../**/*.xcodeproj").first
+  project_path = Dir.glob("../*.xcodeproj").first
   project_path = File.expand_path(project_path, Dir.pwd)
   UI.message("Using found Xcode project path: #{project_path}")
   project = Xcodeproj::Project.open(project_path)
