@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -321,3 +321,5 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     }
     #endif
 }
+
+// swiftlint:enable all

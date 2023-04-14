@@ -192,7 +192,7 @@ extension CIOHttpClient {
         let requestHostname = url.host
         let isRequestToCIOApi = cioApiHostname == requestHostname
 
-        return (isRequestToCIOApi) ? cioApiSession : publicSession
+        return isRequestToCIOApi ? cioApiSession : publicSession
     }
 
     static func getBasicAuthHeaderString(siteId: String, apiKey: String) -> String {

@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -2132,11 +2132,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        deleteTasksMemberOfGroupCallsCount = 0
-        deleteTasksMemberOfGroupReceivedArguments = nil
-        deleteTasksMemberOfGroupReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         deleteExpiredCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2320,37 +2315,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedArguments = storageId
         deleteReceivedInvocations.append(storageId)
         return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
-    }
-
-    // MARK: - deleteTasksMemberOfGroup
-
-    /// Number of times the function was called.
-    public private(set) var deleteTasksMemberOfGroupCallsCount = 0
-    /// `true` if the function was ever called.
-    public var deleteTasksMemberOfGroupCalled: Bool {
-        deleteTasksMemberOfGroupCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var deleteTasksMemberOfGroupReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteTasksMemberOfGroupReceivedInvocations: [String] = []
-    /// Value to return from the mocked function.
-    public var deleteTasksMemberOfGroupReturnValue: [QueueTaskMetadata]!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `deleteTasksMemberOfGroupReturnValue`
-     */
-    public var deleteTasksMemberOfGroupClosure: ((String) -> [QueueTaskMetadata])?
-
-    /// Mocked function for `deleteTasksMemberOfGroup(groupId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata] {
-        mockCalled = true
-        deleteTasksMemberOfGroupCallsCount += 1
-        deleteTasksMemberOfGroupReceivedArguments = groupId
-        deleteTasksMemberOfGroupReceivedInvocations.append(groupId)
-        return deleteTasksMemberOfGroupClosure.map { $0(groupId) } ?? deleteTasksMemberOfGroupReturnValue
     }
 
     // MARK: - deleteExpired
@@ -2754,3 +2718,5 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
         return getUserAgentHeaderValueClosure.map { $0() } ?? getUserAgentHeaderValueReturnValue
     }
 }
+
+// swiftlint:enable all
