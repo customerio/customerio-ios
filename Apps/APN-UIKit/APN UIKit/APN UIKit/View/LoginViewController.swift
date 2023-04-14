@@ -1,4 +1,5 @@
 import UIKit
+import CioTracking
 
 class LoginViewController: UIViewController {
 
@@ -50,6 +51,10 @@ class LoginViewController: UIViewController {
             showAlert(withMessage: "Please fill all fields", .error)
             return
         }
+        guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
+            return
+        }
+        CustomerIO.shared.identify(identifier: emailId, body: ["firstName" : name])
         loginRouter?.routeToDashboard()
     }
     
