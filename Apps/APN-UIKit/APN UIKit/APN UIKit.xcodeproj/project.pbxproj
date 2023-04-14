@@ -33,6 +33,7 @@
 		46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275629E9E2960068F9A3 /* MessagingPushAPN */; };
 		46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275829E9E2960068F9A3 /* MessagingPushFCM */; };
 		46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275A29E9E2960068F9A3 /* Tracking */; };
+		46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275C29E9ECE60068F9A3 /* StringExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +82,7 @@
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
 		46EE274E29E9DF120068F9A3 /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
 		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
+		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -197,6 +199,7 @@
 				46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */,
 				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
 				46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */,
+				46EE275C29E9ECE60068F9A3 /* StringExtension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -371,6 +374,7 @@
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
+				46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
