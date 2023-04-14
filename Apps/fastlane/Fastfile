@@ -44,10 +44,6 @@ lane :build do |arguments|
   release_notes = []
   groups = ['all-builds'] # default - always send to these groups. 
 
-  # for SDK releases:
-  # 1.1.10 (commit-hash)
-  # branchname-SNAPSHOT (commit-hash)
-
   github_actions_metadata_path = ENV["GITHUB_EVENT_PATH"]
   UI.message("GitHub Action metadata file path located: #{github_actions_metadata_path}")  
 
@@ -91,6 +87,7 @@ lane :build do |arguments|
 
   UI.important("Release notes:\n#{release_notes}")
   UI.important("New app version: #{new_app_version}")
+  UI.important("New app build number: #{new_build_number}")
   UI.important("Firebase App testing groups: #{groups}")
 
   update_app_versions(
@@ -200,7 +197,7 @@ class GitHub
 
   def source_branch
     if is_push
-      return @github_context["base_ref"]
+      return ""
     else 
       return @github_context["pull_request"]["head"]["ref"]
     end 
@@ -208,7 +205,7 @@ class GitHub
 
   def destination_branch
     if is_push
-      return @github_context["base_ref"]
+      return ""
     else 
       return @github_context["pull_request"]["base"]["ref"]
     end 
@@ -216,7 +213,7 @@ class GitHub
 
   def author 
     if is_push 
-      return @github_context["event"]["head_commit"]["committer"]["username"]      
+      return @github_context["head_commit"]["committer"]["username"]      
     else 
       return @github_context["pull_request"]["user"]["login"]
     end 

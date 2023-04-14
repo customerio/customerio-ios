@@ -1,9 +1,9 @@
 name: Build sample apps 
 
 on: 
-  #pull_request:
+  pull_request:
   push:
-    #branches: [main]
+    branches: [main]
 
 env:
   XCODE_VERSION_BUILD_APPS: 14
@@ -26,52 +26,50 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # - name: Set up XCode ${{ env.XCODE_VERSION_BUILD_APPS }}
-    #   uses: maxim-lobanov/setup-xcode@v1
-    #   with:
-    #     xcode-version: ${{ env.XCODE_VERSION_BUILD_APPS }}
+    - name: Set up XCode ${{ env.XCODE_VERSION_BUILD_APPS }}
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION_BUILD_APPS }}
     
-    # - name: Install tools from Gemfile (ruby language) used for building our apps with 
-    #   uses: ruby/setup-ruby@v1
-    #   with:
-    #     working-directory: ${{ env.GITHUB_WORKSPACE }}
-    #     ruby-version: '3.0'
-    #     bundler-cache: true # cache tools to make builds faster in future 
+    - name: Install tools from Gemfile (ruby language) used for building our apps with 
+      uses: ruby/setup-ruby@v1
+      with:
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        ruby-version: '3.0'
+        bundler-cache: true # cache tools to make builds faster in future 
 
-    # - name: Does ${{ matrix.sample-app }} use CocoaPods? 
-    #   id: check_podfile_exists
-    #   uses: andstor/file-existence-action@v1
-    #   with:
-    #     files: "Apps/${{ matrix.sample-app }}/Podfile"
+    - name: Does ${{ matrix.sample-app }} use CocoaPods? 
+      id: check_podfile_exists
+      uses: andstor/file-existence-action@v1
+      with:
+        files: "Apps/${{ matrix.sample-app }}/Podfile"
 
-    # - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
-    #   if: steps.check_podfile_exists.outputs.files_exists == 'true'
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: "Apps/${{ matrix.sample-app }}/Pods"
-    #     key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
-    #     restore-keys: |
-    #       ${{ runner.os }}-${{ matrix.sample-app}}-Pods
+    - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      uses: actions/cache@v3
+      with:
+        path: "Apps/${{ matrix.sample-app }}/Pods"
+        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
-    # - name: pod install if app uses CocoaPods 
-    #   if: steps.check_podfile_exists.outputs.files_exists == 'true'
-    #   run: pod install 
+    - name: pod install if app uses CocoaPods 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      run: pod install 
 
-    # - name: Install tools for Fastlane build to use
-    #   run: brew install xcbeautify
+    - name: Install tools for Fastlane build to use
+      run: brew install xcbeautify
 
-    - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
-      uses: crazy-max/ghaction-dump-context@v2        
-    
-    - run: cat $GITHUB_EVENT_PATH
+    # - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
+    #   run: cat $GITHUB_EVENT_PATH
 
-    # - name: Build app via Fastlane 
-    #   uses: maierj/fastlane-action@v3.0.0
-    #   with:
-    #     lane: "build"
-    #     subdirectory: "Apps/${{ matrix.sample-app }}"
-    #   env: 
-    #     GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-    #     FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+    - name: Build app via Fastlane 
+      uses: maierj/fastlane-action@v3.0.0
+      with:
+        lane: "build"
+        subdirectory: "Apps/${{ matrix.sample-app }}"
+      env: 
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
     
 
