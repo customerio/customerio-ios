@@ -1,5 +1,6 @@
 import UIKit
 import CioTracking
+import CioMessagingInApp
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -15,17 +16,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // didFailToRegisterForRemoteNotifications will be called.
         application.registerForRemoteNotifications()
         
-        initializeCioSDK()
+        initializeCioAndInAppListeners()
+        
+        UNUserNotificationCenter.current().delegate = self
         return true
     }
 
-    func initializeCioSDK() {
+    func initializeCioAndInAppListeners() {
         // Initialise CustomerIO SDK
         // TODO: - Update this when using local storage for configurations
         CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US, configure: { config in
             config.logLevel = .debug
             config.autoTrackScreenViews = true
         })
+        
+        MessagingInApp.initialize(eventListener: self)
     }
     // MARK: UISceneSession Lifecycle
 
@@ -51,3 +56,56 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
+
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    
+    
+    // Delegate called when user responds to a notification. Set delegate in
+    // application:didFinishLaunchingWithOptions: method.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+//        let handled = MessagingPush.shared.userNotificationCenter(center, didReceive: response,
+//                                                                  withCompletionHandler: completionHandler)
+//
+//        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
+//        // completion handler. If the SDK did handle it, it called the completion handler for you.
+//        if !handled {
+//            completionHandler()
+//        }
+    }
+    
+    // OPTIONAL: Delegate method only runs when app is active(foreground). If not implemented or delayed, notification won't show in foreground. App can show notification as sound, badge, or alert..
+    @available(iOS 10.0, *)
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
+                                -> Void) {
+        completionHandler([.list, .banner, .badge, .sound])
+    }
+}
+
+extension AppDelegate: InAppEventListener {
+    func messageShown(message: InAppMessage) {
+        CustomerIO.shared.track(name: "inapp shown",
+                                data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
+    }
+
+    func messageDismissed(message: InAppMessage) {
+        CustomerIO.shared.track(name: "inapp dismissed",
+                                data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
+    }
+
+    func errorWithMessage(message: InAppMessage) {
+        CustomerIO.shared.track(name: "inapp error",
+                                data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
+    }
+
+    func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+        CustomerIO.shared.track(name: "inapp action", data: [
+            "delivery-id": message.deliveryId ?? "(none)",
+            "message-id": message.messageId,
+            "action-value": actionValue,
+            "action-name": actionName
+        ])
+    }
+}

@@ -1,4 +1,5 @@
 import UIKit
+import CioTracking
 
 class DashboardViewController: UIViewController {
 
@@ -46,6 +47,7 @@ class DashboardViewController: UIViewController {
     // MARK: - Actions
     
     @IBAction func logoutUser(_ sender: UIButton) {
+        CustomerIO.shared.clearIdentify()
         dashboardRouter?.routeToLogin()
     }
     
