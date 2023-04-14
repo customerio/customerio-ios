@@ -31,18 +31,17 @@ before_all do |lane, options|
   setup_ci
 end
 
-# Note: I was experiencing issues getting adhoc code signing working for the cocoapods FCM sample app. 
-# For now, we just need to test the app compiles so development code signing is good enough for now until we fix the issue.     
-# For now, do code signing and app compiling using development type. 
-
-# example for main builds: `bundle exec fastlane build version:1.0.0"`
-# example for develoment builds (pull request, push): `bundle exec fastlane build`  
-lane :build do |arguments|
+lane :build do
   download_ci_code_signing_files
-
-  new_app_version = arguments[:version] # default 
+  
+  new_app_version = ""
   release_notes = []
   groups = ['all-builds'] # default - always send to these groups. 
+
+  # This code is only used for stable builds made when a git tag is made. However, it would be convenient to test this code 
+  # more often then just when a git tag is created. Code executes here and values are overriden on pull request builds. 
+  sh('git fetch --tags') # Workaround for last_git_tag action. Learn more: https://docs.fastlane.tools/actions/last_git_tag/
+  new_app_version = last_git_tag # default is to use latest git tag created on branch. Variable overriden later on. 
 
   github_actions_metadata_path = ENV["GITHUB_EVENT_PATH"]
   UI.message("GitHub Action metadata file path located: #{github_actions_metadata_path}")  
@@ -64,8 +63,8 @@ lane :build do |arguments|
       "source branch: #{github.source_branch}",
       "destination branch: #{github.destination_branch}"
     )
-  elsif github.is_push # assuming that this is a build for a stable release of code base. 
-    UI.message("Deploying a main build of app. Version: #{new_app_version}")
+  elsif github.is_push # builds when a git tag is made. 
+    UI.message("Deploying a stable build of app. Version: #{new_app_version}")
     
     groups.append("stable-builds")
 
