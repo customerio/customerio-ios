@@ -20,38 +20,51 @@ class SettingsViewController: UIViewController {
     
     var settingsRouter: SettingsRouting?
     var storage = DI.shared.storage
+    var currentSettings : Settings!
     override func viewDidLoad() {
         super.viewDidLoad()
         
         configureSettingsRouter()
+        getDefaultValues()
         setDefaultValues()
     }
     
     override func viewWillAppear(_ animated: Bool) {
-         super.viewWillAppear(animated)
+        super.viewWillAppear(animated)
         self.navigationController?.isNavigationBarHidden = false
     }
     
-    func setDefaultValues() {
-        deviceTokenTextField.text = storage.deviceToken
-        trackUrlTextField.text = "Yet to set"
-        
-        siteIdTextField.text = "Get from Env class"
-        apiKeyTextField.text = "Get from Env class"
-        
-        bgQTakDelayTextField.text = "30" // update when saved in storage
-        bgQMinTasks.text = "10"
-        
-        trackScreenToggle.isOn = false
-        trackDeviceToggle.isOn = true
-        debugModeToggle.isOn = true
+    func getDefaultValues() {
+        currentSettings.deviceToken = storage.deviceToken ?? "Error"
+        currentSettings.trackUrl = storage.trackUrl ?? "-"
+        currentSettings.siteId = storage.siteId ?? Env.customerIOSiteId
+        currentSettings.apiKey = storage.apiKey ?? Env.customerIOApiKey
+        currentSettings.bgQDelay = storage.bgQDelay ?? "30"
+        currentSettings.bgQMinTasks = storage.bgNumOfTasks ?? "10"
+        currentSettings.isTrackScreenEnabled = storage.isTrackScreenEnabled ?? false
+        currentSettings.isDebugModeEnabled = storage.isDebugModeEnabled ?? true
+        currentSettings.isDeviceAttributeEnabled = storage.isTrackDeviceAttrEnabled ?? true
         getStatusOfPushPermissions { status in
-            if status == .authorized {
-                DispatchQueue.main.async {
-                    self.enablePushToggle.isOn = true
-                }
+            DispatchQueue.main.async {
+                self.currentSettings?.isPushEnabled = status == .authorized ? true : false
             }
         }
+    }
+    
+    func setDefaultValues() {
+        deviceTokenTextField.text = currentSettings.deviceToken
+        trackUrlTextField.text = currentSettings.trackUrl
+        
+        siteIdTextField.text = currentSettings.siteId
+        apiKeyTextField.text = currentSettings.apiKey
+        
+        bgQTakDelayTextField.text = currentSettings.bgQDelay
+        bgQMinTasks.text = currentSettings.bgQMinTasks
+        
+        trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
+        trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
+        debugModeToggle.isOn = currentSettings.isDebugModeEnabled
+        enablePushToggle.isOn = currentSettings.isPushEnabled
     }
     
     func configureSettingsRouter() {
@@ -73,6 +86,7 @@ class SettingsViewController: UIViewController {
     // MARK: - Actions
     @IBAction func saveSettings(_ sender: UIButton) {
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
-
+        
+        
     }
 }

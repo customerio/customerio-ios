@@ -6,7 +6,7 @@ protocol StorageManager {
     var siteId: String? { get set }
     var apiKey: String? {get set}
     var bgQDelay: String? {get set}
-    var bgNumOfTasks: Int? {get set}
+    var bgNumOfTasks: String? {get set}
     var isPushEnabled: Bool? {get set}
     var isTrackScreenEnabled: Bool? {get set}
     var isTrackDeviceAttrEnabled: Bool? {get set}
@@ -87,9 +87,9 @@ class Storage : StorageManager {
         }
     }
     
-    var bgNumOfTasks: Int? {
+    var bgNumOfTasks: String? {
         get {
-            userDefaults.integer(forKey: UserDefaultKeys.bgNumOfTasks.rawValue)
+            userDefaults.string(forKey: UserDefaultKeys.bgNumOfTasks.rawValue)
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.bgNumOfTasks.rawValue)
