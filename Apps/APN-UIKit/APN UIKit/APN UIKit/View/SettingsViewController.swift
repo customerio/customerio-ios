@@ -35,15 +35,18 @@ class SettingsViewController: UIViewController {
     }
     
     func getDefaultValues() {
-        currentSettings.deviceToken = storage.deviceToken ?? "Error"
-        currentSettings.trackUrl = storage.trackUrl ?? "-"
-        currentSettings.siteId = storage.siteId ?? Env.customerIOSiteId
-        currentSettings.apiKey = storage.apiKey ?? Env.customerIOApiKey
-        currentSettings.bgQDelay = storage.bgQDelay ?? "30"
-        currentSettings.bgQMinTasks = storage.bgNumOfTasks ?? "10"
-        currentSettings.isTrackScreenEnabled = storage.isTrackScreenEnabled ?? false
-        currentSettings.isDebugModeEnabled = storage.isDebugModeEnabled ?? true
-        currentSettings.isDeviceAttributeEnabled = storage.isTrackDeviceAttrEnabled ?? true
+        
+        currentSettings = Settings(deviceToken: storage.deviceToken ?? "Error",
+                                   trackUrl: storage.trackUrl ?? "-",
+                                   siteId: storage.siteId ?? Env.customerIOSiteId,
+                                   apiKey: storage.apiKey ?? Env.customerIOApiKey,
+                                   bgQDelay: storage.bgQDelay ?? "30",
+                                   bgQMinTasks: storage.bgNumOfTasks ?? "10",
+                                   isPushEnabled: false,
+                                   isTrackScreenEnabled: storage.isTrackScreenEnabled ?? false,
+                                   isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
+                                   isDebugModeEnabled: storage.isDebugModeEnabled ?? true)
+        
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
                 self.currentSettings?.isPushEnabled = status == .authorized ? true : false
@@ -83,10 +86,17 @@ class SettingsViewController: UIViewController {
         }
     }
     
+    func compareAndSave() {
+        
+        // Track Url
+        if currentSettings.trackUrl != trackUrlTextField.text {
+            storage.trackUrl = trackUrlTextField.text
+        }
+    }
+    
     // MARK: - Actions
     @IBAction func saveSettings(_ sender: UIButton) {
+        compareAndSave()
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
-        
-        
     }
 }
