@@ -61,6 +61,7 @@ DI.shared.resetOverrides()
  */
  enum Dependency: CaseIterable {
     case storage
+    case userDefaults
 }
 
 
@@ -102,6 +103,7 @@ DI.shared.resetOverrides()
      func inject<T>(_ dep: Dependency) -> T {                            
         switch dep {
             case .storage: return self.storage as! T 
+            case .userDefaults: return self.userDefaults as! T 
         }
     }
 
@@ -118,5 +120,12 @@ DI.shared.resetOverrides()
     }
     private var newStorage: Storage {    
         return Storage(userDefaults: self.userDefaults)
+    }
+    // UserDefaults (custom. property getter provided via extension)
+    internal var userDefaults: UserDefaults {    
+        if let overridenDep = self.overrides[.userDefaults] {
+            return overridenDep as! UserDefaults
+        }
+        return self.customUserDefaults
     }
 }

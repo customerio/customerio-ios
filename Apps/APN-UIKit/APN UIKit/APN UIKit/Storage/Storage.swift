@@ -13,6 +13,7 @@ protocol StorageManager {
     var isDebugModeEnabled: Bool? {get set}
     var userEmailId: String? {get set}
     var userName: String? {get set}
+    var deviceToken: String? {get set}
 }
 
 // sourcery: InjectRegister = "Storage"
@@ -29,6 +30,15 @@ class Storage : StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.trackUrl.rawValue)
+        }
+    }
+    
+    var deviceToken: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.deviceToken.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.deviceToken.rawValue)
         }
     }
     

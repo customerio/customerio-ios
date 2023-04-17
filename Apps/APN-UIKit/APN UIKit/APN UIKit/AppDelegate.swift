@@ -6,6 +6,7 @@ import CioMessagingPushAPN
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     
+    var storage = DI.shared.storage
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         
@@ -45,6 +46,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        storage.deviceToken = String(apnDeviceToken: deviceToken)
         MessagingPush.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
     

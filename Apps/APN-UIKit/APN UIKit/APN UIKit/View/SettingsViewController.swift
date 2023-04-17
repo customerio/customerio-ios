@@ -19,7 +19,7 @@ class SettingsViewController: UIViewController {
     @IBOutlet weak var bgQTakDelayTextField: ThemeTextField!
     
     var settingsRouter: SettingsRouting?
-    
+    var storage = DI.shared.storage
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -33,7 +33,7 @@ class SettingsViewController: UIViewController {
     }
     
     func setDefaultValues() {
-        deviceTokenTextField.text = "Yet to set"
+        deviceTokenTextField.text = storage.deviceToken
         trackUrlTextField.text = "Yet to set"
         
         siteIdTextField.text = "Get from Env class"

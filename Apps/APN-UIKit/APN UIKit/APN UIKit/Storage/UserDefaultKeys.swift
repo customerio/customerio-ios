@@ -13,4 +13,5 @@ enum UserDefaultKeys: String{
     case isDebugModeEnabled
     case userName
     case userEmailId
+    case deviceToken
 }
