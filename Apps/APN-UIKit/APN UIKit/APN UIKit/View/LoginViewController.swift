@@ -11,6 +11,7 @@ class LoginViewController: UIViewController {
     @IBOutlet weak var firstNameTextField: ThemeTextField!
     @IBOutlet weak var settings: UIImageView!
     
+    var storage = DI.shared.storage
     var loginRouter: LoginRouting?
     
     override func viewWillAppear(_ animated: Bool) {
@@ -55,6 +56,8 @@ class LoginViewController: UIViewController {
             return
         }
         CustomerIO.shared.identify(identifier: emailId, body: ["firstName" : name])
+        storage.userEmailId = emailId
+        storage.userName = name
         loginRouter?.routeToDashboard()
     }
     
