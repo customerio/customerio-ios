@@ -130,12 +130,8 @@ lane :build do
   service_credentials_file_path = setup_google_bucket_access(
     environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
   )
-
-  googleservices_file = File.expand_path(Dir.glob("../**/GoogleService-Info.plist").first, Dir.pwd)
-  UI.message("GoogleService-Info.plist found: #{googleservices_file}")
   
   firebase_app_distribution(
-    googleservice_info_plist_path: googleservices_file,
     service_credentials_file: service_credentials_file_path,
     groups: test_groups,
     release_notes: build_notes
