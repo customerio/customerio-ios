@@ -34,6 +34,7 @@
 		46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275829E9E2960068F9A3 /* MessagingPushFCM */; };
 		46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275A29E9E2960068F9A3 /* Tracking */; };
 		46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275C29E9ECE60068F9A3 /* StringExtension.swift */; };
+		46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275F29E9F1BD0068F9A3 /* Storage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +84,7 @@
 		46EE274E29E9DF120068F9A3 /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
 		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
 		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
+		46EE275F29E9F1BD0068F9A3 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +144,7 @@
 				46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */,
 				46D5D9BD29E58DD900EAF40B /* Router */,
 				46D5D9B029E56DE000EAF40B /* View */,
+				46EE275E29E9F19B0068F9A3 /* Storage */,
 				46D5D98029E459D600EAF40B /* AppDelegate.swift */,
 				46D5D98229E459D600EAF40B /* SceneDelegate.swift */,
 				46D5D98429E459D600EAF40B /* ViewController.swift */,
@@ -227,6 +230,14 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		46EE275E29E9F19B0068F9A3 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				46EE275F29E9F1BD0068F9A3 /* Storage.swift */,
+			);
+			path = Storage;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -371,6 +382,7 @@
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
+				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
