@@ -11,8 +11,11 @@ protocol StorageManager {
     var isTrackScreenEnabled: Bool? {get set}
     var isTrackDeviceAttrEnabled: Bool? {get set}
     var isDebugModeEnabled: Bool? {get set}
-    
+    var userEmailId: String? {get set}
+    var userName: String? {get set}
 }
+
+// sourcery: InjectRegister = "Storage"
 class Storage : StorageManager {
     private let userDefaults: UserDefaults
     
@@ -26,6 +29,24 @@ class Storage : StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.trackUrl.rawValue)
+        }
+    }
+    
+    var userEmailId: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.userEmailId.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.userEmailId.rawValue)
+        }
+    }
+    
+    var userName: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.userName.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.userName.rawValue)
         }
     }
     

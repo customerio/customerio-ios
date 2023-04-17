@@ -11,4 +11,6 @@ enum UserDefaultKeys: String{
     case isTrackScreenEnabled
     case isTrackDeviceAttrEnabled
     case isDebugModeEnabled
+    case userName
+    case userEmailId
 }
