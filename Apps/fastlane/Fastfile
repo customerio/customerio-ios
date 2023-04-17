@@ -119,7 +119,6 @@ lane :build do
     export_method: "ad-hoc",
     configuration: "Release",
     xcodebuild_formatter: "xcbeautify",
-    disable_package_automatic_updates: true, # force SPM dependencies to install from Package.resolved lock file
     skip_package_dependencies_resolution: uses_cocoapods, # If using CocoaPods, skip SPM dependency downloading to save build time
   )
 
