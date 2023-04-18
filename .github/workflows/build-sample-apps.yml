@@ -51,7 +51,7 @@ jobs:
 
     - name: pod install if app uses CocoaPods 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      run: pod install 
+      run: pod install --repo-update
 
     - name: Install tools for Fastlane build to use
       run: brew install xcbeautify    
