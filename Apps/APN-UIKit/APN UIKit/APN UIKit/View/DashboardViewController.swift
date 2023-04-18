@@ -6,6 +6,8 @@ class DashboardViewController: UIViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
     
+    @IBOutlet weak var settings: UIImageView!
+    
     var dashboardRouter: DashboardRouting?
     
     override func viewWillAppear(_ animated: Bool) {
@@ -15,14 +17,30 @@ class DashboardViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        showPushPermissionPrompt()
         configureDashboardRouter()
+        addUserInteractionToSettingsImageView()
     }
     
+    func showPushPermissionPrompt() {
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions, completionHandler: { _, _ in })
+    }
     func configureDashboardRouter() {
         let router = DashboardRouter()
         dashboardRouter = router
         router.dashboardViewController = self
+    }
+    
+    func addUserInteractionToSettingsImageView() {
+        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
+
+        settings.addGestureRecognizer(gestureOnSettings)
+        settings.isUserInteractionEnabled = true
+    }
+    
+    @objc func settingsTapped() {
+        dashboardRouter?.routeToSettings()
     }
     
     // MARK: - Actions
@@ -32,7 +50,7 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        self.showInfoAlert(withMessage: "Random event tracked successfully")
+        self.showAlert(withMessage: "Random event tracked successfully")
     }
     
     @IBAction func sendCustomEvent(_ sender: UIButton) {

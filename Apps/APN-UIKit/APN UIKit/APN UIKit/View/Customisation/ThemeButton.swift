@@ -16,5 +16,4 @@ class ThemeButton: UIButton {
         self.layer.cornerRadius = 5
         self.frame.size.height = 50
     }
-
 }

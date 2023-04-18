@@ -8,7 +8,8 @@ class LoginViewController: UIViewController {
     // MARK: - Outlets
     @IBOutlet weak var emailTextField: ThemeTextField!
     @IBOutlet weak var firstNameTextField: ThemeTextField!
-
+    @IBOutlet weak var settings: UIImageView!
+    
     var loginRouter: LoginRouting?
     
     override func viewWillAppear(_ animated: Bool) {
@@ -22,6 +23,7 @@ class LoginViewController: UIViewController {
         super.viewDidLoad()
         
         configureLoginRouter()
+        addUserInteractionToSettingsImageView()
     }
     
     func configureLoginRouter() {
@@ -29,11 +31,23 @@ class LoginViewController: UIViewController {
         loginRouter = router
         router.loginViewController = self
     }
+    
+    func addUserInteractionToSettingsImageView() {
+        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
+
+        settings.addGestureRecognizer(gestureOnSettings)
+        settings.isUserInteractionEnabled = true
+    }
+    
+    @objc func settingsTapped() {
+        loginRouter?.routeToSettings()
+    }
 
     
     @IBAction func logInToApp(_ sender: UIButton) {
         
         if !userDetailsValid() {
+            showAlert(withMessage: "Please fill all fields", .error)
             return
         }
         loginRouter?.routeToDashboard()
@@ -48,7 +62,7 @@ class LoginViewController: UIViewController {
         emailTextField.text = email
         firstNameTextField.text = name
         
-        showInfoAlert(withMessage: "Random user has been generated.")
+        showAlert(withMessage: "Random user has been generated.")
     }
     
     func userDetailsValid() -> Bool {

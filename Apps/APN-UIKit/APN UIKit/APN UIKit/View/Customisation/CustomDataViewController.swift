@@ -46,13 +46,30 @@ class CustomDataViewController: UIViewController {
             propertyValueLabel.text = "Attribute Value"
         }
     }
+    
+    func isAllTextFieldsValid() {
+        if propertyValueTextField.isTextTrimEmpty ||
+            propertyValueTextField.isTextTrimEmpty ||
+            (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
+            showAlert(withMessage: "Please fill all fields", .error)
+            return
+        }
+    }
 
     // MARK: - Actions
     
     @IBAction func sendCustomData(_ sender: UIButton) {
+        isAllTextFieldsValid()
         
         if ( source == .customEvents) {
-            self.showInfoAlert(withMessage: "Name = \(eventNameTextField.text ?? "") and property name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            self.showAlert(withMessage: "Name = \(eventNameTextField.text ?? "") and property name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+        }
+        else if ( source == .profileAttributes) {
+            self.showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+        }
+        else if ( source == .deviceAttributes) {
+            self.showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
         }
     }
+    
 }
