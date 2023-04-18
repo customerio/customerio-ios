@@ -10,6 +10,7 @@ class DashboardViewController: UIViewController {
     @IBOutlet weak var settings: UIImageView!
     
     var dashboardRouter: DashboardRouting?
+    var notificationUtil = DI.shared.notificationUtil
     
     override func viewWillAppear(_ animated: Bool) {
          super.viewWillAppear(animated)
@@ -24,9 +25,9 @@ class DashboardViewController: UIViewController {
     }
     
     func showPushPermissionPrompt() {
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(options: authOptions, completionHandler: { _, _ in })
+        notificationUtil.showPromptForPushPermission()
     }
+    
     func configureDashboardRouter() {
         let router = DashboardRouter()
         dashboardRouter = router

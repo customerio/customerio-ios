@@ -598,6 +598,9 @@
                                                 <subviews>
                                                     <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="So7-E1-VKV">
                                                         <rect key="frame" x="0.0" y="0.0" width="51" height="31"/>
+                                                        <connections>
+                                                            <action selector="enablePushChanged:" destination="Gr3-gf-Tr0" eventType="valueChanged" id="9Pp-E2-qWa"/>
+                                                        </connections>
                                                     </switch>
                                                     <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tgd-Y3-gsY">
                                                         <rect key="frame" x="0.0" y="39" width="51" height="31"/>
