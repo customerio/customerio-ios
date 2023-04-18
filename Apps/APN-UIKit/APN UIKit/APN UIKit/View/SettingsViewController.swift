@@ -22,6 +22,23 @@ class SettingsViewController: UIViewController {
     var settingsRouter: SettingsRouting?
     var storage = DI.shared.storage
     var currentSettings : Settings!
+    
+    var pushSwitchState:Bool {
+        return enablePushToggle.isOn
+    }
+    
+    var trackScreenState:Bool {
+        return trackScreenToggle.isOn
+    }
+    
+    var trackDeviceAttributeState:Bool {
+        return trackDeviceToggle.isOn
+    }
+    
+    var debugModeState: Bool {
+        return debugModeToggle.isOn
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -50,7 +67,6 @@ class SettingsViewController: UIViewController {
     @objc
     func appMovedToForeground() {
         getStatusOfPushPermissions { status in
-            print("Status is \(status)")
             DispatchQueue.main.async {
                 self.enablePushToggle.isOn = status == .authorized ? true : false
             }
@@ -132,8 +148,20 @@ func configureSettingsRouter() {
             storage.bgNumOfTasks = bgQMinTasksTextField.text
         }
         
+        // Push enabled
+        if currentSettings.isPushEnabled != pushSwitchState {
+            storage.isPushEnabled = pushSwitchState
+        }
+        
         // Track screen enabled
-//        if currentSettings.isTrackScreenEnabled != trackScreenToggle.va
+        if currentSettings.isTrackScreenEnabled != trackScreenState{
+            storage.isTrackScreenEnabled = trackScreenState
+        }
+        
+        // Debug screen
+        if currentSettings.isDebugModeEnabled != debugModeState {
+            storage.isDebugModeEnabled = debugModeState
+        }
     }
     
     
@@ -160,10 +188,4 @@ func configureSettingsRouter() {
             }
         }
     }
-    
-    @IBAction func enablePushEditChanged(_ sender: UISwitch) {
-        
-        print("2")
-    }
-    
 }
