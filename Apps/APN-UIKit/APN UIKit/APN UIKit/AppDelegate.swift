@@ -22,12 +22,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func initializeCioAndInAppListeners() {
         // Initialise CustomerIO SDK
-        // TODO: - Update this when using local storage for configurations
-        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US, configure: { config in
-            config.logLevel = .debug
-            config.autoTrackScreenViews = true
-        })
         
+        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US) { config in
+            config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
+            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
+            config.backgroundQueueSecondsDelay =  Double(self.storage.bgQDelay ?? 30)
+            config.backgroundQueueMinNumberOfTasks = Double(self.storage.bgNumOfTasks ?? 10)
+        }
         MessagingInApp.initialize(eventListener: self)
     }
     // MARK: UISceneSession Lifecycle
