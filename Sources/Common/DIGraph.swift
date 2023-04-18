@@ -22,15 +22,22 @@ public class DIGraph {
      DIGraph.shared.override(mockOffRoadWheels, OffRoadWheels.self)
      ```
      */
-    public func override<Value: Any>(value: Value, forType type: Value.Type) {
+    public func override<T: Any>(value: T, forType type: T.Type) {
         overrides[String(describing: type)] = value
     }
 
-    public func getOverrideInstance<Value: Any>() -> Value? {
-        if let overridenDep = overrides[String(describing: Value.self)] {
-            return overridenDep as! Value
+    // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
+    // If an overridden instance exists and can be cast to the specified type, it is returned; otherwise, nil is returned.
+    public func getOverriddenInstance<T: Any>() -> T? {
+        // Get the type name as the key for the dictionary.
+        let typeName = String(describing: T.self)
+
+        // Attempt to get and cast the overridden instance from the dictionary.
+        if let overriddenInstance = overrides[typeName] as? T {
+            return overriddenInstance
         }
 
+        // If the instance is not found or cannot be cast, return nil.
         return nil
     }
 
