@@ -16,6 +16,18 @@
 		46D5D99829E459D800EAF40B /* APN_UIKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D99729E459D800EAF40B /* APN_UIKitTests.swift */; };
 		46D5D9A229E459D800EAF40B /* APN_UIKitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9A129E459D800EAF40B /* APN_UIKitUITests.swift */; };
 		46D5D9A429E459D800EAF40B /* APN_UIKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9A329E459D800EAF40B /* APN_UIKitUITestsLaunchTests.swift */; };
+		46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */; };
+		46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B429E5710E00EAF40B /* ThemeButton.swift */; };
+		46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */; };
+		46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */; };
+		46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */; };
+		46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */; };
+		46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */; };
+		46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */; };
+		46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */; };
+		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
+		46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */; };
+		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,7 +61,19 @@
 		46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D9A129E459D800EAF40B /* APN_UIKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITests.swift; sourceTree = "<group>"; };
 		46D5D9A329E459D800EAF40B /* APN_UIKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		46D5D9CA29E810BF00EAF40B /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
+		46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
+		46D5D9B429E5710E00EAF40B /* ThemeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeButton.swift; sourceTree = "<group>"; };
+		46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTextField.swift; sourceTree = "<group>"; };
+		46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextFieldExtension.swift; sourceTree = "<group>"; };
+		46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryboardExtension.swift; sourceTree = "<group>"; };
+		46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginRouter.swift; sourceTree = "<group>"; };
+		46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
+		46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardRouter.swift; sourceTree = "<group>"; };
+		46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerExtension.swift; sourceTree = "<group>"; };
+		46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CustomDataViewController.swift; path = Customisation/CustomDataViewController.swift; sourceTree = "<group>"; };
+		46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
+		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +125,9 @@
 		46D5D97F29E459D600EAF40B /* APN UIKit */ = {
 			isa = PBXGroup;
 			children = (
+				46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */,
+				46D5D9BD29E58DD900EAF40B /* Router */,
+				46D5D9B029E56DE000EAF40B /* View */,
 				46D5D98029E459D600EAF40B /* AppDelegate.swift */,
 				46D5D98229E459D600EAF40B /* SceneDelegate.swift */,
 				46D5D98429E459D600EAF40B /* ViewController.swift */,
@@ -129,12 +156,46 @@
 			path = "APN UIKitUITests";
 			sourceTree = "<group>";
 		};
-		46D5D9C929E810BF00EAF40B /* Packages */ = {
+		46D5D9B029E56DE000EAF40B /* View */ = {
 			isa = PBXGroup;
 			children = (
-				46D5D9CA29E810BF00EAF40B /* customerio-ios */,
+				46D5D9B829E5887A00EAF40B /* Extension */,
+				46D5D9B329E56F1E00EAF40B /* Customisation */,
+				46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */,
+				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
+				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
+				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
 			);
-			name = Packages;
+			path = View;
+			sourceTree = "<group>";
+		};
+		46D5D9B329E56F1E00EAF40B /* Customisation */ = {
+			isa = PBXGroup;
+			children = (
+				46D5D9B429E5710E00EAF40B /* ThemeButton.swift */,
+				46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */,
+			);
+			path = Customisation;
+			sourceTree = "<group>";
+		};
+		46D5D9B829E5887A00EAF40B /* Extension */ = {
+			isa = PBXGroup;
+			children = (
+				46D5D9B929E5889F00EAF40B /* TextFieldExtension.swift */,
+				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
+				46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */,
+			);
+			path = Extension;
+			sourceTree = "<group>";
+		};
+		46D5D9BD29E58DD900EAF40B /* Router */ = {
+			isa = PBXGroup;
+			children = (
+				46D5D9BE29E58DE700EAF40B /* LoginRouter.swift */,
+				46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */,
+				46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */,
+			);
+			path = Router;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -268,9 +329,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
+				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
+				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
+				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
+				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
+				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
+				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
+				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
+				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
+				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
+				46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */,
+				46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -445,6 +518,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -472,6 +546,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
