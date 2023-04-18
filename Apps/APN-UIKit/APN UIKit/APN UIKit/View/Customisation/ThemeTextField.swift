@@ -1,12 +1,11 @@
 import UIKit
 
 class ThemeTextField: UITextField {
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         setup()
     }
-    
+
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setup()
@@ -27,7 +26,7 @@ class ThemeTextField: UITextField {
             ]
         )
     }
-    
+
     func clear() {
         text = ""
     }
