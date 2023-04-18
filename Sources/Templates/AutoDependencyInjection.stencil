@@ -55,7 +55,7 @@ DIGraph().reset()
 {% macro overrideGetterProperty class type isCustom isSingleton %}
     {% call addPropertyWrappers type %}
     {{ type.accessLevel }} var {{ class|lowerFirstLetter }}: {{ class }} {  
-        return getOverrideInstance() ?? 
+        return getOverriddenInstance() ??
         {% if isCustom %}
             self.custom{{ class }}
         {% elif isSingleton %}
@@ -95,7 +95,7 @@ extension DIGraph {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
         return DispatchQueue(label: "DIGraph_{{class}}_singleton_access").sync {
-            if let overridenDep: {{ class }} = getOverrideInstance() {
+            if let overridenDep: {{ class }} = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: {{ class }}.self)] as? {{ class }}

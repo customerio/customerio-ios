@@ -68,7 +68,7 @@ extension DIGraph {
 
     // CleanupRepository
     var cleanupRepository: CleanupRepository {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newCleanupRepository
     }
 
@@ -78,7 +78,7 @@ extension DIGraph {
 
     // DeviceAttributesProvider
     var deviceAttributesProvider: DeviceAttributesProvider {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newDeviceAttributesProvider
     }
 
@@ -88,7 +88,7 @@ extension DIGraph {
 
     // QueueRunnerHook
     var queueRunnerHook: QueueRunnerHook {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueueRunnerHook
     }
 

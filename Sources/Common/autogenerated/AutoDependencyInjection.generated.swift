@@ -136,7 +136,7 @@ extension DIGraph {
 
     // DeviceInfo
     public var deviceInfo: DeviceInfo {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newDeviceInfo
     }
 
@@ -146,7 +146,7 @@ extension DIGraph {
 
     // HttpClient
     public var httpClient: HttpClient {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newHttpClient
     }
 
@@ -156,7 +156,7 @@ extension DIGraph {
 
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newGlobalDataStore
     }
 
@@ -166,7 +166,7 @@ extension DIGraph {
 
     // HooksManager (singleton)
     public var hooksManager: HooksManager {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             sharedHooksManager
     }
 
@@ -174,7 +174,7 @@ extension DIGraph {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
-            if let overridenDep: HooksManager = getOverrideInstance() {
+            if let overridenDep: HooksManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
@@ -190,7 +190,7 @@ extension DIGraph {
 
     // ProfileStore
     public var profileStore: ProfileStore {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newProfileStore
     }
 
@@ -200,7 +200,7 @@ extension DIGraph {
 
     // Queue
     public var queue: Queue {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueue
     }
 
@@ -210,7 +210,7 @@ extension DIGraph {
 
     // QueueQueryRunner
     internal var queueQueryRunner: QueueQueryRunner {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueueQueryRunner
     }
 
@@ -220,7 +220,7 @@ extension DIGraph {
 
     // QueueRequestManager (singleton)
     public var queueRequestManager: QueueRequestManager {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             sharedQueueRequestManager
     }
 
@@ -228,7 +228,7 @@ extension DIGraph {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
-            if let overridenDep: QueueRequestManager = getOverrideInstance() {
+            if let overridenDep: QueueRequestManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
@@ -244,7 +244,7 @@ extension DIGraph {
 
     // QueueRunRequest
     public var queueRunRequest: QueueRunRequest {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueueRunRequest
     }
 
@@ -254,7 +254,7 @@ extension DIGraph {
 
     // QueueRunner
     public var queueRunner: QueueRunner {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueueRunner
     }
 
@@ -264,7 +264,7 @@ extension DIGraph {
 
     // SimpleTimer
     internal var simpleTimer: SimpleTimer {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newSimpleTimer
     }
 
@@ -274,7 +274,7 @@ extension DIGraph {
 
     // SingleScheduleTimer (singleton)
     internal var singleScheduleTimer: SingleScheduleTimer {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             sharedSingleScheduleTimer
     }
 
@@ -282,7 +282,7 @@ extension DIGraph {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
-            if let overridenDep: SingleScheduleTimer = getOverrideInstance() {
+            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
@@ -298,7 +298,7 @@ extension DIGraph {
 
     // ThreadUtil
     public var threadUtil: ThreadUtil {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newThreadUtil
     }
 
@@ -308,7 +308,7 @@ extension DIGraph {
 
     // Logger
     public var logger: Logger {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newLogger
     }
 
@@ -318,7 +318,7 @@ extension DIGraph {
 
     // HttpRetryPolicy
     internal var httpRetryPolicy: HttpRetryPolicy {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newHttpRetryPolicy
     }
 
@@ -328,7 +328,7 @@ extension DIGraph {
 
     // DeviceMetricsGrabber
     internal var deviceMetricsGrabber: DeviceMetricsGrabber {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newDeviceMetricsGrabber
     }
 
@@ -338,7 +338,7 @@ extension DIGraph {
 
     // FileStorage
     public var fileStorage: FileStorage {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newFileStorage
     }
 
@@ -348,7 +348,7 @@ extension DIGraph {
 
     // QueueStorage
     public var queueStorage: QueueStorage {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newQueueStorage
     }
 
@@ -358,7 +358,7 @@ extension DIGraph {
 
     // GlobalKeyValueStorage
     public var globalKeyValueStorage: GlobalKeyValueStorage {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newGlobalKeyValueStorage
     }
 
@@ -368,7 +368,7 @@ extension DIGraph {
 
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newJsonAdapter
     }
 
@@ -378,7 +378,7 @@ extension DIGraph {
 
     // LockManager (singleton)
     public var lockManager: LockManager {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             sharedLockManager
     }
 
@@ -386,7 +386,7 @@ extension DIGraph {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
-            if let overridenDep: LockManager = getOverrideInstance() {
+            if let overridenDep: LockManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
@@ -402,7 +402,7 @@ extension DIGraph {
 
     // DateUtil
     public var dateUtil: DateUtil {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newDateUtil
     }
 
@@ -413,7 +413,7 @@ extension DIGraph {
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
     public var uIKitWrapper: UIKitWrapper {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newUIKitWrapper
     }
 
@@ -424,7 +424,7 @@ extension DIGraph {
 
     // HttpRequestRunner
     internal var httpRequestRunner: HttpRequestRunner {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newHttpRequestRunner
     }
 
@@ -434,7 +434,7 @@ extension DIGraph {
 
     // UserAgentUtil
     public var userAgentUtil: UserAgentUtil {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newUserAgentUtil
     }
 
@@ -444,7 +444,7 @@ extension DIGraph {
 
     // KeyValueStorage
     public var keyValueStorage: KeyValueStorage {
-        getOverrideInstance() ??
+        getOverriddenInstance() ??
             newKeyValueStorage
     }
 
