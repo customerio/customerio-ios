@@ -25,12 +25,12 @@ public class DIGraph {
     public func override<Value: Any>(value: Value, forType type: Value.Type) {
         overrides[String(describing: type)] = value
     }
-    
+
     public func getOverrideInstance<Value: Any>() -> Value? {
-        if let overridenDep = self.overrides[String(describing: Value.self)] {
-            return (overridenDep as! Value)
+        if let overridenDep = overrides[String(describing: Value.self)] {
+            return overridenDep as! Value
         }
-        
+
         return nil
     }
 

@@ -14,9 +14,9 @@ public protocol GlobalDataStore: AutoMockable {
 
 /*
  A datastore that is not tied to a specific site-id. This is data that is to be shared across all site-ids.
- 
+
  For example, device tokens. Device tokens are tied to a device and therefore, the value can be used between many different site-ids.
- 
+
  At this time, this object is added to the DI graph as that is still the preferred way to get an instance of it as it makes automated tests easier to write. However, for some use cases you need to get an instance of this class before the DI graph is constructed. In those scenarios, this class provides a way to get an instance not from the DI graph.
  */
 
@@ -46,10 +46,10 @@ public class CioGlobalDataStore: GlobalDataStore {
     public init(keyValueStorage: GlobalKeyValueStorage) {
         self.keyValueStorage = keyValueStorage
     }
-    
+
     // How to get instance before DI graph is constructed
-    static func getInstance() -> GlobalDataStore {
-        return CioGlobalDataStore(keyValueStorage: UserDefaultsKeyValueStorage.getGlobalInstance())
+    public static func getInstance() -> GlobalDataStore {
+        CioGlobalDataStore(keyValueStorage: GlobalKeyValueStorage.getInstance())
     }
 
     public func deleteAll() {
