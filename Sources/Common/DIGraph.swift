@@ -26,6 +26,14 @@ public class DIGraph {
         overrides[String(describing: type)] = value
     }
 
+    public func getOverrideInstance<Value: Any>() -> Value? {
+        if let overridenDep = overrides[String(describing: Value.self)] {
+            return overridenDep as! Value
+        }
+
+        return nil
+    }
+
     /**
      Reset graph. Meant to be used in `tearDown()` of tests.
      */

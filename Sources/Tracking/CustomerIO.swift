@@ -112,13 +112,18 @@ public class CustomerIO: CustomerIOInstance {
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
 
+    private var globalDataStore: GlobalDataStore!
+
     // private constructor to force use of singleton API
-    private init() {}
+    private init() {
+        self.globalDataStore = CioGlobalDataStore.getInstance()
+    }
 
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
     // See CustomerIO.shared.initializeIntegrationTests for integration testing
-    internal init(implementation: CustomerIOInstance, diGraph: DIGraph) {
+    internal init(implementation: CustomerIOInstance, globalDataStore: GlobalDataStore, diGraph: DIGraph) {
         self.implementation = implementation
+        self.globalDataStore = globalDataStore
         self.diGraph = diGraph
     }
 
@@ -130,14 +135,15 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared = CustomerIO()
     }
 
-    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
         siteId: String,
+        globalDataStore: GlobalDataStore,
         diGraph: DIGraph
     ) {
         let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
-        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+        Self.shared = CustomerIO(implementation: implementation, globalDataStore: globalDataStore, diGraph: diGraph)
 
         Self.shared.postInitialize(siteId: diGraph.siteId, diGraph: diGraph)
     }

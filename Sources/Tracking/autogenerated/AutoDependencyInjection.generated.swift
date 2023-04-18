@@ -68,10 +68,8 @@ extension DIGraph {
 
     // CleanupRepository
     var cleanupRepository: CleanupRepository {
-        if let overridenDep = overrides[String(describing: CleanupRepository.self)] {
-            return overridenDep as! CleanupRepository
-        }
-        return newCleanupRepository
+        getOverrideInstance() ??
+            newCleanupRepository
     }
 
     private var newCleanupRepository: CleanupRepository {
@@ -80,10 +78,8 @@ extension DIGraph {
 
     // DeviceAttributesProvider
     var deviceAttributesProvider: DeviceAttributesProvider {
-        if let overridenDep = overrides[String(describing: DeviceAttributesProvider.self)] {
-            return overridenDep as! DeviceAttributesProvider
-        }
-        return newDeviceAttributesProvider
+        getOverrideInstance() ??
+            newDeviceAttributesProvider
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
@@ -92,10 +88,8 @@ extension DIGraph {
 
     // QueueRunnerHook
     var queueRunnerHook: QueueRunnerHook {
-        if let overridenDep = overrides[String(describing: QueueRunnerHook.self)] {
-            return overridenDep as! QueueRunnerHook
-        }
-        return newQueueRunnerHook
+        getOverrideInstance() ??
+            newQueueRunnerHook
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {

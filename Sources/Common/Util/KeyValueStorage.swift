@@ -1,6 +1,25 @@
 import Foundation
 
 /**
+ A version of KeyValueStorage that does not store data to a specific site-id. The data stored here is meant to be shared amongst all site-ids.
+ */
+// sourcery: InjectRegister = "GlobalKeyValueStorage"
+public class GlobalKeyValueStorage: UserDefaultsKeyValueStorage {
+    // Used for automated tests
+    override init(siteId: SiteId, deviceMetricsGrabber: DeviceMetricsGrabber) {
+        super.init(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
+
+        switchToGlobalDataStore()
+    }
+
+    public static func getInstance() -> GlobalKeyValueStorage {
+        let newInstance = GlobalKeyValueStorage(siteId: "", deviceMetricsGrabber: DeviceMetricsGrabberImpl())
+        newInstance.switchToGlobalDataStore()
+        return newInstance
+    }
+}
+
+/**
  Stores data in key/value pairs.
  */
 public protocol KeyValueStorage {

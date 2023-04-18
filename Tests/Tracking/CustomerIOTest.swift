@@ -8,6 +8,7 @@ class CustomerIOTest: UnitTest {
     private let hooksMock = HooksManagerMock()
     private let cleanupRepositoryMock = CleanupRepositoryMock()
     private let implmentationMock = CustomerIOInstanceMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
 
     private var customerIO: CustomerIO!
 
@@ -17,7 +18,7 @@ class CustomerIOTest: UnitTest {
         diGraph.override(value: hooksMock, forType: HooksManager.self)
         diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
 
-        customerIO = CustomerIO(implementation: implmentationMock, diGraph: diGraph)
+        customerIO = CustomerIO(implementation: implmentationMock, globalDataStore: globalDataStoreMock, diGraph: diGraph)
     }
 
     func test_initialize_expectAddModuleHooks_expectRunCleanup() {

@@ -67,10 +67,8 @@ extension DIGraph {
 
     // InAppProvider
     var inAppProvider: InAppProvider {
-        if let overridenDep = overrides[String(describing: InAppProvider.self)] {
-            return overridenDep as! InAppProvider
-        }
-        return newInAppProvider
+        getOverrideInstance() ??
+            newInAppProvider
     }
 
     private var newInAppProvider: InAppProvider {
@@ -79,10 +77,8 @@ extension DIGraph {
 
     // ModuleHookProvider
     var moduleHookProvider: ModuleHookProvider {
-        if let overridenDep = overrides[String(describing: ModuleHookProvider.self)] {
-            return overridenDep as! ModuleHookProvider
-        }
-        return newModuleHookProvider
+        getOverrideInstance() ??
+            newModuleHookProvider
     }
 
     private var newModuleHookProvider: ModuleHookProvider {

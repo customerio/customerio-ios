@@ -1,3 +1,10 @@
+## [2.2.0](https://github.com/customerio/customerio-ios/compare/2.1.2...2.2.0) (2023-04-18)
+
+
+### Features
+
+* ui for new sample app with apns ([#282](https://github.com/customerio/customerio-ios/issues/282)) ([06e4a6b](https://github.com/customerio/customerio-ios/commit/06e4a6b71554610c7e7d3b95f62d129d934414be))
+
 ### [2.1.2](https://github.com/customerio/customerio-ios/compare/2.1.1...2.1.2) (2023-03-10)
 
 
