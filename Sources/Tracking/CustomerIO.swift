@@ -232,6 +232,12 @@ public class CustomerIO: CustomerIOInstance {
         // Register Tracking module hooks now that the module is being initialized.
         hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
 
+        // Register the device token during SDK initialization to address device registration issues
+        // arising from lifecycle differences between wrapper SDKs and native SDK.
+        if let token = globalDataStore?.pushDeviceToken {
+            registerDeviceToken(token)
+        }
+
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
             self?.cleanupRepository?.cleanup()

@@ -1,9 +1,6 @@
 import CioTracking
 import Common
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
@@ -13,8 +10,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var shared = MessagingPush()
 
     // testing constructor
-    override internal init(implementation: MessagingPushInstance?, sdkInitializedUtil: SdkInitializedUtil) {
-        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
+    override internal init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
+        super.init(implementation: implementation, globalDataStore: globalDataStore, sdkInitializedUtil: sdkInitializedUtil)
     }
 
     // singleton constructor
@@ -27,21 +24,17 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         Self.shared = MessagingPush()
     }
 
-    // initialize the module so that it can start automatically fetching device token
+    // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
+    // currently no module initialization to perform.
     public static func initialize() {
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
 
-    @available(iOSApplicationExtension, unavailable)
     override public func inititlizeModule(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
         logger.info("MessagingPush module setup with SDK")
-
-        #if canImport(UIKit)
-        UIApplication.shared.registerForRemoteNotifications()
-        #endif
     }
 
     override public func getImplementationInstance(diGraph: DIGraph) -> MessagingPushInstance {
@@ -53,6 +46,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
+        globalDataStore.pushDeviceToken = deviceToken
         implementation?.registerDeviceToken(deviceToken)
     }
 

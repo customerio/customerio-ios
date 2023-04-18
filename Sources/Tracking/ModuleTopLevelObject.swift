@@ -14,17 +14,21 @@ open class ModuleTopLevelObject<ImplementationClass> {
         alreadyCreatedImplementation ?? createAndSetImplementationInstance()
     }
 
+    public var globalDataStore: GlobalDataStore
+
     private let sdkInitializedUtil: SdkInitializedUtil
 
     // for writing tests
     // provide a nil implementation if you want `sdkInitializedUtil` logic to run and real instance of implementation to run in tests
-    public init(implementation: ImplementationClass?, sdkInitializedUtil: SdkInitializedUtil) {
+    public init(implementation: ImplementationClass?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
         self.alreadyCreatedImplementation = implementation
+        self.globalDataStore = globalDataStore
         self.sdkInitializedUtil = sdkInitializedUtil
     }
 
     // singleton constructor
     public init() {
+        self.globalDataStore = CioGlobalDataStore.getInstance()
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
