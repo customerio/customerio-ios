@@ -67,7 +67,7 @@ extension DIGraph {
 
     // InAppProvider
     var inAppProvider: InAppProvider {
-        getOverriddenInstance() ??
+        getOverrideInstance() ??
             newInAppProvider
     }
 
@@ -77,7 +77,7 @@ extension DIGraph {
 
     // ModuleHookProvider
     var moduleHookProvider: ModuleHookProvider {
-        getOverriddenInstance() ??
+        getOverrideInstance() ??
             newModuleHookProvider
     }
 

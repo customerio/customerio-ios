@@ -64,7 +64,7 @@ extension DIGraph {
     // DeepLinkUtil
     @available(iOSApplicationExtension, unavailable)
     var deepLinkUtil: DeepLinkUtil {
-        getOverriddenInstance() ??
+        getOverrideInstance() ??
             newDeepLinkUtil
     }
 
