@@ -1,6 +1,25 @@
 import Foundation
 
 /**
+ A version of KeyValueStorage that does not store data to a specific site-id. The data stored here is meant to be shared amongst all site-ids.
+ 
+ We are using a typealias here as a way to tell the DI graph that GlobalKeyValueStorage is a separate data type to KeyValueStorage.
+ */
+public typealias GlobalKeyValueStorage = KeyValueStorage
+
+// Typealiases cannot use the "InjectRegister" annotation so, we need to add the dependency manually to the DI graph.
+// When a class needs GlobalKeyValueStorage as a dependency, it can just put GlobalKeyValueStorage in the constructor just like
+// any other dependency. The DI graph will keep GlobalKeyValueStorage and KeyValueStorage separate.
+public extension DIGraph {
+    var globalKeyValueStorage: GlobalKeyValueStorage {
+        let newInstance = UserDefaultsKeyValueStorage(siteId: "", deviceMetricsGrabber: DeviceMetricsGrabberImpl())
+        newInstance.switchToGlobalDataStore()
+        
+        return getOverrideInstance() ?? newInstance
+    }
+}
+
+/**
  Stores data in key/value pairs.
  */
 public protocol KeyValueStorage {

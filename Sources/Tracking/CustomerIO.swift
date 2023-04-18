@@ -130,7 +130,7 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared = CustomerIO()
     }
 
-    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
         siteId: String,
