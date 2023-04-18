@@ -772,7 +772,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		46EE275429E9E2960068F9A3 /* MessagingInApp */ = {
 			isa = XCSwiftPackageProductDependency;

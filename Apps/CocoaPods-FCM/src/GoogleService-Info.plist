@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1001564516023-78dpc2fuugnqmp8n84qa8oj114bsfnno.apps.googleusercontent.com</string>
+	<string>1001564516023-5n3nd9b1d58s4pb776qpld55vuvrk45u.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1001564516023-78dpc2fuugnqmp8n84qa8oj114bsfnno</string>
+	<string>com.googleusercontent.apps.1001564516023-5n3nd9b1d58s4pb776qpld55vuvrk45u</string>
 	<key>API_KEY</key>
 	<string>AIzaSyApOVYacWweX4ab6a3rf8CmjqI4PmUvnEI</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>io.customer.remotehabits</string>
+	<string>io.customer.ios-sample.cocoapods-fcm</string>
 	<key>PROJECT_ID</key>
 	<string>remote-habits</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1001564516023:ios:11f260eee0064b521a2732</string>
+	<string>1:1001564516023:ios:ae57e2244386a23a1a2732</string>
 </dict>
 </plist>

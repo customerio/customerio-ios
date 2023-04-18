@@ -69,8 +69,8 @@ class SettingsViewController: UIViewController {
         debugModeToggle.isOn = currentSettings.isDebugModeEnabled
         enablePushToggle.isOn = currentSettings.isPushEnabled
     }
-    
-    func configureSettingsRouter() {
+
+func configureSettingsRouter() {
         let router = SettingsRouter()
         settingsRouter = router
         router.settingsViewController = self

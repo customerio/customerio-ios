@@ -58,6 +58,7 @@ class LoginViewController: UIViewController {
         CustomerIO.shared.identify(identifier: emailId, body: ["firstName" : name])
         storage.userEmailId = emailId
         storage.userName = name
+
         loginRouter?.routeToDashboard()
     }
     

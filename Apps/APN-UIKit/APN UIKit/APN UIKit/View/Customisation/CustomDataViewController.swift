@@ -80,6 +80,7 @@ class CustomDataViewController: UIViewController {
         else if ( source == .deviceAttributes) {
             CustomerIO.shared.profileAttributes = [propName: propValue]
             self.showAlert(withMessage: "Profile attribute set successfully.")
+
         }
     }
     
