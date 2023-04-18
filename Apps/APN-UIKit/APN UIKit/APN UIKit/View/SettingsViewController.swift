@@ -15,7 +15,7 @@ class SettingsViewController: UIViewController {
     @IBOutlet weak var debugModeToggle: UISwitch!
     @IBOutlet weak var trackScreenToggle: UISwitch!
     @IBOutlet weak var enablePushToggle: UISwitch!
-    @IBOutlet weak var bgQMinTasks: ThemeTextField!
+    @IBOutlet weak var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet weak var bgQTakDelayTextField: ThemeTextField!
     
     var settingsRouter: SettingsRouting?
@@ -62,7 +62,7 @@ class SettingsViewController: UIViewController {
         apiKeyTextField.text = currentSettings.apiKey
         
         bgQTakDelayTextField.text = currentSettings.bgQDelay
-        bgQMinTasks.text = currentSettings.bgQMinTasks
+        bgQMinTasksTextField.text = currentSettings.bgQMinTasks
         
         trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
         trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
@@ -92,7 +92,26 @@ class SettingsViewController: UIViewController {
         if currentSettings.trackUrl != trackUrlTextField.text {
             storage.trackUrl = trackUrlTextField.text
         }
+        
+        // Background Queue Seconds Delay
+        if currentSettings.bgQDelay != bgQTakDelayTextField.text {
+            storage.bgQDelay = bgQTakDelayTextField.text
+        }
+        
+        // Min number of tasks
+        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
+            storage.bgNumOfTasks = bgQMinTasksTextField.text
+        }
+        
+        // Min tasks in queue
+        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
+            storage.bgNumOfTasks = bgQMinTasksTextField.text
+        }
+        
+        // Track screen enabled
+//        if currentSettings.isTrackScreenEnabled != trackScreenToggle.va
     }
+    
     
     // MARK: - Actions
     @IBAction func saveSettings(_ sender: UIButton) {

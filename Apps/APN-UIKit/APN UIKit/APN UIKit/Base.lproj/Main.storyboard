@@ -666,7 +666,7 @@
                     <navigationItem key="navigationItem" id="637-vE-UDe"/>
                     <connections>
                         <outlet property="apiKeyTextField" destination="Svx-V1-ygO" id="Vh6-bV-R40"/>
-                        <outlet property="bgQMinTasks" destination="M6C-ZH-JdN" id="1ax-wD-YIZ"/>
+                        <outlet property="bgQMinTasksTextField" destination="M6C-ZH-JdN" id="Zf2-0O-sDm"/>
                         <outlet property="bgQTakDelayTextField" destination="pSW-8b-6U3" id="oYw-rp-tuL"/>
                         <outlet property="debugModeToggle" destination="KTX-LK-Tpd" id="2Bu-FU-aXC"/>
                         <outlet property="deviceTokenTextField" destination="jPa-Ye-N0O" id="UIr-fD-2NP"/>
