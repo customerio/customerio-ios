@@ -1,10 +1,9 @@
 name: Build sample apps 
 
-on: [pull_request]
-
-env:
-  XCODE_VERSION_BUILD_APPS: 14
-  FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 6 # fixes common problem when trying to compile iOS apps on GH actions runner. I think because GH action runners are slow? 
+on: 
+  pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
+  release: # build sample apps for every git tag created. These are known as "stable" builds that are suitable for people outside the mobile team. 
+    types: [published]
 
 jobs:
   build-sample-apps:
@@ -23,14 +22,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up XCode ${{ env.XCODE_VERSION_BUILD_APPS }}
+    - name: Set up Xcode to version we determine 
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: ${{ env.XCODE_VERSION_BUILD_APPS }}
-
-    - name: Setup files needed for build 
-      run: |
-        echo "${{ secrets.FASTLANE_GC_KEYS_FILE_B64 }}" | base64 -d > gc_keys.json
+        xcode-version: 14
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@v1
@@ -50,21 +45,27 @@ jobs:
       uses: actions/cache@v3
       with:
         path: "Apps/${{ matrix.sample-app }}/Pods"
-        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods-${{ hashFiles('**/Podfile.lock') }}
+        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.sample-app}}-Pods-
+          ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
     - name: pod install if app uses CocoaPods 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
       run: pod install 
 
     - name: Install tools for Fastlane build to use
-      run: brew install xcbeautify
+      run: brew install xcbeautify    
+
+      # - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
+    #   run: cat $GITHUB_EVENT_PATH
 
     - name: Build app via Fastlane 
       uses: maierj/fastlane-action@v3.0.0
       with:
         lane: "build"
         subdirectory: "Apps/${{ matrix.sample-app }}"
+      env: 
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
     
 
