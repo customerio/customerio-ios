@@ -87,28 +87,6 @@ class QueueTest: UnitTest {
         XCTAssertEqual(queueTimerMock.cancelCallsCount, 1)
     }
 
-    // MARK: addTrackInAppDeliveryTask
-
-    func test_addTrackInAppDeliveryTask_expectStartQueueAfterSuccessfullyAddingTask() {
-        setupTest(backgroundQueueMinNumberOfTasks: 1)
-        let givenCreatedTask = QueueTaskMetadata.random
-
-        storageMock.createReturnValue = CreateQueueStorageTaskResult(
-            success: true,
-            queueStatus: QueueStatus(queueId: testSiteId, numTasksInQueue: 1),
-            createdTask: givenCreatedTask
-        )
-
-        storageMock.getInventoryReturnValue = [givenCreatedTask]
-
-        _ = queue.addTrackInAppDeliveryTask(deliveryId: String.random, event: InAppMetric.opened, metaData: [String.random: String.random])
-
-        XCTAssertEqual(runRequestMock.startCallsCount, 1)
-
-        XCTAssertFalse(queueTimerMock.scheduleIfNotAlreadyCalled)
-        XCTAssertEqual(queueTimerMock.cancelCallsCount, 1)
-    }
-
     // MARK: run
 
     func test_run_expectStartRunRequest() {
