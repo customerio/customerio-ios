@@ -11,9 +11,11 @@ class DashboardRouter: DashboardRouting {
     weak var dashboardViewController: DashboardViewController?
 
     func routeToLogin() {
-//        let viewController = LoginViewController.newInstance()
-//        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
-        dashboardViewController?.navigationController?.popToRootViewController(animated: true)
+        guard let _ = dashboardViewController?.navigationController?.popToRootViewController(animated: true) else {
+            let viewController = LoginViewController.newInstance()
+            dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+            return
+        }
     }
     
     func routeToCustomDataScreen(forSource source: CustomDataSource) {
