@@ -42,6 +42,7 @@
 		46EE277629ED802D0068F9A3 /* DIDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277529ED802D0068F9A3 /* DIDependencies.swift */; };
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
+		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +100,7 @@
 		46EE277529ED802D0068F9A3 /* DIDependencies.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIDependencies.swift; sourceTree = "<group>"; };
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
+		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -220,6 +222,7 @@
 				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
 				46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */,
 				46EE275C29E9ECE60068F9A3 /* StringExtension.swift */,
+				46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -428,6 +431,7 @@
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
+				46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */,
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
