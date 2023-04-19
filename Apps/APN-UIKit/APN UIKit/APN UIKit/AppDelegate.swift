@@ -19,16 +19,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         return true
     }
-    
+
     func initializeCioAndInAppListeners() {
         // Initialise CustomerIO SDK
         
-        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US) { config in
+        CustomerIO.initialize(siteId: "", apiKey: "", region: .US) { config in
             config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
-            config.backgroundQueueSecondsDelay =  Double(self.storage.bgQDelay ?? 30)
-            config.backgroundQueueMinNumberOfTasks = Double(self.storage.bgNumOfTasks ?? 10)
+            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
+            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
+            config.autoTrackScreenViews =  self.storage.isTrackScreenEnabled ?? false
+            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
+                config.trackingApiUrl = trackUrl
+            }
         }
+        
+        // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
     }
     // MARK: UISceneSession Lifecycle
