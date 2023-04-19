@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -1672,9 +1672,9 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric)?
+    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric, metaData: [String: String])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric)] = []
+    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric, metaData: [String: String])] = []
     /// Value to return from the mocked function.
     public var addTrackInAppDeliveryTaskReturnValue: ModifyQueueResult!
     /**
@@ -1682,15 +1682,15 @@ public class QueueMock: Queue, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTrackInAppDeliveryTaskReturnValue`
      */
-    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> ModifyQueueResult)?
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, [String: String]) -> ModifyQueueResult)?
 
-    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
-        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event)
-        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event))
-        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event) } ?? addTrackInAppDeliveryTaskReturnValue
+        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event, metaData: metaData)
+        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event, metaData: metaData))
+        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event, metaData) } ?? addTrackInAppDeliveryTaskReturnValue
     }
 
     // MARK: - addTask<TaskData: Codable>
@@ -2132,11 +2132,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        deleteTasksMemberOfGroupCallsCount = 0
-        deleteTasksMemberOfGroupReceivedArguments = nil
-        deleteTasksMemberOfGroupReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         deleteExpiredCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2320,37 +2315,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteReceivedArguments = storageId
         deleteReceivedInvocations.append(storageId)
         return deleteClosure.map { $0(storageId) } ?? deleteReturnValue
-    }
-
-    // MARK: - deleteTasksMemberOfGroup
-
-    /// Number of times the function was called.
-    public private(set) var deleteTasksMemberOfGroupCallsCount = 0
-    /// `true` if the function was ever called.
-    public var deleteTasksMemberOfGroupCalled: Bool {
-        deleteTasksMemberOfGroupCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var deleteTasksMemberOfGroupReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteTasksMemberOfGroupReceivedInvocations: [String] = []
-    /// Value to return from the mocked function.
-    public var deleteTasksMemberOfGroupReturnValue: [QueueTaskMetadata]!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `deleteTasksMemberOfGroupReturnValue`
-     */
-    public var deleteTasksMemberOfGroupClosure: ((String) -> [QueueTaskMetadata])?
-
-    /// Mocked function for `deleteTasksMemberOfGroup(groupId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func deleteTasksMemberOfGroup(groupId: String) -> [QueueTaskMetadata] {
-        mockCalled = true
-        deleteTasksMemberOfGroupCallsCount += 1
-        deleteTasksMemberOfGroupReceivedArguments = groupId
-        deleteTasksMemberOfGroupReceivedInvocations.append(groupId)
-        return deleteTasksMemberOfGroupClosure.map { $0(groupId) } ?? deleteTasksMemberOfGroupReturnValue
     }
 
     // MARK: - deleteExpired

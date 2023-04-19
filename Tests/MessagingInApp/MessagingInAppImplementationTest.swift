@@ -12,12 +12,14 @@ class MessagingInAppImplementationTest: UnitTest {
     private let inAppProviderMock = InAppProviderMock()
     private let eventListenerMock = InAppEventListenerMock()
     private let profileStoreMock = ProfileStoreMock()
+    private let backgroundQueueMock = QueueMock()
 
     override func setUp() {
         super.setUp()
 
         diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraph)
         messagingInApp.initialize(eventListener: eventListenerMock)
@@ -101,6 +103,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
+        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
         // Message opened
         XCTAssertFalse(eventListenerMock.messageShownCalled)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -139,6 +146,11 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_eventListeners_expectCallListenerForEachEvent() {
         let givenGistMessage = Message.random
 
+        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
         // Message opened
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 0)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -175,6 +187,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenAction = "gist://close"
         let givenName = String.random
 
+        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
 
         messagingInApp.action(
@@ -183,9 +200,38 @@ class MessagingInAppImplementationTest: UnitTest {
             action: givenAction,
             name: givenName
         )
+
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
+
+        // make sure there is no click tracking for "close" action
+        XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskCallsCount, 0)
+    }
+
+    func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() {
+        let givenGistMessage = Message.random
+        let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
+        let givenCurrentRoute = String.random
+        let givenAction = String.random
+        let givenName = String.random
+        let givenMetaData = ["action_name": givenName, "action_value": givenAction]
+
+        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
+        messagingInApp.action(
+            message: givenGistMessage,
+            currentRoute: givenCurrentRoute,
+            action: givenAction,
+            name: givenName
+        )
+
+        XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.deliveryId, expectedInAppMessage.deliveryId)
+        XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.event, .clicked)
+        XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.metaData, givenMetaData)
     }
 }
