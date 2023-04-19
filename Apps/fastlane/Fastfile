@@ -35,12 +35,8 @@ lane :build do
   download_ci_code_signing_files
   
   # Create new variables to be used in function 
-  new_app_version = ""
-  # For the build number...
-  # Use the git commit hash as the Xcode build number. This solves 2 problems:
-  # 1. Each build created must have a uique build number. Git commits are always unique, so this is convenient. 
-  # 2. To help QA differentiate each build from each other, the git commit hash is a convenient way for QA to see the latest git commit made to a PR and make sure to install the build associated with that git commit.   
-  new_build_number = "" # populate git commit hash value later since there are different ways that we do this. 
+  new_app_version = "" # this will get populated later depending on if this is a PR or not. 
+  new_build_number = Time.now.to_i.to_s # Build numbers need to be unique, only 0-9 digits, and always incremented. Using seconds now solves both of those problems easily. 
   build_notes = []
   test_groups = ['all-builds'] # send all builds to group 'all-builds'. Therefore, set it here and we will not remove it. 
 
@@ -59,7 +55,6 @@ lane :build do
     UI.message("Populating notes to include helpful information from this PR....")
 
     new_app_version = github.pr_source_branch
-    new_build_number = github.pr_commit_hash
 
     build_notes.append(
       "build type: pull request",
@@ -75,11 +70,8 @@ lane :build do
     UI.message("Populating notes to include helpful information from this tag....")
 
     new_app_version = github.release_git_tag_created
-    # Unfortunately, the GitHub Actions metadata does not include the git commit hash a git tag was made for. Therefore, we use git to find the commit hash 
-    sh('git fetch --tags') # since CI servers usually do shallow git clones, we need to fetch all git tags to make sure we have the latest git tag locally available. 
-    new_build_number = sh("git show-ref -s #{github.release_git_tag_created}")[0..8] # gets the commit hash for the specific git tag 
 
-    UI.message("Git tag created: #{new_app_version}, git commit hash tag points to: #{new_build_number}")
+    UI.message("Git tag created: #{new_app_version}")
     
     test_groups.append("stable-builds") # git tag builds are builds should be considered more stable and are suitable for non-mobile team members to be invited to install. 
 
