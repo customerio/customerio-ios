@@ -60,11 +60,6 @@ class SettingsViewController: UIViewController {
     }
     
     @objc
-    func appMovedToBackground() {
-        print("Acha hello")
-    }
-    
-    @objc
     func appMovedToForeground() {
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
