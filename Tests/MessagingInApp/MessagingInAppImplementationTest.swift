@@ -200,10 +200,14 @@ class MessagingInAppImplementationTest: UnitTest {
             action: givenAction,
             name: givenName
         )
+
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
+
+        // make sure there is no click tracking for "close" action
+        XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskCallsCount, 0)
     }
 
     func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() {
