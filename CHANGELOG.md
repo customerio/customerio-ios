@@ -1,3 +1,10 @@
+## [2.3.0](https://github.com/customerio/customerio-ios/compare/2.2.0...2.3.0) (2023-04-19)
+
+
+### Features
+
+* in app click tracking ([#284](https://github.com/customerio/customerio-ios/issues/284)) ([4ed8edb](https://github.com/customerio/customerio-ios/commit/4ed8edbd0f9e7a7aa6a708e525c6081e93658e98))
+
 ## [2.2.0](https://github.com/customerio/customerio-ios/compare/2.1.2...2.2.0) (2023-04-18)
 
 
