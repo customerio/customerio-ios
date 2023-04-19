@@ -46,8 +46,20 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        globalDataStore.pushDeviceToken = deviceToken
-        implementation?.registerDeviceToken(deviceToken)
+        // Compare the new deviceToken with the one stored in globalDataStore.
+        // If they are different, proceed with registering the device token.
+        // This check helps to avoid duplicate requests, as registerDeviceToken is already called on SDK initialization.
+        if deviceToken != globalDataStore.pushDeviceToken {
+            // Call the registerDeviceToken method on the implementation.
+            // This method is responsible for registering the device token and updating the globalDataStore as well.
+            if let implementation = implementation {
+                implementation.registerDeviceToken(deviceToken)
+            } else {
+                // Update the globalDataStore with the new device token.
+                // The implementation may be nil due to lifecycle issues in wrappers SDKs.
+                globalDataStore.pushDeviceToken = deviceToken
+            }
+        }
     }
 
     /**
