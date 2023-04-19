@@ -7,10 +7,12 @@ class DashboardViewController: UIViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
     
+    @IBOutlet weak var userDetail: UIImageView!
     @IBOutlet weak var settings: UIImageView!
     
     var dashboardRouter: DashboardRouting?
     var notificationUtil = DI.shared.notificationUtil
+    var storage =  DI.shared.storage
     
     override func viewWillAppear(_ animated: Bool) {
          super.viewWillAppear(animated)
@@ -21,7 +23,7 @@ class DashboardViewController: UIViewController {
         super.viewDidLoad()
         showPushPermissionPrompt()
         configureDashboardRouter()
-        addUserInteractionToSettingsImageView()
+        addUserInteractionToImageViews()
     }
     
     func showPushPermissionPrompt() {
@@ -34,15 +36,18 @@ class DashboardViewController: UIViewController {
         router.dashboardViewController = self
     }
     
-    func addUserInteractionToSettingsImageView() {
-        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
-
-        settings.addGestureRecognizer(gestureOnSettings)
-        settings.isUserInteractionEnabled = true
+    func addUserInteractionToImageViews() {
+        settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
+        userDetail.addTapGesture(onTarget: self, #selector(DashboardViewController.userDetailTapped))
     }
     
     @objc func settingsTapped() {
         dashboardRouter?.routeToSettings()
+    }
+    
+    @objc func userDetailTapped() {
+        let userDetail = "Name - " + storage.userName! + "\n\nEmailId - " + storage.userEmailId!
+        showAlert(withMessage: userDetail)
     }
     
     // MARK: - Actions

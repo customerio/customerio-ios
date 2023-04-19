@@ -35,10 +35,7 @@ class LoginViewController: UIViewController {
     }
     
     func addUserInteractionToSettingsImageView() {
-        let gestureOnSettings: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
-
-        settings.addGestureRecognizer(gestureOnSettings)
-        settings.isUserInteractionEnabled = true
+        settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
     
     @objc func settingsTapped() {
