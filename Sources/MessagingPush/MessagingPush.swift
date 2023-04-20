@@ -8,14 +8,17 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
+    private var globalDataStore: GlobalDataStore
 
     // testing constructor
-    override internal init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
-        super.init(implementation: implementation, globalDataStore: globalDataStore, sdkInitializedUtil: sdkInitializedUtil)
+    internal init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
+        self.globalDataStore = globalDataStore
+        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
 
     // singleton constructor
     override private init() {
+        self.globalDataStore = CioGlobalDataStore.getInstance()
         super.init()
     }
 

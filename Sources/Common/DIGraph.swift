@@ -32,6 +32,10 @@ public class DIGraph {
         // Get the type name as the key for the dictionary.
         let typeName = String(describing: T.self)
 
+        guard overrides[typeName] != nil else {
+            return nil // no override set. Quit early.
+        }
+
         // Get and cast the overridden instance from the dictionary.
         guard let overriddenInstance = overrides[typeName] as? T else {
             fatalError("Failed to cast overridden instance to type '\(typeName)'.")
