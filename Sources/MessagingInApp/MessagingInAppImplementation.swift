@@ -102,7 +102,7 @@ extension MessagingInAppImplementation: GistDelegate {
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: message) {
                 // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-                _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked)
+                _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked, metaData: ["action_name": name, "action_value": action])
             }
         }
 
