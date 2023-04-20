@@ -31,7 +31,7 @@ public protocol Queue: AutoMockable {
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult
 
     /**
      Add a task to the queue to be performed sometime in the future.
@@ -57,6 +57,10 @@ public protocol Queue: AutoMockable {
 }
 
 public extension Queue {
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String] = [:]) -> ModifyQueueResult {
+        addTrackInAppDeliveryTask(deliveryId: deliveryId, event: event, metaData: metaData)
+    }
+
     func addTask<TaskData: Codable>(
         type: String,
         // sourcery:Type=AnyEncodable
@@ -122,7 +126,7 @@ public class CioQueue: Queue {
         self.dateUtil = dateUtil
     }
 
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
         addTask(
             type: QueueTaskType.trackDeliveryMetric.rawValue,
             data: TrackDeliveryEventRequestBody(
@@ -130,7 +134,8 @@ public class CioQueue: Queue {
                 payload: DeliveryPayload(
                     deliveryId: deliveryId,
                     event: event,
-                    timestamp: dateUtil.now
+                    timestamp: dateUtil.now,
+                    metaData: metaData
                 )
             )
         )
