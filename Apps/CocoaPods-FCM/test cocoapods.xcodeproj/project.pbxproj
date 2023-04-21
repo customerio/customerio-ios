@@ -15,7 +15,6 @@
 		F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC729F2B64100411BCC /* StringExtensions.swift */; };
 		F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECB29F2C0C300411BCC /* LoginView.swift */; };
 		F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */; };
-		F7029ED229F2C79700411BCC /* KeyValueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED129F2C79700411BCC /* KeyValueStore.swift */; };
 		F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED329F2C82D00411BCC /* UserManager.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
@@ -23,12 +22,15 @@
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
 		F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7382933291D5C27008ED8CB /* NotificationService.swift */; };
 		F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */; };
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC629195D2600DFAC6E /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */; };
+		F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C1C58D29F2D39300067998 /* SettingsView.swift */; };
+		F7CDACAB29F2EA55002782BD /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = F7CDACAA29F2EA55002782BD /* SampleAppsCommon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,7 +70,6 @@
 		F7029EC729F2B64100411BCC /* StringExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtensions.swift; sourceTree = "<group>"; };
 		F7029ECB29F2C0C300411BCC /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentText.swift; sourceTree = "<group>"; };
-		F7029ED129F2C79700411BCC /* KeyValueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyValueStore.swift; sourceTree = "<group>"; };
 		F7029ED329F2C82D00411BCC /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -79,12 +80,15 @@
 		F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Rich Push Notification Service Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7382933291D5C27008ED8CB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F7382935291D5C27008ED8CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		F7C1C58A29F2D06C00067998 /* Common */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Common; path = ../Common; sourceTree = "<group>"; };
+		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +99,7 @@
 				F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */,
 				F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */,
 				AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */,
+				F7CDACAB29F2EA55002782BD /* SampleAppsCommon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +146,7 @@
 				F7029EBC29F2AFE000411BCC /* Widget */,
 				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F7029ECB29F2C0C300411BCC /* LoginView.swift */,
+				F7C1C58D29F2D39300067998 /* SettingsView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -167,6 +173,7 @@
 			children = (
 				F7029EC229F2B12900411BCC /* ViewExtensions.swift */,
 				F7029EC729F2B64100411BCC /* StringExtensions.swift */,
+				F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -187,17 +194,10 @@
 			path = Manager;
 			sourceTree = "<group>";
 		};
-		F7029ED029F2C78E00411BCC /* Store */ = {
-			isa = PBXGroup;
-			children = (
-				F7029ED129F2C79700411BCC /* KeyValueStore.swift */,
-			);
-			path = Store;
-			sourceTree = "<group>";
-		};
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
+				F7C1C58929F2D06C00067998 /* Packages */,
 				F73134622919570600CD43D9 /* src */,
 				F7382932291D5C27008ED8CB /* Rich Push Notification Service Extension */,
 				F73134612919570600CD43D9 /* Products */,
@@ -218,7 +218,6 @@
 		F73134622919570600CD43D9 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				F7029ED029F2C78E00411BCC /* Store */,
 				F7029ECF29F2C78100411BCC /* Manager */,
 				F7029EC429F2B3A500411BCC /* Util */,
 				F7029EC129F2B11C00411BCC /* Extensions */,
@@ -250,6 +249,14 @@
 			path = "Rich Push Notification Service Extension";
 			sourceTree = "<group>";
 		};
+		F7C1C58929F2D06C00067998 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				F7C1C58A29F2D06C00067998 /* Common */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -271,6 +278,7 @@
 			);
 			name = "test cocoapods";
 			packageProductDependencies = (
+				F7CDACAA29F2EA55002782BD /* SampleAppsCommon */,
 			);
 			productName = "test cocoapods";
 			productReference = F73134602919570600CD43D9 /* test cocoapods.app */;
@@ -423,16 +431,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
+				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
-				F7029ED229F2C79700411BCC /* KeyValueStore.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
+				F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -738,6 +747,13 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F7CDACAA29F2EA55002782BD /* SampleAppsCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SampleAppsCommon;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F73134582919570600CD43D9 /* Project object */;
 }
