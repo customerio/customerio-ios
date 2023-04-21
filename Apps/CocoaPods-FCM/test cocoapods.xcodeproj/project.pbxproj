@@ -13,6 +13,10 @@
 		F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC229F2B12900411BCC /* ViewExtensions.swift */; };
 		F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */; };
 		F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC729F2B64100411BCC /* StringExtensions.swift */; };
+		F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECB29F2C0C300411BCC /* LoginView.swift */; };
+		F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */; };
+		F7029ED229F2C79700411BCC /* KeyValueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED129F2C79700411BCC /* KeyValueStore.swift */; };
+		F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED329F2C82D00411BCC /* UserManager.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
 		F73134682919570700CD43D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73134672919570700CD43D9 /* Assets.xcassets */; };
@@ -62,6 +66,10 @@
 		F7029EC229F2B12900411BCC /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentUtil.swift; sourceTree = "<group>"; };
 		F7029EC729F2B64100411BCC /* StringExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtensions.swift; sourceTree = "<group>"; };
+		F7029ECB29F2C0C300411BCC /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentText.swift; sourceTree = "<group>"; };
+		F7029ED129F2C79700411BCC /* KeyValueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyValueStore.swift; sourceTree = "<group>"; };
+		F7029ED329F2C82D00411BCC /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		F73134652919570600CD43D9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -131,6 +139,8 @@
 			isa = PBXGroup;
 			children = (
 				F7029EBC29F2AFE000411BCC /* Widget */,
+				F73134652919570600CD43D9 /* DashboardView.swift */,
+				F7029ECB29F2C0C300411BCC /* LoginView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -139,6 +149,7 @@
 			isa = PBXGroup;
 			children = (
 				F7029EBD29F2B00500411BCC /* ColorButton.swift */,
+				F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -168,6 +179,22 @@
 			path = Util;
 			sourceTree = "<group>";
 		};
+		F7029ECF29F2C78100411BCC /* Manager */ = {
+			isa = PBXGroup;
+			children = (
+				F7029ED329F2C82D00411BCC /* UserManager.swift */,
+			);
+			path = Manager;
+			sourceTree = "<group>";
+		};
+		F7029ED029F2C78E00411BCC /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				F7029ED129F2C79700411BCC /* KeyValueStore.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
@@ -191,13 +218,14 @@
 		F73134622919570600CD43D9 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				F7029ED029F2C78E00411BCC /* Store */,
+				F7029ECF29F2C78100411BCC /* Manager */,
 				F7029EC429F2B3A500411BCC /* Util */,
 				F7029EC129F2B11C00411BCC /* Extensions */,
 				F7029EBF29F2B04D00411BCC /* Assets */,
 				F7029EBB29F2AFDA00411BCC /* View */,
 				F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */,
 				F73134632919570600CD43D9 /* App.swift */,
-				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
 				F73134692919570700CD43D9 /* Preview Content */,
 				F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */,
@@ -399,7 +427,11 @@
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
+				F7029ED229F2C79700411BCC /* KeyValueStore.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
+				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
+				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
+				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

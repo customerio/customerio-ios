@@ -18,8 +18,10 @@ struct DashboardView: View {
     @State private var profileAttributeName: String = ""
     @State private var profileAttributeValue: String = ""
 
+    @EnvironmentObject var userManager: UserManager
+
     var body: some View {
-        VStack(spacing: 40) {
+        VStack(spacing: 30) {
             Text("What would you like to test?")
 
             ColorButton(title: "Send Random Event") {
@@ -94,10 +96,10 @@ struct DashboardView: View {
             })
             ColorButton(title: "Logout") {
                 CustomerIO.shared.clearIdentify()
+
+                userManager.logout()
             }
-            Text("SDK: \(EnvironmentUtil.cioSdkVersion) \n app: \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.gray)
+            EnvironmentText()
         }
         .padding()
     }
