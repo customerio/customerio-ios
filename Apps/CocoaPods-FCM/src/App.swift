@@ -6,7 +6,8 @@ struct MainApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DashboardView()
+                .accentColor(Color("AccentColor")) // sets Color.accentColor for all children
         }
     }
 }
