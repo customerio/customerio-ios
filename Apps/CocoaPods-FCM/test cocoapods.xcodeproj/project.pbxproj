@@ -9,8 +9,12 @@
 /* Begin PBXBuildFile section */
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
+		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
+		F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC229F2B12900411BCC /* ViewExtensions.swift */; };
+		F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */; };
+		F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC729F2B64100411BCC /* StringExtensions.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
-		F73134662919570600CD43D9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* ContentView.swift */; };
+		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
 		F73134682919570700CD43D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73134672919570700CD43D9 /* Assets.xcassets */; };
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
 		F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7382933291D5C27008ED8CB /* NotificationService.swift */; };
@@ -54,9 +58,13 @@
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
+		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
+		F7029EC229F2B12900411BCC /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
+		F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentUtil.swift; sourceTree = "<group>"; };
+		F7029EC729F2B64100411BCC /* StringExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtensions.swift; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
-		F73134652919570600CD43D9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F73134652919570600CD43D9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		F73134672919570700CD43D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F731346A2919570700CD43D9 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F731346C2919570700CD43D9 /* test_cocoapods.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = test_cocoapods.entitlements; sourceTree = "<group>"; };
@@ -119,6 +127,47 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		F7029EBB29F2AFDA00411BCC /* View */ = {
+			isa = PBXGroup;
+			children = (
+				F7029EBC29F2AFE000411BCC /* Widget */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		F7029EBC29F2AFE000411BCC /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				F7029EBD29F2B00500411BCC /* ColorButton.swift */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		F7029EBF29F2B04D00411BCC /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				F73134672919570700CD43D9 /* Assets.xcassets */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
+		F7029EC129F2B11C00411BCC /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				F7029EC229F2B12900411BCC /* ViewExtensions.swift */,
+				F7029EC729F2B64100411BCC /* StringExtensions.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		F7029EC429F2B3A500411BCC /* Util */ = {
+			isa = PBXGroup;
+			children = (
+				F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */,
+			);
+			path = Util;
+			sourceTree = "<group>";
+		};
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
@@ -142,10 +191,13 @@
 		F73134622919570600CD43D9 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				F7029EC429F2B3A500411BCC /* Util */,
+				F7029EC129F2B11C00411BCC /* Extensions */,
+				F7029EBF29F2B04D00411BCC /* Assets */,
+				F7029EBB29F2AFDA00411BCC /* View */,
 				F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */,
 				F73134632919570600CD43D9 /* App.swift */,
-				F73134652919570600CD43D9 /* ContentView.swift */,
-				F73134672919570700CD43D9 /* Assets.xcassets */,
+				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
 				F73134692919570700CD43D9 /* Preview Content */,
 				F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */,
@@ -343,8 +395,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
-				F73134662919570600CD43D9 /* ContentView.swift in Sources */,
+				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
+				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
+				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
+				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
+				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
