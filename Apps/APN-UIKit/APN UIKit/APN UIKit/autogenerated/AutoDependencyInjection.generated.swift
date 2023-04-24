@@ -60,6 +60,7 @@ DI.shared.resetOverrides()
  This allows automated unit testing against our dependency graph + ability to override nodes in graph. 
  */
  enum Dependency: CaseIterable {
+    case deepLinksHandlerUtil
     case notificationUtil
     case storage
     case userDefaults
@@ -103,6 +104,7 @@ DI.shared.resetOverrides()
     */
      func inject<T>(_ dep: Dependency) -> T {                            
         switch dep {
+            case .deepLinksHandlerUtil: return self.deepLinksHandlerUtil as! T 
             case .notificationUtil: return self.notificationUtil as! T 
             case .storage: return self.storage as! T 
             case .userDefaults: return self.userDefaults as! T 
@@ -113,6 +115,16 @@ DI.shared.resetOverrides()
     Use the property accessors below to inject pre-typed dependencies. 
     */
 
+    // DeepLinksHandlerUtil
+    internal var deepLinksHandlerUtil: DeepLinksHandlerUtil {    
+        if let overridenDep = self.overrides[.deepLinksHandlerUtil] {
+            return overridenDep as! DeepLinksHandlerUtil
+        }
+        return self.newDeepLinksHandlerUtil
+    }
+    private var newDeepLinksHandlerUtil: DeepLinksHandlerUtil {    
+        return AppDeepLinksHandlerUtil()
+    }
     // NotificationUtil
     internal var notificationUtil: NotificationUtil {    
         if let overridenDep = self.overrides[.notificationUtil] {

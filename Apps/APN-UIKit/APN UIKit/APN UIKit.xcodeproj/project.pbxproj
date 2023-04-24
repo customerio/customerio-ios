@@ -12,6 +12,8 @@
 		4650330B29F692EF001B6552 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
 		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
 		4650330F29F69374001B6552 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330E29F69374001B6552 /* Tracking */; };
+		4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331029F696B8001B6552 /* DeepLinkViewController.swift */; };
+		4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
 		46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98229E459D600EAF40B /* SceneDelegate.swift */; };
 		46D5D98529E459D600EAF40B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98429E459D600EAF40B /* ViewController.swift */; };
@@ -92,6 +94,8 @@
 		465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4650330129F68FEB001B6552 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		4650330329F68FEB001B6552 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4650331029F696B8001B6552 /* DeepLinkViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkViewController.swift; sourceTree = "<group>"; };
+		4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinksHandlerUtil.swift; sourceTree = "<group>"; };
 		46D5D97D29E459D600EAF40B /* APN UIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "APN UIKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D98029E459D600EAF40B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		46D5D98229E459D600EAF40B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -251,6 +255,7 @@
 				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
+				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -333,6 +338,7 @@
 			isa = PBXGroup;
 			children = (
 				46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */,
+				4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
@@ -520,6 +526,7 @@
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
+				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
@@ -535,6 +542,7 @@
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46EE277429ED722E0068F9A3 /* AutoMockable.generated.swift in Sources */,
 				46EE277329ED722E0068F9A3 /* AutoDependencyInjection.generated.swift in Sources */,
+				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
 				46EE277929ED833D0068F9A3 /* Settings.swift in Sources */,

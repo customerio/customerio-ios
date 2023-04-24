@@ -24,8 +24,24 @@ class LoginViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    func addNotifierObserver() {
+        NotificationCenter.default.addObserver(self, selector: #selector(routeToDeepLinkScreen(notification:)),
+                                               name: Notification.Name("showDeepLinkScreen"),
+                                               object: nil)
+    }
+    
+    @objc
+    func routeToDeepLinkScreen(notification: Notification) {
+        loginRouter?.routeToDeepLinkScreen()
     }
     
     func configureLoginRouter() {
