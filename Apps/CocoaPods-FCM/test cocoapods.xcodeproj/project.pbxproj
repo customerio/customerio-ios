@@ -226,6 +226,7 @@
 				F7029EBB29F2AFDA00411BCC /* View */,
 				F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */,
 				F73134632919570600CD43D9 /* App.swift */,
+				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
 				F73134692919570700CD43D9 /* Preview Content */,
 				F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */,
