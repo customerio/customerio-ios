@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4650330B29F692EF001B6552 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
 		46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98229E459D600EAF40B /* SceneDelegate.swift */; };
 		46D5D98529E459D600EAF40B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98429E459D600EAF40B /* ViewController.swift */; };
@@ -500,6 +501,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4650330229F68FEB001B6552 /* NotificationService.swift in Sources */,
+				4650330B29F692EF001B6552 /* Env.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
