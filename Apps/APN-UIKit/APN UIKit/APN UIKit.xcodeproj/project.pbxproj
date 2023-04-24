@@ -10,6 +10,8 @@
 		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4650330B29F692EF001B6552 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
+		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
+		4650330F29F69374001B6552 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330E29F69374001B6552 /* Tracking */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
 		46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98229E459D600EAF40B /* SceneDelegate.swift */; };
 		46D5D98529E459D600EAF40B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98429E459D600EAF40B /* ViewController.swift */; };
@@ -135,6 +137,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */,
+				4650330F29F69374001B6552 /* Tracking in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -349,6 +353,10 @@
 			dependencies = (
 			);
 			name = NotificationServiceExtension;
+			packageProductDependencies = (
+				4650330C29F69374001B6552 /* MessagingPushAPN */,
+				4650330E29F69374001B6552 /* Tracking */,
+			);
 			productName = NotificationServiceExtension;
 			productReference = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -938,6 +946,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4650330C29F69374001B6552 /* MessagingPushAPN */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingPushAPN;
+		};
+		4650330E29F69374001B6552 /* Tracking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Tracking;
+		};
 		46EE275429E9E2960068F9A3 /* MessagingInApp */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MessagingInApp;
