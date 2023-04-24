@@ -35,7 +35,7 @@ class LoginViewController: UIViewController {
     
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(self, selector: #selector(routeToDeepLinkScreen(notification:)),
-                                               name: Notification.Name("showDeepLinkScreen"),
+                                               name: Notification.Name("showDeepLinkScreenOnLogin"),
                                                object: nil)
     }
     
