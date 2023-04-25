@@ -29,8 +29,8 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
         UserDefaults(suiteName: getFileName())
     }
 
-    init(siteId: SiteId, deviceMetricsGrabber: DeviceMetricsGrabber) {
-        self.siteId = siteId
+    init(sdkConfig: SdkConfig, deviceMetricsGrabber: DeviceMetricsGrabber) {
+        self.siteId = sdkConfig.siteId
         self.deviceMetricsGrabber = deviceMetricsGrabber
     }
 
