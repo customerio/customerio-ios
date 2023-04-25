@@ -40,6 +40,10 @@ class TrackingAPITest: UnitTest {
         let _: Region = .EU
         let _: CioLogLevel = .debug
 
+        // Public properties exposed to customers
+        _ = CustomerIO.shared.siteId
+        _ = CustomerIO.shared.config
+
         // Identify
         CustomerIO.shared.identify(identifier: "")
         mock.identify(identifier: "")

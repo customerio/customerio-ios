@@ -138,4 +138,11 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
     }
+
+    // MARK: Obtain properties after CIO SDK initialized
+
+    func test_givenSDKInitialized_expectGetSdkConfigInstance() {
+        XCTAssertNotNil(CustomerIO.shared.siteId) // asserts the SDK has been initiaed.
+        XCTAssertNotNil(CustomerIO.shared.config)
+    }
 }
