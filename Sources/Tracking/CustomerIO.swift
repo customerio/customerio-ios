@@ -92,6 +92,11 @@ public extension CustomerIOInstance {
  You must call `CustomerIO.initialize` to use the features of the SDK.
  */
 public class CustomerIO: CustomerIOInstance {
+    /// The current version of the Customer.io SDK.
+    public static var version: String {
+        SdkVersion.version
+    }
+
     public var siteId: String? {
         diGraph?.siteId
     }

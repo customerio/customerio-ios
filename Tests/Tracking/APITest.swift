@@ -21,6 +21,12 @@ class TrackingAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
+    func test_allPublicStaticPropertiesAvailable() throws {
+        try skipRunningTest()
+
+        _ = CustomerIO.version
+    }
+
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
     func test_allPublicTrackingFunctions() throws {
