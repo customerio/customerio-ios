@@ -23,8 +23,8 @@ public struct CioSettings: Codable {
 
         return CioSettings(
             trackUrl: sdkConfig.trackingApiUrl,
-            siteId: "", // TODO:
-            apiKey: "", // TODO:
+            siteId: sdkConfig.siteId,
+            apiKey: sdkConfig.apiKey,
             bqSecondsDelay: sdkConfig.backgroundQueueSecondsDelay,
             bqMinNumberTasks: sdkConfig.backgroundQueueMinNumberOfTasks,
             trackScreens: sdkConfig.autoTrackScreenViews,
