@@ -17,8 +17,10 @@ public struct SdkConfig {
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
-        public static func create(region: Region) -> SdkConfig {
+        public static func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
             SdkConfig(
+                siteId: siteId,
+                apiKey: apiKey,
                 region: region,
                 trackingApiUrl: region.productionTrackingUrl,
                 autoTrackPushEvents: true,
@@ -93,6 +95,12 @@ public struct SdkConfig {
         case source
         case sourceVersion = "version"
     }
+
+    /// Immutable property to store the workspace site id set during SDK initialization.
+    public let siteId: String
+
+    /// Immutable property to store the workspace api key set during SDK initialization.
+    public let apiKey: String
 
     /// Immutable property to store the workspace Region set during SDK initialization.
     public let region: Region
@@ -176,6 +184,10 @@ public struct SdkConfig {
  */
 public struct NotificationServiceExtensionSdkConfig {
     /// Keep reference to region as it's needed for `toSdkConfig()`
+    private var siteId: String
+    /// Keep reference to region as it's needed for `toSdkConfig()`
+    private var apiKey: String
+    /// Keep reference to region as it's needed for `toSdkConfig()`
     private var region: Region
     /// See `SdkConfig.trackingApiUrl`
     public var trackingApiUrl: String
@@ -195,10 +207,12 @@ public struct NotificationServiceExtensionSdkConfig {
     // Used to create new instance when the SDK is initialized.
     // Then, each property can be modified by the user.
     public enum Factory {
-        public static func create(region: Region) -> NotificationServiceExtensionSdkConfig {
-            let defaultSdkConfig = SdkConfig.Factory.create(region: region)
+        public static func create(siteId: String, apiKey: String, region: Region) -> NotificationServiceExtensionSdkConfig {
+            let defaultSdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
             return NotificationServiceExtensionSdkConfig(
+                siteId: siteId,
+                apiKey: apiKey,
                 region: region,
                 trackingApiUrl: defaultSdkConfig.trackingApiUrl,
                 autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
@@ -213,7 +227,7 @@ public struct NotificationServiceExtensionSdkConfig {
     /// Therefore, we need to convert this object to an `SdkConfig` instance in SDK initialization so the SDK can use
     /// it.
     public func toSdkConfig() -> SdkConfig {
-        var sdkConfig = SdkConfig.Factory.create(region: region)
+        var sdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         sdkConfig.autoTrackPushEvents = autoTrackPushEvents
         sdkConfig.logLevel = logLevel

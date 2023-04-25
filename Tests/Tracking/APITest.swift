@@ -135,7 +135,7 @@ class TrackingAPITest: UnitTest {
             "version": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(region: .US)
+        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
@@ -174,7 +174,7 @@ class TrackingAPITest: UnitTest {
             "versionWrong": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(region: .US)
+        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
@@ -189,7 +189,7 @@ class TrackingAPITest: UnitTest {
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = CioSdkConfig.Factory.create(region: .US)
+        let actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, true)

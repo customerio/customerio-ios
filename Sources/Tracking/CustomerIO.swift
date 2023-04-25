@@ -153,7 +153,7 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region)
+        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
@@ -185,7 +185,7 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout NotificationServiceExtensionSdkConfig) -> Void)?
     ) {
-        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(region: region)
+        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
