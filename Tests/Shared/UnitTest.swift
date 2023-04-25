@@ -66,15 +66,15 @@ open class UnitTest: XCTestCase {
         setUp(enableLogs: false)
     }
 
-    public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
+    public func setUp(siteId: String? = nil, enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId ?? testSiteId, apiKey: "", region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
 
         modifySdkConfig?(&newSdkConfig)
 
-        diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
+        diGraph = DIGraph(sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
@@ -85,8 +85,6 @@ open class UnitTest: XCTestCase {
         // HTTP retry policy's real code.
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
-
-        deleteAllPersistantData()
 
         super.setUp()
     }

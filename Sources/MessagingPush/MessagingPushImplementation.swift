@@ -7,7 +7,7 @@ import UserNotifications
 #endif
 
 internal class MessagingPushImplementation: MessagingPushInstance {
-    let siteId: SiteId
+    let siteId: String
     let logger: Logger
     let jsonAdapter: JsonAdapter
     let sdkConfig: SdkConfig
@@ -20,14 +20,13 @@ internal class MessagingPushImplementation: MessagingPushInstance {
 
     /// testing init
     internal init(
-        siteId: SiteId,
         logger: Logger,
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
         backgroundQueue: Queue,
         sdkInitializedUtil: SdkInitializedUtil
     ) {
-        self.siteId = siteId
+        self.siteId = sdkConfig.siteId
         self.logger = logger
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
@@ -36,7 +35,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     }
 
     internal init(diGraph: DIGraph) {
-        self.siteId = diGraph.siteId
+        self.siteId = diGraph.sdkConfig.siteId
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfig = diGraph.sdkConfig

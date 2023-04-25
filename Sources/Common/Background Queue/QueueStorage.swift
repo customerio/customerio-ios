@@ -39,7 +39,7 @@ public protocol QueueStorage: AutoMockable {
 public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
-    private let siteId: SiteId
+    private let siteId: String
     private let sdkConfig: SdkConfig
     private let logger: Logger
     private let dateUtil: DateUtil
@@ -47,7 +47,6 @@ public class FileManagerQueueStorage: QueueStorage {
     private let lock: Lock
 
     init(
-        siteId: SiteId,
         fileStorage: FileStorage,
         jsonAdapter: JsonAdapter,
         lockManager: LockManager,
@@ -55,7 +54,7 @@ public class FileManagerQueueStorage: QueueStorage {
         logger: Logger,
         dateUtil: DateUtil
     ) {
-        self.siteId = siteId
+        self.siteId = sdkConfig.siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
