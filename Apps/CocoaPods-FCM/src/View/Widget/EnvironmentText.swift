@@ -3,9 +3,13 @@ import SwiftUI
 
 struct EnvironmentText: View {
     var body: some View {
-        Text("SDK: \(EnvironmentUtil.cioSdkVersion) \n app: \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
-            .multilineTextAlignment(.center)
-            .foregroundColor(.gray)
+        VStack(spacing: 10) {
+            Text("SDK: \(EnvironmentUtil.cioSdkVersion)")
+            Text("app: \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
+        }
+        .multilineTextAlignment(.center)
+        .foregroundColor(.gray)
+        .padding(10)
     }
 }
 
