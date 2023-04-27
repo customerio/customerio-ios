@@ -1,3 +1,10 @@
+## [2.5.0](https://github.com/customerio/customerio-ios/compare/2.4.1...2.5.0) (2023-04-27)
+
+
+### Features
+
+* expose current SDK config options for reference ([#298](https://github.com/customerio/customerio-ios/issues/298)) ([6ac739b](https://github.com/customerio/customerio-ios/commit/6ac739b1550636db10230d8b2c10783f46626250))
+
 ### [2.4.1](https://github.com/customerio/customerio-ios/compare/2.4.0...2.4.1) (2023-04-27)
 
 
