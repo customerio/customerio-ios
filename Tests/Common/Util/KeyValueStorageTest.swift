@@ -7,37 +7,49 @@ class KeyValueStorageTests: UnitTest {
     let defaultKey = KeyValueStorageKey.identifiedProfileId
     let deviceMetricsGrabberMock = DeviceMetricsGrabberMock()
 
-    private var storage: UserDefaultsKeyValueStorage {
-        diGraph.keyValueStorage as! UserDefaultsKeyValueStorage
+    var defaultStorage: UserDefaultsKeyValueStorage {
+        getSiteStorageInstance(siteId: testSiteId)
     }
 
-    private var globalStorage: UserDefaultsKeyValueStorage {
-        let instance = diGraph.keyValueStorage as! UserDefaultsKeyValueStorage
+    private func getSiteStorageInstance(siteId: String, deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
+        UserDefaultsKeyValueStorage(
+            sdkConfig: SdkConfig.Factory.create(siteId: siteId, apiKey: "", region: .US),
+            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
+        )
+    }
+
+    private func getGlobalInstance(deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
+        let instance = UserDefaultsKeyValueStorage(
+            sdkConfig: SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US),
+            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
+        )
         instance.switchToGlobalDataStore()
         return instance
-    }
-
-    private func changeTo(siteId: String) {
-        setUp(siteId: siteId)
     }
 
     // MARK: integration tests
 
     func test_givenDifferentSites_expectDataSavedSeparatedFromEachOther() {
-        let storage1SiteId = String.random
-        let storage2SiteId = String.random
+        let storage1 = getSiteStorageInstance(siteId: String.random)
+        let storage2 = getSiteStorageInstance(siteId: String.random)
+        // storage3 is UserDefaults.standard. We test this because a customer app might be using it.
+
         let value = "value-here-for-testing"
+        let nextSetValue = "next-set-value"
 
-        changeTo(siteId: storage1SiteId)
-        storage.setString(value, forKey: defaultKey)
-        XCTAssertEqual(storage.string(defaultKey), value)
+        storage1.setString(value, forKey: defaultKey)
+        storage2.setString(value, forKey: defaultKey)
+        UserDefaults.standard.set(value, forKey: defaultKey.rawValue)
 
-        changeTo(siteId: storage2SiteId)
+        XCTAssertEqual(storage1.string(defaultKey), value)
+        XCTAssertEqual(storage2.string(defaultKey), value)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: defaultKey.rawValue), value)
 
-        XCTAssertNil(storage.string(defaultKey)) // since we changed to a different siteid, we do not expect to see a value here yet.
+        storage1.setString(nextSetValue, forKey: defaultKey)
 
-        changeTo(siteId: storage1SiteId)
-        XCTAssertEqual(storage.string(defaultKey), value) // value still exists for the first site id
+        XCTAssertEqual(storage1.string(defaultKey), nextSetValue)
+        XCTAssertEqual(storage2.string(defaultKey), value)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: defaultKey.rawValue), value)
     }
 
     // MARK: getFileName
@@ -45,18 +57,16 @@ class KeyValueStorageTests: UnitTest {
     func test_getFileName_givenGlobalDataStore_expectGetFileNameForGloballyStoredData() {
         let givenAppBundleId = "com.foo.bar"
         deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
-        let storage = UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabberMock)
-        storage.switchToGlobalDataStore()
+        let storage = getGlobalInstance(deviceMetricsGrabber: deviceMetricsGrabberMock)
 
         XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.shared")
     }
 
     func test_getFileName_givenNotGlobalStore_expectGetFileNameForSiteIdStoredData() {
         let givenSiteId = "485895958"
-        changeTo(siteId: givenSiteId)
         let givenAppBundleId = "com.foo.bar"
         deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
-        let storage = UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabberMock)
+        let storage = getSiteStorageInstance(siteId: givenSiteId, deviceMetricsGrabber: deviceMetricsGrabberMock)
 
         XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.485895958")
     }
@@ -64,7 +74,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: double
 
     func test_double_givenNotSet_expectNil() {
-        let actual = storage.double(defaultKey)
+        let actual = defaultStorage.double(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -72,10 +82,10 @@ class KeyValueStorageTests: UnitTest {
     func test_double_givenSet_expectGetEqualResult() {
         let given: Double = 345566
 
-        storage.setDouble(given, forKey: defaultKey)
+        defaultStorage.setDouble(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.double(defaultKey)
+        let actual = defaultStorage.double(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -83,7 +93,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: integer
 
     func test_integer_givenNotSet_expectNil() {
-        let actual = storage.integer(defaultKey)
+        let actual = defaultStorage.integer(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -91,10 +101,10 @@ class KeyValueStorageTests: UnitTest {
     func test_integer_givenSet_expectGetEqualResult() {
         let given = 9968686
 
-        storage.setInt(given, forKey: defaultKey)
+        defaultStorage.setInt(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.integer(defaultKey)
+        let actual = defaultStorage.integer(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -102,7 +112,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: date
 
     func test_date_givenNotSet_expectNil() {
-        let actual = storage.date(defaultKey)
+        let actual = defaultStorage.date(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -110,10 +120,10 @@ class KeyValueStorageTests: UnitTest {
     func test_date_givenSet_expectGetEqualResult() {
         let given = Date()
 
-        storage.setDate(given, forKey: defaultKey)
+        defaultStorage.setDate(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.date(defaultKey)
+        let actual = defaultStorage.date(defaultKey)
 
         XCTAssertEqual(actual?.timeIntervalSince1970, expected.timeIntervalSince1970)
     }
@@ -121,7 +131,7 @@ class KeyValueStorageTests: UnitTest {
     // MARK: string
 
     func test_string_givenNotSet_expectNil() {
-        let actual = storage.string(defaultKey)
+        let actual = defaultStorage.string(defaultKey)
 
         XCTAssertNil(actual)
     }
@@ -129,10 +139,10 @@ class KeyValueStorageTests: UnitTest {
     func test_string_givenSet_expectGetEqualResult() {
         let given = String.random(length: 38)
 
-        storage.setString(given, forKey: defaultKey)
+        defaultStorage.setString(given, forKey: defaultKey)
 
         let expected = given
-        let actual = storage.string(defaultKey)
+        let actual = defaultStorage.string(defaultKey)
 
         XCTAssertEqual(actual, expected)
     }
@@ -140,36 +150,35 @@ class KeyValueStorageTests: UnitTest {
     // MARK: deleteAll
 
     func test_deleteAll_givenNoDataSaved_expectFunctionRuns() {
+        let storage = getSiteStorageInstance(siteId: String.random)
+
         storage.deleteAll()
     }
 
     func test_deleteAll_givenSavedSomeData_expectDeletesAllData() {
         let value = "value-here-for-testing"
 
-        storage.setString(value, forKey: defaultKey)
+        defaultStorage.setString(value, forKey: defaultKey)
 
-        XCTAssertEqual(storage.string(defaultKey), value)
+        XCTAssertEqual(defaultStorage.string(defaultKey), value)
 
-        storage.deleteAll()
+        defaultStorage.deleteAll()
 
-        XCTAssertNil(storage.string(defaultKey))
+        XCTAssertNil(defaultStorage.string(defaultKey))
     }
 
     func test_deleteAll_givenMultipleSites_expectOnlyDeletesDataFromOneSite() {
-        let storage1SiteId = String.random
-        let storage2SiteId = String.random
+        let storage1 = getSiteStorageInstance(siteId: String.random)
+        let storage2 = getSiteStorageInstance(siteId: String.random)
+
         let value = "value-here-for-testing"
 
-        changeTo(siteId: storage1SiteId)
-        storage.setString(value, forKey: defaultKey)
+        storage1.setString(value, forKey: defaultKey)
+        storage2.setString(value, forKey: defaultKey)
 
-        changeTo(siteId: storage2SiteId)
-        storage.setString(value, forKey: defaultKey)
+        storage1.deleteAll()
 
-        storage.deleteAll()
-        XCTAssertNil(storage.string(defaultKey))
-
-        changeTo(siteId: storage1SiteId)
-        XCTAssertEqual(storage.string(defaultKey), value)
+        XCTAssertNil(storage1.string(defaultKey))
+        XCTAssertEqual(storage2.string(defaultKey), value)
     }
 }
