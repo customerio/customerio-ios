@@ -6,6 +6,7 @@ sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 
 target 'test cocoapods' do
   pod 'CustomerIOCommon', :path => sdk_local_path
+  pod 'CustomerIOTracking', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
@@ -15,6 +16,7 @@ end
 
 target 'Rich Push Notification Service Extension' do 
   pod 'CustomerIOCommon', :path => sdk_local_path
+  pod 'CustomerIOTracking', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
 end 
