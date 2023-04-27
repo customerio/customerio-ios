@@ -4,6 +4,9 @@ import Foundation
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
 
+    /// Get the current configuration options set for the SDK.
+    var config: SdkConfig? { get }
+
     func identify(
         identifier: String,
         body: [String: Any]
@@ -241,6 +244,10 @@ public class CustomerIO: CustomerIOInstance {
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
+    }
+
+    public var config: SdkConfig? {
+        implementation?.config
     }
 
     /**
