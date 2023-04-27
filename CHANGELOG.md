@@ -1,3 +1,10 @@
+## [2.4.0](https://github.com/customerio/customerio-ios/compare/2.3.0...2.4.0) (2023-04-27)
+
+
+### Features
+
+* get the version of the SDK ([#299](https://github.com/customerio/customerio-ios/issues/299)) ([38a6b00](https://github.com/customerio/customerio-ios/commit/38a6b0061f0f5b317f592ec885f8746c65ab8ba5))
+
 ## [2.3.0](https://github.com/customerio/customerio-ios/compare/2.2.0...2.3.0) (2023-04-19)
 
 
