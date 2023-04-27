@@ -1,3 +1,10 @@
+### [2.4.1](https://github.com/customerio/customerio-ios/compare/2.4.0...2.4.1) (2023-04-27)
+
+
+### Bug Fixes
+
+* auto update gist in CocoaPods ([#303](https://github.com/customerio/customerio-ios/issues/303)) ([6096d17](https://github.com/customerio/customerio-ios/commit/6096d176cdc52e7e8a949960bfb9c4aa1541c8fd))
+
 ## [2.4.0](https://github.com/customerio/customerio-ios/compare/2.3.0...2.4.0) (2023-04-27)
 
 
