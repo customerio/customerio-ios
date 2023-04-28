@@ -1,6 +1,13 @@
 name: Deploy SDK
 
 on:
+  workflow_dispatch: # manually run this workflow. This allows you to manually deploy things like cococapods, not manually create a git tag. The tag needs to already be created to run this. 
+    inputs:
+      existing-git-tag:
+        description: 'Type name of existing git tag (example: 1.0.3) to checkout and manually deploy'
+        required: true
+        type: string 
+
   push:
     branches: [beta, main, v1] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
 
@@ -13,6 +20,7 @@ jobs:
   deploy-git-tag:
     name: Deploy git tag
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }} # only deploy tag when triggered automatically by merging a PR. 
     outputs:
       new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
@@ -119,16 +127,26 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
   
   deploy-cocoapods:
-    needs: [deploy-git-tag] # run after git tag is made 
-    if: needs.deploy-git-tag.outputs.new_release_published == 'true' # only run if a git tag was made.
-    env:    
-      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     name: Deploy SDK to Cocoapods 
+    needs: [deploy-git-tag] # run after git tag is made 
+    # Only run if we can find a git tag to checkout. 
+    if: needs.deploy-git-tag.outputs.new_release_git_head != "" || inputs.existing-git-tag != ""
+    env:
+      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}    
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout git tag that got created in previous step 
+        uses: actions/checkout@v3
+        if: needs.deploy-git-tag.outputs.new_release_git_head != ""
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
+
+      - name: Checkout git tag that was previously created 
+        uses: actions/checkout@v3
+        if: inputs.existing-git-tag != ""
+        with:
+          ref: ${{ inputs.existing-git-tag }}
+
       - name: Install cocoapods 
         run: gem install cocoapods
       - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
@@ -155,7 +173,7 @@ jobs:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
             {
-              "text": "iOS SDK deployed to Maven Central",
+              "text": "iOS SDK deployed to CocoaPods",
               "username": "iOS deployment bot",
               "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
               "channel": "#mobile-deployments",
