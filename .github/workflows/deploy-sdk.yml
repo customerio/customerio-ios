@@ -130,20 +130,20 @@ jobs:
     name: Deploy SDK to Cocoapods 
     needs: [deploy-git-tag] # run after git tag is made 
     # Only run if we can find a git tag to checkout. 
-    if: needs.deploy-git-tag.outputs.new_release_git_head != "" || inputs.existing-git-tag != ""
+    if: needs.deploy-git-tag.outputs.new_release_git_head != '' || inputs.existing-git-tag != ''
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}    
     runs-on: macos-12
     steps:
       - name: Checkout git tag that got created in previous step 
         uses: actions/checkout@v3
-        if: needs.deploy-git-tag.outputs.new_release_git_head != ""
+        if: needs.deploy-git-tag.outputs.new_release_git_head != ''
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
 
       - name: Checkout git tag that was previously created 
         uses: actions/checkout@v3
-        if: inputs.existing-git-tag != ""
+        if: inputs.existing-git-tag != ''
         with:
           ref: ${{ inputs.existing-git-tag }}
 
