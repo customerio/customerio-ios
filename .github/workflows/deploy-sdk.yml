@@ -20,7 +20,6 @@ jobs:
   deploy-git-tag:
     name: Deploy git tag
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' }} # only deploy tag when triggered automatically by merging a PR. 
     outputs:
       new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
@@ -130,7 +129,7 @@ jobs:
     name: Deploy SDK to Cocoapods 
     needs: [deploy-git-tag] # run after git tag is made 
     # Only run if we can find a git tag to checkout. 
-    if: needs.deploy-git-tag.outputs.new_release_git_head != '' || inputs.existing-git-tag != ''
+    if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}    
     runs-on: macos-12
