@@ -30,7 +30,3 @@ $> ./hooks/autohook.sh install
 **How to run tool** You must run this tool manually. Run `make generate` on your machine to do so. You will want to run this command each time that you create a new class, for example. A good time is to always run it before you write your tests. Or, you can copy the command from the `Makefile` for `generate` command and add `--watch` to the command to generate automatically as you write code. 
 
 **How to install** `brew install sourcery`
-
-### Development workflow 
-
-See file [GIT-WORKFLOW](https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md) to learn about the workflow that this project uses. 

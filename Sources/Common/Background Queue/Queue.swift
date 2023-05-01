@@ -31,9 +31,7 @@ public protocol Queue: AutoMockable {
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
-    // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)
-
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult
     /**
      Asynchronously add a task to the queue to be performed sometime in the future.
 
@@ -59,7 +57,29 @@ public protocol Queue: AutoMockable {
 }
 
 public extension Queue {
-    // convenient addTask alternative that doesn't require you give a value for all parameters
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String] = [:]) -> ModifyQueueResult {
+        addTrackInAppDeliveryTask(deliveryId: deliveryId, event: event, metaData: metaData)
+    }
+
+    func addTask<TaskData: Codable>(
+        type: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: TaskData
+    ) -> ModifyQueueResult {
+        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil)
+    }
+
+    func addTask<TaskData: Codable>(
+        type: String,
+        // sourcery:Type=AnyEncodable
+        // sourcery:TypeCast="AnyEncodable(data)"
+        data: TaskData,
+        groupStart: QueueTaskGroup?
+    ) -> ModifyQueueResult {
+        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil)
+    }
+
     func addTask<TaskData: Codable>(
         type: String,
         // sourcery:Type=AnyEncodable
@@ -113,7 +133,7 @@ public class CioQueue: Queue {
         self.threadUtil = threadUtil
     }
 
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
         addTask(
             type: QueueTaskType.trackDeliveryMetric.rawValue,
             data: TrackDeliveryEventRequestBody(
@@ -121,7 +141,8 @@ public class CioQueue: Queue {
                 payload: DeliveryPayload(
                     deliveryId: deliveryId,
                     event: event,
-                    timestamp: dateUtil.now
+                    timestamp: dateUtil.now,
+                    metaData: metaData
                 )
             )
         )

@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -142,7 +142,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingSiteId: String?
+    public var underlyingSiteId: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var siteIdCalled: Bool {
         siteIdGetCalled || siteIdSetCalled
@@ -171,6 +171,42 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
             mockCalled = true
             siteIdSetCallsCount += 1
             underlyingSiteId = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingConfig: SdkConfig? = nil
+    /// `true` if the getter or setter of property is called at least once.
+    public var configCalled: Bool {
+        configGetCalled || configSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var configGetCalled: Bool {
+        configGetCallsCount > 0
+    }
+
+    public var configGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var configSetCalled: Bool {
+        configSetCallsCount > 0
+    }
+
+    public var configSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var config: SdkConfig? {
+        get {
+            mockCalled = true
+            configGetCallsCount += 1
+            return underlyingConfig
+        }
+        set(value) {
+            mockCalled = true
+            configSetCallsCount += 1
+            underlyingConfig = value
         }
     }
 
@@ -250,6 +286,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         siteId = nil
         siteIdGetCallsCount = 0
         siteIdSetCallsCount = 0
+        config = nil
+        configGetCallsCount = 0
+        configSetCallsCount = 0
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
         deviceAttributesGetCallsCount = 0
@@ -607,7 +646,7 @@ public class SdkInitializedUtilMock: SdkInitializedUtil, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingCustomerio: CustomerIO?
+    public var underlyingCustomerio: CustomerIO? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var customerioCalled: Bool {
         customerioGetCalled || customerioSetCalled
@@ -679,7 +718,7 @@ public class SdkInitializedUtilMock: SdkInitializedUtil, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingPostInitializedData: (siteId: String, diGraph: DIGraph)?
+    public var underlyingPostInitializedData: (siteId: String, diGraph: DIGraph)? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var postInitializedDataCalled: Bool {
         postInitializedDataGetCalled || postInitializedDataSetCalled

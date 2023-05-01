@@ -1,0 +1,220 @@
+require 'json'
+require 'xcodeproj'
+
+# Fastfile that is meant to be used by all iOS apps in the organization. 
+# This file is meant to be imported into another `Fastfile` so the functions in this file are usable. 
+# 
+# Import this file in 2 ways:
+# 1. Locally (for all Fastfile files in this repository) using "import" (https://docs.fastlane.tools/advanced/Fastfile/#importing-another-fastfile)
+# ```
+# import "../../fastlane/Fastfile"
+# ```
+#
+# 2. Remotely (for all Fastfile files in a git repository not this one)
+# Add this to your Fastfile:
+# ```
+# import_from_git(
+#  url: "https://github.com/customerio/customerio-ios.git",
+#  branch: "main", # The branch to checkout on the repository.
+#  path: "Apps/fastlane/Fastfile" # The path of the Fastfile in the repository.
+# )
+# ```
+
+# Functions for setting up code signing on CI server 
+import_from_git(
+  url: "https://github.com/customerio/apple-code-signing.git", 
+  branch: "main", 
+  path: "fastlane/Fastfile"
+)
+
+before_all do |lane, options|    
+  setup_ci
+end
+
+lane :build do
+  download_ci_code_signing_files
+  
+  # Create new variables to be used in function 
+  new_app_version = "" # this will get populated later depending on if this is a PR or not. 
+  new_build_number = Time.now.to_i.to_s # Build numbers need to be unique, only 0-9 digits, and always incremented. Using seconds now solves both of those problems easily. 
+  build_notes = []
+  test_groups = ['all-builds'] # send all builds to group 'all-builds'. Therefore, set it here and we will not remove it. 
+
+  # Firebase App Distribution allows you to attach notes to each build uploaded. These notes are searchable so we use the notes 
+  # field to allow QA to quickly find builds they should install. We populate the notes with metadata from GitHub. 
+  # GitHub Actions is the CI product we use to create builds of our apps. GitHub Actions provides metadata about the build 
+  # via a JSON file. We parse this JSON file and pull out fields from it to populate the notes. 
+  github_actions_metadata_path = ENV["GITHUB_EVENT_PATH"] # the path to the JSON file is the value of this environment variable. 
+  UI.message("GitHub Action metadata file path located: #{github_actions_metadata_path}")  
+
+  # Read the GitHub provided JSON file > Parse the JSON into a Ruby Hash > Construct a GitHub class instance to easily pull out metadata for the notes. 
+  github = GitHub.new(JSON.parse(File.open(github_actions_metadata_path).read))  
+
+  if github.is_pull_request
+    UI.message("Looks like GitHub Actions was triggered by a commit pushed to an open pull request. I will build this sample app from this pull request commit.")
+    UI.message("Populating notes to include helpful information from this PR....")
+
+    new_app_version = github.pr_source_branch
+
+    build_notes.append(
+      "build type: pull request",
+      "pr title: #{github.pr_title}",
+      "pr number: #{github.pr_number}",
+      "pr author: #{github.pr_author}",
+      "commit hash: #{github.pr_commit_hash}",
+      "source branch: #{github.pr_source_branch}",
+      "destination branch: #{github.pr_destination_branch}"
+    )
+  elsif github.is_git_tag_created
+    UI.message("Looks like GitHub Actions was triggered by a new git tag being pushed to the project. I will build this sample app from this new tag created.")
+    UI.message("Populating notes to include helpful information from this tag....")
+
+    new_app_version = github.release_git_tag_created
+
+    UI.message("Git tag created: #{new_app_version}")
+    
+    test_groups.append("stable-builds") # git tag builds are builds should be considered more stable and are suitable for non-mobile team members to be invited to install. 
+
+    build_notes.append(
+      "build type: release",
+      "version: #{new_app_version}"
+    )
+  else 
+    UI.message("This is not a pull request or push. Going to ignore the event.")        
+    return 
+  end
+
+  build_notes = build_notes.join("\n")
+  test_groups = test_groups.join(", ")
+
+  UI.important("Build notes:\n#{build_notes}")
+  UI.important("New app version: #{new_app_version}")
+  UI.important("New app build number: #{new_build_number}")
+  UI.important("Firebase App testing groups: #{test_groups}")
+
+  # Modify the source code with the new app version and build number before we compile the iOS app. This is a good idea to do to make installing builds on a test device easier. 
+  # The iOS OS might give errors when trying to install a build of an app if the app is already installed on the device. Having unique build number or app version can avoid those errors. 
+  update_app_versions(
+    build_number: new_build_number,
+    app_version: new_app_version
+  )
+
+  uses_cocoapods = File.exists?("../Podfile")
+  if uses_cocoapods 
+    UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
+  end 
+  
+  # prevents builds from being flaky. As app sizese get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
+  ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "10" 
+
+  build_ios_app(
+    export_method: "ad-hoc",
+    configuration: "Release",
+    xcodebuild_formatter: "xcbeautify",
+    skip_package_dependencies_resolution: uses_cocoapods, # If using CocoaPods, skip SPM dependency downloading to save build time
+  )
+
+  # function 'setup_google_bucket_access' is a re-usable function inside of apple-code-signing Fastfile that we imported. 
+  # This allows you to create a temporary file from a GitHub secret for added convenience. 
+  # When uploading the build to Firebase App Distribution, the CI server needs to authenticate with Firebase. This is done with a 
+  # Google Cloud Service Account json creds file. The base64 encoded value of this service account file is stored as this secret.  
+  service_credentials_file_path = setup_google_bucket_access(
+    environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
+  )
+  
+  firebase_app_distribution(
+    service_credentials_file: service_credentials_file_path,
+    groups: test_groups,
+    release_notes: build_notes
+  )
+end
+
+lane :update_app_versions do |arguments| 
+  new_build_number = arguments[:build_number]
+  new_app_version = arguments[:app_version]
+
+  # We need to update the app before building with the new version and build numbers. This makes builds easier to find by team members and install them onto devices. 
+  # This is usually done by updating Info.plist files. But Xcode 13 removed Info.plist files and made it part of the xcode project. 
+  # Therefore, we attempt both methods to update the version numbers. 
+  # Here, we try to update Info.plist files. 
+  Dir.glob("../**/Info.plist").each { |plist_file_path| 
+    plist_file_path = File.expand_path(plist_file_path, Dir.pwd)
+    UI.message("Found Info.plist file #{plist_file_path} to update versions for.")
+
+    # We only want to modify a value in plist file and not add a new value if it doesn't exist in the file yet. 
+    # Therefore, check if a value already exists and it if does, then set a new value. 
+    if !get_info_plist_value(path: plist_file_path, key: "CFBundleVersion").nil? 
+      UI.message("Build version exists in plist file. Going to set new value")
+      set_info_plist_value(path: plist_file_path, key: "CFBundleVersion", value: new_build_number) 
+    end 
+
+    if !get_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString").nil? 
+      UI.message("Build version string exists in plist file. Going to set new value")
+      set_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString", value: new_app_version)
+    end 
+  }
+
+  # Here, we try to update the xcode project settings. 
+  project_path = Dir.glob("../*.xcodeproj").first
+  project_path = File.expand_path(project_path, Dir.pwd)
+  UI.message("Using found Xcode project path: #{project_path}")
+  project = Xcodeproj::Project.open(project_path)
+  project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['MARKETING_VERSION'] = new_app_version
+      config.build_settings['CURRENT_PROJECT_VERSION'] = new_build_number
+    end
+  end
+  project.save  
+end 
+
+# Parse JSON out of GitHub Context JSON when being executed on GitHub Actions. 
+class GitHub 
+  # payload for releases: https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads?actionType=published#release
+  # payload for pull requests: https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads?actionType=synchronize#pull_request
+
+  def initialize(github_context)
+    @github_context = github_context
+  end 
+
+  def is_git_tag_created
+    @github_context["release"] != nil 
+  end 
+
+  def is_pull_request
+    @github_context["pull_request"] != nil 
+  end   
+
+  # Functions below only meant for when a github actions event is a git tag created 
+
+  def release_git_tag_created
+    return @github_context["release"]["tag_name"]
+  end 
+
+  # Functions below only meant for when a github actions event is a pull request 
+
+  def pr_author 
+    return @github_context["pull_request"]["user"]["login"]    
+  end 
+
+  def pr_commit_hash
+    # Unfortunately, the git commit hash isn't included in the GitHub Actions metadata JSON for a release. We have to get that value manually. 
+    return @github_context["pull_request"]["head"]["sha"][0..8]    
+  end
+
+  def pr_title 
+    @github_context["pull_request"]["title"]
+  end 
+
+  def pr_number
+    @github_context["pull_request"]["number"]
+  end 
+
+  def pr_source_branch    
+    return @github_context["pull_request"]["head"]["ref"]
+  end 
+
+  def pr_destination_branch    
+    return @github_context["pull_request"]["base"]["ref"]
+  end   
+end 

@@ -154,5 +154,34 @@ class CustomerIOIntegrationTests: IntegrationTest {
             // We expect the inventory to have tasks: [1, 2, 3...] based on a loop index.
             XCTAssertEqual(String(index), queueTaskData.deliveryId)
         }
+
+        // MARK: Testing 400 response from API scenarios
+
+        func test_givenSendTestPushNotification_givenHttp400Response_expectDeleteTaskAndNotRetry() {
+            let expectedResponseBodyString = """
+            {
+                "meta": {
+                    "errors": [
+                        "malformed delivery id: ."
+                    ]
+                }
+            }
+            """.trimmingCharacters(in: .whitespacesAndNewlines)
+            httpRequestRunnerStub.queueResponse(code: 400, data: expectedResponseBodyString.data)
+
+            CustomerIO.shared.trackMetric(deliveryID: "", event: .opened, deviceToken: .random)
+
+            XCTAssertEqual(diGraph.queueStorage.getInventory().count, 1)
+            waitForQueueToFinishRunningTasks(queue)
+            XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
+            XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
+        }
+
+        // MARK: Obtain properties after CIO SDK initialized
+
+        func test_givenSDKInitialized_expectGetSdkConfigInstance() {
+            XCTAssertNotNil(CustomerIO.shared.siteId) // asserts the SDK has been initiaed.
+            XCTAssertNotNil(CustomerIO.shared.config)
+        }
     }
 }

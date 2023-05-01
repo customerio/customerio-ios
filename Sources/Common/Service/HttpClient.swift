@@ -115,12 +115,10 @@ public class CIOHttpClient: HttpClient {
             }
     }
 
-    private func getErrorMessage(responseBody: Data?) -> String? {
-        guard let data = responseBody else {
-            return nil
+    private func getErrorMessageFromServerResponse(responseBody: Data?) -> String {
+        guard let data = responseBody, var errorBodyString = data.string else {
+            return "(server did not give a response)"
         }
-
-        var errorBodyString: String? = data.string
 
         // don't log errors for JSON mapping since we are trying to decode *multiple* error classes.
         // we are bound to fail more often and don't want to log errors that are not super helpful to us.
@@ -194,7 +192,7 @@ extension CIOHttpClient {
         let requestHostname = url.host
         let isRequestToCIOApi = cioApiHostname == requestHostname
 
-        return (isRequestToCIOApi) ? cioApiSession : publicSession
+        return isRequestToCIOApi ? cioApiSession : publicSession
     }
 
     static func getBasicAuthHeaderString(siteId: String, apiKey: String) -> String {
@@ -240,7 +238,7 @@ extension CIOHttpClient {
         let unsuccessfulStatusCodeError: HttpRequestError =
             .unsuccessfulStatusCode(
                 statusCode,
-                apiMessage: getErrorMessage(responseBody: data)
+                apiMessage: getErrorMessageFromServerResponse(responseBody: data)
             )
 
         switch statusCode {
@@ -264,9 +262,11 @@ extension CIOHttpClient {
             pauseHttpRequests()
 
             onComplete(.failure(.unauthorized))
+        case 400:
+            onComplete(.failure(.badRequest400(apiMessage: getErrorMessageFromServerResponse(responseBody: data))))
         default:
             logger.error("""
-            4xx HTTP status code response.
+            \(statusCode) HTTP status code response.
             Probably a bug? \(unsuccessfulStatusCodeError.localizedDescription)
             """)
 

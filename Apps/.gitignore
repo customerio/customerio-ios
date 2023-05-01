@@ -1,0 +1,7 @@
+# It's a good idea to include lock files in version control but because our Podfile 
+# is always using a local absolute path for the CIO SDK, ignore the lock file since 
+# every computer (and CI server) will have a different path. 
+Podfile.lock 
+Pods/
+**/fastlane/report.xml
+**/fastlane/README.md

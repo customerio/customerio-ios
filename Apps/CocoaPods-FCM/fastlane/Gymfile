@@ -1,0 +1,8 @@
+# Scheme of your app inside of Xcode. 
+# Make sure the scheme is Shared - https://stackoverflow.com/a/8425495
+# https://developer.apple.com/documentation/xcode/customizing-the-build-schemes-for-a-project/ 
+scheme "test cocoapods"
+# If your iOS app uses CocoaPods, you will want to specify the path to the xcworkspace for the app. 
+workspace "test cocoapods.xcworkspace"
+# If your project uses Swift Package Manager instead of CocoaPods, use: 
+# project "test cocoapods.xcodeproj"
