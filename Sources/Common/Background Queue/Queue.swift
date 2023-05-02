@@ -31,7 +31,7 @@ public protocol Queue: AutoMockable {
      See list of refactors: https://github.com/customerio/issues/issues/6934
      */
 
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String])
     /**
      Asynchronously add a task to the queue to be performed sometime in the future.
 
@@ -57,27 +57,8 @@ public protocol Queue: AutoMockable {
 }
 
 public extension Queue {
-    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String] = [:]) -> ModifyQueueResult {
+    func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String] = [:]) {
         addTrackInAppDeliveryTask(deliveryId: deliveryId, event: event, metaData: metaData)
-    }
-
-    func addTask<TaskData: Codable>(
-        type: String,
-        // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData
-    ) -> ModifyQueueResult {
-        addTask(type: type, data: data, groupStart: nil, blockingGroups: nil)
-    }
-
-    func addTask<TaskData: Codable>(
-        type: String,
-        // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: TaskData,
-        groupStart: QueueTaskGroup?
-    ) -> ModifyQueueResult {
-        addTask(type: type, data: data, groupStart: groupStart, blockingGroups: nil)
     }
 
     func addTask<TaskData: Codable>(
