@@ -114,7 +114,7 @@ public class CioQueue: Queue {
         self.threadUtil = threadUtil
     }
 
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) {
         addTask(
             type: QueueTaskType.trackDeliveryMetric.rawValue,
             data: TrackDeliveryEventRequestBody(
