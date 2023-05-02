@@ -1675,22 +1675,18 @@ public class QueueMock: Queue, Mock {
     public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric, metaData: [String: String])?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric, metaData: [String: String])] = []
-    /// Value to return from the mocked function.
-    public var addTrackInAppDeliveryTaskReturnValue: ModifyQueueResult!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `addTrackInAppDeliveryTaskReturnValue`
      */
-    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, [String: String]) -> ModifyQueueResult)?
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, [String: String]) -> Void)?
 
     /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
         addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event, metaData: metaData)
         addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event, metaData: metaData))
-        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event, metaData) } ?? addTrackInAppDeliveryTaskReturnValue
+        addTrackInAppDeliveryTaskClosure?(deliveryId, event, metaData)
     }
 
     // MARK: - addTask<TaskData: Codable>
