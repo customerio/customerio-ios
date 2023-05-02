@@ -103,11 +103,6 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
-        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
-
         // Message opened
         XCTAssertFalse(eventListenerMock.messageShownCalled)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -146,11 +141,6 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_eventListeners_expectCallListenerForEachEvent() {
         let givenGistMessage = Message.random
 
-        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
-
         // Message opened
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 0)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -187,11 +177,6 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenAction = "gist://close"
         let givenName = String.random
 
-        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
-
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
 
         messagingInApp.action(
@@ -217,11 +202,6 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenAction = String.random
         let givenName = String.random
         let givenMetaData = ["action_name": givenName, "action_value": givenAction]
-
-        backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
 
         messagingInApp.action(
             message: givenGistMessage,
