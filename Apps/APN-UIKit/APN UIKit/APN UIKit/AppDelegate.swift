@@ -87,23 +87,25 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         completionHandler([.list, .banner, .badge, .sound])
     }
 }
-
+// In-app event listeners to handle user's response to in-app messages.
+// Registering event listeners is requiredf
 extension AppDelegate: InAppEventListener {
+    // Message is sent and shown to the user
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp shown",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // User taps X (close) button and in-app message is dismissed
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp dismissed",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // In-app message produces an error - preventing message from appearing to the user
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp error",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // User perform an action on in-app message
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         CustomerIO.shared.track(name: "inapp action", data: [
             "delivery-id": message.deliveryId ?? "(none)",
