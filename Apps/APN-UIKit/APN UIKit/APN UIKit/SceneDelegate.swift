@@ -45,7 +45,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // to restore the scene back to its current state.
     }
     
-    
+    // Set visible window based on user login status
     func setVisibleWindow() {
         // If previous user is not a guest login and credentials were used to login into the app
         if let email = storage.userEmailId, !email.isEmpty, let name = storage.userName, !name.isEmpty {
@@ -59,10 +59,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
     }
     
-    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-
-    }
-    
+    // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         for context in URLContexts {
             let url = context.url
