@@ -694,6 +694,36 @@
             </objects>
             <point key="canvasLocation" x="3417" y="4"/>
         </scene>
+        <!--Deep Link View Controller-->
+        <scene sceneID="mGj-Jk-jcM">
+            <objects>
+                <viewController storyboardIdentifier="DeepLinkViewController" id="3ov-7B-9mY" customClass="DeepLinkViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="V8X-sX-Mw7">
+                        <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="You see this screen because you tapped on a push notification that had a deep link." textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UTr-u2-NjR">
+                                <rect key="frame" x="20" y="345.66666666666669" width="350" height="153"/>
+                                <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="28"/>
+                                <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="KU8-fO-oeh"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <constraints>
+                            <constraint firstItem="UTr-u2-NjR" firstAttribute="centerY" secondItem="V8X-sX-Mw7" secondAttribute="centerY" id="8k5-a8-7xx"/>
+                            <constraint firstAttribute="trailing" secondItem="UTr-u2-NjR" secondAttribute="trailing" constant="20" id="XNj-BY-jx9"/>
+                            <constraint firstItem="UTr-u2-NjR" firstAttribute="leading" secondItem="V8X-sX-Mw7" secondAttribute="leading" constant="20" id="vIg-JD-euU"/>
+                            <constraint firstItem="UTr-u2-NjR" firstAttribute="centerX" secondItem="V8X-sX-Mw7" secondAttribute="centerX" id="vWm-cz-tiC"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" id="bVA-fC-7jM"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="oht-yj-uze" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4202" y="4"/>
+        </scene>
     </scenes>
     <resources>
         <image name="settings" width="512" height="512"/>
