@@ -123,39 +123,17 @@ func configureSettingsRouter() {
     func compareAndSave() {
         
         // Track Url
-        if currentSettings.trackUrl != trackUrlTextField.text {
-            storage.trackUrl = trackUrlTextField.text
-        }
-        
+        storage.trackUrl = trackUrlTextField.text
         // Background Queue Seconds Delay
-        if currentSettings.bgQDelay != bgQTakDelayTextField.text {
-            storage.bgQDelay = bgQTakDelayTextField.text
-        }
-        
+        storage.bgQDelay = bgQTakDelayTextField.text
         // Min number of tasks
-        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
-            storage.bgNumOfTasks = bgQMinTasksTextField.text
-        }
-        
-        // Min tasks in queue
-        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
-            storage.bgNumOfTasks = bgQMinTasksTextField.text
-        }
-        
+        storage.bgNumOfTasks = bgQMinTasksTextField.text
         // Push enabled
-        if currentSettings.isPushEnabled != pushSwitchState {
-            storage.isPushEnabled = pushSwitchState
-        }
-        
+        storage.isPushEnabled = pushSwitchState
         // Track screen enabled
-        if currentSettings.isTrackScreenEnabled != trackScreenState{
-            storage.isTrackScreenEnabled = trackScreenState
-        }
-        
+        storage.isTrackScreenEnabled = trackScreenState
         // Debug screen
-        if currentSettings.isDebugModeEnabled != debugModeState {
-            storage.isDebugModeEnabled = debugModeState
-        }
+        storage.isDebugModeEnabled = debugModeState
     }
     
     
