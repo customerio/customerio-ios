@@ -45,6 +45,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.deviceInfo = diGraph.deviceInfo
     }
 
+    public var config: SdkConfig? {
+        sdkConfig
+    }
+
     public var profileAttributes: [String: Any] {
         get {
             [:]
