@@ -14,4 +14,9 @@ extension View {
             alignment: .topLeading
         )
     }
+
+    // Adds a border around View for convenience during development. Be able to view the size easily.
+    func debugSize() -> some View {
+        border(Color.random, width: 1)
+    }
 }

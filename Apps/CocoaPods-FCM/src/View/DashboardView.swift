@@ -25,11 +25,14 @@ struct DashboardView: View {
     var body: some View {
         ZStack {
             VStack {
-                Button("Settings") {
+                SettingsButton {
                     showSettings = true
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 10)
                 Spacer()
-            }.sheet(isPresented: $showSettings) {
+            }
+            .sheet(isPresented: $showSettings) {
                 SettingsView {
                     showSettings = false
                 }

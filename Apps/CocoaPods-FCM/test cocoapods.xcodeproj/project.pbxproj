@@ -25,6 +25,8 @@
 		F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
+		F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D762A05588E00641391 /* ColorExtensions.swift */; };
+		F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D782A058B5000641391 /* SettingsButton.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */; };
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -83,6 +85,8 @@
 		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F78E3D762A05588E00641391 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
+		F78E3D782A058B5000641391 /* SettingsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsButton.swift; sourceTree = "<group>"; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -156,6 +160,7 @@
 			children = (
 				F7029EBD29F2B00500411BCC /* ColorButton.swift */,
 				F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */,
+				F78E3D782A058B5000641391 /* SettingsButton.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -174,6 +179,7 @@
 				F7029EC229F2B12900411BCC /* ViewExtensions.swift */,
 				F7029EC729F2B64100411BCC /* StringExtensions.swift */,
 				F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */,
+				F78E3D762A05588E00641391 /* ColorExtensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -431,12 +437,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
+				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
 				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
+				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
