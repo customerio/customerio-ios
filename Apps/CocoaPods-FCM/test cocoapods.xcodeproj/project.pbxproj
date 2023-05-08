@@ -32,7 +32,6 @@
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC629195D2600DFAC6E /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */; };
 		F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C1C58D29F2D39300067998 /* SettingsView.swift */; };
-		F7CDACAB29F2EA55002782BD /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = F7CDACAA29F2EA55002782BD /* SampleAppsCommon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,7 +90,6 @@
 		F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		F7C1C58A29F2D06C00067998 /* Common */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Common; path = ../Common; sourceTree = "<group>"; };
 		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -103,7 +101,6 @@
 				F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */,
 				F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */,
 				AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */,
-				F7CDACAB29F2EA55002782BD /* SampleAppsCommon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,7 +200,6 @@
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
-				F7C1C58929F2D06C00067998 /* Packages */,
 				F73134622919570600CD43D9 /* src */,
 				F7382932291D5C27008ED8CB /* Rich Push Notification Service Extension */,
 				F73134612919570600CD43D9 /* Products */,
@@ -255,14 +251,6 @@
 			path = "Rich Push Notification Service Extension";
 			sourceTree = "<group>";
 		};
-		F7C1C58929F2D06C00067998 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				F7C1C58A29F2D06C00067998 /* Common */,
-			);
-			name = Packages;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -284,7 +272,6 @@
 			);
 			name = "test cocoapods";
 			packageProductDependencies = (
-				F7CDACAA29F2EA55002782BD /* SampleAppsCommon */,
 			);
 			productName = "test cocoapods";
 			productReference = F73134602919570600CD43D9 /* test cocoapods.app */;
@@ -755,13 +742,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F7CDACAA29F2EA55002782BD /* SampleAppsCommon */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SampleAppsCommon;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F73134582919570600CD43D9 /* Project object */;
 }

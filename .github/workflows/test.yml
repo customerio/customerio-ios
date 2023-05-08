@@ -13,7 +13,7 @@ jobs:
         # 12.5 = swift 5.4
         # 13.0 = swift 5.5        
         # Thanks: https://swiftly.dev/swift-versions, https://xcodereleases.com/, https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#xcode
-        xcode: ["12.4", "12.5", "13.0"]
+        xcode: ["12.4", "12.5"] # removed 13 for now as it seems to be broken on CI
     runs-on: macos-11
     name: XCode macOS tests (xcode ${{ matrix.xcode }})
     permissions:
