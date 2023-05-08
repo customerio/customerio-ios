@@ -178,6 +178,42 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
+    public var underlyingConfig: SdkConfig? = nil
+    /// `true` if the getter or setter of property is called at least once.
+    public var configCalled: Bool {
+        configGetCalled || configSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var configGetCalled: Bool {
+        configGetCallsCount > 0
+    }
+
+    public var configGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var configSetCalled: Bool {
+        configSetCallsCount > 0
+    }
+
+    public var configSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var config: SdkConfig? {
+        get {
+            mockCalled = true
+            configGetCallsCount += 1
+            return underlyingConfig
+        }
+        set(value) {
+            mockCalled = true
+            configSetCallsCount += 1
+            underlyingConfig = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
     public var underlyingProfileAttributes: [String: Any] = [:]
     /// `true` if the getter or setter of property is called at least once.
     public var profileAttributesCalled: Bool {
@@ -250,6 +286,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         siteId = nil
         siteIdGetCallsCount = 0
         siteIdSetCallsCount = 0
+        config = nil
+        configGetCallsCount = 0
+        configSetCallsCount = 0
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
         deviceAttributesGetCallsCount = 0

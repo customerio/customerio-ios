@@ -3,3 +3,5 @@
 # every computer (and CI server) will have a different path. 
 Podfile.lock 
 Pods/
+**/fastlane/report.xml
+**/fastlane/README.md

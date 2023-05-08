@@ -1672,9 +1672,9 @@ public class QueueMock: Queue, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric)?
+    public private(set) var addTrackInAppDeliveryTaskReceivedArguments: (deliveryId: String, event: InAppMetric, metaData: [String: String])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric)] = []
+    public private(set) var addTrackInAppDeliveryTaskReceivedInvocations: [(deliveryId: String, event: InAppMetric, metaData: [String: String])] = []
     /// Value to return from the mocked function.
     public var addTrackInAppDeliveryTaskReturnValue: ModifyQueueResult!
     /**
@@ -1682,15 +1682,15 @@ public class QueueMock: Queue, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `addTrackInAppDeliveryTaskReturnValue`
      */
-    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric) -> ModifyQueueResult)?
+    public var addTrackInAppDeliveryTaskClosure: ((String, InAppMetric, [String: String]) -> ModifyQueueResult)?
 
-    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric) -> ModifyQueueResult {
+    /// Mocked function for `addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
         mockCalled = true
         addTrackInAppDeliveryTaskCallsCount += 1
-        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event)
-        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event))
-        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event) } ?? addTrackInAppDeliveryTaskReturnValue
+        addTrackInAppDeliveryTaskReceivedArguments = (deliveryId: deliveryId, event: event, metaData: metaData)
+        addTrackInAppDeliveryTaskReceivedInvocations.append((deliveryId: deliveryId, event: event, metaData: metaData))
+        return addTrackInAppDeliveryTaskClosure.map { $0(deliveryId, event, metaData) } ?? addTrackInAppDeliveryTaskReturnValue
     }
 
     // MARK: - addTask<TaskData: Codable>
