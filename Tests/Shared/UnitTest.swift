@@ -96,12 +96,13 @@ open class UnitTest: XCTestCase {
 
         diGraph.reset()
 
+        CustomerIO.resetSharedInstance()
+
         super.tearDown()
     }
 
     public func deleteAllPersistantData() {
         deleteKeyValueStorage()
-        CustomerIO.resetSharedInstance()
         deleteAllFiles()
     }
 
