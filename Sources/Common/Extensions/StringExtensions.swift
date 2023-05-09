@@ -19,6 +19,10 @@ public extension String {
         "abcdefghijklmnopqrstuvwxyz"
     }
 
+    func getFirstNCharacters(_ numberOfCharacters: Int) -> String {
+        self[0 ..< numberOfCharacters]
+    }
+
     static var random: String {
         String.random()
     }

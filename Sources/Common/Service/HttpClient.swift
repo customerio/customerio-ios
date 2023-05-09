@@ -30,8 +30,6 @@ public class CIOHttpClient: HttpClient {
     }
 
     init(
-        siteId: SiteId,
-        apiKey: ApiKey,
         sdkConfig: SdkConfig,
         jsonAdapter: JsonAdapter,
         httpRequestRunner: HttpRequestRunner,
@@ -52,8 +50,8 @@ public class CIOHttpClient: HttpClient {
         // Construct the URLSessions when the object is initialized and re-use them for all HTTP requests in the
         // lifecycle of this object.
         self.cioApiSession = Self.getCIOApiSession(
-            siteId: siteId,
-            apiKey: apiKey,
+            siteId: sdkConfig.siteId,
+            apiKey: sdkConfig.apiKey,
             userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
         )
         self.publicSession = Self.getBasicSession()

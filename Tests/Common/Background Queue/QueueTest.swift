@@ -112,7 +112,6 @@ extension QueueTest {
         })
 
         queue = CioQueue(
-            siteId: testSiteId,
             storage: storageMock,
             runRequest: runRequestMock,
             jsonAdapter: jsonAdapter,

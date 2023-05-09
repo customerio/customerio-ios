@@ -58,22 +58,24 @@ public class ConsoleLogger: Logger {
     public static let logSubsystem = "io.customer.sdk"
     public static let logCategory = "CIO"
 
-    private let siteId: SiteId
     private let sdkConfig: SdkConfig
+
+    private var abbreviatedSiteId: String {
+        sdkConfig.siteId.getFirstNCharacters(5)
+    }
 
     private var minLogLevel: CioLogLevel {
         sdkConfig.logLevel
     }
 
-    init(siteId: SiteId, sdkConfig: SdkConfig) {
-        self.siteId = siteId
+    init(sdkConfig: SdkConfig) {
         self.sdkConfig = sdkConfig
     }
 
     private func printMessage(_ message: String, _ level: CioLogLevel) {
         if !minLogLevel.shouldLog(level) { return }
 
-        let messageToPrint = "(siteid:\(siteId.abbreviatedSiteId)) \(message)"
+        let messageToPrint = "(siteid:\(abbreviatedSiteId)) \(message)"
 
         ConsoleLogger.logMessageToConsole(messageToPrint, level: level)
     }
