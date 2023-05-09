@@ -1,6 +1,6 @@
 import XCTest
 
-final class APN_UIKitUITestsLaunchTests: XCTestCase {
+final class LaunchTests: XCTestCase {
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
