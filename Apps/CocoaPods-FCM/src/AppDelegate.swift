@@ -16,8 +16,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // we are only using this sample app for testing it can compile so providing a siteid and apikey is not useful at the moment.
         CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
+            // Modify properties in the config object to configure the Customer.io SDK.
+
             config.logLevel = .debug // For all of our sample apps, we prefer to set debug logs to make our internal testing easier. You may not need to do this.
 
+            // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
         }
 
