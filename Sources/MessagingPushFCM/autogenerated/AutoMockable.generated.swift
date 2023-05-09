@@ -321,3 +321,5 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     }
     #endif
 }
+
+// swiftlint:enable all

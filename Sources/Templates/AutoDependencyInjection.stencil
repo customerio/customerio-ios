@@ -119,3 +119,5 @@ extension DIGraph {
     {% endif %}
     {% endfor %} 
 }
+
+// swiftlint:enable all

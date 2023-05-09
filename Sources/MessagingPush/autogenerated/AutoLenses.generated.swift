@@ -86,3 +86,5 @@ extension CioPushPayload.Push {
         CioPushPayload.Push(link: link, image: image)
     }
 }
+
+// swiftlint:enable all

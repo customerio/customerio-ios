@@ -172,3 +172,5 @@ extension QueueTaskRunResults {
         QueueTaskRunResults(totalRuns: totalRuns)
     }
 }
+
+// swiftlint:enable all

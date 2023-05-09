@@ -75,3 +75,5 @@ extension DIGraph {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 }
+
+// swiftlint:enable all

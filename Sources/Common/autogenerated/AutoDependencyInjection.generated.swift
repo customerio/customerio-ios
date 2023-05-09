@@ -489,3 +489,5 @@ extension DIGraph {
         UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
+
+// swiftlint:enable all

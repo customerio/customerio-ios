@@ -102,3 +102,5 @@ extension DIGraph {
         TrackingQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
     }
 }
+
+// swiftlint:enable all

@@ -89,3 +89,5 @@ extension DIGraph {
         MessagingInAppModuleHookProvider()
     }
 }
+
+// swiftlint:enable all

@@ -59,3 +59,5 @@ extension DIGraph {
         return countDependenciesResolved
     }
 }
+
+// swiftlint:enable all

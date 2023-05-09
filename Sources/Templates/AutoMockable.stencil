@@ -295,3 +295,5 @@ class ExampleTest: XCTestCase {
 {% endfor %}
 }
 {% endif %}{% endfor %}
+
+// swiftlint:enable all
