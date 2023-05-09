@@ -1,6 +1,8 @@
 import CioTracking
 import Foundation
 
+// Stores all of the SDK settings that can be changed by the mobile app.
+// Note: This struct may not contain *all* of the settings that can be changed in the CIO SDK.
 public struct CioSettings: Codable {
     public var trackUrl: String
     public var siteId: String
