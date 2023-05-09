@@ -40,8 +40,9 @@ jobs:
         bundler-cache: true # cache tools to make builds faster in future 
     
     - name: Setup build environment to prepare for building 
+      working-directory: ${{ env.GITHUB_WORKSPACE }} # root directory of source code 
       run: |
-        make setup app=${{ matrix.sample-app }}
+        make setup_sample_app app=${{ matrix.sample-app }}
         sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
         sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
