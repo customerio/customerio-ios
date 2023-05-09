@@ -16,8 +16,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
 
         let appSetSettings = CioSettingsManager().appSetSettings
-        let siteId = appSetSettings?.siteId ?? "foo"
-        let apiKey = appSetSettings?.apiKey ?? "bar"
+        let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
+        let apiKey = appSetSettings?.apiKey ?? BuildEnvironment.CustomerIO.apiKey
 
         // Initialize the Customer.io SDK
         CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
