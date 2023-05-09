@@ -79,4 +79,13 @@ class StringExtensionsTest: UnitTest {
 
         XCTAssertEqual(given.setLastCharacters(".jpg"), expected)
     }
+
+    // getFirstNCharacters
+
+    func test_getFirstNCharacters_givenWantFirst5Characters_expectGetFirst5CharactersOfString() {
+        let given = "1234567890"
+        let expected = "12345"
+
+        XCTAssertEqual(given.getFirstNCharacters(5), expected)
+    }
 }

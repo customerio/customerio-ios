@@ -79,8 +79,7 @@ extension MessagingPushImplementation {
 
             RichPushRequestHandler.shared.startRequest(
                 request,
-                content: richPushContent,
-                siteId: siteId
+                content: richPushContent
             ) { notificationContent in
                 self.logger.debug("rich push was composed \(notificationContent).")
 

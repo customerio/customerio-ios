@@ -19,7 +19,6 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     private var currentlyRunningHook: QueueRunnerHook?
 
     init(
-        siteId: SiteId,
         jsonAdapter: JsonAdapter,
         logger: Logger,
         httpClient: HttpClient,
@@ -29,7 +28,6 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         self.hooks = hooksManager
 
         super.init(
-            siteId: siteId,
             jsonAdapter: jsonAdapter,
             logger: logger,
             httpClient: httpClient,

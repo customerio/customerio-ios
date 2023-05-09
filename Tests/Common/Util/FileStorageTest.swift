@@ -30,13 +30,14 @@ class FileTypeTest: UnitTest {
 #if !os(Linux) // LINUX_DISABLE_FILEMANAGER
 class FileStorageTest: UnitTest {
     private var fileStorage: FileManagerFileStorage!
-    private var siteId: SiteId!
+    private var siteId: String!
 
     override func setUp() {
-        super.setUp()
-
         siteId = String.random()
-        fileStorage = FileManagerFileStorage(siteId: siteId, logger: LoggerMock())
+
+        super.setUp(siteId: siteId)
+
+        fileStorage = FileManagerFileStorage(sdkConfig: sdkConfig, logger: LoggerMock())
     }
 
     func test_get_givenNotSave_expectNil() {
