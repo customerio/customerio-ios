@@ -35,6 +35,16 @@ open class IntegrationTest: UnitTest {
 
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
-        CustomerIO.initializeIntegrationTests(siteId: testSiteId, diGraph: diGraph)
+        CustomerIO.initializeIntegrationTests(diGraph: diGraph)
+    }
+
+    // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
+    // For the test functions that need to test SDK initialization, this function exists to be called by test function.
+    public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
+        tearDown()
+
+        // confirm that the SDK did get uninitialized
+        XCTAssertNil(CustomerIO.shared.siteId, file: file, line: line)
+        XCTAssertNil(CustomerIO.shared.diGraph, file: file, line: line)
     }
 }

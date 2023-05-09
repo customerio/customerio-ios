@@ -138,4 +138,22 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(diGraph.queueStorage.getInventory().count, 0)
         XCTAssertEqual(httpRequestRunnerStub.requestCallsCount, 1)
     }
+
+    // MARK: Initialization
+
+    func test_initializeSDK_expectAccessSdkConfigFromInstance() {
+        XCTAssertNotNil(CustomerIO.shared.siteId) // asserts the SDK has been initiaed.
+        XCTAssertNotNil(CustomerIO.shared.config)
+    }
+
+    func test_initializeSDK_givenWorkspaceCredentials_expectSdkConfiguredWithCredentials() {
+        let givenSiteId = String.random
+        let givenApiKey = String.random
+
+        uninitializeSDK()
+        CustomerIO.initialize(siteId: givenSiteId, apiKey: givenApiKey, region: .US, configure: nil)
+
+        XCTAssertEqual(CustomerIO.shared.config!.siteId, givenSiteId)
+        XCTAssertEqual(CustomerIO.shared.config!.apiKey, givenApiKey)
+    }
 }

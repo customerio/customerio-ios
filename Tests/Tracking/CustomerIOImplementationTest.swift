@@ -31,7 +31,7 @@ class CustomerIOImplementationTest: UnitTest {
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
 
-        implementation = CustomerIOImplementation(siteId: diGraph.siteId, diGraph: diGraph)
+        implementation = CustomerIOImplementation(diGraph: diGraph)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
 

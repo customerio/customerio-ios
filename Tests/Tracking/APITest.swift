@@ -21,6 +21,12 @@ class TrackingAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
+    func test_allPublicStaticPropertiesAvailable() throws {
+        try skipRunningTest()
+
+        _ = CustomerIO.version
+    }
+
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
     func test_allPublicTrackingFunctions() throws {
@@ -39,6 +45,10 @@ class TrackingAPITest: UnitTest {
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
         let _: CioLogLevel = .debug
+
+        // Public properties exposed to customers
+        _ = CustomerIO.shared.siteId
+        _ = CustomerIO.shared.config
 
         // Identify
         CustomerIO.shared.identify(identifier: "")
@@ -135,7 +145,7 @@ class TrackingAPITest: UnitTest {
             "version": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(region: .US)
+        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
@@ -174,7 +184,7 @@ class TrackingAPITest: UnitTest {
             "versionWrong": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(region: .US)
+        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
@@ -189,7 +199,7 @@ class TrackingAPITest: UnitTest {
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = CioSdkConfig.Factory.create(region: .US)
+        let actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, true)

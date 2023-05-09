@@ -4,7 +4,7 @@ import Foundation
 import Gist
 
 internal class MessagingInAppImplementation: MessagingInAppInstance {
-    private let siteId: SiteId
+    private let siteId: String
     private let region: Region
     private let logger: Logger
     private var queue: Queue
@@ -15,7 +15,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var eventListener: InAppEventListener?
 
     init(diGraph: DIGraph) {
-        self.siteId = diGraph.siteId
+        self.siteId = diGraph.sdkConfig.siteId
         self.region = diGraph.sdkConfig.region
         self.logger = diGraph.logger
         self.queue = diGraph.queue

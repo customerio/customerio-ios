@@ -5,14 +5,12 @@ import Foundation
 // sourcery: InjectRegister = "QueueRunnerHook"
 internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(
-        siteId: SiteId,
         jsonAdapter: JsonAdapter,
         logger: Logger,
         httpClient: HttpClient,
         sdkConfig: SdkConfig
     ) {
         super.init(
-            siteId: siteId,
             jsonAdapter: jsonAdapter,
             logger: logger,
             httpClient: httpClient,
