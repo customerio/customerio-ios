@@ -76,7 +76,7 @@ class SettingsViewController: UIViewController {
     func getAndSetDefaultValues() {
         
         currentSettings = Settings(deviceToken: storage.deviceToken ?? "Error",
-                                   trackUrl: storage.trackUrl ?? "-",
+                                   trackUrl: storage.trackUrl ?? "",
                                    siteId: storage.siteId ?? Env.customerIOSiteId,
                                    apiKey: storage.apiKey ?? Env.customerIOApiKey,
                                    bgQDelay: storage.bgQDelay ?? "30",
