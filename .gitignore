@@ -102,4 +102,4 @@ fastlane/test_output
 # https://github.com/johnno1962/injectionforxcode
 
 iOSInjectionProject/
-Apps/APN-UIKit/APN UIKit/APN UIKit/Env.swift
+Env.swift

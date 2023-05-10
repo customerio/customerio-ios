@@ -5,7 +5,7 @@ class SettingsViewController: UIViewController {
     static func newInstance() -> SettingsViewController {
         UIStoryboard.getViewController(identifier: "SettingsViewController")
     }
-    
+
     // MARK: - Outlets
     @IBOutlet weak var deviceTokenTextField: ThemeTextField!
     @IBOutlet weak var apiKeyTextField: ThemeTextField!
@@ -41,12 +41,12 @@ class SettingsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         configureSettingsRouter()
         getAndSetDefaultValues()
         addObserversForSettingsScreen()
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         self.navigationController?.isNavigationBarHidden = false
@@ -86,6 +86,7 @@ class SettingsViewController: UIViewController {
                                    isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
                                    isDebugModeEnabled: storage.isDebugModeEnabled ?? true)
         
+
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
                 self.currentSettings?.isPushEnabled = status == .authorized ? true : false
@@ -115,12 +116,12 @@ func configureSettingsRouter() {
         settingsRouter = router
         router.settingsViewController = self
     }
-    
+
     func popToSource() {
         settingsRouter?.routeToSource()
     }
-    
-    func getStatusOfPushPermissions(handler: @escaping(UNAuthorizationStatus) -> Void) {
+
+    func getStatusOfPushPermissions(handler: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             handler(settings.authorizationStatus)
         }
@@ -141,9 +142,9 @@ func configureSettingsRouter() {
         // Debug screen
         storage.isDebugModeEnabled = debugModeState
     }
-    
-    
+
     // MARK: - Actions
+
     @IBAction func saveSettings(_ sender: UIButton) {
         compareAndSave()
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)

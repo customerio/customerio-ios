@@ -8,38 +8,35 @@ enum CustomDataSource {
 }
 
 class CustomDataViewController: UIViewController {
+    @IBOutlet var eventNameTextField: ThemeTextField!
+    @IBOutlet var propertyValueTextField: ThemeTextField!
+    @IBOutlet var propertyNameTextField: ThemeTextField!
+    @IBOutlet var headerLabel: UILabel!
 
-    @IBOutlet weak var eventNameTextField: ThemeTextField!
-    @IBOutlet weak var propertyValueTextField: ThemeTextField!
-    @IBOutlet weak var propertyNameTextField: ThemeTextField!
-    @IBOutlet weak var headerLabel: UILabel!
-    
-    @IBOutlet weak var eventNameLabel: UILabel!
-    @IBOutlet weak var propertyValueLabel: UILabel!
-    @IBOutlet weak var propertyNameLabel: UILabel!
-    var source : CustomDataSource = .customEvents
+    @IBOutlet var eventNameLabel: UILabel!
+    @IBOutlet var propertyValueLabel: UILabel!
+    @IBOutlet var propertyNameLabel: UILabel!
+    var source: CustomDataSource = .customEvents
     static func newInstance() -> CustomDataViewController {
         UIStoryboard.getViewController(identifier: "CustomDataViewController")
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
-         super.viewWillAppear(animated)
-        self.navigationController?.isNavigationBarHidden = false
+        super.viewWillAppear(animated)
+        navigationController?.isNavigationBarHidden = false
         customizeScreenBasedOnSource()
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
     }
-    
+
     func customizeScreenBasedOnSource() {
-        
         if source == .customEvents {
             headerLabel.text = "Send Custom Event"
-        }
-        else {
+        } else {
             headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Attribute"
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
@@ -58,7 +55,7 @@ class CustomDataViewController: UIViewController {
     }
 
     // MARK: - Actions
-    
+
     @IBAction func sendCustomData(_ sender: UIButton) {
         if !isAllTextFieldsValid() {
             showAlert(withMessage: "Please fill all fields", .error)
@@ -80,8 +77,6 @@ class CustomDataViewController: UIViewController {
         else if ( source == .deviceAttributes) {
             CustomerIO.shared.profileAttributes = [propName: propValue]
             self.showAlert(withMessage: "Profile attribute set successfully.")
-
         }
     }
-    
 }
