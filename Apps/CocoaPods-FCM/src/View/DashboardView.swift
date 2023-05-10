@@ -1,5 +1,6 @@
 import CioTracking
 import SwiftUI
+import UserNotifications
 
 struct DashboardView: View {
     @State private var showingCustomEventSheet = false
@@ -21,6 +22,7 @@ struct DashboardView: View {
     @EnvironmentObject var userManager: UserManager
 
     @State private var showSettings: Bool = false
+    @State private var showAskForPushPermissionButton = false
 
     var body: some View {
         ZStack {
@@ -38,9 +40,22 @@ struct DashboardView: View {
                 }
             }
 
-            VStack(spacing: 30) {
+            VStack(spacing: 10) {
                 Text("What would you like to test?")
 
+                if showAskForPushPermissionButton {
+                    ColorButton(title: "Ask for push permission") {
+                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                            if granted {
+                                DispatchQueue.main.async {
+                                    UIApplication.shared.registerForRemoteNotifications()
+                                }
+                            }
+                        }
+
+                        showAskForPushPermissionButton = false
+                    }
+                }
                 ColorButton(title: "Send Random Event") {
                     CustomerIO.shared.track(
                         name: String.random,
@@ -119,6 +134,10 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
+        }.onAppear {
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                showAskForPushPermissionButton = settings.authorizationStatus == .notDetermined
+            }
         }
     }
 }

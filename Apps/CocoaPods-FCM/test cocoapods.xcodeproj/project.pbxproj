@@ -32,6 +32,8 @@
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC629195D2600DFAC6E /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */; };
 		F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C1C58D29F2D39300067998 /* SettingsView.swift */; };
+		F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
+		F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +93,7 @@
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,6 +203,7 @@
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
+				F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */,
 				F73134622919570600CD43D9 /* src */,
 				F7382932291D5C27008ED8CB /* Rich Push Notification Service Extension */,
 				F73134612919570600CD43D9 /* Products */,
@@ -427,6 +431,7 @@
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
 				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
+				F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */,
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
@@ -445,6 +450,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */,
+				F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
