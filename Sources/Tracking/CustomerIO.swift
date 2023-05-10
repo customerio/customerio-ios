@@ -121,7 +121,7 @@ public class CustomerIO: CustomerIOInstance {
     private var cleanupRepository: CleanupRepository?
 
     // private constructor to force use of singleton API
-    private init() {    }
+    private init() {}
 
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
     // See CustomerIO.shared.initializeIntegrationTests for integration testing
