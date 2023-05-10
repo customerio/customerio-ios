@@ -18,16 +18,33 @@ class SettingsViewController: UIViewController {
     @IBOutlet weak var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet weak var bgQTakDelayTextField: ThemeTextField!
     
+    var notificationUtil = DI.shared.notificationUtil
     var settingsRouter: SettingsRouting?
     var storage = DI.shared.storage
     var currentSettings : Settings!
-
+    
+    var pushSwitchState:Bool {
+        return enablePushToggle.isOn
+    }
+    
+    var trackScreenState:Bool {
+        return trackScreenToggle.isOn
+    }
+    
+    var trackDeviceAttributeState:Bool {
+        return trackDeviceToggle.isOn
+    }
+    
+    var debugModeState: Bool {
+        return debugModeToggle.isOn
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         configureSettingsRouter()
-        getDefaultValues()
-        setDefaultValues()
+        getAndSetDefaultValues()
+        addObserversForSettingsScreen()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -35,10 +52,31 @@ class SettingsViewController: UIViewController {
         self.navigationController?.isNavigationBarHidden = false
     }
     
-    func getDefaultValues() {
+    func addObserversForSettingsScreen() {
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self,
+                                                  name: UIApplication.willEnterForegroundNotification,
+                                                  object: nil)
+    }
+    
+    @objc
+    func appMovedToForeground() {
+        getStatusOfPushPermissions { status in
+            DispatchQueue.main.async {
+                self.enablePushToggle.isOn = status == .authorized ? true : false
+            }
+        }
+    }
+    
+    func getAndSetDefaultValues() {
         
         currentSettings = Settings(deviceToken: storage.deviceToken ?? "Error",
-                                   trackUrl: storage.trackUrl ?? "-",
+                                   trackUrl: storage.trackUrl ?? "",
                                    siteId: storage.siteId ?? Env.customerIOSiteId,
                                    apiKey: storage.apiKey ?? Env.customerIOApiKey,
                                    bgQDelay: storage.bgQDelay ?? "30",
@@ -52,6 +90,7 @@ class SettingsViewController: UIViewController {
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
                 self.currentSettings?.isPushEnabled = status == .authorized ? true : false
+                self.setDefaultValues()
             }
         }
     }
@@ -91,27 +130,17 @@ func configureSettingsRouter() {
     func compareAndSave() {
         
         // Track Url
-        if currentSettings.trackUrl != trackUrlTextField.text {
-            storage.trackUrl = trackUrlTextField.text
-        }
-        
+        storage.trackUrl = trackUrlTextField.text
         // Background Queue Seconds Delay
-        if currentSettings.bgQDelay != bgQTakDelayTextField.text {
-            storage.bgQDelay = bgQTakDelayTextField.text
-        }
-        
+        storage.bgQDelay = bgQTakDelayTextField.text
         // Min number of tasks
-        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
-            storage.bgNumOfTasks = bgQMinTasksTextField.text
-        }
-        
-        // Min tasks in queue
-        if currentSettings.bgQMinTasks != bgQMinTasksTextField.text {
-            storage.bgNumOfTasks = bgQMinTasksTextField.text
-        }
-        
+        storage.bgNumOfTasks = bgQMinTasksTextField.text
+        // Push enabled
+        storage.isPushEnabled = pushSwitchState
         // Track screen enabled
-//        if currentSettings.isTrackScreenEnabled != trackScreenToggle.va
+        storage.isTrackScreenEnabled = trackScreenState
+        // Debug screen
+        storage.isDebugModeEnabled = debugModeState
     }
 
     // MARK: - Actions
@@ -119,5 +148,23 @@ func configureSettingsRouter() {
     @IBAction func saveSettings(_ sender: UIButton) {
         compareAndSave()
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
+    }
+    
+    
+    @IBAction func enablePushChanged(_ sender: UISwitch) {
+        
+        getStatusOfPushPermissions { status in
+            DispatchQueue.main.async {
+                if status == .notDetermined {
+                    self.notificationUtil.showPromptForPushPermission()
+                }
+                else {
+                    if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                       UIApplication.shared.open(appSettingsUrl)
+                        sender.setOn(!sender.isOn, animated: true)
+                     }
+                }
+            }
+        }
     }
 }

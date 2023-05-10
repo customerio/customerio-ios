@@ -15,19 +15,35 @@ class LoginViewController: UIViewController {
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.isNavigationBarHidden = false
+         super.viewWillAppear(animated)
+        self.navigationController?.isNavigationBarHidden = true
         emailTextField.clear()
         firstNameTextField.clear()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
+        addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
     }
-
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    func addNotifierObserver() {
+        NotificationCenter.default.addObserver(self, selector: #selector(routeToDeepLinkScreen(notification:)),
+                                               name: Notification.Name("showDeepLinkScreenOnLogin"),
+                                               object: nil)
+    }
+    
+    @objc
+    func routeToDeepLinkScreen(notification: Notification) {
+        loginRouter?.routeToDeepLinkScreen()
+    }
+    
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router
@@ -35,10 +51,7 @@ class LoginViewController: UIViewController {
     }
 
     func addUserInteractionToSettingsImageView() {
-        let gestureOnSettings = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
-
-        settings.addGestureRecognizer(gestureOnSettings)
-        settings.isUserInteractionEnabled = true
+        settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
 
     @objc func settingsTapped() {

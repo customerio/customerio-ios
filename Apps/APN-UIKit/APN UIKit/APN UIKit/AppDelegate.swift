@@ -19,15 +19,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         return true
     }
-    
+
     func initializeCioAndInAppListeners() {
         // Initialise CustomerIO SDK
-        // TODO: - Update this when using local storage for configurations
-        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: Region.US, configure: { config in
-            config.logLevel = .debug
-            config.autoTrackScreenViews = true
-        })
         
+        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: .US) { config in
+            config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
+            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
+            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
+            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
+            config.autoTrackScreenViews =  self.storage.isTrackScreenEnabled ?? false
+            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
+                config.trackingApiUrl = trackUrl
+            }
+        }
+        
+        // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
     }
     // MARK: UISceneSession Lifecycle
@@ -80,23 +87,25 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         completionHandler([.list, .banner, .badge, .sound])
     }
 }
-
+// In-app event listeners to handle user's response to in-app messages.
+// Registering event listeners is requiredf
 extension AppDelegate: InAppEventListener {
+    // Message is sent and shown to the user
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp shown",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // User taps X (close) button and in-app message is dismissed
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp dismissed",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // In-app message produces an error - preventing message from appearing to the user
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(name: "inapp error",
                                 data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId])
     }
-
+    // User perform an action on in-app message
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         CustomerIO.shared.track(name: "inapp action", data: [
             "delivery-id": message.deliveryId ?? "(none)",

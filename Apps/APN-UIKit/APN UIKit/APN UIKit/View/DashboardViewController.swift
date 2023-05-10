@@ -5,11 +5,14 @@ class DashboardViewController: UIViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
-
-    @IBOutlet var settings: UIImageView!
-
+    
+    @IBOutlet weak var userDetail: UIImageView!
+    @IBOutlet weak var settings: UIImageView!
+    
     var dashboardRouter: DashboardRouting?
-
+    var notificationUtil = DI.shared.notificationUtil
+    var storage =  DI.shared.storage
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
@@ -19,12 +22,11 @@ class DashboardViewController: UIViewController {
         super.viewDidLoad()
         showPushPermissionPrompt()
         configureDashboardRouter()
-        addUserInteractionToSettingsImageView()
+        addUserInteractionToImageViews()
     }
 
     func showPushPermissionPrompt() {
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(options: authOptions, completionHandler: { _, _ in })
+        notificationUtil.showPromptForPushPermission()
     }
 
     func configureDashboardRouter() {
@@ -32,21 +34,26 @@ class DashboardViewController: UIViewController {
         dashboardRouter = router
         router.dashboardViewController = self
     }
-
-    func addUserInteractionToSettingsImageView() {
-        let gestureOnSettings = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
-
-        settings.addGestureRecognizer(gestureOnSettings)
-        settings.isUserInteractionEnabled = true
+    
+    func addUserInteractionToImageViews() {
+        settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
+        userDetail.addTapGesture(onTarget: self, #selector(DashboardViewController.userDetailTapped))
     }
 
     @objc func settingsTapped() {
         dashboardRouter?.routeToSettings()
     }
+    
+    @objc func userDetailTapped() {
+        let userDetail = "Name - " + storage.userName! + "\n\nEmailId - " + storage.userEmailId!
+        showAlert(withMessage: userDetail)
+    }
 
     // MARK: - Actions
 
     @IBAction func logoutUser(_ sender: UIButton) {
+        storage.userEmailId = nil
+        storage.userName = nil
         CustomerIO.shared.clearIdentify()
         dashboardRouter?.routeToLogin()
     }

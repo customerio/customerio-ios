@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
+		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4650330B29F692EF001B6552 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
+		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
+		4650330F29F69374001B6552 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330E29F69374001B6552 /* Tracking */; };
+		4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331029F696B8001B6552 /* DeepLinkViewController.swift */; };
+		4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
 		46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98229E459D600EAF40B /* SceneDelegate.swift */; };
 		46D5D98529E459D600EAF40B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98429E459D600EAF40B /* ViewController.swift */; };
@@ -41,9 +48,18 @@
 		46EE277429ED722E0068F9A3 /* AutoMockable.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277129ED722E0068F9A3 /* AutoMockable.generated.swift */; };
 		46EE277629ED802D0068F9A3 /* DIDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277529ED802D0068F9A3 /* DIDependencies.swift */; };
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
+		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
+		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		4650330429F68FEB001B6552 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46D5D97529E459D600EAF40B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 465032FE29F68FEB001B6552;
+			remoteInfo = NotificationServiceExtension;
+		};
 		46D5D99429E459D800EAF40B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 46D5D97529E459D600EAF40B /* Project object */;
@@ -60,7 +76,26 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4650330729F68FEB001B6552 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4650330129F68FEB001B6552 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		4650330329F68FEB001B6552 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4650331029F696B8001B6552 /* DeepLinkViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkViewController.swift; sourceTree = "<group>"; };
+		4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinksHandlerUtil.swift; sourceTree = "<group>"; };
 		46D5D97D29E459D600EAF40B /* APN UIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "APN UIKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D98029E459D600EAF40B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		46D5D98229E459D600EAF40B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -97,9 +132,20 @@
 		46EE277129ED722E0068F9A3 /* AutoMockable.generated.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoMockable.generated.swift; sourceTree = "<group>"; };
 		46EE277529ED802D0068F9A3 /* DIDependencies.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIDependencies.swift; sourceTree = "<group>"; };
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
+		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		465032FC29F68FEB001B6552 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */,
+				4650330F29F69374001B6552 /* Tracking in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		46D5D97A29E459D600EAF40B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +174,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4650330029F68FEB001B6552 /* NotificationServiceExtension */ = {
+			isa = PBXGroup;
+			children = (
+				4650330129F68FEB001B6552 /* NotificationService.swift */,
+				4650330329F68FEB001B6552 /* Info.plist */,
+			);
+			path = NotificationServiceExtension;
+			sourceTree = "<group>";
+		};
 		46D5D97429E459D600EAF40B = {
 			isa = PBXGroup;
 			children = (
@@ -135,6 +190,7 @@
 				46D5D97F29E459D600EAF40B /* APN UIKit */,
 				46D5D99629E459D800EAF40B /* APN UIKitTests */,
 				46D5D9A029E459D800EAF40B /* APN UIKitUITests */,
+				4650330029F68FEB001B6552 /* NotificationServiceExtension */,
 				46D5D97E29E459D600EAF40B /* Products */,
 				46EE275329E9E2960068F9A3 /* Frameworks */,
 			);
@@ -146,6 +202,7 @@
 				46D5D97D29E459D600EAF40B /* APN UIKit.app */,
 				46D5D99329E459D800EAF40B /* APN UIKitTests.xctest */,
 				46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */,
+				465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -153,6 +210,7 @@
 		46D5D97F29E459D600EAF40B /* APN UIKit */ = {
 			isa = PBXGroup;
 			children = (
+				46EE278229EEED500068F9A3 /* Util */,
 				46EE277729ED83340068F9A3 /* Model */,
 				46EE276E29ED722E0068F9A3 /* autogenerated */,
 				46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */,
@@ -197,6 +255,7 @@
 				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
+				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -217,6 +276,7 @@
 				46D5D9BB29E58D2000EAF40B /* StoryboardExtension.swift */,
 				46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */,
 				46EE275C29E9ECE60068F9A3 /* StringExtension.swift */,
+				46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -274,9 +334,39 @@
 			path = Model;
 			sourceTree = "<group>";
 		};
+		46EE278229EEED500068F9A3 /* Util */ = {
+			isa = PBXGroup;
+			children = (
+				46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */,
+				4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */,
+			);
+			path = Util;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		465032FE29F68FEB001B6552 /* NotificationServiceExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4650330A29F68FEB001B6552 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */;
+			buildPhases = (
+				465032FB29F68FEB001B6552 /* Sources */,
+				465032FC29F68FEB001B6552 /* Frameworks */,
+				465032FD29F68FEB001B6552 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NotificationServiceExtension;
+			packageProductDependencies = (
+				4650330C29F69374001B6552 /* MessagingPushAPN */,
+				4650330E29F69374001B6552 /* Tracking */,
+			);
+			productName = NotificationServiceExtension;
+			productReference = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		46D5D97C29E459D600EAF40B /* APN UIKit */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 46D5D9A729E459D800EAF40B /* Build configuration list for PBXNativeTarget "APN UIKit" */;
@@ -284,10 +374,12 @@
 				46D5D97929E459D600EAF40B /* Sources */,
 				46D5D97A29E459D600EAF40B /* Frameworks */,
 				46D5D97B29E459D600EAF40B /* Resources */,
+				4650330729F68FEB001B6552 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4650330529F68FEB001B6552 /* PBXTargetDependency */,
 			);
 			name = "APN UIKit";
 			packageProductDependencies = (
@@ -346,6 +438,9 @@
 				LastSwiftUpdateCheck = 1400;
 				LastUpgradeCheck = 1400;
 				TargetAttributes = {
+					465032FE29F68FEB001B6552 = {
+						CreatedOnToolsVersion = 14.0.1;
+					};
 					46D5D97C29E459D600EAF40B = {
 						CreatedOnToolsVersion = 14.0.1;
 					};
@@ -375,11 +470,19 @@
 				46D5D97C29E459D600EAF40B /* APN UIKit */,
 				46D5D99229E459D800EAF40B /* APN UIKitTests */,
 				46D5D99C29E459D800EAF40B /* APN UIKitUITests */,
+				465032FE29F68FEB001B6552 /* NotificationServiceExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		465032FD29F68FEB001B6552 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		46D5D97B29E459D600EAF40B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -407,6 +510,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		465032FB29F68FEB001B6552 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4650330229F68FEB001B6552 /* NotificationService.swift in Sources */,
+				4650330B29F692EF001B6552 /* Env.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		46D5D97929E459D600EAF40B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -414,19 +526,23 @@
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
+				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
+				46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */,
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
 				46EE277229ED722E0068F9A3 /* AutoLenses.generated.swift in Sources */,
+				46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */,
 				46EE276229ED679D0068F9A3 /* UserDefaultKeys.swift in Sources */,
 				46EE277629ED802D0068F9A3 /* DIDependencies.swift in Sources */,
 				46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46EE277429ED722E0068F9A3 /* AutoMockable.generated.swift in Sources */,
 				46EE277329ED722E0068F9A3 /* AutoDependencyInjection.generated.swift in Sources */,
+				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
 				46EE277929ED833D0068F9A3 /* Settings.swift in Sources */,
@@ -458,6 +574,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4650330529F68FEB001B6552 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 465032FE29F68FEB001B6552 /* NotificationServiceExtension */;
+			targetProxy = 4650330429F68FEB001B6552 /* PBXContainerItemProxy */;
+		};
 		46D5D99529E459D800EAF40B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 46D5D97C29E459D600EAF40B /* APN UIKit */;
@@ -490,6 +611,58 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		4650330829F68FEB001B6552 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4650330929F68FEB001B6552 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		46D5D9A529E459D800EAF40B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -607,11 +780,13 @@
 		46D5D9A829E459D800EAF40B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "APN UIKit/Info.plist";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -626,6 +801,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -635,11 +811,13 @@
 		46D5D9A929E459D800EAF40B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "APN UIKit/Info.plist";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -654,6 +832,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -735,6 +914,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		4650330A29F68FEB001B6552 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4650330829F68FEB001B6552 /* Debug */,
+				4650330929F68FEB001B6552 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		46D5D97829E459D600EAF40B /* Build configuration list for PBXProject "APN UIKit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -772,7 +960,16 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		4650330C29F69374001B6552 /* MessagingPushAPN */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingPushAPN;
+		};
+		4650330E29F69374001B6552 /* Tracking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Tracking;
+		};
 		46EE275429E9E2960068F9A3 /* MessagingInApp */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MessagingInApp;
