@@ -11,10 +11,10 @@ class DashboardRouter: DashboardRouting {
     weak var dashboardViewController: DashboardViewController?
 
     func routeToLogin() {
-        guard let _ = dashboardViewController?.navigationController?.popToRootViewController(animated: true) else {
-            let viewController = LoginViewController.newInstance()
-            dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
-            return
+        let didNavigateBackToLogin = dashboardViewController?.navigationController?.popToRootViewController(animated: true)
+        
+        if !didNavigateBackToLogin {
+        dashboardViewController?.navigationController?.pushViewController(LoginViewController.newInstance(), animated: true)
         }
     }
     
