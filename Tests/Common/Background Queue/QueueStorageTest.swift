@@ -12,7 +12,6 @@ class QueueStorageTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(
-            siteId: testSiteId,
             fileStorage: fileStorageMock,
             jsonAdapter: jsonAdapter,
             lockManager: lockManager,
@@ -106,7 +105,6 @@ class QueueStorageIntegrationTest: UnitTest {
         super.setUp()
 
         storage = FileManagerQueueStorage(
-            siteId: testSiteId,
             fileStorage: diGraph.fileStorage,
             jsonAdapter: jsonAdapter,
             lockManager: lockManager,

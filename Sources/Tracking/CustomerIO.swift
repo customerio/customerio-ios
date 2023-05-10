@@ -98,7 +98,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public var siteId: String? {
-        diGraph?.siteId
+        diGraph?.sdkConfig.siteId
     }
 
     /**
@@ -120,18 +120,13 @@ public class CustomerIO: CustomerIOInstance {
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
 
-    private var globalDataStore: GlobalDataStore!
-
     // private constructor to force use of singleton API
-    private init() {
-        self.globalDataStore = CioGlobalDataStore.getInstance()
-    }
+    private init() {    }
 
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
     // See CustomerIO.shared.initializeIntegrationTests for integration testing
-    internal init(implementation: CustomerIOInstance, globalDataStore: GlobalDataStore, diGraph: DIGraph) {
+    internal init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
-        self.globalDataStore = globalDataStore
         self.diGraph = diGraph
     }
 
@@ -146,14 +141,11 @@ public class CustomerIO: CustomerIOInstance {
     // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
-        siteId: String,
-        globalDataStore: GlobalDataStore,
         diGraph: DIGraph
     ) {
-        let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
-        Self.shared = CustomerIO(implementation: implementation, globalDataStore: globalDataStore, diGraph: diGraph)
-
-        Self.shared.postInitialize(siteId: diGraph.siteId, diGraph: diGraph)
+        let implementation = CustomerIOImplementation(diGraph: diGraph)
+        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+        Self.shared.postInitialize(diGraph: diGraph)
     }
 
     /**
@@ -167,18 +159,13 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region)
+        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(
-            siteId: siteId,
-            apiKey: apiKey,
-            region: region,
-            config: newSdkConfig
-        )
+        Self.initialize(config: newSdkConfig)
 
         if newSdkConfig.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
@@ -199,41 +186,34 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout NotificationServiceExtensionSdkConfig) -> Void)?
     ) {
-        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(region: region)
+        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(
-            siteId: siteId,
-            apiKey: apiKey,
-            region: region,
-            config: newSdkConfig.toSdkConfig()
-        )
+        Self.initialize(config: newSdkConfig.toSdkConfig())
     }
 
     // private shared logic initialize to avoid copy/paste between the different
     // public initialize functions.
     private static func initialize(
-        siteId: String,
-        apiKey: String,
-        region: Region,
         config: SdkConfig
     ) {
-        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: config)
+        let newDiGraph = DIGraph(sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
-        Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
+        Self.shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
+        Self.shared.postInitialize(diGraph: newDiGraph)
     }
 
     // Contains all logic shared between all of the initialize() functions.
-    internal func postInitialize(siteId: SiteId, diGraph: DIGraph) {
+    internal func postInitialize(diGraph: DIGraph) {
         let hooks = diGraph.hooksManager
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
+        let siteId = diGraph.sdkConfig.siteId
 
         cleanupRepository = diGraph.cleanupRepository
 
@@ -242,7 +222,8 @@ public class CustomerIO: CustomerIOInstance {
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
-        if let token = globalDataStore?.pushDeviceToken {
+        let globalDataStore = diGraph.globalDataStore
+        if let token = globalDataStore.pushDeviceToken {
             registerDeviceToken(token)
         }
 

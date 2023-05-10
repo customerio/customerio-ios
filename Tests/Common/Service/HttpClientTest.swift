@@ -25,8 +25,6 @@ class HttpClientTest: UnitTest {
             "user-agent-here" // HttpClient uses this during initialization. Needed to set now.
 
         client = CIOHttpClient(
-            siteId: SiteId.random,
-            apiKey: String.random,
             sdkConfig: sdkConfig,
             jsonAdapter: jsonAdapter,
             httpRequestRunner: requestRunnerMock,

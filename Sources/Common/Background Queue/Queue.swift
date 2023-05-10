@@ -94,7 +94,7 @@ public extension Queue {
 // sourcery: InjectRegister = "Queue"
 public class CioQueue: Queue {
     private let storage: QueueStorage
-    private let siteId: SiteId
+    private let siteId: String
     private let runRequest: QueueRunRequest
     private let jsonAdapter: JsonAdapter
     private let logger: Logger
@@ -107,7 +107,6 @@ public class CioQueue: Queue {
     }
 
     init(
-        siteId: SiteId,
         storage: QueueStorage,
         runRequest: QueueRunRequest,
         jsonAdapter: JsonAdapter,
@@ -116,8 +115,8 @@ public class CioQueue: Queue {
         queueTimer: SingleScheduleTimer,
         dateUtil: DateUtil
     ) {
+        self.siteId = sdkConfig.siteId
         self.storage = storage
-        self.siteId = siteId
         self.runRequest = runRequest
         self.jsonAdapter = jsonAdapter
         self.logger = logger

@@ -14,7 +14,6 @@ internal class RichPushRequestHandler {
     func startRequest(
         _ request: UNNotificationRequest,
         content: CustomerIOParsedPushPayload,
-        siteId: SiteId,
         completionHandler: @escaping (UNNotificationContent) -> Void
     ) {
         let requestId = request.identifier

@@ -151,7 +151,7 @@ extension DIGraph {
     }
 
     private var newHttpClient: HttpClient {
-        CIOHttpClient(siteId: siteId, apiKey: apiKey, sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
+        CIOHttpClient(sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
     }
 
     // GlobalDataStore
@@ -205,7 +205,7 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+        CioQueue(storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // QueueQueryRunner
@@ -259,7 +259,7 @@ extension DIGraph {
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
+        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
     }
 
     // SimpleTimer
@@ -313,7 +313,7 @@ extension DIGraph {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger(siteId: siteId, sdkConfig: sdkConfig)
+        ConsoleLogger(sdkConfig: sdkConfig)
     }
 
     // HttpRetryPolicy
@@ -343,7 +343,7 @@ extension DIGraph {
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(siteId: siteId, logger: logger)
+        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
     }
 
     // QueueStorage
@@ -353,7 +353,7 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
     }
 
     // GlobalKeyValueStorage
@@ -449,6 +449,8 @@ extension DIGraph {
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
+        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
+
+// swiftlint:enable all

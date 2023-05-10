@@ -5,26 +5,26 @@ import XCTest
 
 class KeyValueStorageTests: UnitTest {
     let defaultKey = KeyValueStorageKey.identifiedProfileId
-    lazy var defaultStorage: KeyValueStorage = getSiteStorageInstance(siteId: "test")
     let deviceMetricsGrabberMock = DeviceMetricsGrabberMock()
 
-    private func getSiteStorageInstance(siteId: String) -> UserDefaultsKeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabberMock)
+    var defaultStorage: UserDefaultsKeyValueStorage {
+        getSiteStorageInstance(siteId: testSiteId)
     }
 
-    private func getGlobalStorageInstance() -> UserDefaultsKeyValueStorage {
-        let newInstance = UserDefaultsKeyValueStorage(
-            siteId: testSiteId,
-            deviceMetricsGrabber: deviceMetricsGrabberMock
+    private func getSiteStorageInstance(siteId: String, deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
+        UserDefaultsKeyValueStorage(
+            sdkConfig: SdkConfig.Factory.create(siteId: siteId, apiKey: "", region: .US),
+            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
         )
-        newInstance.switchToGlobalDataStore()
-        return newInstance
     }
 
-    override func setUp() {
-        super.setUp()
-
-        defaultStorage.deleteAll()
+    private func getGlobalInstance(deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
+        let instance = UserDefaultsKeyValueStorage(
+            sdkConfig: SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US),
+            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
+        )
+        instance.switchToGlobalDataStore()
+        return instance
     }
 
     // MARK: integration tests
@@ -57,16 +57,16 @@ class KeyValueStorageTests: UnitTest {
     func test_getFileName_givenGlobalDataStore_expectGetFileNameForGloballyStoredData() {
         let givenAppBundleId = "com.foo.bar"
         deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
-        let storage = getGlobalStorageInstance()
+        let storage = getGlobalInstance(deviceMetricsGrabber: deviceMetricsGrabberMock)
 
         XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.shared")
     }
 
     func test_getFileName_givenNotGlobalStore_expectGetFileNameForSiteIdStoredData() {
-        let givenSiteId: SiteId = "485895958"
+        let givenSiteId = "485895958"
         let givenAppBundleId = "com.foo.bar"
         deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
-        let storage = getSiteStorageInstance(siteId: givenSiteId)
+        let storage = getSiteStorageInstance(siteId: givenSiteId, deviceMetricsGrabber: deviceMetricsGrabberMock)
 
         XCTAssertEqual(storage.getFileName(), "io.customer.sdk.com.foo.bar.485895958")
     }

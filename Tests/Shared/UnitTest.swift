@@ -66,15 +66,15 @@ open class UnitTest: XCTestCase {
         setUp(enableLogs: false)
     }
 
-    public func setUp(enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        var newSdkConfig = SdkConfig.Factory.create(region: Region.US)
+    public func setUp(siteId: String? = nil, enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId ?? testSiteId, apiKey: "", region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
 
         modifySdkConfig?(&newSdkConfig)
 
-        diGraph = DIGraph(siteId: testSiteId, apiKey: "", sdkConfig: newSdkConfig)
+        diGraph = DIGraph(sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
@@ -86,8 +86,6 @@ open class UnitTest: XCTestCase {
         retryPolicyMock = HttpRetryPolicyMock()
         retryPolicyMock.underlyingNextSleepTime = 0.01
 
-        deleteAllPersistantData()
-
         super.setUp()
     }
 
@@ -98,12 +96,13 @@ open class UnitTest: XCTestCase {
 
         diGraph.reset()
 
+        CustomerIO.resetSharedInstance()
+
         super.tearDown()
     }
 
     public func deleteAllPersistantData() {
         deleteKeyValueStorage()
-        CustomerIO.resetSharedInstance()
         deleteAllFiles()
     }
 

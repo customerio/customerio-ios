@@ -69,11 +69,11 @@ public enum FileType {
 // sourcery: InjectRegister = "FileStorage"
 public class FileManagerFileStorage: FileStorage {
     private let fileManager = FileManager.default
-    private let siteId: SiteId
+    private let siteId: String
     private let logger: Logger
 
-    init(siteId: SiteId, logger: Logger) {
-        self.siteId = siteId
+    init(sdkConfig: SdkConfig, logger: Logger) {
+        self.siteId = sdkConfig.siteId
         self.logger = logger
     }
 

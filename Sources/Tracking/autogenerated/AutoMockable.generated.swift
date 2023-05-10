@@ -761,3 +761,5 @@ public class SdkInitializedUtilMock: SdkInitializedUtil, Mock {
         postInitializedDataSetCallsCount = 0
     }
 }
+
+// swiftlint:enable all

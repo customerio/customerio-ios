@@ -2718,3 +2718,5 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
         return getUserAgentHeaderValueClosure.map { $0() } ?? getUserAgentHeaderValueReturnValue
     }
 }
+
+// swiftlint:enable all
