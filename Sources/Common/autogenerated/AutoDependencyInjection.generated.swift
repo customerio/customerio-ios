@@ -107,9 +107,6 @@ extension DIGraph {
         _ = queueStorage
         countDependenciesResolved += 1
 
-        _ = globalKeyValueStorage
-        countDependenciesResolved += 1
-
         _ = jsonAdapter
         countDependenciesResolved += 1
 
@@ -161,7 +158,7 @@ extension DIGraph {
     }
 
     private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: globalKeyValueStorage)
+        CioGlobalDataStore(keyValueStorage: keyValueStorage)
     }
 
     // HooksManager (singleton)
@@ -354,16 +351,6 @@ extension DIGraph {
 
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
-    }
-
-    // GlobalKeyValueStorage
-    public var globalKeyValueStorage: GlobalKeyValueStorage {
-        getOverriddenInstance() ??
-            newGlobalKeyValueStorage
-    }
-
-    private var newGlobalKeyValueStorage: GlobalKeyValueStorage {
-        GlobalKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 
     // JsonAdapter
