@@ -53,8 +53,8 @@ class DashboardViewController: UIViewController {
     // MARK: - Actions
     
     @IBAction func logoutUser(_ sender: UIButton) {
-        storage.userEmailId = ""
-        storage.userName = ""
+        storage.userEmailId = nil
+        storage.userName = nil
         CustomerIO.shared.clearIdentify()
         dashboardRouter?.routeToLogin()
     }
