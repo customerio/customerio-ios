@@ -58,6 +58,12 @@ class SettingsViewController: UIViewController {
 
     }
     
+    deinit {
+        NotificationCenter.default.removeObserver(self,
+                                                  name: UIApplication.willEnterForegroundNotification,
+                                                  object: nil)
+    }
+    
     @objc
     func appMovedToForeground() {
         getStatusOfPushPermissions { status in
