@@ -61,6 +61,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
+    - name: Run pod install if using CocoaPods 
+      working-directory: ${{ env.GITHUB_WORKSPACE }} # root directory of source code 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      run: make install_cocoapods_dependencies app=CocoaPods-FCM
+
       # - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
     #   run: cat $GITHUB_EVENT_PATH
 
