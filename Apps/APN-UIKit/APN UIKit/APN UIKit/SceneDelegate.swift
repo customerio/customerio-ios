@@ -66,4 +66,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
     }
+    
+    // Universal Links
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return
+        }
+        
+        _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+    }
 }

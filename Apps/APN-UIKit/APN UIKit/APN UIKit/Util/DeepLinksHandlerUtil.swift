@@ -2,6 +2,7 @@ import Foundation
 
 protocol DeepLinksHandlerUtil {
     func handleAppSchemeDeepLink(_ url: URL) -> Bool
+    func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
 // sourcery: InjectRegister = "DeepLinksHandlerUtil"
@@ -36,5 +37,14 @@ extension AppDeepLinksHandlerUtil {
                       object: nil, userInfo: nil)
         }
         return true
+    }
+    
+    func handleUniversalLinkDeepLink(_ url: URL) -> Bool {
+        switch url.path {
+        case "/":
+           // TODO: - Pending as don't know why is iOS redirecting Universal link to Safari first 
+            return true
+        default: return false
+        }
     }
 }
