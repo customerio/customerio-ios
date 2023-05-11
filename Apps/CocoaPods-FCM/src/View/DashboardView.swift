@@ -24,9 +24,6 @@ struct DashboardView: View {
     @State private var showSettings: Bool = false
     @State private var showAskForPushPermissionButton = false
 
-    @State private var openedDeepLinkUrl: URL?
-    @State private var showOpenedDeepLink: Bool = false // I would like for this value to be set based on openedDeepLinkUrl != nil but can't figure that out yet.
-
     var body: some View {
         ZStack {
             VStack {
@@ -141,17 +138,6 @@ struct DashboardView: View {
             UNUserNotificationCenter.current().getNotificationSettings { settings in
                 showAskForPushPermissionButton = settings.authorizationStatus == .notDetermined
             }
-            // App opens via Universal Link.
-            // Any URL that begins with `https://ciosample.page.link` will open this app and display the URL to you in a pop-up.
-        }.onOpenURL { deepLink in
-            openedDeepLinkUrl = deepLink
-            showOpenedDeepLink = true
-        }.alert(isPresented: $showOpenedDeepLink) {
-            Alert(
-                title: Text("Deep link opened!"),
-                message: Text(openedDeepLinkUrl!.absoluteString),
-                dismissButton: .default(Text("OK"))
-            )
         }
     }
 }
