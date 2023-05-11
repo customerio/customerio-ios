@@ -20,9 +20,13 @@ struct MainApp: App {
                         .environmentObject(userManager)
                         .accentColor(Color("AccentColor")) // sets Color.accentColor for all children
                 }
-            }.onOpenURL { deepLink in
-                // App opens via Universal Link.
-                // Any URL that begins with `https://ciosample.page.link` will open this app and display the URL to you in a pop-up.
+            }.onOpenURL { deepLink in // This function is how to implement deep links in a SwiftUIU app.
+                // This app opens deep links using Universal Links and app scheme deep links.
+                //
+                // Universal Links: Any URL that begins with `https://ciosample.page.link`...
+                // App scheme: Any URL that begins with `cocoapods-fcm://`...
+                //
+                // ...will open the app and display the deep link in a pop-up.
                 openedDeepLinkUrl = deepLink
             }.alert(isPresented: Binding<URL>.notNil(openedDeepLinkUrl)) {
                 Alert(
