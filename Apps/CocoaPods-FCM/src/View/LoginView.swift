@@ -5,10 +5,25 @@ struct LoginView: View {
     @State private var firstNameText: String = ""
     @State private var emailText: String = ""
 
+    @State private var showSettings: Bool = false
+
     @EnvironmentObject var userManager: UserManager
 
     var body: some View {
         ZStack {
+            VStack {
+                SettingsButton {
+                    showSettings = true
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 10)
+                Spacer()
+            }.sheet(isPresented: $showSettings) {
+                SettingsView {
+                    showSettings = false
+                }
+            }
+
             VStack(spacing: 40) { // This view container will be in center of screen.
                 TextField("First name", text: $firstNameText)
                 TextField("Email", text: $emailText)

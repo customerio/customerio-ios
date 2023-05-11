@@ -1,4 +1,5 @@
 import Foundation
+import SampleAppsCommon
 import SwiftUI
 
 class UserManager: ObservableObject {

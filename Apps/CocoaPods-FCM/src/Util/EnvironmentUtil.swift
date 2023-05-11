@@ -3,9 +3,7 @@ import Foundation
 
 class EnvironmentUtil {
     static var cioSdkVersion: String {
-        // TODO: expose SdkVersion in CIO SDK
-        "(unknown)"
-//        SdkVersion.version
+        CustomerIO.version
     }
 
     static var appBuildVersion: String {

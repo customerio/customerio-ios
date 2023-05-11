@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 struct EnvironmentText: View {
-var body: some View {
+    var body: some View {
         VStack(spacing: 10) {
             Text("SDK: \(EnvironmentUtil.cioSdkVersion)")
             Text("app: \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
