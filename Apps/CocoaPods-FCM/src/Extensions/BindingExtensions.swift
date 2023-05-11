@@ -28,4 +28,8 @@ extension Binding {
             self.wrappedValue = from(newValue)
         }
     }
+
+    static func notNil(_ value: Any?) -> Binding<Bool> {
+        Binding<Bool>(get: { value != nil }, set: { _, _ in })
+    }
 }
