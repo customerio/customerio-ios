@@ -40,11 +40,24 @@ extension AppDeepLinksHandlerUtil {
     }
     
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool {
-        switch url.path {
-        case "/":
-           // TODO: - Pending as don't know why is iOS redirecting Universal link to Safari first 
-            return true
-        default: return false
+//        switch url.path {
+//        case "/":
+//           // TODO: - Pending as don't know why is iOS redirecting Universal link to Safari first
+//            return true
+//        default: return false
+//        }
+        
+        let userInfo = ["linkType" : "universal", "url" : url.path]
+        if let _ = storage.userEmailId, let _ = storage.userName {
+            NotificationCenter.default
+                .post(name: Notification.Name("showDeepLinkScreenOnDashboard"),
+                      object: nil, userInfo: userInfo)
         }
+        else {
+            NotificationCenter.default
+                .post(name: Notification.Name("showDeepLinkScreenOnLogin"),
+                      object: nil, userInfo: userInfo)
+        }
+        return true
     }
 }

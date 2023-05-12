@@ -22,6 +22,7 @@ class DashboardViewController: UIViewController {
         super.viewDidLoad()
         showPushPermissionPrompt()
         configureDashboardRouter()
+        addNotifierObserver()
         addUserInteractionToImageViews()
     }
 
@@ -38,6 +39,21 @@ class DashboardViewController: UIViewController {
     func addUserInteractionToImageViews() {
         settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
         userDetail.addTapGesture(onTarget: self, #selector(DashboardViewController.userDetailTapped))
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    func addNotifierObserver() {
+        NotificationCenter.default.addObserver(self, selector: #selector(routeToDeepLinkScreen(notification:)),
+                                               name: Notification.Name("showDeepLinkScreenOnDashboard"),
+                                               object: nil)
+    }
+    
+    @objc
+    func routeToDeepLinkScreen(notification: Notification) {
+        dashboardRouter?.routeToDeepLinkScreen()
     }
 
     @objc func settingsTapped() {
