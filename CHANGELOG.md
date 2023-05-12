@@ -1,3 +1,10 @@
+### [2.5.1](https://github.com/customerio/customerio-ios/compare/2.5.0...2.5.1) (2023-05-12)
+
+
+### Bug Fixes
+
+* sdk wrappers not having device token registered because of application lifecycle ([#285](https://github.com/customerio/customerio-ios/issues/285)) ([da7fc51](https://github.com/customerio/customerio-ios/commit/da7fc512e9308af208de8dea5aeaf95839a52fc1))
+
 ## [2.5.0](https://github.com/customerio/customerio-ios/compare/2.4.1...2.5.0) (2023-04-27)
 
 
