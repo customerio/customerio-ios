@@ -18,6 +18,8 @@ class SettingsViewController: UIViewController {
     @IBOutlet weak var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet weak var bgQTakDelayTextField: ThemeTextField!
     
+    @IBOutlet weak var copyToClipboardImageView: UIImageView!
+    @IBOutlet weak var clipboardView: UIView!
     var notificationUtil = DI.shared.notificationUtil
     var settingsRouter: SettingsRouting?
     var storage = DI.shared.storage
@@ -42,6 +44,7 @@ class SettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        configureClipboardImageView()
         configureSettingsRouter()
         getAndSetDefaultValues()
         addObserversForSettingsScreen()
@@ -73,6 +76,16 @@ class SettingsViewController: UIViewController {
         }
     }
     
+    func configureClipboardImageView() {
+        copyToClipboardImageView.addTapGesture(onTarget: self, #selector(SettingsViewController.copyToClipboard))
+    }
+    
+    @objc
+    func copyToClipboard() {
+        UIPasteboard.general.string = deviceTokenTextField.text ?? ""
+        
+        showAlert(withMessage: "Copied to clipboard")
+    }
     func getAndSetDefaultValues() {
         
         currentSettings = Settings(deviceToken: storage.deviceToken ?? "Error",
