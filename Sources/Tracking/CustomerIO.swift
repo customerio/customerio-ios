@@ -138,14 +138,13 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared = CustomerIO()
     }
 
-    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
         diGraph: DIGraph
     ) {
         let implementation = CustomerIOImplementation(diGraph: diGraph)
         Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
-
         Self.shared.postInitialize(diGraph: diGraph)
     }
 
@@ -220,6 +219,13 @@ public class CustomerIO: CustomerIOInstance {
 
         // Register Tracking module hooks now that the module is being initialized.
         hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
+
+        // Register the device token during SDK initialization to address device registration issues
+        // arising from lifecycle differences between wrapper SDKs and native SDK.
+        let globalDataStore = diGraph.globalDataStore
+        if let token = globalDataStore.pushDeviceToken {
+            registerDeviceToken(token)
+        }
 
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
