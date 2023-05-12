@@ -53,7 +53,9 @@ class DashboardViewController: UIViewController {
     
     @objc
     func routeToDeepLinkScreen(notification: Notification) {
-        dashboardRouter?.routeToDeepLinkScreen()
+        if let userInfo = notification.userInfo as? [String: String] {
+            dashboardRouter?.routeToDeepLinkScreen(withInfo: userInfo)
+        }
     }
 
     @objc func settingsTapped() {

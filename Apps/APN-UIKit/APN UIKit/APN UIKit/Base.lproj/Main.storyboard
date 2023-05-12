@@ -2,6 +2,7 @@
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21225" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="37F-6d-U3o">
     <device id="retina6_0" orientation="portrait" appearance="light"/>
     <dependencies>
+        <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21207"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
@@ -702,23 +703,57 @@
                         <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="You see this screen because you tapped on a push notification that had a deep link." textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UTr-u2-NjR">
-                                <rect key="frame" x="20" y="345.66666666666669" width="350" height="153"/>
-                                <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="28"/>
-                                <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
-                                <nil key="highlightedColor"/>
-                            </label>
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="iCN-CU-i7l">
+                                <rect key="frame" x="0.0" y="272" width="390" height="300"/>
+                                <subviews>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="You see this screen because you tapped on a push notification that had a deep link." textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UTr-u2-NjR">
+                                        <rect key="frame" x="20" y="10" width="350" height="153"/>
+                                        <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="28"/>
+                                        <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Link type" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tKE-I6-xLT">
+                                        <rect key="frame" x="20" y="183" width="350" height="21"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Link" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="d38-WA-06V">
+                                        <rect key="frame" x="20" y="224" width="350" height="21"/>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                </subviews>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <constraints>
+                                    <constraint firstItem="d38-WA-06V" firstAttribute="top" secondItem="tKE-I6-xLT" secondAttribute="bottom" constant="20" id="2KV-Qa-nax"/>
+                                    <constraint firstItem="tKE-I6-xLT" firstAttribute="trailing" secondItem="UTr-u2-NjR" secondAttribute="trailing" id="9WM-1T-yWN"/>
+                                    <constraint firstItem="UTr-u2-NjR" firstAttribute="leading" secondItem="iCN-CU-i7l" secondAttribute="leading" constant="20" id="JKP-hS-CqL"/>
+                                    <constraint firstItem="UTr-u2-NjR" firstAttribute="top" secondItem="iCN-CU-i7l" secondAttribute="top" constant="10" id="JWc-sM-Uew"/>
+                                    <constraint firstAttribute="trailing" secondItem="UTr-u2-NjR" secondAttribute="trailing" constant="20" id="Mgb-VL-QAj"/>
+                                    <constraint firstItem="tKE-I6-xLT" firstAttribute="top" secondItem="UTr-u2-NjR" secondAttribute="bottom" constant="20" id="Q0C-Z5-nSJ"/>
+                                    <constraint firstItem="d38-WA-06V" firstAttribute="trailing" secondItem="UTr-u2-NjR" secondAttribute="trailing" id="U5n-tc-9xw"/>
+                                    <constraint firstItem="d38-WA-06V" firstAttribute="leading" secondItem="UTr-u2-NjR" secondAttribute="leading" id="oNc-Lo-OiQ"/>
+                                    <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="300" id="weo-EN-Iyr"/>
+                                    <constraint firstItem="tKE-I6-xLT" firstAttribute="leading" secondItem="iCN-CU-i7l" secondAttribute="leading" constant="20" id="yj5-w7-lgy"/>
+                                </constraints>
+                            </view>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="KU8-fO-oeh"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="UTr-u2-NjR" firstAttribute="centerY" secondItem="V8X-sX-Mw7" secondAttribute="centerY" id="8k5-a8-7xx"/>
-                            <constraint firstAttribute="trailing" secondItem="UTr-u2-NjR" secondAttribute="trailing" constant="20" id="XNj-BY-jx9"/>
-                            <constraint firstItem="UTr-u2-NjR" firstAttribute="leading" secondItem="V8X-sX-Mw7" secondAttribute="leading" constant="20" id="vIg-JD-euU"/>
-                            <constraint firstItem="UTr-u2-NjR" firstAttribute="centerX" secondItem="V8X-sX-Mw7" secondAttribute="centerX" id="vWm-cz-tiC"/>
+                            <constraint firstItem="iCN-CU-i7l" firstAttribute="leading" secondItem="KU8-fO-oeh" secondAttribute="leading" id="660-3h-Dwg"/>
+                            <constraint firstItem="iCN-CU-i7l" firstAttribute="centerY" secondItem="V8X-sX-Mw7" secondAttribute="centerY" id="AlY-Pt-2sa"/>
+                            <constraint firstItem="iCN-CU-i7l" firstAttribute="top" secondItem="KU8-fO-oeh" secondAttribute="top" constant="225" id="X0S-zT-6Mw"/>
+                            <constraint firstItem="iCN-CU-i7l" firstAttribute="centerX" secondItem="V8X-sX-Mw7" secondAttribute="centerX" id="Yxd-bt-HPe"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="bVA-fC-7jM"/>
+                    <connections>
+                        <outlet property="linkText" destination="d38-WA-06V" id="QTG-Zp-Y8l"/>
+                        <outlet property="linkTypeText" destination="tKE-I6-xLT" id="tvh-AK-VaF"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="oht-yj-uze" sceneMemberID="firstResponder"/>
             </objects>

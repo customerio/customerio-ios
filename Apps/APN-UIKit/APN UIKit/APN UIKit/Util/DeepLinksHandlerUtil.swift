@@ -13,41 +13,31 @@ class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
     // URLs accepted:
     // apn-uikit://deeplink
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {
-        switch url.host {
-        case "deeplink":
-            return handleDeepLinkAction()
-        default: return false
-        }
+        return handleDeepLinkAction(url)
     }
 }
 
 extension AppDeepLinksHandlerUtil {
     // Call this function if you have confirmed the deep link is a `deeplink` deep link. This function assumes you
     // have confirmed that.
-    private func handleDeepLinkAction() -> Bool {
+    private func handleDeepLinkAction(_ url: URL) -> Bool {
         
-        if let email = storage.userEmailId, !email.isEmpty, let name = storage.userName, !name.isEmpty {
+        let userInfo = ["linkType" : "Deep link", "link" : url.host ?? ""]
+        if let _ = storage.userEmailId, let _ = storage.userName {
             NotificationCenter.default
                 .post(name: Notification.Name("showDeepLinkScreenOnDashboard"),
-                      object: nil, userInfo: nil)
+                      object: nil, userInfo: userInfo)
         }
         else {
             NotificationCenter.default
                 .post(name: Notification.Name("showDeepLinkScreenOnLogin"),
-                      object: nil, userInfo: nil)
+                      object: nil, userInfo: userInfo)
         }
         return true
     }
     
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool {
-//        switch url.path {
-//        case "/":
-//           // TODO: - Pending as don't know why is iOS redirecting Universal link to Safari first
-//            return true
-//        default: return false
-//        }
-        
-        let userInfo = ["linkType" : "universal", "url" : url.path]
+        let userInfo = ["linkType" : "Universal link", "link" : url.path]
         if let _ = storage.userEmailId, let _ = storage.userName {
             NotificationCenter.default
                 .post(name: Notification.Name("showDeepLinkScreenOnDashboard"),
