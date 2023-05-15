@@ -1,5 +1,5 @@
-import UIKit
 import CioTracking
+import UIKit
 
 enum CustomDataSource {
     case customEvents
@@ -44,7 +44,7 @@ class CustomDataViewController: UIViewController {
             propertyValueLabel.text = "Attribute Value"
         }
     }
-    
+
     func isAllTextFieldsValid() -> Bool {
         if propertyValueTextField.isTextTrimEmpty ||
             propertyNameTextField.isTextTrimEmpty ||
@@ -61,22 +61,20 @@ class CustomDataViewController: UIViewController {
             showAlert(withMessage: "Please fill all fields", .error)
             return
         }
-        
+
         guard let propName = propertyNameTextField.text, let propValue = propertyValueTextField.text else {
             return
         }
-        if ( source == .customEvents) {
+        if source == .customEvents {
             guard let eventName = eventNameTextField.text else { return }
             CustomerIO.shared.track(name: eventName, data: [propName: propValue])
-            self.showAlert(withMessage: "Custom event tracked successfully")
-        }
-        else if ( source == .profileAttributes) {
-            CustomerIO.shared.deviceAttributes = [propName : propValue]
-            self.showAlert(withMessage: "Device attribute set successfully.")
-        }
-        else if ( source == .deviceAttributes) {
+            showAlert(withMessage: "Custom event tracked successfully")
+        } else if source == .profileAttributes {
+            CustomerIO.shared.deviceAttributes = [propName: propValue]
+            showAlert(withMessage: "Device attribute set successfully.")
+        } else if source == .deviceAttributes {
             CustomerIO.shared.profileAttributes = [propName: propValue]
-            self.showAlert(withMessage: "Profile attribute set successfully.")
+            showAlert(withMessage: "Profile attribute set successfully.")
         }
     }
 }

@@ -14,8 +14,7 @@ class DashboardRouter: DashboardRouting {
         if let controllers = dashboardViewController?.navigationController?.viewControllers, controllers.count >= 1 {
             if controllers[0] is LoginViewController {
                 dashboardViewController?.navigationController?.popToRootViewController(animated: true)
-            }
-            else {
+            } else {
                 dashboardViewController?.navigationController?.viewControllers = [LoginViewController.newInstance()]
             }
         }

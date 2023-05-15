@@ -1,18 +1,18 @@
-import UIKit
 import CioTracking
+import UIKit
 
 class DashboardViewController: UIViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
-    
-    @IBOutlet weak var userDetail: UIImageView!
-    @IBOutlet weak var settings: UIImageView!
-    
+
+    @IBOutlet var userDetail: UIImageView!
+    @IBOutlet var settings: UIImageView!
+
     var dashboardRouter: DashboardRouting?
     var notificationUtil = DI.shared.notificationUtil
-    var storage =  DI.shared.storage
-    
+    var storage = DI.shared.storage
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
@@ -34,7 +34,7 @@ class DashboardViewController: UIViewController {
         dashboardRouter = router
         router.dashboardViewController = self
     }
-    
+
     func addUserInteractionToImageViews() {
         settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
         userDetail.addTapGesture(onTarget: self, #selector(DashboardViewController.userDetailTapped))
@@ -43,7 +43,7 @@ class DashboardViewController: UIViewController {
     @objc func settingsTapped() {
         dashboardRouter?.routeToSettings()
     }
-    
+
     @objc func userDetailTapped() {
         let userDetail = "Name - " + storage.userName! + "\n\nEmailId - " + storage.userEmailId!
         showAlert(withMessage: userDetail)
@@ -61,7 +61,7 @@ class DashboardViewController: UIViewController {
     @IBAction func sendRandomEvent(_ sender: UIButton) {
         let randomEventName = String.generateRandomString(ofLength: 10)
         CustomerIO.shared.track(name: randomEventName)
-        self.showAlert(withMessage: "Random event '\(randomEventName)' tracked successfully")
+        showAlert(withMessage: "Random event '\(randomEventName)' tracked successfully")
     }
 
     @IBAction func sendCustomEvent(_ sender: UIButton) {

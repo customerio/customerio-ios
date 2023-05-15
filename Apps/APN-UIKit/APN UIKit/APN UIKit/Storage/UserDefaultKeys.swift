@@ -1,7 +1,6 @@
 import Foundation
 
-
-enum UserDefaultKeys: String{
+enum UserDefaultKeys: String {
     case trackUrl
     case siteId
     case apiKey
