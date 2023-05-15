@@ -1,3 +1,4 @@
+import CioMessagingInApp
 import CioMessagingPushFCM
 import CioTracking
 import FirebaseCore
@@ -28,6 +29,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
         }
+        MessagingInApp.initialize(eventListener: self)
 
         // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
         UNUserNotificationCenter.current().delegate = self
@@ -46,6 +48,38 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {}
+
+extension AppDelegate: InAppEventListener {
+    func messageShown(message: InAppMessage) {
+        CustomerIO.shared.track(
+            name: "inapp shown",
+            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+        )
+    }
+
+    func messageDismissed(message: InAppMessage) {
+        CustomerIO.shared.track(
+            name: "inapp dismissed",
+            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+        )
+    }
+
+    func errorWithMessage(message: InAppMessage) {
+        CustomerIO.shared.track(
+            name: "inapp error",
+            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+        )
+    }
+
+    func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+        CustomerIO.shared.track(name: "inapp action", data: [
+            "delivery-id": message.deliveryId ?? "(none)",
+            "message-id": message.messageId,
+            "action-value": actionValue,
+            "action-name": actionName
+        ])
+    }
+}
 
 extension AppDelegate: MessagingDelegate {
     // FCM SDK calls this function when a FCM device token is available.
