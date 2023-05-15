@@ -64,10 +64,8 @@ extension DIGraph {
     // DeepLinkUtil
     @available(iOSApplicationExtension, unavailable)
     var deepLinkUtil: DeepLinkUtil {
-        if let overridenDep = overrides[String(describing: DeepLinkUtil.self)] {
-            return overridenDep as! DeepLinkUtil
-        }
-        return newDeepLinkUtil
+        getOverriddenInstance() ??
+            newDeepLinkUtil
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -75,3 +73,5 @@ extension DIGraph {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 }
+
+// swiftlint:enable all

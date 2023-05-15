@@ -1,3 +1,4 @@
+import CioTracking
 import UIKit
 
 class LoginViewController: UIViewController {
@@ -11,11 +12,12 @@ class LoginViewController: UIViewController {
     @IBOutlet var firstNameTextField: ThemeTextField!
     @IBOutlet var settings: UIImageView!
 
+    var storage = DI.shared.storage
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.isNavigationBarHidden = false
+        navigationController?.isNavigationBarHidden = true
         emailTextField.clear()
         firstNameTextField.clear()
     }
@@ -23,8 +25,27 @@ class LoginViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    func addNotifierObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(routeToDeepLinkScreen(notification:)),
+            name: Notification.Name("showDeepLinkScreenOnLogin"),
+            object: nil
+        )
+    }
+
+    @objc
+    func routeToDeepLinkScreen(notification: Notification) {
+        loginRouter?.routeToDeepLinkScreen()
     }
 
     func configureLoginRouter() {
@@ -34,10 +55,7 @@ class LoginViewController: UIViewController {
     }
 
     func addUserInteractionToSettingsImageView() {
-        let gestureOnSettings = UITapGestureRecognizer(target: self, action: #selector(LoginViewController.settingsTapped))
-
-        settings.addGestureRecognizer(gestureOnSettings)
-        settings.isUserInteractionEnabled = true
+        settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
 
     @objc func settingsTapped() {
@@ -49,14 +67,19 @@ class LoginViewController: UIViewController {
             showAlert(withMessage: "Please fill all fields", .error)
             return
         }
+        guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
+            return
+        }
+        CustomerIO.shared.identify(identifier: emailId, body: ["firstName": name])
+        storage.userEmailId = emailId
+        storage.userName = name
+
         loginRouter?.routeToDashboard()
     }
 
     @IBAction func generateRandomCredentials(_ sender: UIButton) {
-        let letters = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890"
-        let name = String((0 ..< 15).map { _ in letters.randomElement()! })
+        let name = String.generateRandomString()
         let email = "\(name)@customer.io"
-
         // Set values
         emailTextField.text = email
         firstNameTextField.text = name

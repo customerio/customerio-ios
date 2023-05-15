@@ -321,3 +321,5 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
     }
     #endif
 }
+
+// swiftlint:enable all

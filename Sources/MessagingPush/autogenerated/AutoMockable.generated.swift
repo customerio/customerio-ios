@@ -387,3 +387,5 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     }
     #endif
 }
+
+// swiftlint:enable all

@@ -475,3 +475,5 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdClosure?(organizationId)
     }
 }
+
+// swiftlint:enable all

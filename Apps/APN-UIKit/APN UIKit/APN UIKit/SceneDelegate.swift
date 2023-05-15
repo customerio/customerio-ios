@@ -2,12 +2,18 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
+    let storage = DI.shared.storage
+    var deepLinkHandler = DI.shared.deepLinksHandlerUtil
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+
+        window = UIWindow(windowScene: windowScene)
+        setVisibleWindow()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -36,5 +42,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Called as the scene transitions from the foreground to the background.
         // Use this method to save data, release shared resources, and store enough scene-specific state information
         // to restore the scene back to its current state.
+    }
+
+    // Set visible window based on user login status
+    func setVisibleWindow() {
+        // If previous user is not a guest login and credentials were used to login into the app
+        if let _ = storage.userEmailId, let _ = storage.userName {
+            let navigationController = UINavigationController(rootViewController: DashboardViewController
+                .newInstance())
+            window?.rootViewController = navigationController
+        } else {
+            let navigationController = UINavigationController(rootViewController: LoginViewController.newInstance())
+            window?.rootViewController = navigationController
+        }
+        window?.makeKeyAndVisible()
+    }
+
+    // Opens one or more URLs, handles deep link for the apps
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for context in URLContexts {
+            let url = context.url
+            _ = deepLinkHandler.handleAppSchemeDeepLink(url)
+        }
     }
 }

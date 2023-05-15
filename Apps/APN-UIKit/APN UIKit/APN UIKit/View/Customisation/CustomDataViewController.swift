@@ -1,3 +1,4 @@
+import CioTracking
 import UIKit
 
 enum CustomDataSource {
@@ -44,26 +45,36 @@ class CustomDataViewController: UIViewController {
         }
     }
 
-    func isAllTextFieldsValid() {
+    func isAllTextFieldsValid() -> Bool {
         if propertyValueTextField.isTextTrimEmpty ||
-            propertyValueTextField.isTextTrimEmpty ||
+            propertyNameTextField.isTextTrimEmpty ||
             (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
-            showAlert(withMessage: "Please fill all fields", .error)
-            return
+            return false
         }
+        return true
     }
 
     // MARK: - Actions
 
     @IBAction func sendCustomData(_ sender: UIButton) {
-        isAllTextFieldsValid()
+        if !isAllTextFieldsValid() {
+            showAlert(withMessage: "Please fill all fields", .error)
+            return
+        }
 
+        guard let propName = propertyNameTextField.text, let propValue = propertyValueTextField.text else {
+            return
+        }
         if source == .customEvents {
-            showAlert(withMessage: "Name = \(eventNameTextField.text ?? "") and property name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            guard let eventName = eventNameTextField.text else { return }
+            CustomerIO.shared.track(name: eventName, data: [propName: propValue])
+            showAlert(withMessage: "Custom event tracked successfully")
         } else if source == .profileAttributes {
-            showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            CustomerIO.shared.deviceAttributes = [propName: propValue]
+            showAlert(withMessage: "Device attribute set successfully.")
         } else if source == .deviceAttributes {
-            showAlert(withMessage: "Attribute name  = \(propertyNameTextField.text ?? "") and property value = \(propertyValueTextField.text ?? "")")
+            CustomerIO.shared.profileAttributes = [propName: propValue]
+            showAlert(withMessage: "Profile attribute set successfully.")
         }
     }
 }

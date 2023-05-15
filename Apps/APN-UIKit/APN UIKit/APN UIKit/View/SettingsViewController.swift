@@ -16,16 +16,36 @@ class SettingsViewController: UIViewController {
     @IBOutlet var debugModeToggle: UISwitch!
     @IBOutlet var trackScreenToggle: UISwitch!
     @IBOutlet var enablePushToggle: UISwitch!
-    @IBOutlet var bgQMinTasks: ThemeTextField!
+    @IBOutlet var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet var bgQTakDelayTextField: ThemeTextField!
 
+    var notificationUtil = DI.shared.notificationUtil
     var settingsRouter: SettingsRouting?
+    var storage = DI.shared.storage
+    var currentSettings: Settings!
+
+    var pushSwitchState: Bool {
+        enablePushToggle.isOn
+    }
+
+    var trackScreenState: Bool {
+        trackScreenToggle.isOn
+    }
+
+    var trackDeviceAttributeState: Bool {
+        trackDeviceToggle.isOn
+    }
+
+    var debugModeState: Bool {
+        debugModeToggle.isOn
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
         configureSettingsRouter()
-        setDefaultValues()
+        getAndSetDefaultValues()
+        addObserversForSettingsScreen()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -33,26 +53,64 @@ class SettingsViewController: UIViewController {
         navigationController?.isNavigationBarHidden = false
     }
 
-    func setDefaultValues() {
-        deviceTokenTextField.text = "Yet to set"
-        trackUrlTextField.text = "Yet to set"
+    func addObserversForSettingsScreen() {
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
 
-        siteIdTextField.text = "Get from Env class"
-        apiKeyTextField.text = "Get from Env class"
+    deinit {
+        NotificationCenter.default.removeObserver(
+            self,
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
 
-        bgQTakDelayTextField.text = "30" // update when saved in storage
-        bgQMinTasks.text = "10"
-
-        trackScreenToggle.isOn = false
-        trackDeviceToggle.isOn = true
-        debugModeToggle.isOn = true
+    @objc
+    func appMovedToForeground() {
         getStatusOfPushPermissions { status in
-            if status == .authorized {
-                DispatchQueue.main.async {
-                    self.enablePushToggle.isOn = true
-                }
+            DispatchQueue.main.async {
+                self.enablePushToggle.isOn = status == .authorized ? true : false
             }
         }
+    }
+
+    func getAndSetDefaultValues() {
+        currentSettings = Settings(
+            deviceToken: storage.deviceToken ?? "Error",
+            trackUrl: storage.trackUrl ?? "",
+            siteId: storage.siteId ?? Env.customerIOSiteId,
+            apiKey: storage.apiKey ?? Env.customerIOApiKey,
+            bgQDelay: storage.bgQDelay ?? "30",
+            bgQMinTasks: storage.bgNumOfTasks ?? "10",
+            isPushEnabled: false,
+            isTrackScreenEnabled: storage.isTrackScreenEnabled ?? false,
+            isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
+            isDebugModeEnabled: storage.isDebugModeEnabled ?? true
+        )
+
+        getStatusOfPushPermissions { status in
+            DispatchQueue.main.async {
+                self.currentSettings?.isPushEnabled = status == .authorized ? true : false
+                self.setDefaultValues()
+            }
+        }
+    }
+
+    func setDefaultValues() {
+        deviceTokenTextField.text = currentSettings.deviceToken
+        trackUrlTextField.text = currentSettings.trackUrl
+
+        siteIdTextField.text = currentSettings.siteId
+        apiKeyTextField.text = currentSettings.apiKey
+
+        bgQTakDelayTextField.text = currentSettings.bgQDelay
+        bgQMinTasksTextField.text = currentSettings.bgQMinTasks
+
+        trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
+        trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
+        debugModeToggle.isOn = currentSettings.isDebugModeEnabled
+        enablePushToggle.isOn = currentSettings.isPushEnabled
     }
 
     func configureSettingsRouter() {
@@ -71,9 +129,40 @@ class SettingsViewController: UIViewController {
         }
     }
 
+    func compareAndSave() {
+        // Track Url
+        storage.trackUrl = trackUrlTextField.text
+        // Background Queue Seconds Delay
+        storage.bgQDelay = bgQTakDelayTextField.text
+        // Min number of tasks
+        storage.bgNumOfTasks = bgQMinTasksTextField.text
+        // Push enabled
+        storage.isPushEnabled = pushSwitchState
+        // Track screen enabled
+        storage.isTrackScreenEnabled = trackScreenState
+        // Debug screen
+        storage.isDebugModeEnabled = debugModeState
+    }
+
     // MARK: - Actions
 
     @IBAction func saveSettings(_ sender: UIButton) {
+        compareAndSave()
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
+    }
+
+    @IBAction func enablePushChanged(_ sender: UISwitch) {
+        getStatusOfPushPermissions { status in
+            DispatchQueue.main.async {
+                if status == .notDetermined {
+                    self.notificationUtil.showPromptForPushPermission()
+                } else {
+                    if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(appSettingsUrl)
+                        sender.setOn(!sender.isOn, animated: true)
+                    }
+                }
+            }
+        }
     }
 }

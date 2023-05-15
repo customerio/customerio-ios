@@ -1,0 +1,231 @@
+// swiftlint:disable all
+
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+{% for importModule in argument.imports|split:"-" %}
+import {{ importModule }}
+{% endfor %}
+
+/**
+######################################################
+Documentation
+######################################################
+
+This automatically generated file you are viewing contains mock classes that you can use in your test suite. 
+
+* How do you generate a new mock class? 
+
+1. Mocks are generated from Swift protocols. So, you must make one. 
+
+```
+protocol FriendsRepository {
+    func acceptFriendRequest(_ onComplete: @escaping () -> Void)
+}
+
+class AppFriendsRepository: FriendsRepository {
+    ...
+}
+```
+
+2. Have your new protocol extend `AutoMockable`:
+
+```
+protocol FriendsRepository: AutoMockable {
+```
+
+3. Run the command `make generate` on your machine. The new mock should be added to this file. 
+
+* How do you use the mocks in your test class? 
+
+```
+class ExampleViewModelTest: XCTestCase {
+    var viewModel: ExampleViewModel!
+    var exampleRepositoryMock: ExampleRepositoryMock!
+    
+    override func setUp() {
+        exampleRepositoryMock = ExampleRepositoryMock()
+        viewModel = AppExampleViewModel(exampleRepository: exampleRepositoryMock)
+    }
+}
+```
+
+Or, you may need to inject the mock in a different way using the DI.shared graph:
+
+```
+class ExampleTest: XCTestCase {
+    var exampleViewModelMock: ExampleViewModelMock!
+    var example: Example!
+    
+    override func setUp() {
+        exampleViewModelMock = ExampleViewModelMock()
+        DI.shared.override(.exampleViewModel, value: exampleViewModelMock, forType: ExampleViewModel.self)
+        
+        example = Example()
+    }
+}
+
+```
+
+*/
+
+{% macro swiftifyMethodName method %}{% set methodName %}{{ method.shortName }}{% endset %}{% if method|annotated:"Name" %}{% set methodName %}{{ method.annotations["Name"] }}{% endset %}{% endif %}{{ methodName | replace:"(","_" | replace:")","" | replace:":","_" | replace:"`","" | snakeToCamelCase | lowerFirstWord }}{% endmacro %}
+
+{% macro methodThrowableErrorDeclaration method %}
+    var {% call swiftifyMethodName method %}ThrowableError: Error?
+{% endmacro %}
+
+{% macro methodThrowableErrorUsage method %}
+        if let error = {% call swiftifyMethodName method %}ThrowableError {
+            throw error
+        }
+{% endmacro %}
+
+{% macro methodReceivedParameters method %}
+    {%if method.parameters.count == 1 %}
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
+    {% else %}
+    {% if not method.parameters.count == 0 %}
+        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{{ param.name }}: {{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %})
+        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{{ param.name }}: {{ param.name }}{% if not forloop.last%}, {% endif %}{% endfor %}))
+    {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% macro methodClosureName method %}{% call swiftifyMethodName method %}Closure{% endmacro %}
+
+{% macro closureReturnTypeName method %}{% if method.isOptionalReturnType %}{{ method.unwrappedReturnTypeName }}?{% else %}{{ method.returnTypeName }}{% endif %}{% endmacro %}
+
+{% macro methodClosureDeclaration method %}
+    /** 
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function. 
+     
+     {% if not method.returnTypeName.isVoid and not method.isInitializer %}
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`, 
+     then the mock will attempt to return the value for `{% call swiftifyMethodName method %}ReturnValue`
+     {% endif %}
+     */
+    {{ type.accessLevel }} var {% call methodClosureName method %}: (({% for param in method.parameters %}{{ param.typeName }}{% if not forloop.last %}, {% endif %}{% endfor %}) {% if method.throws %}throws {% endif %}-> {% if method.isInitializer %}Void{% else %}{% call closureReturnTypeName method %}{% endif %})?
+{% endmacro %}
+
+{% macro methodClosureCallParameters method %}{% for param in method.parameters %}{{ param.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endmacro %}
+
+{% macro mockMethod method %}
+    // MARK: - {{ method.shortName }}
+
+    {% if method.throws %}
+        {% call methodThrowableErrorDeclaration method %}
+    {% endif %}
+    {% if not method.isInitializer %}       
+    /// Number of times the function was called.  
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}CallsCount = 0
+    /// `true` if the function was ever called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}Called: Bool {
+        return {% call swiftifyMethodName method %}CallsCount > 0
+    }
+    {% endif %}
+    {% if method.parameters.count == 1 %}
+    /// The arguments from the *last* time the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    /// Arguments from *all* of the times that the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    {% elif not method.parameters.count == 0 %}
+    /// The arguments from the *last* time the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})?
+    /// Arguments from *all* of the times that the function was called. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    {% endif %}
+    {% if not method.returnTypeName.isVoid and not method.isInitializer %}
+    /// Value to return from the mocked function. 
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReturnValue: {{ method.returnTypeName }}{{ '!' if not method.isOptionalReturnType }}
+    {% endif %}
+    {% call methodClosureDeclaration method %}
+
+{% if method.isInitializer %}
+    /// Initialization method
+    required {{ type.accessLevel }} {{ method.name }} {
+        {% call methodReceivedParameters method %}
+        {% call methodClosureName method %}?({% call methodClosureCallParameters method %})
+    }
+{% else %}
+    /// Mocked function for `{{ method.name }}`. Your opportunity to return a mocked value and check result of mock in test code. 
+    {{ type.accessLevel }} func {{ method.name }}{{ ' throws' if method.throws }}{% if not method.returnTypeName.isVoid %} -> {{ method.returnTypeName }}{% endif %} {
+        {% if method.throws %}
+        {% call methodThrowableErrorUsage method %}
+        {% endif %}
+        self.mockCalled = true
+        {% call swiftifyMethodName method %}CallsCount += 1
+        {% call methodReceivedParameters method %}
+        {% if method.returnTypeName.isVoid %}
+        {% if method.throws %}try {% endif %}{% call methodClosureName method %}?({% call methodClosureCallParameters method %})
+        {% else %}
+        return {{ 'try ' if method.throws }}{% call methodClosureName method %}.map({ {{ 'try ' if method.throws }}$0({% call methodClosureCallParameters method %}) }) ?? {% call swiftifyMethodName method %}ReturnValue
+        {% endif %}
+    }
+
+{% endif %}
+{% endmacro %}
+
+{% macro mockOptionalVariable variable %}
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }}
+{% endmacro %}
+
+{% macro mockNonOptionalArrayOrDictionaryVariable variable %}
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} = {% if variable.isArray %}[]{% elif variable.isDictionary %}[:]{% endif %}
+{% endmacro %}
+
+{% macro mockNonOptionalVariable variable %}
+    /**
+     When setter of the property called, the value given to setter is set here. 
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
+     */
+    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}!
+    /// `true` if the getter or setter of property is called at least once. 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}Called = false 
+    /// `true` if the getter called on the property at least once. 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCalled = false 
+    /// `true` if the setter called on the property at least once. 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCalled = false 
+    /// The mocked property with a getter and setter. 
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} {
+        get { 
+            self.mockCalled = true
+            {% call mockedVariableName variable %}Called = true
+            {% call mockedVariableName variable %}GetCalled = true
+            return {% call underlyingMockedVariableName variable %} 
+        }
+        set(value) { 
+            self.mockCalled = true
+            {% call mockedVariableName variable %}Called = true 
+            {% call mockedVariableName variable %}SetCalled = true
+            {% call underlyingMockedVariableName variable %} = value 
+        }
+    }    
+{% endmacro %}
+
+{% macro underlyingMockedVariableName variable %}underlying{{ variable.name|upperFirstLetter }}{% endmacro %}
+{% macro mockedVariableName variable %}{{ variable.name }}{% endmacro %}
+
+{% for type in types.protocols where type.based.AutoMockable or type|annotated:"AutoMockable" %}{% if type.name != "AutoMockable" %}
+/**
+ Class to easily create a mocked version of the `{{ type.name }}` class. 
+ This class is equipped with functions and properties ready for you to mock! 
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
+ */
+{{ type.accessLevel }} class {{ type.name }}Mock: {{ type.name }} {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
+    {{ type.accessLevel }} var mockCalled: Bool = false // 
+
+{% for variable in type.allVariables|!definedInExtension %}
+    {% if variable.isOptional %}{% call mockOptionalVariable variable %}{% elif variable.isArray or variable.isDictionary %}{% call mockNonOptionalArrayOrDictionaryVariable variable %}{% else %}{% call mockNonOptionalVariable variable %}{% endif %}
+{% endfor %}
+
+{% for method in type.allMethods|!definedInExtension %}
+    {% call mockMethod method %}
+{% endfor %}
+}
+{% endif %}{% endfor %}

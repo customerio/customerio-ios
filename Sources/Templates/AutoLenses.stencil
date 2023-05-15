@@ -80,3 +80,5 @@ extension {{ type.name }} {
 {% endfor %}
 }
 {% endif %}{% endfor %}
+
+// swiftlint:enable all
