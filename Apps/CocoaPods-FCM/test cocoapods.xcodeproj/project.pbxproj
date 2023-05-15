@@ -83,6 +83,7 @@
 		F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Rich Push Notification Service Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7382933291D5C27008ED8CB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F7382935291D5C27008ED8CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "test-cocoapods-Info.plist"; sourceTree = "<group>"; };
 		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -203,6 +204,7 @@
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
+				F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */,
 				F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */,
 				F73134622919570600CD43D9 /* src */,
 				F7382932291D5C27008ED8CB /* Rich Push Notification Service Extension */,
@@ -594,6 +596,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "CocoaPods FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -631,6 +634,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "CocoaPods FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
