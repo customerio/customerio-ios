@@ -6,8 +6,7 @@ protocol NotificationUtility {
 }
 
 // sourcery: InjectRegister = "NotificationUtil"
-class NotificationUtil : NotificationUtility{
-    
+class NotificationUtil: NotificationUtility {
     func showPromptForPushPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { _, _ in })
     }

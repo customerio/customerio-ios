@@ -1,5 +1,5 @@
-import UIKit
 import CioTracking
+import UIKit
 
 class LoginViewController: UIViewController {
     static func newInstance() -> LoginViewController {
@@ -7,43 +7,47 @@ class LoginViewController: UIViewController {
     }
 
     // MARK: - Outlets
-    @IBOutlet weak var emailTextField: ThemeTextField!
-    @IBOutlet weak var firstNameTextField: ThemeTextField!
-    @IBOutlet weak var settings: UIImageView!
-    
+
+    @IBOutlet var emailTextField: ThemeTextField!
+    @IBOutlet var firstNameTextField: ThemeTextField!
+    @IBOutlet var settings: UIImageView!
+
     var storage = DI.shared.storage
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {
-         super.viewWillAppear(animated)
-        self.navigationController?.isNavigationBarHidden = true
+        super.viewWillAppear(animated)
+        navigationController?.isNavigationBarHidden = true
         emailTextField.clear()
         firstNameTextField.clear()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
-    
+
     func addNotifierObserver() {
-        NotificationCenter.default.addObserver(self, selector: #selector(routeToDeepLinkScreen(notification:)),
-                                               name: Notification.Name("showDeepLinkScreenOnLogin"),
-                                               object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(routeToDeepLinkScreen(notification:)),
+            name: Notification.Name("showDeepLinkScreenOnLogin"),
+            object: nil
+        )
     }
-    
+
     @objc
     func routeToDeepLinkScreen(notification: Notification) {
         loginRouter?.routeToDeepLinkScreen()
     }
-    
+
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router
@@ -66,7 +70,7 @@ class LoginViewController: UIViewController {
         guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
             return
         }
-        CustomerIO.shared.identify(identifier: emailId, body: ["firstName" : name])
+        CustomerIO.shared.identify(identifier: emailId, body: ["firstName": name])
         storage.userEmailId = emailId
         storage.userName = name
 
@@ -75,7 +79,7 @@ class LoginViewController: UIViewController {
 
     @IBAction func generateRandomCredentials(_ sender: UIButton) {
         let name = String.generateRandomString()
-        let email  = "\(name)@customer.io"
+        let email = "\(name)@customer.io"
         // Set values
         emailTextField.text = email
         firstNameTextField.text = name

@@ -6,4 +6,3 @@ class DeepLinkViewController: UIViewController {
         UIStoryboard.getViewController(identifier: "DeepLinkViewController")
     }
 }
-

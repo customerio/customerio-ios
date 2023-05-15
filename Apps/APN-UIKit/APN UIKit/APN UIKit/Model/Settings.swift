@@ -11,5 +11,4 @@ struct Settings {
     var isTrackScreenEnabled: Bool
     var isDeviceAttributeEnabled: Bool
     var isDebugModeEnabled: Bool
-    
 }
