@@ -19,7 +19,7 @@ struct MainApp: App {
                         .environmentObject(userManager)
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
-                .onOpenURL { deepLink in // This function is how to implement deep links in a SwiftUIU app.
+                .onOpenURL { deepLink in // This function is how to implement deep links in a Swift UI app.
                     // This app opens deep links using Universal Links and app scheme deep links.
                     //
                     // Universal Links: Any URL that begins with `https://ciosample.page.link`...
