@@ -47,7 +47,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-extension AppDelegate: UNUserNotificationCenterDelegate {}
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
+    // the completion handler.
+    @available(iOS 10.0, *)
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
+            -> Void
+    ) {
+        completionHandler([.list, .banner, .badge, .sound])
+    }
+}
 
 extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
