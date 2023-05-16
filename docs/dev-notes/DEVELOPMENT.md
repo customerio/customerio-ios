@@ -4,11 +4,14 @@
 
 * Open `Package.swift` file in XCode to open project. XCode knows how to open SPM projects from this file. Or, open this root directory in your favorite source code editor. 
 
-* Install git hooks on your machine for performing development tasks: 
+
+* Setup git hooks using the tool [lefthook](https://github.com/evilmartians/lefthook):
 
 ```
-$> ./hooks/autohook.sh install
-[Autohook] Scripts installed into .git/hooks
+$ brew install lefthook 
+$ lefthook install 
+SYNCING
+SERVED HOOKS: pre-commit, prepare-commit-msg
 ```
 
 ### Development tools 
