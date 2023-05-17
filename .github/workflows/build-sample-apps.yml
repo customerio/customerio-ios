@@ -26,6 +26,11 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: 14
+
+    - name: Install CLI tools used in CI script 
+      run: |
+        brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
+        brew install xcbeautify # used by fastlane for output 
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@v1
@@ -33,6 +38,13 @@ jobs:
         working-directory: ${{ env.GITHUB_WORKSPACE }}
         ruby-version: '3.0'
         bundler-cache: true # cache tools to make builds faster in future 
+    
+    - name: Setup build environment to prepare for building 
+      working-directory: ${{ env.GITHUB_WORKSPACE }} # root directory of source code 
+      run: |
+        make setup_sample_app app=${{ matrix.sample-app }}
+        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+        sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
     - name: Does ${{ matrix.sample-app }} use CocoaPods? 
       id: check_podfile_exists
@@ -49,12 +61,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
-    - name: pod install if app uses CocoaPods 
+    - name: Run pod install if using CocoaPods 
+      working-directory: ${{ env.GITHUB_WORKSPACE }} # root directory of source code 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      run: pod install --repo-update
-
-    - name: Install tools for Fastlane build to use
-      run: brew install xcbeautify    
+      run: make install_cocoapods_dependencies app=CocoaPods-FCM
 
       # - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
     #   run: cat $GITHUB_EVENT_PATH

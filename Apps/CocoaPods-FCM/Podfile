@@ -12,6 +12,8 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
 
   pod 'FirebaseMessaging', '~> 10.6'
+
+  pod 'SampleAppsCommon', :path => File.join(File.dirname(__FILE__), '../Common')
 end
 
 target 'Rich Push Notification Service Extension' do 
