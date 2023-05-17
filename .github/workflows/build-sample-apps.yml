@@ -2,8 +2,8 @@ name: Build sample apps
 
 on: 
   pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
-  # release: # build sample apps for every git tag created. These are known as "stable" builds that are suitable for people outside the mobile team. 
-  #  types: [published]
+  release: # build sample apps for every git tag created. These are known as "stable" builds that are suitable for people outside the mobile team. 
+    types: [published]
 
 concurrency: # cancel previous workflow run if one exists. 
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,6 +43,7 @@ jobs:
         edit-mode: replace # replace the existing comment with new content since we are creating new builds 
 
   build-sample-apps:
+    if: ${{ always() }} # do not skip running this step if update-pr-comment does not run 
     needs: [update-pr-comment] # wait for PR comment to be created saying new builds are being made. 
     permissions:
       pull-requests: write # comment on pull request with build information 
@@ -115,7 +116,7 @@ jobs:
         # the variables APP_BUILD_NUMBER, APP_VERSION_STRING are created when fastlane runs "build". 
         body: |
           * ${{ matrix.sample-app }}: `${{ env.APP_VERSION_STRING }} (${{ env.APP_BUILD_NUMBER }})`
-        edit-mode: append
+        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
 
     - name: Update sample builds PR comment with build failure message 
       if: ${{ failure() }}
@@ -125,4 +126,4 @@ jobs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
-        edit-mode: append
+        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
