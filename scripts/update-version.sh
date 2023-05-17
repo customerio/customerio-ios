@@ -9,26 +9,17 @@
 set -e 
 
 NEW_VERSION="$1"
-SWIFT_SOURCE_FILE="Sources/Common/Version.swift"
 
-# Given line: `    public static let version: String = "0.1.1"` 
-# Regex string will match the line of the file that we can then substitute. 
-LINE_PATTERN="let version: String = \"\(.*\)\""
+RELATIVE_PATH_TO_SCRIPTS_DIR=$(dirname "$0")
+ABSOLUTE_PATH_TO_SOURCE_CODE_ROOT_DIR=$(realpath "$RELATIVE_PATH_TO_SCRIPTS_DIR/..")
+SWIFT_SOURCE_FILE="$ABSOLUTE_PATH_TO_SOURCE_CODE_ROOT_DIR/Sources/Common/Version.swift"
 
 echo "Updating file: $SWIFT_SOURCE_FILE to new version: $NEW_VERSION"
 
-# -i overwrites file 
-# "s/" means substitute given pattern with given string. 
-# 
-sed -i "s/$LINE_PATTERN/let version: String = \"$NEW_VERSION\"/" $SWIFT_SOURCE_FILE
+# Uses CLI tool sd to replace string in a file: https://github.com/chmln/sd
+# Given line: `    public static let version: String = "0.1.1"` 
+# Regex string will match the line of the file that we can then substitute. 
+sd "let version: String = \"(.*)\"" "let version: String = \"$NEW_VERSION\"" $SWIFT_SOURCE_FILE
 
-echo "Done! New version: "
-
-# print the line (/p) that is matched in the file to show the change. 
-sed -n "/$LINE_PATTERN/p" $SWIFT_SOURCE_FILE
-
-
-echo "Now, updating cocoapods files...."
-./scripts/update-version-cocoapods.sh "$NEW_VERSION"
-
-echo "\n\n Done!\n Dont forget to commit your changes. A good commit message is: \"chore: prepare for $NEW_VERSION\""
+echo "Done! Showing changes to confirm it worked: "
+git diff $SWIFT_SOURCE_FILE
