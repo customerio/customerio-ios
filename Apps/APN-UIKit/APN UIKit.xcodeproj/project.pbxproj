@@ -50,6 +50,7 @@
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
 		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
+		F7820EAA2A15631000B346A9 /* DIGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraph.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -123,7 +124,7 @@
 		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
 		46EE274E29E9DF120068F9A3 /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
-		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
+		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../..; sourceTree = "<group>"; };
 		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
 		46EE275F29E9F1BD0068F9A3 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
 		46EE276129ED679D0068F9A3 /* UserDefaultKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultKeys.swift; sourceTree = "<group>"; };
@@ -134,6 +135,7 @@
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
+		F7820EA92A15631000B346A9 /* DIGraph.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraph.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -223,6 +225,7 @@
 				46D5D98629E459D600EAF40B /* Main.storyboard */,
 				46D5D98929E459D800EAF40B /* Assets.xcassets */,
 				46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */,
+				F7820EA92A15631000B346A9 /* DIGraph.swift */,
 				46D5D98E29E459D800EAF40B /* Info.plist */,
 				46EE274E29E9DF120068F9A3 /* Env.swift */,
 			);
@@ -537,6 +540,7 @@
 				46EE277229ED722E0068F9A3 /* AutoLenses.generated.swift in Sources */,
 				46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */,
 				46EE276229ED679D0068F9A3 /* UserDefaultKeys.swift in Sources */,
+				F7820EAA2A15631000B346A9 /* DIGraph.swift in Sources */,
 				46EE277629ED802D0068F9A3 /* DIDependencies.swift in Sources */,
 				46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,

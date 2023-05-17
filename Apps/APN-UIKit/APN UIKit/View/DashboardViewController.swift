@@ -10,8 +10,8 @@ class DashboardViewController: UIViewController {
     @IBOutlet var settings: UIImageView!
 
     var dashboardRouter: DashboardRouting?
-    var notificationUtil = DI.shared.notificationUtil
-    var storage = DI.shared.storage
+    var notificationUtil = DIGraph.shared.notificationUtil
+    var storage = DIGraph.shared.storage
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
