@@ -54,8 +54,7 @@ class SettingsViewController: UIViewController {
     }
 
     func addObserversForSettingsScreen() {
-        let nc = NotificationCenter.default
-        nc.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
 
     deinit {

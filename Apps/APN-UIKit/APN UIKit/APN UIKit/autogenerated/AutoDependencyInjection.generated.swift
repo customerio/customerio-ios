@@ -6,9 +6,6 @@ import CioMessagingPushAPN
 import CioTracking
 import Foundation
 
-// File generated from Sourcery-DI project: https://github.com/levibostian/Sourcery-DI
-// Template version 1.0.0
-
 /**
  ######################################################
  Documentation
@@ -33,92 +30,50 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DI.shared.offRoadWheels
+     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
-
-     // you can also use this syntax instead:
-     let wheels: OffRoadWheels = DI.shared.inject(.offRoadWheels)
-     // although, it's not recommended because `inject()` performs a force-cast which could cause a runtime crash of your app.
  }
  ```
 
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DI.shared.override(.offRoadWheels, mockOffRoadWheels)
+ DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DI.shared.resetOverrides()
+ DIGraph().reset()
  ```
 
  */
 
-/**
- enum that contains list of all dependencies in our app.
- This allows automated unit testing against our dependency graph + ability to override nodes in graph.
- */
-enum Dependency: CaseIterable {
-    case deepLinksHandlerUtil
-    case notificationUtil
-    case storage
-    case userDefaults
-}
+extension DIGraph {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
 
-/**
- Dependency injection graph specifically with dependencies in the  module.
+        _ = deepLinksHandlerUtil
+        countDependenciesResolved += 1
 
- We must use 1+ different graphs because of the hierarchy of modules in this SDK.
- Example: You can't add classes from `Tracking` module in `Common`'s DI graph. However, classes
- in `Common` module can be in the `Tracking` module.
- */
-class DI {
-    static var shared: DI = .init()
-    private var overrides: [Dependency: Any] = [:]
-    private init() {}
+        _ = notificationUtil
+        countDependenciesResolved += 1
 
-    /**
-     Designed to be used only in test classes to override dependencies.
+        _ = storage
+        countDependenciesResolved += 1
 
-     ```
-     let mockOffRoadWheels = // make a mock of OffRoadWheels class
-     DI.shared.override(.offRoadWheels, mockOffRoadWheels)
-     ```
-     */
-    func override<Value: Any>(_ dep: Dependency, value: Value, forType type: Value.Type) {
-        overrides[dep] = value
+        _ = userDefaults
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
     }
-
-    /**
-     Reset overrides. Meant to be used in `tearDown()` of tests.
-     */
-    func resetOverrides() {
-        overrides = [:]
-    }
-
-    /**
-     Use this generic method of getting a dependency, if you wish.
-     */
-    func inject<T>(_ dep: Dependency) -> T {
-        switch dep {
-        case .deepLinksHandlerUtil: return deepLinksHandlerUtil as! T
-        case .notificationUtil: return notificationUtil as! T
-        case .storage: return storage as! T
-        case .userDefaults: return userDefaults as! T
-        }
-    }
-
-    /**
-     Use the property accessors below to inject pre-typed dependencies.
-     */
 
     // DeepLinksHandlerUtil
-    internal var deepLinksHandlerUtil: DeepLinksHandlerUtil {
-        if let overridenDep = overrides[.deepLinksHandlerUtil] {
-            return overridenDep as! DeepLinksHandlerUtil
-        }
-        return newDeepLinksHandlerUtil
+    var deepLinksHandlerUtil: DeepLinksHandlerUtil {
+        getOverriddenInstance() ??
+            newDeepLinksHandlerUtil
     }
 
     private var newDeepLinksHandlerUtil: DeepLinksHandlerUtil {
@@ -126,11 +81,9 @@ class DI {
     }
 
     // NotificationUtil
-    internal var notificationUtil: NotificationUtil {
-        if let overridenDep = overrides[.notificationUtil] {
-            return overridenDep as! NotificationUtil
-        }
-        return newNotificationUtil
+    var notificationUtil: NotificationUtil {
+        getOverriddenInstance() ??
+            newNotificationUtil
     }
 
     private var newNotificationUtil: NotificationUtil {
@@ -138,11 +91,9 @@ class DI {
     }
 
     // Storage
-    internal var storage: Storage {
-        if let overridenDep = overrides[.storage] {
-            return overridenDep as! Storage
-        }
-        return newStorage
+    var storage: Storage {
+        getOverriddenInstance() ??
+            newStorage
     }
 
     private var newStorage: Storage {
@@ -150,10 +101,10 @@ class DI {
     }
 
     // UserDefaults (custom. property getter provided via extension)
-    internal var userDefaults: UserDefaults {
-        if let overridenDep = overrides[.userDefaults] {
-            return overridenDep as! UserDefaults
-        }
-        return customUserDefaults
+    var userDefaults: UserDefaults {
+        getOverriddenInstance() ??
+            customUserDefaults
     }
 }
+
+// swiftlint:enable all

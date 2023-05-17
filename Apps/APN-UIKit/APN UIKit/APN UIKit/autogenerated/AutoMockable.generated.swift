@@ -6,6 +6,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 import CioMessagingPushAPN
 import CioTracking
 
@@ -22,7 +25,7 @@ import CioTracking
 
  ```
  protocol FriendsRepository {
-     func acceptFriendRequest(_ onComplete: @escaping () -> Void)
+     func acceptFriendRequest<Attributes: Encodable>(attributes: Attributes, _ onComplete: @escaping () -> Void)
  }
 
  class AppFriendsRepository: FriendsRepository {
@@ -34,7 +37,17 @@ import CioTracking
 
  ```
  protocol FriendsRepository: AutoMockable {
+     func acceptFriendRequest<Attributes: Encodable>(
+         // sourcery:Type=Encodable
+         attributes: Attributes,
+         _ onComplete: @escaping () -> Void)
+ }
  ```
+
+ > Notice the use of `// sourcery:Type=Encodable` for the generic type parameter. Without this, the mock would
+ fail to compile: `functionNameReceiveArguments = (Attributes)` because `Attributes` is unknown to this `var`.
+ Instead, we give the parameter a different type to use for the mock. `Encodable` works in this case.
+ It will require a cast in the test function code, however.
 
  3. Run the command `make generate` on your machine. The new mock should be added to this file.
 
@@ -67,3 +80,5 @@ import CioTracking
  ```
 
  */
+
+// swiftlint:enable all

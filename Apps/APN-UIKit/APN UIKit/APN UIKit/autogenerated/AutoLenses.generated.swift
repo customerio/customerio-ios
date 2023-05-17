@@ -62,3 +62,5 @@ func |> <A, B>(x: A, f: (A) -> B) -> B {
 func |> <A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> (A) -> C {
     { g(f($0)) }
 }
+
+// swiftlint:enable all
