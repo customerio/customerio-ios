@@ -2,6 +2,10 @@ name: Tests
 
 on: [push, pull_request]
 
+concurrency: # cancel previous workflow run if one exists. 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Thanks, https://swiftpackageindex.com/docs/builds for help coming up with *how* we build the artifacts. Swift build on Linux, XCode build on mac. Changing the XCode version to a specific version is how to set what version of Swift we want to test against on macOS. This is more real-world but also because I encountered issues with trying to install a Swift version in the macOS environment and try to run tests on it. 
 # See example commands by choosing a package: https://swiftpackageindex.com/nativedevbr/swift-log/builds and viewing the build information for each environment to see the commands run in that environment. 
 

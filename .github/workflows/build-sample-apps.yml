@@ -5,9 +5,13 @@ on:
   # release: # build sample apps for every git tag created. These are known as "stable" builds that are suitable for people outside the mobile team. 
   #  types: [published]
 
+concurrency: # cancel previous workflow run if one exists. 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   update-pr-comment:
-    if: ${{ github.event_name == "pull_request" }}
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write # to be able to comment on PR
@@ -98,7 +102,7 @@ jobs:
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
     
     - name: Update sample builds PR comment with build information 
-      if: ${{ github.event_name == "pull_request" }}
+      if: ${{ github.event_name == 'pull_request' }}
       uses: peter-evans/create-or-update-comment@v3
       with:
         comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
