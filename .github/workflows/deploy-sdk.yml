@@ -27,9 +27,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Note: Before you run 'brew', you must enable brew.
+      # https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#homebrew-note
       - name: Install tools used in workflow 
         run: |
-          brew install sd
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" # enable brew on the machine
+          brew install sd # CLI to replace strings in files 
 
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
