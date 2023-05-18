@@ -42,3 +42,28 @@ doc_combined:
 	sourcekitten doc --module-name CioMessagingPushFCM -- -scheme Customer.io-Package -destination 'platform=iOS Simulator,name=iPhone 8' > .build/sourcekitten/MessagingPushFCM.json
 	sourcekitten doc --module-name CioMessagingInApp -- -scheme Customer.io-Package -destination 'platform=iOS Simulator,name=iPhone 8' > .build/sourcekitten/MessagingInApp.json
 	jazzy --title "Customer.io iOS SDK" --sourcekitten-sourcefile .build/sourcekitten/MessagingInApp.json,.build/sourcekitten/MessagingPushAPN.json,.build/sourcekitten/MessagingPushFCM.json,.build/sourcekitten/tracking.json, --output /tmp/foodocs
+
+# Setup a sample app for you to then compile. 
+# 
+# How to use: 
+# make setup_sample_app app=CocoaPods-FCM
+setup_sample_app:	
+	cp "Apps/$(app)/BuildEnvironment.sample.swift" "Apps/$(app)/BuildEnvironment.swift" || true
+	echo "⚠️ Enter the Customer.io workspace settings into Apps/$(app)/BuildEnvironment.swift ⚠️"
+
+# Update cocoapods dependencies and update Podfile.lock lockfile with new versions. 
+# This is meant to be used during development to update Customer.io SDK or other dependencies. 
+# CI server should use install and not update. 
+# 
+# How to use: 
+# make update_cocoapods_dependencies app=CocoaPods-FCM
+update_cocoapods_dependencies:
+	pod update --project-directory=Apps/$(app) || true 
+
+# Install cocoapods dependencies with versions from lockfile (Podfile.lock)
+# This is meant to be used by the CI server and after you pull code from github during development. 
+# 
+# How to use: 
+# make install_cocoapods_dependencies app=CocoaPods-FCM
+install_cocoapods_dependencies:
+	pod install --project-directory=Apps/$(app) || true 
