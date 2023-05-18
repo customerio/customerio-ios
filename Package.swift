@@ -27,7 +27,7 @@ let package = Package(
         //
         // Note: using `.exact("")` instead of `from: ""` because 3.0.3 will not compile.
         // Using 3.0.2 for now to not allow upgrading.
-        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", from: "3.0.4")
+        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", from: "3.2.1")
     ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
