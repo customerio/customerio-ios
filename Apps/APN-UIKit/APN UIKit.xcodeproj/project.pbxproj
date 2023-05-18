@@ -36,7 +36,6 @@
 		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
 		46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275429E9E2960068F9A3 /* MessagingInApp */; };
 		46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275629E9E2960068F9A3 /* MessagingPushAPN */; };
-		46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275829E9E2960068F9A3 /* MessagingPushFCM */; };
 		46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275A29E9E2960068F9A3 /* Tracking */; };
 		46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275C29E9ECE60068F9A3 /* StringExtension.swift */; };
 		46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275F29E9F1BD0068F9A3 /* Storage.swift */; };
@@ -51,6 +50,7 @@
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraph.swift */; };
+		F78934242A168E09005D3DF7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F78934232A168E08005D3DF7 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -136,6 +136,7 @@
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
 		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraph.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraph.swift; sourceTree = "<group>"; };
+		F78934232A168E08005D3DF7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,7 +154,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */,
-				46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */,
 				46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */,
 				46EE275B29E9E2960068F9A3 /* Tracking in Frameworks */,
 			);
@@ -227,6 +227,7 @@
 				46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */,
 				F74F41F82A168316000D61B9 /* BuildEnvironment.swift */,
 				F7820EA92A15631000B346A9 /* DIGraph.swift */,
+				F78934232A168E08005D3DF7 /* GoogleService-Info.plist */,
 				46D5D98E29E459D800EAF40B /* Info.plist */,
 			);
 			path = "APN UIKit";
@@ -388,7 +389,6 @@
 			packageProductDependencies = (
 				46EE275429E9E2960068F9A3 /* MessagingInApp */,
 				46EE275629E9E2960068F9A3 /* MessagingPushAPN */,
-				46EE275829E9E2960068F9A3 /* MessagingPushFCM */,
 				46EE275A29E9E2960068F9A3 /* Tracking */,
 			);
 			productName = "APN UIKit";
@@ -491,6 +491,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				46D5D98D29E459D800EAF40B /* LaunchScreen.storyboard in Resources */,
+				F78934242A168E09005D3DF7 /* GoogleService-Info.plist in Resources */,
 				46D5D98A29E459D800EAF40B /* Assets.xcassets in Resources */,
 				46D5D98829E459D600EAF40B /* Main.storyboard in Resources */,
 			);
@@ -997,10 +998,6 @@
 		46EE275629E9E2960068F9A3 /* MessagingPushAPN */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MessagingPushAPN;
-		};
-		46EE275829E9E2960068F9A3 /* MessagingPushFCM */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MessagingPushFCM;
 		};
 		46EE275A29E9E2960068F9A3 /* Tracking */ = {
 			isa = XCSwiftPackageProductDependency;
