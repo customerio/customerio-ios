@@ -27,6 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install tools used in workflow 
+        run: |
+          brew install sd
+
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
       #    For example, if the last deployment you made was version 1.3.5 and you are releasing a new feature
