@@ -99,6 +99,15 @@ lane :build do
     app_version: new_app_version
   )
 
+  if ENV["CI"] # if building on the CI (github actions), then set some environment variables so future github actions can reference build information. 
+    UI.important("Detected running on CI server. Setting environment variables for GitHub Actions to use later in workflow.")
+    sh("echo APP_VERSION_STRING=#{new_app_version} >> $GITHUB_ENV")
+    sh("echo APP_BUILD_NUMBER=#{new_build_number} >> $GITHUB_ENV")
+  end 
+
+  UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
+  sh("../../../scripts/update-version.sh \"#{new_app_version} (#{new_build_number})\"")
+
   uses_cocoapods = File.exists?("../Podfile")
   if uses_cocoapods 
     UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."

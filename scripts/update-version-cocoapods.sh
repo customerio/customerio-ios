@@ -15,14 +15,10 @@ LINE_PATTERN="spec.version\s*=.*"
 for PODSPEC_FILE in ./*.podspec; do
     echo "Updating file: $PODSPEC_FILE to new version: $NEW_VERSION"
 
-    # -i overwrites file 
-    # "s/" means substitute given pattern with given string. 
-    # 
-    sed -i "s/$LINE_PATTERN/spec.version      = \"$NEW_VERSION\" # Don't modify this line - it's automatically updated/" $PODSPEC_FILE
+    # Uses CLI: https://github.com/chmln/sd to replace values inside of file
+    sd "$LINE_PATTERN" "spec.version      = \"$NEW_VERSION\" # Don't modify this line - it's automatically updated" $PODSPEC_FILE
 
-    echo "Done! New version: "
+    echo "Done! Showing changes to confirm it worked: "
 
-    # print the line (/p) that is matched in the file to show the change. 
-    sed -n "/$LINE_PATTERN/p" $PODSPEC_FILE
+    git diff $PODSPEC_FILE
 done
-
