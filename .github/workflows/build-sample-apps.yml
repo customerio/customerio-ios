@@ -48,11 +48,13 @@ jobs:
     permissions:
       pull-requests: write # comment on pull request with build information 
     strategy:
+      fail-fast: false # if one sample app fails to build, let the other sample apps continue to build and not cancel them. 
       matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build! 
         sample-app: 
         # List all sample apps you want to have compiled. 
         # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
         - "CocoaPods-FCM"
+        - "APN-UIKit"
 
     runs-on: macos-13
     name: Building app...${{ matrix.sample-app }}

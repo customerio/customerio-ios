@@ -4,7 +4,7 @@ import Foundation
 // sourcery: InjectCustom
 extension UserDefaults {}
 
-extension DI {
+extension DIGraph {
     var customUserDefaults: UserDefaults {
         UserDefaults.standard
     }

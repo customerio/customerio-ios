@@ -21,9 +21,9 @@ class SettingsViewController: UIViewController {
 
     @IBOutlet var copyToClipboardImageView: UIImageView!
     @IBOutlet var clipboardView: UIView!
-    var notificationUtil = DI.shared.notificationUtil
+    var notificationUtil = DIGraph.shared.notificationUtil
     var settingsRouter: SettingsRouting?
-    var storage = DI.shared.storage
+    var storage = DIGraph.shared.storage
     var currentSettings: Settings!
 
     var pushSwitchState: Bool {
@@ -92,8 +92,8 @@ class SettingsViewController: UIViewController {
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "",
-            siteId: storage.siteId ?? Env.customerIOSiteId,
-            apiKey: storage.apiKey ?? Env.customerIOApiKey,
+            siteId: storage.siteId ?? BuildEnvironment.CustomerIO.siteId,
+            apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isPushEnabled: false,
