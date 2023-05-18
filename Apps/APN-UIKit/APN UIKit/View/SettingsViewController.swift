@@ -92,8 +92,8 @@ class SettingsViewController: UIViewController {
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "",
-            siteId: storage.siteId ?? Env.customerIOSiteId,
-            apiKey: storage.apiKey ?? Env.customerIOApiKey,
+            siteId: storage.siteId ?? BuildEnvironment.CustomerIO.siteId,
+            apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isPushEnabled: false,

@@ -23,7 +23,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func initializeCioAndInAppListeners() {
         // Initialise CustomerIO SDK
 
-        CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: .US) { config in
+        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
             config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
             config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30

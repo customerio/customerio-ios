@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4650330B29F692EF001B6552 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
 		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
 		4650330F29F69374001B6552 /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330E29F69374001B6552 /* Tracking */; };
 		4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331029F696B8001B6552 /* DeepLinkViewController.swift */; };
@@ -35,7 +34,6 @@
 		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
 		46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */; };
 		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
-		46EE274F29E9DF120068F9A3 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274E29E9DF120068F9A3 /* Env.swift */; };
 		46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275429E9E2960068F9A3 /* MessagingInApp */; };
 		46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275629E9E2960068F9A3 /* MessagingPushAPN */; };
 		46EE275929E9E2960068F9A3 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275829E9E2960068F9A3 /* MessagingPushFCM */; };
@@ -50,6 +48,8 @@
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
 		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
+		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
+		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraph.swift */; };
 /* End PBXBuildFile section */
 
@@ -123,7 +123,6 @@
 		46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
 		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
-		46EE274E29E9DF120068F9A3 /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
 		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../..; sourceTree = "<group>"; };
 		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
 		46EE275F29E9F1BD0068F9A3 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
@@ -135,6 +134,7 @@
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
+		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraph.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraph.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -225,9 +225,9 @@
 				46D5D98629E459D600EAF40B /* Main.storyboard */,
 				46D5D98929E459D800EAF40B /* Assets.xcassets */,
 				46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */,
+				F74F41F82A168316000D61B9 /* BuildEnvironment.swift */,
 				F7820EA92A15631000B346A9 /* DIGraph.swift */,
 				46D5D98E29E459D800EAF40B /* Info.plist */,
-				46EE274E29E9DF120068F9A3 /* Env.swift */,
 			);
 			path = "APN UIKit";
 			sourceTree = "<group>";
@@ -517,8 +517,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */,
 				4650330229F68FEB001B6552 /* NotificationService.swift in Sources */,
-				4650330B29F692EF001B6552 /* Env.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,10 +549,10 @@
 				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
+				F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */,
 				46EE277929ED833D0068F9A3 /* Settings.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
 				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
-				46EE274F29E9DF120068F9A3 /* Env.swift in Sources */,
 				46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */,
 				46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */,
 			);
