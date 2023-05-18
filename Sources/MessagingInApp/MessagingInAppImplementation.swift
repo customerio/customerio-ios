@@ -42,6 +42,11 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     // Functions deprecated but need to exist for `MessagingInAppInstance` protocol.
     // Do not call these functions but non-deprecated ones.
     func initialize(organizationId: String) {}
+
+    // Dismiss in-app message
+    func dismissMessage() {
+        inAppProvider.dismissMessage()
+    }
 }
 
 extension MessagingInAppImplementation: ProfileIdentifyHook {
