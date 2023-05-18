@@ -1,0 +1,9 @@
+# Swiftlint rules that are only applied to files in the Apps directory for the sample apps. 
+# When creating sample apps, there are less risks in the code compared to the SDK source code. Therefore, it's OK to disable some rules in sample apps to keep the code short and easy to read.
+
+# This file inherits rules from the base `.swiftlint.yml` file while overriding rules specified in this file. 
+
+disabled_rules:
+  - force_cast
+  - force_try
+  - multiple_closures_with_trailing_closure # Swift UI syntax sometimes uses multiple trailing closure syntax. To not confuse developers while writing Swift UI, disable rule. 
