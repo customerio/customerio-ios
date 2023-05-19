@@ -5,6 +5,13 @@
 
 * exact version for gist ([#321](https://github.com/customerio/customerio-ios/issues/321)) ([4b75cc5](https://github.com/customerio/customerio-ios/commit/4b75cc53e8f15a5496df17e825e12b4f44c3efef))
 
+### [2.5.2](https://github.com/customerio/customerio-ios/compare/2.5.1...2.5.2) (2023-05-19)
+
+
+### Bug Fixes
+
+* exact version for gist ([#321](https://github.com/customerio/customerio-ios/issues/321)) ([4b75cc5](https://github.com/customerio/customerio-ios/commit/4b75cc53e8f15a5496df17e825e12b4f44c3efef))
+
 ### [2.5.1](https://github.com/customerio/customerio-ios/compare/2.5.0...2.5.1) (2023-05-12)
 
 
