@@ -2,8 +2,8 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
-    let storage = DI.shared.storage
-    var deepLinkHandler = DI.shared.deepLinksHandlerUtil
+    let storage = DIGraph.shared.storage
+    var deepLinkHandler = DIGraph.shared.deepLinksHandlerUtil
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
@@ -64,5 +64,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let url = context.url
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
+    }
+
+    // Universal Links
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return
+        }
+
+        _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
     }
 }

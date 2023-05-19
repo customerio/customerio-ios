@@ -5,6 +5,7 @@ protocol DashboardRouting {
     func routeToLogin()
     func routeToCustomDataScreen(forSource source: CustomDataSource)
     func routeToSettings()
+    func routeToDeepLinkScreen(withInfo: [String: String])
 }
 
 class DashboardRouter: DashboardRouting {
@@ -29,5 +30,11 @@ class DashboardRouter: DashboardRouting {
     func routeToSettings() {
         let viewController = SettingsViewController.newInstance()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToDeepLinkScreen(withInfo: [String: String]) {
+        let viewController = DeepLinkViewController.newInstance()
+        viewController.deepLinkInfo = withInfo
+        dashboardViewController?.navigationController?.present(viewController, animated: true)
     }
 }
