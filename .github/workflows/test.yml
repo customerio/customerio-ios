@@ -39,18 +39,14 @@ jobs:
       with:
         lane: 'scan'
         skip-tracking: true
-
-    # Read generate script file to learn more about this CI step. 
-    - name: Generate code coverage report from .xcresult/
-      run: ./scripts/generate-code-coverage-report.sh 
   
     - name: Upload code coverage report 
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with: 
         token: ${{ secrets.CODECOV_UPLOAD_TOKEN }} # not required for public repos, but sometimes uploads fail without it so include it anyway
         fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
         verbose: true 
-        directory: .build/generated
+        files: ./test-report.xml # Running 'fastlane scan' generates this junit report for us.
 
     - name: Upload test report 
       uses: actions/upload-artifact@v2
