@@ -141,13 +141,13 @@ jobs:
     steps:
       - name: Checkout git tag that got created in previous step 
         uses: actions/checkout@v3
-        if: needs.deploy-git-tag.outputs.new_release_git_head != ''
+        if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' }}
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
 
       - name: Checkout git tag that was previously created 
         uses: actions/checkout@v3
-        if: inputs.existing-git-tag != ''
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           ref: ${{ inputs.existing-git-tag }}
 
