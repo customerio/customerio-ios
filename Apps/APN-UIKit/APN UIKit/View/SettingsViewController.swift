@@ -19,9 +19,11 @@ class SettingsViewController: UIViewController {
     @IBOutlet var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet var bgQTakDelayTextField: ThemeTextField!
 
-    var notificationUtil = DI.shared.notificationUtil
+    @IBOutlet var copyToClipboardImageView: UIImageView!
+    @IBOutlet var clipboardView: UIView!
+    var notificationUtil = DIGraph.shared.notificationUtil
     var settingsRouter: SettingsRouting?
-    var storage = DI.shared.storage
+    var storage = DIGraph.shared.storage
     var currentSettings: Settings!
 
     var pushSwitchState: Bool {
@@ -43,6 +45,7 @@ class SettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        configureClipboardImageView()
         configureSettingsRouter()
         getAndSetDefaultValues()
         addObserversForSettingsScreen()
@@ -74,12 +77,23 @@ class SettingsViewController: UIViewController {
         }
     }
 
+    func configureClipboardImageView() {
+        copyToClipboardImageView.addTapGesture(onTarget: self, #selector(SettingsViewController.copyToClipboard))
+    }
+
+    @objc
+    func copyToClipboard() {
+        UIPasteboard.general.string = deviceTokenTextField.text ?? ""
+
+        showAlert(withMessage: "Copied to clipboard")
+    }
+
     func getAndSetDefaultValues() {
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "",
-            siteId: storage.siteId ?? Env.customerIOSiteId,
-            apiKey: storage.apiKey ?? Env.customerIOApiKey,
+            siteId: storage.siteId ?? BuildEnvironment.CustomerIO.siteId,
+            apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isPushEnabled: false,

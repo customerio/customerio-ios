@@ -12,7 +12,7 @@ class LoginViewController: UIViewController {
     @IBOutlet var firstNameTextField: ThemeTextField!
     @IBOutlet var settings: UIImageView!
 
-    var storage = DI.shared.storage
+    var storage = DIGraph.shared.storage
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {
