@@ -6,6 +6,7 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraph.shared.storage
+    var deepLinkHandler = DIGraph.shared.deepLinksHandlerUtil
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -21,7 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func initializeCioAndInAppListeners() {
-        // Initialise CustomerIO SDK
+        // Initialize CustomerIO SDK
 
         CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
             config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
@@ -36,6 +37,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
+    }
+
+    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
+    // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
+    // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
+    //
+    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return false
+        }
+
+        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
     }
 
     // MARK: UISceneSession Lifecycle
