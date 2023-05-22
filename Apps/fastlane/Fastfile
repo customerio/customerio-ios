@@ -35,7 +35,7 @@ lane :build do
   download_ci_code_signing_files
   
   new_app_version = get_new_app_version()
-  new_build_number = Time.now.to_i.to_s # Build numbers need to be unique, only 0-9 digits, and always incremented. Using seconds now solves both of those problems easily. 
+  new_build_number = get_new_build_version()
   build_notes = get_build_notes()
   test_groups = get_build_test_groups()
 
@@ -45,6 +45,14 @@ lane :build do
     build_number: new_build_number,
     app_version: new_app_version
   )
+
+  UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
+  sh("../../../scripts/update-version.sh \"#{new_app_version} (#{new_build_number})\"")
+
+  uses_cocoapods = File.exists?("../Podfile")
+  if uses_cocoapods 
+    UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
+  end 
   
   # prevents builds from being flaky. As app sizese get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
   ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "10" 
@@ -84,11 +92,32 @@ lane :get_new_app_version do
     UI.message("The app version will be the git tag.")
 
     new_app_version = github.release_git_tag_created    
+  elsif github.is_commit_pushed
+    UI.message("Looks like GitHub Actions was triggered by a commit being pushed to a branch. I will build this sample app from this new commit pushed.")
+    UI.message("Populating notes to include helpful information from this event...")
+
+    new_app_version = github.push_branch
   end
 
   UI.important("The app version string will bet set to: #{new_app_version}")
 
+  if ENV["CI"] # if building on the CI (github actions), then set some environment variables so future github actions can reference build information. 
+    UI.important("Detected running on CI server. Setting environment variables for GitHub Actions to use later in workflow.")
+    sh("echo APP_VERSION_STRING=#{new_app_version} >> $GITHUB_ENV")
+  end 
+
   new_app_version
+end 
+
+lane :get_new_build_version do 
+  new_build_number = Time.now.to_i.to_s # Build numbers need to be unique, only 0-9 digits, and always incremented. Using seconds now solves both of those problems easily. 
+
+  if ENV["CI"] # if building on the CI (github actions), then set some environment variables so future github actions can reference build information. 
+    UI.important("Detected running on CI server. Setting environment variables for GitHub Actions to use later in workflow.")
+    sh("echo APP_BUILD_NUMBER=#{new_build_number} >> $GITHUB_ENV")
+  end 
+  
+  new_build_number
 end 
 
 # Firebase App Distribution allows you to attach notes to each build uploaded. These notes are searchable so we use the notes 
@@ -113,6 +142,12 @@ lane :get_build_notes do
     build_notes.append(
       "build type: release",
       "version: #{new_app_version}"
+    )
+  elsif github.is_commit_pushed
+    build_notes.append(
+      "build type: commit pushed to branch",
+      "branch: #{new_app_version}",
+      "commit hash: #{github.push_commit_hash}"
     )
   end
 
@@ -188,6 +223,10 @@ class GitHub
     @github_context = JSON.parse(File.open(github_actions_metadata_path).read)
   end 
 
+  def is_commit_pushed
+    @github_context["head_commit"] != nil
+  end 
+
   def is_git_tag_created
     @github_context["release"] != nil 
   end 
@@ -200,6 +239,17 @@ class GitHub
 
   def release_git_tag_created
     return @github_context["release"]["tag_name"]
+  end 
+
+  # Functions below only meant for when a github actions event is a git tag created 
+
+  def push_branch
+    # the branch name is: "refs/heads/<name-here>". We use gsub to string replace and remove "refs/heads/" part to only get the branch name
+    return @github_context["ref"].gsub!('refs/heads/', '')
+  end 
+
+  def push_commit_hash
+    return @github_context["head_commit"]["id"]
   end 
 
   # Functions below only meant for when a github actions event is a pull request 

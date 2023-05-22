@@ -1,10 +1,6 @@
 import CioTracking
 import Common
 import Foundation
-#if canImport(UserNotifications) && canImport(UIKit)
-import UIKit
-import UserNotifications
-#endif
 
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
@@ -12,14 +8,17 @@ import UserNotifications
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
+    private var globalDataStore: GlobalDataStore
 
     // testing constructor
-    override internal init(implementation: MessagingPushInstance?, sdkInitializedUtil: SdkInitializedUtil) {
+    internal init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
+        self.globalDataStore = globalDataStore
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
 
     // singleton constructor
     override private init() {
+        self.globalDataStore = CioGlobalDataStore.getInstance()
         super.init()
     }
 
@@ -50,7 +49,20 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        implementation?.registerDeviceToken(deviceToken)
+        // Compare the new deviceToken with the one stored in globalDataStore.
+        // If they are different, proceed with registering the device token.
+        // This check helps to avoid duplicate requests, as registerDeviceToken is already called on SDK initialization.
+        if deviceToken != globalDataStore.pushDeviceToken {
+            // Call the registerDeviceToken method on the implementation.
+            // This method is responsible for registering the device token and updating the globalDataStore as well.
+            if let implementation = implementation {
+                implementation.registerDeviceToken(deviceToken)
+            } else {
+                // Update the globalDataStore with the new device token.
+                // The implementation may be nil due to lifecycle issues in wrappers SDKs.
+                globalDataStore.pushDeviceToken = deviceToken
+            }
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -67,10 +67,8 @@ extension DIGraph {
 
     // InAppProvider
     var inAppProvider: InAppProvider {
-        if let overridenDep = overrides[String(describing: InAppProvider.self)] {
-            return overridenDep as! InAppProvider
-        }
-        return newInAppProvider
+        getOverriddenInstance() ??
+            newInAppProvider
     }
 
     private var newInAppProvider: InAppProvider {
@@ -79,13 +77,13 @@ extension DIGraph {
 
     // ModuleHookProvider
     var moduleHookProvider: ModuleHookProvider {
-        if let overridenDep = overrides[String(describing: ModuleHookProvider.self)] {
-            return overridenDep as! ModuleHookProvider
-        }
-        return newModuleHookProvider
+        getOverriddenInstance() ??
+            newModuleHookProvider
     }
 
     private var newModuleHookProvider: ModuleHookProvider {
         MessagingInAppModuleHookProvider()
     }
 }
+
+// swiftlint:enable all

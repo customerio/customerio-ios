@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -68,10 +68,8 @@ extension DIGraph {
 
     // CleanupRepository
     var cleanupRepository: CleanupRepository {
-        if let overridenDep = overrides[String(describing: CleanupRepository.self)] {
-            return overridenDep as! CleanupRepository
-        }
-        return newCleanupRepository
+        getOverriddenInstance() ??
+            newCleanupRepository
     }
 
     private var newCleanupRepository: CleanupRepository {
@@ -80,10 +78,8 @@ extension DIGraph {
 
     // DeviceAttributesProvider
     var deviceAttributesProvider: DeviceAttributesProvider {
-        if let overridenDep = overrides[String(describing: DeviceAttributesProvider.self)] {
-            return overridenDep as! DeviceAttributesProvider
-        }
-        return newDeviceAttributesProvider
+        getOverriddenInstance() ??
+            newDeviceAttributesProvider
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
@@ -92,13 +88,13 @@ extension DIGraph {
 
     // QueueRunnerHook
     var queueRunnerHook: QueueRunnerHook {
-        if let overridenDep = overrides[String(describing: QueueRunnerHook.self)] {
-            return overridenDep as! QueueRunnerHook
-        }
-        return newQueueRunnerHook
+        getOverriddenInstance() ??
+            newQueueRunnerHook
     }
 
     private var newQueueRunnerHook: QueueRunnerHook {
-        TrackingQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
+        TrackingQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
     }
 }
+
+// swiftlint:enable all

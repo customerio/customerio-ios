@@ -11,10 +11,8 @@ import Foundation
  */
 internal class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
-        _siteId
+        sdkConfig.siteId
     }
-
-    private let _siteId: String
 
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
@@ -34,9 +32,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
      Try loading the credentials previously saved for the singleton instance.
      */
-    internal init(siteId: String, diGraph: DIGraph) {
-        self._siteId = siteId
-
+    internal init(diGraph: DIGraph) {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
@@ -47,6 +43,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+    }
+
+    public var config: SdkConfig? {
+        sdkConfig
     }
 
     public var profileAttributes: [String: Any] {

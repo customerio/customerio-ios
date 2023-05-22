@@ -4,6 +4,9 @@ import Foundation
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
 
+    /// Get the current configuration options set for the SDK.
+    var config: SdkConfig? { get }
+
     func identify(
         identifier: String,
         body: [String: Any]
@@ -89,8 +92,13 @@ public extension CustomerIOInstance {
  You must call `CustomerIO.initialize` to use the features of the SDK.
  */
 public class CustomerIO: CustomerIOInstance {
+    /// The current version of the Customer.io SDK.
+    public static var version: String {
+        SdkVersion.version
+    }
+
     public var siteId: String? {
-        diGraph?.siteId
+        diGraph?.sdkConfig.siteId
     }
 
     /**
@@ -130,16 +138,14 @@ public class CustomerIO: CustomerIOInstance {
         Self.shared = CustomerIO()
     }
 
-    // Special initialize used for integration tests. Mostly to be able to shared a DI graph
+    // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
     internal static func initializeIntegrationTests(
-        siteId: String,
         diGraph: DIGraph
     ) {
-        let implementation = CustomerIOImplementation(siteId: siteId, diGraph: diGraph)
+        let implementation = CustomerIOImplementation(diGraph: diGraph)
         Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
-
-        Self.shared.postInitialize(siteId: diGraph.siteId, diGraph: diGraph)
+        Self.shared.postInitialize(diGraph: diGraph)
     }
 
     /**
@@ -153,18 +159,13 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(region: region)
+        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(
-            siteId: siteId,
-            apiKey: apiKey,
-            region: region,
-            config: newSdkConfig
-        )
+        Self.initialize(config: newSdkConfig)
 
         if newSdkConfig.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
@@ -185,46 +186,46 @@ public class CustomerIO: CustomerIOInstance {
         region: Region,
         configure configureHandler: ((inout NotificationServiceExtensionSdkConfig) -> Void)?
     ) {
-        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(region: region)
+        var newSdkConfig = NotificationServiceExtensionSdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         if let configureHandler = configureHandler {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(
-            siteId: siteId,
-            apiKey: apiKey,
-            region: region,
-            config: newSdkConfig.toSdkConfig()
-        )
+        Self.initialize(config: newSdkConfig.toSdkConfig())
     }
 
     // private shared logic initialize to avoid copy/paste between the different
     // public initialize functions.
     private static func initialize(
-        siteId: String,
-        apiKey: String,
-        region: Region,
         config: SdkConfig
     ) {
-        let newDiGraph = DIGraph(siteId: siteId, apiKey: apiKey, sdkConfig: config)
+        let newDiGraph = DIGraph(sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
-        Self.shared.implementation = CustomerIOImplementation(siteId: siteId, diGraph: newDiGraph)
+        Self.shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        Self.shared.postInitialize(siteId: siteId, diGraph: newDiGraph)
+        Self.shared.postInitialize(diGraph: newDiGraph)
     }
 
     // Contains all logic shared between all of the initialize() functions.
-    internal func postInitialize(siteId: SiteId, diGraph: DIGraph) {
+    internal func postInitialize(diGraph: DIGraph) {
         let hooks = diGraph.hooksManager
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
+        let siteId = diGraph.sdkConfig.siteId
 
         cleanupRepository = diGraph.cleanupRepository
 
         // Register Tracking module hooks now that the module is being initialized.
         hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
+
+        // Register the device token during SDK initialization to address device registration issues
+        // arising from lifecycle differences between wrapper SDKs and native SDK.
+        let globalDataStore = diGraph.globalDataStore
+        if let token = globalDataStore.pushDeviceToken {
+            registerDeviceToken(token)
+        }
 
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
@@ -236,6 +237,10 @@ public class CustomerIO: CustomerIOInstance {
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
+    }
+
+    public var config: SdkConfig? {
+        implementation?.config
     }
 
     /**

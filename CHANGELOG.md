@@ -1,3 +1,52 @@
+### [2.5.2](https://github.com/customerio/customerio-ios/compare/2.5.1...2.5.2) (2023-05-19)
+
+
+### Bug Fixes
+
+* exact version for gist ([#321](https://github.com/customerio/customerio-ios/issues/321)) ([4b75cc5](https://github.com/customerio/customerio-ios/commit/4b75cc53e8f15a5496df17e825e12b4f44c3efef))
+
+### [2.5.2](https://github.com/customerio/customerio-ios/compare/2.5.1...2.5.2) (2023-05-19)
+
+
+### Bug Fixes
+
+* exact version for gist ([#321](https://github.com/customerio/customerio-ios/issues/321)) ([4b75cc5](https://github.com/customerio/customerio-ios/commit/4b75cc53e8f15a5496df17e825e12b4f44c3efef))
+
+### [2.5.1](https://github.com/customerio/customerio-ios/compare/2.5.0...2.5.1) (2023-05-12)
+
+
+### Bug Fixes
+
+* sdk wrappers not having device token registered because of application lifecycle ([#285](https://github.com/customerio/customerio-ios/issues/285)) ([da7fc51](https://github.com/customerio/customerio-ios/commit/da7fc512e9308af208de8dea5aeaf95839a52fc1))
+
+## [2.5.0](https://github.com/customerio/customerio-ios/compare/2.4.1...2.5.0) (2023-04-27)
+
+
+### Features
+
+* expose current SDK config options for reference ([#298](https://github.com/customerio/customerio-ios/issues/298)) ([6ac739b](https://github.com/customerio/customerio-ios/commit/6ac739b1550636db10230d8b2c10783f46626250))
+
+### [2.4.1](https://github.com/customerio/customerio-ios/compare/2.4.0...2.4.1) (2023-04-27)
+
+
+### Bug Fixes
+
+* auto update gist in CocoaPods ([#303](https://github.com/customerio/customerio-ios/issues/303)) ([6096d17](https://github.com/customerio/customerio-ios/commit/6096d176cdc52e7e8a949960bfb9c4aa1541c8fd))
+
+## [2.4.0](https://github.com/customerio/customerio-ios/compare/2.3.0...2.4.0) (2023-04-27)
+
+
+### Features
+
+* get the version of the SDK ([#299](https://github.com/customerio/customerio-ios/issues/299)) ([38a6b00](https://github.com/customerio/customerio-ios/commit/38a6b0061f0f5b317f592ec885f8746c65ab8ba5))
+
+## [2.3.0](https://github.com/customerio/customerio-ios/compare/2.2.0...2.3.0) (2023-04-19)
+
+
+### Features
+
+* in app click tracking ([#284](https://github.com/customerio/customerio-ios/issues/284)) ([4ed8edb](https://github.com/customerio/customerio-ios/commit/4ed8edbd0f9e7a7aa6a708e525c6081e93658e98))
+
 ## [2.2.0](https://github.com/customerio/customerio-ios/compare/2.1.2...2.2.0) (2023-04-18)
 
 

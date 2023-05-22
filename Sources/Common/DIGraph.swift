@@ -1,13 +1,9 @@
 import Foundation
 
 public class DIGraph {
-    public let siteId: SiteId
-    public let apiKey: String
     public let sdkConfig: SdkConfig
 
-    public init(siteId: SiteId, apiKey: String, sdkConfig: SdkConfig) {
-        self.siteId = siteId
-        self.apiKey = apiKey
+    public init(sdkConfig: SdkConfig) {
         self.sdkConfig = sdkConfig
     }
 
@@ -22,8 +18,26 @@ public class DIGraph {
      DIGraph.shared.override(mockOffRoadWheels, OffRoadWheels.self)
      ```
      */
-    public func override<Value: Any>(value: Value, forType type: Value.Type) {
+    public func override<T: Any>(value: T, forType type: T.Type) {
         overrides[String(describing: type)] = value
+    }
+
+    // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
+    // If an overridden instance exists and can be cast to the specified type, it is returned; otherwise, nil is returned.
+    public func getOverriddenInstance<T: Any>() -> T? {
+        // Get the type name as the key for the dictionary.
+        let typeName = String(describing: T.self)
+
+        guard overrides[typeName] != nil else {
+            return nil // no override set. Quit early.
+        }
+
+        // Get and cast the overridden instance from the dictionary.
+        guard let overriddenInstance = overrides[typeName] as? T else {
+            fatalError("Failed to cast overridden instance to type '\(typeName)'.")
+        }
+
+        return overriddenInstance
     }
 
     /**

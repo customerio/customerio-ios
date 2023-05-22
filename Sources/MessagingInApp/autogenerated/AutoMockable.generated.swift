@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -475,3 +475,5 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdClosure?(organizationId)
     }
 }
+
+// swiftlint:enable all

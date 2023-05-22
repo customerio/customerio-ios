@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -133,10 +133,8 @@ extension DIGraph {
 
     // DeviceInfo
     public var deviceInfo: DeviceInfo {
-        if let overridenDep = overrides[String(describing: DeviceInfo.self)] {
-            return overridenDep as! DeviceInfo
-        }
-        return newDeviceInfo
+        getOverriddenInstance() ??
+            newDeviceInfo
     }
 
     private var newDeviceInfo: DeviceInfo {
@@ -145,22 +143,18 @@ extension DIGraph {
 
     // HttpClient
     public var httpClient: HttpClient {
-        if let overridenDep = overrides[String(describing: HttpClient.self)] {
-            return overridenDep as! HttpClient
-        }
-        return newHttpClient
+        getOverriddenInstance() ??
+            newHttpClient
     }
 
     private var newHttpClient: HttpClient {
-        CIOHttpClient(siteId: siteId, apiKey: apiKey, sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
+        CIOHttpClient(sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
     }
 
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
-        if let overridenDep = overrides[String(describing: GlobalDataStore.self)] {
-            return overridenDep as! GlobalDataStore
-        }
-        return newGlobalDataStore
+        getOverriddenInstance() ??
+            newGlobalDataStore
     }
 
     private var newGlobalDataStore: GlobalDataStore {
@@ -169,18 +163,16 @@ extension DIGraph {
 
     // HooksManager (singleton)
     public var hooksManager: HooksManager {
-        if let overridenDep = overrides[String(describing: HooksManager.self)] {
-            return overridenDep as! HooksManager
-        }
-        return sharedHooksManager
+        getOverriddenInstance() ??
+            sharedHooksManager
     }
 
     public var sharedHooksManager: HooksManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: HooksManager.self)] {
-                return overridenDep as! HooksManager
+            if let overridenDep: HooksManager = getOverriddenInstance() {
+                return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
             let instance = existingSingletonInstance ?? _get_hooksManager()
@@ -195,10 +187,8 @@ extension DIGraph {
 
     // ProfileStore
     public var profileStore: ProfileStore {
-        if let overridenDep = overrides[String(describing: ProfileStore.self)] {
-            return overridenDep as! ProfileStore
-        }
-        return newProfileStore
+        getOverriddenInstance() ??
+            newProfileStore
     }
 
     private var newProfileStore: ProfileStore {
@@ -207,22 +197,18 @@ extension DIGraph {
 
     // Queue
     public var queue: Queue {
-        if let overridenDep = overrides[String(describing: Queue.self)] {
-            return overridenDep as! Queue
-        }
-        return newQueue
+        getOverriddenInstance() ??
+            newQueue
     }
 
     private var newQueue: Queue {
-        CioQueue(siteId: siteId, storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+        CioQueue(storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // QueueQueryRunner
     internal var queueQueryRunner: QueueQueryRunner {
-        if let overridenDep = overrides[String(describing: QueueQueryRunner.self)] {
-            return overridenDep as! QueueQueryRunner
-        }
-        return newQueueQueryRunner
+        getOverriddenInstance() ??
+            newQueueQueryRunner
     }
 
     private var newQueueQueryRunner: QueueQueryRunner {
@@ -231,18 +217,16 @@ extension DIGraph {
 
     // QueueRequestManager (singleton)
     public var queueRequestManager: QueueRequestManager {
-        if let overridenDep = overrides[String(describing: QueueRequestManager.self)] {
-            return overridenDep as! QueueRequestManager
-        }
-        return sharedQueueRequestManager
+        getOverriddenInstance() ??
+            sharedQueueRequestManager
     }
 
     public var sharedQueueRequestManager: QueueRequestManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: QueueRequestManager.self)] {
-                return overridenDep as! QueueRequestManager
+            if let overridenDep: QueueRequestManager = getOverriddenInstance() {
+                return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
             let instance = existingSingletonInstance ?? _get_queueRequestManager()
@@ -257,10 +241,8 @@ extension DIGraph {
 
     // QueueRunRequest
     public var queueRunRequest: QueueRunRequest {
-        if let overridenDep = overrides[String(describing: QueueRunRequest.self)] {
-            return overridenDep as! QueueRunRequest
-        }
-        return newQueueRunRequest
+        getOverriddenInstance() ??
+            newQueueRunRequest
     }
 
     private var newQueueRunRequest: QueueRunRequest {
@@ -269,22 +251,18 @@ extension DIGraph {
 
     // QueueRunner
     public var queueRunner: QueueRunner {
-        if let overridenDep = overrides[String(describing: QueueRunner.self)] {
-            return overridenDep as! QueueRunner
-        }
-        return newQueueRunner
+        getOverriddenInstance() ??
+            newQueueRunner
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(siteId: siteId, jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
+        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
     }
 
     // SimpleTimer
     internal var simpleTimer: SimpleTimer {
-        if let overridenDep = overrides[String(describing: SimpleTimer.self)] {
-            return overridenDep as! SimpleTimer
-        }
-        return newSimpleTimer
+        getOverriddenInstance() ??
+            newSimpleTimer
     }
 
     private var newSimpleTimer: SimpleTimer {
@@ -293,18 +271,16 @@ extension DIGraph {
 
     // SingleScheduleTimer (singleton)
     internal var singleScheduleTimer: SingleScheduleTimer {
-        if let overridenDep = overrides[String(describing: SingleScheduleTimer.self)] {
-            return overridenDep as! SingleScheduleTimer
-        }
-        return sharedSingleScheduleTimer
+        getOverriddenInstance() ??
+            sharedSingleScheduleTimer
     }
 
     internal var sharedSingleScheduleTimer: SingleScheduleTimer {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: SingleScheduleTimer.self)] {
-                return overridenDep as! SingleScheduleTimer
+            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
+                return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
             let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
@@ -319,10 +295,8 @@ extension DIGraph {
 
     // ThreadUtil
     public var threadUtil: ThreadUtil {
-        if let overridenDep = overrides[String(describing: ThreadUtil.self)] {
-            return overridenDep as! ThreadUtil
-        }
-        return newThreadUtil
+        getOverriddenInstance() ??
+            newThreadUtil
     }
 
     private var newThreadUtil: ThreadUtil {
@@ -331,22 +305,18 @@ extension DIGraph {
 
     // Logger
     public var logger: Logger {
-        if let overridenDep = overrides[String(describing: Logger.self)] {
-            return overridenDep as! Logger
-        }
-        return newLogger
+        getOverriddenInstance() ??
+            newLogger
     }
 
     private var newLogger: Logger {
-        ConsoleLogger(siteId: siteId, sdkConfig: sdkConfig)
+        ConsoleLogger(sdkConfig: sdkConfig)
     }
 
     // HttpRetryPolicy
     internal var httpRetryPolicy: HttpRetryPolicy {
-        if let overridenDep = overrides[String(describing: HttpRetryPolicy.self)] {
-            return overridenDep as! HttpRetryPolicy
-        }
-        return newHttpRetryPolicy
+        getOverriddenInstance() ??
+            newHttpRetryPolicy
     }
 
     private var newHttpRetryPolicy: HttpRetryPolicy {
@@ -355,10 +325,8 @@ extension DIGraph {
 
     // DeviceMetricsGrabber
     internal var deviceMetricsGrabber: DeviceMetricsGrabber {
-        if let overridenDep = overrides[String(describing: DeviceMetricsGrabber.self)] {
-            return overridenDep as! DeviceMetricsGrabber
-        }
-        return newDeviceMetricsGrabber
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
     }
 
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
@@ -367,34 +335,28 @@ extension DIGraph {
 
     // FileStorage
     public var fileStorage: FileStorage {
-        if let overridenDep = overrides[String(describing: FileStorage.self)] {
-            return overridenDep as! FileStorage
-        }
-        return newFileStorage
+        getOverriddenInstance() ??
+            newFileStorage
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(siteId: siteId, logger: logger)
+        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
     }
 
     // QueueStorage
     public var queueStorage: QueueStorage {
-        if let overridenDep = overrides[String(describing: QueueStorage.self)] {
-            return overridenDep as! QueueStorage
-        }
-        return newQueueStorage
+        getOverriddenInstance() ??
+            newQueueStorage
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(siteId: siteId, fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
     }
 
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
-        if let overridenDep = overrides[String(describing: JsonAdapter.self)] {
-            return overridenDep as! JsonAdapter
-        }
-        return newJsonAdapter
+        getOverriddenInstance() ??
+            newJsonAdapter
     }
 
     private var newJsonAdapter: JsonAdapter {
@@ -403,18 +365,16 @@ extension DIGraph {
 
     // LockManager (singleton)
     public var lockManager: LockManager {
-        if let overridenDep = overrides[String(describing: LockManager.self)] {
-            return overridenDep as! LockManager
-        }
-        return sharedLockManager
+        getOverriddenInstance() ??
+            sharedLockManager
     }
 
     public var sharedLockManager: LockManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
-            if let overridenDep = self.overrides[String(describing: LockManager.self)] {
-                return overridenDep as! LockManager
+            if let overridenDep: LockManager = getOverriddenInstance() {
+                return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
             let instance = existingSingletonInstance ?? _get_lockManager()
@@ -429,10 +389,8 @@ extension DIGraph {
 
     // DateUtil
     public var dateUtil: DateUtil {
-        if let overridenDep = overrides[String(describing: DateUtil.self)] {
-            return overridenDep as! DateUtil
-        }
-        return newDateUtil
+        getOverriddenInstance() ??
+            newDateUtil
     }
 
     private var newDateUtil: DateUtil {
@@ -442,10 +400,8 @@ extension DIGraph {
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
     public var uIKitWrapper: UIKitWrapper {
-        if let overridenDep = overrides[String(describing: UIKitWrapper.self)] {
-            return overridenDep as! UIKitWrapper
-        }
-        return newUIKitWrapper
+        getOverriddenInstance() ??
+            newUIKitWrapper
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -455,10 +411,8 @@ extension DIGraph {
 
     // HttpRequestRunner
     internal var httpRequestRunner: HttpRequestRunner {
-        if let overridenDep = overrides[String(describing: HttpRequestRunner.self)] {
-            return overridenDep as! HttpRequestRunner
-        }
-        return newHttpRequestRunner
+        getOverriddenInstance() ??
+            newHttpRequestRunner
     }
 
     private var newHttpRequestRunner: HttpRequestRunner {
@@ -467,10 +421,8 @@ extension DIGraph {
 
     // UserAgentUtil
     public var userAgentUtil: UserAgentUtil {
-        if let overridenDep = overrides[String(describing: UserAgentUtil.self)] {
-            return overridenDep as! UserAgentUtil
-        }
-        return newUserAgentUtil
+        getOverriddenInstance() ??
+            newUserAgentUtil
     }
 
     private var newUserAgentUtil: UserAgentUtil {
@@ -479,13 +431,13 @@ extension DIGraph {
 
     // KeyValueStorage
     public var keyValueStorage: KeyValueStorage {
-        if let overridenDep = overrides[String(describing: KeyValueStorage.self)] {
-            return overridenDep as! KeyValueStorage
-        }
-        return newKeyValueStorage
+        getOverriddenInstance() ??
+            newKeyValueStorage
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(siteId: siteId, deviceMetricsGrabber: deviceMetricsGrabber)
+        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
+
+// swiftlint:enable all
