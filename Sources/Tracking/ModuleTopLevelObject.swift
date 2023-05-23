@@ -1,4 +1,4 @@
-import Common
+import CioInternalCommon
 import Foundation
 
 // Base class meant to be subclassed by top-level classes such as `MessagingPush` and `MessagingInApp`. Provides some

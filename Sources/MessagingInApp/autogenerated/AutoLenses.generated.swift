@@ -2,8 +2,8 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
+import CioInternalCommon
 import CioTracking
-import Common
 import Foundation
 import Gist
 

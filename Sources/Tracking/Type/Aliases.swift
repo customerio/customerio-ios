@@ -1,4 +1,4 @@
-import Common
+import CioInternalCommon
 import Foundation
 
 /*
@@ -8,8 +8,8 @@ import Foundation
  in 'Common' as they are used in the 'Common' code.
  */
 
-public typealias Region = Common.Region
-public typealias CioLogLevel = Common.CioLogLevel
-public typealias CioSdkConfig = Common.SdkConfig
-public typealias CioNotificationServiceExtensionSdkConfig = Common.NotificationServiceExtensionSdkConfig
-public typealias Metric = Common.Metric
+public typealias Region = CioInternalCommon.Region
+public typealias CioLogLevel = CioInternalCommon.CioLogLevel
+public typealias CioSdkConfig = CioInternalCommon.SdkConfig
+public typealias CioNotificationServiceExtensionSdkConfig = CioInternalCommon.NotificationServiceExtensionSdkConfig
+public typealias Metric = CioInternalCommon.Metric
