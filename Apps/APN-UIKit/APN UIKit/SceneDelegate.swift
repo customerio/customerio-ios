@@ -66,7 +66,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
-    // Universal Links
+    // Universal Links - handling universal links that come into the mobile app, not from the Customer.io SDK.
+    // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
+    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return
