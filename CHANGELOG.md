@@ -1,3 +1,10 @@
+## [2.6.0](https://github.com/customerio/customerio-ios/compare/2.5.3...2.6.0) (2023-05-26)
+
+
+### Features
+
+* in-app dismiss message ([#320](https://github.com/customerio/customerio-ios/issues/320)) ([e067001](https://github.com/customerio/customerio-ios/commit/e067001628423a2dc4d9a5c1836a9d985cf60150))
+
 ### [2.5.3](https://github.com/customerio/customerio-ios/compare/2.5.2...2.5.3) (2023-05-26)
 
 
