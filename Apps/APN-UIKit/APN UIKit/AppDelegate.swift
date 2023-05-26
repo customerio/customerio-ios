@@ -134,6 +134,9 @@ extension AppDelegate: InAppEventListener {
 
     // User perform an action on in-app message
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+        if actionName == "remove" || actionName == "test" {
+            MessagingInApp.shared.dismissMessage()
+        }
         CustomerIO.shared.track(name: "inapp action", data: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,
