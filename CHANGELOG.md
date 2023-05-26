@@ -1,3 +1,10 @@
+### [2.6.1](https://github.com/customerio/customerio-ios/compare/2.6.0...2.6.1) (2023-05-26)
+
+
+### Bug Fixes
+
+* internal module Common clashing with other Common modules in customers app ([#328](https://github.com/customerio/customerio-ios/issues/328)) ([817dd56](https://github.com/customerio/customerio-ios/commit/817dd5692c412e91b1edbac9af64c0f4844a4cb4))
+
 ## [2.6.0](https://github.com/customerio/customerio-ios/compare/2.5.3...2.6.0) (2023-05-26)
 
 
