@@ -263,6 +263,9 @@ internal class InAppProviderMock: InAppProvider, Mock {
         setRouteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        dismissMessageCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - initialize
@@ -366,6 +369,27 @@ internal class InAppProviderMock: InAppProvider, Mock {
         setRouteReceivedInvocations.append(route)
         setRouteClosure?(route)
     }
+
+    // MARK: - dismissMessage
+
+    /// Number of times the function was called.
+    internal private(set) var dismissMessageCallsCount = 0
+    /// `true` if the function was ever called.
+    internal var dismissMessageCalled: Bool {
+        dismissMessageCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    internal var dismissMessageClosure: (() -> Void)?
+
+    /// Mocked function for `dismissMessage()`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func dismissMessage() {
+        mockCalled = true
+        dismissMessageCallsCount += 1
+        dismissMessageClosure?()
+    }
 }
 
 /**
@@ -395,6 +419,9 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdCallsCount = 0
         initializeOrganizationIdReceivedArguments = nil
         initializeOrganizationIdReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        dismissMessageCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -473,6 +500,27 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         initializeOrganizationIdReceivedArguments = organizationId
         initializeOrganizationIdReceivedInvocations.append(organizationId)
         initializeOrganizationIdClosure?(organizationId)
+    }
+
+    // MARK: - dismissMessage
+
+    /// Number of times the function was called.
+    public private(set) var dismissMessageCallsCount = 0
+    /// `true` if the function was ever called.
+    public var dismissMessageCalled: Bool {
+        dismissMessageCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var dismissMessageClosure: (() -> Void)?
+
+    /// Mocked function for `dismissMessage()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func dismissMessage() {
+        mockCalled = true
+        dismissMessageCallsCount += 1
+        dismissMessageClosure?()
     }
 }
 

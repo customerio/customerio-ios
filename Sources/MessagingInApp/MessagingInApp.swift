@@ -12,6 +12,8 @@ public protocol MessagingInAppInstance: AutoMockable {
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     // sourcery:Name=initializeOrganizationId
     func initialize(organizationId: String)
+
+    func dismissMessage()
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
@@ -101,5 +103,10 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     override public func getImplementationInstance(diGraph: DIGraph) -> MessagingInAppInstance {
         MessagingInAppImplementation(diGraph: diGraph)
+    }
+
+    // Dismiss in-app message
+    public func dismissMessage() {
+        implementation?.dismissMessage()
     }
 }
