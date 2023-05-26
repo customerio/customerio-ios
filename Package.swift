@@ -31,14 +31,14 @@ let package = Package(
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
-        .target(name: "Common",
+        .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
                     dependencies: ["SharedTests"],
                     path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
-                dependencies: ["Common"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
@@ -54,7 +54,7 @@ let package = Package(
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
-                dependencies: ["Common", "CioTracking"],
+                dependencies: ["CioTracking"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
@@ -77,7 +77,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["Common", "CioTracking", "Gist"],
+                dependencies: ["CioTracking", "Gist"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],

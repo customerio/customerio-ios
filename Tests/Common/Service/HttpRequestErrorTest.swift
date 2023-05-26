@@ -1,4 +1,4 @@
-@testable import Common
+@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
