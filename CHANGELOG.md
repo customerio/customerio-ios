@@ -1,3 +1,10 @@
+### [2.5.3](https://github.com/customerio/customerio-ios/compare/2.5.2...2.5.3) (2023-05-26)
+
+
+### Bug Fixes
+
+* in-app universal link redirection support ([#329](https://github.com/customerio/customerio-ios/issues/329)) ([51470e8](https://github.com/customerio/customerio-ios/commit/51470e80270092da1948f04a388aedaf0f2fcf35))
+
 ### [2.5.2](https://github.com/customerio/customerio-ios/compare/2.5.1...2.5.2) (2023-05-19)
 
 
