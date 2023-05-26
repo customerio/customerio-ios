@@ -22,5 +22,5 @@ Pod::Spec.new do |spec|
   
   spec.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
   # Update to exact version until wrapper SDKs become part of testing pipeline.
-  spec.dependency "Gist", '3.2.1'
+  spec.dependency "Gist", '3.2.2'
 end
