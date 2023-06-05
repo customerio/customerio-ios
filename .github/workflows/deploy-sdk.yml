@@ -32,6 +32,12 @@ jobs:
       - name: Install sd CLI to use later in the workflow 
         uses: kenji-miyake/setup-sd@v1
 
+      # once this issue is resolved, we can remove this workaround. https://github.com/cycjimmy/semantic-release-action/issues/159#issuecomment-1490892625
+      - name: Workaround for latest cycjimmy/semantic-release-action v3 throwing error while executing 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
       #    For example, if the last deployment you made was version 1.3.5 and you are releasing a new feature
