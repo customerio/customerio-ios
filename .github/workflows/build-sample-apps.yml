@@ -4,8 +4,6 @@ on:
   pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
   push: 
     branches: [main]
-  release: # build sample apps for every git tag created. These are known as "stable" builds that are suitable for people outside the mobile team. 
-    types: [published]
 
 concurrency: # cancel previous workflow run if one exists. 
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -123,7 +121,7 @@ jobs:
     - name: Build app via Fastlane 
       uses: maierj/fastlane-action@v3.0.0
       with:
-        lane: "build"
+        lane: "ios build"
         subdirectory: "Apps/${{ matrix.sample-app }}"
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
