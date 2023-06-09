@@ -187,7 +187,7 @@ lane :get_build_notes do
   elsif github.is_commit_pushed
     build_notes.append(
       "build type: commit pushed to branch",
-      "branch: #{new_app_version}",
+      "branch: #{github.push_branch}",
       "commit hash: #{github.push_commit_hash}"
     )
   end
