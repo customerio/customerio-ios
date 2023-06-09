@@ -45,9 +45,14 @@ lane :build do
     build_number: new_build_number,
     app_version: new_app_version
   )
+  
+  version_update_script_path = '../../../scripts/update-version.sh'
+  # Since this Fastfile is used by SDK wrapper projects that might not contain this script file, we skip running it if the file does not exist. 
+  if File.exist?(version_update_script_path)
+    UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
 
-  UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
-  sh("../../../scripts/update-version.sh \"#{new_app_version} (#{new_build_number})\"")
+    sh("#{version_update_script_path} \"#{new_app_version} (#{new_build_number})\"")
+  end 
 
   uses_cocoapods = File.exists?("../Podfile")
   if uses_cocoapods 
@@ -180,23 +185,6 @@ lane :update_ios_app_versions do |arguments|
   # We need to update the app before building with the new version and build numbers. This makes builds easier to find by team members and install them onto devices. 
   # This is usually done by updating Info.plist files. But Xcode 13 removed Info.plist files and made it part of the xcode project. 
   # Therefore, we attempt both methods to update the version numbers. 
-  # Here, we try to update Info.plist files. 
-  Dir.glob("../**/Info.plist").each { |plist_file_path| 
-    plist_file_path = File.expand_path(plist_file_path, Dir.pwd)
-    UI.message("Found Info.plist file #{plist_file_path} to update versions for.")
-
-    # We only want to modify a value in plist file and not add a new value if it doesn't exist in the file yet. 
-    # Therefore, check if a value already exists and it if does, then set a new value. 
-    if !get_info_plist_value(path: plist_file_path, key: "CFBundleVersion").nil? 
-      UI.message("Build version exists in plist file. Going to set new value")
-      set_info_plist_value(path: plist_file_path, key: "CFBundleVersion", value: new_build_number) 
-    end 
-
-    if !get_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString").nil? 
-      UI.message("Build version string exists in plist file. Going to set new value")
-      set_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString", value: new_app_version)
-    end 
-  }
 
   # Here, we try to update the xcode project settings. 
   project_path = Dir.glob("../*.xcodeproj").first
@@ -207,6 +195,25 @@ lane :update_ios_app_versions do |arguments|
     target.build_configurations.each do |config|
       config.build_settings['MARKETING_VERSION'] = new_app_version
       config.build_settings['CURRENT_PROJECT_VERSION'] = new_build_number
+
+      # Here, we try to update Info.plist files. 
+      # We do that by getting the Info.plist file path from the Xcode project. 
+      if config.build_settings.key?("INFOPLIST_FILE")
+        plist_file_path = File.expand_path("../#{config.build_settings['INFOPLIST_FILE']}", Dir.pwd)
+        UI.message("Found Info.plist file to modify: #{plist_file_path}")
+
+        # We only want to modify a value in plist file and not add a new value if it doesn't exist in the file yet. 
+        # Therefore, check if a value already exists and it if does, then set a new value. 
+        if !get_info_plist_value(path: plist_file_path, key: "CFBundleVersion").nil? 
+          UI.message("Build version exists in plist file. Going to set new value")
+          set_info_plist_value(path: plist_file_path, key: "CFBundleVersion", value: new_build_number) 
+        end 
+
+        if !get_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString").nil? 
+          UI.message("Build version string exists in plist file. Going to set new value")
+          set_info_plist_value(path: plist_file_path, key: "CFBundleShortVersionString", value: new_app_version)
+        end 
+      end 
     end
   end
   project.save  
