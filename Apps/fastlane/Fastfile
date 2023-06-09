@@ -47,9 +47,14 @@ platform :ios do
       build_number: new_build_number,
       app_version: new_app_version
     )
+    
+    version_update_script_path = '../../../scripts/update-version.sh'
+    # Since this Fastfile is used by SDK wrapper projects that might not contain this script file, we skip running it if the file does not exist. 
+    if File.exist?(version_update_script_path)
+      UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
 
-    UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
-    sh("../../../scripts/update-version.sh \"#{new_app_version} (#{new_build_number})\" || true") # we add "|| true" to the end to prevent the script from throwing any errors. SDK wrappers use this Fastfile and they might not have this script in the project. 
+      sh("#{version_update_script_path} \"#{new_app_version} (#{new_build_number})\"")
+    end 
 
     uses_cocoapods = File.exists?("../Podfile")
     if uses_cocoapods 
