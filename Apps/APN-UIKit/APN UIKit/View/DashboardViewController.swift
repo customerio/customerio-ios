@@ -20,7 +20,6 @@ class DashboardViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        showPushPermissionPrompt()
         configureDashboardRouter()
         addNotifierObserver()
         addUserInteractionToImageViews()
