@@ -78,13 +78,11 @@ class LoginViewController: UIViewController {
     }
 
     @IBAction func generateRandomCredentials(_ sender: UIButton) {
-        let name = String.generateRandomString()
+        let name = String.generateRandomString(ofLength: 10)
         let email = "\(name)@customer.io"
-        // Set values
+        // Generate Random Credentials does not create a first name.
+        // Name is optional for login.
         emailTextField.text = email
-        firstNameTextField.text = name
-
-        showAlert(withMessage: "Random user has been generated.")
     }
 
     func userDetailsValid() -> Bool {
