@@ -94,6 +94,17 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func showPushPrompt(_ sender: UIButton) {
-        notificationUtil.showPromptForPushPermission()
+        notificationUtil.getPushPermission { status in
+            
+            if status == .notDetermined {
+                self.notificationUtil.showPromptForPushPermission()
+                return
+            }
+            let pushStatus = status == .denied ? "Denied" : "Granted"
+            DispatchQueue.main.async {
+                self.showAlert(withMessage: "Push permission status is - \(pushStatus)")
+
+            }
+        }
     }
 }
