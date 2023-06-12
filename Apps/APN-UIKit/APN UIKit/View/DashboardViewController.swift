@@ -95,7 +95,6 @@ class DashboardViewController: UIViewController {
     }
     
     @IBAction func showPushPrompt(_ sender: UIButton) {
-        
+        notificationUtil.showPromptForPushPermission()
     }
-    
 }
