@@ -6,7 +6,7 @@ class DashboardViewController: UIViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
 
-    @IBOutlet var userDetail: UIImageView!
+    @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
 
     var dashboardRouter: DashboardRouting?
@@ -24,10 +24,7 @@ class DashboardViewController: UIViewController {
         configureDashboardRouter()
         addNotifierObserver()
         addUserInteractionToImageViews()
-    }
-
-    func showPushPermissionPrompt() {
-        notificationUtil.showPromptForPushPermission()
+        setUserDetail()
     }
 
     func configureDashboardRouter() {
@@ -38,7 +35,6 @@ class DashboardViewController: UIViewController {
 
     func addUserInteractionToImageViews() {
         settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
-        userDetail.addTapGesture(onTarget: self, #selector(DashboardViewController.userDetailTapped))
     }
 
     deinit {
@@ -65,9 +61,10 @@ class DashboardViewController: UIViewController {
         dashboardRouter?.routeToSettings()
     }
 
-    @objc func userDetailTapped() {
-        let userDetail = "Name - " + storage.userName! + "\n\nEmailId - " + storage.userEmailId!
-        showAlert(withMessage: userDetail)
+    func setUserDetail() {
+        if let email = storage.userEmailId {
+            userInfoLabel.text = "[\(email)]"
+        }
     }
 
     // MARK: - Actions
@@ -96,4 +93,9 @@ class DashboardViewController: UIViewController {
     @IBAction func setProfileAttributes(_ sender: UIButton) {
         dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
     }
+    
+    @IBAction func showPushPrompt(_ sender: UIButton) {
+        
+    }
+    
 }
