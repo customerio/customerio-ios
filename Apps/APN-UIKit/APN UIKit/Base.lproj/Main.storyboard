@@ -214,7 +214,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="XDM-Yu-1Sg" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="94.666666666666686" y="272" width="185" height="34.333333333333314"/>
+                                        <rect key="frame" x="94.666666666666686" y="264" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="2yp-YY-fxM"/>
@@ -244,6 +244,7 @@
                                     <constraint firstItem="5Np-Wp-Fd7" firstAttribute="height" secondItem="nOP-Lf-TEx" secondAttribute="height" id="1qP-qG-E64"/>
                                     <constraint firstItem="gSy-pH-Zuu" firstAttribute="height" secondItem="nOP-Lf-TEx" secondAttribute="height" id="968-rI-qQ4"/>
                                     <constraint firstItem="rAK-3p-434" firstAttribute="height" secondItem="yOE-0O-ICW" secondAttribute="height" id="JeQ-37-zrw"/>
+                                    <constraint firstItem="XDM-Yu-1Sg" firstAttribute="height" secondItem="5Np-Wp-Fd7" secondAttribute="height" id="Lne-IS-ps9"/>
                                     <constraint firstItem="nOP-Lf-TEx" firstAttribute="height" secondItem="yOE-0O-ICW" secondAttribute="height" id="hbR-2v-zvE"/>
                                 </constraints>
                             </stackView>
