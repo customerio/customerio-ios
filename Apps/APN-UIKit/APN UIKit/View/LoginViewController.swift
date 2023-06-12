@@ -70,7 +70,7 @@ class LoginViewController: UIViewController {
         guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
             return
         }
-        CustomerIO.shared.identify(identifier: emailId, body: ["firstName": name])
+        CustomerIO.shared.identify(identifier: emailId, body: ["first_name": name])
         storage.userEmailId = emailId
         storage.userName = name
 
@@ -88,6 +88,6 @@ class LoginViewController: UIViewController {
     }
 
     func userDetailsValid() -> Bool {
-        !firstNameTextField.isTextTrimEmpty && !emailTextField.isTextTrimEmpty
+        !emailTextField.isTextTrimEmpty
     }
 }
