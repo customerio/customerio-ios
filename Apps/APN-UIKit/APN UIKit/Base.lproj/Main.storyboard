@@ -89,6 +89,12 @@
                                     <constraint firstAttribute="width" constant="50" id="J4G-Bk-vVW"/>
                                 </constraints>
                             </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jhw-4t-vdr">
+                                <rect key="frame" x="20" y="696.66666666666663" width="374" height="19.333333333333371"/>
+                                <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="14"/>
+                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="0.55000000000000004" colorSpace="custom" customColorSpace="sRGB"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
@@ -96,9 +102,12 @@
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="RG6-zo-pd6" secondAttribute="trailing" constant="15" id="1Hh-P5-vNf"/>
                             <constraint firstItem="RG6-zo-pd6" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="1lf-ST-XQm"/>
                             <constraint firstItem="RG6-zo-pd6" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="15" id="4eE-fo-WKw"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="jhw-4t-vdr" secondAttribute="trailing" constant="20" id="8aK-Dr-1j6"/>
                             <constraint firstItem="RG6-zo-pd6" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="DJt-uO-TkY"/>
                             <constraint firstItem="WZv-T2-RIj" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="80" id="Gog-90-fBk"/>
+                            <constraint firstItem="jhw-4t-vdr" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="Jg0-gF-owb"/>
                             <constraint firstItem="WZv-T2-RIj" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="nZN-3o-cxs"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="jhw-4t-vdr" secondAttribute="bottom" constant="20" id="r7P-7P-9oA"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="WZv-T2-RIj" secondAttribute="trailing" constant="20" id="t9V-VS-mtr"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="HPL-cE-0Qb" secondAttribute="trailing" constant="20" id="vh3-4B-ct0"/>
                             <constraint firstItem="HPL-cE-0Qb" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="wbM-7D-TgK"/>
@@ -110,11 +119,12 @@
                         <outlet property="emailTextField" destination="GCe-Ns-Vy3" id="dea-Qv-0T1"/>
                         <outlet property="firstNameTextField" destination="XNO-Pm-1m4" id="Ys2-bz-1OK"/>
                         <outlet property="settings" destination="HPL-cE-0Qb" id="JLf-yj-ixr"/>
+                        <outlet property="versionsLabel" destination="jhw-4t-vdr" id="tom-lI-c6D"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="950.76923076923072" y="3.5545023696682461"/>
+            <point key="canvasLocation" x="950.72463768115949" y="3.2608695652173916"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="oTp-uZ-GZ6">

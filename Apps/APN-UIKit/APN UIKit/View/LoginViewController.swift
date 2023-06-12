@@ -1,5 +1,6 @@
 import CioTracking
 import UIKit
+import CioInternalCommon
 
 class LoginViewController: UIViewController {
     static func newInstance() -> LoginViewController {
@@ -11,6 +12,7 @@ class LoginViewController: UIViewController {
     @IBOutlet var emailTextField: ThemeTextField!
     @IBOutlet var firstNameTextField: ThemeTextField!
     @IBOutlet var settings: UIImageView!
+    @IBOutlet var versionsLabel: UILabel!
 
     var storage = DIGraph.shared.storage
     var loginRouter: LoginRouting?
@@ -20,6 +22,7 @@ class LoginViewController: UIViewController {
         navigationController?.isNavigationBarHidden = true
         emailTextField.clear()
         firstNameTextField.clear()
+        configureVersionLabel()
     }
 
     override func viewDidLoad() {
@@ -34,6 +37,12 @@ class LoginViewController: UIViewController {
         NotificationCenter.default.removeObserver(self)
     }
 
+    func configureVersionLabel() {
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let versionDetail = "Customer.io iOS SDK \(SdkVersion.version) Ami app \(appVersion ?? "")"
+        versionsLabel.text = versionDetail
+    }
+    
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,
