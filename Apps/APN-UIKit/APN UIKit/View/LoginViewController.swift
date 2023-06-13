@@ -73,7 +73,11 @@ class LoginViewController: UIViewController {
 
     @IBAction func logInToApp(_ sender: UIButton) {
         if !userDetailsValid() {
-            showAlert(withMessage: "Please fill all fields", .error)
+            showAlert(withMessage: "Email Id is mandatory to login into the app.", .error)
+            return
+        }
+        if !isEmailValid() {
+            showAlert(withMessage: "Invalid email id format.", .error)
             return
         }
         guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
@@ -95,6 +99,17 @@ class LoginViewController: UIViewController {
     }
 
     func userDetailsValid() -> Bool {
-        !emailTextField.isTextTrimEmpty
+        return !emailTextField.isTextTrimEmpty
+    }
+    
+    func isEmailValid() -> Bool {
+        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        
+        let emailPred = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
+        var isValid = false
+        if let email = emailTextField.text {
+            isValid = emailPred.evaluate(with: emailTextField.text)
+        }
+        return isValid
     }
 }
