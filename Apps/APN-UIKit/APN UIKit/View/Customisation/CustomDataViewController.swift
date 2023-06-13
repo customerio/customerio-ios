@@ -69,10 +69,10 @@ class CustomDataViewController: UIViewController {
             guard let eventName = eventNameTextField.text else { return }
             CustomerIO.shared.track(name: eventName, data: [propName: propValue])
             showAlert(withMessage: "Custom event tracked successfully")
-        } else if source == .profileAttributes {
+        } else if source == .deviceAttributes {
             CustomerIO.shared.deviceAttributes = [propName: propValue]
             showAlert(withMessage: "Device attribute set successfully.")
-        } else if source == .deviceAttributes {
+        } else if source == .profileAttributes {
             CustomerIO.shared.profileAttributes = [propName: propValue]
             showAlert(withMessage: "Profile attribute set successfully.")
         }
