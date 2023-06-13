@@ -40,25 +40,25 @@ class CustomDataViewController: UIViewController {
             headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Attribute"
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
-            propertyNameLabel.text = "Attribute Name"
-            propertyValueLabel.text = "Attribute Value"
+            propertyNameLabel.text = "Attribute Name*"
+            propertyValueLabel.text = "Attribute Value*"
         }
     }
 
     func isAllTextFieldsValid() -> Bool {
-        if propertyValueTextField.isTextTrimEmpty ||
-            propertyNameTextField.isTextTrimEmpty ||
-            (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
-            return false
+        if source == .customEvents {
+            return !eventNameTextField.isTextTrimEmpty
         }
-        return true
+        else{
+            return !(propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
+        }
     }
 
     // MARK: - Actions
 
     @IBAction func sendCustomData(_ sender: UIButton) {
         if !isAllTextFieldsValid() {
-            showAlert(withMessage: "Please fill all fields", .error)
+            showAlert(withMessage: "Please fill all * marked fields.", .error)
             return
         }
 

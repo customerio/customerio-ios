@@ -85,12 +85,12 @@ class DashboardViewController: UIViewController {
         guard let name = randomEventInfo["name"] as? String else {
             return
         }
+        showAlert(withMessage: "Random event  tracked successfully")
         if let data = randomEventInfo["data"] as? [String: Any] {
             CustomerIO.shared.track(name: name, data: data)
             return
         }
         CustomerIO.shared.track(name: name)
-        showAlert(withMessage: "Random event  tracked successfully")
     }
 
     @IBAction func sendCustomEvent(_ sender: UIButton) {
