@@ -65,7 +65,7 @@ class DashboardViewController: UIViewController {
 
     func setUserDetail() {
         if let email = storage.userEmailId {
-            userInfoLabel.text = "[\(email)]"
+            userInfoLabel.text = email
         }
     }
 
