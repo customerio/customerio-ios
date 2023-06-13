@@ -109,7 +109,7 @@ class DashboardViewController: UIViewController {
         notificationUtil.getPushPermission { status in
             
             if status == .notDetermined {
-                self.notificationUtil.showPromptForPushPermission()
+                self.notificationUtil.showPromptForPushPermission { _ in}
                 return
             }
             let pushStatus = status == .denied ? "Denied" : "Granted"

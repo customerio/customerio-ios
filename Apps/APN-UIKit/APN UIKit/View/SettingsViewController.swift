@@ -168,7 +168,12 @@ class SettingsViewController: UIViewController {
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
                 if status == .notDetermined {
-                    self.notificationUtil.showPromptForPushPermission()
+                    self.notificationUtil.showPromptForPushPermission { status in
+                        
+                        DispatchQueue.main.async {
+                            sender.setOn(status, animated: true)
+                        }
+                    }
                 } else {
                     if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(appSettingsUrl)

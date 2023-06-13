@@ -2,13 +2,17 @@ import Foundation
 import UIKit
 
 protocol NotificationUtility {
-    func showPromptForPushPermission()
+    func showPromptForPushPermission(completionHandler : @escaping(Bool) -> Void)
+    func getPushPermission(completionHandler : @escaping(UNAuthorizationStatus) -> Void)
 }
 
 // sourcery: InjectRegister = "NotificationUtil"
 class NotificationUtil: NotificationUtility {
-    func showPromptForPushPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { _, _ in })
+    func showPromptForPushPermission(completionHandler : @escaping(Bool) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { status, response in
+            
+            completionHandler(status)
+        })
     }
     
     func getPushPermission(completionHandler : @escaping(UNAuthorizationStatus) -> Void) {
