@@ -89,6 +89,7 @@ class SettingsViewController: UIViewController {
     }
 
     func getAndSetDefaultValues() {
+        
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "",
@@ -97,7 +98,7 @@ class SettingsViewController: UIViewController {
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isPushEnabled: false,
-            isTrackScreenEnabled: storage.isTrackScreenEnabled ?? false,
+            isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
             isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
             isDebugModeEnabled: storage.isDebugModeEnabled ?? true
         )
