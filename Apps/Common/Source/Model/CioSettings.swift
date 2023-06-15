@@ -10,6 +10,7 @@ public struct CioSettings: Codable {
     public var bqSecondsDelay: TimeInterval
     public var bqMinNumberTasks: Int
     public var trackScreens: Bool
+    public var debugSdkMode: Bool
     public var trackDeviceAttributes: Bool
 
     public func configureCioSdk(config: inout CioSdkConfig) {
@@ -18,6 +19,7 @@ public struct CioSettings: Codable {
         config.backgroundQueueMinNumberOfTasks = bqMinNumberTasks
         config.autoTrackScreenViews = trackScreens
         config.autoTrackDeviceAttributes = trackDeviceAttributes
+        config.logLevel = debugSdkMode ? .debug : .error
     }
 
     static func getFromCioSdk() -> CioSettings {
@@ -30,6 +32,7 @@ public struct CioSettings: Codable {
             bqSecondsDelay: sdkConfig.backgroundQueueSecondsDelay,
             bqMinNumberTasks: sdkConfig.backgroundQueueMinNumberOfTasks,
             trackScreens: sdkConfig.autoTrackScreenViews,
+            debugSdkMode: sdkConfig.logLevel == .debug,
             trackDeviceAttributes: sdkConfig.autoTrackDeviceAttributes
         )
     }

@@ -16,6 +16,7 @@
 		F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECB29F2C0C300411BCC /* LoginView.swift */; };
 		F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */; };
 		F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED329F2C82D00411BCC /* UserManager.swift */; };
+		F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70F4CDC2A3B91DA00037B91 /* Appium.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
 		F73134682919570700CD43D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73134672919570700CD43D9 /* Assets.xcassets */; };
@@ -74,6 +75,7 @@
 		F7029ECB29F2C0C300411BCC /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentText.swift; sourceTree = "<group>"; };
 		F7029ED329F2C82D00411BCC /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
+		F70F4CDC2A3B91DA00037B91 /* Appium.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Appium.swift; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		F73134652919570600CD43D9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F7029ECB29F2C0C300411BCC /* LoginView.swift */,
 				F7C1C58D29F2D39300067998 /* SettingsView.swift */,
+				F70F4CDC2A3B91DA00037B91 /* Appium.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -431,6 +434,7 @@
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
+				F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */,
 				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */,
