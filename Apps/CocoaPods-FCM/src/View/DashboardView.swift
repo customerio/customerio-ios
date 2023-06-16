@@ -3,6 +3,8 @@ import SwiftUI
 import UserNotifications
 
 struct DashboardView: View {
+    @State private var showRandomEventSentAlert = false
+
     @State private var showingCustomEventSheet = false
     @State private var showingCustomEventAlert = false
     @State private var customEventName: String = ""
@@ -41,18 +43,42 @@ struct DashboardView: View {
             }
 
             VStack(spacing: 10) {
+                if let loggedInUserEmail = userManager.email {
+                    Text(loggedInUserEmail)
+                }
                 Text("What would you like to test?")
 
-                ColorButton(title: "Send Random Event") {
-                    CustomerIO.shared.track(
-                        name: String.random,
-                        data: [
-                            "randomAttribute": String.random,
-                            "random_attribute": String.random
-                        ]
+                ColorButton("Send Random Event") {
+                    switch Int.random(in: 0 ..< 3) {
+                    case 0:
+                        CustomerIO.shared.track(name: "Order Purchased")
+                    case 1:
+                        CustomerIO.shared.track(
+                            name: "movie_watched",
+                            data: [
+                                "movie_name": "The Incredibles"
+                            ]
+                        )
+                    default: // case 2
+                        CustomerIO.shared.track(
+                            name: "appointmentScheduled",
+                            data: [
+                                "appointmentTime": Calendar.current.date(byAdding: .day, value: 7, to: Date())!.epochNoMilliseconds
+                            ]
+                        )
+                    }
+
+                    showRandomEventSentAlert.toggle()
+                }
+                .setAppiumId("Random Event Button")
+                .alert(isPresented: $showRandomEventSentAlert) {
+                    Alert(
+                        title: Text("Random event sent"),
+                        dismissButton: .default(Text("OK"))
                     )
-                }.setAppiumId("Random Event Button")
-                ColorButton(title: "Send Custom Event") {
+                }
+
+                ColorButton("Send Custom Event") {
                     showingCustomEventSheet.toggle()
                 }.setAppiumId("Custom Event Button")
                     .sheet(isPresented: $showingCustomEventSheet, content: {
@@ -74,7 +100,7 @@ struct DashboardView: View {
                             }
                         }.padding([.leading, .trailing], 50)
                     })
-                ColorButton(title: "Set Device Attribute") {
+                ColorButton("Set Device Attribute") {
                     showingDeviceAttributesSheet.toggle()
                 }.setAppiumId("Device Attribute Button")
                     .sheet(isPresented: $showingDeviceAttributesSheet, content: {
@@ -95,7 +121,7 @@ struct DashboardView: View {
                             }
                         }.padding([.leading, .trailing], 50)
                     })
-                ColorButton(title: "Set Profile Attribute") {
+                ColorButton("Set Profile Attribute") {
                     showingProfileAttributesSheet.toggle()
                 }.setAppiumId("Profile Attribute Button")
                     .sheet(isPresented: $showingProfileAttributesSheet, content: {
@@ -117,7 +143,7 @@ struct DashboardView: View {
                         }.padding([.leading, .trailing], 50)
                     })
                 if showAskForPushPermissionButton {
-                    ColorButton(title: "Show Push Prompt") {
+                    ColorButton("Show Push Prompt") {
                         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
                             if granted {
                                 DispatchQueue.main.async {
@@ -129,7 +155,7 @@ struct DashboardView: View {
                         showAskForPushPermissionButton = false
                     }.setAppiumId("Show Push Prompt Button")
                 }
-                ColorButton(title: "Logout") {
+                ColorButton("Logout") {
                     CustomerIO.shared.clearIdentify()
 
                     userManager.logout()

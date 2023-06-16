@@ -22,7 +22,7 @@ struct SettingsView: View {
             SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
             SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")
 
-            ColorButton(title: "Save") {
+            ColorButton("Save") {
                 // save settings to device storage for app to re-use when app is restarted
                 settingsManager.settings = viewModel.settings
 

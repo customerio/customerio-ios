@@ -5,6 +5,7 @@ struct LoginView: View {
     @State private var firstNameText: String = ""
     @State private var emailText: String = ""
 
+    @State private var errorMessage: String?
     @State private var showSettings: Bool = false
 
     @EnvironmentObject var userManager: UserManager
@@ -28,16 +29,24 @@ struct LoginView: View {
             VStack(spacing: 40) { // This view container will be in center of screen.
                 TextField("First name", text: $firstNameText).setAppiumId("First Name Input")
                 TextField("Email", text: $emailText).setAppiumId("Email Input")
-                ColorButton(title: "Login") {
+                ColorButton("Login") {
+                    // first name is optional
+
+                    if emailText.isEmpty {
+                        errorMessage = "Email address is required."
+                        return
+                    }
+
                     CustomerIO.shared.identify(identifier: emailText, body: [
+                        "email": emailText,
                         "first_name": firstNameText
                     ])
 
                     userManager.userLoggedIn(email: emailText)
                 }.setAppiumId("Login Button")
                 Button("Generate random login") {
-                    firstNameText = String.random.capitalized
-                    emailText = "\(firstNameText.lowercased())@customer.io"
+                    firstNameText = ""
+                    emailText = "\(String.random(length: 10))@customer.io"
                 }.setAppiumId("Random Login Button")
             }
             .padding([.leading, .trailing], 50)
@@ -46,6 +55,14 @@ struct LoginView: View {
                 Spacer() // Spacers is how you push views to top or bottom of screen.
                 EnvironmentText()
             }
+        }.alert(isPresented: .notNil(errorMessage)) {
+            Alert(
+                title: Text("Error"),
+                message: Text(errorMessage!),
+                dismissButton: .default(Text("OK")) {
+                    errorMessage = nil
+                }
+            )
         }
     }
 }

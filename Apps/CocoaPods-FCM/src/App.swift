@@ -27,12 +27,12 @@ struct MainApp: App {
                     //
                     // ...will open the app and display the deep link in a pop-up.
                     openedDeepLinkUrl = deepLink
-                }.alert(isPresented: Binding<URL>.notNil(openedDeepLinkUrl)) {
-                    Alert(
-                        title: Text("Deep link opened!"),
-                        message: Text(openedDeepLinkUrl!.absoluteString),
-                        dismissButton: .default(Text("OK"))
-                    )
+//                }.alert(isPresented: Binding<URL>.notNil(openedDeepLinkUrl)) {
+//                    Alert(
+//                        title: Text("Deep link opened!"),
+//                        message: Text(openedDeepLinkUrl!.absoluteString),
+//                        dismissButton: .default(Text("OK"))
+//                    )
                 }
         }
     }
