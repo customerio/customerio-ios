@@ -19,7 +19,10 @@ public struct CioSettings: Codable {
         config.backgroundQueueMinNumberOfTasks = bqMinNumberTasks
         config.autoTrackScreenViews = trackScreens
         config.autoTrackDeviceAttributes = trackDeviceAttributes
-        config.logLevel = debugSdkMode ? .debug : .error
+
+        if debugSdkMode {
+            config.logLevel = .debug
+        }
     }
 
     static func getFromCioSdk() -> CioSettings {
