@@ -10,6 +10,10 @@ public class CioSettingsManager {
         keyValueStorage.cioSettings != nil
     }
 
+    public func restoreSdkDefaultSettings() {
+        appSetSettings = nil
+    }
+
     public var appSetSettings: CioSettings? {
         get {
             if let appSetSettings = keyValueStorage.cioSettings {

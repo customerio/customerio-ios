@@ -15,6 +15,7 @@ struct LoginView: View {
                 SettingsButton {
                     showSettings = true
                 }
+                .setAppiumId("Settings")
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.trailing, 10)
                 Spacer()
@@ -25,19 +26,19 @@ struct LoginView: View {
             }
 
             VStack(spacing: 40) { // This view container will be in center of screen.
-                TextField("First name", text: $firstNameText)
-                TextField("Email", text: $emailText)
+                TextField("First name", text: $firstNameText).setAppiumId("First Name Input")
+                TextField("Email", text: $emailText).setAppiumId("Email Input")
                 ColorButton(title: "Login") {
                     CustomerIO.shared.identify(identifier: emailText, body: [
                         "first_name": firstNameText
                     ])
 
                     userManager.userLoggedIn(email: emailText)
-                }
+                }.setAppiumId("Login Button")
                 Button("Generate random login") {
                     firstNameText = String.random.capitalized
                     emailText = "\(firstNameText.lowercased())@customer.io"
-                }
+                }.setAppiumId("Random Login Button")
             }
             .padding([.leading, .trailing], 50)
 

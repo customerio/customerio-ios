@@ -10,14 +10,17 @@ struct SettingsView: View {
     @StateObject private var viewModel = ViewModel()
 
     var body: some View {
+        // TODO: add back button in UI to dismiss screen. add appium ID to it.
+
         VStack(spacing: 5) {
-            SettingsTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl)
-            SettingsTextField(title: "Site id:", value: $viewModel.settings.siteId)
-            SettingsTextField(title: "API key:", value: $viewModel.settings.apiKey)
+            SettingsTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl).setAppiumId("Track URL Input")
+            SettingsTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
+            SettingsTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
             SettingsTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay.toStringBinding())
             SettingsTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks.toStringBinding())
-            SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens)
-            SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes)
+            SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens).setAppiumId("Track Screens Toggle")
+            SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
+            SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")
 
             ColorButton(title: "Save") {
                 // save settings to device storage for app to re-use when app is restarted
@@ -29,7 +32,11 @@ struct SettingsView: View {
                 }
 
                 done()
-            }
+            }.setAppiumId("Save Settings Button")
+
+            Button("Restore default settings") {
+                settingsManager.restoreSdkDefaultSettings()
+            }.setAppiumId("Restore Default Settings Button")
         }
         .padding([.leading, .trailing], 10)
     }
