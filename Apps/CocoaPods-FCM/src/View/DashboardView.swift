@@ -15,6 +15,7 @@ struct DashboardView: View {
 
     @State private var showSettings: Bool = false
 
+    @State private var navigateToCustomEventScreen = false
     @State private var navigateToProfileAttributesScreen = false
     @State private var navigateToDeviceAttributesScreen = false
 
@@ -36,8 +37,6 @@ struct DashboardView: View {
                 }
             }
 
-            // TODO: make custom event screen
-
             NavigationView {
                 VStack(spacing: 15) {
                     NavigationLink(destination: CustomAttributeView(attributeType: .deviceAttributes, done: { name, value in
@@ -51,6 +50,14 @@ struct DashboardView: View {
 
                         navigateToProfileAttributesScreen = false
                     }), isActive: $navigateToProfileAttributesScreen, label: { EmptyView() })
+
+                    NavigationLink(destination: CustomEventView(done: { eventName, propertyName, propertyValue in
+                        CustomerIO.shared.track(name: eventName, data: [
+                            propertyName: propertyValue
+                        ])
+
+                        navigateToCustomEventScreen = false
+                    }), isActive: $navigateToCustomEventScreen, label: { EmptyView() })
 
                     if let loggedInUserEmail = userManager.email {
                         Text(loggedInUserEmail)
@@ -87,30 +94,11 @@ struct DashboardView: View {
                         )
                     }
 
-                    ColorButton("Send Custom Event") {
-                        showingCustomEventSheet.toggle()
-                    }.setAppiumId("Custom Event Button")
-                        .sheet(isPresented: $showingCustomEventSheet, content: {
-                            VStack(spacing: 15) {
-                                TextField("Event name", text: $customEventName)
-                                TextField("Property name", text: $customEventPropertyName)
-                                TextField("Property value", text: $customEventPropertyValue)
-                                Button("Send event") {
-                                    CustomerIO.shared.track(name: customEventName, data: [
-                                        customEventPropertyName: customEventPropertyValue
-                                    ])
-
-                                    showingCustomEventAlert.toggle()
-                                }.alert(isPresented: $showingCustomEventAlert) {
-                                    Alert(
-                                        title: Text("Track event sent"),
-                                        dismissButton: .default(Text("OK"))
-                                    )
-                                }
-                            }.padding([.leading, .trailing], 50)
-                        })
-
                     Group { // hack to get around Swift UI's max of 10 Views rule.
+                        ColorButton("Send Custom Event") {
+                            navigateToCustomEventScreen = true
+                        }.setAppiumId("Custom Event Button")
+
                         ColorButton("Set Device Attribute") {
                             navigateToDeviceAttributesScreen = true
                         }.setAppiumId("Device Attribute Button")
