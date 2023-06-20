@@ -24,6 +24,8 @@
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
 		F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7382933291D5C27008ED8CB /* NotificationService.swift */; };
 		F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */; };
+		F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */; };
 		F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
@@ -88,6 +90,8 @@
 		F7382933291D5C27008ED8CB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F7382935291D5C27008ED8CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "test-cocoapods-Info.plist"; sourceTree = "<group>"; };
+		F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAttributeView.swift; sourceTree = "<group>"; };
+		F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabeledTextField.swift; sourceTree = "<group>"; };
 		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -157,6 +161,7 @@
 				F7029ECB29F2C0C300411BCC /* LoginView.swift */,
 				F7C1C58D29F2D39300067998 /* SettingsView.swift */,
 				F70F4CDC2A3B91DA00037B91 /* Appium.swift */,
+				F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -167,6 +172,7 @@
 				F7029EBD29F2B00500411BCC /* ColorButton.swift */,
 				F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */,
 				F78E3D782A058B5000641391 /* SettingsButton.swift */,
+				F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -445,6 +451,8 @@
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
+				F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */,
+				F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
 				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
@@ -607,6 +615,7 @@
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -645,6 +654,7 @@
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
