@@ -11,6 +11,8 @@ struct SettingsView: View {
     @StateObject private var viewModel = ViewModel()
 
     var body: some View {
+        // TODO: add back button in UI to dismiss screen. add appium ID to it.
+
         VStack(spacing: 5) {
             LabeledTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl).setAppiumId("Track URL Input")
             LabeledTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
