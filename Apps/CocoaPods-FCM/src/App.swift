@@ -28,10 +28,13 @@ struct MainApp: App {
                     // App scheme: Any URL that begins with `cocoapods-fcm://`...
                     //
                     // ...will open the app and display the deep link in a pop-up.
+                    //
+                    // Suggestions for debugging why deep links aren't working: https://stackoverflow.com/questions/32751225/ios-universal-links-are-not-opening-in-app
                     if let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) {
                         var command = ""
                         if urlComponents.scheme == "https" { // universal link
-                            command = urlComponents.path
+                            // path will start with a / character
+                            command = urlComponents.path.replacingOccurrences(of: "/", with: "")
                         } else {
                             command = urlComponents.host!
                         }
