@@ -23,6 +23,11 @@ public class KeyValueStore {
             return try! JSONDecoder().decode(CioSettings.self, from: settingsData)
         }
         set {
+            guard let newValue = newValue else {
+                userDefaults.removeObject(forKey: Keys.cioSettings.rawValue)
+                return
+            }
+
             userDefaults.set(try! JSONEncoder().encode(newValue), forKey: Keys.cioSettings.rawValue)
         }
     }

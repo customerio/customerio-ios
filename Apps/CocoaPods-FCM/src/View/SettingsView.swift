@@ -3,9 +3,10 @@ import SampleAppsCommon
 import SwiftUI
 
 struct SettingsView: View {
-    var done: () -> Void
+    var siteId: String?
+    var apiKey: String?
 
-    private let settingsManager = CioSettingsManager()
+    var done: () -> Void
 
     @StateObject private var viewModel = ViewModel()
 
@@ -22,7 +23,7 @@ struct SettingsView: View {
 
             ColorButton("Save") {
                 // save settings to device storage for app to re-use when app is restarted
-                settingsManager.settings = viewModel.settings
+                viewModel.saveSettings()
 
                 // Re-initialize the SDK to make the config changes go into place immediately
                 CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
@@ -33,14 +34,38 @@ struct SettingsView: View {
             }.setAppiumId("Save Settings Button")
 
             Button("Restore default settings") {
-                settingsManager.restoreSdkDefaultSettings()
+                viewModel.restoreDefaultSettings()
             }.setAppiumId("Restore Default Settings Button")
         }
         .padding([.leading, .trailing], 10)
+        .onAppear {
+            if let siteId = siteId {
+                viewModel.settings.siteId = siteId
+            }
+            if let apiKey = apiKey {
+                viewModel.settings.apiKey = apiKey
+            }
+        }
     }
 
     class ViewModel: ObservableObject {
-        @Published var settings: CioSettings = CioSettingsManager().settings
+        @Published var settings: CioSettings
+
+        private let settingsManager: CioSettingsManager
+
+        init() {
+            self.settingsManager = CioSettingsManager()
+            self.settings = settingsManager.settings
+        }
+
+        func saveSettings() {
+            settingsManager.settings = settings
+        }
+
+        func restoreDefaultSettings() {
+            settingsManager.restoreSdkDefaultSettings()
+            settings = settingsManager.settings
+        }
     }
 }
 

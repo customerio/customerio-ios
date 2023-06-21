@@ -6,12 +6,14 @@ struct MainApp: App {
 
     @StateObject var userManager: UserManager = .init()
 
-    @State private var openedDeepLinkUrl: URL?
+    @State private var settingsScreen: SettingsView?
 
     var body: some Scene {
         WindowGroup {
             HStack {
-                if userManager.isUserLoggedIn {
+                if let settingsScreen = settingsScreen {
+                    settingsScreen
+                } else if userManager.isUserLoggedIn {
                     DashboardView()
                         .environmentObject(userManager)
                 } else {
@@ -26,13 +28,34 @@ struct MainApp: App {
                     // App scheme: Any URL that begins with `cocoapods-fcm://`...
                     //
                     // ...will open the app and display the deep link in a pop-up.
-                    openedDeepLinkUrl = deepLink
-//                }.alert(isPresented: Binding<URL>.notNil(openedDeepLinkUrl)) {
-//                    Alert(
-//                        title: Text("Deep link opened!"),
-//                        message: Text(openedDeepLinkUrl!.absoluteString),
-//                        dismissButton: .default(Text("OK"))
-//                    )
+                    if let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) {
+                        var command = ""
+                        if urlComponents.scheme == "https" { // universal link
+                            command = urlComponents.path
+                        } else {
+                            command = urlComponents.host!
+                        }
+
+                        switch command {
+                        case "login":
+                            userManager.logout() // will force the app's UI to navigate back to login screen
+                        case "dashboard":
+                            settingsScreen = nil // as long as user is logged in, this will make dashboard show
+                        case "settings":
+                            var siteId: String?
+                            var apiKey: String?
+
+                            if let queryItems = urlComponents.queryItems {
+                                siteId = queryItems.first { $0.name == "site_id" }?.value
+                                apiKey = queryItems.first { $0.name == "api_key" }?.value
+                            }
+
+                            settingsScreen = SettingsView(siteId: siteId, apiKey: apiKey) {
+                                settingsScreen = nil
+                            }
+                        default: break
+                        }
+                    }
                 }
         }
     }
