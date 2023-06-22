@@ -13,7 +13,7 @@ protocol StorageManager {
     var userEmailId: String? { get set }
     var userName: String? { get set }
     var deviceToken: String? { get set }
-    var isFirstTimeLogin: Bool? {get set}
+    var didSetDefaults: Bool? {get set}
 }
 
 // sourcery: InjectRegister = "Storage"
@@ -133,12 +133,12 @@ class Storage: StorageManager {
         }
     }
     
-    var isFirstTimeLogin: Bool? {
+    var didSetDefaults: Bool? {
         get {
-            userDefaults.bool(forKey: UserDefaultKeys.isFirstTimeLogin.rawValue)
+            userDefaults.bool(forKey: UserDefaultKeys.didSetDefaults.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.isFirstTimeLogin.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
         }
     }
 }

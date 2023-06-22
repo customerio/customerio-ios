@@ -24,13 +24,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func initializeCioAndInAppListeners() {
         // Initialize CustomerIO SDK
 
-        if storage.isFirstTimeLogin == false {
-            storage.isFirstTimeLogin = true
+        if storage.didSetDefaults == false {
+            storage.didSetDefaults = true
             storage.isDebugModeEnabled = true
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
-        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
+        var siteId = BuildEnvironment.CustomerIO.siteId
+        var apiKey = BuildEnvironment.CustomerIO.apiKey
+        if let storedSiteId = storage.siteId {
+            siteId = storedSiteId
+        }
+        if let storedApiKey = storage.apiKey {
+            apiKey = storedApiKey
+        }
+        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
             config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
