@@ -108,7 +108,7 @@ class LoginViewController: UIViewController {
         let emailPred = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
         var isValid = false
         if let email = emailTextField.text {
-            isValid = emailPred.evaluate(with: emailTextField.text)
+            isValid = emailPred.evaluate(with: email)
         }
         return isValid
     }
