@@ -21,8 +21,15 @@ let package = Package(
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
         .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
-    targets: [        
-        // Common - Code used by multiple modules in the SDK project. 
+    dependencies: [
+        // Help for the format of declaring SPM dependencies:
+        // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
+        //
+        // Update to exact version until wrapper SDKs become part of testing pipeline.
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
+    ],
+    targets: [ 
+        // Common - Code used by multiple modules in the SDK project.
         // this module is *not* exposed to the public. It's used internally. 
         .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
@@ -62,7 +69,7 @@ let package = Package(
                     path: "Tests/MessagingPushAPN"),
         // FCM 
         .target(name: "CioMessagingPushFCM",
-                dependencies: ["CioMessagingPush"],
+                dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
