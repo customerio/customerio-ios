@@ -26,6 +26,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         if storage.isFirstTimeLogin == false {
             storage.isFirstTimeLogin = true
+            storage.isDebugModeEnabled = true
+            storage.isTrackScreenEnabled = true
+            storage.isTrackDeviceAttrEnabled = true
         }
         CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
             config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
