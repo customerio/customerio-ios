@@ -143,7 +143,7 @@ class SettingsViewController: UIViewController {
         }
     }
 
-    func compareAndSave() {
+    func save() {
         // Track Url
         storage.trackUrl = trackUrlTextField.text
         // Background Queue Seconds Delay
@@ -156,12 +156,16 @@ class SettingsViewController: UIViewController {
         storage.isTrackScreenEnabled = trackScreenState
         // Debug screen
         storage.isDebugModeEnabled = debugModeState
+        // SiteId
+        storage.siteId = siteIdTextField.text
+        //Api Key
+        storage.apiKey = siteIdTextField.text
     }
 
     // MARK: - Actions
 
     @IBAction func saveSettings(_ sender: UIButton) {
-        compareAndSave()
+        save()
         showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
     }
 
