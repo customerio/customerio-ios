@@ -2,7 +2,7 @@ import CioTracking
 import UIKit
 import CioInternalCommon
 
-class LoginViewController: UIViewController {
+class LoginViewController: BaseViewController {
     static func newInstance() -> LoginViewController {
         UIStoryboard.getViewController(identifier: "LoginViewController")
     }

@@ -1,7 +1,7 @@
 import UIKit
 import UserNotifications
 
-class SettingsViewController: UIViewController {
+class SettingsViewController: BaseViewController {
     static func newInstance() -> SettingsViewController {
         UIStoryboard.getViewController(identifier: "SettingsViewController")
     }

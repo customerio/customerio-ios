@@ -1,7 +1,7 @@
 import CioTracking
 import UIKit
 
-class DashboardViewController: UIViewController {
+class DashboardViewController: BaseViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }

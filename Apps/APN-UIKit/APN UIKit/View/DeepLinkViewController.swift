@@ -1,7 +1,7 @@
 import Foundation
 import UIKit
 
-class DeepLinkViewController: UIViewController {
+class DeepLinkViewController: BaseViewController {
     static func newInstance() -> DeepLinkViewController {
         UIStoryboard.getViewController(identifier: "DeepLinkViewController")
     }

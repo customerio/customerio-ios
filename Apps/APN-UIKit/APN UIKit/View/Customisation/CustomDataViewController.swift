@@ -7,7 +7,7 @@ enum CustomDataSource {
     case profileAttributes
 }
 
-class CustomDataViewController: UIViewController {
+class CustomDataViewController: BaseViewController {
     @IBOutlet var eventNameTextField: ThemeTextField!
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
