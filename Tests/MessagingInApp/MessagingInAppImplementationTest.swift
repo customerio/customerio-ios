@@ -2,7 +2,6 @@
 @testable import CioMessagingInApp
 @testable import CioTracking
 import Foundation
-import Gist
 import SharedTests
 import XCTest
 
