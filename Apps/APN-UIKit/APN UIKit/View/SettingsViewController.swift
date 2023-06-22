@@ -92,7 +92,7 @@ class SettingsViewController: UIViewController {
         
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
-            trackUrl: storage.trackUrl ?? "",
+            trackUrl: storage.trackUrl ?? "https://track-sdk.customer.io/",
             siteId: storage.siteId ?? BuildEnvironment.CustomerIO.siteId,
             apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
@@ -102,7 +102,7 @@ class SettingsViewController: UIViewController {
             isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
             isDebugModeEnabled: storage.isDebugModeEnabled ?? true
         )
-
+        
         getStatusOfPushPermissions { status in
             DispatchQueue.main.async {
                 self.currentSettings?.isPushEnabled = status == .authorized ? true : false
@@ -110,7 +110,7 @@ class SettingsViewController: UIViewController {
             }
         }
     }
-
+    
     func setDefaultValues() {
         deviceTokenTextField.text = currentSettings.deviceToken
         trackUrlTextField.text = currentSettings.trackUrl
@@ -158,8 +158,44 @@ class SettingsViewController: UIViewController {
         storage.isDebugModeEnabled = debugModeState
         // SiteId
         storage.siteId = siteIdTextField.text
-        //Api Key
+        // Api Key
         storage.apiKey = siteIdTextField.text
+    }
+    
+    func isValid() -> Bool {
+        // Site id and Api Key
+        if siteIdTextField.isTextTrimEmpty {
+            showAlert(withMessage: "Enter a valid value for Site Id.")
+            return false
+        }
+        if apiKeyTextField.isTextTrimEmpty {
+            showAlert(withMessage: "Enter a valid value for Api Key.")
+            return false
+        }
+        // BGQ
+        if bgQMinTasksTextField.isTextTrimEmpty || bgQMinTasksTextField.text == "0" {
+            showAlert(withMessage: "Enter a valid value for Background Queue Minimum number of tasks.")
+            return false
+        }
+        if bgQTakDelayTextField.isTextTrimEmpty || bgQTakDelayTextField.text == "0" {
+            showAlert(withMessage: "Enter a valid value for Background Queue Delay in seconds.")
+            return false
+        }
+        // Tracking Url
+        if trackUrlTextField.isTextTrimEmpty || isValidUrl(trackUrlTextField.text) {
+            showAlert(withMessage: "Enter a valid value for CIO Track Url.")
+            return false
+        }
+        return true
+    }
+    
+    func isValidUrl(_ urlString: String?) -> Bool {
+        if let urlString = urlString {
+            if let url = NSURL(string: urlString) {
+                return UIApplication.shared.canOpenURL(url as URL)
+            }
+        }
+        return false
     }
 
     // MARK: - Actions
