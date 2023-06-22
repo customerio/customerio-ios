@@ -14,6 +14,15 @@ public class KeyValueStore {
         }
     }
 
+    public var pushToken: String? {
+        get {
+            userDefaults.string(forKey: Keys.pushToken.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.pushToken.rawValue)
+        }
+    }
+
     public var cioSettings: CioSettings? {
         get {
             guard let settingsData = userDefaults.data(forKey: Keys.cioSettings.rawValue) else {
@@ -34,6 +43,7 @@ public class KeyValueStore {
 
     private enum Keys: String {
         case loggedInUserEmail
+        case pushToken
         case cioSettings
     }
 }

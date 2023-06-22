@@ -39,6 +39,7 @@
 		F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C1C58D29F2D39300067998 /* SettingsView.swift */; };
 		F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 		F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
+		F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -105,6 +106,7 @@
 		F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
+		F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneLineText.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +178,7 @@
 				F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */,
 				F78E3D782A058B5000641391 /* SettingsButton.swift */,
 				F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */,
+				F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -461,6 +464,7 @@
 				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
+				F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
 				F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */,

@@ -98,5 +98,7 @@ extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // Pass the FCM token to the Customer.io SDK:
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+
+        KeyValueStore().pushToken = fcmToken // to show in the settings screen of the app later.
     }
 }
