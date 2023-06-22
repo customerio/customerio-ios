@@ -76,7 +76,7 @@ class LoginViewController: UIViewController {
             showAlert(withMessage: "Email Id is mandatory to login into the app.", .error)
             return
         }
-        if !isEmailValid() {
+        if let email = emailTextField.text, !email.isEmailValid {
             showAlert(withMessage: "Invalid email id format.", .error)
             return
         }
@@ -100,16 +100,5 @@ class LoginViewController: UIViewController {
 
     func userDetailsValid() -> Bool {
         return !emailTextField.isTextTrimEmpty
-    }
-    
-    func isEmailValid() -> Bool {
-        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        
-        let emailPred = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
-        var isValid = false
-        if let email = emailTextField.text {
-            isValid = emailPred.evaluate(with: email)
-        }
-        return isValid
     }
 }

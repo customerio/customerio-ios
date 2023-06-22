@@ -182,9 +182,11 @@ class SettingsViewController: UIViewController {
             return false
         }
         // Tracking Url
-        if trackUrlTextField.isTextTrimEmpty || isValidUrl(trackUrlTextField.text) {
-            showAlert(withMessage: "Enter a valid value for CIO Track Url.")
-            return false
+        if let trackingUrl = trackUrlTextField.text {
+            if trackUrlTextField.isTextTrimEmpty || trackingUrl.isValidUrl {
+                showAlert(withMessage: "Enter a valid value for CIO Track Url.")
+                return false
+            }
         }
         return true
     }
