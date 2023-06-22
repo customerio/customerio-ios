@@ -1,4 +1,9 @@
 // swiftlint:disable line_length
+
+// swiftformat modifies this file and makes it break compilation.
+// Because the file was not written for us and we don't plan on modifying it, disable formatting for this file.
+// swiftformat:disable all
+
 /*
  Copyright 2018 Read Evaluate Press, LLC
 
@@ -7,7 +12,7 @@
  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+*/
 // swiftlint:enable line_length
 
 #if canImport(Foundation)
@@ -57,14 +62,14 @@ extension _AnyEncodable {
         var container = encoder.singleValueContainer()
 
         switch value {
-        #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
         case let number as NSNumber:
             try encode(nsnumber: number, into: &container)
-        #endif
-        #if canImport(Foundation)
+#endif
+#if canImport(Foundation)
         case is NSNull:
             try container.encodeNil()
-        #endif
+#endif
         case is Void:
             try container.encodeNil()
         case let bool as Bool:
@@ -95,12 +100,12 @@ extension _AnyEncodable {
             try container.encode(double)
         case let string as String:
             try container.encode(string)
-        #if canImport(Foundation)
+#if canImport(Foundation)
         case let date as Date:
             try container.encode(date)
         case let url as URL:
             try container.encode(url)
-        #endif
+#endif
         case let array as [Any?]:
             try container.encode(array.map { AnyEncodable($0) })
         case let dictionary as [String: Any?]:
@@ -108,10 +113,8 @@ extension _AnyEncodable {
         case let encodable as Encodable:
             try encodable.encode(to: encoder)
         default:
-            let context = EncodingError.Context(
-                codingPath: container.codingPath,
-                debugDescription: "AnyEncodable value cannot be encoded"
-            )
+            let context = EncodingError.Context(codingPath: container.codingPath,
+                                                debugDescription: "AnyEncodable value cannot be encoded")
             throw EncodingError.invalidValue(value, context)
         }
     }
@@ -145,8 +148,7 @@ extension _AnyEncodable {
         @unknown default:
             let context = EncodingError.Context(
                 codingPath: container.codingPath,
-                debugDescription: "NSNumber cannot be encoded because its type is not handled"
-            )
+                debugDescription: "NSNumber cannot be encoded because its type is not handled")
             throw EncodingError.invalidValue(nsnumber, context)
         #endif
         }
@@ -159,44 +161,43 @@ extension AnyEncodable: Equatable {
         switch (lhs.value, rhs.value) {
         case is (Void, Void):
             return true
-        case (let lhs as Bool, let rhs as Bool):
+        case let (lhs as Bool, rhs as Bool):
             return lhs == rhs
-        case (let lhs as Int, let rhs as Int):
+        case let (lhs as Int, rhs as Int):
             return lhs == rhs
-        case (let lhs as Int8, let rhs as Int8):
+        case let (lhs as Int8, rhs as Int8):
             return lhs == rhs
-        case (let lhs as Int16, let rhs as Int16):
+        case let (lhs as Int16, rhs as Int16):
             return lhs == rhs
-        case (let lhs as Int32, let rhs as Int32):
+        case let (lhs as Int32, rhs as Int32):
             return lhs == rhs
-        case (let lhs as Int64, let rhs as Int64):
+        case let (lhs as Int64, rhs as Int64):
             return lhs == rhs
-        case (let lhs as UInt, let rhs as UInt):
+        case let (lhs as UInt, rhs as UInt):
             return lhs == rhs
-        case (let lhs as UInt8, let rhs as UInt8):
+        case let (lhs as UInt8, rhs as UInt8):
             return lhs == rhs
-        case (let lhs as UInt16, let rhs as UInt16):
+        case let (lhs as UInt16, rhs as UInt16):
             return lhs == rhs
-        case (let lhs as UInt32, let rhs as UInt32):
+        case let (lhs as UInt32, rhs as UInt32):
             return lhs == rhs
-        case (let lhs as UInt64, let rhs as UInt64):
+        case let (lhs as UInt64, rhs as UInt64):
             return lhs == rhs
-        case (let lhs as Float, let rhs as Float):
+        case let (lhs as Float, rhs as Float):
             return lhs == rhs
-        case (let lhs as Double, let rhs as Double):
+        case let (lhs as Double, rhs as Double):
             return lhs == rhs
-        case (let lhs as String, let rhs as String):
+        case let (lhs as String, rhs as String):
             return lhs == rhs
-        case (let lhs as [String: AnyEncodable], let rhs as [String: AnyEncodable]):
+        case let (lhs as [String: AnyEncodable], rhs as [String: AnyEncodable]):
             return lhs == rhs
-        case (let lhs as [AnyEncodable], let rhs as [AnyEncodable]):
+        case let (lhs as [AnyEncodable], rhs as [AnyEncodable]):
             return lhs == rhs
         default:
             return false
         }
     }
 }
-
 // swiftlint:enable cyclomatic_complexity function_body_length
 
 extension AnyEncodable: CustomStringConvertible {
@@ -234,36 +235,36 @@ extension AnyEncodable: ExpressibleByStringInterpolation {}
 extension AnyEncodable: ExpressibleByArrayLiteral {}
 extension AnyEncodable: ExpressibleByDictionaryLiteral {}
 
-public extension _AnyEncodable {
-    init(nilLiteral _: ()) {
+extension _AnyEncodable {
+    public init(nilLiteral _: ()) {
         self.init(nil as Any?)
     }
 
-    init(booleanLiteral value: Bool) {
+    public init(booleanLiteral value: Bool) {
         self.init(value)
     }
 
-    init(integerLiteral value: Int) {
+    public init(integerLiteral value: Int) {
         self.init(value)
     }
 
-    init(floatLiteral value: Double) {
+    public init(floatLiteral value: Double) {
         self.init(value)
     }
 
-    init(extendedGraphemeClusterLiteral value: String) {
+    public init(extendedGraphemeClusterLiteral value: String) {
         self.init(value)
     }
 
-    init(stringLiteral value: String) {
+    public init(stringLiteral value: String) {
         self.init(value)
     }
 
-    init(arrayLiteral elements: Any...) {
+    public init(arrayLiteral elements: Any...) {
         self.init(elements)
     }
 
-    init(dictionaryLiteral elements: (AnyHashable, Any)...) {
+    public init(dictionaryLiteral elements: (AnyHashable, Any)...) {
         self.init([AnyHashable: Any](elements, uniquingKeysWith: { first, _ in first }))
     }
 }
