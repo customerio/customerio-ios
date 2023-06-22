@@ -11,7 +11,6 @@ import UserNotifications
 #endif
 import CioInternalCommon
 import CioTracking
-import Gist
 
 /**
  ######################################################

@@ -1,12 +1,11 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import Gist
 
 internal class MessagingInAppImplementation: MessagingInAppInstance {
     private let siteId: String
     private let region: Region
-    private let logger: Logger
+    private let logger: CioInternalCommon.Logger
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
