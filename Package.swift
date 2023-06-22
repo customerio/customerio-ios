@@ -21,13 +21,6 @@ let package = Package(
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
         .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
     ],
-    dependencies: [
-        // Help for the format of declaring SPM dependencies:
-        // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
-        //
-        // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", .exact("3.2.2"))
-    ],
     targets: [        
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
@@ -77,7 +70,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["CioTracking", "Gist"],
+                dependencies: ["CioTracking"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
