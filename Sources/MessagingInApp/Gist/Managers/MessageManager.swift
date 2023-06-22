@@ -79,6 +79,7 @@ class MessageManager: EngineWebDelegate {
         }
     }
 
+    // swiftlint:disable cyclomatic_complexity
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
         delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
@@ -144,6 +145,8 @@ class MessageManager: EngineWebDelegate {
             }
         }
     }
+
+    // swiftlint:enable cyclomatic_complexity
 
     // Check if
     func continueNSUserActivity(webpageURL: URL) -> Bool {

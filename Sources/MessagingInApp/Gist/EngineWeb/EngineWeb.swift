@@ -133,6 +133,8 @@ extension EngineWeb: WKScriptMessageHandler {
     }
 }
 
+// swiftlint:enable cyclomatic_complexity
+
 extension EngineWeb: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {}
 
