@@ -40,38 +40,38 @@ struct CustomAttributeView: View {
     @State private var name: String = ""
     @State private var value: String = ""
 
+    var close: () -> Void
     var done: (_ name: String, _ value: String) -> Void
 
     @State private var showConfirmationAlert: Bool = false
 
     var body: some View {
-        VStack {
-            Text(headerText).bold().font(.system(size: 20))
-
-            VStack(spacing: 8) {
-                LabeledTextField(title: "Attribute Name", appiumTextFieldId: "Attribute Name Input", value: $name)
-                LabeledTextField(title: "Attribute Value", appiumTextFieldId: "Attribute Value Input", value: $value)
-            }.padding([.vertical], 40)
-
-            ColorButton(buttonText) {
-                showConfirmationAlert = true
-            }.setAppiumId(appiumButtonText)
-        }.padding([.horizontal], 20)
-            .alert(isPresented: $showConfirmationAlert) {
-                Alert(
-                    title: Text(""),
-                    message: Text(alertMessage),
-                    dismissButton: .default(Text("OK")) {
-                        done(name, value)
-                    }
-                )
+        ZStack {
+            BackButton {
+                close()
             }
-    }
-}
 
-struct CustomAttributeView_Previews: PreviewProvider {
-    static var previews: some View {
-        CustomAttributeView(attributeType: .profileAttributes) { _, _ in
+            VStack {
+                Text(headerText).bold().font(.system(size: 20))
+
+                VStack(spacing: 8) {
+                    LabeledTextField(title: "Attribute Name", appiumTextFieldId: "Attribute Name Input", value: $name)
+                    LabeledTextField(title: "Attribute Value", appiumTextFieldId: "Attribute Value Input", value: $value)
+                }.padding([.vertical], 40)
+
+                ColorButton(buttonText) {
+                    showConfirmationAlert = true
+                }.setAppiumId(appiumButtonText)
+            }.padding([.horizontal], 20)
+                .alert(isPresented: $showConfirmationAlert) {
+                    Alert(
+                        title: Text(""),
+                        message: Text(alertMessage),
+                        dismissButton: .default(Text("OK")) {
+                            done(name, value)
+                        }
+                    )
+                }
         }
     }
 }

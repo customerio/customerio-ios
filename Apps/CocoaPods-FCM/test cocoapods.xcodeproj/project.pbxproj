@@ -40,6 +40,7 @@
 		F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 		F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 		F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */; };
+		F7FA3D8B2A44DF42008AC1A7 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +108,7 @@
 		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
 		F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneLineText.swift; sourceTree = "<group>"; };
+		F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -179,6 +181,7 @@
 				F78E3D782A058B5000641391 /* SettingsButton.swift */,
 				F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */,
 				F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */,
+				F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -449,6 +452,7 @@
 			files = (
 				F72212152A422D72003AE5A1 /* CustomEventView.swift in Sources */,
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
+				F7FA3D8B2A44DF42008AC1A7 /* BackButton.swift in Sources */,
 				F70F4CDF2A3CA57500037B91 /* DateExtensions.swift in Sources */,
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
 				F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */,
