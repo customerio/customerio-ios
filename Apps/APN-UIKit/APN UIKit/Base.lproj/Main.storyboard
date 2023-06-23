@@ -693,23 +693,41 @@
                                                     <action selector="saveSettings:" destination="Gr3-gf-Tr0" eventType="touchUpInside" id="OaO-6S-5Jx"/>
                                                 </connections>
                                             </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="T4D-Xe-9R6">
+                                                <rect key="frame" x="83" y="721.33333333333337" width="205" height="34.333333333333371"/>
+                                                <color key="tintColor" red="0.4431372549" green="0.19215686269999999" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                                <state key="normal" title="Button"/>
+                                                <buttonConfiguration key="configuration" style="plain" title="Restore default settings"/>
+                                                <connections>
+                                                    <action selector="restoreDefaultSettings:" destination="Gr3-gf-Tr0" eventType="touchUpInside" id="fh5-bZ-cEB"/>
+                                                </connections>
+                                            </button>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Note: You must restart the app to apply these changes" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="q0h-un-phO">
+                                                <rect key="frame" x="10" y="765.66666666666663" width="350.66666666666669" height="19.333333333333371"/>
+                                                <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="14"/>
+                                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="0.55000000000000004" colorSpace="custom" customColorSpace="sRGB"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
                                         </subviews>
                                         <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         <constraints>
                                             <constraint firstAttribute="trailing" secondItem="qjl-Bp-Spd" secondAttribute="trailing" constant="20" id="14M-iA-Qv9"/>
                                             <constraint firstItem="946-Or-p70" firstAttribute="leading" secondItem="Cfc-0G-tiT" secondAttribute="leading" constant="40" id="2Sr-I8-Ow3"/>
                                             <constraint firstItem="kt6-PO-0aT" firstAttribute="top" secondItem="DUu-gs-vaV" secondAttribute="bottom" constant="40" id="3O2-eU-Yj2"/>
+                                            <constraint firstItem="T4D-Xe-9R6" firstAttribute="top" secondItem="946-Or-p70" secondAttribute="bottom" constant="10" id="4F0-gf-jqd"/>
                                             <constraint firstItem="8LF-IB-2mH" firstAttribute="leading" secondItem="Cfc-0G-tiT" secondAttribute="leading" constant="10" id="6oa-ws-lZi"/>
                                             <constraint firstItem="DUu-gs-vaV" firstAttribute="top" secondItem="Hhl-Jg-gMg" secondAttribute="bottom" constant="40" id="7Eo-gT-dkt"/>
                                             <constraint firstItem="DUu-gs-vaV" firstAttribute="height" secondItem="8LF-IB-2mH" secondAttribute="height" id="9ZV-Tv-a0w"/>
                                             <constraint firstItem="DUu-gs-vaV" firstAttribute="leading" secondItem="8LF-IB-2mH" secondAttribute="leading" id="CsP-k8-9ow"/>
                                             <constraint firstItem="qjl-Bp-Spd" firstAttribute="top" secondItem="Cfc-0G-tiT" secondAttribute="top" constant="20" id="D2d-Qu-7me"/>
                                             <constraint firstAttribute="trailing" secondItem="8LF-IB-2mH" secondAttribute="trailing" constant="20" id="Grz-ea-74v"/>
+                                            <constraint firstAttribute="trailing" secondItem="q0h-un-phO" secondAttribute="trailing" constant="10" id="J8B-Yo-7bb"/>
                                             <constraint firstItem="kt6-PO-0aT" firstAttribute="trailing" secondItem="qjl-Bp-Spd" secondAttribute="trailing" id="JGc-F1-f91"/>
                                             <constraint firstItem="u0P-gd-ywK" firstAttribute="trailing" secondItem="8LF-IB-2mH" secondAttribute="trailing" id="KLQ-uu-euc"/>
                                             <constraint firstItem="Hhl-Jg-gMg" firstAttribute="leading" secondItem="8LF-IB-2mH" secondAttribute="leading" id="MxM-rl-ki8"/>
                                             <constraint firstItem="kt6-PO-0aT" firstAttribute="leading" secondItem="qjl-Bp-Spd" secondAttribute="leading" id="NRg-UL-kQc"/>
                                             <constraint firstItem="Hhl-Jg-gMg" firstAttribute="trailing" secondItem="8LF-IB-2mH" secondAttribute="trailing" id="OEr-gE-6zl"/>
+                                            <constraint firstItem="q0h-un-phO" firstAttribute="top" secondItem="T4D-Xe-9R6" secondAttribute="bottom" constant="10" id="P19-NU-M0e"/>
                                             <constraint firstAttribute="trailing" secondItem="946-Or-p70" secondAttribute="trailing" constant="40" id="W2d-hG-aIu"/>
                                             <constraint firstItem="Hhl-Jg-gMg" firstAttribute="top" secondItem="8LF-IB-2mH" secondAttribute="bottom" constant="40" id="aCh-ZI-ol2"/>
                                             <constraint firstItem="u0P-gd-ywK" firstAttribute="leading" secondItem="8LF-IB-2mH" secondAttribute="leading" id="acC-YI-uvW"/>
@@ -717,6 +735,8 @@
                                             <constraint firstItem="qjl-Bp-Spd" firstAttribute="leading" secondItem="Cfc-0G-tiT" secondAttribute="leading" constant="20" id="ehZ-Zy-W1E"/>
                                             <constraint firstItem="DUu-gs-vaV" firstAttribute="trailing" secondItem="8LF-IB-2mH" secondAttribute="trailing" id="off-A2-sYq"/>
                                             <constraint firstItem="946-Or-p70" firstAttribute="top" secondItem="u0P-gd-ywK" secondAttribute="bottom" constant="30" id="t9o-AY-2yS"/>
+                                            <constraint firstItem="q0h-un-phO" firstAttribute="leading" secondItem="Cfc-0G-tiT" secondAttribute="leading" constant="10" id="tUI-Af-HR3"/>
+                                            <constraint firstItem="T4D-Xe-9R6" firstAttribute="centerX" secondItem="946-Or-p70" secondAttribute="centerX" id="u7k-5v-4cb"/>
                                             <constraint firstItem="Hhl-Jg-gMg" firstAttribute="height" secondItem="8LF-IB-2mH" secondAttribute="height" id="wMu-xi-79C"/>
                                             <constraint firstItem="u0P-gd-ywK" firstAttribute="top" secondItem="kt6-PO-0aT" secondAttribute="bottom" constant="20" id="wz6-CO-Uf2"/>
                                         </constraints>

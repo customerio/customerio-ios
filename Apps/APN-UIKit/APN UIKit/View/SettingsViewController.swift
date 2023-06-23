@@ -227,4 +227,27 @@ class SettingsViewController: BaseViewController {
             }
         }
     }
+    
+    @IBAction func restoreDefaultSettings(_ sender: UIButton) {
+        currentSettings = Settings(
+            deviceToken: storage.deviceToken ?? "Error",
+            trackUrl: "https://track-sdk.customer.io/",
+            siteId: BuildEnvironment.CustomerIO.siteId,
+            apiKey: BuildEnvironment.CustomerIO.apiKey,
+            bgQDelay: "30",
+            bgQMinTasks: "10",
+            isPushEnabled: false,
+            isTrackScreenEnabled: true,
+            isDeviceAttributeEnabled: true,
+            isDebugModeEnabled: true
+        )
+        
+        getStatusOfPushPermissions { status in
+            DispatchQueue.main.async {
+                self.currentSettings?.isPushEnabled = status == .authorized ? true : false
+                self.setDefaultValues()
+            }
+        }
+    }
+    
 }
