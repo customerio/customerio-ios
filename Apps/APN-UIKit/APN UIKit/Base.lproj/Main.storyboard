@@ -89,7 +89,7 @@
                                     <constraint firstAttribute="width" constant="50" id="J4G-Bk-vVW"/>
                                 </constraints>
                             </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jhw-4t-vdr">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jhw-4t-vdr">
                                 <rect key="frame" x="20" y="696.66666666666663" width="374" height="19.333333333333371"/>
                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="14"/>
                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="0.55000000000000004" colorSpace="custom" customColorSpace="sRGB"/>
@@ -261,11 +261,18 @@
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="h1a-Rs-bAS">
+                                <rect key="frame" x="20" y="696.66666666666663" width="374" height="19.333333333333371"/>
+                                <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="14"/>
+                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="0.55000000000000004" colorSpace="custom" customColorSpace="sRGB"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="QCK-Bh-SyG"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="gm6-Cg-tg6" firstAttribute="leading" secondItem="QCK-Bh-SyG" secondAttribute="leading" constant="10" id="9XZ-N2-MTn"/>
+                            <constraint firstItem="QCK-Bh-SyG" firstAttribute="bottom" secondItem="h1a-Rs-bAS" secondAttribute="bottom" constant="20" id="AJN-5d-Hh9"/>
                             <constraint firstItem="Kn0-pQ-K5D" firstAttribute="top" secondItem="QCK-Bh-SyG" secondAttribute="top" constant="20" id="Axs-iq-bOs"/>
                             <constraint firstItem="QCK-Bh-SyG" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="gm6-Cg-tg6" secondAttribute="trailing" id="B9V-Qh-5ZD"/>
                             <constraint firstItem="QCK-Bh-SyG" firstAttribute="trailing" secondItem="AIH-WX-Xne" secondAttribute="trailing" constant="20" id="CMu-3h-LVK"/>
@@ -279,12 +286,15 @@
                             <constraint firstItem="mIk-22-9js" firstAttribute="centerX" secondItem="gm6-Cg-tg6" secondAttribute="centerX" id="dxZ-Al-OjG"/>
                             <constraint firstItem="AIH-WX-Xne" firstAttribute="top" secondItem="gm6-Cg-tg6" secondAttribute="bottom" constant="40" id="rcs-MH-dX9"/>
                             <constraint firstItem="gm6-Cg-tg6" firstAttribute="centerX" secondItem="LR0-48-7RQ" secondAttribute="centerX" id="sj0-My-pz5"/>
+                            <constraint firstAttribute="trailing" secondItem="h1a-Rs-bAS" secondAttribute="trailing" constant="20" id="w3n-Ju-k8x"/>
+                            <constraint firstItem="h1a-Rs-bAS" firstAttribute="leading" secondItem="QCK-Bh-SyG" secondAttribute="leading" constant="20" id="x2F-gn-leD"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="lSD-LL-pFO"/>
                     <connections>
                         <outlet property="settings" destination="Kn0-pQ-K5D" id="0cy-hk-K6x"/>
                         <outlet property="userInfoLabel" destination="mIk-22-9js" id="deL-cg-q6O"/>
+                        <outlet property="versionsLabel" destination="h1a-Rs-bAS" id="nCt-bx-evz"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="7l8-Yk-uny" sceneMemberID="firstResponder"/>

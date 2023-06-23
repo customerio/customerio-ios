@@ -6,6 +6,7 @@ class DashboardViewController: BaseViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
 
+    @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
 
@@ -27,12 +28,17 @@ class DashboardViewController: BaseViewController {
         addNotifierObserver()
         addUserInteractionToImageViews()
         setUserDetail()
+        configureVersionLabel()
     }
 
     func configureDashboardRouter() {
         let router = DashboardRouter()
         dashboardRouter = router
         router.dashboardViewController = self
+    }
+    
+    func configureVersionLabel() {
+        versionsLabel.text = getMetaData()
     }
 
     func addUserInteractionToImageViews() {

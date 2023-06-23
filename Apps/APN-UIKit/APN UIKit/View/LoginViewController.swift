@@ -1,6 +1,5 @@
 import CioTracking
 import UIKit
-import CioInternalCommon
 
 class LoginViewController: BaseViewController {
     static func newInstance() -> LoginViewController {
@@ -38,9 +37,7 @@ class LoginViewController: BaseViewController {
     }
 
     func configureVersionLabel() {
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        let versionDetail = "Customer.io iOS SDK \(SdkVersion.version) Ami app \(appVersion ?? "")"
-        versionsLabel.text = versionDetail
+        versionsLabel.text = getMetaData()
     }
     
     func addNotifierObserver() {
