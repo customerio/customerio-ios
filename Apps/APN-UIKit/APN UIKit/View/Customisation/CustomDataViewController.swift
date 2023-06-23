@@ -58,7 +58,7 @@ class CustomDataViewController: BaseViewController {
 
     @IBAction func sendCustomData(_ sender: UIButton) {
         if !isAllTextFieldsValid() {
-            showAlert(withMessage: "Please fill all * marked fields.", .error)
+            showToast(withMessage: "Please fill all * marked fields.")
             return
         }
 
@@ -68,13 +68,13 @@ class CustomDataViewController: BaseViewController {
         if source == .customEvents {
             guard let eventName = eventNameTextField.text else { return }
             CustomerIO.shared.track(name: eventName, data: [propName: propValue])
-            showAlert(withMessage: "Custom event tracked successfully")
+            showToast(withMessage: "Custom event tracked successfully")
         } else if source == .deviceAttributes {
             CustomerIO.shared.deviceAttributes = [propName: propValue]
-            showAlert(withMessage: "Device attribute set successfully.")
+            showToast(withMessage: "Device attribute set successfully.")
         } else if source == .profileAttributes {
             CustomerIO.shared.profileAttributes = [propName: propValue]
-            showAlert(withMessage: "Profile attribute set successfully.")
+            showToast(withMessage: "Profile attribute set successfully.")
         }
     }
 }

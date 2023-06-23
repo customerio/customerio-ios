@@ -85,7 +85,7 @@ class DashboardViewController: BaseViewController {
         guard let name = randomEventInfo["name"] as? String else {
             return
         }
-        showAlert(withMessage: "Random event  tracked successfully")
+        showToast(withMessage: "Random event  tracked successfully")
         if let data = randomEventInfo["data"] as? [String: Any] {
             CustomerIO.shared.track(name: name, data: data)
             return
@@ -114,7 +114,7 @@ class DashboardViewController: BaseViewController {
             }
             let pushStatus = status == .denied ? "Denied" : "Granted"
             DispatchQueue.main.async {
-                self.showAlert(withMessage: "Push permission status is - \(pushStatus)")
+                self.showToast(withMessage: "Push permission status is - \(pushStatus)")
 
             }
         }

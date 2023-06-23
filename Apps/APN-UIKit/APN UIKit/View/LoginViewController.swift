@@ -73,11 +73,11 @@ class LoginViewController: BaseViewController {
 
     @IBAction func logInToApp(_ sender: UIButton) {
         if !userDetailsValid() {
-            showAlert(withMessage: "Email Id is mandatory to login into the app.", .error)
+            showToast(withMessage: "Email Id is mandatory to login into the app.")
             return
         }
         if let email = emailTextField.text, !email.isEmailValid {
-            showAlert(withMessage: "Invalid email id format.", .error)
+            showToast(withMessage: "Invalid email id format.")
             return
         }
         guard let emailId = emailTextField.text, let name = firstNameTextField.text else {

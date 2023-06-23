@@ -85,7 +85,7 @@ class SettingsViewController: BaseViewController {
     func copyToClipboard() {
         UIPasteboard.general.string = deviceTokenTextField.text ?? ""
 
-        showAlert(withMessage: "Copied to clipboard")
+        showToast(withMessage: "Copied to clipboard")
     }
 
     func getAndSetDefaultValues() {
@@ -165,26 +165,26 @@ class SettingsViewController: BaseViewController {
     func isValid() -> Bool {
         // Site id and Api Key
         if siteIdTextField.isTextTrimEmpty {
-            showAlert(withMessage: "Enter a valid value for Site Id.")
+            showToast(withMessage: "Enter a valid value for Site Id.")
             return false
         }
         if apiKeyTextField.isTextTrimEmpty {
-            showAlert(withMessage: "Enter a valid value for Api Key.")
+            showToast(withMessage: "Enter a valid value for Api Key.")
             return false
         }
         // BGQ
         if bgQMinTasksTextField.isTextTrimEmpty || bgQMinTasksTextField.text == "0" {
-            showAlert(withMessage: "Enter a valid value for Background Queue Minimum number of tasks.")
+            showToast(withMessage: "Enter a valid value for Background Queue Minimum number of tasks.")
             return false
         }
         if bgQTakDelayTextField.isTextTrimEmpty || bgQTakDelayTextField.text == "0" {
-            showAlert(withMessage: "Enter a valid value for Background Queue Delay in seconds.")
+            showToast(withMessage: "Enter a valid value for Background Queue Delay in seconds.")
             return false
         }
         // Tracking Url
         if let trackingUrl = trackUrlTextField.text {
             if trackUrlTextField.isTextTrimEmpty || trackingUrl.isValidUrl {
-                showAlert(withMessage: "Enter a valid value for CIO Track Url.")
+                showToast(withMessage: "Enter a valid value for CIO Track Url.")
                 return false
             }
         }
@@ -204,7 +204,8 @@ class SettingsViewController: BaseViewController {
 
     @IBAction func saveSettings(_ sender: UIButton) {
         save()
-        showAlert(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
+        showToast(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.")
+        popToSource()
     }
 
     @IBAction func enablePushChanged(_ sender: UISwitch) {
