@@ -6,7 +6,6 @@ protocol StorageManager {
     var apiKey: String? { get set }
     var bgQDelay: String? { get set }
     var bgNumOfTasks: String? { get set }
-    var isPushEnabled: Bool? { get set }
     var isTrackScreenEnabled: Bool? { get set }
     var isTrackDeviceAttrEnabled: Bool? { get set }
     var isDebugModeEnabled: Bool? { get set }
@@ -94,15 +93,6 @@ class Storage: StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.bgNumOfTasks.rawValue)
-        }
-    }
-
-    var isPushEnabled: Bool? {
-        get {
-            userDefaults.bool(forKey: UserDefaultKeys.isPushEnabled.rawValue)
-        }
-        set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.isPushEnabled.rawValue)
         }
     }
 

@@ -15,7 +15,6 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var trackDeviceToggle: UISwitch!
     @IBOutlet var debugModeToggle: UISwitch!
     @IBOutlet var trackScreenToggle: UISwitch!
-    @IBOutlet var enablePushToggle: UISwitch!
     @IBOutlet var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet var bgQTakDelayTextField: ThemeTextField!
 
@@ -25,10 +24,6 @@ class SettingsViewController: BaseViewController {
     var settingsRouter: SettingsRouting?
     var storage = DIGraph.shared.storage
     var currentSettings: Settings!
-
-    var pushSwitchState: Bool {
-        enablePushToggle.isOn
-    }
 
     var trackScreenState: Bool {
         trackScreenToggle.isOn
@@ -48,35 +43,13 @@ class SettingsViewController: BaseViewController {
         configureClipboardImageView()
         configureSettingsRouter()
         getAndSetDefaultValues()
-        addObserversForSettingsScreen()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
     }
-
-    func addObserversForSettingsScreen() {
-        NotificationCenter.default.addObserver(self, selector: #selector(appMovedToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIApplication.willEnterForegroundNotification,
-            object: nil
-        )
-    }
-
-    @objc
-    func appMovedToForeground() {
-        getStatusOfPushPermissions { status in
-            DispatchQueue.main.async {
-                self.enablePushToggle.isOn = status == .authorized ? true : false
-            }
-        }
-    }
-
+    
     func configureClipboardImageView() {
         copyToClipboardImageView.addTapGesture(onTarget: self, #selector(SettingsViewController.copyToClipboard))
     }
@@ -97,18 +70,10 @@ class SettingsViewController: BaseViewController {
             apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
-            isPushEnabled: false,
             isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
             isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
             isDebugModeEnabled: storage.isDebugModeEnabled ?? true
         )
-        
-        getStatusOfPushPermissions { status in
-            DispatchQueue.main.async {
-                self.currentSettings?.isPushEnabled = status == .authorized ? true : false
-                self.setDefaultValues()
-            }
-        }
     }
     
     func setDefaultValues() {
@@ -124,7 +89,6 @@ class SettingsViewController: BaseViewController {
         trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
         trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
         debugModeToggle.isOn = currentSettings.isDebugModeEnabled
-        enablePushToggle.isOn = currentSettings.isPushEnabled
     }
 
     func configureSettingsRouter() {
@@ -150,8 +114,6 @@ class SettingsViewController: BaseViewController {
         storage.bgQDelay = bgQTakDelayTextField.text
         // Min number of tasks
         storage.bgNumOfTasks = bgQMinTasksTextField.text
-        // Push enabled
-        storage.isPushEnabled = pushSwitchState
         // Track screen enabled
         storage.isTrackScreenEnabled = trackScreenState
         // Debug screen
@@ -235,18 +197,10 @@ class SettingsViewController: BaseViewController {
             apiKey: BuildEnvironment.CustomerIO.apiKey,
             bgQDelay: "30",
             bgQMinTasks: "10",
-            isPushEnabled: false,
             isTrackScreenEnabled: true,
             isDeviceAttributeEnabled: true,
             isDebugModeEnabled: true
         )
-        
-        getStatusOfPushPermissions { status in
-            DispatchQueue.main.async {
-                self.currentSettings?.isPushEnabled = status == .authorized ? true : false
-                self.setDefaultValues()
-            }
-        }
     }
     
 }

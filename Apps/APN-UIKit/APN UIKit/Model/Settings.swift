@@ -7,7 +7,6 @@ struct Settings {
     var apiKey: String
     var bgQDelay: String
     var bgQMinTasks: String
-    var isPushEnabled: Bool
     var isTrackScreenEnabled: Bool
     var isDeviceAttributeEnabled: Bool
     var isDebugModeEnabled: Bool
