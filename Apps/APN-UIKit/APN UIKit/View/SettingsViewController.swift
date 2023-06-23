@@ -204,8 +204,7 @@ class SettingsViewController: BaseViewController {
 
     @IBAction func saveSettings(_ sender: UIButton) {
         save()
-        showToast(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.")
-        popToSource()
+        showToast(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
     }
 
     @IBAction func enablePushChanged(_ sender: UISwitch) {
