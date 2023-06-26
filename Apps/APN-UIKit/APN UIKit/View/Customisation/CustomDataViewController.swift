@@ -33,14 +33,14 @@ class CustomDataViewController: BaseViewController {
     }
     func addAccessibilityIdentifiersForAppium() {
         if source == .customEvents {
-            eventNameTextField.setAppiumAccessibilityId("Event Name Input")
-            propertyNameTextField.setAppiumAccessibilityId("Property Name Input")
-            propertyValueTextField.setAppiumAccessibilityId("Property Value Input")
-            sendButton.setAppiumAccessibilityId("Send Event Button")
+            setAppiumAccessibilityIdTo(eventNameTextField, value: "Event Name Input")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Property Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Property Value Input")
+            setAppiumAccessibilityIdTo(sendButton, value: "Send Event Button")
         } else {
-            sendButton.setAppiumAccessibilityId("Set \(source == .deviceAttributes ? "Device" : "Profile") Attribute Button")
-            propertyNameTextField.setAppiumAccessibilityId("Attribute Name Input")
-            propertyValueTextField.setAppiumAccessibilityId("Attribute Value Input")
+            setAppiumAccessibilityIdTo(sendButton, value: "Set \(source == .deviceAttributes ? "Device" : "Profile") Attribute Button")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Attribute Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Attribute Value Input")
         }
         let backButton = UIBarButtonItem()
         backButton.accessibilityIdentifier = "Back Button"

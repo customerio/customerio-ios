@@ -108,14 +108,14 @@ class SettingsViewController: BaseViewController {
         settingsRouter?.routeToSource()
     }
     func addAccessibilityIdentifiersForAppium() {
-        trackUrlTextField.setAppiumAccessibilityId("Track URL Input")
-        siteIdTextField.setAppiumAccessibilityId("Site ID Input")
-        apiKeyTextField.setAppiumAccessibilityId("API Key Input")
-        trackScreenToggle.setAppiumAccessibilityId("Track Screens Toggle")
-        trackDeviceToggle.setAppiumAccessibilityId("Track Device Attributes Toggle")
-        debugModeToggle.setAppiumAccessibilityId("Debug Mode Toggle")
-        saveButton.setAppiumAccessibilityId("Save Settings Button")
-        restoreDefaultButton.setAppiumAccessibilityId("Restore Default Settings Button")
+        setAppiumAccessibilityIdTo(trackUrlTextField, value: "Track URL Input")
+        setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
+        setAppiumAccessibilityIdTo(apiKeyTextField, value: "API Key Input")
+        setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
+        setAppiumAccessibilityIdTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
+        setAppiumAccessibilityIdTo(debugModeToggle, value: "Debug Mode Toggle")
+        setAppiumAccessibilityIdTo(saveButton, value: "Save Settings Button")
+        setAppiumAccessibilityIdTo(restoreDefaultButton, value: "Restore Default Settings Button")
         let backButton = UIBarButtonItem()
         backButton.accessibilityIdentifier = "Back Button"
         backButton.isAccessibilityElement = true

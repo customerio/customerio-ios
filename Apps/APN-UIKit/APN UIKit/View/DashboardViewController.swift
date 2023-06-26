@@ -67,13 +67,13 @@ class DashboardViewController: BaseViewController {
     }
 
     func addAccessibilityIdentifiersForAppium() {
-        settings.setAppiumAccessibilityId("Settings")
-        randomEventButton.setAppiumAccessibilityId("Random Event Button")
-        customEventButton.setAppiumAccessibilityId("Custom Event Button")
-        sendDeviceAttributesButton.setAppiumAccessibilityId("Device Attribute Button")
-        sendProfileAttributesButton.setAppiumAccessibilityId("Profile Attribute Button")
-        showPushPromptButton.setAppiumAccessibilityId("Show Push Prompt Button")
-        logoutButton.setAppiumAccessibilityId("Log Out Button")
+        setAppiumAccessibilityIdTo(settings, value: "Settings")
+        setAppiumAccessibilityIdTo(randomEventButton, value: "Random Event Button")
+        setAppiumAccessibilityIdTo(customEventButton, value: "Custom Event Button")
+        setAppiumAccessibilityIdTo(sendDeviceAttributesButton, value: "Device Attribute Button")
+        setAppiumAccessibilityIdTo(sendProfileAttributesButton, value: "Profile Attribute Button")
+        setAppiumAccessibilityIdTo(showPushPromptButton, value: "Show Push Prompt Button")
+        setAppiumAccessibilityIdTo(logoutButton, value: "Log Out Button")
     }
     func setUserDetail() {
         if let email = storage.userEmailId {
