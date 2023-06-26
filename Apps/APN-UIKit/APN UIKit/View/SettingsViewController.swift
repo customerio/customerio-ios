@@ -108,14 +108,14 @@ class SettingsViewController: BaseViewController {
         settingsRouter?.routeToSource()
     }
     func addAccessibilityIdentifiersForAppium() {
-        setAccessibilityIdentifierTo(trackUrlTextField, value: "Track URL Input")
-        setAccessibilityIdentifierTo(siteIdTextField, value: "Site ID Input")
-        setAccessibilityIdentifierTo(apiKeyTextField, value: "API Key Input")
-        setAccessibilityIdentifierTo(trackScreenToggle, value: "Track Screens Toggle")
-        setAccessibilityIdentifierTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
-        setAccessibilityIdentifierTo(debugModeToggle, value: "Debug Mode Toggle")
-        setAccessibilityIdentifierTo(saveButton, value: "Save Settings Button")
-        setAccessibilityIdentifierTo(restoreDefaultButton, value: "Restore Default Settings Button")
+        trackUrlTextField.setAppiumAccessibilityId("Track URL Input")
+        siteIdTextField.setAppiumAccessibilityId("Site ID Input")
+        apiKeyTextField.setAppiumAccessibilityId("API Key Input")
+        trackScreenToggle.setAppiumAccessibilityId("Track Screens Toggle")
+        trackDeviceToggle.setAppiumAccessibilityId("Track Device Attributes Toggle")
+        debugModeToggle.setAppiumAccessibilityId("Debug Mode Toggle")
+        saveButton.setAppiumAccessibilityId("Save Settings Button")
+        restoreDefaultButton.setAppiumAccessibilityId("Restore Default Settings Button")
         let backButton = UIBarButtonItem()
         backButton.accessibilityIdentifier = "Back Button"
         backButton.isAccessibilityElement = true
