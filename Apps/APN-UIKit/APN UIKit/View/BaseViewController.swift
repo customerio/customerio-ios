@@ -9,6 +9,7 @@ class BaseViewController: UIViewController {
         super.viewDidLoad()
 
         dismissKeyboardOnTap()
+        overrideUserInterfaceStyle = .light
     }
     func getMetaData() -> String {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
