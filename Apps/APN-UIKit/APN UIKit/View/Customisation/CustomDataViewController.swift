@@ -46,7 +46,6 @@ class CustomDataViewController: BaseViewController {
         backButton.accessibilityIdentifier = "Back Button"
         backButton.isAccessibilityElement = true
         self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
-        
     }
 
     func customizeScreenBasedOnSource() {
