@@ -30,9 +30,7 @@ class CustomDataViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         addAccessibilityIdentifiersForAppium()
-        
     }
-    
     func addAccessibilityIdentifiersForAppium() {
         if source == .customEvents {
             setAccessibilityIdentifierTo(eventNameTextField, value: "Event Name Input")

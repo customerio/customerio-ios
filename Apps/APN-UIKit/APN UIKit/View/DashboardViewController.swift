@@ -75,7 +75,6 @@ class DashboardViewController: BaseViewController {
         setAccessibilityIdentifierTo(showPushPromptButton, value: "Show Push Prompt Button")
         setAccessibilityIdentifierTo(logoutButton, value: "Log Out Button")
     }
-    
     func setUserDetail() {
         if let email = storage.userEmailId {
             userInfoLabel.text = email

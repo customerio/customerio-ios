@@ -107,7 +107,6 @@ class SettingsViewController: BaseViewController {
     func popToSource() {
         settingsRouter?.routeToSource()
     }
-    
     func addAccessibilityIdentifiersForAppium() {
         setAccessibilityIdentifierTo(trackUrlTextField, value: "Track URL Input")
         setAccessibilityIdentifierTo(siteIdTextField, value: "Site ID Input")
