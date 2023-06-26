@@ -118,6 +118,8 @@
                     <connections>
                         <outlet property="emailTextField" destination="GCe-Ns-Vy3" id="dea-Qv-0T1"/>
                         <outlet property="firstNameTextField" destination="XNO-Pm-1m4" id="Ys2-bz-1OK"/>
+                        <outlet property="loginButton" destination="IaH-JL-VQC" id="TFs-af-gIl"/>
+                        <outlet property="randomLoginButton" destination="iXp-Fu-ehx" id="mPw-vr-piB"/>
                         <outlet property="settings" destination="HPL-cE-0Qb" id="JLf-yj-ixr"/>
                         <outlet property="versionsLabel" destination="jhw-4t-vdr" id="tom-lI-c6D"/>
                     </connections>
