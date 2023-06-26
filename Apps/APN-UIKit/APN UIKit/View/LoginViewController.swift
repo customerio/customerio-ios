@@ -42,19 +42,20 @@ class LoginViewController: BaseViewController {
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(routeToDeepLinkScreen(notification:)),
-            name: Notification.Name("showDeepLinkScreenOnLogin"),
+            selector: #selector(deepLinkRouteToSettings(notification:)),
+            name: Notification.Name("showSettingsScreenOnLogin"),
             object: nil
         )
+        
     }
 
     @objc
-    func routeToDeepLinkScreen(notification: Notification) {
+    func deepLinkRouteToSettings(notification: Notification) {
         if let userInfo = notification.userInfo as? [String: String] {
-            loginRouter?.routeToDeepLinkScreen(withInfo: userInfo)
+            loginRouter?.routeToSettings(userInfo)
         }
     }
-
+    
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router

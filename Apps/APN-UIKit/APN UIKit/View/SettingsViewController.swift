@@ -24,7 +24,8 @@ class SettingsViewController: BaseViewController {
     var settingsRouter: SettingsRouting?
     var storage = DIGraph.shared.storage
     var currentSettings: Settings!
-
+    var deepLinkSiteId: String?
+    var deepLinkApiKey: String?
     var trackScreenState: Bool {
         trackScreenToggle.isOn
     }
@@ -61,11 +62,17 @@ class SettingsViewController: BaseViewController {
     }
 
     func getAndSetDefaultValues() {
+        var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
+        var apiKey = storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey
+        if let deepLinkSiteId = deepLinkSiteId, let deepLinkApiKey = deepLinkApiKey  {
+            siteId = deepLinkSiteId
+            apiKey = deepLinkApiKey
+        }
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "https://track-sdk.customer.io/",
-            siteId: storage.siteId ?? BuildEnvironment.CustomerIO.siteId,
-            apiKey: storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey,
+            siteId: siteId,
+            apiKey: apiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
@@ -114,12 +121,14 @@ class SettingsViewController: BaseViewController {
         storage.bgNumOfTasks = bgQMinTasksTextField.text
         // Track screen enabled
         storage.isTrackScreenEnabled = trackScreenState
+        // Device attributes
+        storage.isTrackDeviceAttrEnabled = trackDeviceAttributeState
         // Debug screen
         storage.isDebugModeEnabled = debugModeState
         // SiteId
         storage.siteId = siteIdTextField.text
         // Api Key
-        storage.apiKey = siteIdTextField.text
+        storage.apiKey = apiKeyTextField.text
     }
     func isValid() -> Bool {
         // Site id and Api Key
