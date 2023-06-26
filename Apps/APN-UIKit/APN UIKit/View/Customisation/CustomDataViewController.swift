@@ -12,7 +12,7 @@ class CustomDataViewController: BaseViewController {
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
     @IBOutlet var headerLabel: UILabel!
-
+    @IBOutlet var sendButton: ThemeButton!
     @IBOutlet var eventNameLabel: UILabel!
     @IBOutlet var propertyValueLabel: UILabel!
     @IBOutlet var propertyNameLabel: UILabel!
@@ -38,6 +38,7 @@ class CustomDataViewController: BaseViewController {
             headerLabel.text = "Send Custom Event"
         } else {
             headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Attribute"
+            sendButton.setTitle(source == .deviceAttributes ? "Send device attributes" : "Send profile attributes", for: .normal)
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
             propertyNameLabel.text = "Attribute Name*"

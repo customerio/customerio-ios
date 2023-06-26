@@ -427,6 +427,7 @@
                         <outlet property="propertyNameTextField" destination="D4J-7b-vyK" id="bxg-HT-7TA"/>
                         <outlet property="propertyValueLabel" destination="hMk-Ty-j8w" id="fnW-en-9i6"/>
                         <outlet property="propertyValueTextField" destination="lX0-3Y-erR" id="UeK-vX-oV2"/>
+                        <outlet property="sendButton" destination="frl-I2-mJf" id="OXn-qs-li5"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="2zA-6t-bzg" sceneMemberID="firstResponder"/>
