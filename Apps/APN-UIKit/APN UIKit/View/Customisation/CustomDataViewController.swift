@@ -48,8 +48,7 @@ class CustomDataViewController: BaseViewController {
     func isAllTextFieldsValid() -> Bool {
         if source == .customEvents {
             return !eventNameTextField.isTextTrimEmpty
-        }
-        else{
+        } else {
             return !(propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
         }
     }

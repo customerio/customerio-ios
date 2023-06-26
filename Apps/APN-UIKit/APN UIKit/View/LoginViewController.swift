@@ -39,7 +39,6 @@ class LoginViewController: BaseViewController {
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }
-    
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,

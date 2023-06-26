@@ -122,7 +122,6 @@ class Storage: StorageManager {
             userDefaults.set(newValue, forKey: UserDefaultKeys.isDebugModeEnabled.rawValue)
         }
     }
-    
     var didSetDefaults: Bool? {
         get {
             userDefaults.bool(forKey: UserDefaultKeys.didSetDefaults.rawValue)

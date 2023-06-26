@@ -14,9 +14,9 @@ class DashboardViewController: BaseViewController {
     var notificationUtil = DIGraph.shared.notificationUtil
     var storage = DIGraph.shared.storage
 
-    let randomData : [[String: Any?]] = [["name" : "Order Purchased", "data": nil],
-                                         ["name" : "Movie_watched", "data" : ["movie_name" : "The Incredibles"]],
-                                         ["name" : "appointmentScheduled", "data": ["appointmentTime": NSDate().timeIntervalSince1970]]]
+    let randomData: [[String: Any?]] = [["name": "Order Purchased", "data": nil],
+                                         ["name": "Movie_watched", "data": ["movie_name": "The Incredibles"]],
+                                         ["name": "appointmentScheduled", "data": ["appointmentTime": NSDate().timeIntervalSince1970]]]
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
@@ -36,7 +36,6 @@ class DashboardViewController: BaseViewController {
         dashboardRouter = router
         router.dashboardViewController = self
     }
-    
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }
@@ -85,7 +84,6 @@ class DashboardViewController: BaseViewController {
     }
 
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        
         let randomInt = Int.random(in: 0..<3)
         let randomEventInfo = randomData[randomInt]
         guard let name = randomEventInfo["name"] as? String else {
@@ -110,10 +108,8 @@ class DashboardViewController: BaseViewController {
     @IBAction func setProfileAttributes(_ sender: UIButton) {
         dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
     }
-    
     @IBAction func showPushPrompt(_ sender: UIButton) {
         notificationUtil.getPushPermission { status in
-            
             if status == .notDetermined {
                 self.notificationUtil.showPromptForPushPermission { _ in}
                 return

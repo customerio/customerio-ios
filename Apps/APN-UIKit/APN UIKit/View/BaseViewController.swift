@@ -10,7 +10,6 @@ class BaseViewController: UIViewController {
 
         dismissKeyboardOnTap()
     }
-    
     func getMetaData() -> String {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
         let versionDetail = "SDK: Customer.io iOS SDK \(SdkVersion.version)\nApp: Ami app \(appVersion ?? "")"
