@@ -767,6 +767,8 @@
                         <outlet property="copyToClipboardImageView" destination="2LR-Qa-VcE" id="rZf-IP-zMV"/>
                         <outlet property="debugModeToggle" destination="KTX-LK-Tpd" id="2Bu-FU-aXC"/>
                         <outlet property="deviceTokenTextField" destination="jPa-Ye-N0O" id="UIr-fD-2NP"/>
+                        <outlet property="restoreDefaultButton" destination="T4D-Xe-9R6" id="Tf8-Li-aAD"/>
+                        <outlet property="saveButton" destination="946-Or-p70" id="CLp-4j-XXF"/>
                         <outlet property="siteIdTextField" destination="k3o-ac-Zim" id="cGZ-nh-hOq"/>
                         <outlet property="trackDeviceToggle" destination="2zH-fs-NBi" id="pWh-Lk-Nch"/>
                         <outlet property="trackScreenToggle" destination="tgd-Y3-gsY" id="zWF-PI-uVz"/>
