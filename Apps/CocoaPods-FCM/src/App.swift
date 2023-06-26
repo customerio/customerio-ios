@@ -13,6 +13,7 @@ struct MainApp: App {
             HStack {
                 if let settingsScreen = settingsScreen {
                     settingsScreen
+                        .environmentObject(userManager)
                 } else if userManager.isUserLoggedIn {
                     DashboardView()
                         .environmentObject(userManager)

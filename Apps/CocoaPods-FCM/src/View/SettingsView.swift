@@ -11,6 +11,8 @@ struct SettingsView: View {
 
     @StateObject private var viewModel = ViewModel()
 
+    @EnvironmentObject var userManager: UserManager
+
     var body: some View {
         ZStack {
             BackButton {
@@ -41,11 +43,15 @@ struct SettingsView: View {
 
                 ColorButton("Save") {
                     // save settings to device storage for app to re-use when app is restarted
-                    viewModel.saveSettings()
+                    let didChangeSiteId = viewModel.saveSettings()
 
                     // Re-initialize the SDK to make the config changes go into place immediately
                     CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
                         viewModel.settings.configureCioSdk(config: &config)
+                    }
+
+                    if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
+                        userManager.logout()
                     }
 
                     done()
@@ -81,8 +87,13 @@ struct SettingsView: View {
             self.settings = settingsManager.settings
         }
 
-        func saveSettings() {
+        func saveSettings() -> Bool {
+            let currentlySetSiteId = CustomerIO.shared.config?.siteId
+            let changedSiteId = currentlySetSiteId != settings.siteId
+
             settingsManager.settings = settings
+
+            return changedSiteId
         }
 
         func restoreDefaultSettings() {
