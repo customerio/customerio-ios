@@ -74,6 +74,7 @@ class SettingsViewController: BaseViewController {
             isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
             isDebugModeEnabled: storage.isDebugModeEnabled ?? true
         )
+        setDefaultValues()
     }
     
     func setDefaultValues() {
@@ -167,26 +168,6 @@ class SettingsViewController: BaseViewController {
     @IBAction func saveSettings(_ sender: UIButton) {
         save()
         showToast(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
-    }
-
-    @IBAction func enablePushChanged(_ sender: UISwitch) {
-        getStatusOfPushPermissions { status in
-            DispatchQueue.main.async {
-                if status == .notDetermined {
-                    self.notificationUtil.showPromptForPushPermission { status in
-                        
-                        DispatchQueue.main.async {
-                            sender.setOn(status, animated: true)
-                        }
-                    }
-                } else {
-                    if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(appSettingsUrl)
-                        sender.setOn(!sender.isOn, animated: true)
-                    }
-                }
-            }
-        }
     }
     
     @IBAction func restoreDefaultSettings(_ sender: UIButton) {
