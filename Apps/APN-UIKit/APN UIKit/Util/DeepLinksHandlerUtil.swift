@@ -33,7 +33,7 @@ extension AppDeepLinksHandlerUtil {
                     userInfo["api_key"] = String(apiKeyInfo[1])
                 }
             }
-            if let _ = storage.userEmailId, let _ = storage.userName {
+            if let _ = storage.userEmailId {
                 NotificationCenter.default
                     .post(
                         name: Notification.Name("showSettingsScreenOnDashboard"),
@@ -54,7 +54,7 @@ extension AppDeepLinksHandlerUtil {
 
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool {
         let userInfo = ["linkType": "Universal link", "link": url.path]
-        if let _ = storage.userEmailId, let _ = storage.userName {
+        if let _ = storage.userEmailId {
             NotificationCenter.default
                 .post(
                     name: Notification.Name("showDeepLinkScreenOnDashboard"),

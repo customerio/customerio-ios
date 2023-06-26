@@ -10,7 +10,6 @@ enum UserDefaultKeys: String {
     case isTrackDeviceAttrEnabled
     case isDebugModeEnabled
     case didSetDefaults
-    case userName
     case userEmailId
     case deviceToken
 }
