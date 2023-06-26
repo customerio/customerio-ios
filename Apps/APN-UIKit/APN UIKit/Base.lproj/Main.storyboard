@@ -294,7 +294,13 @@
                     </view>
                     <navigationItem key="navigationItem" id="lSD-LL-pFO"/>
                     <connections>
+                        <outlet property="customEventButton" destination="rAK-3p-434" id="kBp-ZR-3sD"/>
+                        <outlet property="logoutButton" destination="gSy-pH-Zuu" id="iyO-Cl-BCD"/>
+                        <outlet property="randomEventButton" destination="yOE-0O-ICW" id="qjU-Ds-0cf"/>
+                        <outlet property="sendDeviceAttributesButton" destination="nOP-Lf-TEx" id="JhJ-OT-hM1"/>
+                        <outlet property="sendProfileAttributesButton" destination="5Np-Wp-Fd7" id="NBb-vR-eGR"/>
                         <outlet property="settings" destination="Kn0-pQ-K5D" id="0cy-hk-K6x"/>
+                        <outlet property="showPushPromptButton" destination="XDM-Yu-1Sg" id="nUT-m6-Gpj"/>
                         <outlet property="userInfoLabel" destination="mIk-22-9js" id="deL-cg-q6O"/>
                         <outlet property="versionsLabel" destination="h1a-Rs-bAS" id="nCt-bx-evz"/>
                     </connections>

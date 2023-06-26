@@ -16,4 +16,8 @@ class BaseViewController: UIViewController {
         let versionDetail = "SDK: Customer.io iOS SDK \(SdkVersion.version)\nApp: Ami app \(appVersion ?? "")"
         return versionDetail
     }
+    func setAccessibilityIdentifierTo(_ element: UIView, value: String) {
+        element.isAccessibilityElement = true
+        element.accessibilityIdentifier = value
+    }
 }

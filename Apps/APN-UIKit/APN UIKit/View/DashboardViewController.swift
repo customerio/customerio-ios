@@ -5,6 +5,12 @@ class DashboardViewController: BaseViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
+    @IBOutlet var sendDeviceAttributesButton: ThemeButton!
+    @IBOutlet var showPushPromptButton: ThemeButton!
+    @IBOutlet var logoutButton: ThemeButton!
+    @IBOutlet var sendProfileAttributesButton: ThemeButton!
+    @IBOutlet var customEventButton: ThemeButton!
+    @IBOutlet var randomEventButton: ThemeButton!
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
@@ -25,6 +31,7 @@ class DashboardViewController: BaseViewController {
         addUserInteractionToImageViews()
         setUserDetail()
         configureVersionLabel()
+        addAccessibilityIdentifiersForAppium()
     }
     func configureDashboardRouter() {
         let router = DashboardRouter()
@@ -59,6 +66,16 @@ class DashboardViewController: BaseViewController {
         dashboardRouter?.routeToSettings(nil)
     }
 
+    func addAccessibilityIdentifiersForAppium() {
+        setAccessibilityIdentifierTo(settings, value: "Settings")
+        setAccessibilityIdentifierTo(randomEventButton, value: "Random Event Button")
+        setAccessibilityIdentifierTo(customEventButton, value: "Custom Event Button")
+        setAccessibilityIdentifierTo(sendDeviceAttributesButton, value: "Device Attribute Button")
+        setAccessibilityIdentifierTo(sendProfileAttributesButton, value: "Profile Attribute Button")
+        setAccessibilityIdentifierTo(showPushPromptButton, value: "Show Push Prompt Button")
+        setAccessibilityIdentifierTo(logoutButton, value: "Log Out Button")
+    }
+    
     func setUserDetail() {
         if let email = storage.userEmailId {
             userInfoLabel.text = email

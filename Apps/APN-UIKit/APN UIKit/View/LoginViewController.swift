@@ -45,10 +45,6 @@ class LoginViewController: BaseViewController {
         setAccessibilityIdentifierTo(loginButton, value: "Login Button")
         setAccessibilityIdentifierTo(randomLoginButton, value: "Random Login Button")
     }
-    func setAccessibilityIdentifierTo(_ element: UIView, value: String) {
-        element.isAccessibilityElement = true
-        element.accessibilityIdentifier = value
-    }
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }
