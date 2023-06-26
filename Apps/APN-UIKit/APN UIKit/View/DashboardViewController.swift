@@ -113,11 +113,17 @@ class DashboardViewController: BaseViewController {
             if status == .notDetermined {
                 self.notificationUtil.showPromptForPushPermission { _ in}
                 return
-            }
-            let pushStatus = status == .denied ? "Denied" : "Granted"
-            DispatchQueue.main.async {
-                self.showToast(withMessage: "Push permission status is - \(pushStatus)")
-
+            } else if status == .denied {
+                if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.open(appSettingsUrl)
+                    }
+                }
+            } else {
+                // Default as granted
+                DispatchQueue.main.async {
+                    self.showToast(withMessage: "Push permission status is - Granted")
+                }
             }
         }
     }
