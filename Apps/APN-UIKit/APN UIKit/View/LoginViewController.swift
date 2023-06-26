@@ -12,7 +12,8 @@ class LoginViewController: BaseViewController {
     @IBOutlet var firstNameTextField: ThemeTextField!
     @IBOutlet var settings: UIImageView!
     @IBOutlet var versionsLabel: UILabel!
-
+    @IBOutlet var loginButton: ThemeButton!
+    @IBOutlet var randomLoginButton: UIButton!
     var storage = DIGraph.shared.storage
     var loginRouter: LoginRouting?
 
@@ -27,6 +28,7 @@ class LoginViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        addAccessibilityIdentifiersForAppium()
         addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
@@ -36,6 +38,13 @@ class LoginViewController: BaseViewController {
         NotificationCenter.default.removeObserver(self)
     }
 
+    func addAccessibilityIdentifiersForAppium() {
+        setAppiumAccessibilityIdTo(settings, value: "Settings")
+        setAppiumAccessibilityIdTo(firstNameTextField, value: "First Name Input")
+        setAppiumAccessibilityIdTo(emailTextField, value: "Email Input")
+        setAppiumAccessibilityIdTo(loginButton, value: "Login Button")
+        setAppiumAccessibilityIdTo(randomLoginButton, value: "Random Login Button")
+    }
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }

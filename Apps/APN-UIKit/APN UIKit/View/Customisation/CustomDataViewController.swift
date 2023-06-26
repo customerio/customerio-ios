@@ -29,8 +29,23 @@ class CustomDataViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Do any additional setup after loading the view.
+        addAccessibilityIdentifiersForAppium()
+    }
+    func addAccessibilityIdentifiersForAppium() {
+        if source == .customEvents {
+            setAppiumAccessibilityIdTo(eventNameTextField, value: "Event Name Input")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Property Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Property Value Input")
+            setAppiumAccessibilityIdTo(sendButton, value: "Send Event Button")
+        } else {
+            setAppiumAccessibilityIdTo(sendButton, value: "Set \(source == .deviceAttributes ? "Device" : "Profile") Attribute Button")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Attribute Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Attribute Value Input")
+        }
+        let backButton = UIBarButtonItem()
+        backButton.accessibilityIdentifier = "Back Button"
+        backButton.isAccessibilityElement = true
+        self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
     func customizeScreenBasedOnSource() {

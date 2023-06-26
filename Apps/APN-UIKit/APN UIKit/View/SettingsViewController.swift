@@ -8,6 +8,8 @@ class SettingsViewController: BaseViewController {
 
     // MARK: - Outlets
 
+    @IBOutlet var restoreDefaultButton: UIButton!
+    @IBOutlet var saveButton: ThemeButton!
     @IBOutlet var deviceTokenTextField: ThemeTextField!
     @IBOutlet var apiKeyTextField: ThemeTextField!
     @IBOutlet var siteIdTextField: ThemeTextField!
@@ -40,7 +42,7 @@ class SettingsViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        addAccessibilityIdentifiersForAppium()
         configureClipboardImageView()
         configureSettingsRouter()
         getAndSetDefaultValues()
@@ -104,6 +106,20 @@ class SettingsViewController: BaseViewController {
 
     func popToSource() {
         settingsRouter?.routeToSource()
+    }
+    func addAccessibilityIdentifiersForAppium() {
+        setAppiumAccessibilityIdTo(trackUrlTextField, value: "Track URL Input")
+        setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
+        setAppiumAccessibilityIdTo(apiKeyTextField, value: "API Key Input")
+        setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
+        setAppiumAccessibilityIdTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
+        setAppiumAccessibilityIdTo(debugModeToggle, value: "Debug Mode Toggle")
+        setAppiumAccessibilityIdTo(saveButton, value: "Save Settings Button")
+        setAppiumAccessibilityIdTo(restoreDefaultButton, value: "Restore Default Settings Button")
+        let backButton = UIBarButtonItem()
+        backButton.accessibilityIdentifier = "Back Button"
+        backButton.isAccessibilityElement = true
+        self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
     func getStatusOfPushPermissions(handler: @escaping (UNAuthorizationStatus) -> Void) {
