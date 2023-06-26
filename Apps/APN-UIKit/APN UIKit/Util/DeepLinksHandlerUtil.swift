@@ -20,14 +20,14 @@ extension AppDeepLinksHandlerUtil {
     // have confirmed that.
     private func handleDeepLinkAction(_ url: URL) -> Bool {
         if let host = url.host?.split(separator: "&"), host.first == "settings" {
-            var userInfo: [String: String] = [String:String]()
+            var userInfo: [String: String] = [String: String]()
             if host.count >= 3 {
                 // Site ID
                 let siteIdInfo = host[1].split(separator: "=")
                 if siteIdInfo.first == "site_id" {
                     userInfo["site_id"] = String(siteIdInfo[1])
                 }
-                //API Key
+                // API Key
                 let apiKeyInfo = host[2].split(separator: "=")
                 if apiKeyInfo.first == "api_key" {
                     userInfo["api_key"] = String(apiKeyInfo[1])

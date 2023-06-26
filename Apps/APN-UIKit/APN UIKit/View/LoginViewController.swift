@@ -46,7 +46,6 @@ class LoginViewController: BaseViewController {
             name: Notification.Name("showSettingsScreenOnLogin"),
             object: nil
         )
-        
     }
 
     @objc
@@ -55,7 +54,6 @@ class LoginViewController: BaseViewController {
             loginRouter?.routeToSettings(userInfo)
         }
     }
-    
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router
@@ -65,12 +63,7 @@ class LoginViewController: BaseViewController {
     func addUserInteractionToSettingsImageView() {
         settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
-
-    @objc func settingsTapped() {
-        loginRouter?.routeToSettings()
-    }
-
-    @IBAction func logInToApp(_ sender: UIButton) {
+    func validateAndLogin() {
         if !userDetailsValid() {
             showToast(withMessage: "Email Id is mandatory to login into the app.")
             return
@@ -79,14 +72,24 @@ class LoginViewController: BaseViewController {
             showToast(withMessage: "Invalid email id format.")
             return
         }
-        guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
+        var body: [String: String]?
+        guard let emailId = emailTextField.text else {
             return
         }
-        CustomerIO.shared.identify(identifier: emailId, body: ["first_name": name])
+        if let name = firstNameTextField.text, !name.isEmpty {
+            body = ["first_name": name]
+        }
+        CustomerIO.shared.identify(identifier: emailId, body: body)
         storage.userEmailId = emailId
-        storage.userName = name
-
         loginRouter?.routeToDashboard()
+    }
+
+    @objc func settingsTapped() {
+        loginRouter?.routeToSettings()
+    }
+
+    @IBAction func logInToApp(_ sender: UIButton) {
+        validateAndLogin()
     }
 
     @IBAction func generateRandomCredentials(_ sender: UIButton) {
@@ -95,6 +98,7 @@ class LoginViewController: BaseViewController {
         // Generate Random Credentials does not create a first name.
         // Name is optional for login.
         emailTextField.text = email
+        validateAndLogin()
     }
 
     func userDetailsValid() -> Bool {

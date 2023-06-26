@@ -64,7 +64,7 @@ class SettingsViewController: BaseViewController {
     func getAndSetDefaultValues() {
         var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
         var apiKey = storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey
-        if let deepLinkSiteId = deepLinkSiteId, let deepLinkApiKey = deepLinkApiKey  {
+        if let deepLinkSiteId = deepLinkSiteId, let deepLinkApiKey = deepLinkApiKey {
             siteId = deepLinkSiteId
             apiKey = deepLinkApiKey
         }
