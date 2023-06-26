@@ -51,7 +51,9 @@ class LoginViewController: BaseViewController {
 
     @objc
     func routeToDeepLinkScreen(notification: Notification) {
-        loginRouter?.routeToDeepLinkScreen()
+        if let userInfo = notification.userInfo as? [String: String] {
+            loginRouter?.routeToDeepLinkScreen(withInfo: userInfo)
+        }
     }
 
     func configureLoginRouter() {
