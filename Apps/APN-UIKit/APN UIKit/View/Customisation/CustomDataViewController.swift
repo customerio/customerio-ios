@@ -72,10 +72,10 @@ class CustomDataViewController: BaseViewController {
     // MARK: - Actions
 
     @IBAction func sendCustomData(_ sender: UIButton) {
-        if !isAllTextFieldsValid() {
-            showToast(withMessage: "Please fill all * marked fields.")
-            return
-        }
+//        if !isAllTextFieldsValid() {
+//            showToast(withMessage: "Please fill all * marked fields.")
+//            return
+//        }
 
         guard let propName = propertyNameTextField.text, let propValue = propertyValueTextField.text else {
             return
