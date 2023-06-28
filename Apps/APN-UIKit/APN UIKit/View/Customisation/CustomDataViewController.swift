@@ -7,12 +7,12 @@ enum CustomDataSource {
     case profileAttributes
 }
 
-class CustomDataViewController: UIViewController {
+class CustomDataViewController: BaseViewController {
     @IBOutlet var eventNameTextField: ThemeTextField!
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
     @IBOutlet var headerLabel: UILabel!
-
+    @IBOutlet var sendButton: ThemeButton!
     @IBOutlet var eventNameLabel: UILabel!
     @IBOutlet var propertyValueLabel: UILabel!
     @IBOutlet var propertyNameLabel: UILabel!
@@ -29,8 +29,23 @@ class CustomDataViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Do any additional setup after loading the view.
+        addAccessibilityIdentifiersForAppium()
+    }
+    func addAccessibilityIdentifiersForAppium() {
+        if source == .customEvents {
+            setAppiumAccessibilityIdTo(eventNameTextField, value: "Event Name Input")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Property Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Property Value Input")
+            setAppiumAccessibilityIdTo(sendButton, value: "Send Event Button")
+        } else {
+            setAppiumAccessibilityIdTo(sendButton, value: "Set \(source == .deviceAttributes ? "Device" : "Profile") Attribute Button")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Attribute Name Input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Attribute Value Input")
+        }
+        let backButton = UIBarButtonItem()
+        backButton.accessibilityIdentifier = "Back Button"
+        backButton.isAccessibilityElement = true
+        self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
     func customizeScreenBasedOnSource() {
@@ -38,27 +53,27 @@ class CustomDataViewController: UIViewController {
             headerLabel.text = "Send Custom Event"
         } else {
             headerLabel.text = source == .deviceAttributes ? "Set Custom Device Attribute" : "Set Custom Profile Attribute"
+            sendButton.setTitle(source == .deviceAttributes ? "Send device attributes" : "Send profile attributes", for: .normal)
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
-            propertyNameLabel.text = "Attribute Name"
-            propertyValueLabel.text = "Attribute Value"
+            propertyNameLabel.text = "Attribute Name*"
+            propertyValueLabel.text = "Attribute Value*"
         }
     }
 
     func isAllTextFieldsValid() -> Bool {
-        if propertyValueTextField.isTextTrimEmpty ||
-            propertyNameTextField.isTextTrimEmpty ||
-            (source == .customEvents && eventNameTextField.isTextTrimEmpty) {
-            return false
+        if source == .customEvents {
+            return !eventNameTextField.isTextTrimEmpty
+        } else {
+            return !(propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
         }
-        return true
     }
 
     // MARK: - Actions
 
     @IBAction func sendCustomData(_ sender: UIButton) {
         if !isAllTextFieldsValid() {
-            showAlert(withMessage: "Please fill all fields", .error)
+            showToast(withMessage: "Please fill all * marked fields.")
             return
         }
 
@@ -68,13 +83,13 @@ class CustomDataViewController: UIViewController {
         if source == .customEvents {
             guard let eventName = eventNameTextField.text else { return }
             CustomerIO.shared.track(name: eventName, data: [propName: propValue])
-            showAlert(withMessage: "Custom event tracked successfully")
-        } else if source == .profileAttributes {
-            CustomerIO.shared.deviceAttributes = [propName: propValue]
-            showAlert(withMessage: "Device attribute set successfully.")
+            showToast(withMessage: "Custom event tracked successfully")
         } else if source == .deviceAttributes {
+            CustomerIO.shared.deviceAttributes = [propName: propValue]
+            showToast(withMessage: "Device attribute set successfully.")
+        } else if source == .profileAttributes {
             CustomerIO.shared.profileAttributes = [propName: propValue]
-            showAlert(withMessage: "Profile attribute set successfully.")
+            showToast(withMessage: "Profile attribute set successfully.")
         }
     }
 }

@@ -3,8 +3,7 @@ import UIKit
 
 protocol LoginRouting {
     func routeToDashboard()
-    func routeToSettings()
-    func routeToDeepLinkScreen()
+    func routeToSettings(_ withInfo: [String: String]?)
 }
 
 class LoginRouter: LoginRouting {
@@ -14,14 +13,12 @@ class LoginRouter: LoginRouting {
         let viewController = DashboardViewController.newInstance()
         loginViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
-
-    func routeToSettings() {
+    func routeToSettings(_ withInfo: [String: String]? = nil) {
         let viewController = SettingsViewController.newInstance()
+        if let siteId = withInfo?["site_id"], let apiKey = withInfo?["api_key"] {
+            viewController.deepLinkSiteId = siteId
+            viewController.deepLinkApiKey = apiKey
+        }
         loginViewController?.navigationController?.pushViewController(viewController, animated: true)
-    }
-
-    func routeToDeepLinkScreen() {
-        let viewController = DeepLinkViewController.newInstance()
-        loginViewController?.navigationController?.present(viewController, animated: true)
     }
 }

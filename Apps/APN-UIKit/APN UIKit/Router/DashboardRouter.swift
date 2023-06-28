@@ -4,8 +4,7 @@ import UIKit
 protocol DashboardRouting {
     func routeToLogin()
     func routeToCustomDataScreen(forSource source: CustomDataSource)
-    func routeToSettings()
-    func routeToDeepLinkScreen(withInfo: [String: String])
+    func routeToSettings(_ withInfo: [String: String]?)
 }
 
 class DashboardRouter: DashboardRouting {
@@ -27,14 +26,12 @@ class DashboardRouter: DashboardRouting {
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 
-    func routeToSettings() {
+    func routeToSettings(_ withInfo: [String: String]? = nil) {
         let viewController = SettingsViewController.newInstance()
+        if let siteId = withInfo?["site_id"], let apiKey = withInfo?["api_key"] {
+            viewController.deepLinkSiteId = siteId
+            viewController.deepLinkApiKey = apiKey
+        }
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
-    }
-
-    func routeToDeepLinkScreen(withInfo: [String: String]) {
-        let viewController = DeepLinkViewController.newInstance()
-        viewController.deepLinkInfo = withInfo
-        dashboardViewController?.navigationController?.present(viewController, animated: true)
     }
 }
