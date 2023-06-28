@@ -94,7 +94,7 @@ class LoginViewController: BaseViewController {
     }
 
     @objc func settingsTapped() {
-        loginRouter?.routeToSettings()
+        loginRouter?.routeToSettings(nil)
     }
 
     @IBAction func logInToApp(_ sender: UIButton) {
