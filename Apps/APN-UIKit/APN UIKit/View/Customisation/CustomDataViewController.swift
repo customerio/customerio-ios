@@ -61,35 +61,36 @@ class CustomDataViewController: BaseViewController {
         }
     }
 
-    func isAllTextFieldsValid() -> Bool {
+    func canEventFail() -> Bool {
         if source == .customEvents {
-            return !eventNameTextField.isTextTrimEmpty
+            return eventNameTextField.isTextTrimEmpty
         } else {
-            return !(propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
+            return (propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
         }
     }
 
     // MARK: - Actions
 
     @IBAction func sendCustomData(_ sender: UIButton) {
-//        if !isAllTextFieldsValid() {
-//            showToast(withMessage: "Please fill all * marked fields.")
-//            return
-//        }
-
         guard let propName = propertyNameTextField.text, let propValue = propertyValueTextField.text else {
             return
         }
+        var toastMessage = ""
         if source == .customEvents {
             guard let eventName = eventNameTextField.text else { return }
             CustomerIO.shared.track(name: eventName, data: [propName: propValue])
-            showToast(withMessage: "Custom event tracked successfully")
+            toastMessage = "Custom event tracked successfully"
         } else if source == .deviceAttributes {
             CustomerIO.shared.deviceAttributes = [propName: propValue]
-            showToast(withMessage: "Device attribute set successfully.")
+            toastMessage = "Device attribute set successfully."
         } else if source == .profileAttributes {
             CustomerIO.shared.profileAttributes = [propName: propValue]
-            showToast(withMessage: "Profile attribute set successfully.")
+            toastMessage = "Profile attribute set successfully."
         }
+        
+        if canEventFail() {
+            toastMessage = "Custom event sent without any data might result in API failure."
+        }
+        showToast(withMessage: toastMessage)
     }
 }
