@@ -89,7 +89,8 @@ class CustomDataViewController: BaseViewController {
         }
         
         if canEventFail() {
-            toastMessage = "Custom event sent without any data might result in API failure."
+            // Toast message might need to be changed based on squad discussion
+            toastMessage = "Event sent.\nNote:- Custom event sent without any data might result in API failure."
         }
         showToast(withMessage: toastMessage)
     }
