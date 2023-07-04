@@ -230,7 +230,6 @@ public class CustomerIO: CustomerIOInstance {
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
             self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
         }
 
         logger
