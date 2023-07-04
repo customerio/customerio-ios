@@ -47,6 +47,7 @@
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
 		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
+		94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */; };
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraph.swift */; };
@@ -134,6 +135,7 @@
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
+		94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
 		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraph.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraph.swift; sourceTree = "<group>"; };
 		F78934232A168E08005D3DF7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
 				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
+				94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -532,6 +535,7 @@
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
 				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
+				94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
 				46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */,
