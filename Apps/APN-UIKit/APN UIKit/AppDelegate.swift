@@ -24,12 +24,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func initializeCioAndInAppListeners() {
         // Initialize CustomerIO SDK
 
-        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
+        if storage.didSetDefaults == false {
+            storage.didSetDefaults = true
+            storage.isDebugModeEnabled = true
+            storage.isTrackScreenEnabled = true
+            storage.isTrackDeviceAttrEnabled = true
+        }
+        var siteId = BuildEnvironment.CustomerIO.siteId
+        var apiKey = BuildEnvironment.CustomerIO.apiKey
+        if let storedSiteId = storage.siteId {
+            siteId = storedSiteId
+        }
+        if let storedApiKey = storage.apiKey {
+            apiKey = storedApiKey
+        }
+        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
+            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? false
+            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
             if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
                 config.trackingApiUrl = trackUrl
             }
