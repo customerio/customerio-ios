@@ -114,21 +114,21 @@ internal class DeepLinkUtilMock: DeepLinkUtil, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    internal private(set) var handleDeepLinkReceivedArguments: URL?
+    internal private(set) var handleDeepLinkReceivedArguments: (deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?)?
     /// Arguments from *all* of the times that the function was called.
-    internal private(set) var handleDeepLinkReceivedInvocations: [URL] = []
+    internal private(set) var handleDeepLinkReceivedInvocations: [(deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    internal var handleDeepLinkClosure: ((URL) -> Void)?
+    internal var handleDeepLinkClosure: ((URL, DeepLinkDelegate?) -> Void)?
 
-    /// Mocked function for `handleDeepLink(_ deepLinkUrl: URL)`. Your opportunity to return a mocked value and check result of mock in test code.
-    internal func handleDeepLink(_ deepLinkUrl: URL) {
+    /// Mocked function for `handleDeepLink(_ deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    internal func handleDeepLink(_ deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?) {
         mockCalled = true
         handleDeepLinkCallsCount += 1
-        handleDeepLinkReceivedArguments = deepLinkUrl
-        handleDeepLinkReceivedInvocations.append(deepLinkUrl)
-        handleDeepLinkClosure?(deepLinkUrl)
+        handleDeepLinkReceivedArguments = (deepLinkUrl: deepLinkUrl, deepLinkDelegate: deepLinkDelegate)
+        handleDeepLinkReceivedInvocations.append((deepLinkUrl: deepLinkUrl, deepLinkDelegate: deepLinkDelegate))
+        handleDeepLinkClosure?(deepLinkUrl, deepLinkDelegate)
     }
 }
 

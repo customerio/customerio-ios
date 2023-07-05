@@ -11,7 +11,7 @@ protocol StorageManager {
     var isDebugModeEnabled: Bool? { get set }
     var userEmailId: String? { get set }
     var deviceToken: String? { get set }
-    var didSetDefaults: Bool? {get set}
+    var didSetDefaults: Bool? { get set }
 }
 
 // sourcery: InjectRegister = "Storage"
@@ -112,6 +112,7 @@ class Storage: StorageManager {
             userDefaults.set(newValue, forKey: UserDefaultKeys.isDebugModeEnabled.rawValue)
         }
     }
+
     var didSetDefaults: Bool? {
         get {
             userDefaults.bool(forKey: UserDefaultKeys.didSetDefaults.rawValue)

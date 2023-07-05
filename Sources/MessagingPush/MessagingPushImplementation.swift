@@ -14,7 +14,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     let backgroundQueue: Queue
     let sdkInitializedUtil: SdkInitializedUtil
 
-    private var customerIO: CustomerIO? {
+    var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
     }
 

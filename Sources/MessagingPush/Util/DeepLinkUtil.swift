@@ -1,11 +1,12 @@
 import CioInternalCommon
+import CioTracking
 import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
 
 protocol DeepLinkUtil: AutoMockable {
-    func handleDeepLink(_ deepLinkUrl: URL)
+    func handleDeepLink(_ deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?)
 }
 
 @available(iOSApplicationExtension, unavailable)
@@ -19,9 +20,19 @@ class DeepLinkUtilImpl: DeepLinkUtil {
         self.uiKit = uiKitWrapper
     }
 
-    func handleDeepLink(_ deepLinkUrl: URL) {
+    func handleDeepLink(_ deepLinkUrl: URL, deepLinkDelegate: DeepLinkDelegate?) {
         logger.info("Found a deep link inside of a push notification.")
         logger.debug("deep link found in push: \(deepLinkUrl)")
+
+        // First, try to have SDK delegate handle deep link. If not, we will try OS methods below.
+        if let deepLinkDelegate = deepLinkDelegate, let deepLink = DeepLink(deepLinkUrl: deepLinkUrl) {
+            logger.debug("Found a deep link delegate. Calling deep link delegate.")
+            let ifHandled = deepLinkDelegate.onOpenDeepLink(deepLink: deepLink)
+
+            if ifHandled {
+                return
+            }
+        }
 
         /*
          There are 2 types of deep links:
@@ -40,6 +51,9 @@ class DeepLinkUtilImpl: DeepLinkUtil {
          3. Customer returned `false` from ^^^ function.
          */
         let ifHandled = uiKit.continueNSUserActivity(webpageURL: deepLinkUrl)
+        if ifHandled {
+            return
+        }
 
         if !ifHandled {
             logger.debug("Opening deep link through system call. Deep link: \(deepLinkUrl)")

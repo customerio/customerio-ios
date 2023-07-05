@@ -20,7 +20,7 @@ extension AppDeepLinksHandlerUtil {
     // have confirmed that.
     private func handleDeepLinkAction(_ url: URL) -> Bool {
         if let host = url.host?.split(separator: "&"), host.first == "settings" {
-            var userInfo: [String: String] = [String: String]()
+            var userInfo = [String: String]()
             if host.count >= 3 {
                 // Site ID
                 let siteIdInfo = host[1].split(separator: "=")

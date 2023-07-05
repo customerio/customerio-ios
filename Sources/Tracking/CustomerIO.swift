@@ -120,6 +120,8 @@ public class CustomerIO: CustomerIOInstance {
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
 
+    public weak var deepLinkDelegate: DeepLinkDelegate?
+
     // private constructor to force use of singleton API
     private init() {}
 
@@ -157,6 +159,7 @@ public class CustomerIO: CustomerIOInstance {
         siteId: String,
         apiKey: String,
         region: Region,
+        deepLinkDelegate: DeepLinkDelegate? = nil,
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
         var newSdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
@@ -165,7 +168,7 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(config: newSdkConfig)
+        Self.initialize(deepLinkDelegate: deepLinkDelegate, config: newSdkConfig)
 
         if newSdkConfig.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
@@ -192,18 +195,20 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(config: newSdkConfig.toSdkConfig())
+        Self.initialize(deepLinkDelegate: nil, config: newSdkConfig.toSdkConfig())
     }
 
     // private shared logic initialize to avoid copy/paste between the different
     // public initialize functions.
     private static func initialize(
+        deepLinkDelegate: DeepLinkDelegate?,
         config: SdkConfig
     ) {
         let newDiGraph = DIGraph(sdkConfig: config)
 
         Self.shared.diGraph = newDiGraph
         Self.shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
+        Self.shared.deepLinkDelegate = deepLinkDelegate
 
         Self.shared.postInitialize(diGraph: newDiGraph)
     }

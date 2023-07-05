@@ -31,6 +31,7 @@ class CustomDataViewController: BaseViewController {
         super.viewDidLoad()
         addAccessibilityIdentifiersForAppium()
     }
+
     func addAccessibilityIdentifiersForAppium() {
         if source == .customEvents {
             setAppiumAccessibilityIdTo(eventNameTextField, value: "Event Name Input")
@@ -45,7 +46,7 @@ class CustomDataViewController: BaseViewController {
         let backButton = UIBarButtonItem()
         backButton.accessibilityIdentifier = "Back Button"
         backButton.isAccessibilityElement = true
-        self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
+        navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
     func customizeScreenBasedOnSource() {
