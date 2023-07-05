@@ -52,6 +52,7 @@ class SettingsViewController: BaseViewController {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
     }
+
     func configureClipboardImageView() {
         copyToClipboardImageView.addTapGesture(onTarget: self, #selector(SettingsViewController.copyToClipboard))
     }
@@ -83,6 +84,7 @@ class SettingsViewController: BaseViewController {
         )
         setDefaultValues()
     }
+
     func setDefaultValues() {
         deviceTokenTextField.text = currentSettings.deviceToken
         trackUrlTextField.text = currentSettings.trackUrl
@@ -107,6 +109,7 @@ class SettingsViewController: BaseViewController {
     func popToSource() {
         settingsRouter?.routeToSource()
     }
+
     func addAccessibilityIdentifiersForAppium() {
         setAppiumAccessibilityIdTo(trackUrlTextField, value: "Track URL Input")
         setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
@@ -119,7 +122,7 @@ class SettingsViewController: BaseViewController {
         let backButton = UIBarButtonItem()
         backButton.accessibilityIdentifier = "Back Button"
         backButton.isAccessibilityElement = true
-        self.navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
+        navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
     func getStatusOfPushPermissions(handler: @escaping (UNAuthorizationStatus) -> Void) {
@@ -146,6 +149,7 @@ class SettingsViewController: BaseViewController {
         // Api Key
         storage.apiKey = apiKeyTextField.text
     }
+
     func isValid() -> Bool {
         // Site id and Api Key
         if siteIdTextField.isTextTrimEmpty {
@@ -174,6 +178,7 @@ class SettingsViewController: BaseViewController {
         }
         return true
     }
+
     func isValidUrl(_ urlString: String?) -> Bool {
         if let urlString = urlString {
             if let url = NSURL(string: urlString) {
@@ -189,6 +194,7 @@ class SettingsViewController: BaseViewController {
         save()
         showToast(withMessage: "Settings saved. This will require an app restart to bring the changes in effect.", action: popToSource)
     }
+
     @IBAction func restoreDefaultSettings(_ sender: UIButton) {
         currentSettings = Settings(
             deviceToken: storage.deviceToken ?? "Error",
