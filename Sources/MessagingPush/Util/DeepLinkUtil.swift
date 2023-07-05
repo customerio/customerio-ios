@@ -28,7 +28,6 @@ class DeepLinkUtilImpl: DeepLinkUtil {
         if let deepLinkDelegate = deepLinkDelegate, let deepLink = DeepLink(deepLinkUrl: deepLinkUrl) {
             logger.debug("Found a deep link delegate. Calling deep link delegate.")
             let ifHandled = deepLinkDelegate.onOpenDeepLink(deepLink: deepLink)
-
             if ifHandled {
                 return
             }
@@ -55,9 +54,7 @@ class DeepLinkUtilImpl: DeepLinkUtil {
             return
         }
 
-        if !ifHandled {
-            logger.debug("Opening deep link through system call. Deep link: \(deepLinkUrl)")
-            uiKit.open(url: deepLinkUrl)
-        }
+        logger.debug("Opening deep link through system call. Deep link: \(deepLinkUrl)")
+        uiKit.open(url: deepLinkUrl)
     }
 }
