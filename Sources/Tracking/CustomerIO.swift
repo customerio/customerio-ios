@@ -235,7 +235,6 @@ public class CustomerIO: CustomerIOInstance {
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
             self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
         }
 
         logger
@@ -402,4 +401,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-}
+} // swiftlint:disable:this file_length
