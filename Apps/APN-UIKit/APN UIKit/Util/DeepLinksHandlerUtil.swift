@@ -69,6 +69,18 @@ extension AppDeepLinksHandlerUtil {
                     userInfo: userInfo
                 )
         }
-        return true
+        // navigation to browser depends if we handle the url inside app or not
+        return doesMatchUniversalLink(url)
+    }
+
+    /// Check if a provided URL matches a predefined universal link that app supports..
+    /// - Parameter url: The URL to be checked.
+    /// - Returns: A boolean indicating whether the provided URL matches the universal link.
+    func doesMatchUniversalLink(_ url: URL) -> Bool {
+        let universalLink = URL(string: "http://applinks:ciosample.page.link/spm")
+
+        return (url.scheme == "http" || url.scheme == "https") &&
+            url.host == universalLink?.host &&
+            url.path == universalLink?.path
     }
 }
