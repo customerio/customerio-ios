@@ -66,7 +66,7 @@ class CustomDataViewController: BaseViewController {
         if source == .customEvents {
             return eventNameTextField.isTextTrimEmpty
         } else {
-            return (propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty)
+            return propertyValueTextField.isTextTrimEmpty || propertyNameTextField.isTextTrimEmpty
         }
     }
 

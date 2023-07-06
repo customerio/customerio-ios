@@ -13,6 +13,7 @@ class LoginRouter: LoginRouting {
         let viewController = DashboardViewController.newInstance()
         loginViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
+
     func routeToSettings(_ withInfo: [String: String]? = nil) {
         let viewController = SettingsViewController.newInstance()
         if let siteId = withInfo?["site_id"], let apiKey = withInfo?["api_key"] {

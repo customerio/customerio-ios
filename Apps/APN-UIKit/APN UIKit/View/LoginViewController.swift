@@ -45,9 +45,11 @@ class LoginViewController: BaseViewController {
         setAppiumAccessibilityIdTo(loginButton, value: "Login Button")
         setAppiumAccessibilityIdTo(randomLoginButton, value: "Random Login Button")
     }
+
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }
+
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,
@@ -63,6 +65,7 @@ class LoginViewController: BaseViewController {
             loginRouter?.routeToSettings(userInfo)
         }
     }
+
     func configureLoginRouter() {
         let router = LoginRouter()
         loginRouter = router
@@ -72,6 +75,7 @@ class LoginViewController: BaseViewController {
     func addUserInteractionToSettingsImageView() {
         settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
+
     func validateAndLogin() {
         if !userDetailsValid() {
             showToast(withMessage: "Email Id is mandatory to login into the app.")
@@ -111,6 +115,6 @@ class LoginViewController: BaseViewController {
     }
 
     func userDetailsValid() -> Bool {
-        return !emailTextField.isTextTrimEmpty
+        !emailTextField.isTextTrimEmpty
     }
 }

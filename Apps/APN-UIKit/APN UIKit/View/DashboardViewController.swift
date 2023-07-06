@@ -5,6 +5,7 @@ class DashboardViewController: BaseViewController {
     static func newInstance() -> DashboardViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
+
     @IBOutlet var sendDeviceAttributesButton: ThemeButton!
     @IBOutlet var showPushPromptButton: ThemeButton!
     @IBOutlet var logoutButton: ThemeButton!
@@ -24,6 +25,7 @@ class DashboardViewController: BaseViewController {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
     }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         configureDashboardRouter()
@@ -33,20 +35,25 @@ class DashboardViewController: BaseViewController {
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
     }
+
     func configureDashboardRouter() {
         let router = DashboardRouter()
         dashboardRouter = router
         router.dashboardViewController = self
     }
+
     func configureVersionLabel() {
         versionsLabel.text = getMetaData()
     }
+
     func addUserInteractionToImageViews() {
         settings.addTapGesture(onTarget: self, #selector(DashboardViewController.settingsTapped))
     }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
+
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,
@@ -55,6 +62,7 @@ class DashboardViewController: BaseViewController {
             object: nil
         )
     }
+
     @objc
     func deepLinkRouteToSettings(notification: Notification) {
         if let userInfo = notification.userInfo as? [String: String] {
@@ -75,6 +83,7 @@ class DashboardViewController: BaseViewController {
         setAppiumAccessibilityIdTo(showPushPromptButton, value: "Show Push Prompt Button")
         setAppiumAccessibilityIdTo(logoutButton, value: "Log Out Button")
     }
+
     func setUserDetail() {
         if let email = storage.userEmailId {
             userInfoLabel.text = email
@@ -90,7 +99,7 @@ class DashboardViewController: BaseViewController {
     }
 
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        let randomInt = Int.random(in: 0..<3)
+        let randomInt = Int.random(in: 0 ..< 3)
         let randomEventInfo = randomData[randomInt]
         guard let name = randomEventInfo["name"] as? String else {
             return
@@ -114,10 +123,11 @@ class DashboardViewController: BaseViewController {
     @IBAction func setProfileAttributes(_ sender: UIButton) {
         dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
     }
+
     @IBAction func showPushPrompt(_ sender: UIButton) {
         notificationUtil.getPushPermission { status in
             if status == .notDetermined {
-                self.notificationUtil.showPromptForPushPermission { _ in}
+                self.notificationUtil.showPromptForPushPermission { _ in }
                 return
             } else if status == .denied {
                 if let appSettingsUrl = URL(string: UIApplication.openSettingsURLString) {
