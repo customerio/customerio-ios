@@ -93,7 +93,7 @@ struct DashboardView: View {
                         navigateToDeviceAttributesScreen = true
                     }.setAppiumId("Device Attribute Button")
                         .sheet(isPresented: $navigateToDeviceAttributesScreen) {
-                            CustomAttributeView(attributeType: .deviceAttributes, close: {
+                            CustomAttributeView(attributeType: .device, close: {
                                 navigateToDeviceAttributesScreen = false
                             }, done: { name, value in
                                 CustomerIO.shared.deviceAttributes = [name: value]
@@ -106,7 +106,7 @@ struct DashboardView: View {
                         navigateToProfileAttributesScreen = true
                     }.setAppiumId("Profile Attribute Button")
                         .sheet(isPresented: $navigateToProfileAttributesScreen) {
-                            CustomAttributeView(attributeType: .profileAttributes, close: {
+                            CustomAttributeView(attributeType: .profile, close: {
                                 navigateToProfileAttributesScreen = false
                             }, done: { name, value in
                                 CustomerIO.shared.profileAttributes = [name: value]
