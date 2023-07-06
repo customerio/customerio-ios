@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/customerio/customerio-ios/compare/2.7.0...2.7.1) (2023-07-04)
+
+
+### Bug Fixes
+
+* bad memory access crash ([#342](https://github.com/customerio/customerio-ios/issues/342)) ([b83e6bd](https://github.com/customerio/customerio-ios/commit/b83e6bda1a0746eab65bb3d07887c3fcbcb67712))
+
 ## [2.7.0](https://github.com/customerio/customerio-ios/compare/2.6.1...2.7.0) (2023-06-21)
 
 
