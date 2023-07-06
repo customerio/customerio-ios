@@ -27,6 +27,7 @@
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
 		F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D762A05588E00641391 /* ColorExtensions.swift */; };
 		F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D782A058B5000641391 /* SettingsButton.swift */; };
+		F7AC27062A571D7800C305EE /* PendingDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AC27052A571D7800C305EE /* PendingDeepLink.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
 		F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */; };
 		F7BAFCC329195CB900DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -89,6 +90,7 @@
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78E3D762A05588E00641391 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
 		F78E3D782A058B5000641391 /* SettingsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsButton.swift; sourceTree = "<group>"; };
+		F7AC27052A571D7800C305EE /* PendingDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingDeepLink.swift; sourceTree = "<group>"; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -189,6 +191,7 @@
 			isa = PBXGroup;
 			children = (
 				F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */,
+				F7AC27052A571D7800C305EE /* PendingDeepLink.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
@@ -430,6 +433,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
+				F7AC27062A571D7800C305EE /* PendingDeepLink.swift in Sources */,
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
 				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,

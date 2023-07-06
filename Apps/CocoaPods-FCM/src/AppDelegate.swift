@@ -21,7 +21,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let apiKey = appSetSettings?.apiKey ?? BuildEnvironment.CustomerIO.apiKey
 
         // Initialize the Customer.io SDK
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
+        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US, deepLinkDelegate: PendingDeepLink.shared) { config in
             // Modify properties in the config object to configure the Customer.io SDK.
 
             config.logLevel = .debug // For all of our sample apps, we prefer to set debug logs to make our internal testing easier. You may not need to do this.
@@ -48,6 +48,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+    }
+
     // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
     // the completion handler.
     @available(iOS 10.0, *)

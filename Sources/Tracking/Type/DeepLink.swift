@@ -2,7 +2,7 @@ import Foundation
 
 // Parsed URL for more convenient deep link handling for customers.
 // Pass this object to customers for them to handle deep links in their apps.
-public struct DeepLink {
+public struct DeepLink: Equatable {
     public let scheme: String
     public let host: String
     public let path: String?
