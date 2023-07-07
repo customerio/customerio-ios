@@ -16,7 +16,7 @@ extension Binding where Value == Double {
 
 extension Binding where Value == Int {
     func toStringBinding() -> Binding<String> {
-        cast(to: { String($0) }, from: { $0 == "" ? 0 : Int($0)! })
+        cast(to: { String($0) }, from: { $0 == "" ? 0 : Int($0) ?? 0 })
     }
 }
 

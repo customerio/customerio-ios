@@ -3,37 +3,35 @@ import SwiftUI
 import UserNotifications
 
 struct DashboardView: View {
-    @State private var showRandomEventSentAlert = false
+    enum Subscreen: String {
+        case customEvent
+        case profileAttribute
+        case deviceAttribute
+        case settings
+    }
 
-    @State private var showingCustomEventSheet = false
-    @State private var showingCustomEventAlert = false
+    @State private var alertMessage: String?
+    @State private var subscreenShown: Subscreen?
+
     @State private var customEventName: String = ""
     @State private var customEventPropertyName: String = ""
     @State private var customEventPropertyValue: String = ""
 
     @EnvironmentObject var userManager: UserManager
 
-    @State private var showSettings: Bool = false
-
-    @State private var navigateToCustomEventScreen = false
-    @State private var navigateToProfileAttributesScreen = false
-    @State private var navigateToDeviceAttributesScreen = false
-
-    @State private var pushPromptAlertMessage: String?
-
     var body: some View {
         ZStack {
             VStack {
                 SettingsButton {
-                    showSettings = true
+                    subscreenShown = .settings
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.trailing, 10)
                 Spacer()
             }
-            .sheet(isPresented: $showSettings) {
+            .sheet(isPresented: .constant(subscreenShown == .settings)) {
                 SettingsView {
-                    showSettings = false
+                    subscreenShown = nil
                 }
             }
 
@@ -64,54 +62,45 @@ struct DashboardView: View {
                             )
                         }
 
-                        showRandomEventSentAlert.toggle()
+                        alertMessage = "Random event sent"
                     }
                     .setAppiumId("Random Event Button")
-                    .alert(isPresented: $showRandomEventSentAlert) {
-                        Alert(
-                            title: Text("Random event sent"),
-                            dismissButton: .default(Text("OK"))
-                        )
-                    }
 
                     ColorButton("Send Custom Event") {
-                        navigateToCustomEventScreen = true
+                        subscreenShown = .customEvent
                     }.setAppiumId("Custom Event Button")
-                        .sheet(isPresented: $navigateToCustomEventScreen) {
+                        .sheet(isPresented: .constant(subscreenShown == .customEvent)) {
                             CustomEventView(close: {
-                                navigateToCustomEventScreen = false
+                                subscreenShown = nil
                             }, done: { eventName, propertyName, propertyValue in
                                 CustomerIO.shared.track(name: eventName, data: [
                                     propertyName: propertyValue
                                 ])
-
-                                navigateToCustomEventScreen = false
+                                subscreenShown = nil
                             })
                         }
 
                     ColorButton("Set Device Attribute") {
-                        navigateToDeviceAttributesScreen = true
+                        subscreenShown = .deviceAttribute
                     }.setAppiumId("Device Attribute Button")
-                        .sheet(isPresented: $navigateToDeviceAttributesScreen) {
+                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute)) {
                             CustomAttributeView(attributeType: .device, close: {
-                                navigateToDeviceAttributesScreen = false
+                                subscreenShown = nil
                             }, done: { name, value in
                                 CustomerIO.shared.deviceAttributes = [name: value]
-
-                                navigateToDeviceAttributesScreen = false
+                                subscreenShown = nil
                             })
                         }
 
                     ColorButton("Set Profile Attribute") {
-                        navigateToProfileAttributesScreen = true
+                        subscreenShown = .profileAttribute
                     }.setAppiumId("Profile Attribute Button")
-                        .sheet(isPresented: $navigateToProfileAttributesScreen) {
+                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute)) {
                             CustomAttributeView(attributeType: .profile, close: {
-                                navigateToProfileAttributesScreen = false
+                                subscreenShown = nil
                             }, done: { name, value in
                                 CustomerIO.shared.profileAttributes = [name: value]
-
-                                navigateToProfileAttributesScreen = false
+                                subscreenShown = nil
                             })
                         }
 
@@ -119,9 +108,9 @@ struct DashboardView: View {
                         UNUserNotificationCenter.current().getNotificationSettings { settings in
                             switch settings.authorizationStatus {
                             case .authorized:
-                                pushPromptAlertMessage = "Push permission already granted"
+                                alertMessage = "Push permission already granted"
                             case .denied:
-                                pushPromptAlertMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
+                                alertMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
                             case .notDetermined:
                                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
                                     if granted {
@@ -134,13 +123,6 @@ struct DashboardView: View {
                             }
                         }
                     }.setAppiumId("Show Push Prompt Button")
-                        .alert(isPresented: .notNil(pushPromptAlertMessage)) {
-                            Alert(
-                                title: Text("Push"),
-                                message: Text(pushPromptAlertMessage!),
-                                dismissButton: .default(Text("OK"))
-                            )
-                        }
                     ColorButton("Logout") {
                         CustomerIO.shared.clearIdentify()
 
@@ -151,6 +133,14 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
+            .alert(isPresented: .notNil(alertMessage)) {
+                Alert(
+                    title: Text(alertMessage!),
+                    dismissButton: .default(Text("OK")) {
+                        alertMessage = nil
+                    }
+                )
+            }
         }
     }
 }
