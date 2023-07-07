@@ -19,7 +19,7 @@ struct CustomAttributeView: View {
     var close: () -> Void
     var done: (_ name: String, _ value: String) -> Void
 
-    @State private var showConfirmationAlert: Bool = false
+    @State private var alertMessage: String?
 
     var body: some View {
         ZStack {
@@ -36,13 +36,19 @@ struct CustomAttributeView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send \(attributeTypeName) attributes") {
-                    showConfirmationAlert = true
+                    var alertMessage = "\(attributeTypeName.capitalized) attribute sent successfully!"
+
+                    if name.isEmpty || value.isEmpty {
+                        alertMessage += "\n\n Note: Empty attribute name or value might result in expected behavior with the SDK."
+                    }
+
+                    self.alertMessage = alertMessage
                 }.setAppiumId("Set \(attributeTypeName.capitalized) Attribute Button")
             }.padding([.horizontal], 20)
-                .alert(isPresented: $showConfirmationAlert) {
+                .alert(isPresented: .notNil(alertMessage)) {
                     Alert(
                         title: Text(""),
-                        message: Text("\(attributeTypeName.capitalized) attribute sent successfully!"),
+                        message: Text(alertMessage!),
                         dismissButton: .default(Text("OK")) {
                             done(name, value)
                         }
