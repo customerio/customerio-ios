@@ -9,7 +9,7 @@ struct CustomEventView: View {
     var close: () -> Void
     var done: (_ eventName: String, _ propertyName: String, _ propertyValue: String) -> Void
 
-    @State private var showConfirmationAlert: Bool = false
+    @State private var alertMessage: String?
 
     var body: some View {
         ZStack {
@@ -27,13 +27,19 @@ struct CustomEventView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send Event") {
-                    showConfirmationAlert = true
+                    var alertMessage = "Event sent successfully!"
+
+                    if eventName.isEmpty {
+                        alertMessage += "\n\n Note: Empty event name might result in unexpected behavior with the SDK."
+                    }
+
+                    self.alertMessage = alertMessage
                 }.setAppiumId("Send Event Button")
             }.padding([.horizontal], 20)
-                .alert(isPresented: $showConfirmationAlert) {
+                .alert(isPresented: .notNil(alertMessage)) {
                     Alert(
                         title: Text(""),
-                        message: Text("Event sent successfully"),
+                        message: Text(alertMessage!),
                         dismissButton: .default(Text("OK")) {
                             done(eventName, propertyName, propertyValue)
                         }
