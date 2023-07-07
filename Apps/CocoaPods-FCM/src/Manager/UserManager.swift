@@ -11,6 +11,10 @@ class UserManager: ObservableObject {
         self.isUserLoggedIn = keyValueStore.loggedInUserEmail != nil
     }
 
+    var email: String? {
+        keyValueStore.loggedInUserEmail
+    }
+
     func userLoggedIn(email: String) {
         keyValueStore.loggedInUserEmail = email
         isUserLoggedIn = true

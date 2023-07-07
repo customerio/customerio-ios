@@ -1,60 +1,104 @@
 import CioTracking
 import SampleAppsCommon
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
-    var done: () -> Void
+    var siteId: String?
+    var apiKey: String?
 
-    private let settingsManager = CioSettingsManager()
+    var done: () -> Void
 
     @StateObject private var viewModel = ViewModel()
 
+    @EnvironmentObject var userManager: UserManager
+
     var body: some View {
-        // TODO: add back button in UI to dismiss screen. add appium ID to it.
+        ZStack {
+            BackButton {
+                done()
+            }
 
-        VStack(spacing: 5) {
-            SettingsTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl).setAppiumId("Track URL Input")
-            SettingsTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
-            SettingsTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
-            SettingsTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay.toStringBinding())
-            SettingsTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks.toStringBinding())
-            SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens).setAppiumId("Track Screens Toggle")
-            SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
-            SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")
-
-            ColorButton(title: "Save") {
-                // save settings to device storage for app to re-use when app is restarted
-                settingsManager.settings = viewModel.settings
-
-                // Re-initialize the SDK to make the config changes go into place immediately
-                CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
-                    viewModel.settings.configureCioSdk(config: &config)
+            VStack(spacing: 5) {
+                HStack {
+                    Text("Device token: ")
+                    OneLineText(viewModel.pushToken)
+                    Button(action: {
+                        UIPasteboard.general.string = viewModel.pushToken
+                    }) {
+                        Image(systemName: "list.clipboard.fill").font(.system(size: 24))
+                    }
                 }
 
-                done()
-            }.setAppiumId("Save Settings Button")
+                Group {
+                    LabeledTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl).setAppiumId("Track URL Input")
+                    LabeledTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
+                    LabeledTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
+                    LabeledTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay.toStringBinding())
+                    LabeledTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks.toStringBinding())
+                    SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens).setAppiumId("Track Screens Toggle")
+                    SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
+                    SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")
+                }
 
-            Button("Restore default settings") {
-                settingsManager.restoreSdkDefaultSettings()
-            }.setAppiumId("Restore Default Settings Button")
+                ColorButton("Save") {
+                    // save settings to device storage for app to re-use when app is restarted
+                    let didChangeSiteId = viewModel.saveSettings()
+
+                    // Re-initialize the SDK to make the config changes go into place immediately
+                    CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
+                        viewModel.settings.configureCioSdk(config: &config)
+                    }
+
+                    if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
+                        userManager.logout()
+                    }
+
+                    done()
+                }.setAppiumId("Save Settings Button")
+
+                Button("Restore default settings") {
+                    viewModel.restoreDefaultSettings()
+                }.setAppiumId("Restore Default Settings Button")
+            }
+            .padding([.leading, .trailing], 10)
+            .onAppear {
+                if let siteId = siteId {
+                    viewModel.settings.siteId = siteId
+                }
+                if let apiKey = apiKey {
+                    viewModel.settings.apiKey = apiKey
+                }
+            }
         }
-        .padding([.leading, .trailing], 10)
     }
 
     class ViewModel: ObservableObject {
-        @Published var settings: CioSettings = CioSettingsManager().settings
-    }
-}
+        @Published var settings: CioSettings
+        @Published var pushToken: String
 
-struct SettingsTextField: View {
-    var title: String
+        private let settingsManager: CioSettingsManager
+        private let keyValueStorage: KeyValueStore
 
-    @Binding var value: String
+        init() {
+            self.settingsManager = CioSettingsManager()
+            self.keyValueStorage = KeyValueStore()
+            self.pushToken = keyValueStorage.pushToken ?? "(none)"
+            self.settings = settingsManager.settings
+        }
 
-    var body: some View {
-        HStack {
-            Text(title)
-            TextField("", text: $value)
+        func saveSettings() -> Bool {
+            let currentlySetSiteId = CustomerIO.shared.config?.siteId
+            let changedSiteId = currentlySetSiteId != settings.siteId
+
+            settingsManager.settings = settings
+
+            return changedSiteId
+        }
+
+        func restoreDefaultSettings() {
+            settingsManager.restoreSdkDefaultSettings()
+            settings = settingsManager.settings
         }
     }
 }
