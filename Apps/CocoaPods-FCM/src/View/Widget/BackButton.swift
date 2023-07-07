@@ -11,7 +11,7 @@ struct BackButton: View {
             }) {
                 Image(systemName: "chevron.backward").font(.system(size: 24))
             }
-            .setAppiumId("Back Button")
+            .setAppiumId("Back")
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding([.leading, .top], 15)
             Spacer()
