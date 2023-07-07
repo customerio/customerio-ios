@@ -30,7 +30,7 @@ struct CustomEventView: View {
                     var alertMessage = "Event sent successfully!"
 
                     if eventName.isEmpty {
-                        alertMessage += "\n\n Note: Empty event name might result in expected behavior with the SDK."
+                        alertMessage += "\n\n Note: Empty event name might result in unexpected behavior with the SDK."
                     }
 
                     self.alertMessage = alertMessage
