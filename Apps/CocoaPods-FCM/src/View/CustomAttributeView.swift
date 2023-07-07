@@ -39,7 +39,7 @@ struct CustomAttributeView: View {
                     var alertMessage = "\(attributeTypeName.capitalized) attribute sent successfully!"
 
                     if name.isEmpty || value.isEmpty {
-                        alertMessage += "\n\n Note: Empty attribute name or value might result in expected behavior with the SDK."
+                        alertMessage += "\n\n Note: Empty attribute name or value might result in unexpected behavior with the SDK."
                     }
 
                     self.alertMessage = alertMessage
