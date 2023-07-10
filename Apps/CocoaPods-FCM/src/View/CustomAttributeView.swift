@@ -36,18 +36,16 @@ struct CustomAttributeView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send \(attributeTypeName) attributes") {
-                    var alertMessage = "\(attributeTypeName.capitalized) attribute sent successfully!"
-
                     if name.isEmpty || value.isEmpty {
-                        alertMessage += "\n\n Note: Empty attribute name or value might result in unexpected behavior with the SDK."
+                        alertMessage = "Note: Empty attribute name or value might result in unexpected behavior with the SDK."
+                    } else {
+                        done(name, value)
                     }
-
-                    self.alertMessage = alertMessage
                 }.setAppiumId("Set \(attributeTypeName.capitalized) Attribute Button")
             }.padding([.horizontal], 20)
                 .alert(isPresented: .notNil(alertMessage)) {
                     Alert(
-                        title: Text(""),
+                        title: Text("\(attributeTypeName.capitalized) attribute set"),
                         message: Text(alertMessage!),
                         dismissButton: .default(Text("OK")) {
                             done(name, value)
