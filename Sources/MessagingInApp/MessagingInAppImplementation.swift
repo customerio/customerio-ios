@@ -68,7 +68,10 @@ extension MessagingInAppImplementation: ScreenTrackingHook {
     public func screenViewed(name: String) {
         logger.debug("setting route for in-app to \(name)")
 
-        inAppProvider.setRoute(name)
+        // Gist expects webview to be launched in UI thread and chaging route will trigger locally stored in-app messages for that route
+        DispatchQueue.main.async {
+            self.inAppProvider.setRoute(name)
+        }
     }
 }
 
