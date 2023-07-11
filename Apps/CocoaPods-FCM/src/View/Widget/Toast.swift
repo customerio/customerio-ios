@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ToastView: View {
     @Binding var message: String?
-//    @Binding var isShowing: Bool
     let duration: TimeInterval
     private let timer = SwiftUITimer()
 
