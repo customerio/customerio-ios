@@ -27,18 +27,16 @@ struct CustomEventView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send Event") {
-                    var alertMessage = "Event sent successfully!"
-
                     if eventName.isEmpty {
-                        alertMessage += "\n\n Note: Empty event name might result in unexpected behavior with the SDK."
+                        alertMessage = "Note: Empty event name might result in unexpected behavior with the SDK."
+                    } else {
+                        done(eventName, propertyName, propertyValue)
                     }
-
-                    self.alertMessage = alertMessage
                 }.setAppiumId("Send Event Button")
             }.padding([.horizontal], 20)
                 .alert(isPresented: .notNil(alertMessage)) {
                     Alert(
-                        title: Text(""),
+                        title: Text("Custom event sent"),
                         message: Text(alertMessage!),
                         dismissButton: .default(Text("OK")) {
                             done(eventName, propertyName, propertyValue)

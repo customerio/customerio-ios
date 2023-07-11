@@ -10,7 +10,9 @@ struct DashboardView: View {
         case settings
     }
 
-    @State private var alertMessage: String?
+    @State private var nonBlockingMessage: String?
+    @State private var blockingMessage: String?
+
     @State private var subscreenShown: Subscreen?
 
     @State private var customEventName: String = ""
@@ -62,7 +64,7 @@ struct DashboardView: View {
                             )
                         }
 
-                        alertMessage = "Random event sent"
+                        nonBlockingMessage = "Random event sent"
                     }
                     .setAppiumId("Random Event Button")
 
@@ -77,6 +79,7 @@ struct DashboardView: View {
                                     propertyName: propertyValue
                                 ])
                                 subscreenShown = nil
+                                nonBlockingMessage = "Custom event sent"
                             })
                         }
 
@@ -89,6 +92,7 @@ struct DashboardView: View {
                             }, done: { name, value in
                                 CustomerIO.shared.deviceAttributes = [name: value]
                                 subscreenShown = nil
+                                nonBlockingMessage = "Device attribute set"
                             })
                         }
 
@@ -101,6 +105,8 @@ struct DashboardView: View {
                             }, done: { name, value in
                                 CustomerIO.shared.profileAttributes = [name: value]
                                 subscreenShown = nil
+
+                                nonBlockingMessage = "Profile attribute set"
                             })
                         }
 
@@ -108,9 +114,9 @@ struct DashboardView: View {
                         UNUserNotificationCenter.current().getNotificationSettings { settings in
                             switch settings.authorizationStatus {
                             case .authorized:
-                                alertMessage = "Push permission already granted"
+                                blockingMessage = "Push permission already granted"
                             case .denied:
-                                alertMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
+                                blockingMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
                             case .notDetermined:
                                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
                                     if granted {
@@ -133,15 +139,17 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
-            .alert(isPresented: .notNil(alertMessage)) {
+            .alert(isPresented: .notNil(blockingMessage)) {
                 Alert(
-                    title: Text(alertMessage!),
+                    title: Text(blockingMessage!),
                     dismissButton: .default(Text("OK")) {
-                        alertMessage = nil
+                        blockingMessage = nil
                     }
                 )
             }
-        }
+        }.overlay(
+            ToastView(message: $nonBlockingMessage, duration: 2)
+        )
     }
 }
 
