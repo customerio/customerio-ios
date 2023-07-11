@@ -33,13 +33,13 @@ struct SettingsView: View {
                 }
 
                 Group {
-                    LabeledTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl)
+                    LabeledStringTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl)
                         .autocapitalization(.none)
                         .setAppiumId("Track URL Input")
-                    LabeledTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
-                    LabeledTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
-                    LabeledTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay.toStringBinding())
-                    LabeledTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks.toStringBinding())
+                    LabeledStringTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
+                    LabeledStringTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
+                    LabeledTimeIntervalTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay)
+                    LabeledIntTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks)
                     SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens).setAppiumId("Track Screens Toggle")
                     SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
                     SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")

@@ -31,7 +31,7 @@ struct DashboardView: View {
                 .padding(.trailing, 10)
                 Spacer()
             }
-            .sheet(isPresented: .constant(subscreenShown == .settings)) {
+            .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
                 SettingsView {
                     subscreenShown = nil
                 }

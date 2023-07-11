@@ -8,18 +8,6 @@ extension Binding where Value == Bool {
     }
 }
 
-extension Binding where Value == Double {
-    func toStringBinding() -> Binding<String> {
-        cast(to: { String($0) }, from: { TimeInterval($0)! })
-    }
-}
-
-extension Binding where Value == Int {
-    func toStringBinding() -> Binding<String> {
-        cast(to: { String($0) }, from: { $0 == "" ? 0 : Int($0) ?? 0 })
-    }
-}
-
 extension Binding {
     func cast<T>(to: @escaping (Value) -> T, from: @escaping (T) -> Value) -> Binding<T> {
         Binding<T> {

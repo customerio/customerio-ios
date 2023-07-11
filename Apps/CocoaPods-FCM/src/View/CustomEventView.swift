@@ -21,9 +21,9 @@ struct CustomEventView: View {
                 Text("Send Custom Event").bold().font(.system(size: 20))
 
                 VStack(spacing: 8) {
-                    LabeledTextField(title: "Event Name", appiumTextFieldId: "Event Name Input", value: $eventName)
-                    LabeledTextField(title: "Property Name", appiumTextFieldId: "Property Name Input", value: $propertyName)
-                    LabeledTextField(title: "Property Value", appiumTextFieldId: "Property Value Input", value: $propertyValue)
+                    LabeledStringTextField(title: "Event Name", appiumTextFieldId: "Event Name Input", value: $eventName)
+                    LabeledStringTextField(title: "Property Name", appiumTextFieldId: "Property Name Input", value: $propertyName)
+                    LabeledStringTextField(title: "Property Value", appiumTextFieldId: "Property Value Input", value: $propertyValue)
                 }.padding([.vertical], 40)
 
                 ColorButton("Send Event") {
