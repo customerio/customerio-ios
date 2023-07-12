@@ -53,7 +53,7 @@ platform :ios do
     if File.exist?(version_update_script_path)
       UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
 
-      sh("#{version_update_script_path} \"#{new_app_version} (#{new_build_number})\"")
+      sh("#{version_update_script_path} \"#{new_app_version}.#{new_build_number}\"")
     end 
 
     uses_cocoapods = File.exists?("../Podfile")

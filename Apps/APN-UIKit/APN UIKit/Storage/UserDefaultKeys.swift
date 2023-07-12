@@ -6,11 +6,10 @@ enum UserDefaultKeys: String {
     case apiKey
     case bgQDelay
     case bgNumOfTasks
-    case isPushEnabled
     case isTrackScreenEnabled
     case isTrackDeviceAttrEnabled
     case isDebugModeEnabled
-    case userName
+    case didSetDefaults
     case userEmailId
     case deviceToken
 }

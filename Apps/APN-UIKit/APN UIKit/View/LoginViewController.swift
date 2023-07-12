@@ -1,7 +1,7 @@
 import CioTracking
 import UIKit
 
-class LoginViewController: UIViewController {
+class LoginViewController: BaseViewController {
     static func newInstance() -> LoginViewController {
         UIStoryboard.getViewController(identifier: "LoginViewController")
     }
@@ -11,7 +11,9 @@ class LoginViewController: UIViewController {
     @IBOutlet var emailTextField: ThemeTextField!
     @IBOutlet var firstNameTextField: ThemeTextField!
     @IBOutlet var settings: UIImageView!
-
+    @IBOutlet var versionsLabel: UILabel!
+    @IBOutlet var loginButton: ThemeButton!
+    @IBOutlet var randomLoginButton: UIButton!
     var storage = DIGraph.shared.storage
     var loginRouter: LoginRouting?
 
@@ -20,11 +22,13 @@ class LoginViewController: UIViewController {
         navigationController?.isNavigationBarHidden = true
         emailTextField.clear()
         firstNameTextField.clear()
+        configureVersionLabel()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        addAccessibilityIdentifiersForAppium()
         addNotifierObserver()
         configureLoginRouter()
         addUserInteractionToSettingsImageView()
@@ -34,18 +38,32 @@ class LoginViewController: UIViewController {
         NotificationCenter.default.removeObserver(self)
     }
 
+    func addAccessibilityIdentifiersForAppium() {
+        setAppiumAccessibilityIdTo(settings, value: "Settings")
+        setAppiumAccessibilityIdTo(firstNameTextField, value: "First Name Input")
+        setAppiumAccessibilityIdTo(emailTextField, value: "Email Input")
+        setAppiumAccessibilityIdTo(loginButton, value: "Login Button")
+        setAppiumAccessibilityIdTo(randomLoginButton, value: "Random Login Button")
+    }
+
+    func configureVersionLabel() {
+        versionsLabel.text = getMetaData()
+    }
+
     func addNotifierObserver() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(routeToDeepLinkScreen(notification:)),
-            name: Notification.Name("showDeepLinkScreenOnLogin"),
+            selector: #selector(deepLinkRouteToSettings(notification:)),
+            name: Notification.Name("showSettingsScreenOnLogin"),
             object: nil
         )
     }
 
     @objc
-    func routeToDeepLinkScreen(notification: Notification) {
-        loginRouter?.routeToDeepLinkScreen()
+    func deepLinkRouteToSettings(notification: Notification) {
+        if let userInfo = notification.userInfo as? [String: String] {
+            loginRouter?.routeToSettings(userInfo)
+        }
     }
 
     func configureLoginRouter() {
@@ -58,36 +76,45 @@ class LoginViewController: UIViewController {
         settings.addTapGesture(onTarget: self, #selector(LoginViewController.settingsTapped))
     }
 
-    @objc func settingsTapped() {
-        loginRouter?.routeToSettings()
-    }
-
-    @IBAction func logInToApp(_ sender: UIButton) {
+    func validateAndLogin() {
         if !userDetailsValid() {
-            showAlert(withMessage: "Please fill all fields", .error)
+            showToast(withMessage: "Email Id is mandatory to login into the app.")
             return
         }
-        guard let emailId = emailTextField.text, let name = firstNameTextField.text else {
+        if let email = emailTextField.text, !email.isEmailValid {
+            showToast(withMessage: "Invalid email id format.")
             return
         }
-        CustomerIO.shared.identify(identifier: emailId, body: ["firstName": name])
+        var body: [String: String]?
+        guard let emailId = emailTextField.text else {
+            return
+        }
+        if let name = firstNameTextField.text, !name.isEmpty {
+            body = ["first_name": name]
+        }
+        CustomerIO.shared.identify(identifier: emailId, body: body)
         storage.userEmailId = emailId
-        storage.userName = name
-
         loginRouter?.routeToDashboard()
     }
 
-    @IBAction func generateRandomCredentials(_ sender: UIButton) {
-        let name = String.generateRandomString()
-        let email = "\(name)@customer.io"
-        // Set values
-        emailTextField.text = email
-        firstNameTextField.text = name
+    @objc func settingsTapped() {
+        loginRouter?.routeToSettings(nil)
+    }
 
-        showAlert(withMessage: "Random user has been generated.")
+    @IBAction func logInToApp(_ sender: UIButton) {
+        validateAndLogin()
+    }
+
+    @IBAction func generateRandomCredentials(_ sender: UIButton) {
+        let name = String.generateRandomString(ofLength: 10)
+        let email = "\(name)@customer.io"
+        // Generate Random Credentials does not create a first name.
+        // Name is optional for login.
+        emailTextField.text = email
+        validateAndLogin()
     }
 
     func userDetailsValid() -> Bool {
-        !firstNameTextField.isTextTrimEmpty && !emailTextField.isTextTrimEmpty
+        !emailTextField.isTextTrimEmpty
     }
 }

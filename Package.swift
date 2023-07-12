@@ -26,9 +26,10 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", .exact("3.2.2"))
+        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", .exact("3.2.2")),
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
     ],
-    targets: [        
+    targets: [ 
         // Common - Code used by multiple modules in the SDK project. 
         // this module is *not* exposed to the public. It's used internally. 
         .target(name: "CioInternalCommon",
@@ -69,7 +70,7 @@ let package = Package(
                     path: "Tests/MessagingPushAPN"),
         // FCM 
         .target(name: "CioMessagingPushFCM",
-                dependencies: ["CioMessagingPush"],
+                dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
@@ -77,7 +78,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["CioTracking", "Gist"],
+                dependencies: ["CioTracking", .product(name: "Gist", package: "Gist")],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
