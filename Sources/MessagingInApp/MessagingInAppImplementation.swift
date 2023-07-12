@@ -12,6 +12,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
     private var profileStore: ProfileStore
 
     private var eventListener: InAppEventListener?
+    private let threadUtil: ThreadUtil
 
     init(diGraph: DIGraph) {
         self.siteId = diGraph.sdkConfig.siteId
@@ -21,6 +22,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
         self.profileStore = diGraph.profileStore
+        self.threadUtil = diGraph.threadUtil
     }
 
     func initialize() {
@@ -69,7 +71,7 @@ extension MessagingInAppImplementation: ScreenTrackingHook {
         logger.debug("setting route for in-app to \(name)")
 
         // Gist expects webview to be launched in UI thread and chaging route will trigger locally stored in-app messages for that route
-        DispatchQueue.main.async {
+        threadUtil.runMain {
             self.inAppProvider.setRoute(name)
         }
     }
