@@ -57,8 +57,8 @@ class CustomDataViewController: BaseViewController {
             sendButton.setTitle(source == .deviceAttributes ? "Send device attributes" : "Send profile attributes", for: .normal)
             eventNameLabel.isHidden = true
             eventNameTextField.isHidden = true
-            propertyNameLabel.text = "Attribute Name*"
-            propertyValueLabel.text = "Attribute Value*"
+            propertyNameLabel.text = "Attribute Name"
+            propertyValueLabel.text = "Attribute Value"
         }
     }
 
