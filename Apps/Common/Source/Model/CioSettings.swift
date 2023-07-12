@@ -25,7 +25,7 @@ public struct CioSettings: Codable {
         }
     }
 
-    static func getFromCioSdk() -> CioSettings {
+    public static func getFromCioSdk() -> CioSettings {
         let sdkConfig = CustomerIO.shared.config!
 
         return CioSettings(

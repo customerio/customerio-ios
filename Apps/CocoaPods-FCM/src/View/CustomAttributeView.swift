@@ -31,8 +31,8 @@ struct CustomAttributeView: View {
                 Text("Set Custom \(attributeTypeName.capitalized) Attribute").bold().font(.system(size: 20))
 
                 VStack(spacing: 8) {
-                    LabeledStringTextField(title: "Attribute Name", appiumTextFieldId: "Attribute Name Input", value: $name)
-                    LabeledStringTextField(title: "Attribute Value", appiumTextFieldId: "Attribute Value Input", value: $value)
+                    LabeledStringTextField(title: "Attribute Name", appiumId: "Attribute Name Input", value: $name)
+                    LabeledStringTextField(title: "Attribute Value", appiumId: "Attribute Value Input", value: $value)
                 }.padding([.vertical], 40)
 
                 ColorButton("Send \(attributeTypeName) attributes") {

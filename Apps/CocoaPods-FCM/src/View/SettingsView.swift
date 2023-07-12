@@ -15,6 +15,8 @@ struct SettingsView: View {
 
     @EnvironmentObject var userManager: UserManager
 
+    @State private var siteIdBeforeEditingSettings: String = ""
+
     var body: some View {
         ZStack {
             BackButton {
@@ -33,16 +35,15 @@ struct SettingsView: View {
                 }
 
                 Group {
-                    LabeledStringTextField(title: "Tracking URL:", value: $viewModel.settings.trackUrl)
+                    LabeledStringTextField(title: "Tracking URL:", appiumId: "Track URL Input", value: $viewModel.settings.trackUrl)
                         .autocapitalization(.none)
-                        .setAppiumId("Track URL Input")
-                    LabeledStringTextField(title: "Site id:", value: $viewModel.settings.siteId).setAppiumId("Site ID Input")
-                    LabeledStringTextField(title: "API key:", value: $viewModel.settings.apiKey).setAppiumId("API Key Input")
-                    LabeledTimeIntervalTextField(title: "BQ seconds delay:", value: $viewModel.settings.bqSecondsDelay)
-                    LabeledIntTextField(title: "BQ min number tasks:", value: $viewModel.settings.bqMinNumberTasks)
-                    SettingsToggle(title: "Track screens", isOn: $viewModel.settings.trackScreens).setAppiumId("Track Screens Toggle")
-                    SettingsToggle(title: "Track device attributes", isOn: $viewModel.settings.trackDeviceAttributes).setAppiumId("Track Device Attributes Toggle")
-                    SettingsToggle(title: "Debug mode", isOn: $viewModel.settings.debugSdkMode).setAppiumId("Debug Mode Toggle")
+                    LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
+                    LabeledStringTextField(title: "API key:", appiumId: "API Key Input", value: $viewModel.settings.apiKey)
+                    LabeledTimeIntervalTextField(title: "BQ seconds delay:", appiumId: nil, value: $viewModel.settings.bqSecondsDelay)
+                    LabeledIntTextField(title: "BQ min number tasks:", appiumId: nil, value: $viewModel.settings.bqMinNumberTasks)
+                    SettingsToggle(title: "Track screens", appiumId: "Track Screens Toggle", isOn: $viewModel.settings.trackScreens)
+                    SettingsToggle(title: "Track device attributes", appiumId: "Track Device Attributes Toggle", isOn: $viewModel.settings.trackDeviceAttributes)
+                    SettingsToggle(title: "Debug mode", appiumId: "Debug Mode Toggle", isOn: $viewModel.settings.debugSdkMode)
                 }
 
                 ColorButton("Save") {
@@ -50,14 +51,14 @@ struct SettingsView: View {
                         return
                     }
 
-                    // save settings to device storage for app to re-use when app is restarted
-                    let didChangeSiteId = viewModel.saveSettings()
+                    viewModel.saveSettings()
 
                     // Re-initialize the SDK to make the config changes go into place immediately
                     CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
                         viewModel.settings.configureCioSdk(config: &config)
                     }
 
+                    let didChangeSiteId = siteIdBeforeEditingSettings != viewModel.settings.siteId
                     if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
                         userManager.logout()
                     }
@@ -71,6 +72,8 @@ struct SettingsView: View {
             }
             .padding([.leading, .trailing], 10)
             .onAppear {
+                siteIdBeforeEditingSettings = CustomerIO.shared.siteId!
+
                 if let siteId = siteId {
                     viewModel.settings.siteId = siteId
                 }
@@ -133,34 +136,34 @@ struct SettingsView: View {
             self.settingsManager = CioSettingsManager()
             self.keyValueStorage = KeyValueStore()
             self.pushToken = keyValueStorage.pushToken ?? "(none)"
-            self.settings = settingsManager.settings
+            self.settings = settingsManager.appSetSettings ?? CioSettings.getFromCioSdk()
         }
 
-        func saveSettings() -> Bool {
-            let currentlySetSiteId = CustomerIO.shared.config?.siteId
-            let changedSiteId = currentlySetSiteId != settings.siteId
-
-            settingsManager.settings = settings
-
-            return changedSiteId
+        func saveSettings() {
+            settingsManager.appSetSettings = settings
         }
 
         func restoreDefaultSettings() {
-            settingsManager.restoreSdkDefaultSettings()
-            settings = settingsManager.settings
+            settingsManager.appSetSettings = nil // remove app overriden settings from device memory
+
+            // restore default SDK config by re-initializing the SDK.
+            CustomerIO.initialize(siteId: settings.siteId, apiKey: settings.apiKey, region: .US) { _ in }
+
+            settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
     }
 }
 
 struct SettingsToggle: View {
-    var title: String
+    let title: String
+    let appiumId: String?
 
     @Binding var isOn: Bool
 
     var body: some View {
         HStack {
             Text(title)
-            Toggle("", isOn: $isOn)
+            Toggle("", isOn: $isOn).setAppiumId(appiumId)
         }
     }
 }
