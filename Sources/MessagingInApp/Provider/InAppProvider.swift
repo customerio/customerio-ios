@@ -13,7 +13,7 @@ internal protocol InAppProvider: AutoMockable {
 // sourcery: InjectRegister = "InAppProvider"
 internal class GistInAppProvider: InAppProvider {
     func initialize(siteId: String, region: Region, delegate: GistDelegate) {
-        Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue)
+        Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue, env: .development)
         Gist.shared.delegate = delegate
     }
 
