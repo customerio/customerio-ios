@@ -1,18 +1,18 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import Gist
 
 internal class MessagingInAppImplementation: MessagingInAppInstance {
     private let siteId: String
     private let region: Region
-    private let logger: Logger
+    private let logger: CioInternalCommon.Logger
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
     private var profileStore: ProfileStore
 
     private var eventListener: InAppEventListener?
+    private let threadUtil: ThreadUtil
 
     init(diGraph: DIGraph) {
         self.siteId = diGraph.sdkConfig.siteId
@@ -22,6 +22,7 @@ internal class MessagingInAppImplementation: MessagingInAppInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
         self.profileStore = diGraph.profileStore
+        self.threadUtil = diGraph.threadUtil
     }
 
     func initialize() {
@@ -69,7 +70,10 @@ extension MessagingInAppImplementation: ScreenTrackingHook {
     public func screenViewed(name: String) {
         logger.debug("setting route for in-app to \(name)")
 
-        inAppProvider.setRoute(name)
+        // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
+        threadUtil.runMain {
+            self.inAppProvider.setRoute(name)
+        }
     }
 }
 

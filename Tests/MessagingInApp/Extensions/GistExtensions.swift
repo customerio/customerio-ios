@@ -1,6 +1,5 @@
 @testable import CioMessagingInApp
 import Foundation
-@testable import Gist
 
 extension Message {
     convenience init(messageId: String, campaignId: String) {

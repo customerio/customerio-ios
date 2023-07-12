@@ -1,7 +1,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import Gist
 
 public protocol MessagingInAppInstance: AutoMockable {
     // sourcery:Name=initialize
