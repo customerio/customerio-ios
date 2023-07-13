@@ -2,7 +2,9 @@ import Foundation
 import SwiftUI
 
 // A TextField with a label on the left side.
-// Accepts many different types of data.
+// Accepts a generic data type which allows us to perform validation
+// on the textfield. If, for example, we expect the textfield to store an Int,
+// this TextField is designed to make that easy to validate and reference an Int inside of it.
 struct LabeledTextField<InputType: Equatable>: View {
     let title: String
     let appiumId: String?
@@ -16,6 +18,10 @@ struct LabeledTextField<InputType: Equatable>: View {
         HStack {
             Text(title)
             VStack {
+                // It's important that the string inside of the textfield is in a 2 way sync with
+                // the value data type. However, we don't want to modify the value or text while the
+                // user is typing. When we can assume the user is done typing (the textfield loses focus or hits return key on keyboard)
+                // then, we set a new value.
                 TextField("", text: $text, onEditingChanged: { focused in
                     if !focused { // when textfield loses focus
                         value = textToValue(text)
@@ -27,8 +33,10 @@ struct LabeledTextField<InputType: Equatable>: View {
                 Divider()
             }
         }.onChange(of: value) { newValue in // If the value changes outside of this View, update the text that the TextField is displaying in the UI.
+            // this helps provide a 2-way sync between the value and the textfield.
             text = valueToText(newValue)
         }.onAppear {
+            // populate the text in the textfield with an initial value, if there is one.
             text = valueToText(value)
         }
     }

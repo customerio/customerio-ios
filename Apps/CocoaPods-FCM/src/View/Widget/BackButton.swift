@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+// Custom back button that resembles the iOS provided back button in a navigation bar.
+// Providing a custom back button so we can set an appium ID.
 struct BackButton: View {
     let onClick: () -> Void
 

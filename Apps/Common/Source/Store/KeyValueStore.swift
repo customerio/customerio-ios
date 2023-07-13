@@ -14,6 +14,8 @@ public class KeyValueStore {
         }
     }
 
+    // Store the device token so it can be displayed in the UI.
+    // If the SDK exposes the registered push token, we can delete this logic and use that.
     public var pushToken: String? {
         get {
             userDefaults.string(forKey: Keys.pushToken.rawValue)

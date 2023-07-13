@@ -98,6 +98,8 @@ extension AppDelegate: MessagingDelegate {
         // Pass the FCM token to the Customer.io SDK:
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
 
-        KeyValueStore().pushToken = fcmToken // to show in the settings screen of the app later.
+        // Save the FCM token to show in the settings screen of the app later.
+        // This is not required for the Customer.io SDK to work.
+        KeyValueStore().pushToken = fcmToken
     }
 }

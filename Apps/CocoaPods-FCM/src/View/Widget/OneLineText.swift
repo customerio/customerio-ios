@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+// Text view that can only be 1 line long. Cut off the text at the end if the text cannot fit on screen.
 struct OneLineText: View {
     let ellipsis: Bool
     let title: String

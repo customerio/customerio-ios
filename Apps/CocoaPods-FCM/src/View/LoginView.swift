@@ -32,7 +32,8 @@ struct LoginView: View {
                 ColorButton("Login") {
                     // first name is optional
 
-                    if emailText.isEmpty {
+                    // this is good practice when using the Customer.io SDK as you cannot identify a profile with an empty string.
+                    guard !emailText.isEmpty else {
                         errorMessage = "Email address is required."
                         return
                     }
