@@ -74,12 +74,6 @@ struct DashboardView: View {
                         .sheet(isPresented: .constant(subscreenShown == .customEvent)) {
                             CustomEventView(close: {
                                 subscreenShown = nil
-                            }, done: { eventName, propertyName, propertyValue in
-                                CustomerIO.shared.track(name: eventName, data: [
-                                    propertyName: propertyValue
-                                ])
-                                subscreenShown = nil
-                                nonBlockingMessage = "Custom event sent"
                             })
                         }
 
@@ -89,10 +83,6 @@ struct DashboardView: View {
                         .sheet(isPresented: .constant(subscreenShown == .deviceAttribute)) {
                             CustomAttributeView(attributeType: .device, close: {
                                 subscreenShown = nil
-                            }, done: { name, value in
-                                CustomerIO.shared.deviceAttributes = [name: value]
-                                subscreenShown = nil
-                                nonBlockingMessage = "Device attribute set"
                             })
                         }
 
@@ -102,11 +92,6 @@ struct DashboardView: View {
                         .sheet(isPresented: .constant(subscreenShown == .profileAttribute)) {
                             CustomAttributeView(attributeType: .profile, close: {
                                 subscreenShown = nil
-                            }, done: { name, value in
-                                CustomerIO.shared.profileAttributes = [name: value]
-                                subscreenShown = nil
-
-                                nonBlockingMessage = "Profile attribute set"
                             })
                         }
 
@@ -148,7 +133,7 @@ struct DashboardView: View {
                 )
             }
         }.overlay(
-            ToastView(message: $nonBlockingMessage, duration: 2)
+            ToastView(message: $nonBlockingMessage)
         )
     }
 }

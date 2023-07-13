@@ -17,9 +17,8 @@ struct CustomAttributeView: View {
     @State private var value: String = ""
 
     var close: () -> Void
-    var done: (_ name: String, _ value: String) -> Void
 
-    @State private var alertMessage: String?
+    @State private var nonBlockingMessage: String?
 
     var body: some View {
         ZStack {
@@ -36,22 +35,27 @@ struct CustomAttributeView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send \(attributeTypeName) attributes") {
-                    if name.isEmpty || value.isEmpty {
-                        alertMessage = "Note: Empty attribute name or value might result in unexpected behavior with the SDK."
-                    } else {
-                        done(name, value)
+                    hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
+
+                    if attributeType == .profile {
+                        CustomerIO.shared.profileAttributes = [name: value]
                     }
+
+                    if attributeType == .device {
+                        CustomerIO.shared.deviceAttributes = [name: value]
+                    }
+
+                    var successMessage = "\(attributeTypeName.capitalized) attribute set"
+
+                    if name.isEmpty || value.isEmpty {
+                        successMessage += "\nNote: Empty attribute name or value might result in unexpected behavior with the SDK."
+                    }
+
+                    nonBlockingMessage = successMessage
                 }.setAppiumId("Set \(attributeTypeName.capitalized) Attribute Button")
             }.padding([.horizontal], 20)
-                .alert(isPresented: .notNil(alertMessage)) {
-                    Alert(
-                        title: Text("\(attributeTypeName.capitalized) attribute set"),
-                        message: Text(alertMessage!),
-                        dismissButton: .default(Text("OK")) {
-                            done(name, value)
-                        }
-                    )
-                }
-        }
+        }.overlay(
+            ToastView(message: $nonBlockingMessage)
+        )
     }
 }

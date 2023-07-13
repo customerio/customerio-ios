@@ -16,7 +16,11 @@ struct LabeledTextField<InputType: Equatable>: View {
         HStack {
             Text(title)
             VStack {
-                TextField("", text: $text, onCommit: {
+                TextField("", text: $text, onEditingChanged: { focused in
+                    if !focused { // when textfield loses focus
+                        value = textToValue(text)
+                    }
+                }, onCommit: { // when return key on keyboard pressed
                     value = textToValue(text)
                 })
                 .setAppiumId(appiumId)

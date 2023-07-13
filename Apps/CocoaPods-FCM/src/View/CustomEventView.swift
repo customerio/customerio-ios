@@ -7,9 +7,8 @@ struct CustomEventView: View {
     @State private var propertyValue: String = ""
 
     var close: () -> Void
-    var done: (_ eventName: String, _ propertyName: String, _ propertyValue: String) -> Void
 
-    @State private var alertMessage: String?
+    @State private var nonBlockingMessage: String?
 
     var body: some View {
         ZStack {
@@ -27,22 +26,21 @@ struct CustomEventView: View {
                 }.padding([.vertical], 40)
 
                 ColorButton("Send Event") {
+                    hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
+
+                    CustomerIO.shared.track(name: eventName, data: [propertyName: propertyValue])
+
+                    var successMessage = "Custom event sent"
+
                     if eventName.isEmpty {
-                        alertMessage = "Note: Empty event name might result in unexpected behavior with the SDK."
-                    } else {
-                        done(eventName, propertyName, propertyValue)
+                        successMessage += "\nNote: Empty event name might result in unexpected behavior with the SDK."
                     }
+
+                    nonBlockingMessage = successMessage
                 }.setAppiumId("Send Event Button")
             }.padding([.horizontal], 20)
-                .alert(isPresented: .notNil(alertMessage)) {
-                    Alert(
-                        title: Text("Custom event sent"),
-                        message: Text(alertMessage!),
-                        dismissButton: .default(Text("OK")) {
-                            done(eventName, propertyName, propertyValue)
-                        }
-                    )
-                }
-        }
+        }.overlay(
+            ToastView(message: $nonBlockingMessage)
+        )
     }
 }

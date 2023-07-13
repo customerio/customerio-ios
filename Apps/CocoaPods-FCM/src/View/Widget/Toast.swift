@@ -6,6 +6,11 @@ struct ToastView: View {
     let duration: TimeInterval
     private let timer = SwiftUITimer()
 
+    init(message: Binding<String?>, duration: TimeInterval = 3) {
+        self._message = message
+        self.duration = duration
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             if let message = message, !message.isEmpty {
