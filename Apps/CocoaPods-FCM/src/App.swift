@@ -48,13 +48,15 @@ struct MainApp: App {
                         case "settings":
                             var siteId: String?
                             var apiKey: String?
+                            var trackingUrl: String?
 
                             if let queryItems = urlComponents.queryItems {
                                 siteId = queryItems.first { $0.name == "site_id" }?.value
                                 apiKey = queryItems.first { $0.name == "api_key" }?.value
+                                trackingUrl = queryItems.first { $0.name == "tracking_url" }?.value
                             }
 
-                            settingsScreen = SettingsView(siteId: siteId, apiKey: apiKey) {
+                            settingsScreen = SettingsView(siteId: siteId, apiKey: apiKey, trackingUrl: trackingUrl) {
                                 settingsScreen = nil
                             }
                         default: break

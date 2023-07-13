@@ -6,6 +6,7 @@ import UIKit
 struct SettingsView: View {
     var siteId: String?
     var apiKey: String?
+    var trackingUrl: String?
 
     var done: () -> Void
 
@@ -74,11 +75,15 @@ struct SettingsView: View {
             .onAppear {
                 siteIdBeforeEditingSettings = CustomerIO.shared.siteId!
 
+                // If parameters were passed into this View's constructor, updating the VM now will update the UI.
                 if let siteId = siteId {
                     viewModel.settings.siteId = siteId
                 }
                 if let apiKey = apiKey {
                     viewModel.settings.apiKey = apiKey
+                }
+                if let trackingUrl = trackingUrl {
+                    viewModel.settings.trackUrl = trackingUrl
                 }
             }
             .alert(isPresented: .notNil(alertMessage)) {
