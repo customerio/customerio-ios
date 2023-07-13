@@ -269,6 +269,16 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
+    func test_registerDeviceToken_givenEmptyCustomerIdentifier_expectNoAddingToQueue_expectStoreDeviceToken() {
+        let givenDeviceToken = String.random
+        profileStoreMock.identifier = ""
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+    }
+
     func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
