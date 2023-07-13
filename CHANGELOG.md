@@ -1,3 +1,17 @@
+## [2.7.1](https://github.com/customerio/customerio-ios/compare/2.7.0...2.7.1) (2023-07-04)
+
+
+### Bug Fixes
+
+* bad memory access crash ([#342](https://github.com/customerio/customerio-ios/issues/342)) ([b83e6bd](https://github.com/customerio/customerio-ios/commit/b83e6bda1a0746eab65bb3d07887c3fcbcb67712))
+
+## [2.7.0](https://github.com/customerio/customerio-ios/compare/2.6.1...2.7.0) (2023-06-21)
+
+
+### Features
+
+* include FCM SDK as a dependency to make FCM push setup easier ([#333](https://github.com/customerio/customerio-ios/issues/333)) ([233fc22](https://github.com/customerio/customerio-ios/commit/233fc228f768fb9e1a98dffd2b5c9d49d34c9cc2))
+
 ### [2.6.1](https://github.com/customerio/customerio-ios/compare/2.6.0...2.6.1) (2023-05-26)
 
 
