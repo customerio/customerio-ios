@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingInApp"
-  spec.version      = "2.7.1" # Don't modify this line - it's automatically updated
+  spec.version      = "2.7.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -21,6 +21,4 @@ Pod::Spec.new do |spec|
   spec.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files
   
   spec.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
-  # Update to exact version until wrapper SDKs become part of testing pipeline.
-  spec.dependency "Gist", '3.2.2'
-end
+ end

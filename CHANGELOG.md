@@ -1,3 +1,10 @@
+## [2.7.2](https://github.com/customerio/customerio-ios/compare/2.7.1...2.7.2) (2023-07-12)
+
+
+### Bug Fixes
+
+* gist migration to CIO ([#338](https://github.com/customerio/customerio-ios/issues/338)) ([#351](https://github.com/customerio/customerio-ios/issues/351)) ([5520a7c](https://github.com/customerio/customerio-ios/commit/5520a7ceb4d35170b4bf2d2493ceb9576ea8d3cf))
+
 ## [2.7.1](https://github.com/customerio/customerio-ios/compare/2.7.0...2.7.1) (2023-07-04)
 
 

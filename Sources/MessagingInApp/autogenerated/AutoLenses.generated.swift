@@ -5,7 +5,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import Gist
 
 /**
  ######################################################

@@ -1,6 +1,5 @@
 import CioInternalCommon
 import Foundation
-import Gist
 
 // wrapper around Gist SDK to make it mockable
 internal protocol InAppProvider: AutoMockable {
