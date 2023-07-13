@@ -230,7 +230,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             return
         }
         guard !identifier.isEmpty else {
-            logger.error("profiles cannot be created without an identifier. Empty string was provided as the identifier, therefore, request to identify profile in the SDK is ignored. Try identifying a profile again with a non-empty identifier value.")
+            logger.error("not registering device token to a profile since profiles cannot be created without an identifier. Empty string was provided as the identifier, therefore, request to identify profile in the SDK is ignored. Try identifying a profile again with a non-empty identifier value.")
             return
         }
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
