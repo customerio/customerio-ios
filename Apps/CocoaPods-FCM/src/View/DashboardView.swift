@@ -3,142 +3,138 @@ import SwiftUI
 import UserNotifications
 
 struct DashboardView: View {
-    @State private var showingCustomEventSheet = false
-    @State private var showingCustomEventAlert = false
+    enum Subscreen: String {
+        case customEvent
+        case profileAttribute
+        case deviceAttribute
+        case settings
+    }
+
+    @State private var nonBlockingMessage: String?
+    @State private var blockingMessage: String?
+
+    @State private var subscreenShown: Subscreen?
+
     @State private var customEventName: String = ""
     @State private var customEventPropertyName: String = ""
     @State private var customEventPropertyValue: String = ""
 
-    @State private var showingDeviceAttributesSheet = false
-    @State private var showingDeviceAttributesAlert = false
-    @State private var deviceAttributeName: String = ""
-    @State private var deviceAttributeValue: String = ""
-
-    @State private var showingProfileAttributesSheet = false
-    @State private var showingProfileAttributesAlert = false
-    @State private var profileAttributeName: String = ""
-    @State private var profileAttributeValue: String = ""
-
     @EnvironmentObject var userManager: UserManager
-
-    @State private var showSettings: Bool = false
-    @State private var showAskForPushPermissionButton = false
 
     var body: some View {
         ZStack {
             VStack {
                 SettingsButton {
-                    showSettings = true
+                    subscreenShown = .settings
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.trailing, 10)
                 Spacer()
             }
-            .sheet(isPresented: $showSettings) {
+            .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
                 SettingsView {
-                    showSettings = false
+                    subscreenShown = nil
                 }
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: 15) {
+                if let loggedInUserEmail = userManager.email {
+                    Text(loggedInUserEmail)
+                }
                 Text("What would you like to test?")
 
-                if showAskForPushPermissionButton {
-                    ColorButton(title: "Ask for push permission") {
-                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-                            if granted {
-                                DispatchQueue.main.async {
-                                    UIApplication.shared.registerForRemoteNotifications()
+                Group {
+                    ColorButton("Send Random Event") {
+                        switch Int.random(in: 0 ..< 3) {
+                        case 0:
+                            CustomerIO.shared.track(name: "Order Purchased")
+                        case 1:
+                            CustomerIO.shared.track(
+                                name: "movie_watched",
+                                data: [
+                                    "movie_name": "The Incredibles"
+                                ]
+                            )
+                        default: // case 2
+                            CustomerIO.shared.track(
+                                name: "appointmentScheduled",
+                                data: [
+                                    "appointmentTime": Calendar.current.date(byAdding: .day, value: 7, to: Date())!.epochNoMilliseconds
+                                ]
+                            )
+                        }
+
+                        nonBlockingMessage = "Random event sent"
+                    }
+                    .setAppiumId("Random Event Button")
+
+                    ColorButton("Send Custom Event") {
+                        subscreenShown = .customEvent
+                    }.setAppiumId("Custom Event Button")
+                        .sheet(isPresented: .constant(subscreenShown == .customEvent)) {
+                            CustomEventView(close: {
+                                subscreenShown = nil
+                            })
+                        }
+
+                    ColorButton("Set Device Attribute") {
+                        subscreenShown = .deviceAttribute
+                    }.setAppiumId("Device Attribute Button")
+                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute)) {
+                            CustomAttributeView(attributeType: .device, close: {
+                                subscreenShown = nil
+                            })
+                        }
+
+                    ColorButton("Set Profile Attribute") {
+                        subscreenShown = .profileAttribute
+                    }.setAppiumId("Profile Attribute Button")
+                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute)) {
+                            CustomAttributeView(attributeType: .profile, close: {
+                                subscreenShown = nil
+                            })
+                        }
+
+                    ColorButton("Show Push Prompt") {
+                        UNUserNotificationCenter.current().getNotificationSettings { settings in
+                            switch settings.authorizationStatus {
+                            case .authorized:
+                                blockingMessage = "Push permission already granted"
+                            case .denied:
+                                blockingMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
+                            case .notDetermined:
+                                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                                    if granted {
+                                        DispatchQueue.main.async {
+                                            UIApplication.shared.registerForRemoteNotifications()
+                                        }
+                                    }
                                 }
+                            default: break
                             }
                         }
+                    }.setAppiumId("Show Push Prompt Button")
+                    ColorButton("Logout") {
+                        CustomerIO.shared.clearIdentify()
 
-                        showAskForPushPermissionButton = false
-                    }
+                        userManager.logout()
+                    }.setAppiumId("Log Out Button")
                 }
-                ColorButton(title: "Send Random Event") {
-                    CustomerIO.shared.track(
-                        name: String.random,
-                        data: [
-                            "randomAttribute": String.random,
-                            "random_attribute": String.random
-                        ]
-                    )
-                }
-                ColorButton(title: "Send Custom Event") {
-                    showingCustomEventSheet.toggle()
-                }.sheet(isPresented: $showingCustomEventSheet, content: {
-                    VStack(spacing: 15) {
-                        TextField("Event name", text: $customEventName)
-                        TextField("Property name", text: $customEventPropertyName)
-                        TextField("Property value", text: $customEventPropertyValue)
-                        Button("Send event") {
-                            CustomerIO.shared.track(name: customEventName, data: [
-                                customEventPropertyName: customEventPropertyValue
-                            ])
 
-                            showingCustomEventAlert.toggle()
-                        }.alert(isPresented: $showingCustomEventAlert) {
-                            Alert(
-                                title: Text("Track event sent"),
-                                dismissButton: .default(Text("OK"))
-                            )
-                        }
-                    }.padding([.leading, .trailing], 50)
-                })
-                ColorButton(title: "Set Device Attributes") {
-                    showingDeviceAttributesSheet.toggle()
-                }.sheet(isPresented: $showingDeviceAttributesSheet, content: {
-                    VStack(spacing: 15) {
-                        TextField("Attribute name", text: $deviceAttributeName)
-                        TextField("Attribute value", text: $deviceAttributeValue)
-                        Button("Send device attributes") {
-                            CustomerIO.shared.deviceAttributes = [
-                                deviceAttributeName: deviceAttributeValue
-                            ]
-
-                            showingDeviceAttributesAlert.toggle()
-                        }.alert(isPresented: $showingDeviceAttributesAlert) {
-                            Alert(
-                                title: Text("Device attribute sent"),
-                                dismissButton: .default(Text("OK"))
-                            )
-                        }
-                    }.padding([.leading, .trailing], 50)
-                })
-                ColorButton(title: "Set Profile Attributes") {
-                    showingProfileAttributesSheet.toggle()
-                }.sheet(isPresented: $showingProfileAttributesSheet, content: {
-                    VStack(spacing: 15) {
-                        TextField("Attribute name", text: $profileAttributeName)
-                        TextField("Attribute value", text: $profileAttributeValue)
-                        Button("Send profile attributes") {
-                            CustomerIO.shared.profileAttributes = [
-                                profileAttributeName: profileAttributeValue
-                            ]
-
-                            showingProfileAttributesAlert.toggle()
-                        }.alert(isPresented: $showingProfileAttributesAlert) {
-                            Alert(
-                                title: Text("Profile attribute sent"),
-                                dismissButton: .default(Text("OK"))
-                            )
-                        }
-                    }.padding([.leading, .trailing], 50)
-                })
-                ColorButton(title: "Logout") {
-                    CustomerIO.shared.clearIdentify()
-
-                    userManager.logout()
-                }
                 EnvironmentText()
             }
             .padding()
-        }.onAppear {
-            UNUserNotificationCenter.current().getNotificationSettings { settings in
-                showAskForPushPermissionButton = settings.authorizationStatus == .notDetermined
+            .alert(isPresented: .notNil(blockingMessage)) {
+                Alert(
+                    title: Text(blockingMessage!),
+                    dismissButton: .default(Text("OK")) {
+                        blockingMessage = nil
+                    }
+                )
             }
-        }
+        }.overlay(
+            ToastView(message: $nonBlockingMessage)
+        )
     }
 }
 

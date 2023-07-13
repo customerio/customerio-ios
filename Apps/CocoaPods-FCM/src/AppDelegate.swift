@@ -23,8 +23,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Initialize the Customer.io SDK
         CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
             // Modify properties in the config object to configure the Customer.io SDK.
-
-            config.logLevel = .debug // For all of our sample apps, we prefer to set debug logs to make our internal testing easier. You may not need to do this.
+            // config.logLevel = .debug // Uncomment this line to enable debug logging.
 
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
@@ -98,5 +97,9 @@ extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // Pass the FCM token to the Customer.io SDK:
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+
+        // Save the FCM token to show in the settings screen of the app later.
+        // This is not required for the Customer.io SDK to work.
+        KeyValueStore().pushToken = fcmToken
     }
 }

@@ -16,13 +16,20 @@
 		F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECB29F2C0C300411BCC /* LoginView.swift */; };
 		F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */; };
 		F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED329F2C82D00411BCC /* UserManager.swift */; };
+		F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70F4CDC2A3B91DA00037B91 /* Appium.swift */; };
+		F70F4CDF2A3CA57500037B91 /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70F4CDE2A3CA57500037B91 /* DateExtensions.swift */; };
+		F72212152A422D72003AE5A1 /* CustomEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72212142A422D72003AE5A1 /* CustomEventView.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
 		F73134682919570700CD43D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F73134672919570700CD43D9 /* Assets.xcassets */; };
 		F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F731346A2919570700CD43D9 /* Preview Assets.xcassets */; };
 		F7382934291D5C27008ED8CB /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7382933291D5C27008ED8CB /* NotificationService.swift */; };
 		F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */; };
+		F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */; };
 		F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */; };
+		F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAA2A5C8C1F00C5C952 /* Toast.swift */; };
+		F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
 		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
 		F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D762A05588E00641391 /* ColorExtensions.swift */; };
@@ -34,6 +41,8 @@
 		F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C1C58D29F2D39300067998 /* SettingsView.swift */; };
 		F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 		F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
+		F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */; };
+		F7FA3D8B2A44DF42008AC1A7 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +83,9 @@
 		F7029ECB29F2C0C300411BCC /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentText.swift; sourceTree = "<group>"; };
 		F7029ED329F2C82D00411BCC /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
+		F70F4CDC2A3B91DA00037B91 /* Appium.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Appium.swift; sourceTree = "<group>"; };
+		F70F4CDE2A3CA57500037B91 /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
+		F72212142A422D72003AE5A1 /* CustomEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEventView.swift; sourceTree = "<group>"; };
 		F73134602919570600CD43D9 /* test cocoapods.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "test cocoapods.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F73134632919570600CD43D9 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		F73134652919570600CD43D9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -84,7 +96,11 @@
 		F7382933291D5C27008ED8CB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		F7382935291D5C27008ED8CB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "test-cocoapods-Info.plist"; sourceTree = "<group>"; };
+		F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAttributeView.swift; sourceTree = "<group>"; };
+		F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabeledTextField.swift; sourceTree = "<group>"; };
 		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
+		F7714AAA2A5C8C1F00C5C952 /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
+		F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUITimer.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78E3D762A05588E00641391 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
@@ -95,6 +111,8 @@
 		F7BAFCC529195D2600DFAC6E /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F7C1C58D29F2D39300067998 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
+		F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneLineText.swift; sourceTree = "<group>"; };
+		F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +170,9 @@
 				F73134652919570600CD43D9 /* DashboardView.swift */,
 				F7029ECB29F2C0C300411BCC /* LoginView.swift */,
 				F7C1C58D29F2D39300067998 /* SettingsView.swift */,
+				F70F4CDC2A3B91DA00037B91 /* Appium.swift */,
+				F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */,
+				F72212142A422D72003AE5A1 /* CustomEventView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -162,6 +183,11 @@
 				F7029EBD29F2B00500411BCC /* ColorButton.swift */,
 				F7029ECD29F2C1EF00411BCC /* EnvironmentText.swift */,
 				F78E3D782A058B5000641391 /* SettingsButton.swift */,
+				F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */,
+				F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */,
+				F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */,
+				F7714AAA2A5C8C1F00C5C952 /* Toast.swift */,
+				F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -181,6 +207,7 @@
 				F7029EC729F2B64100411BCC /* StringExtensions.swift */,
 				F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */,
 				F78E3D762A05588E00641391 /* ColorExtensions.swift */,
+				F70F4CDE2A3CA57500037B91 /* DateExtensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -429,20 +456,29 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F72212152A422D72003AE5A1 /* CustomEventView.swift in Sources */,
 				F7BAFCC129195AB700DFAC6E /* AppDelegate.swift in Sources */,
+				F7FA3D8B2A44DF42008AC1A7 /* BackButton.swift in Sources */,
+				F70F4CDF2A3CA57500037B91 /* DateExtensions.swift in Sources */,
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
+				F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */,
 				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */,
+				F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */,
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
+				F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */,
+				F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
 				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
+				F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
+				F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */,
 				F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -597,8 +633,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "CocoaPods FCM SwiftUI";
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -635,8 +672,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "CocoaPods FCM SwiftUI";
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -1,6 +1,7 @@
 import CioTracking
 import Foundation
 
+// Stores the settings that override behavior of the Customer.io SDK in the app.
 public class CioSettingsManager {
     private let keyValueStorage: KeyValueStore = .init()
 
@@ -10,22 +11,13 @@ public class CioSettingsManager {
         keyValueStorage.cioSettings != nil
     }
 
-    public var appSetSettings: CioSettings? {
-        get {
-            if let appSetSettings = keyValueStorage.cioSettings {
-                return appSetSettings
-            }
-
-            return nil
-        }
-        set {
-            keyValueStorage.cioSettings = newValue
-        }
+    public func restoreSdkDefaultSettings() {
+        appSetSettings = nil
     }
 
-    public var settings: CioSettings {
+    public var appSetSettings: CioSettings? {
         get {
-            appSetSettings ?? CioSettings.getFromCioSdk()
+            keyValueStorage.cioSettings
         }
         set {
             keyValueStorage.cioSettings = newValue

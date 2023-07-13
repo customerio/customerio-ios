@@ -19,4 +19,8 @@ extension View {
     func debugSize() -> some View {
         border(Color.random, width: 1)
     }
+
+    func hideKeyboard() { // this also makes all TextFields lose focus
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
