@@ -129,6 +129,33 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
+    func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectDoNotRunHooks() {
+        let givenIdentifier = ""
+        profileStoreMock.identifier = nil
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+        let givenIdentifier = ""
+        let givenPreviouslyIdentifiedProfile = String.random
+        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
+
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+
+        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+    }
+
     // MARK: clearIdentify
 
     func test_clearIdentify_givenNoPreviouslyIdentifiedCustomer_expectDoNotRunHooks_expectStorageSetNil() {
@@ -262,16 +289,6 @@ class CustomerIOImplementationTest: UnitTest {
     func test_registerDeviceToken_givenNoCustomerIdentified_expectNoAddingToQueue_expectStoreDeviceToken() {
         let givenDeviceToken = String.random
         profileStoreMock.identifier = nil
-
-        customerIO.registerDeviceToken(givenDeviceToken)
-
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
-        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
-    }
-
-    func test_registerDeviceToken_givenEmptyCustomerIdentifier_expectNoAddingToQueue_expectStoreDeviceToken() {
-        let givenDeviceToken = String.random
-        profileStoreMock.identifier = ""
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
