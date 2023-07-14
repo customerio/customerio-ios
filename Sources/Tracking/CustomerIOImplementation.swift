@@ -79,6 +79,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        if identifier.isEmpty {
+            logger.error("profiles cannot be created without an identifier. Empty string was provided as the identifier, therefore, request to identify profile in the SDK is ignored. Try identifying a profile again with a non-empty identifier value.")
+            return
+        }
         logger.info("identify profile \(identifier)")
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
@@ -227,10 +231,6 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
         guard let identifier = profileStore.identifier else {
             logger.info("no profile identified, so not registering device token to a profile")
-            return
-        }
-        guard !identifier.isEmpty else {
-            logger.error("not registering device token to a profile since profiles cannot be created without an identifier. Empty string was provided as the identifier, therefore, request to identify profile in the SDK is ignored. Try identifying a profile again with a non-empty identifier value.")
             return
         }
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
