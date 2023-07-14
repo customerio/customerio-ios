@@ -79,7 +79,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        if identifier.isEmpty {
+        if identifier.trimmingCharacters(in: .whitespaces).isEmpty {
             logger.error("profile cannot be identified: Identifier is blank. Please retry with a valid, non-empty identifier.")
             return
         }
