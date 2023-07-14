@@ -129,7 +129,7 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
-    func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectDoNotRunHooks() {
+    func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
         profileStoreMock.identifier = nil
 
