@@ -229,12 +229,12 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         // we can reference the token and register it to a new profile.
         globalDataStore.pushDeviceToken = deviceToken
 
-        guard let identifier = profileStore.identifier?.isBlankOrEmpty() else {
-            logger.error("profile cannot be identified: Identifier is empty, so not registering device token to a profile")
-            return
-        }
         guard let identifier = profileStore.identifier else {
             logger.info("no profile identified, so not registering device token to a profile")
+            return
+        }
+        if identifier.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty, so not registering device token to a profile")
             return
         }
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
