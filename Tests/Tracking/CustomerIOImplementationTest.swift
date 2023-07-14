@@ -152,7 +152,6 @@ class CustomerIOImplementationTest: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertFalse(hooksMock.mockCalled)
-
         XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
     }
 
