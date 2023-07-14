@@ -80,7 +80,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         body: RequestBody
     ) {
         if identifier.isEmpty {
-            logger.error("profiles cannot be created without an identifier. Empty string was provided as the identifier, therefore, request to identify profile in the SDK is ignored. Try identifying a profile again with a non-empty identifier value.")
+            logger.error("profile cannot be identified: Identifier is blank. Please retry with a valid, non-empty identifier.")
             return
         }
         logger.info("identify profile \(identifier)")
