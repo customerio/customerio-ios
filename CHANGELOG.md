@@ -1,3 +1,10 @@
+## [2.7.3](https://github.com/customerio/customerio-ios/compare/2.7.2...2.7.3) (2023-07-17)
+
+
+### Bug Fixes
+
+* prevent api calls when identifier is empty ([#353](https://github.com/customerio/customerio-ios/issues/353)) ([10b5db7](https://github.com/customerio/customerio-ios/commit/10b5db739444074847fb6e58e6554411e0a5fa74))
+
 ## [2.7.2](https://github.com/customerio/customerio-ios/compare/2.7.1...2.7.2) (2023-07-12)
 
 
