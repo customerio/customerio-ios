@@ -153,6 +153,7 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertFalse(hooksMock.mockCalled)
         XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+        XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
     }
 
     // MARK: clearIdentify

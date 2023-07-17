@@ -88,4 +88,15 @@ class StringExtensionsTest: UnitTest {
 
         XCTAssertEqual(given.getFirstNCharacters(5), expected)
     }
+
+    // isBlankOrEmpty
+    func test_isBlankOrEmpty_givenEmptyString_expectTrue() {
+        let given = "       "
+        XCTAssertTrue(given.isBlankOrEmpty())
+    }
+
+    func test_isBlankOrEmpty_givenNonEmptyString_expectFalse() {
+        let given = "Hello_World  123"
+        XCTAssertFalse(given.isBlankOrEmpty())
+    }
 }
