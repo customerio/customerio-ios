@@ -79,6 +79,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        if identifier.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
+            return
+        }
         logger.info("identify profile \(identifier)")
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
@@ -219,16 +223,22 @@ internal class CustomerIOImplementation: CustomerIOInstance {
      Adds device default and custom attributes and registers device token.
      */
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
+        // check if the identifier is not null, blank or empty
+        guard let identifier = profileStore.identifier else {
+            logger.info("no profile identified, so not registering device token to a profile")
+            return
+        }
+        if identifier.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty, so not registering device token to a profile")
+            return
+        }
+
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
         // we can reference the token and register it to a new profile.
         globalDataStore.pushDeviceToken = deviceToken
 
-        guard let identifier = profileStore.identifier else {
-            logger.info("no profile identified, so not registering device token to a profile")
-            return
-        }
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
         // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
         // is

@@ -129,6 +129,33 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
+    func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
+        let givenIdentifier = ""
+        profileStoreMock.identifier = nil
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+        let givenIdentifier = ""
+        let givenPreviouslyIdentifiedProfile = String.random
+        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
+
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+        XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
+    }
+
     // MARK: clearIdentify
 
     func test_clearIdentify_givenNoPreviouslyIdentifiedCustomer_expectDoNotRunHooks_expectStorageSetNil() {
