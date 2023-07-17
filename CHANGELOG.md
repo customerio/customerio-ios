@@ -1,3 +1,10 @@
+## [2.7.4](https://github.com/customerio/customerio-ios/compare/2.7.3...2.7.4) (2023-07-17)
+
+
+### Bug Fixes
+
+* save device token in SDK even if no profile identified ([#354](https://github.com/customerio/customerio-ios/issues/354)) ([a49f72c](https://github.com/customerio/customerio-ios/commit/a49f72ce94549d4e9d754891e3b6f6b309f46e8a))
+
 ## [2.7.3](https://github.com/customerio/customerio-ios/compare/2.7.2...2.7.3) (2023-07-17)
 
 
