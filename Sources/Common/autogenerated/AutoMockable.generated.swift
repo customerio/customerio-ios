@@ -1657,9 +1657,6 @@ public class QueueMock: Queue, Mock {
         runReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        deleteExpiredTasksCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - addTrackInAppDeliveryTask
@@ -1749,27 +1746,6 @@ public class QueueMock: Queue, Mock {
         runReceivedArguments = onComplete
         runReceivedInvocations.append(onComplete)
         runClosure?(onComplete)
-    }
-
-    // MARK: - deleteExpiredTasks
-
-    /// Number of times the function was called.
-    public private(set) var deleteExpiredTasksCallsCount = 0
-    /// `true` if the function was ever called.
-    public var deleteExpiredTasksCalled: Bool {
-        deleteExpiredTasksCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var deleteExpiredTasksClosure: (() -> Void)?
-
-    /// Mocked function for `deleteExpiredTasks()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func deleteExpiredTasks() {
-        mockCalled = true
-        deleteExpiredTasksCallsCount += 1
-        deleteExpiredTasksClosure?()
     }
 }
 

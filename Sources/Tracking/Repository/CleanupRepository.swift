@@ -7,13 +7,13 @@ internal protocol CleanupRepository: AutoMockable {
 
 // sourcery: InjectRegister = "CleanupRepository"
 internal class CioCleanupRepository: CleanupRepository {
-    private let queue: Queue
+    private let queueStorage: QueueStorage
 
-    init(queue: Queue) {
-        self.queue = queue
+    init(queueStorage: QueueStorage) {
+        self.queueStorage = queueStorage
     }
 
     func cleanup() {
-        queue.deleteExpiredTasks()
+        _ = queueStorage.deleteExpired()
     }
 }

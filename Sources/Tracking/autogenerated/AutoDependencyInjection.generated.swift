@@ -73,7 +73,7 @@ extension DIGraph {
     }
 
     private var newCleanupRepository: CleanupRepository {
-        CioCleanupRepository(queue: queue)
+        CioCleanupRepository(queueStorage: queueStorage)
     }
 
     // DeviceAttributesProvider
