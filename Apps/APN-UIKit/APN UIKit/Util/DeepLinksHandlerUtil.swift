@@ -19,20 +19,15 @@ extension AppDeepLinksHandlerUtil {
     // Call this function if you have confirmed the deep link is a `deeplink` deep link. This function assumes you
     // have confirmed that.
     private func handleDeepLinkAction(_ url: URL) -> Bool {
-        if let host = url.host?.split(separator: "&"), host.first == "settings" {
-            var userInfo = [String: String]()
-            if host.count >= 3 {
-                // Site ID
-                let siteIdInfo = host[1].split(separator: "=")
-                if siteIdInfo.first == "site_id" {
-                    userInfo["site_id"] = String(siteIdInfo[1])
-                }
-                // API Key
-                let apiKeyInfo = host[2].split(separator: "=")
-                if apiKeyInfo.first == "api_key" {
-                    userInfo["api_key"] = String(apiKeyInfo[1])
+        if let urlComponents = URLComponents(string: url.absoluteString), let host = urlComponents.host, host == "settings" {
+            var userInfo: [String: String] = [:]
+
+            urlComponents.queryItems?.forEach { queryItem in
+                if queryItem.name == "site_id" || queryItem.name == "api_key" {
+                    userInfo[queryItem.name] = queryItem.value
                 }
             }
+
             if let _ = storage.userEmailId {
                 NotificationCenter.default
                     .post(

@@ -1,4 +1,3 @@
-import CioInternalCommon
 import UIKit
 
 // Use this Base controller class to implement shared functionality
@@ -12,8 +11,7 @@ class BaseViewController: UIViewController {
     }
 
     func getMetaData() -> String {
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        let versionDetail = "SDK: Customer.io iOS SDK \(SdkVersion.version)\nApp: Ami app \(appVersion ?? "")"
+        let versionDetail = "SDK: Customer.io iOS SDK \(MetadataUtil.cioSdkVersion)\nApp: \(MetadataUtil.appName) \(MetadataUtil.appBuildVersion) \(MetadataUtil.appBuildNumber)"
         return versionDetail
     }
 
