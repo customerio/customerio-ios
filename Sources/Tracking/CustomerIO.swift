@@ -107,6 +107,10 @@ public class CustomerIO: CustomerIOInstance {
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
     @Atomic public private(set) static var shared = CustomerIO()
+
+    // mutex to safely initialize the SDK multiple times in short amount of time.
+    // Not using LockManager because 'shared' instance will keep a singleton instance of this lock
+    // through entire lifecycle of SDK.
     @Atomic private var initializeLock = Lock.unsafeInit()
 
     // Only assign a value to this *when the SDK is initialzied*.
@@ -117,9 +121,6 @@ public class CustomerIO: CustomerIOInstance {
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
     internal var diGraph: DIGraph?
-
-    // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    private var cleanupRepository: CleanupRepository?
 
     // private constructor to force use of singleton API
     private init() {}
@@ -203,6 +204,9 @@ public class CustomerIO: CustomerIOInstance {
 
     // Contains all logic shared between all of the initialize() functions, including integration tests.
     internal func commonInitialize(newDiGraph: DIGraph, newImplementation: CustomerIOImplementation) {
+        // SDK initialization could be called multiple times within a close amount of time (example: app launch in a SDK wrapper app).
+
+        // lock before setting new property values such as diGraph. Unlock after it's safe to re-set dependency graph if SDK is being initialized multiple times.
         initializeLock.lock()
 
         diGraph = newDiGraph
@@ -227,8 +231,11 @@ public class CustomerIO: CustomerIOInstance {
 
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground {
+            // keep a strong reference to self and all dependencies in callback.
+            // memory access exceptions can occur if dependencies get deinitialized before the callback gets called.
             cleanupRepository.cleanup()
 
+            // unlock only after it's safe for dependencies to be re-created in the SDK.
             self.initializeLock.unlock()
         }
 
@@ -396,4 +403,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-}
+} // swiftlint:disable:this file_length
