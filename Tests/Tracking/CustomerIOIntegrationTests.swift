@@ -156,4 +156,45 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(CustomerIO.shared.config!.siteId, givenSiteId)
         XCTAssertEqual(CustomerIO.shared.config!.apiKey, givenApiKey)
     }
+
+    // Reproduces edge case where SDK is initialized multiple times in a short amount of time (such as during app launch in a SDK wrapper app).
+    // Learn more: https://github.com/customerio/opsbugs/issues/3618
+    func test_initializeSdk_givenCallMultipleTimes_expectNoExceptions() {
+        // It's very important that this test runs using real background threads to make SDK initialization async.
+
+        diGraph.resetOverride(forType: ThreadUtil.self)
+        let threadRunCountBeforeTest = threadUtilStub.runCount // test class may have already initialized the SDK once. Get count now to see if it's modified after test.
+
+        // 1000 is arbitrary. From running, exception is thrown consistently between index 100 and index 500.
+        for _ in 0 ..< 1000 {
+            CustomerIO.initialize(siteId: .random, apiKey: .random, region: .US, configure: nil)
+        }
+
+        // Assert that test executed using real background threads.
+        XCTAssertEqual(threadUtilStub.runCount, threadRunCountBeforeTest)
+    }
+
+    // The SDK initialization involves async operations. Assert that the async operations all exectute and do not get skipped with multiple requests.
+    func test_initializeSdk_givenCallMultipleTimes_expectFinishAsyncInitialize() {
+        let givenNumberOfInitCalls = 500
+        let expectCleanupMultipleTimes = expectation(description: "cleanup multiple times")
+        expectCleanupMultipleTimes.expectedFulfillmentCount = givenNumberOfInitCalls
+
+        // The cleanup repository is the async operation that executes during SDK initialization.
+        // Assert that cleanup executes as many times as the SDK is initialized.
+        let cleanupRepositoryMock = CleanupRepositoryMock()
+        cleanupRepositoryMock.cleanupClosure = {
+            Thread.sleep(forTimeInterval: 0.1) // sleep for 100 milliseconds to simulate async operation
+            expectCleanupMultipleTimes.fulfill()
+        }
+
+        diGraph.resetOverride(forType: ThreadUtil.self) // use real background threads to assert we are running async operations.
+        diGraph.override(value: cleanupRepositoryMock, forType: CleanupRepository.self)
+
+        for _ in 0 ..< givenNumberOfInitCalls {
+            CustomerIO.initializeIntegrationTests(diGraph: diGraph)
+        }
+
+        waitForExpectations(timeout: 3)
+    }
 }
