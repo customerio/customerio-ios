@@ -19,7 +19,7 @@ class DashboardViewController: BaseViewController {
     var notificationUtil = DIGraph.shared.notificationUtil
     var storage = DIGraph.shared.storage
     let randomData: [[String: Any?]] = [["name": "Order Purchased", "data": nil],
-                                        ["name": "Movie_watched", "data": ["movie_name": "The Incredibles"]],
+                                        ["name": "movie_watched", "data": ["movie_name": "The Incredibles"]],
                                         ["name": "appointmentScheduled", "data": ["appointmentTime": NSDate().timeIntervalSince1970]]]
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)

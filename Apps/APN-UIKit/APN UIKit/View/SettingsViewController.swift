@@ -207,5 +207,6 @@ class SettingsViewController: BaseViewController {
             isDeviceAttributeEnabled: true,
             isDebugModeEnabled: true
         )
+        setDefaultValues()
     }
 }
