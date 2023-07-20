@@ -16,6 +16,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Initialize the Firebase SDK.
         FirebaseApp.configure()
 
+        // This code is internal to Customer.io for testing purposes. Your app will be unique
+        // in how you decide to provide the siteId, apiKey, and region to the SDK.
         let appSetSettings = CioSettingsManager().appSetSettings
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
         let apiKey = appSetSettings?.apiKey ?? BuildEnvironment.CustomerIO.apiKey
@@ -57,6 +59,22 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             -> Void
     ) {
         completionHandler([.list, .banner, .badge, .sound])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Send Customer.io SDK click event to process. This enables features such as
+        // push metrics and deep links.
+        let handled = MessagingPush.shared.userNotificationCenter(
+            center,
+            didReceive: response,
+            withCompletionHandler: completionHandler
+        )
+
+        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
+        // completion handler. If the SDK did handle it, it called the completion handler for you.
+        if !handled {
+            completionHandler()
+        }
     }
 }
 

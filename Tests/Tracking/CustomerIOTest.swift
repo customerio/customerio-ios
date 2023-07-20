@@ -23,7 +23,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_initialize_expectAddModuleHooks_expectRunCleanup() {
-        customerIO.postInitialize(diGraph: diGraph)
+        customerIO.commonInitialize(newDiGraph: diGraph, newImplementation: CustomerIOImplementation(diGraph: diGraph))
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .tracking)
