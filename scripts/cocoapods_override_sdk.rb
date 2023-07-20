@@ -16,20 +16,20 @@ load "/tmp/override_cio_sdk.rb"
 target 'SampleApp' do
   # Uncomment only 1 of the lines below to install a version of the iOS SDK 
   pod 'CustomerIO/MessagingPushAPN', '~> 2.1' # install production build 
-  # install_non_production_ios_sdk_local_path('~/code/customerio-ios/', is_app_extension: false, push_service: "apn")
-  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: false, push_service: "fcm")
+  # install_non_production_ios_sdk_local_path(local_path: '~/code/customerio-ios/', is_app_extension: false, push_service: "apn")
+  # install_non_production_ios_sdk_git_branch(branch_name: 'name-of-ios-sdk-branch', is_app_extension: false, push_service: "fcm")
 end
 
 target 'Notification Service' do
   # Uncomment only 1 of the lines below to install a version of the iOS SDK 
   pod 'CustomerIO/MessagingPushAPN', '~> 2.1' # install production build 
-  # install_non_production_ios_sdk_local_path('~/code/customerio-ios/', is_app_extension: true, push_service: "apn")
-  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: true, push_service: "fcm")
+  # install_non_production_ios_sdk_local_path(local_path: '~/code/customerio-ios/', is_app_extension: true, push_service: "apn")
+  # install_non_production_ios_sdk_git_branch(branch_name: 'name-of-ios-sdk-branch', is_app_extension: true, push_service: "fcm")
 end
 
 =end 
 
-def install_non_production_ios_sdk_git_branch(branch_name, is_app_extension, push_service)
+def install_non_production_ios_sdk_git_branch(branch_name:, is_app_extension:, push_service:)
   puts ""
   puts "⚠️ Installing CIO iOS SDK from git branch #{branch_name}"
   puts ""
@@ -39,7 +39,7 @@ def install_non_production_ios_sdk_git_branch(branch_name, is_app_extension, pus
   }  
 end 
 
-def install_non_production_ios_sdk_local_path(local_path, is_app_extension, push_service)
+def install_non_production_ios_sdk_local_path(local_path:, is_app_extension:, push_service:)
   local_path = File.expand_path(local_path, Dir.pwd)
 
   puts ""
