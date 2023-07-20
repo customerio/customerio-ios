@@ -1,3 +1,10 @@
+## [2.7.5](https://github.com/customerio/customerio-ios/compare/2.7.4...2.7.5) (2023-07-20)
+
+
+### Bug Fixes
+
+* deinit cleanup repo bad memory access ([#356](https://github.com/customerio/customerio-ios/issues/356)) ([0483fb0](https://github.com/customerio/customerio-ios/commit/0483fb04e02228bfe1dd1ff88e9e51e688b477fd))
+
 ## [2.7.4](https://github.com/customerio/customerio-ios/compare/2.7.3...2.7.4) (2023-07-17)
 
 
