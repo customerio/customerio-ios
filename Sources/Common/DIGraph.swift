@@ -22,6 +22,10 @@ public class DIGraph {
         overrides[String(describing: type)] = value
     }
 
+    public func resetOverride(forType type: Any.Type) {
+        overrides[String(describing: type)] = nil
+    }
+
     // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
     // If an overridden instance exists and can be cast to the specified type, it is returned; otherwise, nil is returned.
     public func getOverriddenInstance<T: Any>() -> T? {
