@@ -17,14 +17,14 @@ target 'SampleApp' do
   # Uncomment only 1 of the lines below to install a version of the iOS SDK 
   pod 'CustomerIO/MessagingPushAPN', '~> 2.1' # install production build 
   # install_non_production_ios_sdk_local_path('~/code/customerio-ios/', is_app_extension: false, push_service: "apn")
-  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: false, push_service: "apn")
+  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: false, push_service: "fcm")
 end
 
 target 'Notification Service' do
   # Uncomment only 1 of the lines below to install a version of the iOS SDK 
   pod 'CustomerIO/MessagingPushAPN', '~> 2.1' # install production build 
   # install_non_production_ios_sdk_local_path('~/code/customerio-ios/', is_app_extension: true, push_service: "apn")
-  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: true, push_service: "apn")
+  # install_non_production_ios_sdk_git_branch('name-of-ios-sdk-branch', is_app_extension: true, push_service: "fcm")
 end
 
 =end 
