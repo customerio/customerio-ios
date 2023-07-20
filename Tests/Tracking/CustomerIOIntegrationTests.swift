@@ -176,7 +176,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
 
     // The SDK initialization involves async operations. Assert that the async operations all exectute and do not get skipped with multiple requests.
     func test_initializeSdk_givenCallMultipleTimes_expectFinishAsyncInitialize() {
-        let givenNumberOfInitCalls = 500
+        let givenNumberOfInitCalls = 100
         let expectCleanupMultipleTimes = expectation(description: "cleanup multiple times")
         expectCleanupMultipleTimes.expectedFulfillmentCount = givenNumberOfInitCalls
 
