@@ -4,6 +4,7 @@ public struct StringAnyEncodable: Encodable {
     private let data: [String: AnyEncodable]
 
     public init(_ data: [String: Any]) {
+        // Nested function to convert the ‘Any’ values to ‘AnyEncodable’ recursively
         func encode(value: Any) -> AnyEncodable? {
             switch value {
             case let enc as Encodable:
@@ -13,6 +14,7 @@ public struct StringAnyEncodable: Encodable {
                 return AnyEncodable(StringAnyEncodable(dict))
             
             case let list as [Any]:
+                // If the value is an array, recursively encode each element
                 return AnyEncodable(list.compactMap { encode(value: $0) })
 
             default:
