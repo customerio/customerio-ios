@@ -4,19 +4,24 @@ public struct StringAnyEncodable: Encodable {
     private let data: [String: AnyEncodable]
 
     public init(_ data: [String: Any]) {
-        var builtValue = [String: AnyEncodable]()
-        for (key, value) in data {
+        func encode(value: Any) -> AnyEncodable? {
             switch value {
             case let enc as Encodable:
-                builtValue[key] = AnyEncodable(enc)
+                return AnyEncodable(enc)
+            
             case let dict as [String: Any]:
-                builtValue[key] = AnyEncodable(StringAnyEncodable(dict))
+                return AnyEncodable(StringAnyEncodable(dict))
+            
+            case let list as [Any]:
+                return AnyEncodable(list.compactMap { encode(value: $0) })
+
             default:
                 // XXX: logger error
-                continue
+                return nil;
             }
         }
-        self.data = builtValue
+
+        self.data = data.compactMapValues { encode(value: $0) }
     }
 
     public func encode(to encoder: Encoder) throws {
