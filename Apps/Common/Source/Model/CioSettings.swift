@@ -25,15 +25,6 @@ public struct CioSettings: Codable {
         }
     }
 
-    public func configureCioSdk(config: inout CioNotificationServiceExtensionSdkConfig) {
-        config.trackingApiUrl = trackUrl
-        config.autoTrackDeviceAttributes = trackDeviceAttributes
-
-        if debugSdkMode {
-            config.logLevel = .debug
-        }
-    }
-
     public static func getFromCioSdk() -> CioSettings {
         let sdkConfig = CustomerIO.shared.config!
 
