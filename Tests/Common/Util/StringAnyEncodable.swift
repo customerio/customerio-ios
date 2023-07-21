@@ -9,6 +9,7 @@ struct DummyData: Codable, Equatable {
     let testValue: String
     let dict: [String: String]
     let array: [Int]
+    let hashables: [String: [String]]
 
     enum CodingKeys: String, CodingKey {
         case boolean
@@ -16,6 +17,7 @@ struct DummyData: Codable, Equatable {
         case testValue
         case dict
         case array
+        case hashables
     }
 }
 
@@ -85,14 +87,16 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_complex_data() {
-        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4])
+        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], hashables: ["color": ["Red", "Green", "Blue"]])
 
+        // React native wrap some values in AnyHashable
         let data = [
             "testValue": "foo",
             "numeric": 1,
             "boolean": true,
             "array": [1, 2, 4],
-            "dict": ["test": "value"] as [String: Any]
+            "dict": ["test": "value"] as [String: Any],
+            "hashables": [AnyHashable("color"): [AnyHashable("Red"), AnyHashable("Green"), AnyHashable("Blue")]] as [AnyHashable: [AnyHashable]]
         ] as [String: Any]
 
         let json = StringAnyEncodable(data)
