@@ -1,3 +1,10 @@
+## [2.7.6](https://github.com/customerio/customerio-ios/compare/2.7.5...2.7.6) (2023-07-21)
+
+
+### Bug Fixes
+
+* apps initializing sdk multiple times in short amount of time may make SDK ignore requests ([#360](https://github.com/customerio/customerio-ios/issues/360)) ([09829e0](https://github.com/customerio/customerio-ios/commit/09829e0c55b3637d82059087bf72b1f1d14b0e59))
+
 ## [2.7.5](https://github.com/customerio/customerio-ios/compare/2.7.4...2.7.5) (2023-07-20)
 
 

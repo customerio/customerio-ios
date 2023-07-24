@@ -108,11 +108,6 @@ public class CustomerIO: CustomerIOInstance {
      */
     @Atomic public private(set) static var shared = CustomerIO()
 
-    // mutex to safely initialize the SDK multiple times in short amount of time.
-    // Not using LockManager because 'shared' instance will keep a singleton instance of this lock
-    // through entire lifecycle of SDK.
-    @Atomic private var initializeLock = Lock.unsafeInit()
-
     // Only assign a value to this *when the SDK is initialzied*.
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
@@ -121,6 +116,9 @@ public class CustomerIO: CustomerIOInstance {
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
     internal var diGraph: DIGraph?
+
+    // strong reference to repository to prevent garbage collection as it runs tasks in async.
+    private var cleanupRepository: CleanupRepository?
 
     // private constructor to force use of singleton API
     private init() {}
@@ -145,7 +143,9 @@ public class CustomerIO: CustomerIOInstance {
     internal static func initializeIntegrationTests(
         diGraph: DIGraph
     ) {
-        Self.shared.commonInitialize(newDiGraph: diGraph, newImplementation: CustomerIOImplementation(diGraph: diGraph))
+        let implementation = CustomerIOImplementation(diGraph: diGraph)
+        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+        Self.shared.postInitialize(diGraph: diGraph)
     }
 
     /**
@@ -165,7 +165,7 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.shared.commonInitialize(config: newSdkConfig)
+        Self.initialize(config: newSdkConfig)
 
         if newSdkConfig.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
@@ -192,51 +192,44 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.shared.commonInitialize(config: newSdkConfig.toSdkConfig())
+        Self.initialize(config: newSdkConfig.toSdkConfig())
     }
 
-    // convenience method that takes a new config object
-    internal func commonInitialize(config: SdkConfig) {
+    // private shared logic initialize to avoid copy/paste between the different
+    // public initialize functions.
+    private static func initialize(
+        config: SdkConfig
+    ) {
         let newDiGraph = DIGraph(sdkConfig: config)
 
-        commonInitialize(newDiGraph: newDiGraph, newImplementation: CustomerIOImplementation(diGraph: newDiGraph))
+        Self.shared.diGraph = newDiGraph
+        Self.shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
+
+        Self.shared.postInitialize(diGraph: newDiGraph)
     }
 
-    // Contains all logic shared between all of the initialize() functions, including integration tests.
-    internal func commonInitialize(newDiGraph: DIGraph, newImplementation: CustomerIOImplementation) {
-        // SDK initialization could be called multiple times within a close amount of time (example: app launch in a SDK wrapper app).
+    // Contains all logic shared between all of the initialize() functions.
+    internal func postInitialize(diGraph: DIGraph) {
+        let hooks = diGraph.hooksManager
+        let threadUtil = diGraph.threadUtil
+        let logger = diGraph.logger
+        let siteId = diGraph.sdkConfig.siteId
 
-        // lock before setting new property values such as diGraph. Unlock after it's safe to re-set dependency graph if SDK is being initialized multiple times.
-        initializeLock.lock()
-
-        diGraph = newDiGraph
-        implementation = newImplementation
-
-        let hooks = newDiGraph.hooksManager
-        let threadUtil = newDiGraph.threadUtil
-        let logger = newDiGraph.logger
-        let siteId = newDiGraph.sdkConfig.siteId
-
-        let cleanupRepository = newDiGraph.cleanupRepository
+        cleanupRepository = diGraph.cleanupRepository
 
         // Register Tracking module hooks now that the module is being initialized.
         hooks.add(key: .tracking, provider: TrackingModuleHookProvider())
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
-        let globalDataStore = newDiGraph.globalDataStore
+        let globalDataStore = diGraph.globalDataStore
         if let token = globalDataStore.pushDeviceToken {
             registerDeviceToken(token)
         }
 
         // run cleanup in background to prevent locking the UI thread
-        threadUtil.runBackground {
-            // keep a strong reference to self and all dependencies in callback.
-            // memory access exceptions can occur if dependencies get deinitialized before the callback gets called.
-            cleanupRepository.cleanup()
-
-            // unlock only after it's safe for dependencies to be re-created in the SDK.
-            self.initializeLock.unlock()
+        threadUtil.runBackground { [weak self] in
+            self?.cleanupRepository?.cleanup()
         }
 
         logger
@@ -403,4 +396,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-} // swiftlint:disable:this file_length
+}
