@@ -633,7 +633,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -672,7 +672,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI";
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
