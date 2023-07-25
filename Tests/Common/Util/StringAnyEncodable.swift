@@ -9,7 +9,7 @@ struct DummyData: Codable, Equatable {
     let testValue: String
     let dict: [String: String]
     let array: [Int]
-    let hashables: [String: [String]]
+    let dictWithArray: [String: [String]]
 
     enum CodingKeys: String, CodingKey {
         case boolean
@@ -17,7 +17,7 @@ struct DummyData: Codable, Equatable {
         case testValue
         case dict
         case array
-        case hashables
+        case dictWithArray
     }
 }
 
@@ -87,7 +87,7 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_complex_data() {
-        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], hashables: ["color": ["Red", "Green", "Blue"]])
+        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], dictWithArray: ["color": ["Red", "Green", "Blue"]])
 
         // React native wrap some values in AnyHashable
         let data = [
@@ -96,7 +96,35 @@ class StringAnyEncodableTest: UnitTest {
             "boolean": true,
             "array": [1, 2, 4],
             "dict": ["test": "value"] as [String: Any],
-            "hashables": [AnyHashable("color"): [AnyHashable("Red"), AnyHashable("Green"), AnyHashable("Blue")]] as [AnyHashable: [AnyHashable]]
+            "dictWithArray": ["color": ["Red", "Green", "Blue"]] as [String: [Any]]
+        ] as [String: Any]
+
+        let json = StringAnyEncodable(logger: log, data)
+
+        guard let actual = jsonAdapter.toJson(json) else {
+            XCTFail("couldn't encode to JSON")
+            return
+        }
+
+        guard let result: DummyData = jsonAdapter.fromJson(actual) else {
+            XCTFail("data did not decoded to a DummyData object")
+            return
+        }
+
+        XCTAssertEqual(expect, result)
+    }
+
+    func test_stringanyencodable_encodes_complex_datafromwrappers() {
+        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], dictWithArray: ["color": ["Red", "Green", "Blue"]])
+
+        // Both flutter and react native wrap some values in AnyHashable
+        let data = [
+            "testValue": AnyHashable("foo"),
+            "numeric": AnyHashable(1),
+            "boolean": AnyHashable(true),
+            "array": [AnyHashable(1), AnyHashable(2), AnyHashable(4)],
+            "dict": [AnyHashable("test"): AnyHashable("value")] as [AnyHashable: AnyHashable],
+            "dictWithArray": [AnyHashable("color"): [AnyHashable("Red"), AnyHashable("Green"), AnyHashable("Blue")]] as [AnyHashable: [AnyHashable]]
         ] as [String: Any]
 
         let json = StringAnyEncodable(logger: log, data)
