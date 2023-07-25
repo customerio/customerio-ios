@@ -30,7 +30,9 @@ struct LoginView: View {
                 Text(EnvironmentUtil.appName)
 
                 TextField("First name", text: $firstNameText).setAppiumId("First Name Input")
-                TextField("Email", text: $emailText).setAppiumId("Email Input")
+                TextField("Email", text: $emailText)
+                    .keyboardType(.emailAddress)
+                    .setAppiumId("Email Input")
                 ColorButton("Login") {
                     attemptToLogin()
                 }.setAppiumId("Login Button")

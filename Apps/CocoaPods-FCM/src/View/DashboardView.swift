@@ -76,7 +76,7 @@ struct DashboardView: View {
                     ColorButton("Send Custom Event") {
                         subscreenShown = .customEvent
                     }.setAppiumId("Custom Event Button")
-                        .sheet(isPresented: .constant(subscreenShown == .customEvent)) {
+                        .sheet(isPresented: .constant(subscreenShown == .customEvent), onDismiss: { subscreenShown = nil }) {
                             CustomEventView(close: {
                                 subscreenShown = nil
                             })
@@ -85,7 +85,7 @@ struct DashboardView: View {
                     ColorButton("Set Device Attribute") {
                         subscreenShown = .deviceAttribute
                     }.setAppiumId("Device Attribute Button")
-                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute)) {
+                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute), onDismiss: { subscreenShown = nil }) {
                             CustomAttributeView(attributeType: .device, close: {
                                 subscreenShown = nil
                             })
@@ -94,7 +94,7 @@ struct DashboardView: View {
                     ColorButton("Set Profile Attribute") {
                         subscreenShown = .profileAttribute
                     }.setAppiumId("Profile Attribute Button")
-                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute)) {
+                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute), onDismiss: { subscreenShown = nil }) {
                             CustomAttributeView(attributeType: .profile, close: {
                                 subscreenShown = nil
                             })
