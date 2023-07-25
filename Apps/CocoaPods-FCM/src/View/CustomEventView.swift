@@ -41,6 +41,10 @@ struct CustomEventView: View {
             }.padding([.horizontal], 20)
         }.overlay(
             ToastView(message: $nonBlockingMessage)
-        )
+        ).onAppear {
+            // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
+            // Therefore, this is how we can perform manual screen view tracking.
+            CustomerIO.shared.screen(name: "CustomEvent")
+        }
     }
 }
