@@ -10,14 +10,19 @@ struct DashboardView: View {
         case settings
     }
 
-    @State private var nonBlockingMessage: String?
-    @State private var blockingMessage: String?
+    struct BlockingAlert {
+        let alertMessage: String
+        let callToActionButton: (actionText: String, actionCallback: () -> Void)? // optional button to add to Alert
+    }
 
     @State private var subscreenShown: Subscreen?
 
     @State private var customEventName: String = ""
     @State private var customEventPropertyName: String = ""
     @State private var customEventPropertyValue: String = ""
+
+    @State private var nonBlockingMessage: String?
+    @State private var blockingAlert: BlockingAlert?
 
     @EnvironmentObject var userManager: UserManager
 
@@ -71,7 +76,7 @@ struct DashboardView: View {
                     ColorButton("Send Custom Event") {
                         subscreenShown = .customEvent
                     }.setAppiumId("Custom Event Button")
-                        .sheet(isPresented: .constant(subscreenShown == .customEvent)) {
+                        .sheet(isPresented: .constant(subscreenShown == .customEvent), onDismiss: { subscreenShown = nil }) {
                             CustomEventView(close: {
                                 subscreenShown = nil
                             })
@@ -80,7 +85,7 @@ struct DashboardView: View {
                     ColorButton("Set Device Attribute") {
                         subscreenShown = .deviceAttribute
                     }.setAppiumId("Device Attribute Button")
-                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute)) {
+                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute), onDismiss: { subscreenShown = nil }) {
                             CustomAttributeView(attributeType: .device, close: {
                                 subscreenShown = nil
                             })
@@ -89,7 +94,7 @@ struct DashboardView: View {
                     ColorButton("Set Profile Attribute") {
                         subscreenShown = .profileAttribute
                     }.setAppiumId("Profile Attribute Button")
-                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute)) {
+                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute), onDismiss: { subscreenShown = nil }) {
                             CustomAttributeView(attributeType: .profile, close: {
                                 subscreenShown = nil
                             })
@@ -99,9 +104,14 @@ struct DashboardView: View {
                         UNUserNotificationCenter.current().getNotificationSettings { settings in
                             switch settings.authorizationStatus {
                             case .authorized:
-                                blockingMessage = "Push permission already granted"
+                                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
                             case .denied:
-                                blockingMessage = "Push permission denied. You will need to go into the Settings app to change the push permission for this app."
+                                blockingAlert = BlockingAlert(
+                                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
+                                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
+                                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                                    })
+                                )
                             case .notDetermined:
                                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
                                     if granted {
@@ -124,17 +134,37 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
-            .alert(isPresented: .notNil(blockingMessage)) {
-                Alert(
-                    title: Text(blockingMessage!),
+        }
+        // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
+        .alert(isPresented: .notNil(blockingAlert)) {
+            if let alertCallToAction = blockingAlert!.callToActionButton {
+                return Alert(
+                    title: Text(blockingAlert!.alertMessage),
+                    primaryButton: .default(Text(alertCallToAction.actionText)) {
+                        blockingAlert = nil
+                        alertCallToAction.actionCallback()
+                    },
+                    secondaryButton: .default(Text("Cancel")) {
+                        blockingAlert = nil
+                    }
+                )
+            } else {
+                return Alert(
+                    title: Text(blockingAlert!.alertMessage),
                     dismissButton: .default(Text("OK")) {
-                        blockingMessage = nil
+                        blockingAlert = nil
                     }
                 )
             }
-        }.overlay(
+        }
+        .overlay(
             ToastView(message: $nonBlockingMessage)
         )
+        .onAppear {
+            // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
+            // Therefore, this is how we can perform manual screen view tracking.
+            CustomerIO.shared.screen(name: "Dashboard")
+        }
     }
 }
 

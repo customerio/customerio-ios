@@ -27,27 +27,20 @@ struct LoginView: View {
             }
 
             VStack(spacing: 40) { // This view container will be in center of screen.
+                Text(EnvironmentUtil.appName)
+
                 TextField("First name", text: $firstNameText).setAppiumId("First Name Input")
-                TextField("Email", text: $emailText).setAppiumId("Email Input")
+                TextField("Email", text: $emailText)
+                    .keyboardType(.emailAddress)
+                    .setAppiumId("Email Input")
                 ColorButton("Login") {
-                    // first name is optional
-
-                    // this is good practice when using the Customer.io SDK as you cannot identify a profile with an empty string.
-                    guard !emailText.isEmpty else {
-                        errorMessage = "Email address is required."
-                        return
-                    }
-
-                    CustomerIO.shared.identify(identifier: emailText, body: [
-                        "email": emailText,
-                        "first_name": firstNameText
-                    ])
-
-                    userManager.userLoggedIn(email: emailText)
+                    attemptToLogin()
                 }.setAppiumId("Login Button")
                 Button("Generate random login") {
                     firstNameText = ""
                     emailText = "\(String.random(length: 10))@customer.io"
+
+                    attemptToLogin()
                 }.setAppiumId("Random Login Button")
             }
             .padding([.leading, .trailing], 50)
@@ -64,7 +57,28 @@ struct LoginView: View {
                     errorMessage = nil
                 }
             )
+        }.onAppear {
+            // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
+            // Therefore, this is how we can perform manual screen view tracking.
+            CustomerIO.shared.screen(name: "Login")
         }
+    }
+
+    private func attemptToLogin() {
+        // first name is optional
+
+        // this is good practice when using the Customer.io SDK as you cannot identify a profile with an empty string.
+        guard !emailText.isEmpty else {
+            errorMessage = "Email address is required."
+            return
+        }
+
+        CustomerIO.shared.identify(identifier: emailText, body: [
+            "email": emailText,
+            "first_name": firstNameText
+        ])
+
+        userManager.userLoggedIn(email: emailText)
     }
 }
 
