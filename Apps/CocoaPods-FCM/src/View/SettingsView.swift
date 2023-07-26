@@ -50,6 +50,16 @@ struct SettingsView: View {
                 ColorButton("Save") {
                     hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
 
+                    guard viewModel.settings.bqSecondsDelay > 0 else {
+                        alertMessage = "BQ seconds delay must be > 0"
+                        return
+                    }
+
+                    guard viewModel.settings.bqMinNumberTasks > 0 else {
+                        alertMessage = "BQ min number tasks must be > 0"
+                        return
+                    }
+
                     guard verifyTrackUrl() else {
                         return
                     }
