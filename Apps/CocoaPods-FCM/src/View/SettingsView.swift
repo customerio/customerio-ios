@@ -48,6 +48,8 @@ struct SettingsView: View {
                 }
 
                 ColorButton("Save") {
+                    hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
+
                     guard verifyTrackUrl() else {
                         return
                     }
