@@ -9,6 +9,7 @@ struct DummyData: Codable, Equatable {
     let testValue: String
     let dict: [String: String]
     let array: [Int]
+    let dictWithArray: [String: [String]]
 
     enum CodingKeys: String, CodingKey {
         case boolean
@@ -16,6 +17,7 @@ struct DummyData: Codable, Equatable {
         case testValue
         case dict
         case array
+        case dictWithArray
     }
 }
 
@@ -29,7 +31,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": Unencodable(data: 12345)] as [String: Any]
 
-        let json = StringAnyEncodable(data)
+        let json = StringAnyEncodable(logger: log, data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -44,7 +46,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": "bar"] as [String: String]
 
-        let json = StringAnyEncodable(data)
+        let json = StringAnyEncodable(logger: log, data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -59,7 +61,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": 1.2] as [String: Double]
 
-        let json = StringAnyEncodable(data)
+        let json = StringAnyEncodable(logger: log, data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -74,7 +76,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": ["bar": 1000] as [String: Int]] as [String: Any]
 
-        let json = StringAnyEncodable(data)
+        let json = StringAnyEncodable(logger: log, data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -85,17 +87,19 @@ class StringAnyEncodableTest: UnitTest {
     }
 
     func test_stringanyencodable_encodes_complex_data() {
-        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4])
+        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], dictWithArray: ["color": ["Red", "Green", "Blue"]])
 
+        // React native wrap some values in AnyHashable
         let data = [
             "testValue": "foo",
             "numeric": 1,
             "boolean": true,
             "array": [1, 2, 4],
-            "dict": ["test": "value"] as [String: Any]
+            "dict": ["test": "value"] as [String: Any],
+            "dictWithArray": ["color": ["Red", "Green", "Blue"]] as [String: [Any]]
         ] as [String: Any]
 
-        let json = StringAnyEncodable(data)
+        let json = StringAnyEncodable(logger: log, data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
