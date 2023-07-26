@@ -1,8 +1,13 @@
 import * as glob from "glob";
-import * as path from "path";
+import * as path from "https://deno.land/std@0.194.0/path/mod.ts";
 import * as xcode from "xcode";
 
-const project = new xcode.Project(Deno.args[0]);
+const project = xcode.project(Deno.args[0]);
+
+console.log(Deno.args[0]);
+
+// Find AppDelegate.swift
+const filePaths = glob.sync(path.join("**", "AppDelegate.swift"));
 
 project.parse(async (err: any) => {
   if (err) {
@@ -31,8 +36,6 @@ project.parse(async (err: any) => {
     console.log("Notification Service Extension not found");
   }
 
-  // Now check AppDelegate.swift
-  const filePaths = glob.sync(path.join("**", "AppDelegate.swift"));
 
   for (const filePath of filePaths) {
     const contents = await Deno.readTextFile(filePath);
