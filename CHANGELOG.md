@@ -1,3 +1,10 @@
+## [2.7.7](https://github.com/customerio/customerio-ios/compare/2.7.6...2.7.7) (2023-07-26)
+
+
+### Bug Fixes
+
+* support json array in attributes ([#358](https://github.com/customerio/customerio-ios/issues/358)) ([a634358](https://github.com/customerio/customerio-ios/commit/a63435833b57f2a1405d018f158c1e945bf6c73d))
+
 ## [2.7.6](https://github.com/customerio/customerio-ios/compare/2.7.5...2.7.6) (2023-07-21)
 
 
