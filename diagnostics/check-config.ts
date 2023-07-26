@@ -1,11 +1,10 @@
-import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
 import * as xcode from "xcode";
 
 const project = new xcode.Project(Deno.args[0]);
 
-project.parse((err: any) => {
+project.parse(async (err: any) => {
   if (err) {
     console.error(err);
     return;
@@ -36,7 +35,7 @@ project.parse((err: any) => {
   const filePaths = glob.sync(path.join("**", "AppDelegate.swift"));
 
   for (const filePath of filePaths) {
-    const contents = fs.readFileSync(filePath, "utf8");
+    const contents = await Deno.readTextFile(filePath);
     if (contents.includes("func userNotificationCenter(")) {
       console.log("Required method found in AppDelegate.swift");
     } else {
