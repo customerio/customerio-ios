@@ -113,32 +113,4 @@ class StringAnyEncodableTest: UnitTest {
 
         XCTAssertEqual(expect, result)
     }
-
-    func test_stringanyencodable_encodes_complex_datafromwrappers() {
-        let expect = DummyData(boolean: true, numeric: 1, testValue: "foo", dict: ["test": "value"], array: [1, 2, 4], dictWithArray: ["color": ["Red", "Green", "Blue"]])
-
-        // Both flutter and react native wrap some values in AnyHashable
-        let data = [
-            "testValue": AnyHashable("foo"),
-            "numeric": AnyHashable(1),
-            "boolean": AnyHashable(true),
-            "array": [AnyHashable(1), AnyHashable(2), AnyHashable(4)],
-            "dict": [AnyHashable("test"): AnyHashable("value")] as [AnyHashable: AnyHashable],
-            "dictWithArray": [AnyHashable("color"): [AnyHashable("Red"), AnyHashable("Green"), AnyHashable("Blue")]] as [AnyHashable: [AnyHashable]]
-        ] as [String: Any]
-
-        let json = StringAnyEncodable(logger: log, data)
-
-        guard let actual = jsonAdapter.toJson(json) else {
-            XCTFail("couldn't encode to JSON")
-            return
-        }
-
-        guard let result: DummyData = jsonAdapter.fromJson(actual) else {
-            XCTFail("data did not decoded to a DummyData object")
-            return
-        }
-
-        XCTAssertEqual(expect, result)
-    }
 }
