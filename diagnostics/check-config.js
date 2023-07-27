@@ -38,6 +38,8 @@ async function searchFileInDirectory(startPath, filter) {
  */
 function checkNotificationServiceExtension(targets) {
     let extensionCount = 0;
+    let isEmbedded = false;
+    let isFoundationExtension = false;
 
     for (let key in targets) {
         const target = targets[key];
@@ -46,15 +48,32 @@ function checkNotificationServiceExtension(targets) {
         // We then remove any single or double quotes and any leading or trailing whitespace from 'target.productType'.
         // If it matches "com.apple.product-type.app-extension", we increment the 'extensionCount'.
 
-        if (target && target.productType && target.productType.replace(/['"]/g, '').trim() === "com.apple.product-type.app-extension") {
+        if (target && target.productType && cleanString(target.productType) === "com.apple.product-type.app-extension") {
+            console.log(`🔎 Found NSE: ${target.name}`);
             extensionCount++;
+        }
+
+        if (target && target.productType && cleanString(target.productType) === "com.apple.product-type.application") {
+            console.log(`🔎 Checking if the NSE is embedded into target app: ${target.productType}`);
+            // Check if the target is listed in the Embed App Extensions build phase.
+            if (target.buildPhases && target.buildPhases.find((phase) => cleanString(phase.comment) === "Embed App Extensions")) {
+                isEmbedded = true;
+            } else if (target.buildPhases && target.buildPhases.find((phase) => cleanString(phase.comment) === "Embed Foundation Extensions")) {
+                isFoundationExtension = true;
+            }
         }
     }
 
     if (extensionCount > 1) {
         console.log("❌ Multiple Notification Service Extensions found. Only one should be present.");
     } else if (extensionCount === 1) {
-        console.log("✅ Notification Service Extension found.");
+        if (isEmbedded) {
+            console.log("✅ Notification Service Extension found and embedded.");
+        } else if (isFoundationExtension) {
+            console.log("✅ Notification Service Extension found but not embedded as it is a Foundation Extension.");
+        } else {
+            console.log("❌ Notification Service Extension found but not embedded.");
+        }
     } else {
         console.log("❌ Notification Service Extension not found.");
     }
@@ -102,6 +121,10 @@ async function checkProject() {
             console.error("🚨 Error reading file:", err);
         }
     }
+}
+
+function cleanString(input) {
+    return input.replace(/['"]/g, '').trim();
 }
 
 checkProject().catch(err => console.error("🚨 Error during project check:", err));
