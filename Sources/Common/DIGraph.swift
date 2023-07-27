@@ -11,8 +11,6 @@ public class DIGraph {
     public var singletons: [String: Any] = [:]
 
     /**
-     Designed to be used only in test classes to override dependencies.
-
      ```
      let mockOffRoadWheels = // make a mock of OffRoadWheels class
      DIGraph.shared.override(mockOffRoadWheels, OffRoadWheels.self)
@@ -41,7 +39,9 @@ public class DIGraph {
     }
 
     /**
-     Reset graph. Meant to be used in `tearDown()` of tests.
+     Reset modifications to theh DIGraph.
+
+     Convenient to use in `tearDown()` in tests.
      */
     public func reset() {
         overrides = [:]

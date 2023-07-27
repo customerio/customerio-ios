@@ -16,7 +16,17 @@ open class IntegrationTest: UnitTest {
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUp() {
-        super.setUp()
+        setUp(initializeSdk: true)
+    }
+
+    public func setUp(initializeSdk: Bool = true, preventBQFromRunning: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+        super.setUp(modifySdkConfig: { config in
+            if preventBQFromRunning {
+                config.backgroundQueueMinNumberOfTasks = 100000 // provide a big number that the BQ would not hit to prevent it from running.
+
+                modifySdkConfig?(&config)
+            }
+        })
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
@@ -36,16 +46,21 @@ open class IntegrationTest: UnitTest {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
 
+        if initializeSdk {
+            self.initializeSdk()
+        }
+    }
+
+    public func initializeSdk() {
         CustomerIO.initializeIntegrationTests(diGraph: diGraph)
     }
 
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
     // For the test functions that need to test SDK initialization, this function exists to be called by test function.
     public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
-        tearDown()
+        CustomerIO.resetSharedInstance()
 
         // confirm that the SDK did get uninitialized
         XCTAssertNil(CustomerIO.shared.siteId, file: file, line: line)
-        XCTAssertNil(CustomerIO.shared.diGraph, file: file, line: line)
     }
 }

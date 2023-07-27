@@ -213,7 +213,11 @@ public class CustomerIO: CustomerIOInstance {
         let hooks = diGraph.hooksManager
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
-        let siteId = diGraph.sdkConfig.siteId
+        guard let siteId = diGraph.sdkConfig.siteId else {
+            return
+        }
+
+        SDKAlwaysInitializedMigration(siteId: siteId, destinationDiGraph: diGraph).run()
 
         cleanupRepository = diGraph.cleanupRepository
 

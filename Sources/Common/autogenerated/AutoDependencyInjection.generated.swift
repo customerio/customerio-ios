@@ -340,7 +340,7 @@ extension DIGraph {
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
+        FileManagerFileStorage(logger: logger)
     }
 
     // QueueStorage
@@ -426,17 +426,17 @@ extension DIGraph {
     }
 
     private var newUserAgentUtil: UserAgentUtil {
-        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
+        UserAgentUtilImpl(deviceInfo: self.deviceInfo, sdkConfig: self.sdkConfig)
     }
 
     // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
+    open var keyValueStorage: KeyValueStorage {
         getOverriddenInstance() ??
             newKeyValueStorage
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+        UserDefaultsKeyValueStorage()
     }
 }
 

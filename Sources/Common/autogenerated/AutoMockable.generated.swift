@@ -747,6 +747,42 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         }
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingLatestDataMigrationVersionExecuted: Int!
+    /// `true` if the getter or setter of property is called at least once.
+    public var latestDataMigrationVersionExecutedCalled: Bool {
+        latestDataMigrationVersionExecutedGetCalled || latestDataMigrationVersionExecutedSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var latestDataMigrationVersionExecutedGetCalled: Bool {
+        latestDataMigrationVersionExecutedGetCallsCount > 0
+    }
+
+    public var latestDataMigrationVersionExecutedGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var latestDataMigrationVersionExecutedSetCalled: Bool {
+        latestDataMigrationVersionExecutedSetCallsCount > 0
+    }
+
+    public var latestDataMigrationVersionExecutedSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var latestDataMigrationVersionExecuted: Int {
+        get {
+            mockCalled = true
+            latestDataMigrationVersionExecutedGetCallsCount += 1
+            return underlyingLatestDataMigrationVersionExecuted
+        }
+        set(value) {
+            mockCalled = true
+            latestDataMigrationVersionExecutedSetCallsCount += 1
+            underlyingLatestDataMigrationVersionExecuted = value
+        }
+    }
+
     public func resetMock() {
         pushDeviceToken = nil
         pushDeviceTokenGetCallsCount = 0
@@ -754,6 +790,8 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         httpRequestsPauseEnds = nil
         httpRequestsPauseEndsGetCallsCount = 0
         httpRequestsPauseEndsSetCallsCount = 0
+        latestDataMigrationVersionExecutedGetCallsCount = 0
+        latestDataMigrationVersionExecutedSetCallsCount = 0
         deleteAllCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2135,6 +2173,11 @@ public class QueueStorageMock: QueueStorage, Mock {
         deleteExpiredCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        migrateCallsCount = 0
+        migrateReceivedArguments = nil
+        migrateReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - getInventory
@@ -2340,6 +2383,33 @@ public class QueueStorageMock: QueueStorage, Mock {
         mockCalled = true
         deleteExpiredCallsCount += 1
         return deleteExpiredClosure.map { $0() } ?? deleteExpiredReturnValue
+    }
+
+    // MARK: - migrate
+
+    /// Number of times the function was called.
+    public private(set) var migrateCallsCount = 0
+    /// `true` if the function was ever called.
+    public var migrateCalled: Bool {
+        migrateCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var migrateReceivedArguments: QueueStorage?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var migrateReceivedInvocations: [QueueStorage] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var migrateClosure: ((QueueStorage) -> Void)?
+
+    /// Mocked function for `migrate(from: QueueStorage)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func migrate(from: QueueStorage) {
+        mockCalled = true
+        migrateCallsCount += 1
+        migrateReceivedArguments = from
+        migrateReceivedInvocations.append(from)
+        migrateClosure?(from)
     }
 }
 
