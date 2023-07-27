@@ -3,6 +3,15 @@ const path = require('path');
 const fs = require('fs').promises;
 
 /**
+ * Function to clean a string by removing single/double quotes and leading/trailing whitespaces.
+ * @param {string} input - String to be cleaned.
+ * @return {string} Cleaned string.
+ */
+function cleanString(input) {
+    return input.replace(/['"]/g, '').trim();
+}
+
+/**
  * Search for a specific file within a directory and all its subdirectories.
  * @param {string} startPath - Path of the directory to start the search from.
  * @param {RegExp} filter - Regular expression to match the file name.
@@ -79,6 +88,12 @@ function checkNotificationServiceExtension(targets) {
     }
 }
 
+// Validate input argument
+if (!process.argv[2]) {
+    console.error("🚨 Error: No directory provided.");
+    process.exit(1);
+}
+
 // Get root path
 const rootPath = process.argv[2];
 
@@ -121,10 +136,6 @@ async function checkProject() {
             console.error("🚨 Error reading file:", err);
         }
     }
-}
-
-function cleanString(input) {
-    return input.replace(/['"]/g, '').trim();
 }
 
 checkProject().catch(err => console.error("🚨 Error during project check:", err));
