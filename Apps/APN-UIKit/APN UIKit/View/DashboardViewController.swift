@@ -20,7 +20,7 @@ class DashboardViewController: BaseViewController {
     var storage = DIGraph.shared.storage
     let randomData: [[String: Any?]] = [["name": "Order Purchased", "data": nil],
                                         ["name": "movie_watched", "data": ["movie_name": "The Incredibles"]],
-                                        ["name": "appointmentScheduled", "data": ["appointmentTime": NSDate().timeIntervalSince1970]]]
+                                        ["name": "appointmentScheduled", "data": ["appointmentTime": Date().addDaysToCurrentDate(days: 7)]]]
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = true
