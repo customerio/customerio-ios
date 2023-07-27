@@ -36,11 +36,13 @@ function checkNotificationServiceExtension(targets) {
 
     for (let key in targets) {
         const target = targets[key];
-        if (target && target.productType === "com.apple.product-type.app-extension") {
+        console.log(target.productType);
+        if (target && target.productType && target.productType.replace(/['"]/g, '').trim() === "com.apple.product-type.app-extension") {
             extensionCount++;
         }
     }
 
+    console.log(extensionCount);
     if (extensionCount > 1) {
         console.log("❌ Multiple Notification Service Extensions found. Only one should be present.");
     } else if (extensionCount === 1) {
