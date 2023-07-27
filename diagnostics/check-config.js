@@ -8,17 +8,22 @@ const fs = require('fs').promises;
  * @param {RegExp} filter - Regular expression to match the file name.
  * @return {Promise<Array<string>>} Promise resolving to an array of file paths.
  */
-async function searchFileInDirectory(startPath, filter){
+// Function to search a file in a directory and its subdirectories
+async function searchFileInDirectory(startPath, filter) {
     let results = [];
     const files = await fs.readdir(startPath);
     const tasks = files.map(async (file) => {
         const filename = path.join(startPath, file);
         const stat = await fs.lstat(filename);
-        if(stat.isDirectory()){
+
+        // Skip the Pods directory and its subdirectories
+        if (filename.includes('/Pods/')) return;
+
+        if (stat.isDirectory()) {
             const subDirResults = await searchFileInDirectory(filename, filter);
             results = results.concat(subDirResults);
         }
-        else if(filter.test(filename)) results.push(filename);
+        else if (filter.test(filename)) results.push(filename);
     });
 
     // Wait for all tasks to complete
@@ -36,13 +41,16 @@ function checkNotificationServiceExtension(targets) {
 
     for (let key in targets) {
         const target = targets[key];
-        console.log(target.productType);
+        // The following check ensures that we are dealing with a valid 'target' that is an app extension.
+        // 'target' and 'target.productType' must exist (i.e., they are truthy).
+        // We then remove any single or double quotes and any leading or trailing whitespace from 'target.productType'.
+        // If it matches "com.apple.product-type.app-extension", we increment the 'extensionCount'.
+
         if (target && target.productType && target.productType.replace(/['"]/g, '').trim() === "com.apple.product-type.app-extension") {
             extensionCount++;
         }
     }
 
-    console.log(extensionCount);
     if (extensionCount > 1) {
         console.log("❌ Multiple Notification Service Extensions found. Only one should be present.");
     } else if (extensionCount === 1) {
@@ -90,7 +98,7 @@ async function checkProject() {
             } else {
                 console.log("❌ Required method not found in AppDelegate.swift");
             }
-        } catch(err) {
+        } catch (err) {
             console.error("🚨 Error reading file:", err);
         }
     }
