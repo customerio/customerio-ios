@@ -48,6 +48,18 @@ struct SettingsView: View {
                 }
 
                 ColorButton("Save") {
+                    hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
+
+                    guard viewModel.settings.bqSecondsDelay > 0 else {
+                        alertMessage = "BQ seconds delay must be > 0"
+                        return
+                    }
+
+                    guard viewModel.settings.bqMinNumberTasks > 0 else {
+                        alertMessage = "BQ min number tasks must be > 0"
+                        return
+                    }
+
                     guard verifyTrackUrl() else {
                         return
                     }
@@ -155,10 +167,10 @@ struct SettingsView: View {
         func restoreDefaultSettings() {
             settingsManager.appSetSettings = nil // remove app overriden settings from device memory
 
+            settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
+
             // restore default SDK config by re-initializing the SDK.
             CustomerIO.initialize(siteId: settings.siteId, apiKey: settings.apiKey, region: .US) { _ in }
-
-            settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
     }
 }
