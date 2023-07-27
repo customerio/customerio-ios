@@ -167,10 +167,11 @@ struct SettingsView: View {
         func restoreDefaultSettings() {
             settingsManager.appSetSettings = nil // remove app overriden settings from device memory
 
-            settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
+            // restore the siteid and apikey used at compile-time as defaults.
+            // Do this before reading the app settings from the SDK so that the correct siteid and apikey are read.
+            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }
 
-            // restore default SDK config by re-initializing the SDK.
-            CustomerIO.initialize(siteId: settings.siteId, apiKey: settings.apiKey, region: .US) { _ in }
+            settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
     }
 }
