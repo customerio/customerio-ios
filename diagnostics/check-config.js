@@ -58,6 +58,7 @@ function checkNotificationServiceExtension(targets) {
         // If it matches "com.apple.product-type.app-extension", we increment the 'extensionCount'.
 
         if (target && target.productType && cleanString(target.productType) === "com.apple.product-type.app-extension") {
+            console.log(`🔎 Found extension app: ${JSON.stringify(target)}`);
             console.log(`🔎 Found NSE: ${target.name}`);
             extensionCount++;
         }
@@ -87,6 +88,39 @@ function checkNotificationServiceExtension(targets) {
         console.log("❌ Notification Service Extension not found.");
     }
 }
+
+function getDeploymentTargetVersion(pbxProject) {
+    const buildConfig = pbxProject.pbxXCBuildConfigurationSection();
+    const nativeTargets = pbxProject.pbxNativeTargetSection();
+    const configList = pbxProject.pbxXCConfigurationList();
+
+    let nseBuildConfigKeys = [];
+
+    // Find the NSE build configuration list key
+    for (let key in nativeTargets) {
+        const nativeTarget = nativeTargets[key];
+        if (nativeTarget.productType && cleanString(nativeTarget.productType) === 'com.apple.product-type.app-extension') {
+            const configListKey = nativeTarget.buildConfigurationList;
+            const buildConfigurations = configList[configListKey].buildConfigurations;
+            nseBuildConfigKeys = buildConfigurations.map(config => config.value);
+            break;
+        }
+    }
+
+    // Return deployment target of the NSE
+    if (nseBuildConfigKeys.length) {
+        for (let key in buildConfig) {
+            const config = buildConfig[key];
+            // Check if the config is the NSE build configuration and it has an iOS deployment target
+            if (nseBuildConfigKeys.includes(key) && config.buildSettings && config.buildSettings['IPHONEOS_DEPLOYMENT_TARGET']) {
+                return config.buildSettings['IPHONEOS_DEPLOYMENT_TARGET'];
+            }
+        }
+    }
+
+    return null;
+}
+
 
 // Validate input argument
 if (!process.argv[2]) {
@@ -120,6 +154,9 @@ async function checkProject() {
 
         // Check for Notification Service Extension
         checkNotificationServiceExtension(targets);
+
+        const deploymentTarget = getDeploymentTargetVersion(project);
+        console.log(`🔔 Deployment Target Version for NSE: ${deploymentTarget}. Ensure this version is not higher than the iOS version of the devices where the app will be installed. A higher target version may prevent some features, like rich notifications, from working correctly.`);
     }
 
     // Process each AppDelegate.swift file
