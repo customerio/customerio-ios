@@ -153,36 +153,7 @@ class CustomerIOIntegrationTests: IntegrationTest {
         uninitializeSDK()
         CustomerIO.initialize(siteId: givenSiteId, apiKey: givenApiKey, region: .US, configure: nil)
 
-        XCTAssertEqual(CustomerIO.shared.config.siteId, givenSiteId)
-        XCTAssertEqual(CustomerIO.shared.config.apiKey, givenApiKey)
+        XCTAssertEqual(CustomerIO.shared.config!.siteId, givenSiteId)
+        XCTAssertEqual(CustomerIO.shared.config!.apiKey, givenApiKey)
     }
-
-//    func test_run_givenSDKPreviouslyInstalled_expectMigratePreviousSDKData() {
-//        // TODO: make sure BQ doesn't run
-//
-//        // Simulate the SDK was previously installed on a device and added SDK data that will need migrated.
-//        initializeSdk()
-//        enableSandboxedStorageInSdk()
-//        CustomerIO.shared.identify(identifier: String.random)
-//        CustomerIO.shared.trackMetric(deliveryID: String.random, event: .opened, deviceToken: String.random)
-//        CustomerIO.shared.registerDeviceToken(String.random)
-//        CustomerIO.shared.profileAttributes = [String.random: String.random]
-//        disableSandboxedStorageInSdk()
-//
-//
-//
-//        uninitializeSDK()
-//
-//        // App opens for the first time after the SDK has been updated to SDK that no longer needs to be initialized.
-//        // Add some SDK data that could be added before the SDK is initialized.
-//        CustomerIO.shared.trackMetric(deliveryID: , event: , deviceToken:)
-//        CustomerIO.shared.registerDeviceToken()
-//
-//        // Initialize the SDK and provide a site-id and api-key
-//        initializeSdk()
-//
-//        migration.run()
-//
-//        // see if the SDK is able to do stuff like run old queue tasks, track events for previous profile, register device tokens, etcd.
-//    }
 }
