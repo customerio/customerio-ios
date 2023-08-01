@@ -33,8 +33,6 @@ public protocol QueueStorage: AutoMockable {
     func get(storageId: String) -> QueueTask?
     func delete(storageId: String) -> Bool
     func deleteExpired() -> [QueueTaskMetadata]
-
-    func migrate(from: QueueStorage)
 }
 
 // sourcery: InjectRegister = "QueueStorage"
@@ -228,25 +226,6 @@ public class FileManagerQueueStorage: QueueStorage {
         }
 
         return Array(tasksToDelete)
-    }
-
-    public func migrate(from sourceQueueStorage: QueueStorage) {
-        lock.lock()
-        defer { lock.unlock() }
-
-        var queueTasksToAddToInventory: [QueueTaskMetadata] = []
-
-        for sourceInventoryItemMetadata in sourceQueueStorage.getInventory() {
-            if let sourceQueueTask = sourceQueueStorage.get(storageId: sourceInventoryItemMetadata.taskPersistedId) {
-                let didAppendedToQueueSuccessfully = update(queueTask: sourceQueueTask)
-
-                if didAppendedToQueueSuccessfully {
-                    queueTasksToAddToInventory.append(sourceInventoryItemMetadata)
-                }
-            }
-        }
-
-        _ = saveInventory(getInventory() + queueTasksToAddToInventory)
     }
 }
 
