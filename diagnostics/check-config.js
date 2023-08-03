@@ -121,7 +121,6 @@ function getDeploymentTargetVersion(pbxProject) {
     return null;
 }
 
-
 // Validate input argument
 if (!process.argv[2]) {
     console.error("🚨 Error: No directory provided.");
@@ -135,8 +134,10 @@ const rootPath = process.argv[2];
 const projPattern = /\.pbxproj$/;
 const appDelegateSwiftPattern = /AppDelegate\.swift$/;
 const appDelegateObjectiveCPattern = /AppDelegate\.mm$/;
+const entitlementsFilePattern = /\.entitlements$/;
 
 const objCUserNotificationCenterPattern = /-\s?\(void\)userNotificationCenter:\s*\(UNUserNotificationCenter\s?\*\)center\s*/;;
+const pushNotificationEntitlementPattern = /<key>\s*aps-environment\s*<\/key>/;
 
 async function checkProject() {
     // Search for the .pbxproj and AppDelegate.swift files
@@ -147,6 +148,7 @@ async function checkProject() {
         searchFileInDirectory(iosProjectPath, projPattern),
         searchFileInDirectory(iosProjectPath, appDelegateSwiftPattern),
         searchFileInDirectory(iosProjectPath, appDelegateObjectiveCPattern),
+        searchFileInDirectory(iosProjectPath, entitlementsFilePattern),
     ]);
 
     // Process each .pbxproj file
@@ -187,9 +189,25 @@ async function checkProject() {
             const contents = await fs.readFile(appDelegatePath, 'utf8');
             if (objCUserNotificationCenterPattern.test(contents)) {
                 console.log("✅ Required method found in AppDelegate.m");
-              } else {
+            } else {
                 console.log("❌ Required method not found in AppDelegate.m");
-              }
+            }
+        } catch (err) {
+            console.error("🚨 Error reading file:", err);
+        }
+    }
+
+    // Process each entitlements file
+    for (let entitlementsFilePath of entitlementsFilePaths) {
+        console.log(`🔎 Checking entitlements file at path: ${entitlementsFilePath}`);
+        try {
+            // We can use XML parsing libraries (like xml2js) for better results because entitlements files are XML files
+            const contents = await fs.readFile(entitlementsFilePath, 'utf8');
+            if (pushNotificationEntitlementPattern.test(contents)) {
+                console.log("✅ Push Notification capability found in entitlements");
+            } else {
+                console.log("❌ Push Notification capability not found in entitlements");
+            }
         } catch (err) {
             console.error("🚨 Error reading file:", err);
         }
