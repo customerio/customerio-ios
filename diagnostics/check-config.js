@@ -133,14 +133,20 @@ const rootPath = process.argv[2];
 
 // Define the patterns to search for
 const projPattern = /\.pbxproj$/;
-const appDelegatePattern = /AppDelegate\.swift$/;
+const appDelegateSwiftPattern = /AppDelegate\.swift$/;
+const appDelegateObjectiveCPattern = /AppDelegate\.mm$/;
+
+const objCUserNotificationCenterPattern = /-\s?\(void\)userNotificationCenter:\s*\(UNUserNotificationCenter\s?\*\)center\s*/;;
 
 async function checkProject() {
     // Search for the .pbxproj and AppDelegate.swift files
     console.log("🔎 Searching for project files...");
-    const [projectPaths, appDelegatePaths] = await Promise.all([
-        searchFileInDirectory(rootPath, projPattern),
-        searchFileInDirectory(rootPath, appDelegatePattern)
+
+    const iosProjectPath = path.join(rootPath, 'ios');
+    const [projectPaths, appDelegateSwiftPaths, appDelegateObjectiveCPaths, entitlementsFilePaths] = await Promise.all([
+        searchFileInDirectory(iosProjectPath, projPattern),
+        searchFileInDirectory(iosProjectPath, appDelegateSwiftPattern),
+        searchFileInDirectory(iosProjectPath, appDelegateObjectiveCPattern),
     ]);
 
     // Process each .pbxproj file
@@ -160,7 +166,7 @@ async function checkProject() {
     }
 
     // Process each AppDelegate.swift file
-    for (let appDelegatePath of appDelegatePaths) {
+    for (let appDelegatePath of appDelegateSwiftPaths) {
         console.log(`🔎 Checking AppDelegate at path: ${appDelegatePath}`);
         try {
             const contents = await fs.readFile(appDelegatePath, 'utf8');
@@ -169,6 +175,21 @@ async function checkProject() {
             } else {
                 console.log("❌ Required method not found in AppDelegate.swift");
             }
+        } catch (err) {
+            console.error("🚨 Error reading file:", err);
+        }
+    }
+
+    // Process each AppDelegate.m file
+    for (let appDelegatePath of appDelegateObjectiveCPaths) {
+        console.log(`🔎 Checking AppDelegate at path: ${appDelegatePath}`);
+        try {
+            const contents = await fs.readFile(appDelegatePath, 'utf8');
+            if (objCUserNotificationCenterPattern.test(contents)) {
+                console.log("✅ Required method found in AppDelegate.m");
+              } else {
+                console.log("❌ Required method not found in AppDelegate.m");
+              }
         } catch (err) {
             console.error("🚨 Error reading file:", err);
         }
