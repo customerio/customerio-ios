@@ -121,6 +121,25 @@ function getDeploymentTargetVersion(pbxProject) {
     return null;
 }
 
+async function matchesReactNativeProjectStructure(projectPath) {
+    let isReactNativeProject = false;
+
+    // Check for package.json
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    try {
+        isReactNativeProject = await fs.access(packageJsonPath);
+    } catch { }
+
+    // Check for ios directory
+    const iosPath = path.join(projectPath, 'ios');
+    try {
+        const stats = await fs.stat(iosPath);
+        isReactNativeProject = isReactNativeProject && stats.isDirectory();
+    } catch { }
+
+    return isReactNativeProject;
+}
+
 // Validate input argument
 if (!process.argv[2]) {
     console.error("🚨 Error: No directory provided.");
@@ -139,11 +158,31 @@ const entitlementsFilePattern = /\.entitlements$/;
 const objCUserNotificationCenterPattern = /-\s?\(void\)userNotificationCenter:\s*\(UNUserNotificationCenter\s?\*\)center\s*/;;
 const pushNotificationEntitlementPattern = /<key>\s*aps-environment\s*<\/key>/;
 
+const conflictingReactNativePackages = [
+    'react-native-onesignal',
+    '@react-native-firebase/messaging',
+];
+
+const conflictingIosPods = [
+    'OneSignal',
+    'Firebase/Messaging',
+];
+
 async function checkProject() {
     // Search for the .pbxproj and AppDelegate.swift files
     console.log("🔎 Searching for project files...");
 
-    const iosProjectPath = path.join(rootPath, 'ios');
+    const isReactNativeApp = await matchesReactNativeProjectStructure(rootPath);
+    let iosProjectPath;
+
+    if (isReactNativeApp) {
+        console.log("🔔 Project appears to be a React Native project");
+        iosProjectPath = path.join(rootPath, 'ios');
+    } else {
+        console.log("🔔 Project appears to be a native iOS project");
+        iosProjectPath = rootPath;
+    }
+
     const [projectPaths, appDelegateSwiftPaths, appDelegateObjectiveCPaths, entitlementsFilePaths] = await Promise.all([
         searchFileInDirectory(iosProjectPath, projPattern),
         searchFileInDirectory(iosProjectPath, appDelegateSwiftPattern),
@@ -210,6 +249,49 @@ async function checkProject() {
             }
         } catch (err) {
             console.error("🚨 Error reading file:", err);
+        }
+    }
+
+    const podfilePath = path.join(iosProjectPath, 'Podfile');
+    const podfileLockPath = path.join(iosProjectPath, 'Podfile.lock');
+    try {
+        console.log(`🔎 Checking for conflicting libraries in: ${podfileLockPath}`);
+        const podfileLockContent = await fs.readFile(podfileLockPath, 'utf8');
+        const conflictingPods = conflictingIosPods.filter((lib) => podfileLockContent.includes(lib));
+        if (conflictingPods.length === 0) {
+            console.log('✅ No conflicting pods found in Podfile');
+        } else {
+            console.log('🚨 More than one pods found in Podfile for handling push notifications', conflictingPods);
+        }
+    } catch (err) {
+        console.error("🚨 Error reading Podfile.lock:", err);
+    }
+
+    if (isReactNativeApp) {
+        console.log(`🔎 Checking for SDK Initialization in React Native`);
+        const sdkInitializationFile = await checkForSDKInitializationInReactNative(rootPath);
+        if (sdkInitializationFile) {
+            console.log("✅ SDK Initialization found in", sdkInitializationFile);
+        } else {
+            console.log("❌ SDK Initialization not found in given files", reactNativeSDKInitializationFiles);
+        }
+
+        try {
+            const packageJsonPath = path.join(rootPath, 'package.json');
+            console.log(`🔎 Checking for conflicting libraries in: ${packageJsonPath}`);
+            const packageJson = require(packageJsonPath);
+            const dependencies = [
+                ...Object.keys(packageJson.dependencies || {}),
+                ...Object.keys(packageJson.devDependencies || {}),
+            ];
+            const conflictingLibraries = conflictingReactNativePackages.filter((lib) => dependencies.includes(lib));
+            if (conflictingLibraries.length === 0) {
+                console.log('✅ No conflicting libraries found in package.json');
+            } else {
+                console.log('🚨 More than one libraries found in package.json for handling push notifications', conflictingLibraries);
+            }
+        } catch (err) {
+            console.error("🚨 Error reading package.json:", err);
         }
     }
 }
