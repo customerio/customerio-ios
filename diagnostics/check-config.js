@@ -121,13 +121,50 @@ function getDeploymentTargetVersion(pbxProject) {
     return null;
 }
 
+async function checkForSDKInitializationInReactNative(projectPath) {
+    const allowedExtensions = ['.js', '.jsx', '.ts', '.tsx'];
+    let fileNameForSDKInitialization = undefined;
+    try {
+        const files = await fs.readdir(projectPath);
+        if (files.length === 0) return undefined;
+
+        for (const file of files) {
+            const filePath = path.join(projectPath, file);
+            const linkStat = await fs.lstat(filePath);
+            if (file.startsWith('.') || file.startsWith('_') || file.startsWith('node_modules') || linkStat.isSymbolicLink()) {
+                continue;
+            };
+            const stats = await fs.stat(filePath);
+            if (!stats.isDirectory() && !stats.isFile() && !allowedExtensions.includes(path.extname(file))) {
+                continue;
+            }
+
+            if (stats.isDirectory()) {
+                fileNameForSDKInitialization = await checkForSDKInitializationInReactNative(filePath);
+                if (fileNameForSDKInitialization) {
+                    break;
+                }
+            } else if (stats.isFile() && reactNativeSDKInitializationFiles.includes(file)) {
+                const fileContent = await fs.readFile(filePath, 'utf8');
+                if (fileContent.includes('CustomerIO.initialize')) {
+                    return file;
+                }
+            }
+        };
+    } catch (err) {
+        console.error(`🚨 Error reading directory ${projectPath}:`, err.code);
+    }
+    return fileNameForSDKInitialization;
+}
+
 async function matchesReactNativeProjectStructure(projectPath) {
     let isReactNativeProject = false;
 
     // Check for package.json
     const packageJsonPath = path.join(projectPath, 'package.json');
     try {
-        isReactNativeProject = await fs.access(packageJsonPath);
+        await fs.access(packageJsonPath);
+        isReactNativeProject = true;
     } catch { }
 
     // Check for ios directory
@@ -166,6 +203,16 @@ const conflictingReactNativePackages = [
 const conflictingIosPods = [
     'OneSignal',
     'Firebase/Messaging',
+];
+
+const reactNativeSDKInitializationFiles = [
+    'App.js',
+    'App.jsx',
+    'App.ts',
+    'App.tsx',
+    'FeaturesUpdate.js',
+    'CustomerIOService.js',
+    'CustomerIOService.ts',
 ];
 
 async function checkProject() {
