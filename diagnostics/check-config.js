@@ -121,6 +121,20 @@ function getDeploymentTargetVersion(pbxProject) {
     return null;
 }
 
+function extractPodVersions(podfileLockContent, podPattern) {
+    let match;
+    const versions = [];
+    while ((match = podPattern.exec(podfileLockContent)) !== null) {
+        versions.push(match[1]);
+    }
+
+    if (versions.length > 0) {
+        return versions.join(', ');
+    } else {
+        return undefined;
+    }
+}
+
 async function checkForSDKInitializationInReactNative(projectPath) {
     const allowedExtensions = ['.js', '.jsx', '.ts', '.tsx'];
     let fileNameForSDKInitialization = undefined;
@@ -194,7 +208,13 @@ const entitlementsFilePattern = /\.entitlements$/;
 
 const objCUserNotificationCenterPattern = /-\s?\(void\)userNotificationCenter:\s*\(UNUserNotificationCenter\s?\*\)center\s*/;;
 const pushNotificationEntitlementPattern = /<key>\s*aps-environment\s*<\/key>/;
+const podCustomerIOReactNativePattern = /- customerio-reactnative\s+\(([^)]+)\)/g;
+const podCustomerIOTrackingPattern = /- CustomerIO\/Tracking\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingInAppPattern = /- CustomerIO\/MessagingInApp\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingPushAPNPattern = /- CustomerIO\/MessagingPushAPN\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingPushFCMPattern = /- CustomerIO\/MessagingPushFCM\s+\(([^)]+)\)/g;
 
+const reactNativePackageName = 'customerio-reactnative';
 const conflictingReactNativePackages = [
     'react-native-onesignal',
     '@react-native-firebase/messaging',
@@ -340,6 +360,91 @@ async function checkProject() {
         } catch (err) {
             console.error("🚨 Error reading package.json:", err);
         }
+    }
+
+    console.log(`🗒️ Collecting more information on project`);
+
+    if (isReactNativeApp) {
+        const packageJsonPath = path.join(rootPath, 'package.json');
+        const yarnLockPath = path.join(rootPath, 'yarn.lock');
+        const npmLockPath = path.join(rootPath, 'package-lock.json');
+
+        // Print package version from package.json
+        const packageJson = require(packageJsonPath);
+        const sdkVersionInPackageJson = packageJson.dependencies[reactNativePackageName];
+        console.log('👉 %s version in package.json:', reactNativePackageName, sdkVersionInPackageJson);
+
+        // Print package version from yarn.lock
+        try {
+            const yarnLockContent = await fs.readFile(yarnLockPath, 'utf8');
+            const yarnLockVersionMatch = yarnLockContent.match(new RegExp(`${reactNativePackageName}@[^:]+:\\s*\\n\\s*version\\s*"([^"]+)"`));
+            const yarnLockVersion = yarnLockVersionMatch ? yarnLockVersionMatch[1] : 'Not found';
+            console.log('👉 %s version in yarn.lock:', reactNativePackageName, yarnLockVersion);
+        } catch (err) {
+            console.log('🚨 Error reading yarn.lock:', err.code);
+        }
+
+        // Print package version from package-lock.json
+        try {
+            const npmLock = require(npmLockPath);
+            const npmLockVersion = npmLock.dependencies[reactNativePackageName].version;
+            console.log('👉 %s version in package-lock.json:', reactNativePackageName, npmLockVersion);
+        } catch (err) {
+            console.log('🚨 Error reading package-lock.json:', err.code);
+        }
+    }
+
+    // Print pods versions from Podfile.lock
+    try {
+        const podfileLockContent = await fs.readFile(podfileLockPath, 'utf8');
+
+        if (isReactNativeApp) {
+            const rnPodMatch = podfileLockContent.match(podCustomerIOReactNativePattern);
+            if (rnPodMatch && rnPodMatch[1]) {
+                console.log('👉 %s version in Podfile.lock:', reactNativePackageName, rnPodMatch[1]);
+            } else {
+                console.log('❌ %s not found in Podfile.lock', reactNativePackageName);
+            };
+        }
+
+        const trackingPodVersions = extractPodVersions(podfileLockContent, podCustomerIOTrackingPattern);
+        if (trackingPodVersions) {
+            console.log('👉 CustomerIOTracking version in Podfile.lock:', trackingPodVersions);
+        } else {
+            console.log('❌ CustomerIOTracking not found in Podfile.lock');
+        };
+
+        const inAppMessagingPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingInAppPattern);
+        if (inAppMessagingPodVersions) {
+            console.log('👉 CustomerIO/MessagingInApp version in Podfile.lock:', inAppMessagingPodVersions);
+        } else {
+            console.log('❌ CustomerIO/MessagingInApp not found in Podfile.lock');
+        };
+
+        const messagingPushAPNPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingPushAPNPattern);
+        const messagingPushFCMPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingPushFCMPattern);
+
+        if (messagingPushAPNPodVersions && messagingPushFCMPodVersions) {
+            console.log('🚨 CustomerIO/MessagingPushAPN and CustomerIO/MessagingPushFCM found in Podfile.lock. Both cannot be used at a time, please use only one of them.');
+        } else if (messagingPushAPNPodVersions) {
+            console.log('👉 CustomerIO/MessagingPushAPN version in Podfile.lock:', messagingPushAPNPodVersions);
+        } else if (messagingPushFCMPodVersions) {
+            console.log('👉 CustomerIO/MessagingPushFCM version in Podfile.lock:', messagingPushFCMPodVersions);
+        } else {
+            console.log('CustomerIO/MessagingPush not found in Podfile.lock');
+        };
+    } catch (err) {
+        console.error("🚨 Error reading Podfile.lock:", err);
+    }
+
+    // Print iOS deployment target version from Podfile
+    try {
+        const podfileContent = await fs.readFile(podfilePath, 'utf8');
+        const iosVersionMatch = podfileContent.match(/platform\s+:ios,\s*'([^']+)'/);
+        const iosVersion = iosVersionMatch ? iosVersionMatch[1] : 'Not found';
+        console.log('👉 iOS deployment target version:', iosVersion);
+    } catch (err) {
+        console.error("🚨 Error reading Podfile:", err);
     }
 }
 
