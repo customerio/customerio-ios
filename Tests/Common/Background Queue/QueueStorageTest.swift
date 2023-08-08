@@ -17,7 +17,8 @@ class QueueStorageTest: UnitTest {
             lockManager: lockManager,
             sdkConfig: sdkConfig,
             logger: log,
-            dateUtil: dateUtilStub
+            dateUtil: dateUtilStub,
+            inventoryStore: diGraph.queueInventoryMemoryStore
         )
     }
 
@@ -110,7 +111,8 @@ class QueueStorageIntegrationTest: UnitTest {
             lockManager: lockManager,
             sdkConfig: sdkConfig,
             logger: log,
-            dateUtil: dateUtilStub
+            dateUtil: dateUtilStub,
+            inventoryStore: diGraph.queueInventoryMemoryStore
         )
     }
 
@@ -125,6 +127,20 @@ class QueueStorageIntegrationTest: UnitTest {
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
         let expected = [QueueTaskMetadata.random]
         _ = storage.saveInventory(expected)
+
+        let actual = storage.getInventory()
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    // The queue inventory has an in-memory store. Test that the inventory is also persisted so when in-memory store recreated, invetory is still valid.
+    func test_getInventory_givenRecreateSdk_expectInventoryIsPersisted() {
+        let expected = [QueueTaskMetadata.random]
+        _ = storage.saveInventory(expected)
+
+        XCTAssertTrue(diGraph.queueInventoryMemoryStore.inventory != nil)
+        setUp() // recreate storage instance and it's dependencies
+        XCTAssertTrue(diGraph.queueInventoryMemoryStore.inventory == nil)
 
         let actual = storage.getInventory()
 

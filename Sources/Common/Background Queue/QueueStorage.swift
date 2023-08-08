@@ -43,8 +43,14 @@ public class FileManagerQueueStorage: QueueStorage {
     private let sdkConfig: SdkConfig
     private let logger: Logger
     private let dateUtil: DateUtil
+    private var inventoryStore: QueueInventoryMemoryStore
 
     private let lock: Lock
+
+    private var inventory: [QueueTaskMetadata]? {
+        get { inventoryStore.inventory }
+        set { inventoryStore.inventory = newValue }
+    }
 
     init(
         fileStorage: FileStorage,
@@ -52,7 +58,8 @@ public class FileManagerQueueStorage: QueueStorage {
         lockManager: LockManager,
         sdkConfig: SdkConfig,
         logger: Logger,
-        dateUtil: DateUtil
+        dateUtil: DateUtil,
+        inventoryStore: QueueInventoryMemoryStore
     ) {
         self.siteId = sdkConfig.siteId
         self.fileStorage = fileStorage
@@ -61,17 +68,22 @@ public class FileManagerQueueStorage: QueueStorage {
         self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
+        self.inventoryStore = inventoryStore
     }
 
     public func getInventory() -> [QueueTaskMetadata] {
         lock.lock()
         defer { lock.unlock() }
 
+        if let inventory = inventory {
+            return inventory
+        }
+
         guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
+        let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
+        inventory = readInventory
 
-        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
-
-        return inventory
+        return readInventory
     }
 
     public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
@@ -81,6 +93,8 @@ public class FileManagerQueueStorage: QueueStorage {
         guard let data = jsonAdapter.toJson(inventory) else {
             return false
         }
+
+        self.inventory = inventory
 
         return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
     }
