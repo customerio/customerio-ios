@@ -27,9 +27,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
-
-            // TODO: remove this in PR. only here for testing
-            config.autoTrackScreenViews = true
         }
         MessagingInApp.initialize(eventListener: self)
 
