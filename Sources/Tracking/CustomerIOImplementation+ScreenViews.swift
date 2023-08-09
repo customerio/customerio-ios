@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 #if canImport(UIKit)
 import UIKit
@@ -58,6 +59,13 @@ internal extension UIViewController {
             return
         }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
+
+        // SwiftUI is a wrapper around UIKit classes. So, SwiftUI apps may have noisey screenview tracking.
+        // Filter out screenview tracking events for Views that belong to the SwiftUI framework.
+        guard !viewController.isSwiftUIView else {
+            return
+        }
+
         var name = nameOfViewControllerClass.replacingOccurrences(
             of: "ViewController",
             with: "",

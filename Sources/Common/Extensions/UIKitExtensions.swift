@@ -10,4 +10,14 @@ public extension UIApplication {
     }
 }
 
+public extension UIViewController {
+    var moduleNameOfView: String? {
+        Bundle(for: type(of: self)).bundleIdentifier
+    }
+
+    var isSwiftUIView: Bool {
+        moduleNameOfView == "com.apple.SwiftUI"
+    }
+}
+
 #endif
