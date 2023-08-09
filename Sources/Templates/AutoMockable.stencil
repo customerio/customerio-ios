@@ -7,6 +7,9 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
+#if canImport(UIKit)
+import UIKit 
+#endif
 {% for importModule in argument.imports|split:"-" %}
 import {{ importModule }}
 {% endfor %}
@@ -204,6 +207,9 @@ class ExampleTest: XCTestCase {
 {% endmacro %}
 
 {% macro mockVariable variable %}
+{% if variable|annotated:"IfCanImport" %}
+    #if canImport({{ variable.annotations["IfCanImport"] }})
+{% endif %}
     /**
      When setter of the property called, the value given to setter is set here. 
      When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
@@ -236,6 +242,9 @@ class ExampleTest: XCTestCase {
             {% call underlyingMockedVariableName variable %} = value 
         }
     }    
+{% if variable|annotated:"IfCanImport" %}
+    #endif
+{% endif %}    
 {% endmacro %}
 
 {% macro underlyingMockedVariableName variable %}underlying{{ variable.name|upperFirstLetter }}{% endmacro %}

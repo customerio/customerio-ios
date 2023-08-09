@@ -166,8 +166,16 @@ public class CustomerIO: CustomerIOInstance {
         }
 
         Self.initialize(config: newSdkConfig)
+        // OK to force unwrap here because (1) digraph is initialized by this line and (2) when SDK always initialized work complete, the DIGraph instance will no longer be optional.
+        let environment = Self.shared.diGraph!.environmentUtil
+        let logger = Self.shared.diGraph!.logger
 
         if newSdkConfig.autoTrackScreenViews {
+            guard !environment.isSwiftUIApp else {
+                logger.info("SDK is detecting that this is a SwiftUI app. Automatic screenview tracking feature is disabled for SwiftUI apps. We suggest using manual screenview tracking instead. Disable this feature in SDK configuration to silence this warning.")
+                return
+            }
+
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
             // Only call this code when not possibly being called from a NSE.
             Self.shared.setupAutoScreenviewTracking()

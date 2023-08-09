@@ -9,6 +9,9 @@ import UIKit
  */
 @available(iOSApplicationExtension, unavailable)
 public protocol UIKitWrapper: AutoMockable {
+    // sourcery:IfCanImport=UIKit
+    var uiApplication: UIApplication? { get }
+
     func open(url: URL)
     func continueNSUserActivity(webpageURL: URL) -> Bool
 }
@@ -16,6 +19,14 @@ public protocol UIKitWrapper: AutoMockable {
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "UIKitWrapper"
 public class UIKitWrapperImpl: UIKitWrapper {
+    public var uiApplication: UIApplication? {
+        #if canImport(UIKit)
+        return UIApplication.shared
+        #else
+        return nil
+        #endif
+    }
+
     public func open(url: URL) {
         #if canImport(UIKit)
         UIApplication.shared.open(url: url)

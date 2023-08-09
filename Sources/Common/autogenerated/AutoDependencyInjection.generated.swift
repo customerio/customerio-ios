@@ -101,6 +101,9 @@ extension DIGraph {
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
+        _ = environmentUtil
+        countDependenciesResolved += 1
+
         _ = fileStorage
         countDependenciesResolved += 1
 
@@ -331,6 +334,18 @@ extension DIGraph {
 
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
         DeviceMetricsGrabberImpl()
+    }
+
+    // EnvironmentUtil
+    @available(iOSApplicationExtension, unavailable)
+    public var environmentUtil: EnvironmentUtil {
+        getOverriddenInstance() ??
+            newEnvironmentUtil
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newEnvironmentUtil: EnvironmentUtil {
+        EnvironmentUtilImpl(uiKit: uIKitWrapper)
     }
 
     // FileStorage
