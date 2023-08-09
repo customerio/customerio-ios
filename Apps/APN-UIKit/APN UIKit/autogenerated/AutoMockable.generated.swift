@@ -9,9 +9,6 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-#if canImport(UIKit)
-import UIKit
-#endif
 import CioMessagingPushAPN
 import CioTracking
 
