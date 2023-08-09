@@ -40,6 +40,18 @@ class QueueStorageTest: UnitTest {
         XCTAssertFalse(actual)
     }
 
+    // MARK: getInventory
+
+    func test_getInventory_expectReadFromFileSystemOnce_expectUseCache() {
+        fileStorageMock.getReturnValue = "[]".data!
+
+        _ = storage.getInventory()
+        XCTAssertEqual(fileStorageMock.getCallsCount, 1)
+
+        _ = storage.getInventory()
+        XCTAssertEqual(fileStorageMock.getCallsCount, 1)
+    }
+
     // MARK: create
 
     func test_create_givenFileStorageDoesNotSaveTask_expectDoNotUpdateInventory_expectFalse() {
