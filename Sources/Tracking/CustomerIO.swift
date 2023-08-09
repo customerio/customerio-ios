@@ -1,4 +1,4 @@
-import Common
+import CioInternalCommon
 import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
@@ -230,7 +230,6 @@ public class CustomerIO: CustomerIOInstance {
         // run cleanup in background to prevent locking the UI thread
         threadUtil.runBackground { [weak self] in
             self?.cleanupRepository?.cleanup()
-            self?.cleanupRepository = nil
         }
 
         logger
@@ -357,7 +356,10 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: [String: Any]
     ) {
-        automaticScreenView(name: name, data: StringAnyEncodable(data))
+        guard let logger = diGraph?.logger else {
+            return
+        }
+        automaticScreenView(name: name, data: StringAnyEncodable(logger: logger, data))
     }
 
     // Designed to be called from swizzled methods for automatic screen tracking.
@@ -397,4 +399,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-}
+} // swiftlint:disable:this file_length

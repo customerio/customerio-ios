@@ -1,4 +1,4 @@
-import Common
+import CioInternalCommon
 import Foundation
 #if canImport(UIKit)
 import UIKit

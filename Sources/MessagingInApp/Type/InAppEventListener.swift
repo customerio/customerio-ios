@@ -1,6 +1,5 @@
-import Common
+import CioInternalCommon
 import Foundation
-import Gist
 
 public protocol InAppEventListener: AutoMockable {
     func messageShown(message: InAppMessage)

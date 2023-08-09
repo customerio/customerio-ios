@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOCommon"
-  spec.version      = "2.5.2" # Don't modify this line - it's automatically updated
+  spec.version      = "2.7.7" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -18,5 +18,5 @@ Pod::Spec.new do |spec|
   # spec.tvos.deployment_target = '13.0'
 
   spec.source_files  = "Sources/Common/**/*"
-  spec.module_name = "Common" # the `import X` name when using SDK in Swift files
+  spec.module_name = "CioInternalCommon" # the `import X` name when using SDK in Swift files
 end

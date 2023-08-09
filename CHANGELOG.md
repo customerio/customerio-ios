@@ -1,3 +1,80 @@
+## [2.7.7](https://github.com/customerio/customerio-ios/compare/2.7.6...2.7.7) (2023-07-26)
+
+
+### Bug Fixes
+
+* support json array in attributes ([#358](https://github.com/customerio/customerio-ios/issues/358)) ([a634358](https://github.com/customerio/customerio-ios/commit/a63435833b57f2a1405d018f158c1e945bf6c73d))
+
+## [2.7.6](https://github.com/customerio/customerio-ios/compare/2.7.5...2.7.6) (2023-07-21)
+
+
+### Bug Fixes
+
+* apps initializing sdk multiple times in short amount of time may make SDK ignore requests ([#360](https://github.com/customerio/customerio-ios/issues/360)) ([09829e0](https://github.com/customerio/customerio-ios/commit/09829e0c55b3637d82059087bf72b1f1d14b0e59))
+
+## [2.7.5](https://github.com/customerio/customerio-ios/compare/2.7.4...2.7.5) (2023-07-20)
+
+
+### Bug Fixes
+
+* deinit cleanup repo bad memory access ([#356](https://github.com/customerio/customerio-ios/issues/356)) ([0483fb0](https://github.com/customerio/customerio-ios/commit/0483fb04e02228bfe1dd1ff88e9e51e688b477fd))
+
+## [2.7.4](https://github.com/customerio/customerio-ios/compare/2.7.3...2.7.4) (2023-07-17)
+
+
+### Bug Fixes
+
+* save device token in SDK even if no profile identified ([#354](https://github.com/customerio/customerio-ios/issues/354)) ([a49f72c](https://github.com/customerio/customerio-ios/commit/a49f72ce94549d4e9d754891e3b6f6b309f46e8a))
+
+## [2.7.3](https://github.com/customerio/customerio-ios/compare/2.7.2...2.7.3) (2023-07-17)
+
+
+### Bug Fixes
+
+* prevent api calls when identifier is empty ([#353](https://github.com/customerio/customerio-ios/issues/353)) ([10b5db7](https://github.com/customerio/customerio-ios/commit/10b5db739444074847fb6e58e6554411e0a5fa74))
+
+## [2.7.2](https://github.com/customerio/customerio-ios/compare/2.7.1...2.7.2) (2023-07-12)
+
+
+### Bug Fixes
+
+* gist migration to CIO ([#338](https://github.com/customerio/customerio-ios/issues/338)) ([#351](https://github.com/customerio/customerio-ios/issues/351)) ([5520a7c](https://github.com/customerio/customerio-ios/commit/5520a7ceb4d35170b4bf2d2493ceb9576ea8d3cf))
+
+## [2.7.1](https://github.com/customerio/customerio-ios/compare/2.7.0...2.7.1) (2023-07-04)
+
+
+### Bug Fixes
+
+* bad memory access crash ([#342](https://github.com/customerio/customerio-ios/issues/342)) ([b83e6bd](https://github.com/customerio/customerio-ios/commit/b83e6bda1a0746eab65bb3d07887c3fcbcb67712))
+
+## [2.7.0](https://github.com/customerio/customerio-ios/compare/2.6.1...2.7.0) (2023-06-21)
+
+
+### Features
+
+* include FCM SDK as a dependency to make FCM push setup easier ([#333](https://github.com/customerio/customerio-ios/issues/333)) ([233fc22](https://github.com/customerio/customerio-ios/commit/233fc228f768fb9e1a98dffd2b5c9d49d34c9cc2))
+
+### [2.6.1](https://github.com/customerio/customerio-ios/compare/2.6.0...2.6.1) (2023-05-26)
+
+
+### Bug Fixes
+
+* internal module Common clashing with other Common modules in customers app ([#328](https://github.com/customerio/customerio-ios/issues/328)) ([817dd56](https://github.com/customerio/customerio-ios/commit/817dd5692c412e91b1edbac9af64c0f4844a4cb4))
+
+## [2.6.0](https://github.com/customerio/customerio-ios/compare/2.5.3...2.6.0) (2023-05-26)
+
+
+### Features
+
+* in-app dismiss message ([#320](https://github.com/customerio/customerio-ios/issues/320)) ([e067001](https://github.com/customerio/customerio-ios/commit/e067001628423a2dc4d9a5c1836a9d985cf60150))
+
+### [2.5.3](https://github.com/customerio/customerio-ios/compare/2.5.2...2.5.3) (2023-05-26)
+
+
+### Bug Fixes
+
+* in-app universal link redirection support ([#329](https://github.com/customerio/customerio-ios/issues/329)) ([51470e8](https://github.com/customerio/customerio-ios/commit/51470e80270092da1948f04a388aedaf0f2fcf35))
+
 ### [2.5.2](https://github.com/customerio/customerio-ios/compare/2.5.1...2.5.2) (2023-05-19)
 
 

@@ -1,22 +1,31 @@
 import Foundation
 
 public struct StringAnyEncodable: Encodable {
+    private let logger: Logger
     private let data: [String: AnyEncodable]
 
-    public init(_ data: [String: Any]) {
-        var builtValue = [String: AnyEncodable]()
-        for (key, value) in data {
+    public init(logger: Logger, _ data: [String: Any]) {
+        // Nested function to convert the ‘Any’ values to ‘AnyEncodable’ recursively
+        func encode(value: Any) -> AnyEncodable? {
             switch value {
             case let enc as Encodable:
-                builtValue[key] = AnyEncodable(enc)
+                return AnyEncodable(enc)
+
             case let dict as [String: Any]:
-                builtValue[key] = AnyEncodable(StringAnyEncodable(dict))
+                return AnyEncodable(StringAnyEncodable(logger: logger, dict))
+
+            case let list as [Any]:
+                // If the value is an array, recursively encode each element
+                return AnyEncodable(list.compactMap { encode(value: $0) })
+
             default:
-                // XXX: logger error
-                continue
+                logger.error("Tried to convert \(data) into [String: AnyEncodable] but the data type is not Encodable.")
+                return nil
             }
         }
-        self.data = builtValue
+
+        self.logger = logger
+        self.data = data.compactMapValues { encode(value: $0) }
     }
 
     public func encode(to encoder: Encoder) throws {

@@ -1,4 +1,4 @@
-import Common
+import CioInternalCommon
 import Foundation
 
 /**
@@ -79,6 +79,10 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        if identifier.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
+            return
+        }
         logger.info("identify profile \(identifier)")
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
@@ -153,7 +157,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func identify(identifier: String, body: [String: Any]) {
-        identify(identifier: identifier, body: StringAnyEncodable(body))
+        identify(identifier: identifier, body: StringAnyEncodable(logger: logger, body))
     }
 
     public func clearIdentify() {
@@ -187,11 +191,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func track(name: String, data: [String: Any]) {
-        track(name: name, data: StringAnyEncodable(data))
+        track(name: name, data: StringAnyEncodable(logger: logger, data))
     }
 
     public func screen(name: String, data: [String: Any]) {
-        screen(name: name, data: StringAnyEncodable(data))
+        screen(name: name, data: StringAnyEncodable(logger: logger, data))
     }
 
     public func screen<RequestBody: Encodable>(
@@ -229,6 +233,11 @@ internal class CustomerIOImplementation: CustomerIOInstance {
             logger.info("no profile identified, so not registering device token to a profile")
             return
         }
+        if identifier.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty, so not registering device token to a profile")
+            return
+        }
+
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
         // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
         // is
@@ -242,8 +251,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
 
-            let encodableBody =
-                StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
+            let encodableBody = StringAnyEncodable(logger: self.logger, deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
             let requestBody = RegisterDeviceRequest(device: Device(
                 token: deviceToken,
                 platform: deviceOsName,

@@ -58,6 +58,10 @@ public extension String {
         return self + characters
     }
 
+    func isBlankOrEmpty() -> Bool {
+        trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     /// Substrings
     /// let s = "hello"
     /// s[0..<3] // "hel"

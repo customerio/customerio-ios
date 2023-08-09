@@ -1,5 +1,5 @@
+@testable import CioInternalCommon
 @testable import CioTracking
-@testable import Common
 import Foundation
 import SharedTests
 import XCTest
@@ -127,6 +127,33 @@ class CustomerIOImplementationTest: UnitTest {
 
         XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
         XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
+    }
+
+    func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
+        let givenIdentifier = ""
+        profileStoreMock.identifier = nil
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+        let givenIdentifier = ""
+        let givenPreviouslyIdentifiedProfile = String.random
+        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
+
+        backgroundQueueMock.addTaskReturnValue = (
+            success: true,
+            queueStatus: QueueStatus.successAddingSingleTask
+        )
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+        XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
     }
 
     // MARK: clearIdentify
@@ -296,7 +323,7 @@ class CustomerIOImplementationTest: UnitTest {
                 platform: "iOS",
                 lastUsed: dateUtilStub
                     .givenNow,
-                attributes: StringAnyEncodable(givenDefaultAttributes)
+                attributes: StringAnyEncodable(logger: log, givenDefaultAttributes)
             )
         ))
         XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)

@@ -4,8 +4,8 @@ import SwiftUI
 struct EnvironmentText: View {
     var body: some View {
         VStack(spacing: 10) {
-            Text("SDK: \(EnvironmentUtil.cioSdkVersion)")
-            Text("app: \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
+            Text("Customer.io iOS SDK \(EnvironmentUtil.cioSdkVersion)")
+            Text("\(EnvironmentUtil.appName) \(EnvironmentUtil.appBuildVersion) (\(EnvironmentUtil.appBuildNumber))")
         }
         .multilineTextAlignment(.center)
         .foregroundColor(.gray)

@@ -26,19 +26,19 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Gist", url: "https://github.com/customerio/gist-apple.git", .exact("3.2.1"))
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
     ],
-    targets: [        
-        // Common - Code used by multiple modules in the SDK project. 
+    targets: [ 
+        // Common - Code used by multiple modules in the SDK project.
         // this module is *not* exposed to the public. It's used internally. 
-        .target(name: "Common",
+        .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
                     dependencies: ["SharedTests"],
                     path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
-                dependencies: ["Common"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
@@ -54,7 +54,7 @@ let package = Package(
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
-                dependencies: ["Common", "CioTracking"],
+                dependencies: ["CioTracking"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
@@ -69,7 +69,7 @@ let package = Package(
                     path: "Tests/MessagingPushAPN"),
         // FCM 
         .target(name: "CioMessagingPushFCM",
-                dependencies: ["CioMessagingPush"],
+                dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
                 path: "Sources/MessagingPushFCM"),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
@@ -77,7 +77,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["Common", "CioTracking", "Gist"],
+                dependencies: ["CioTracking"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],

@@ -1,5 +1,4 @@
 import Foundation
-import Gist
 
 typealias GistMessage = Message
 

@@ -6,6 +6,7 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraph.shared.storage
+    var deepLinkHandler = DIGraph.shared.deepLinksHandlerUtil
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -21,14 +22,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func initializeCioAndInAppListeners() {
-        // Initialise CustomerIO SDK
+        // Initialize CustomerIO SDK
 
-        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? false ? .debug : .none
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? false
+        if storage.didSetDefaults == false {
+            storage.didSetDefaults = true
+            storage.isDebugModeEnabled = true
+            storage.isTrackScreenEnabled = true
+            storage.isTrackDeviceAttrEnabled = true
+        }
+        var siteId = BuildEnvironment.CustomerIO.siteId
+        var apiKey = BuildEnvironment.CustomerIO.apiKey
+        if let storedSiteId = storage.siteId {
+            siteId = storedSiteId
+        }
+        if let storedApiKey = storage.apiKey {
+            apiKey = storedApiKey
+        }
+        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
+            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? false
+            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
             if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
                 config.trackingApiUrl = trackUrl
             }
@@ -36,6 +51,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
+    }
+
+    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
+    // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
+    // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
+    //
+    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return false
+        }
+
+        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
     }
 
     // MARK: UISceneSession Lifecycle
@@ -120,6 +148,9 @@ extension AppDelegate: InAppEventListener {
 
     // User perform an action on in-app message
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+        if actionName == "remove" || actionName == "test" {
+            MessagingInApp.shared.dismissMessage()
+        }
         CustomerIO.shared.track(name: "inapp action", data: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,

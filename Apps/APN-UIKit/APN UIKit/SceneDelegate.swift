@@ -47,7 +47,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // Set visible window based on user login status
     func setVisibleWindow() {
         // If previous user is not a guest login and credentials were used to login into the app
-        if let _ = storage.userEmailId, let _ = storage.userName {
+        if let _ = storage.userEmailId {
             let navigationController = UINavigationController(rootViewController: DashboardViewController
                 .newInstance())
             window?.rootViewController = navigationController
@@ -66,7 +66,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
-    // Universal Links
+    // Universal Links - handling universal links that come into the mobile app, not from the Customer.io SDK.
+    // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
+    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return

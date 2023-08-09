@@ -1,8 +1,7 @@
+@testable import CioInternalCommon
 @testable import CioMessagingInApp
 @testable import CioTracking
-@testable import Common
 import Foundation
-import Gist
 import SharedTests
 import XCTest
 
@@ -233,5 +232,22 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.deliveryId, expectedInAppMessage.deliveryId)
         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.event, .clicked)
         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.metaData, givenMetaData)
+    }
+
+    func test_dismissMessage_givenNoInAppMessage_expectNoError() {
+        // Dismiss in-app message
+        XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
+        messagingInApp.dismissMessage()
+        XCTAssertEqual(inAppProviderMock.dismissMessageCallsCount, 1)
+    }
+
+    func test_dismissMessage_givenInAppMessage_expectNoError() {
+        let givenGistMessage = Message.random
+        _ = InAppMessage(gistMessage: givenGistMessage)
+
+        // Dismiss in-app message when an in-app message is shown on screen
+        XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
+        messagingInApp.dismissMessage()
+        XCTAssertEqual(inAppProviderMock.dismissMessageCallsCount, 1)
     }
 }

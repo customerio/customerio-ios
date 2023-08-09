@@ -1,5 +1,5 @@
+import CioInternalCommon
 @testable import CioTracking
-import Common
 import Foundation
 
 public extension QueueMock {

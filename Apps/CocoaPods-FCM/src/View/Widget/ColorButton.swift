@@ -5,6 +5,11 @@ struct ColorButton: View {
     let title: String
     let action: () -> Void
 
+    init(_ title: String, action: @escaping () -> Void) {
+        self.title = title
+        self.action = action
+    }
+
     var body: some View {
         Button(action: {
             action()
@@ -19,6 +24,6 @@ struct ColorButton: View {
 
 struct ColorButton_Previews: PreviewProvider {
     static var previews: some View {
-        ColorButton(title: "Send random event") {}
+        ColorButton("Send random event") {}
     }
 }

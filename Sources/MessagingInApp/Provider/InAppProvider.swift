@@ -1,6 +1,5 @@
-import Common
+import CioInternalCommon
 import Foundation
-import Gist
 
 // wrapper around Gist SDK to make it mockable
 internal protocol InAppProvider: AutoMockable {
@@ -8,6 +7,7 @@ internal protocol InAppProvider: AutoMockable {
     func setProfileIdentifier(_ id: String)
     func clearIdentify()
     func setRoute(_ route: String)
+    func dismissMessage()
 }
 
 // sourcery: InjectRegister = "InAppProvider"
@@ -27,5 +27,9 @@ internal class GistInAppProvider: InAppProvider {
 
     func setRoute(_ route: String) {
         Gist.shared.setCurrentRoute(route)
+    }
+
+    func dismissMessage() {
+        Gist.shared.dismissMessage()
     }
 }
