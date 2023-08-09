@@ -7,7 +7,7 @@ public protocol EnvironmentUtil: AutoMockable {
     var isSwiftUIApp: Bool { get }
 }
 
-@available(iOSApplicationExtension, unavailable)
+@available(iOSApplicationExtension, unavailable) // this is added because of UIKitWrapper depencency
 // sourcery: InjectRegister = "EnvironmentUtil"
 public class EnvironmentUtilImpl: EnvironmentUtil {
     private let uiKit: UIKitWrapper
