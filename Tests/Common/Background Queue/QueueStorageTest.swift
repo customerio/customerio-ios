@@ -22,24 +22,6 @@ class QueueStorageTest: UnitTest {
         )
     }
 
-    // MARK: saveInventory
-
-    func test_saveInventory_givenSaveSuccessful_expectTrue() {
-        fileStorageMock.saveReturnValue = true
-
-        let actual = storage.saveInventory([QueueTaskMetadata.random])
-
-        XCTAssertTrue(actual)
-    }
-
-    func test_saveInventory_givenSaveUnsuccessful_expectFalse() {
-        fileStorageMock.saveReturnValue = false
-
-        let actual = storage.saveInventory([QueueTaskMetadata.random])
-
-        XCTAssertFalse(actual)
-    }
-
     // MARK: getInventory
 
     func test_getInventory_expectReadFromFileSystemOnce_expectUseCache() {
@@ -138,7 +120,7 @@ class QueueStorageIntegrationTest: UnitTest {
 
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
         let expected = [QueueTaskMetadata.random]
-        _ = storage.saveInventory(expected)
+        storage.saveInventory(expected)
 
         let actual = storage.getInventory()
 
@@ -148,7 +130,7 @@ class QueueStorageIntegrationTest: UnitTest {
     // The queue inventory has an in-memory store. Test that the inventory is also persisted so when in-memory store recreated, invetory is still valid.
     func test_getInventory_givenRecreateSdk_expectInventoryIsPersisted() {
         let expected = [QueueTaskMetadata.random]
-        _ = storage.saveInventory(expected)
+        storage.saveInventory(expected)
 
         XCTAssertTrue(diGraph.queueInventoryMemoryStore.inventory != nil)
         setUp() // recreate storage instance and it's dependencies

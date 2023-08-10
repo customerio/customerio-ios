@@ -25,7 +25,7 @@ import Foundation
  */
 public protocol QueueStorage: AutoMockable {
     func getInventory() -> [QueueTaskMetadata]
-    func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
+    func saveInventory(_ inventory: [QueueTaskMetadata])
 
     func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
         -> CreateQueueStorageTaskResult
@@ -48,8 +48,37 @@ public class FileManagerQueueStorage: QueueStorage {
     private let lock: Lock
 
     private var inventory: [QueueTaskMetadata]? {
-        get { inventoryStore.inventory }
-        set { inventoryStore.inventory = newValue }
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+
+            if let inventoryCache = inventoryStore.inventory {
+                return inventoryCache
+            }
+
+            guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
+            let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
+            inventoryStore.inventory = readInventory // set in-memory cache for next time getter is called
+
+            return readInventory
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+
+            guard let data = jsonAdapter.toJson(newValue) else {
+                return
+            }
+
+            // the inventory is the BQ's single source of truth for what tasks are in the BQ. It's important that the inventory cache reflects what's in SDK storage so only update
+            // it after we successfully save the storage.
+            // If there is a failed save to file system, the item added to the BQ will get ignored to try and keep the SDK into an error-free state.
+            let successfullySavedInStorage = fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
+
+            if successfullySavedInStorage {
+                inventoryStore.inventory = newValue // update cache
+            }
+        }
     }
 
     init(
@@ -72,31 +101,11 @@ public class FileManagerQueueStorage: QueueStorage {
     }
 
     public func getInventory() -> [QueueTaskMetadata] {
-        lock.lock()
-        defer { lock.unlock() }
-
-        if let inventory = inventory {
-            return inventory
-        }
-
-        guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
-        let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
-        inventory = readInventory
-
-        return readInventory
+        inventory ?? []
     }
 
-    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard let data = jsonAdapter.toJson(inventory) else {
-            return false
-        }
-
+    public func saveInventory(_ inventory: [QueueTaskMetadata]) {
         self.inventory = inventory
-
-        return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
     }
 
     public func create(
@@ -135,9 +144,7 @@ public class FileManagerQueueStorage: QueueStorage {
         let updatedInventoryCount = existingInventory.count
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
-        if !saveInventory(existingInventory) {
-            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
-        }
+        saveInventory(existingInventory)
 
         // It's more accurate for us to get the inventory item from the inventory instead of just returning
         // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
@@ -189,9 +196,7 @@ public class FileManagerQueueStorage: QueueStorage {
         // update inventory first so code that requests the inventory doesn't get the inventory item we are deleting
         var existingInventory = getInventory()
         existingInventory.removeAll { $0.taskPersistedId == storageId }
-        let updateInventoryResult = saveInventory(existingInventory)
-
-        if !updateInventoryResult { return false }
+        saveInventory(existingInventory)
 
         // if this fails, we at least deleted the task from inventory so
         // it will not run again which is the most important thing

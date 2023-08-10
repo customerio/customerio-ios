@@ -2175,22 +2175,18 @@ public class QueueStorageMock: QueueStorage, Mock {
     public private(set) var saveInventoryReceivedArguments: [QueueTaskMetadata]?
     /// Arguments from *all* of the times that the function was called.
     public private(set) var saveInventoryReceivedInvocations: [[QueueTaskMetadata]] = []
-    /// Value to return from the mocked function.
-    public var saveInventoryReturnValue: Bool!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `saveInventoryReturnValue`
      */
-    public var saveInventoryClosure: (([QueueTaskMetadata]) -> Bool)?
+    public var saveInventoryClosure: (([QueueTaskMetadata]) -> Void)?
 
     /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
+    public func saveInventory(_ inventory: [QueueTaskMetadata]) {
         mockCalled = true
         saveInventoryCallsCount += 1
         saveInventoryReceivedArguments = inventory
         saveInventoryReceivedInvocations.append(inventory)
-        return saveInventoryClosure.map { $0(inventory) } ?? saveInventoryReturnValue
+        saveInventoryClosure?(inventory)
     }
 
     // MARK: - create
