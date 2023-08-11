@@ -60,10 +60,9 @@ internal extension UIViewController {
         }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
 
-        // SwiftUI is a wrapper around UIKit classes. So, SwiftUI apps may have noisey screenview tracking.
-        // Filter out screenview tracking events for Views that belong to the SwiftUI framework.
-        guard !viewController.isSwiftUIView else {
-            return
+        // Before we track event, apply a filter to remove events that could be unhelpful.
+        guard shouldTrackAutomaticScreenviewEvent() else {
+            return // event has been filtered out. Ignore it.
         }
 
         var name = nameOfViewControllerClass.replacingOccurrences(
@@ -84,6 +83,24 @@ internal extension UIViewController {
             return
         }
         CustomerIO.shared.automaticScreenView(name: name, data: data)
+    }
+
+    func shouldTrackAutomaticScreenviewEvent() -> Bool {
+        guard let diGraph = SdkInitializedUtilImpl().postInitializedData?.diGraph else {
+            return false // SDK not initialized yet. Therefore, we ignore event.
+        }
+
+        let filter: (UIViewController) -> Bool = diGraph.sdkConfig.filterAutoScreenViewEvents ?? { viewController in
+            let deviceInfo = diGraph.deviceInfo
+
+            let doesViewControllerBelongToHostApp = viewController.bundleIdOfView == deviceInfo.customerBundleId
+
+            return doesViewControllerBelongToHostApp
+        }
+
+        let shouldTrackEvent = filter(self)
+
+        return shouldTrackEvent
     }
 
     /**
