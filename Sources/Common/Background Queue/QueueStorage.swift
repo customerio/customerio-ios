@@ -56,8 +56,8 @@ public class FileManagerQueueStorage: QueueStorage {
                 return inventoryCache
             }
 
-            guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
-            let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
+            guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return nil }
+            guard let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) else { return nil }
             inventoryStore.inventory = readInventory // set in-memory cache for next time getter is called
 
             return readInventory
@@ -108,11 +108,11 @@ public class FileManagerQueueStorage: QueueStorage {
         // Logic of saving inventory was moved into the `inventory` setter.
         // However, to keep backwards compatibility with the API of this function (returning a Bool),
         // we have this below logic to check if the inventory was successfully saved.
-        let inventoryCountBeforeSave = getInventory().count
+        let inventoryBeforeSave = getInventory() // getInventory reads from the in-memory cache so they are performant to perform.
         self.inventory = inventory
-        let inventoryCountAfterSave = getInventory().count
+        let inventoryAfterSave = getInventory()
 
-        let inventorySavedSuccessfully = inventoryCountAfterSave > inventoryCountBeforeSave
+        let inventorySavedSuccessfully = inventoryBeforeSave != inventoryAfterSave
 
         return inventorySavedSuccessfully
     }
