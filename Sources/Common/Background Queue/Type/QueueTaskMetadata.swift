@@ -24,7 +24,7 @@ public struct QueueTaskMetadata: Codable, Equatable, Hashable, AutoLenses {
     }
 }
 
-internal extension QueueTaskMetadata {
+extension QueueTaskMetadata {
     static var random: QueueTaskMetadata {
         QueueTaskMetadata(
             taskPersistedId: String.random,

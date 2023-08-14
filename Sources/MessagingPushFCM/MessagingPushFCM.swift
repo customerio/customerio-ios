@@ -47,9 +47,9 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
-    internal static let shared = MessagingPushFCM()
+    static let shared = MessagingPushFCM()
 
-    internal var messagingPush: MessagingPushInstance {
+    var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 

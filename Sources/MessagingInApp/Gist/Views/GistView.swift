@@ -10,7 +10,7 @@ public class GistView: UIView {
     public weak var delegate: GistViewDelegate?
     private var message: Message?
 
-    internal convenience init(message: Message, engineView: UIView) {
+    convenience init(message: Message, engineView: UIView) {
         self.init()
         self.message = message
         addSubview(engineView)

@@ -50,7 +50,7 @@ extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
         _ = deviceInfo
@@ -206,7 +206,7 @@ extension DIGraph {
     }
 
     // QueueQueryRunner
-    internal var queueQueryRunner: QueueQueryRunner {
+    var queueQueryRunner: QueueQueryRunner {
         getOverriddenInstance() ??
             newQueueQueryRunner
     }
@@ -260,7 +260,7 @@ extension DIGraph {
     }
 
     // SimpleTimer
-    internal var simpleTimer: SimpleTimer {
+    var simpleTimer: SimpleTimer {
         getOverriddenInstance() ??
             newSimpleTimer
     }
@@ -270,12 +270,12 @@ extension DIGraph {
     }
 
     // SingleScheduleTimer (singleton)
-    internal var singleScheduleTimer: SingleScheduleTimer {
+    var singleScheduleTimer: SingleScheduleTimer {
         getOverriddenInstance() ??
             sharedSingleScheduleTimer
     }
 
-    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
@@ -314,7 +314,7 @@ extension DIGraph {
     }
 
     // HttpRetryPolicy
-    internal var httpRetryPolicy: HttpRetryPolicy {
+    var httpRetryPolicy: HttpRetryPolicy {
         getOverriddenInstance() ??
             newHttpRetryPolicy
     }
@@ -324,7 +324,7 @@ extension DIGraph {
     }
 
     // DeviceMetricsGrabber
-    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
         getOverriddenInstance() ??
             newDeviceMetricsGrabber
     }
@@ -410,7 +410,7 @@ extension DIGraph {
     }
 
     // HttpRequestRunner
-    internal var httpRequestRunner: HttpRequestRunner {
+    var httpRequestRunner: HttpRequestRunner {
         getOverriddenInstance() ??
             newHttpRequestRunner
     }

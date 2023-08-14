@@ -2,7 +2,7 @@ import CioInternalCommon
 import CioTracking
 import Foundation
 
-internal class MessagingInAppImplementation: MessagingInAppInstance {
+class MessagingInAppImplementation: MessagingInAppInstance {
     private let siteId: String
     private let region: Region
     private let logger: CioInternalCommon.Logger

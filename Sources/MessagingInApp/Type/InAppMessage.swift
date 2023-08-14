@@ -7,7 +7,7 @@ public struct InAppMessage: Equatable {
     public let deliveryId: String? // (Currently taken from Gist's campaignId property). Can be nil when sending test
     // in-app messages
 
-    internal init(gistMessage: GistMessage) {
+    init(gistMessage: GistMessage) {
         self.messageId = gistMessage.messageId
         self.deliveryId = gistMessage.gistProperties.campaignId
     }

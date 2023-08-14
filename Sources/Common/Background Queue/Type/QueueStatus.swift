@@ -10,7 +10,7 @@ public struct QueueStatus: Equatable {
 }
 
 // used for testing
-internal extension QueueStatus {
+extension QueueStatus {
     static var successAddingSingleTask: QueueStatus {
         QueueStatus(queueId: String.random, numTasksInQueue: 1)
     }

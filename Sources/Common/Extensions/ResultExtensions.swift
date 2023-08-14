@@ -1,6 +1,6 @@
 import Foundation
 
-internal extension Result {
+extension Result {
     var error: Failure? {
         switch self {
         case .failure(let error): return error

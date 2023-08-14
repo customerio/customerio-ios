@@ -1,6 +1,6 @@
 import Foundation
 
-internal typealias GistNetworkResponse = (Data, HTTPURLResponse)
+typealias GistNetworkResponse = (Data, HTTPURLResponse)
 
 enum GistNetworkError: Error {
     case serverError

@@ -156,7 +156,7 @@ public struct SdkConfig {
      */
     public var autoTrackDeviceAttributes: Bool
 
-    internal var httpBaseUrls: HttpBaseUrls {
+    var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
 

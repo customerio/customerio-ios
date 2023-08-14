@@ -29,7 +29,7 @@ extension CustomerIO {
 // screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
-internal extension UIViewController {
+extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }

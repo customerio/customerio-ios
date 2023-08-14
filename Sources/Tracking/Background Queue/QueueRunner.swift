@@ -3,7 +3,7 @@ import Foundation
 
 // Queue tasks for the Tracking module.
 // sourcery: InjectRegister = "QueueRunnerHook"
-internal class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
+class TrackingQueueRunner: ApiSyncQueueRunner, QueueRunnerHook {
     override init(
         jsonAdapter: JsonAdapter,
         logger: Logger,

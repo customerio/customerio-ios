@@ -1,7 +1,7 @@
 import Foundation
 
 /// Timer that only schedules once. Further calls result in ignored request until the timer fires.
-internal protocol SingleScheduleTimer: AutoMockable {
+protocol SingleScheduleTimer: AutoMockable {
     func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool
     func cancel()
 }
@@ -10,7 +10,7 @@ internal protocol SingleScheduleTimer: AutoMockable {
 // for each time that a queue item is added.
 // sourcery: InjectRegister = "SingleScheduleTimer"
 // sourcery: InjectSingleton
-internal class CioSingleScheduleTimer: SingleScheduleTimer {
+class CioSingleScheduleTimer: SingleScheduleTimer {
     private var timer: SimpleTimer
 
     init(timer: SimpleTimer) {
