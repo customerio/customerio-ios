@@ -94,9 +94,16 @@ public class FileManagerQueueStorage: QueueStorage {
             return false
         }
 
-        self.inventory = inventory
+        // the inventory is the BQ's single source of truth for what tasks are in the BQ. It's important that the inventory cache reflects what's in SDK storage so only update
+        // it after we successfully save the storage.
+        // If there is a failed save to file system, the item added to the BQ will get ignored to try and keep the SDK into an error-free state.
+        let successfullySavedInStorage = fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
 
-        return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
+        if successfullySavedInStorage {
+            self.inventory = inventory // update cache
+        }
+
+        return successfullySavedInStorage
     }
 
     public func create(
