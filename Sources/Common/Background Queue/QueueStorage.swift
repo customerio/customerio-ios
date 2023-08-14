@@ -43,8 +43,43 @@ public class FileManagerQueueStorage: QueueStorage {
     private let sdkConfig: SdkConfig
     private let logger: Logger
     private let dateUtil: DateUtil
+    private var inventoryStore: QueueInventoryMemoryStore
 
     private let lock: Lock
+
+    private var inventory: [QueueTaskMetadata]? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+
+            if let inventoryCache = inventoryStore.inventory {
+                return inventoryCache
+            }
+
+            guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return nil }
+            guard let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) else { return nil }
+            inventoryStore.inventory = readInventory // set in-memory cache for next time getter is called
+
+            return readInventory
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+
+            guard let data = jsonAdapter.toJson(newValue) else {
+                return
+            }
+
+            // the inventory is the BQ's single source of truth for what tasks are in the BQ. It's important that the inventory cache reflects what's in SDK storage so only update
+            // it after we successfully save the storage.
+            // If there is a failed save to file system, the item added to the BQ will get ignored to try and keep the SDK into an error-free state.
+            let successfullySavedInStorage = fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
+
+            if successfullySavedInStorage {
+                inventoryStore.inventory = newValue // update cache
+            }
+        }
+    }
 
     init(
         fileStorage: FileStorage,
@@ -52,7 +87,8 @@ public class FileManagerQueueStorage: QueueStorage {
         lockManager: LockManager,
         sdkConfig: SdkConfig,
         logger: Logger,
-        dateUtil: DateUtil
+        dateUtil: DateUtil,
+        inventoryStore: QueueInventoryMemoryStore
     ) {
         self.siteId = sdkConfig.siteId
         self.fileStorage = fileStorage
@@ -61,28 +97,24 @@ public class FileManagerQueueStorage: QueueStorage {
         self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
+        self.inventoryStore = inventoryStore
     }
 
     public func getInventory() -> [QueueTaskMetadata] {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return [] }
-
-        let inventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) ?? []
-
-        return inventory
+        inventory ?? []
     }
 
     public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
+        // Logic of saving inventory was moved into the `inventory` setter.
+        // However, to keep backwards compatibility with the API of this function (returning a Bool),
+        // we have this below logic to check if the inventory was successfully saved.
+        let inventoryBeforeSave = getInventory() // getInventory reads from the in-memory cache so they are performant to perform.
+        self.inventory = inventory
+        let inventoryAfterSave = getInventory()
 
-        guard let data = jsonAdapter.toJson(inventory) else {
-            return false
-        }
+        let inventorySavedSuccessfully = inventoryBeforeSave != inventoryAfterSave
 
-        return fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
+        return inventorySavedSuccessfully
     }
 
     public func create(

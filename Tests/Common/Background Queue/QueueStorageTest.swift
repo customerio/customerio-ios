@@ -17,26 +17,51 @@ class QueueStorageTest: UnitTest {
             lockManager: lockManager,
             sdkConfig: sdkConfig,
             logger: log,
-            dateUtil: dateUtilStub
+            dateUtil: dateUtilStub,
+            inventoryStore: diGraph.queueInventoryMemoryStore
         )
     }
 
     // MARK: saveInventory
 
-    func test_saveInventory_givenSaveSuccessful_expectTrue() {
+    func test_saveInventory_givenSaveSuccessful_expectReturnTrue_expectCacheUpdated() {
+        let givenInventory = [QueueTaskMetadata.random]
         fileStorageMock.saveReturnValue = true
 
-        let actual = storage.saveInventory([QueueTaskMetadata.random])
+        let actual = storage.saveInventory(givenInventory)
 
         XCTAssertTrue(actual)
+        XCTAssertEqual(diGraph.queueInventoryMemoryStore.inventory, givenInventory)
     }
 
-    func test_saveInventory_givenSaveUnsuccessful_expectFalse() {
+    func test_saveInventory_givenSaveUnsuccessful_expectReturnFalse_expectCacheNotUpdated() {
         fileStorageMock.saveReturnValue = false
 
         let actual = storage.saveInventory([QueueTaskMetadata.random])
 
         XCTAssertFalse(actual)
+        XCTAssertNil(diGraph.queueInventoryMemoryStore.inventory)
+    }
+
+    // MARK: getInventory
+
+    func test_getInventory_expectReadFromFileSystemOnce_expectUseCache() {
+        fileStorageMock.getReturnValue = "[]".data!
+
+        _ = storage.getInventory()
+        XCTAssertEqual(fileStorageMock.getCallsCount, 1)
+
+        _ = storage.getInventory()
+        XCTAssertEqual(fileStorageMock.getCallsCount, 1)
+    }
+
+    func test_getInventory_givenNoInventoryInFileSystem_expectEmptyInventory_expectCacheNotUpdated() {
+        fileStorageMock.getReturnValue = nil
+
+        let actual = storage.getInventory()
+
+        XCTAssertEqual(actual, [])
+        XCTAssertNil(diGraph.queueInventoryMemoryStore.inventory)
     }
 
     // MARK: create
@@ -104,14 +129,7 @@ class QueueStorageIntegrationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        storage = FileManagerQueueStorage(
-            fileStorage: diGraph.fileStorage,
-            jsonAdapter: jsonAdapter,
-            lockManager: lockManager,
-            sdkConfig: sdkConfig,
-            logger: log,
-            dateUtil: dateUtilStub
-        )
+        storage = getStorageInstance()
     }
 
     // MARK: getInventory
@@ -125,6 +143,38 @@ class QueueStorageIntegrationTest: UnitTest {
     func test_getInventory_givenSavedPreviousInventory_expectGetExistingInventory() {
         let expected = [QueueTaskMetadata.random]
         _ = storage.saveInventory(expected)
+
+        let actual = storage.getInventory()
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    func test_getInventory_givenMultipleStorageInstances_expectCacheToBeSharedAcrossInstances() {
+        _ = storage.saveInventory([QueueTaskMetadata.random]) // some some non-empty inventory for instances first read of the cache.
+
+        let storage2 = getStorageInstance()
+
+        // Assert the cache has been loaded at least once on both instances for accuracy of test
+        _ = storage.getInventory()
+        _ = storage2.getInventory()
+
+        // Save new inventory on 1 instance
+        let expected = [QueueTaskMetadata.random]
+        _ = storage.saveInventory(expected)
+
+        // All instances should have the same inventory now.
+        XCTAssertEqual(storage.getInventory(), expected)
+        XCTAssertEqual(storage2.getInventory(), expected)
+    }
+
+    // The queue inventory has an in-memory store. Test that the inventory is also persisted so when in-memory store recreated, inventory is still valid.
+    func test_getInventory_givenRecreateSdk_expectInventoryIsPersisted() {
+        let expected = [QueueTaskMetadata.random]
+        _ = storage.saveInventory(expected)
+
+        XCTAssertTrue(diGraph.queueInventoryMemoryStore.inventory != nil)
+        setUp() // recreate storage instance and it's dependencies
+        XCTAssertTrue(diGraph.queueInventoryMemoryStore.inventory == nil)
 
         let actual = storage.getInventory()
 
@@ -295,6 +345,20 @@ class QueueStorageIntegrationTest: UnitTest {
         let actualInventory = storage.getInventory()
         XCTAssertEqual(actualInventory.count, 1)
         XCTAssertEqual(actualInventory[0], expectedNotDeleted)
+    }
+}
+
+extension QueueStorageIntegrationTest {
+    private func getStorageInstance() -> FileManagerQueueStorage {
+        FileManagerQueueStorage(
+            fileStorage: diGraph.fileStorage,
+            jsonAdapter: jsonAdapter,
+            lockManager: lockManager,
+            sdkConfig: sdkConfig,
+            logger: log,
+            dateUtil: dateUtilStub,
+            inventoryStore: diGraph.queueInventoryMemoryStore
+        )
     }
 }
 #endif
