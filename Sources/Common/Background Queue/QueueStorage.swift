@@ -25,7 +25,7 @@ import Foundation
  */
 public protocol QueueStorage: AutoMockable {
     func getInventory() -> [QueueTaskMetadata]
-    func saveInventory(_ inventory: [QueueTaskMetadata])
+    func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool
 
     func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)
         -> CreateQueueStorageTaskResult
@@ -104,8 +104,17 @@ public class FileManagerQueueStorage: QueueStorage {
         inventory ?? []
     }
 
-    public func saveInventory(_ inventory: [QueueTaskMetadata]) {
+    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
+        // Logic of saving inventory was moved into the `inventory` setter.
+        // However, to keep backwards compatibility with the API of this function (returning a Bool),
+        // we have this below logic to check if the inventory was successfully saved.
+        let inventoryCountBeforeSave = getInventory().count
         self.inventory = inventory
+        let inventoryCountAfterSave = getInventory().count
+
+        let inventorySavedSuccessfully = inventoryCountAfterSave > inventoryCountBeforeSave
+
+        return inventorySavedSuccessfully
     }
 
     public func create(
@@ -144,7 +153,9 @@ public class FileManagerQueueStorage: QueueStorage {
         let updatedInventoryCount = existingInventory.count
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
-        saveInventory(existingInventory)
+        if !saveInventory(existingInventory) {
+            return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
+        }
 
         // It's more accurate for us to get the inventory item from the inventory instead of just returning
         // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
@@ -196,7 +207,9 @@ public class FileManagerQueueStorage: QueueStorage {
         // update inventory first so code that requests the inventory doesn't get the inventory item we are deleting
         var existingInventory = getInventory()
         existingInventory.removeAll { $0.taskPersistedId == storageId }
-        saveInventory(existingInventory)
+        let updateInventoryResult = saveInventory(existingInventory)
+
+        if !updateInventoryResult { return false }
 
         // if this fails, we at least deleted the task from inventory so
         // it will not run again which is the most important thing
