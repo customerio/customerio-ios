@@ -1,14 +1,14 @@
 import Foundation
 
-internal protocol QueueQueryRunner: AutoMockable {
+protocol QueueQueryRunner: AutoMockable {
     func getNextTask(_ queue: [QueueTaskMetadata], lastRanTask: QueueTaskMetadata?, lastFailedTask: QueueTaskMetadata?)
         -> QueueTaskMetadata?
     func reset()
 }
 
 // sourcery: InjectRegister = "QueueQueryRunner"
-internal class CioQueueQueryRunner: QueueQueryRunner {
-    internal var queryCriteria = QueueQueryCriteria()
+class CioQueueQueryRunner: QueueQueryRunner {
+    var queryCriteria = QueueQueryCriteria()
 
     private let logger: Logger
 
@@ -41,7 +41,7 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         queryCriteria.reset()
     }
 
-    internal func getInventoryTasksLeftToRun(
+    func getInventoryTasksLeftToRun(
         inventory: [QueueTaskMetadata],
         lastRanTask: QueueTaskMetadata?
     ) -> [QueueTaskMetadata] {
@@ -56,7 +56,7 @@ internal class CioQueueQueryRunner: QueueQueryRunner {
         return Array(inventory.suffix(from: indexOfLastRanTask + 1))
     }
 
-    internal func updateCriteria(lastFailedTask: QueueTaskMetadata) {
+    func updateCriteria(lastFailedTask: QueueTaskMetadata) {
         if let groupToExclude = lastFailedTask.groupStart {
             queryCriteria.excludeGroups.insert(groupToExclude)
         }

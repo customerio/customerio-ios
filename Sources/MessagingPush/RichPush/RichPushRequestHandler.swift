@@ -4,7 +4,7 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
-internal class RichPushRequestHandler {
+class RichPushRequestHandler {
     static let shared = RichPushRequestHandler()
 
     @Atomic private var requests: [String: RichPushRequest] = [:]

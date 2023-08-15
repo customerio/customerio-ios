@@ -1,5 +1,5 @@
 import Foundation
 
-internal enum QueueTaskType: String {
+enum QueueTaskType: String {
     case trackDeliveryMetric
 }

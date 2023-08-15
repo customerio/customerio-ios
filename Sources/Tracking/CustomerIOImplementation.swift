@@ -9,7 +9,7 @@ import Foundation
  there is an instance of `CustomerIOImplementation` present, the SDK has been
  initialized successfully.
  */
-internal class CustomerIOImplementation: CustomerIOInstance {
+class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
         sdkConfig.siteId
     }
@@ -32,7 +32,7 @@ internal class CustomerIOImplementation: CustomerIOInstance {
 
      Try loading the credentials previously saved for the singleton instance.
      */
-    internal init(diGraph: DIGraph) {
+    init(diGraph: DIGraph) {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore

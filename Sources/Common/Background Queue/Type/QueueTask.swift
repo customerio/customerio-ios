@@ -56,7 +56,7 @@ public struct QueueTask: Codable, AutoLenses, Equatable {
     }
 }
 
-internal extension QueueTask {
+extension QueueTask {
     static var random: QueueTask {
         QueueTask(
             storageId: String.random,

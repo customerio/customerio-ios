@@ -11,7 +11,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     private var globalDataStore: GlobalDataStore
 
     // testing constructor
-    internal init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
+    init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
         self.globalDataStore = globalDataStore
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
@@ -23,8 +23,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     // for testing
-    internal static func resetSharedInstance() {
-        Self.shared = MessagingPush()
+    static func resetSharedInstance() {
+        shared = MessagingPush()
     }
 
     // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
