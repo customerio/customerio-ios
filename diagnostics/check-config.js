@@ -121,6 +121,75 @@ function getDeploymentTargetVersion(pbxProject) {
     return null;
 }
 
+function extractPodVersions(podfileLockContent, podPattern) {
+    let match;
+    const versions = [];
+    while ((match = podPattern.exec(podfileLockContent)) !== null) {
+        versions.push(match[1]);
+    }
+
+    if (versions.length > 0) {
+        return versions.join(', ');
+    } else {
+        return undefined;
+    }
+}
+
+async function checkForSDKInitializationInReactNative(projectPath) {
+    const allowedExtensions = ['.js', '.jsx', '.ts', '.tsx'];
+    let fileNameForSDKInitialization = undefined;
+    try {
+        const files = await fs.readdir(projectPath);
+        if (files.length === 0) return undefined;
+
+        for (const file of files) {
+            const filePath = path.join(projectPath, file);
+            const linkStat = await fs.lstat(filePath);
+            if (file.startsWith('.') || file.startsWith('_') || file.startsWith('node_modules') || linkStat.isSymbolicLink()) {
+                continue;
+            };
+            const stats = await fs.stat(filePath);
+            if (!stats.isDirectory() && !stats.isFile() && !allowedExtensions.includes(path.extname(file))) {
+                continue;
+            }
+
+            if (stats.isDirectory()) {
+                fileNameForSDKInitialization = await checkForSDKInitializationInReactNative(filePath);
+                if (fileNameForSDKInitialization) {
+                    break;
+                }
+            } else if (stats.isFile() && reactNativeSDKInitializationFiles.includes(file)) {
+                const fileContent = await fs.readFile(filePath, 'utf8');
+                if (fileContent.includes('CustomerIO.initialize')) {
+                    return file;
+                }
+            }
+        };
+    } catch (err) {
+        console.error(`🚨 Error reading directory ${projectPath}:`, err.code);
+    }
+    return fileNameForSDKInitialization;
+}
+
+async function matchesReactNativeProjectStructure(projectPath) {
+    let isReactNativeProject = false;
+
+    // Check for package.json
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    try {
+        await fs.access(packageJsonPath);
+        isReactNativeProject = true;
+    } catch { }
+
+    // Check for ios directory
+    const iosPath = path.join(projectPath, 'ios');
+    try {
+        const stats = await fs.stat(iosPath);
+        isReactNativeProject = isReactNativeProject && stats.isDirectory();
+    } catch { }
+
+    return isReactNativeProject;
+}
 
 // Validate input argument
 if (!process.argv[2]) {
@@ -133,14 +202,59 @@ const rootPath = process.argv[2];
 
 // Define the patterns to search for
 const projPattern = /\.pbxproj$/;
-const appDelegatePattern = /AppDelegate\.swift$/;
+const appDelegateSwiftPattern = /AppDelegate\.swift$/;
+const appDelegateObjectiveCPattern = /AppDelegate\.mm$/;
+const entitlementsFilePattern = /\.entitlements$/;
+
+const objCUserNotificationCenterPattern = /-\s?\(void\)userNotificationCenter:\s*\(UNUserNotificationCenter\s?\*\)center\s*/;;
+const pushNotificationEntitlementPattern = /<key>\s*aps-environment\s*<\/key>/;
+const podCustomerIOReactNativePattern = /- customerio-reactnative\s+\(([^)]+)\)/g;
+const podCustomerIOTrackingPattern = /- CustomerIO\/Tracking\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingInAppPattern = /- CustomerIO\/MessagingInApp\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingPushAPNPattern = /- CustomerIO\/MessagingPushAPN\s+\(([^)]+)\)/g;
+const podCustomerIOMessagingPushFCMPattern = /- CustomerIO\/MessagingPushFCM\s+\(([^)]+)\)/g;
+
+const reactNativePackageName = 'customerio-reactnative';
+const conflictingReactNativePackages = [
+    'react-native-onesignal',
+    '@react-native-firebase/messaging',
+];
+
+const conflictingIosPods = [
+    'OneSignal',
+    'Firebase/Messaging',
+];
+
+const reactNativeSDKInitializationFiles = [
+    'App.js',
+    'App.jsx',
+    'App.ts',
+    'App.tsx',
+    'FeaturesUpdate.js',
+    'CustomerIOService.js',
+    'CustomerIOService.ts',
+];
 
 async function checkProject() {
     // Search for the .pbxproj and AppDelegate.swift files
     console.log("🔎 Searching for project files...");
-    const [projectPaths, appDelegatePaths] = await Promise.all([
-        searchFileInDirectory(rootPath, projPattern),
-        searchFileInDirectory(rootPath, appDelegatePattern)
+
+    const isReactNativeApp = await matchesReactNativeProjectStructure(rootPath);
+    let iosProjectPath;
+
+    if (isReactNativeApp) {
+        console.log("🔔 Project appears to be a React Native project");
+        iosProjectPath = path.join(rootPath, 'ios');
+    } else {
+        console.log("🔔 Project appears to be a native iOS project");
+        iosProjectPath = rootPath;
+    }
+
+    const [projectPaths, appDelegateSwiftPaths, appDelegateObjectiveCPaths, entitlementsFilePaths] = await Promise.all([
+        searchFileInDirectory(iosProjectPath, projPattern),
+        searchFileInDirectory(iosProjectPath, appDelegateSwiftPattern),
+        searchFileInDirectory(iosProjectPath, appDelegateObjectiveCPattern),
+        searchFileInDirectory(iosProjectPath, entitlementsFilePattern),
     ]);
 
     // Process each .pbxproj file
@@ -160,7 +274,7 @@ async function checkProject() {
     }
 
     // Process each AppDelegate.swift file
-    for (let appDelegatePath of appDelegatePaths) {
+    for (let appDelegatePath of appDelegateSwiftPaths) {
         console.log(`🔎 Checking AppDelegate at path: ${appDelegatePath}`);
         try {
             const contents = await fs.readFile(appDelegatePath, 'utf8');
@@ -172,6 +286,165 @@ async function checkProject() {
         } catch (err) {
             console.error("🚨 Error reading file:", err);
         }
+    }
+
+    // Process each AppDelegate.m file
+    for (let appDelegatePath of appDelegateObjectiveCPaths) {
+        console.log(`🔎 Checking AppDelegate at path: ${appDelegatePath}`);
+        try {
+            const contents = await fs.readFile(appDelegatePath, 'utf8');
+            if (objCUserNotificationCenterPattern.test(contents)) {
+                console.log("✅ Required method found in AppDelegate.m");
+            } else {
+                console.log("❌ Required method not found in AppDelegate.m");
+            }
+        } catch (err) {
+            console.error("🚨 Error reading file:", err);
+        }
+    }
+
+    // Process each entitlements file
+    for (let entitlementsFilePath of entitlementsFilePaths) {
+        console.log(`🔎 Checking entitlements file at path: ${entitlementsFilePath}`);
+        try {
+            // We can use XML parsing libraries (like xml2js) for better results because entitlements files are XML files
+            const contents = await fs.readFile(entitlementsFilePath, 'utf8');
+            if (pushNotificationEntitlementPattern.test(contents)) {
+                console.log("✅ Push Notification capability found in entitlements");
+            } else {
+                console.log("❌ Push Notification capability not found in entitlements");
+            }
+        } catch (err) {
+            console.error("🚨 Error reading file:", err);
+        }
+    }
+
+    const podfilePath = path.join(iosProjectPath, 'Podfile');
+    const podfileLockPath = path.join(iosProjectPath, 'Podfile.lock');
+    try {
+        console.log(`🔎 Checking for conflicting libraries in: ${podfileLockPath}`);
+        const podfileLockContent = await fs.readFile(podfileLockPath, 'utf8');
+        const conflictingPods = conflictingIosPods.filter((lib) => podfileLockContent.includes(lib));
+        if (conflictingPods.length === 0) {
+            console.log('✅ No conflicting pods found in Podfile');
+        } else {
+            console.log('🚨 More than one pods found in Podfile for handling push notifications', conflictingPods);
+        }
+    } catch (err) {
+        console.error("🚨 Error reading Podfile.lock:", err);
+    }
+
+    if (isReactNativeApp) {
+        console.log(`🔎 Checking for SDK Initialization in React Native`);
+        const sdkInitializationFile = await checkForSDKInitializationInReactNative(rootPath);
+        if (sdkInitializationFile) {
+            console.log("✅ SDK Initialization found in", sdkInitializationFile);
+        } else {
+            console.log("❌ SDK Initialization not found in given files", reactNativeSDKInitializationFiles);
+        }
+
+        try {
+            const packageJsonPath = path.join(rootPath, 'package.json');
+            console.log(`🔎 Checking for conflicting libraries in: ${packageJsonPath}`);
+            const packageJson = require(packageJsonPath);
+            const dependencies = [
+                ...Object.keys(packageJson.dependencies || {}),
+                ...Object.keys(packageJson.devDependencies || {}),
+            ];
+            const conflictingLibraries = conflictingReactNativePackages.filter((lib) => dependencies.includes(lib));
+            if (conflictingLibraries.length === 0) {
+                console.log('✅ No conflicting libraries found in package.json');
+            } else {
+                console.log('🚨 More than one libraries found in package.json for handling push notifications', conflictingLibraries);
+            }
+        } catch (err) {
+            console.error("🚨 Error reading package.json:", err);
+        }
+    }
+
+    console.log(`🗒️ Collecting more information on project`);
+
+    if (isReactNativeApp) {
+        const packageJsonPath = path.join(rootPath, 'package.json');
+        const yarnLockPath = path.join(rootPath, 'yarn.lock');
+        const npmLockPath = path.join(rootPath, 'package-lock.json');
+
+        // Print package version from package.json
+        const packageJson = require(packageJsonPath);
+        const sdkVersionInPackageJson = packageJson.dependencies[reactNativePackageName];
+        console.log('👉 %s version in package.json:', reactNativePackageName, sdkVersionInPackageJson);
+
+        // Print package version from yarn.lock
+        try {
+            const yarnLockContent = await fs.readFile(yarnLockPath, 'utf8');
+            const yarnLockVersionMatch = yarnLockContent.match(new RegExp(`${reactNativePackageName}@[^:]+:\\s*\\n\\s*version\\s*"([^"]+)"`));
+            const yarnLockVersion = yarnLockVersionMatch ? yarnLockVersionMatch[1] : 'Not found';
+            console.log('👉 %s version in yarn.lock:', reactNativePackageName, yarnLockVersion);
+        } catch (err) {
+            console.log('🚨 Error reading yarn.lock:', err.code);
+        }
+
+        // Print package version from package-lock.json
+        try {
+            const npmLock = require(npmLockPath);
+            const npmLockVersion = npmLock.dependencies[reactNativePackageName].version;
+            console.log('👉 %s version in package-lock.json:', reactNativePackageName, npmLockVersion);
+        } catch (err) {
+            console.log('🚨 Error reading package-lock.json:', err.code);
+        }
+    }
+
+    // Print pods versions from Podfile.lock
+    try {
+        const podfileLockContent = await fs.readFile(podfileLockPath, 'utf8');
+
+        if (isReactNativeApp) {
+            const rnPodMatch = podfileLockContent.match(podCustomerIOReactNativePattern);
+            if (rnPodMatch && rnPodMatch[1]) {
+                console.log('👉 %s version in Podfile.lock:', reactNativePackageName, rnPodMatch[1]);
+            } else {
+                console.log('❌ %s not found in Podfile.lock', reactNativePackageName);
+            };
+        }
+
+        const trackingPodVersions = extractPodVersions(podfileLockContent, podCustomerIOTrackingPattern);
+        if (trackingPodVersions) {
+            console.log('👉 CustomerIOTracking version in Podfile.lock:', trackingPodVersions);
+        } else {
+            console.log('❌ CustomerIOTracking not found in Podfile.lock');
+        };
+
+        const inAppMessagingPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingInAppPattern);
+        if (inAppMessagingPodVersions) {
+            console.log('👉 CustomerIO/MessagingInApp version in Podfile.lock:', inAppMessagingPodVersions);
+        } else {
+            console.log('❌ CustomerIO/MessagingInApp not found in Podfile.lock');
+        };
+
+        const messagingPushAPNPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingPushAPNPattern);
+        const messagingPushFCMPodVersions = extractPodVersions(podfileLockContent, podCustomerIOMessagingPushFCMPattern);
+
+        if (messagingPushAPNPodVersions && messagingPushFCMPodVersions) {
+            console.log('🚨 CustomerIO/MessagingPushAPN and CustomerIO/MessagingPushFCM found in Podfile.lock. Both cannot be used at a time, please use only one of them.');
+        } else if (messagingPushAPNPodVersions) {
+            console.log('👉 CustomerIO/MessagingPushAPN version in Podfile.lock:', messagingPushAPNPodVersions);
+        } else if (messagingPushFCMPodVersions) {
+            console.log('👉 CustomerIO/MessagingPushFCM version in Podfile.lock:', messagingPushFCMPodVersions);
+        } else {
+            console.log('CustomerIO/MessagingPush not found in Podfile.lock');
+        };
+    } catch (err) {
+        console.error("🚨 Error reading Podfile.lock:", err);
+    }
+
+    // Print iOS deployment target version from Podfile
+    try {
+        const podfileContent = await fs.readFile(podfilePath, 'utf8');
+        const iosVersionMatch = podfileContent.match(/platform\s+:ios,\s*'([^']+)'/);
+        const iosVersion = iosVersionMatch ? iosVersionMatch[1] : 'Not found';
+        console.log('👉 iOS deployment target version:', iosVersion);
+    } catch (err) {
+        console.error("🚨 Error reading Podfile:", err);
     }
 }
 
