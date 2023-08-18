@@ -51,6 +51,9 @@ jobs:
     strategy:
       fail-fast: false # if one sample app fails to build, let the other sample apps continue to build and not cancel them. 
       matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build! 
+        xcode-version:
+        - "14"
+        - "15.0-beta"
         sample-app: 
         # List all sample apps you want to have compiled. 
         # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
@@ -63,14 +66,14 @@ jobs:
             apn-or-fcm: FCM
 
     runs-on: macos-13
-    name: Building app...${{ matrix.sample-app }}
+    name: Building app...${{ matrix.sample-app }} using Xcode ${{ matrix.xcode-version }}
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Xcode to version we determine 
+    - name: Set up Xcode (${{ matrix.xcode-version }})
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: 14
+        xcode-version: ${{ matrix.xcode-version }}
 
     - name: Install CLI tools used in CI script 
       run: |
