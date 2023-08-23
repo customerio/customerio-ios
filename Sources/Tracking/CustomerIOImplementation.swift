@@ -211,6 +211,10 @@ class CustomerIOImplementation: CustomerIOInstance {
         }
     }
 
+    public func getDeviceToken() -> String? {
+        globalDataStore.pushDeviceToken
+    }
+
     /**
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
