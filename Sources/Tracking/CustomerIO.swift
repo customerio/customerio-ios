@@ -238,6 +238,27 @@ public class CustomerIO: CustomerIOInstance {
             )
     }
 
+    @objc
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        print("Printing device token - \(String(apnDeviceToken: deviceToken))")
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    func swizzleDidReceiveRemoteNotification() {
+        DispatchQueue.main.async {
+            let appDelegate = UIApplication.shared.delegate
+            let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+            let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
+            let swizzledSelector = #selector(self.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
+            guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
+                return
+            }
+            if let originalMethod = class_getInstanceMethod(appDelegateClass, originalSelector) {
+                method_exchangeImplementations(originalMethod, swizzledMethod)
+            }
+        }
+    }
+
     public var config: SdkConfig? {
         implementation?.config
     }
