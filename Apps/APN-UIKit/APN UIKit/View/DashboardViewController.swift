@@ -99,17 +99,19 @@ class DashboardViewController: BaseViewController {
     }
 
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        let randomInt = Int.random(in: 0 ..< 3)
-        let randomEventInfo = randomData[randomInt]
-        guard let name = randomEventInfo["name"] as? String else {
-            return
-        }
-        showToast(withMessage: "Random event  tracked successfully")
-        if let data = randomEventInfo["data"] as? [String: Any] {
-            CustomerIO.shared.track(name: name, data: data)
-            return
-        }
-        CustomerIO.shared.track(name: name)
+        print("Getting device token \(CustomerIO.shared.getDeviceToken() ?? "no token")")
+        /* let randomInt = Int.random(in: 0 ..< 3)
+         let randomEventInfo = randomData[randomInt]
+         guard let name = randomEventInfo["name"] as? String else {
+             return
+         }
+         showToast(withMessage: "Random event  tracked successfully")
+         if let data = randomEventInfo["data"] as? [String: Any] {
+             CustomerIO.shared.track(name: name, data: data)
+             return
+         }
+         CustomerIO.shared.track(name: name)
+          */
     }
 
     @IBAction func sendCustomEvent(_ sender: UIButton) {
