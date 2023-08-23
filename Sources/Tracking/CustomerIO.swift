@@ -1,5 +1,8 @@
 import CioInternalCommon
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
@@ -172,6 +175,7 @@ public class CustomerIO: CustomerIOInstance {
             // Only call this code when not possibly being called from a NSE.
             shared.setupAutoScreenviewTracking()
         }
+        Self.shared.swizzleDidReceiveRemoteNotification()
     }
 
     /**
@@ -241,6 +245,8 @@ public class CustomerIO: CustomerIOInstance {
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         print("Printing device token - \(String(apnDeviceToken: deviceToken))")
+        let token = String(apnDeviceToken: deviceToken)
+        Self.shared.registerDeviceToken(token)
     }
 
     @available(iOSApplicationExtension, unavailable)
