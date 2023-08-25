@@ -244,7 +244,6 @@ public class CustomerIO: CustomerIOInstance {
 
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        print("Printing device token - \(String(apnDeviceToken: deviceToken))")
         let token = String(apnDeviceToken: deviceToken)
         Self.shared.registerDeviceToken(token)
     }
