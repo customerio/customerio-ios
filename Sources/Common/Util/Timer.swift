@@ -2,14 +2,14 @@ import Foundation
 
 /// Wrapper for `Timer` with a simple API and ability to mock it to make tests run faster then
 /// having to wait for a Timer to end.
-internal protocol SimpleTimer: AutoMockable {
+protocol SimpleTimer: AutoMockable {
     func scheduleAndCancelPrevious(seconds: Seconds, block: @escaping () -> Void)
     func scheduleIfNotAlready(seconds: Seconds, block: @escaping () -> Void) -> Bool
     func cancel()
 }
 
 // sourcery: InjectRegister = "SimpleTimer"
-internal class CioSimpleTimer: SimpleTimer {
+class CioSimpleTimer: SimpleTimer {
     // Because timer operations are asynchronous (DispatchQueue.main.async), this property
     // synchronously keeps track of the status of the timer operations (schedule, cancel)
     @Atomic private var timerAlreadyScheduled = false

@@ -1,12 +1,12 @@
 import CioInternalCommon
 import Foundation
 
-internal protocol DeviceAttributesProvider: AutoMockable {
+protocol DeviceAttributesProvider: AutoMockable {
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)
 }
 
 // sourcery: InjectRegister = "DeviceAttributesProvider"
-internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
+class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let sdkConfig: SdkConfig
     private let deviceInfo: DeviceInfo
 
@@ -40,7 +40,7 @@ internal class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         }
     }
 
-    internal func getSdkVersionAttribute() -> String {
+    func getSdkVersionAttribute() -> String {
         var sdkVersion = deviceInfo.sdkVersion
 
         // Allow SDK wrapper to override the SDK version

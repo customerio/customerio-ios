@@ -1,3 +1,10 @@
+## [2.7.8](https://github.com/customerio/customerio-ios/compare/2.7.7...2.7.8) (2023-08-14)
+
+
+### Bug Fixes
+
+* cache queue inventory for lower CPU usage while running queue ([#368](https://github.com/customerio/customerio-ios/issues/368)) ([fdcb24c](https://github.com/customerio/customerio-ios/commit/fdcb24c4f68ca027458036920b09961e819af644))
+
 ## [2.7.7](https://github.com/customerio/customerio-ios/compare/2.7.6...2.7.7) (2023-07-26)
 
 

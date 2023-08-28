@@ -50,7 +50,7 @@ extension DIGraph {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
         _ = deviceInfo
@@ -111,6 +111,9 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = lockManager
+        countDependenciesResolved += 1
+
+        _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
         _ = dateUtil
@@ -206,7 +209,7 @@ extension DIGraph {
     }
 
     // QueueQueryRunner
-    internal var queueQueryRunner: QueueQueryRunner {
+    var queueQueryRunner: QueueQueryRunner {
         getOverriddenInstance() ??
             newQueueQueryRunner
     }
@@ -260,7 +263,7 @@ extension DIGraph {
     }
 
     // SimpleTimer
-    internal var simpleTimer: SimpleTimer {
+    var simpleTimer: SimpleTimer {
         getOverriddenInstance() ??
             newSimpleTimer
     }
@@ -270,12 +273,12 @@ extension DIGraph {
     }
 
     // SingleScheduleTimer (singleton)
-    internal var singleScheduleTimer: SingleScheduleTimer {
+    var singleScheduleTimer: SingleScheduleTimer {
         getOverriddenInstance() ??
             sharedSingleScheduleTimer
     }
 
-    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
@@ -314,7 +317,7 @@ extension DIGraph {
     }
 
     // HttpRetryPolicy
-    internal var httpRetryPolicy: HttpRetryPolicy {
+    var httpRetryPolicy: HttpRetryPolicy {
         getOverriddenInstance() ??
             newHttpRetryPolicy
     }
@@ -324,7 +327,7 @@ extension DIGraph {
     }
 
     // DeviceMetricsGrabber
-    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
         getOverriddenInstance() ??
             newDeviceMetricsGrabber
     }
@@ -350,7 +353,7 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
 
     // JsonAdapter
@@ -387,6 +390,30 @@ extension DIGraph {
         LockManager()
     }
 
+    // QueueInventoryMemoryStore (singleton)
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+        getOverriddenInstance() ??
+            sharedQueueInventoryMemoryStore
+    }
+
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_QueueInventoryMemoryStore_singleton_access").sync {
+            if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
+            let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
+            self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
+        QueueInventoryMemoryStoreImpl()
+    }
+
     // DateUtil
     public var dateUtil: DateUtil {
         getOverriddenInstance() ??
@@ -410,7 +437,7 @@ extension DIGraph {
     }
 
     // HttpRequestRunner
-    internal var httpRequestRunner: HttpRequestRunner {
+    var httpRequestRunner: HttpRequestRunner {
         getOverriddenInstance() ??
             newHttpRequestRunner
     }

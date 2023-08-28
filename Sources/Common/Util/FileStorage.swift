@@ -114,7 +114,7 @@ public class FileManagerFileStorage: FileStorage {
         }
     }
 
-    internal func getUrl(type: FileType, fileId: String?) throws -> URL? {
+    func getUrl(type: FileType, fileId: String?) throws -> URL? {
         guard var fileName = type.fileName ?? fileId else { return nil } // let the type be first to define file name
         fileName = fileName.setLastCharacters(type.fileExtension) // make sure file has extension.
 

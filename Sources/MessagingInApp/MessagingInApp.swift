@@ -21,7 +21,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // constructor that is called by test classes
     // This function's job is to populate the `shared` property with
     // overrides such as DI graph.
-    override internal init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
+    override init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
         super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
     }
 
@@ -32,8 +32,8 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     }
 
     // for testing
-    internal static func resetSharedInstance() {
-        Self.shared = MessagingInApp()
+    static func resetSharedInstance() {
+        shared = MessagingInApp()
     }
 
     // MARK: static initialized functions for customers.
@@ -44,16 +44,16 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     // Initialize SDK module
     public static func initialize() {
-        Self.shared.initialize()
+        shared.initialize()
     }
 
     public static func initialize(eventListener: InAppEventListener) {
-        Self.shared.initialize(eventListener: eventListener)
+        shared.initialize(eventListener: eventListener)
     }
 
     @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
     public static func initialize(organizationId: String) {
-        Self.shared.initialize(organizationId: organizationId)
+        shared.initialize(organizationId: organizationId)
     }
 
     // MARK: initialize functions to initialize module.

@@ -6,7 +6,7 @@ import UIKit
 import UserNotifications
 #endif
 
-internal class MessagingPushImplementation: MessagingPushInstance {
+class MessagingPushImplementation: MessagingPushInstance {
     let siteId: String
     let logger: Logger
     let jsonAdapter: JsonAdapter
@@ -19,7 +19,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     }
 
     /// testing init
-    internal init(
+    init(
         logger: Logger,
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
@@ -34,7 +34,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
         self.sdkInitializedUtil = sdkInitializedUtil
     }
 
-    internal init(diGraph: DIGraph) {
+    init(diGraph: DIGraph) {
         self.siteId = diGraph.sdkConfig.siteId
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
@@ -72,7 +72,7 @@ internal class MessagingPushImplementation: MessagingPushInstance {
     // There are files that are created just for displaying a rich push. After a push is interacted with, those files
     // are no longer needed.
     // This function's job is to cleanup after a push is no longer being displayed.
-    internal func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
+    func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
         pushContent.cioAttachments.forEach { attachment in
             let localFilePath = attachment.url
 

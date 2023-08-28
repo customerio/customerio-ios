@@ -3,7 +3,7 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 
-internal class RichPushRequest {
+class RichPushRequest {
     private let completionHandler: (UNNotificationContent) -> Void
     private let pushContent: CustomerIOParsedPushPayload
     private let httpClient: HttpClient

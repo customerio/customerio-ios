@@ -49,7 +49,7 @@ public class CioQueueRunRequest: QueueRunRequest {
     // Disable swiftlint because function at this time isn't too complex to need to make it smaller.
     // Many of the lines of this function are logging related.
     // swiftlint:disable:next function_body_length
-    internal func runTasks() {
+    func runTasks() {
         // Variables that power the logic of the queue run loop
         var lastRanTask: QueueTaskMetadata?
         var lastFailedTask: QueueTaskMetadata?

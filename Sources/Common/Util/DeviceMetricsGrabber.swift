@@ -5,7 +5,7 @@ protocol DeviceMetricsGrabber: AutoMockable {
 }
 
 // sourcery: InjectRegister = "DeviceMetricsGrabber"
-internal class DeviceMetricsGrabberImpl: DeviceMetricsGrabber {
+class DeviceMetricsGrabberImpl: DeviceMetricsGrabber {
     var appBundleId: String? {
         Bundle.main.bundleIdentifier
     }

@@ -1,8 +1,8 @@
 import Foundation
 
-internal struct TrackDeliveryEventRequestBody: Codable {
-    internal let type: DeliveryType
-    internal let payload: DeliveryPayload
+struct TrackDeliveryEventRequestBody: Codable {
+    let type: DeliveryType
+    let payload: DeliveryPayload
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -10,11 +10,11 @@ internal struct TrackDeliveryEventRequestBody: Codable {
     }
 }
 
-internal struct DeliveryPayload: Codable {
-    internal let deliveryId: String
-    internal let event: InAppMetric
-    internal let timestamp: Date
-    internal let metaData: [String: String]
+struct DeliveryPayload: Codable {
+    let deliveryId: String
+    let event: InAppMetric
+    let timestamp: Date
+    let metaData: [String: String]
 
     enum CodingKeys: String, CodingKey {
         case deliveryId = "delivery_id"
@@ -24,6 +24,6 @@ internal struct DeliveryPayload: Codable {
     }
 }
 
-internal enum DeliveryType: String, Codable {
+enum DeliveryType: String, Codable {
     case inApp = "in_app"
 }

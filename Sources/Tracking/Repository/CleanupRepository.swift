@@ -1,12 +1,12 @@
 import CioInternalCommon
 import Foundation
 
-internal protocol CleanupRepository: AutoMockable {
+protocol CleanupRepository: AutoMockable {
     func cleanup()
 }
 
 // sourcery: InjectRegister = "CleanupRepository"
-internal class CioCleanupRepository: CleanupRepository {
+class CioCleanupRepository: CleanupRepository {
     private let queue: Queue
 
     init(queue: Queue) {

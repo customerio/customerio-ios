@@ -115,7 +115,7 @@ public class CustomerIO: CustomerIOInstance {
 
     // The 1 place that DiGraph is strongly stored in memory for the SDK.
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    internal var diGraph: DIGraph?
+    var diGraph: DIGraph?
 
     // strong reference to repository to prevent garbage collection as it runs tasks in async.
     private var cleanupRepository: CleanupRepository?
@@ -125,7 +125,7 @@ public class CustomerIO: CustomerIOInstance {
 
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
     // See CustomerIO.shared.initializeIntegrationTests for integration testing
-    internal init(implementation: CustomerIOInstance, diGraph: DIGraph) {
+    init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
         self.diGraph = diGraph
     }
@@ -134,18 +134,18 @@ public class CustomerIO: CustomerIOInstance {
      Make testing the singleton `instance` possible.
      Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
      */
-    internal static func resetSharedInstance() {
-        Self.shared = CustomerIO()
+    static func resetSharedInstance() {
+        shared = CustomerIO()
     }
 
     // Special initialize used for integration tests. Mostly to be able to share a DI graph
     // between the SDK classes and test class. Runs all the same logic that the production `intialize` does.
-    internal static func initializeIntegrationTests(
+    static func initializeIntegrationTests(
         diGraph: DIGraph
     ) {
         let implementation = CustomerIOImplementation(diGraph: diGraph)
-        Self.shared = CustomerIO(implementation: implementation, diGraph: diGraph)
-        Self.shared.postInitialize(diGraph: diGraph)
+        shared = CustomerIO(implementation: implementation, diGraph: diGraph)
+        shared.postInitialize(diGraph: diGraph)
     }
 
     /**
@@ -165,12 +165,12 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(config: newSdkConfig)
+        initialize(config: newSdkConfig)
 
         if newSdkConfig.autoTrackScreenViews {
             // Setting up screen view tracking is not available for rich push (Notification Service Extension).
             // Only call this code when not possibly being called from a NSE.
-            Self.shared.setupAutoScreenviewTracking()
+            shared.setupAutoScreenviewTracking()
         }
     }
 
@@ -192,7 +192,7 @@ public class CustomerIO: CustomerIOInstance {
             configureHandler(&newSdkConfig)
         }
 
-        Self.initialize(config: newSdkConfig.toSdkConfig())
+        initialize(config: newSdkConfig.toSdkConfig())
     }
 
     // private shared logic initialize to avoid copy/paste between the different
@@ -202,14 +202,14 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         let newDiGraph = DIGraph(sdkConfig: config)
 
-        Self.shared.diGraph = newDiGraph
-        Self.shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
+        shared.diGraph = newDiGraph
+        shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        Self.shared.postInitialize(diGraph: newDiGraph)
+        shared.postInitialize(diGraph: newDiGraph)
     }
 
     // Contains all logic shared between all of the initialize() functions.
-    internal func postInitialize(diGraph: DIGraph) {
+    func postInitialize(diGraph: DIGraph) {
         let hooks = diGraph.hooksManager
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
@@ -352,7 +352,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.screen(name: name, data: data)
     }
 
-    internal func automaticScreenView(
+    func automaticScreenView(
         name: String,
         data: [String: Any]
     ) {
@@ -367,7 +367,7 @@ public class CustomerIO: CustomerIOInstance {
     // the SDK the app is using, we simply call `screen()` on all siteIds of the SDK
     // and if automatic screen view tracking is not setup for that siteId, the function
     // call to the instance will simply be ignored.
-    internal func automaticScreenView<RequestBody: Encodable>(
+    func automaticScreenView<RequestBody: Encodable>(
         name: String,
         data: RequestBody
     ) {

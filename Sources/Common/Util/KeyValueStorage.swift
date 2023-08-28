@@ -48,7 +48,7 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
      We also need to have 1 set of UserPreferences that all workspaces of an app share.
      For these moments, use `shared` as the `siteId` value.
      */
-    internal func getFileName() -> String {
+    func getFileName() -> String {
         var appUniqueIdentifier = ""
         if let appBundleId = deviceMetricsGrabber.appBundleId {
             appUniqueIdentifier = ".\(appBundleId)"
