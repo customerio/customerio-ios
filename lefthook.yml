@@ -14,4 +14,5 @@ pre-push:
   commands:
     lint: 
       # Run linter giving you errors to fix. 
-      run: make lint
+      # By using `|| true`, we do not block you from pushing code. Running lint here is designed to give you feedback on your code before pushing it.
+      run: make lint || true

@@ -391,12 +391,12 @@ extension DIGraph {
     }
 
     // QueueInventoryMemoryStore (singleton)
-    internal var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
         getOverriddenInstance() ??
             sharedQueueInventoryMemoryStore
     }
 
-    internal var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraph_QueueInventoryMemoryStore_singleton_access").sync {
