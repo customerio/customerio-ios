@@ -23,7 +23,7 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody
     )
-    func getDeviceToken() -> String?
+    func getPushDeviceToken() -> String?
     func clearIdentify()
 
     func track(
@@ -325,8 +325,8 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.identify(identifier: identifier, body: body)
     }
 
-    public func getDeviceToken() -> String? {
-        implementation?.getDeviceToken()
+    public func getPushDeviceToken() -> String? {
+        implementation?.getPushDeviceToken()
     }
 
     /**
