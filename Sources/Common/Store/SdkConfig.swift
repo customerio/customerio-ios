@@ -150,10 +150,11 @@ public struct SdkConfig {
 
     #if canImport(UIKit)
     /**
-     By default, the SDK attempts to filter out automatic screen view events that we believe are not useful.  Example: Filtering out Views that belong to a 3rd party framework and not your own app.
-     Use this property to set your own filtering behavior. Return `true` if you would like the screenview event to be tracked.
+     Filter automatic screenview events to remove events that are irrelevant to your app.
 
-     Default: `nil`, which uses the default filter function packaged by the SDK.
+     Return `true` from function if you would like the screenview event to be tracked.
+
+     Default: `nil`, which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
      */
     public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
     #endif
@@ -170,7 +171,7 @@ public struct SdkConfig {
      */
     public var autoTrackDeviceAttributes: Bool
 
-    internal var httpBaseUrls: HttpBaseUrls {
+    var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
     }
 

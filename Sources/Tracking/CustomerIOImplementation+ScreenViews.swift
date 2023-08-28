@@ -30,7 +30,7 @@ extension CustomerIO {
 // screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
-internal extension UIViewController {
+extension UIViewController {
     var defaultScreenViewBody: ScreenViewData {
         ScreenViewData()
     }
@@ -90,12 +90,16 @@ internal extension UIViewController {
             return false // SDK not initialized yet. Therefore, we ignore event.
         }
 
+        // Either get the filter provided by customer, or the SDK's default filter.
         let filter: (UIViewController) -> Bool = diGraph.sdkConfig.filterAutoScreenViewEvents ?? { viewController in
-            let deviceInfo = diGraph.deviceInfo
+            let isViewFromApple = viewController.bundleIdOfView?.hasPrefix("com.apple") ?? false
 
-            let doesViewControllerBelongToHostApp = viewController.bundleIdOfView == deviceInfo.customerBundleId
+            if isViewFromApple {
+                return false // filter out events that come from Apple's frameworks. We consider those irrelevant for customers.
+            }
 
-            return doesViewControllerBelongToHostApp
+            // Views from customer's app or 3rd party SDKs are considered relevant and are tracked.
+            return true
         }
 
         let shouldTrackEvent = filter(self)
