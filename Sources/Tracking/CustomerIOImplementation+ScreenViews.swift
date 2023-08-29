@@ -51,6 +51,10 @@ extension UIViewController {
     }
 
     func performScreenTracking() {
+        guard let diGraph = SdkInitializedUtilImpl().postInitializedData?.diGraph else {
+            return // SDK not initialized yet. Therefore, we ignore event.
+        }
+
         var rootViewController = viewIfLoaded?.window?.rootViewController
         if rootViewController == nil {
             rootViewController = getActiveRootViewController()
@@ -59,11 +63,6 @@ extension UIViewController {
             return
         }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
-
-        // Before we track event, apply a filter to remove events that could be unhelpful.
-        guard shouldTrackAutomaticScreenviewEvent() else {
-            return // event has been filtered out. Ignore it.
-        }
 
         var name = nameOfViewControllerClass.replacingOccurrences(
             of: "ViewController",
@@ -78,6 +77,16 @@ extension UIViewController {
                 return
             }
         }
+
+        // Before we track event, apply a filter to remove events that could be unhelpful.
+        let customerOverridenFilter = diGraph.sdkConfig.filterAutoScreenViewEvents
+        guard shouldTrackAutomaticScreenviewEvent(overrideFilter: customerOverridenFilter) else {
+            let isUsingSdkDefaultFilter = customerOverridenFilter == nil
+            diGraph.logger.debug("Automatic screenview event, \(name), was filtered out. is using sdk default filter: \(isUsingSdkDefaultFilter)")
+
+            return // event has been filtered out. Ignore it.
+        }
+
         guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
             CustomerIO.shared.automaticScreenView(name: name, data: defaultScreenViewBody)
             return
@@ -85,13 +94,9 @@ extension UIViewController {
         CustomerIO.shared.automaticScreenView(name: name, data: data)
     }
 
-    func shouldTrackAutomaticScreenviewEvent() -> Bool {
-        guard let diGraph = SdkInitializedUtilImpl().postInitializedData?.diGraph else {
-            return false // SDK not initialized yet. Therefore, we ignore event.
-        }
-
+    func shouldTrackAutomaticScreenviewEvent(overrideFilter: ((UIViewController) -> Bool)?) -> Bool {
         // Either get the filter provided by customer, or the SDK's default filter.
-        let filter: (UIViewController) -> Bool = diGraph.sdkConfig.filterAutoScreenViewEvents ?? { viewController in
+        let filter: (UIViewController) -> Bool = overrideFilter ?? { viewController in
             let isViewFromApple = viewController.bundleIdOfView?.hasPrefix("com.apple") ?? false
 
             if isViewFromApple {
