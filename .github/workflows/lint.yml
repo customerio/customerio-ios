@@ -8,16 +8,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install swiftformat 
-        run: brew install swiftformat || brew upgrade swiftformat 
+      - name: Install swiftformat and swiftlint 
+        run: |
+          brew update # verifies brew knows latest versions of all CLIs
+          brew install swiftformat || brew upgrade swiftformat 
+          brew install swiftlint || brew upgrade swiftlint 
       - name: Run swiftformat. Fail if any errors. 
         run: make format && git diff --exit-code
-
-  SwiftLint:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install swiftlint 
-        run: brew install swiftlint || brew upgrade swiftlint 
       - name: Run swiftlint. Fail if any errors. 
         run: make lint
