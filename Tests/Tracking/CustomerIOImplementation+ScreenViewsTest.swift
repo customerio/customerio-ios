@@ -6,17 +6,17 @@ import SwiftUI
 import UIKit
 import XCTest
 
-class CustomerIOImplementation_ScreenViewsTest: IntegrationTest {
-    // MARK: shouldTrackAutomaticScreenviewEvent
+class CustomerIOImplementationScreenViewsTest: IntegrationTest {
+    override func setUp() {
+        super.setUp()
 
-    func test_shouldTrackAutomaticScreenviewEvent_givenSdkNotInitialized_expectFalse() {
-        uninitializeSDK()
-
-        let viewController = UIViewController()
-        XCTAssertFalse(viewController.shouldTrackAutomaticScreenviewEvent())
+        // Screenview events are ignored if no profile identified
+        CustomerIO.shared.identify(identifier: String.random)
     }
 
-    func test_shouldTrackAutomaticScreenviewEvent_givenCustomerProvidesFilter_expectSdkDefaultFilterNotUsed() {
+    // MARK: performScreenTracking
+
+    func test_performScreenTracking_givenCustomerProvidesFilter_expectSdkDefaultFilterNotUsed() {
         var customerProvidedFilterCalled = false
         setUp(modifySdkConfig: { config in
             config.filterAutoScreenViewEvents = { _ in
@@ -25,30 +25,44 @@ class CustomerIOImplementation_ScreenViewsTest: IntegrationTest {
                 return true
             }
         })
-        let deviceInfoMock = DeviceInfoMock()
-        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
 
-        let viewController = UIViewController()
-        XCTAssertTrue(viewController.shouldTrackAutomaticScreenviewEvent())
+        CustomerIO.shared.performScreenTracking(onViewController: UIAlertController())
 
         XCTAssertTrue(customerProvidedFilterCalled)
-        XCTAssertFalse(deviceInfoMock.mockCalled) // TODO: this might give false positives in test if the implementation of the default filter ever changes. May be worth mocking the filter itself to see if the filter function called.
+        assertEventTracked()
     }
 
-    // SwiftUI wraps UIKit views and displays them in your app. Therefore, there is a good chance that automatic screenview tracking for a SwiftUI app will try to track screenview events from Views belonging to the SwiftUI framework. Our SDK, by default, filters those events out.
-    func test_shouldTrackAutomaticScreenviewEvent_givenViewFromSwiftUI_expectFalse() {
-        let swiftUIView = SwiftUI.UIHostingController(rootView: Text(""))
+    // SwiftUI wraps UIKit views and displays them in your app. Therefore, there is a good chance that automatic screenview tracking for a SwiftUI app will try to track screenview events from Views belonging to the SwiftUI framework or UIKit framework. Our SDK, by default, filters those events out.
+    func test_performScreenTracking_givenViewFromSwiftUI_expectFalse() {
+        CustomerIO.shared.performScreenTracking(onViewController: SwiftUI.UIHostingController(rootView: Text("")))
 
-        XCTAssertFalse(swiftUIView.shouldTrackAutomaticScreenviewEvent())
+        assertNoEventTracked()
     }
 
-    func test_shouldTrackAutomaticScreenviewEvent_givenViewFromHostApp_expectTrue() {
-        // View that does not belong to a 3rd party framework.
+    // Our SDK believes that UIKit framework views are irrelevant to tracking data for customers. Our SDK, by default, filters those events out.
+    func test_performScreenTracking_givenViewFromUIKit_expectFalse() {
+        CustomerIO.shared.performScreenTracking(onViewController: UIAlertController())
+
+        assertNoEventTracked()
+    }
+
+    func test_performScreenTracking_givenViewFromHostApp_expectTrue() {
         class ViewInsideOfHostApp: UIViewController {}
 
-        let viewController = ViewInsideOfHostApp()
-        deviceInfoStub.customerBundleId = viewController.bundleIdOfView! // set mock that controls the filter function.
+        CustomerIO.shared.performScreenTracking(onViewController: ViewInsideOfHostApp())
 
-        XCTAssertTrue(viewController.shouldTrackAutomaticScreenviewEvent())
+        assertEventTracked()
+    }
+}
+
+extension CustomerIOImplementationScreenViewsTest {
+    private func assertNoEventTracked() {
+        XCTAssertTrue(diGraph.queueStorage.filterTrackEvents(.trackEvent).isEmpty)
+    }
+
+    private func assertEventTracked(numberOfEventsAdded: Int = 1) {
+        let screenviewEvents = diGraph.queueStorage.filterTrackEvents(.trackEvent)
+
+        XCTAssertEqual(screenviewEvents.count, numberOfEventsAdded)
     }
 }

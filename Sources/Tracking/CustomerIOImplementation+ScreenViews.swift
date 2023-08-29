@@ -7,6 +7,10 @@ import UIKit
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
 extension CustomerIO {
+    var defaultScreenViewBody: ScreenViewData {
+        ScreenViewData()
+    }
+
     func setupAutoScreenviewTracking() {
         swizzle(
             forClass: UIViewController.self,
@@ -25,43 +29,12 @@ extension CustomerIO {
         guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
-}
 
-// screen view tracking is not available for notification service extension. disable all functions having to deal with
-// screen view tracking feature.
-@available(iOSApplicationExtension, unavailable)
-extension UIViewController {
-    var defaultScreenViewBody: ScreenViewData {
-        ScreenViewData()
-    }
-
-    @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
-        performScreenTracking()
-
-        // this function looks like recursion, but it's how you call ViewController.viewDidAppear.
-        cio_swizzled_UIKit_viewDidAppear(animated)
-    }
-
-    // capture the screen we are at when the previous ViewController got removed from the view stack.
-    @objc func cio_swizzled_UIKit_viewDidDisappear(_ animated: Bool) {
-        // this function looks like recursion, but it's how you call ViewController.viewDidDisappear.
-        cio_swizzled_UIKit_viewDidDisappear(animated)
-
-        performScreenTracking()
-    }
-
-    func performScreenTracking() {
-        guard let diGraph = SdkInitializedUtilImpl().postInitializedData?.diGraph else {
+    func performScreenTracking(onViewController viewController: UIViewController) {
+        guard let diGraph = diGraph else {
             return // SDK not initialized yet. Therefore, we ignore event.
         }
 
-        var rootViewController = viewIfLoaded?.window?.rootViewController
-        if rootViewController == nil {
-            rootViewController = getActiveRootViewController()
-        }
-        guard let viewController = getVisibleViewController(fromRootViewController: rootViewController) else {
-            return
-        }
         let nameOfViewControllerClass = String(describing: type(of: viewController))
 
         var name = nameOfViewControllerClass.replacingOccurrences(
@@ -80,23 +53,7 @@ extension UIViewController {
 
         // Before we track event, apply a filter to remove events that could be unhelpful.
         let customerOverridenFilter = diGraph.sdkConfig.filterAutoScreenViewEvents
-        guard shouldTrackAutomaticScreenviewEvent(overrideFilter: customerOverridenFilter) else {
-            let isUsingSdkDefaultFilter = customerOverridenFilter == nil
-            diGraph.logger.debug("Automatic screenview event, \(name), was filtered out. is using sdk default filter: \(isUsingSdkDefaultFilter)")
-
-            return // event has been filtered out. Ignore it.
-        }
-
-        guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
-            CustomerIO.shared.automaticScreenView(name: name, data: defaultScreenViewBody)
-            return
-        }
-        CustomerIO.shared.automaticScreenView(name: name, data: data)
-    }
-
-    func shouldTrackAutomaticScreenviewEvent(overrideFilter: ((UIViewController) -> Bool)?) -> Bool {
-        // Either get the filter provided by customer, or the SDK's default filter.
-        let filter: (UIViewController) -> Bool = overrideFilter ?? { viewController in
+        let defaultSdkFilter: (UIViewController) -> Bool = { viewController in
             let isViewFromApple = viewController.bundleIdOfView?.hasPrefix("com.apple") ?? false
 
             if isViewFromApple {
@@ -107,9 +64,52 @@ extension UIViewController {
             return true
         }
 
-        let shouldTrackEvent = filter(self)
+        let filter = customerOverridenFilter ?? defaultSdkFilter
+        let shouldTrackEvent = filter(viewController)
 
-        return shouldTrackEvent
+        guard shouldTrackEvent else {
+            let isUsingSdkDefaultFilter = customerOverridenFilter == nil
+            diGraph.logger.debug("Automatic screenview event, \(name), was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)")
+            return // event has been filtered out. Ignore it.
+        }
+
+        guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
+            automaticScreenView(name: name, data: defaultScreenViewBody)
+            return
+        }
+        automaticScreenView(name: name, data: data)
+    }
+}
+
+// screen view tracking is not available for notification service extension. disable all functions having to deal with
+// screen view tracking feature.
+@available(iOSApplicationExtension, unavailable)
+extension UIViewController {
+    @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
+        performAutomaticScreenTracking()
+
+        // this function looks like recursion, but it's how you call ViewController.viewDidAppear.
+        cio_swizzled_UIKit_viewDidAppear(animated)
+    }
+
+    // capture the screen we are at when the previous ViewController got removed from the view stack.
+    @objc func cio_swizzled_UIKit_viewDidDisappear(_ animated: Bool) {
+        // this function looks like recursion, but it's how you call ViewController.viewDidDisappear.
+        cio_swizzled_UIKit_viewDidDisappear(animated)
+
+        performAutomaticScreenTracking()
+    }
+
+    func performAutomaticScreenTracking() {
+        var rootViewController = viewIfLoaded?.window?.rootViewController
+        if rootViewController == nil {
+            rootViewController = getActiveRootViewController()
+        }
+        guard let viewController = getVisibleViewController(fromRootViewController: rootViewController) else {
+            return
+        }
+
+        CustomerIO.shared.performScreenTracking(onViewController: viewController)
     }
 
     /**

@@ -13,7 +13,6 @@ public extension UIApplication {
 public extension UIViewController {
     // find the bundleId of the framework this View belongs in. This can be used to differentiate Views that belong to host app and Views that belong to SDKs/frameworks.
     var bundleIdOfView: String? {
-        // TODO: create unit test for this function
         Bundle(for: type(of: self)).bundleIdentifier
     }
 }
