@@ -242,6 +242,8 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.config
     }
 
+    // TODO: test
+
     /**
      Modify attributes to an already identified profile.
 

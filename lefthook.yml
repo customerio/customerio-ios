@@ -14,5 +14,5 @@ pre-push:
   commands:
     lint: 
       # Run linter giving you errors to fix. 
-      # By using `|| true`, we do not block you from pushing code. Running lint here is designed to give you feedback on your code before pushing it.
-      run: make lint || true
+      # By using `|| echo "..."`, we do not block you from pushing code. Running lint in a git hooks is to warn you about lint errors early, but not block you from pushing code with errors if you decide to push.
+      run: make lint || echo -e "\n\n ⚠️  Linting contains errors that will prevent you from merging a pull request. Fix errors above if you are planning on making a pull request."
