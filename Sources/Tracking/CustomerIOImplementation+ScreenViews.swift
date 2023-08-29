@@ -7,10 +7,6 @@ import UIKit
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
 extension CustomerIO {
-    var defaultScreenViewBody: ScreenViewData {
-        ScreenViewData()
-    }
-
     func setupAutoScreenviewTracking() {
         swizzle(
             forClass: UIViewController.self,
@@ -35,20 +31,9 @@ extension CustomerIO {
             return // SDK not initialized yet. Therefore, we ignore event.
         }
 
-        let nameOfViewControllerClass = String(describing: type(of: viewController))
-
-        var name = nameOfViewControllerClass.replacingOccurrences(
-            of: "ViewController",
-            with: "",
-            options: .caseInsensitive
-        )
-        if name.isEmpty || name == "" {
-            if let title = viewController.title {
-                name = title
-            } else {
-                // XXX: we couldn't infer a name, we should log it for debug purposes
-                return
-            }
+        guard let name = viewController.getNameForAutomaticScreenViewTracking() else {
+            diGraph.logger.info("Automatic screenview tracking event ignored for \(viewController). Could not determine name to use for screen.")
+            return
         }
 
         // Before we track event, apply a filter to remove events that could be unhelpful.
@@ -73,11 +58,8 @@ extension CustomerIO {
             return // event has been filtered out. Ignore it.
         }
 
-        guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
-            automaticScreenView(name: name, data: defaultScreenViewBody)
-            return
-        }
-        automaticScreenView(name: name, data: data)
+        let addionalScreenViewData = CustomerIOImplementation.autoScreenViewBody?() ?? [:]
+        automaticScreenView(name: name, data: addionalScreenViewData)
     }
 }
 
@@ -110,6 +92,26 @@ extension UIViewController {
         }
 
         CustomerIO.shared.performScreenTracking(onViewController: viewController)
+    }
+
+    func getNameForAutomaticScreenViewTracking() -> String? {
+        let nameOfViewControllerClass = String(describing: type(of: self))
+
+        var name = nameOfViewControllerClass.replacingOccurrences(
+            of: "ViewController",
+            with: "",
+            options: .caseInsensitive
+        )
+        if name.isEmpty || name == "" {
+            if let title = title {
+                name = title
+            } else {
+                // XXX: we couldn't infer a name, we should log it for debug purposes
+                return nil
+            }
+        }
+
+        return name
     }
 
     /**

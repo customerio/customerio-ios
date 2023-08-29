@@ -53,6 +53,32 @@ class CustomerIOImplementationScreenViewsTest: IntegrationTest {
 
         assertEventTracked()
     }
+
+    // MARK: getNameForAutomaticScreenViewTracking
+
+    func test_getNameForAutomaticScreenViewTracking_givenViewWithNoTitle_expectNil() {
+        class ViewController: UIViewController {}
+
+        let view = ViewController()
+        view.title = nil
+
+        XCTAssertNil(view.getNameForAutomaticScreenViewTracking())
+    }
+
+    func test_getNameForAutomaticScreenViewTracking_givenViewWithTooBasicName_expectNil() {
+        class ViewController: UIViewController {}
+        let view = ViewController()
+
+        XCTAssertNil(view.getNameForAutomaticScreenViewTracking())
+    }
+
+    func test_getNameForAutomaticScreenViewTracking_givenView_expectCleanupName() {
+        class LoginViewController: UIViewController {}
+
+        let view = LoginViewController()
+
+        XCTAssertEqual(view.getNameForAutomaticScreenViewTracking(), "Login")
+    }
 }
 
 extension CustomerIOImplementationScreenViewsTest {
