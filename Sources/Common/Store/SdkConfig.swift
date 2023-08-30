@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /**
  Configuration options for the Customer.io SDK.
@@ -29,6 +32,7 @@ public struct SdkConfig {
                 backgroundQueueExpiredSeconds: Seconds.secondsFromDays(3),
                 logLevel: CioLogLevel.error,
                 autoTrackScreenViews: false,
+                filterAutoScreenViewEvents: nil,
                 autoTrackDeviceAttributes: true
             )
         }
@@ -143,6 +147,17 @@ public struct SdkConfig {
      your application.
      */
     public var autoTrackScreenViews: Bool
+
+    #if canImport(UIKit)
+    /**
+     Filter automatic screenview events to remove events that are irrelevant to your app.
+
+     Return `true` from function if you would like the screenview event to be tracked.
+
+     Default: `nil`, which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
+     */
+    public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
+    #endif
 
     /**
      Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use

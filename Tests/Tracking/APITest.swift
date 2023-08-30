@@ -115,6 +115,11 @@ class TrackingAPITest: UnitTest {
             config.logLevel = .error
             config.autoTrackPushEvents = false
             config.autoScreenViewBody = { [:] }
+            config.filterAutoScreenViewEvents = { viewController in
+                class MyViewController: UIViewController {}
+
+                return viewController is MyViewController
+            }
         }
     }
 
