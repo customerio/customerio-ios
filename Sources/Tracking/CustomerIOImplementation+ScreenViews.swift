@@ -54,7 +54,7 @@ extension CustomerIO {
 
         guard shouldTrackEvent else {
             let isUsingSdkDefaultFilter = customerOverridenFilter == nil
-            diGraph.logger.debug("Automatic screenview event, \(name), was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)")
+            diGraph.logger.debug("automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)")
             return // event has been filtered out. Ignore it.
         }
 
@@ -97,21 +97,20 @@ extension UIViewController {
     func getNameForAutomaticScreenViewTracking() -> String? {
         let nameOfViewControllerClass = String(describing: type(of: self))
 
-        var name = nameOfViewControllerClass.replacingOccurrences(
+        let name = nameOfViewControllerClass.replacingOccurrences(
             of: "ViewController",
             with: "",
             options: .caseInsensitive
         )
-        if name.isEmpty || name == "" {
-            if let title = title {
-                name = title
-            } else {
-                // XXX: we couldn't infer a name, we should log it for debug purposes
-                return nil
-            }
+        if !name.isEmpty {
+            return name
         }
 
-        return name
+        if title != nil {
+            return title
+        }
+
+        return nil
     }
 
     /**
