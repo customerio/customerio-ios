@@ -31,6 +31,11 @@ public extension String {
         String((0 ..< length).map { _ in abcLetters.randomElement()! })
     }
 
+    static func randomStringWithSpecialCharacters(length: Int = 20) -> String {
+        let characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/?#[]@!$&'()*+,;=%"
+        return String((0 ..< length).map { _ in characters.randomElement()! })
+    }
+
     /**
      Checks if the string matches the regex pattern.
 
