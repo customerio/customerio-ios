@@ -45,12 +45,14 @@ class HttpEndpointTest: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
-    func test_getUrlString_givenRandomPathNeedsEncoding_expectEncodedPath() {
-        let identifierWithSpecialChar = String.randomStringWithSpecialCharacters()
+    func test_getUrlString_givenPathWithSpecialCharacters_expectEncodedPath() {
+        let identifierWithSpecialChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/?#[]@!$&'()*+,;=%"
         let endpoint = CIOApiEndpoint.identifyCustomer(identifier: identifierWithSpecialChar)
 
-        let expectedIdentifier = identifierWithSpecialChar.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? identifierWithSpecialChar
-        let expected = "https://customer.io/api/v1/customers/\(expectedIdentifier)"
+        let rawPath = "/api/v1/customers/\(identifierWithSpecialChar)"
+        let expectedPath = rawPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rawPath
+
+        let expected = "https://customer.io\(expectedPath)"
 
         setHttpBaseUrls(trackingApi: "https://customer.io")
 
