@@ -16,6 +16,8 @@ public class CioQueueRunRequest: QueueRunRequest {
 
     private let shortTaskId: (String) -> String = { $0[0 ..< 5] }
 
+    private var onCompleteCallback: (() -> Void)?
+
     init(
         runner: QueueRunner,
         storage: QueueStorage,
@@ -33,9 +35,10 @@ public class CioQueueRunRequest: QueueRunRequest {
     }
 
     public func start(onComplete: @escaping () -> Void) {
-        let isRequestCurrentlyRunning = requestManager.startRequest(onComplete: onComplete)
+        let isRequestCurrentlyRunning = requestManager.startIfNotAlready()
 
         if !isRequestCurrentlyRunning {
+            onCompleteCallback = onComplete
             startNewRequestRun()
         }
     }
@@ -67,6 +70,8 @@ public class CioQueueRunRequest: QueueRunRequest {
             logger.debug("queue out of tasks to run.")
 
             queryRunner.reset()
+
+            onCompleteCallback?()
 
             return requestManager.requestComplete()
         }

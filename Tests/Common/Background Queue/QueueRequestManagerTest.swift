@@ -19,26 +19,27 @@ class QueueRequestManagerTest: UnitTest {
 
         manager.requestComplete()
 
-        let actual = manager.startRequest {}
+        let actual = manager.startIfNotAlready()
         XCTAssertFalse(actual)
     }
 
-    func test_requestComplete_expectCallCallbacksComplete() {
-        var callbackCalled = false
-        let givenCallback: () -> Void = {
-            callbackCalled = true
-        }
-        manager.callbacks = [givenCallback]
+    // move to another test class?
+//    func test_requestComplete_expectCallCallbacksComplete() {
+//        var callbackCalled = false
+//        let givenCallback: () -> Void = {
+//            callbackCalled = true
+//        }
+//        manager.callbacks = [givenCallback]
+//
+//        manager.requestComplete()
+//
+//        XCTAssertTrue(callbackCalled)
+//    }
 
-        manager.requestComplete()
-
-        XCTAssertTrue(callbackCalled)
-    }
-
-    // MARK: startRequest
+    // MARK: startIfNotAlready
 
     func test_startRequest_givenNotRunningARequest_expectReturnFalse() {
-        let actual = manager.startRequest {}
+        let actual = manager.startIfNotAlready()
 
         XCTAssertFalse(actual)
     }
@@ -46,15 +47,7 @@ class QueueRequestManagerTest: UnitTest {
     func test_startRequest_givenRunningARequest_expectReturnTrue() {
         manager.isRunningRequest = true
 
-        let actual = manager.startRequest {}
+        let actual = manager.startIfNotAlready()
         XCTAssertTrue(actual)
-    }
-
-    func test_startRequest_expectAddCallback() {
-        XCTAssertEqual(manager.callbacks.count, 0)
-
-        _ = manager.startRequest {}
-
-        XCTAssertEqual(manager.callbacks.count, 1)
     }
 }

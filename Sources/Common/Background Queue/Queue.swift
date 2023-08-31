@@ -171,9 +171,13 @@ public class CioQueue: Queue {
     }
 
     public func run(onComplete: @escaping () -> Void) {
-        logger.info("queue run request sent")
+        // not using [weak self] to assert that the queue will complete and callback once started.
+        // this might keep this class in memory and not get garbage collected once customer is done using it
+        // but it will get released once the queue is done running.
 
-        runRequest.start(onComplete: onComplete)
+        runRequest.start {
+            self.logger.info("queue completed all tasks")
+        }
     }
 
     /// We determine the queue needs to run by (1) if there are many tasks in the queue
@@ -190,10 +194,7 @@ public class CioQueue: Queue {
             // cancel timer if one running since we will run the queue now
             queueTimer.cancel()
 
-            // not using [weak self] to assert that the queue will complete and callback once started.
-            // this might keep this class in memory and not get garbage collected once customer is done using it
-            // but it will get released once the queue is done running.
-            runRequest.start {
+            run {
                 self.logger.info("queue completed all tasks")
             }
         } else {
