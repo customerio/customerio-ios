@@ -1,3 +1,10 @@
+## [2.8.0](https://github.com/customerio/customerio-ios/compare/2.7.8...2.8.0) (2023-08-31)
+
+
+### Features
+
+* filter automatic screenview tracking events ([#367](https://github.com/customerio/customerio-ios/issues/367)) ([1a535f9](https://github.com/customerio/customerio-ios/commit/1a535f96761fbeb1a31a7d0820cab77ec4e12c5f))
+
 ## [2.7.8](https://github.com/customerio/customerio-ios/compare/2.7.7...2.7.8) (2023-08-14)
 
 
