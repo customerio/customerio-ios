@@ -35,7 +35,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         Messaging.messaging().delegate = self
 
-        application.registerForRemoteNotifications()
+//        application.registerForRemoteNotifications()
         return true
     }
 
