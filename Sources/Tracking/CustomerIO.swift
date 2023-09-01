@@ -1,8 +1,6 @@
 import CioInternalCommon
-import Foundation
-#if canImport(FirebaseMessaging)
 import FirebaseMessaging
-#endif
+import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
