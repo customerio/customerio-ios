@@ -38,7 +38,7 @@ let package = Package(
                     path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
-                dependencies: ["CioInternalCommon"],
+                dependencies: ["CioInternalCommon", .product(name: "FirebaseMessaging", package: "Firebase")],
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
