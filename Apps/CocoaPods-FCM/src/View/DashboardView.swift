@@ -50,8 +50,6 @@ struct DashboardView: View {
 
                 Group {
                     ColorButton("Send Random Event") {
-                        print(CustomerIO.shared.getPushDeviceToken() ?? "No token fetched.")
-                        return
                         switch Int.random(in: 0 ..< 3) {
                         case 0:
                             CustomerIO.shared.track(name: "Order Purchased")
