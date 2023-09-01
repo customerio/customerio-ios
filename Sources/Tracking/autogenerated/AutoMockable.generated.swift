@@ -302,7 +302,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         identifyEncodableReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        getPushDeviceTokenCallsCount = 0
+        registeredDeviceTokenCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
         clearIdentifyCallsCount = 0
@@ -388,29 +388,29 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         identifyEncodableClosure?(identifier, AnyEncodable(body))
     }
 
-    // MARK: - getPushDeviceToken
+    // MARK: - registeredDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var getPushDeviceTokenCallsCount = 0
+    public private(set) var registeredDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
-    public var getPushDeviceTokenCalled: Bool {
-        getPushDeviceTokenCallsCount > 0
+    public var registeredDeviceTokenCalled: Bool {
+        registeredDeviceTokenCallsCount > 0
     }
 
     /// Value to return from the mocked function.
-    public var getPushDeviceTokenReturnValue: String?
+    public var registeredDeviceTokenReturnValue: String?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `getPushDeviceTokenReturnValue`
+     then the mock will attempt to return the value for `registeredDeviceTokenReturnValue`
      */
-    public var getPushDeviceTokenClosure: (() -> String?)?
+    public var registeredDeviceTokenClosure: (() -> String?)?
 
-    /// Mocked function for `getPushDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getPushDeviceToken() -> String? {
+    /// Mocked function for `registeredDeviceToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registeredDeviceToken() -> String? {
         mockCalled = true
-        getPushDeviceTokenCallsCount += 1
-        return getPushDeviceTokenClosure.map { $0() } ?? getPushDeviceTokenReturnValue
+        registeredDeviceTokenCallsCount += 1
+        return registeredDeviceTokenClosure.map { $0() } ?? registeredDeviceTokenReturnValue
     }
 
     // MARK: - clearIdentify
