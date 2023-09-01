@@ -176,6 +176,8 @@ public class CustomerIO: CustomerIOInstance {
             // Only call this code when not possibly being called from a NSE.
             shared.setupAutoScreenviewTracking()
         }
+
+        // Swizzle apns/fcm token methods to register device.
         Self.shared.swizzleDidReceiveRemoteNotification()
         Self.shared.swizzleDidReceiveFCMRegistrationToken()
     }
