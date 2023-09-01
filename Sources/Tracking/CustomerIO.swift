@@ -24,7 +24,7 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody
     )
-    func getPushDeviceToken() -> String?
+    func registeredDeviceToken() -> String?
     func clearIdentify()
 
     func track(
@@ -244,7 +244,7 @@ public class CustomerIO: CustomerIOInstance {
             )
     }
 
-    // Swizzled method for APN device token
+    // Swizzled method for APN device token.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = String(apnDeviceToken: deviceToken)
@@ -358,8 +358,8 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.identify(identifier: identifier, body: body)
     }
 
-    public func getPushDeviceToken() -> String? {
-        implementation?.getPushDeviceToken()
+    public func registeredDeviceToken() -> String? {
+        implementation?.registeredDeviceToken()
     }
 
     /**

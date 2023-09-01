@@ -211,7 +211,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         }
     }
 
-    public func getPushDeviceToken() -> String? {
+    public func registeredDeviceToken() -> String? {
         globalDataStore.pushDeviceToken
     }
 
