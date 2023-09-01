@@ -1,5 +1,8 @@
 import CioInternalCommon
 import Foundation
+#if canImport(FirebaseMessaging)
+import FirebaseMessaging
+#endif
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -176,6 +179,7 @@ public class CustomerIO: CustomerIOInstance {
             shared.setupAutoScreenviewTracking()
         }
         Self.shared.swizzleDidReceiveRemoteNotification()
+        Self.shared.swizzleDidReceiveFCMRegistrationToken()
     }
 
     /**
@@ -259,6 +263,30 @@ public class CustomerIO: CustomerIOInstance {
                 return
             }
             if let originalMethod = class_getInstanceMethod(appDelegateClass, originalSelector) {
+                method_exchangeImplementations(originalMethod, swizzledMethod)
+            }
+        }
+    }
+
+    // FCM
+    @objc
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        if let token = fcmToken {
+            Self.shared.registerDeviceToken(token)
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    func swizzleDidReceiveFCMRegistrationToken() {
+        DispatchQueue.main.async {
+            let messagingDelegate = Messaging.messaging().delegate
+            let messagingDelegateClass: AnyClass? = object_getClass(messagingDelegate)
+            let swizzledSelector = #selector(self.messaging(_:didReceiveRegistrationToken:))
+            let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
+            guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
+                return
+            }
+            if let originalMethod = class_getInstanceMethod(messagingDelegateClass, originalSelector) {
                 method_exchangeImplementations(originalMethod, swizzledMethod)
             }
         }
