@@ -244,12 +244,16 @@ public class CustomerIO: CustomerIOInstance {
             )
     }
 
+    // Swizzled method for APN device token
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = String(apnDeviceToken: deviceToken)
         Self.shared.registerDeviceToken(token)
     }
 
+    // Implement method swizzling for APN device token. Swizzling will ensure that the
+    // device token gets registered without needing the developer to add call respective
+    // Customer.io SDK methods to register the device.
     @available(iOSApplicationExtension, unavailable)
     func swizzleDidReceiveRemoteNotification() {
         DispatchQueue.main.async {
@@ -266,7 +270,7 @@ public class CustomerIO: CustomerIOInstance {
         }
     }
 
-    // FCM
+    // Swizzled method for FCM Token. This method would not be called if the app is using APNS.
     @objc
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         if let token = fcmToken {
@@ -274,6 +278,9 @@ public class CustomerIO: CustomerIOInstance {
         }
     }
 
+    // Implement method swizzling for FCM token. Swizzling the FCM token method will ensure
+    // that the token is registered with CIO even when the developer doesn't call the respective
+    // CIO method after token generation.
     @available(iOSApplicationExtension, unavailable)
     func swizzleDidReceiveFCMRegistrationToken() {
         DispatchQueue.main.async {
