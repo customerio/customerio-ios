@@ -99,7 +99,7 @@ class DashboardViewController: BaseViewController {
     }
 
     @IBAction func sendRandomEvent(_ sender: UIButton) {
-        print("Getting device token \(CustomerIO.shared.getDeviceToken() ?? "no token")")
+        print("Getting device token \(CustomerIO.shared.getPushDeviceToken() ?? "no token")")
         /* let randomInt = Int.random(in: 0 ..< 3)
          let randomEventInfo = randomData[randomInt]
          guard let name = randomEventInfo["name"] as? String else {
