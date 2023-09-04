@@ -258,17 +258,15 @@ public class CustomerIO: CustomerIOInstance {
     // Customer.io SDK methods to register the device.
     @available(iOSApplicationExtension, unavailable)
     func swizzleDidReceiveRemoteNotification() {
-        DispatchQueue.main.async {
-            let appDelegate = UIApplication.shared.delegate
-            let appDelegateClass: AnyClass? = object_getClass(appDelegate)
-            let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-            let swizzledSelector = #selector(self.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-            guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
-                return
-            }
-            if let originalMethod = class_getInstanceMethod(appDelegateClass, originalSelector) {
-                method_exchangeImplementations(originalMethod, swizzledMethod)
-            }
+        let appDelegate = UIApplication.shared.delegate
+        let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+        let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
+        let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
+        guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
+            return
+        }
+        if let originalMethod = class_getInstanceMethod(appDelegateClass, originalSelector) {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
         }
     }
 
@@ -285,17 +283,15 @@ public class CustomerIO: CustomerIOInstance {
     // CIO method after token generation.
     @available(iOSApplicationExtension, unavailable)
     func swizzleDidReceiveFCMRegistrationToken() {
-        DispatchQueue.main.async {
-            let messagingDelegate = Messaging.messaging().delegate
-            let messagingDelegateClass: AnyClass? = object_getClass(messagingDelegate)
-            let swizzledSelector = #selector(self.messaging(_:didReceiveRegistrationToken:))
-            let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
-            guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
-                return
-            }
-            if let originalMethod = class_getInstanceMethod(messagingDelegateClass, originalSelector) {
-                method_exchangeImplementations(originalMethod, swizzledMethod)
-            }
+        let messagingDelegate = Messaging.messaging().delegate
+        let messagingDelegateClass: AnyClass? = object_getClass(messagingDelegate)
+        let swizzledSelector = #selector(messaging(_:didReceiveRegistrationToken:))
+        let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
+        guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
+            return
+        }
+        if let originalMethod = class_getInstanceMethod(messagingDelegateClass, originalSelector) {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
         }
     }
 
