@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/customerio/customerio-ios/compare/2.8.0...2.8.1) (2023-08-31)
+
+
+### Bug Fixes
+
+* added url path encoding ([#376](https://github.com/customerio/customerio-ios/issues/376)) ([fbfa384](https://github.com/customerio/customerio-ios/commit/fbfa384428fdcf3ea69d623e9728a76c4d5d0416))
+
 ## [2.8.0](https://github.com/customerio/customerio-ios/compare/2.7.8...2.8.0) (2023-08-31)
 
 
