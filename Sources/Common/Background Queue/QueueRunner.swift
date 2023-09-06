@@ -18,6 +18,11 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
     // hook instance needs to call completion handler so hold strong reference
     private var currentlyRunningHook: QueueRunnerHook?
 
+    // We are lazily initializing this as a SDK performance improvement. runTask() is called for each task in the background queue.
+    // Constructing new queue hook dependencies for each queue task is expensive on performance of SDK. Especially because we don't know
+    // how many dependencies each hook has. We have seen constructing once and re-using reduces the CPU and memory usage of SDK.
+    private lazy var queueHookRunners: [QueueRunnerHook] = hooks.queueRunnerHooks
+
     init(
         jsonAdapter: JsonAdapter,
         logger: Logger,
@@ -46,7 +51,7 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
 
         var hookHandled = false
 
-        hooks.queueRunnerHooks.forEach { hook in
+        queueHookRunners.forEach { hook in
             if hook.runTask(task, onComplete: { result in
                 self.currentlyRunningHook = nil
                 onComplete(result)
