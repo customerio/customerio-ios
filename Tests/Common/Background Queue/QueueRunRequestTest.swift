@@ -307,30 +307,6 @@ class QueueRunRequestIntegrationTest: IntegrationTest {
         XCTAssertEqual(runnerMock.runTaskCallsCount, 2)
         XCTAssertTrue(queueStorage.getInventory().isEmpty)
     }
-
-    func test_givenMultipleQueueRuns_expectPrepareQueueRunnerStartOfEachRun() {
-        _ = addQueueTask()
-        _ = addQueueTask()
-        _ = addQueueTask()
-
-        runnerMock.setupRunAllTasksSuccessfully()
-
-        XCTAssertFalse(runnerMock.prepareForRunningNewTasksCalled)
-
-        runRequest.start(onComplete: onCompleteExpectation)
-        waitForExpectations()
-
-        XCTAssertEqual(runnerMock.prepareForRunningNewTasksCallsCount, 1)
-
-        _ = addQueueTask()
-        _ = addQueueTask()
-        _ = addQueueTask()
-
-        runRequest.start(onComplete: onCompleteExpectation)
-        waitForExpectations()
-
-        XCTAssertEqual(runnerMock.prepareForRunningNewTasksCallsCount, 2)
-    }
 }
 
 extension QueueRunRequestIntegrationTest {

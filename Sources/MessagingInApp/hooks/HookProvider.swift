@@ -16,10 +16,6 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
         return MessagingInAppImplementation(diGraph: diGraph)
     }
 
-    var queueRunnerHook: QueueRunnerHook? {
-        nil
-    }
-
     var screenTrackingHook: ScreenTrackingHook? {
         guard let diGraph = diGraph else { return nil }
 

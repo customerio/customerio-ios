@@ -9,21 +9,10 @@ import Foundation
  */
 public protocol QueueRunner: AutoMockable {
     func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
-    func prepareForRunningNewTasks()
 }
 
 // sourcery: InjectRegister = "QueueRunner"
 public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
-    private let hooks: HooksManager
-    // store currently running queue hook in memory so it doesn't get garbage collected.
-    // hook instance needs to call completion handler so hold strong reference
-    private var currentlyRunningHook: QueueRunnerHook?
-
-    // We are lazily initializing this as a SDK performance improvement. runTask() is called for each task in the background queue.
-    // Constructing new queue hook dependencies for each queue task is expensive on performance of SDK. Especially because we don't know
-    // how many dependencies each hook has. We have seen constructing once and re-using reduces the CPU and memory usage of SDK.
-    private lazy var queueHookRunners: [QueueRunnerHook] = hooks.queueRunnerHooks
-
     init(
         jsonAdapter: JsonAdapter,
         logger: Logger,
@@ -31,8 +20,6 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         hooksManager: HooksManager,
         sdkConfig: SdkConfig
     ) {
-        self.hooks = hooksManager
-
         super.init(
             jsonAdapter: jsonAdapter,
             logger: logger,
@@ -41,36 +28,20 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         )
     }
 
-    // Module hooks in the SDK can be modified at runtime. To prevent the scenario where the re-used queue hook runners gets populated before another module gets initialized in the SDK, re-populate the queue hook runners occasionally.
-    public func prepareForRunningNewTasks() {
-        queueHookRunners = hooks.queueRunnerHooks
-    }
-
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
-        if let queueTaskType = QueueTaskType(rawValue: task.type) {
-            switch queueTaskType {
-            case .trackDeliveryMetric: trackDeliveryMetric(task, onComplete: onComplete)
-            }
-
-            return
-        }
-
-        var hookHandled = false
-
-        queueHookRunners.forEach { hook in
-            if hook.runTask(task, onComplete: { result in
-                self.currentlyRunningHook = nil
-                onComplete(result)
-            }) {
-                self.currentlyRunningHook = hook
-                hookHandled = true
-            }
-        }
-
-        if !hookHandled {
+        guard let queueTaskType = QueueTaskType(rawValue: task.type) else {
             logger.error("task \(task.type) not handled by any module")
 
-            onComplete(.failure(.noRequestMade(nil)))
+            return onComplete(.failure(.noRequestMade(nil)))
+        }
+
+        switch queueTaskType {
+        case .trackDeliveryMetric: trackDeliveryMetric(task, onComplete: onComplete)
+        case .identifyProfile: identify(task, onComplete: onComplete)
+        case .trackEvent: track(task, onComplete: onComplete)
+        case .registerPushToken: registerPushToken(task, onComplete: onComplete)
+        case .deletePushToken: deletePushToken(task, onComplete: onComplete)
+        case .trackPushMetric: trackPushMetric(task, onComplete: onComplete)
         }
     }
 }
@@ -89,5 +60,64 @@ private extension CioQueueRunner {
         }
 
         performHttpRequest(endpoint: .trackDeliveryMetrics, requestBody: bodyData, onComplete: onComplete)
+    }
+
+    private func identify(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: IdentifyProfileQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        performHttpRequest(
+            endpoint: .identifyCustomer(identifier: taskData.identifier),
+            requestBody: taskData.attributesJsonString?.data,
+            onComplete: onComplete
+        )
+    }
+
+    private func track(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: TrackEventQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        performHttpRequest(
+            endpoint: .trackCustomerEvent(identifier: taskData.identifier),
+            requestBody: taskData.attributesJsonString.data,
+            onComplete: onComplete
+        )
+    }
+
+    private func registerPushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: RegisterPushNotificationQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        performHttpRequest(
+            endpoint: .registerDevice(identifier: taskData.profileIdentifier),
+            requestBody: taskData.attributesJsonString?.data,
+            onComplete: onComplete
+        )
+    }
+
+    private func deletePushToken(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: DeletePushNotificationQueueTaskData.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        performHttpRequest(endpoint: .deleteDevice(
+            identifier: taskData.profileIdentifier,
+            deviceToken: taskData.deviceToken
+        ), requestBody: nil, onComplete: onComplete)
+    }
+
+    private func trackPushMetric(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+        guard let taskData = getTaskData(task, type: MetricRequest.self) else {
+            return onComplete(failureIfDontDecodeTaskData)
+        }
+
+        guard let bodyData = jsonAdapter.toJson(taskData) else {
+            return
+        }
+
+        performHttpRequest(endpoint: .pushMetrics, requestBody: bodyData, onComplete: onComplete)
     }
 }
