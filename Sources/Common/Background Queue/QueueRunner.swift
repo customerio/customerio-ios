@@ -30,7 +30,8 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
         guard let queueTaskType = QueueTaskType(rawValue: task.type) else {
-            logger.error("task \(task.type) not handled by any module")
+            // not being able to compose a QueueTaskType is unexpected. All types are expected to be handled by this runner. Log an error so we get notified of this event. 
+            logger.error("task \(task.type) not handled by the queue runner.") 
 
             return onComplete(.failure(.noRequestMade(nil)))
         }
