@@ -8,27 +8,42 @@ import Foundation
  running at one time to prevent race conditions and tasks running multiple times.
 
  This class is small and separate from the rest of the queue logic for some readability/scalability value but
- mostly memory safety by keeping dependencies low in class (prefer none).
+ mostly memory safety.
+
+ We want to avoid making our queue classes singletons because these classes may have lots of
+ dependencies inside of them (especially the runner). We want to avoid keeping all of these dependencies sitting in
+ memory.
  */
 public protocol QueueRequestManager: AutoMockable {
     /// call when a runner run request is complete
     func requestComplete()
-    /// call when a new run request is requested.
-    /// returns `true` if the queue is already running.
-    func startIfNotAlready() -> Bool
+    /// call when a new run request is requested. adds callback to list of callbacks
+    /// to call when run request is done running.
+    /// returns is an existing run request is currently running or not.
+    func startRequest(onComplete: @escaping () -> Void) -> Bool
 }
 
 // sourcery: InjectRegister = "QueueRequestManager"
 // sourcery: InjectSingleton
 public class CioQueueRequestManager: QueueRequestManager {
     @Atomic var isRunningRequest = false
+    @Atomic var callbacks: [() -> Void] = []
 
     public func requestComplete() {
+        let existingCallbacks = callbacks
+
+        callbacks = []
         isRunningRequest = false
+
+        existingCallbacks.forEach { callback in
+            callback()
+        }
     }
 
-    public func startIfNotAlready() -> Bool {
+    public func startRequest(onComplete: @escaping () -> Void) -> Bool {
         let isQueueRunningARequest = isRunningRequest
+
+        callbacks.append(onComplete)
 
         if !isQueueRunningARequest {
             isRunningRequest = true

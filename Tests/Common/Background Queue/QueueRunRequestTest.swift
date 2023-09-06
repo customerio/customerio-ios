@@ -33,7 +33,7 @@ class QueueRunRequestTest: UnitTest {
         storageMock.deleteReturnValue = true
 
         // Not already running a queue run request. When you want to start a new one, start it.
-        requestManagerMock.startIfNotAlreadyReturnValue = false
+        requestManagerMock.startRequestReturnValue = false
     }
 
     // our indictor if run request is running the queue
@@ -44,7 +44,7 @@ class QueueRunRequestTest: UnitTest {
     // MARK: start
 
     func test_start_givenAlreadyRunningARequest_expectDoNotStartNewRun() {
-        requestManagerMock.startIfNotAlreadyReturnValue = true
+        requestManagerMock.startRequestReturnValue = true
 
         runRequest.start {}
 
@@ -52,7 +52,7 @@ class QueueRunRequestTest: UnitTest {
     }
 
     func test_start_givenNotAlreadyRunningRequest_expectStartNewRun() {
-        requestManagerMock.startIfNotAlreadyReturnValue = false
+        requestManagerMock.startRequestReturnValue = false
         storageMock.getInventoryReturnValue = []
 
         runRequest.start {}

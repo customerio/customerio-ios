@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.3 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -1871,7 +1871,9 @@ public class QueueRequestManagerMock: QueueRequestManager, Mock {
         requestCompleteCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        startIfNotAlreadyCallsCount = 0
+        startRequestCallsCount = 0
+        startRequestReceivedArguments = nil
+        startRequestReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -1897,29 +1899,35 @@ public class QueueRequestManagerMock: QueueRequestManager, Mock {
         requestCompleteClosure?()
     }
 
-    // MARK: - startIfNotAlready
+    // MARK: - startRequest
 
     /// Number of times the function was called.
-    public private(set) var startIfNotAlreadyCallsCount = 0
+    public private(set) var startRequestCallsCount = 0
     /// `true` if the function was ever called.
-    public var startIfNotAlreadyCalled: Bool {
-        startIfNotAlreadyCallsCount > 0
+    public var startRequestCalled: Bool {
+        startRequestCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    public private(set) var startRequestReceivedArguments: (() -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var startRequestReceivedInvocations: [() -> Void] = []
     /// Value to return from the mocked function.
-    public var startIfNotAlreadyReturnValue: Bool!
+    public var startRequestReturnValue: Bool!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `startIfNotAlreadyReturnValue`
+     then the mock will attempt to return the value for `startRequestReturnValue`
      */
-    public var startIfNotAlreadyClosure: (() -> Bool)?
+    public var startRequestClosure: ((@escaping () -> Void) -> Bool)?
 
-    /// Mocked function for `startIfNotAlready()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func startIfNotAlready() -> Bool {
+    /// Mocked function for `startRequest(onComplete: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func startRequest(onComplete: @escaping () -> Void) -> Bool {
         mockCalled = true
-        startIfNotAlreadyCallsCount += 1
-        return startIfNotAlreadyClosure.map { $0() } ?? startIfNotAlreadyReturnValue
+        startRequestCallsCount += 1
+        startRequestReceivedArguments = onComplete
+        startRequestReceivedInvocations.append(onComplete)
+        return startRequestClosure.map { $0(onComplete) } ?? startRequestReturnValue
     }
 }
 
