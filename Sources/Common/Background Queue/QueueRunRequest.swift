@@ -55,6 +55,7 @@ public class CioQueueRunRequest: QueueRunRequest {
         var lastFailedTask: QueueTaskMetadata?
         var continueRunnning = true
         let whileLoopWait = DispatchGroup() // make async operations perform synchronously in while loop
+        runner.prepareForRunningNewTasks() // only call once, just before starting a new run of the BQ.
 
         // call when you're done with task
         func updateWhileLoopLogicVariables(didTaskFail: Bool, taskJustExecuted: QueueTaskMetadata) {

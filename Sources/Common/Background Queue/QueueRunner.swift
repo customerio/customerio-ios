@@ -9,6 +9,7 @@ import Foundation
  */
 public protocol QueueRunner: AutoMockable {
     func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
+    func prepareForRunningNewTasks()
 }
 
 // sourcery: InjectRegister = "QueueRunner"
@@ -38,6 +39,11 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
             httpClient: httpClient,
             sdkConfig: sdkConfig
         )
+    }
+
+    // Module hooks in the SDK can be modified at runtime. To prevent the scenario where the re-used queue hook runners gets populated before another module gets initialized in the SDK, re-populate the queue hook runners occasionally.
+    public func prepareForRunningNewTasks() {
+        queueHookRunners = hooks.queueRunnerHooks
     }
 
     public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
