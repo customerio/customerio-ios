@@ -1,3 +1,10 @@
+## [2.8.2](https://github.com/customerio/customerio-ios/compare/2.8.1...2.8.2) (2023-09-07)
+
+
+### Bug Fixes
+
+* reduce memory and cpu usage while running background queue ([#379](https://github.com/customerio/customerio-ios/issues/379)) ([87a7eed](https://github.com/customerio/customerio-ios/commit/87a7eed5dc8e101a0d1c3f0b6e83d8b7d637cfcb))
+
 ## [2.8.1](https://github.com/customerio/customerio-ios/compare/2.8.0...2.8.1) (2023-08-31)
 
 
