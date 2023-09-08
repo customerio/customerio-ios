@@ -32,6 +32,8 @@ public protocol MessagingPushAPNInstance: AutoMockable {
         deviceToken: String
     )
 
+    func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?)
+
     #if canImport(UserNotifications)
     // Used for rich push
     @discardableResult
@@ -75,6 +77,8 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         messagingPush.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
+
+    public func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?) {}
 
     #if canImport(UserNotifications)
     /**
