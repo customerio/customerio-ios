@@ -7,13 +7,15 @@ class HttpEndpointTest: UnitTest {
     private let defaultEndpoint = CIOApiEndpoint.findAccountRegion
     private var httpBaseUrls: HttpBaseUrls!
 
+    private let defaultHost = "https://customer.io"
+
     override func setUp() {
         super.setUp()
 
-        setHttpBaseUrls()
+        setHttpBaseUrls(trackingApi: defaultHost)
     }
 
-    private func setHttpBaseUrls(trackingApi: String = Region.US.productionTrackingUrl) {
+    private func setHttpBaseUrls(trackingApi: String) {
         httpBaseUrls = HttpBaseUrls(trackingApi: trackingApi)
     }
 
@@ -46,29 +48,17 @@ class HttpEndpointTest: UnitTest {
     }
 
     func test_getUrlString_givenPathWithSpecialCharacters_expectEncodedPath() {
-        let identifierWithSpecialChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/?#[]@!$&'()*+,;=%"
-        let endpoint = CIOApiEndpoint.identifyCustomer(identifier: identifierWithSpecialChar)
+        let actual = CIOApiEndpoint.identifyCustomer(identifier: "-._~:/|?#[]@!$&'()*+,;=%").getUrlString(baseUrls: httpBaseUrls)
 
-        let rawPath = "/api/v1/customers/\(identifierWithSpecialChar)"
-        let expectedPath = rawPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rawPath
-
-        let expected = "https://customer.io\(expectedPath)"
-
-        setHttpBaseUrls(trackingApi: "https://customer.io")
-
-        let actual = endpoint.getUrlString(baseUrls: httpBaseUrls)
+        let expected = "\(defaultHost)/api/v1/customers/-._~:/%7C%3F%23%5B%5D@!$&\'()*+,;=%25"
 
         XCTAssertEqual(actual, expected)
     }
 
-    func test_getUrl_givenUnencodedPathWithSpecialCharacter_expectValidUrl() {
+    func test_getUrl_givenUnencodedPathWithSpecialCharacter_expectReceiveAURL() {
         let identifierWithSpecialChar = "social-login|1234567890abcde"
         let endpoint = CIOApiEndpoint.identifyCustomer(identifier: identifierWithSpecialChar)
 
-        setHttpBaseUrls(trackingApi: "https://customer.io")
-
-        let actualUrl = endpoint.getUrl(baseUrls: httpBaseUrls)
-
-        XCTAssertNotNil(actualUrl, "Expected valid URL but got nil. Ensure path is encoded correctly.")
+        XCTAssertNotNil(endpoint.getUrl(baseUrls: httpBaseUrls), "Expected valid URL but got nil. Ensure path is encoded correctly.")
     }
 }
