@@ -21,7 +21,7 @@ jobs:
     permissions:
       checks: write # Need write permission to add test result check.
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up XCode
       uses: maxim-lobanov/setup-xcode@v1
       with:
@@ -35,7 +35,7 @@ jobs:
       with:
         ruby-version: 2.7.2
     - name: Run tests (xcode ${{ matrix.xcode }})
-      uses: maierj/fastlane-action@v2.0.1
+      uses: maierj/fastlane-action@v3.0.0
       with:
         lane: 'scan'
         skip-tracking: true
@@ -54,13 +54,13 @@ jobs:
     #     directory: .build/generated
 
     - name: Upload test report 
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: xcode-test-report
         path: test-report.*
       if: ${{ always() }}
     - name: Publish test results
-      uses: mikepenz/action-junit-report@v2      
+      uses: mikepenz/action-junit-report@v4      
       with:
         check_name: XCode macOS tests (xcode ${{ matrix.xcode }}) - Results
         report_paths: test-report.xml
