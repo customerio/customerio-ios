@@ -33,7 +33,9 @@ jobs:
     - name: Setup Ruby to run Fastlane 
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.7.2
+        ruby-version: '3.0'
+        bundler-cache: true # install dependencies in Gemfile, including Fastlane. 
+
     - name: Run tests (xcode ${{ matrix.xcode }})
       uses: maierj/fastlane-action@v3.0.0
       with:
