@@ -11,7 +11,8 @@
  * If you want to update the version of a tool to a newer version, simply update the version number in the toolsUsedInProject array below and push a commit to the repo. Then, all developers and CI servers will automatically download the new version the next time they execute this script.
  * 
  * This script is written in TypeScript and uses Deno as the runtime. In order to execute this script, you need to have Deno installed (brew install deno), or we can compile this script into a binary and run it that way.
- * Example command to run this script: deno run --allow-net --allow-read --allow-write --allow-run scripts/run-tool.ts swiftlint
+ * Command to run this script: deno run --allow-net --allow-read --allow-write --allow-run scripts/run-tool.ts swiftlint --strict 
+ * Command to compile this script into a binary: make compile_run_tool
  */
 
 const toolsUsedInProject = [
@@ -26,6 +27,12 @@ const toolsUsedInProject = [
     version: '0.52.4',
     downloadUrl: "https://github.com/realm/SwiftLint/releases/download/{version}/portable_swiftlint.zip",
     commandToRun: "./tools/swiftlint_{version}/swiftlint"
+  },
+  {
+    name: "swiftformat",
+    version: "0.52.3",
+    downloadUrl: "https://github.com/nicklockwood/SwiftFormat/releases/download/{version}/swiftformat.zip",
+    commandToRun: "./tools/swiftformat_{version}/swiftformat"
   }
 ]
 
