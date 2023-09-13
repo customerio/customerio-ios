@@ -4,6 +4,7 @@ test-report.*
 gc_keys.json
 app_store_connect_creds.json
 Package.resolved
+tools/
 
 #############################################################################
 # Below from: https://github.com/github/gitignore/blob/master/Swift.gitignore
