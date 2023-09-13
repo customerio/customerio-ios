@@ -8,11 +8,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install swiftformat and swiftlint 
-        run: |
-          brew update # verifies brew knows latest versions of all CLIs
-          brew install swiftformat || brew upgrade swiftformat 
-          brew install swiftlint || brew upgrade swiftlint 
+      - name: Install Deno in order to execute scripts/ 
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
       - name: Run swiftformat. Fail if any errors. 
         run: make format && git diff --exit-code
       - name: Run swiftlint. Fail if any errors. 
