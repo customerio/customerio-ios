@@ -11,37 +11,27 @@
  * If you want to update the version of a tool to a newer version, simply update the version number in the toolsUsedInProject array below and push a commit to the repo. Then, all developers and CI servers will automatically download the new version the next time they execute this script.
  * 
  * This script is written in TypeScript and uses Deno as the runtime. In order to execute this script, you need to have Deno installed (brew install deno), or we can compile this script into a binary and run it that way.
- * Command to run this script: deno run --allow-net --allow-read --allow-write --allow-run scripts/run-tool.ts swiftlint --strict 
+ * Command to run this script: deno run --allow-net --allow-read --allow-write --allow-run binny.ts swiftlint --strict 
  * Command to compile this script into a binary: make compile_run_tool
  */
 
-const toolsUsedInProject = [
-  {
-    name: 'sourcery',
-    version: '2.0.3',
-    downloadUrl: "https://github.com/krzysztofzablocki/Sourcery/releases/download/{version}/sourcery-{version}.zip",
-    commandToRun: "./tools/sourcery_{version}/bin/sourcery"
-  }, 
-  {
-    name: 'swiftlint',
-    version: '0.52.4',
-    downloadUrl: "https://github.com/realm/SwiftLint/releases/download/{version}/portable_swiftlint.zip",
-    commandToRun: "./tools/swiftlint_{version}/swiftlint"
-  },
-  {
-    name: "swiftformat",
-    version: "0.52.3",
-    downloadUrl: "https://github.com/nicklockwood/SwiftFormat/releases/download/{version}/swiftformat.zip",
-    commandToRun: "./tools/swiftformat_{version}/swiftformat"
-  }
-]
+interface Tool {
+  name: string;
+  version: string;
+  downloadUrl: string;
+  commandToRun: string;
+
+  [propName: string]: string // added to allow the interface to work with stringFormat(). Fixes error, "Index signature for type 'string' is missing in type 'Tool'"
+}
 
 import {existsSync as doesFileExist } from "https://deno.land/std@0.201.0/fs/mod.ts";
 import { format as stringFormat } from "https://deno.land/x/format@1.0.1/mod.ts";
 import { decompress as unzip } from "https://deno.land/x/zip@v1.2.5/mod.ts";
+import {parse as parseYaml} from "https://deno.land/std@0.201.0/yaml/mod.ts";
 
-const nameOfToolToRun = Deno.args[0]
-const tool = toolsUsedInProject.find(tool => tool.name === nameOfToolToRun)!
+const nameOfToolToRun = Deno.args[0] // get the name of the tool to run from the command line arguments. Example value: 'swiftlint'
+const toolsUsedInProject: Tool[] = parseYaml(Deno.readTextFileSync("binny-tools.yml")) as Tool[]; // Read binny-tools.yml file which is used to define what tools are used in this project.
+const tool: Tool = toolsUsedInProject.find(tool => tool.name === nameOfToolToRun)!
 
 await assertToolInstalled()
 await runCommand()

@@ -1,14 +1,13 @@
 SHELL = /bin/sh
 
 # Variable that we can re-use in the Makefile. 
-# This is the snippet to run the scrdipts/run-tool.ts script. 
-RUN_TOOL_CMD := deno run --allow-all scripts/run-tool.ts
+# This is the snippet to run the binny.ts script. 
+RUN_TOOL_CMD := deno run --allow-all binny.ts
 
 # Create a binary for scripts/run-tool.ts so developers and CI server can run it.
 compile_run_tool:
-	deno compile --allow-net --allow-read --allow-write --allow-run scripts/run-tool.ts
-	mv run-tool scripts/
-	chmod +x scripts/run-tool
+	deno compile --allow-net --allow-read --allow-write --allow-run binny.ts
+	chmod +x binny
 
 # --args:
 #   diAccessLevel - access level of the dependency injection graph. If module is used by another module (like Cio) then you want `public`. Else, `internal`. 
