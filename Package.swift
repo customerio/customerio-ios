@@ -7,21 +7,25 @@
  */
 
 import PackageDescription
+import Foundation
+
+var products: [PackageDescription.Product] = [
+    .library(name: "Tracking", targets: ["CioTracking"]),
+    .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
+    .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
+    .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
+]
+
+if (ProcessInfo.processInfo.environment["CI"] != nil) {
+    products.append(.library(name: "InternalCommon", targets: ["CioInternalCommon"]))
+}
 
 let package = Package(
     name: "Customer.io",
     platforms: [
         .iOS(.v13)
     ],
-    products: [ // externally visible products for clients to install. 
-        // library name is the name given when installing the SDK. 
-        // target name is the name used for `import X`
-        .library(name: "InternalCommon", targets: ["CioInternalCommon"]),
-        .library(name: "Tracking", targets: ["CioTracking"]),
-        .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
-        .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
-        .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
-    ],
+    products: products,
     dependencies: [
         // Help for the format of declaring SPM dependencies:
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
