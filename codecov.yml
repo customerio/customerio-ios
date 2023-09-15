@@ -19,4 +19,5 @@ coverage:
 # Example: We do not want to know the coverage for the Tests/ directory because that does not contain source code of our SDK. 
 # https://docs.codecov.com/docs/ignoring-paths
 ignore: 
-  - "Tests"
+  - "Tests" # ignore code coverage of Test/ files 
+  - "**/*.generated.swift" # Ignore code coverage of generated files.
