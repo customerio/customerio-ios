@@ -16,6 +16,7 @@ let package = Package(
     products: [ // externally visible products for clients to install. 
         // library name is the name given when installing the SDK. 
         // target name is the name used for `import X`
+        .library(name: "InternalCommon", targets: ["CioInternalCommon"]),
         .library(name: "Tracking", targets: ["CioTracking"]),
         .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
         .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
