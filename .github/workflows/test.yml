@@ -27,8 +27,8 @@ jobs:
       with:
         xcode-version: ${{ matrix.xcode }}
     # If running tests fails, sometimes it's because of scheme name is wrong. This gives us all available schemes. 
-    # - name: Get XCode schemes (xcode ${{ matrix.xcode }})
-    #   run: xcrun xcodebuild -list
+    - name: Get XCode schemes (xcode ${{ matrix.xcode }})
+      run: xcrun xcodebuild -list
 
     - name: Setup Ruby to run Fastlane 
       uses: ruby/setup-ruby@v1
