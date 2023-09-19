@@ -8,10 +8,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Deno in order to execute scripts/ 
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+      - name: Install binny to run lint tools 
+        run: |
+          curl --output binny https://github.com/customerio/binny/releases/download/latest/binny-macos-m1
+          chmod +x binny 
       - name: Run swiftformat. Fail if any errors. 
         run: make format && git diff --exit-code
       - name: Run swiftlint. Fail if any errors. 
