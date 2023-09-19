@@ -1,7 +1,9 @@
 // swift-tools-version:5.3
 
 /**
- Resources for this file:
+ Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 
+
+ Resources to learn more about this file:
  * https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html
  * https://github.com/apple/swift-package-manager/blob/main/Documentation/Usage.md
  */
@@ -9,6 +11,9 @@
 import PackageDescription
 import Foundation
 
+// Swift Package Manager products are public-facing modules that developers can install into their app. 
+// All .library() products will be visible to customers in Xcode when they install our SDK into their app.
+// Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
     .library(name: "Tracking", targets: ["CioTracking"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
@@ -16,7 +21,12 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
 ]
 
-if (ProcessInfo.processInfo.environment["CI"] != nil) {
+// When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
+// Xcode generates this code coverage report for us, for all of the products in this Package.swift file. 
+// It's important that we track the test code coverage of our internal modules, but we don't want to expose internal modules to customers when they install our SDK. 
+// Therefore, we dynamically modify the products array to include the internal modules only when executing the test suite and generating code coverage reports.
+if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a CI machine. Important this is false for a customer trying to install our SDK on their machine. 
+    // append all internal modules to the products array.
     products.append(.library(name: "InternalCommon", targets: ["CioInternalCommon"]))
 }
 
@@ -54,7 +64,7 @@ let package = Package(
                 dependencies: ["CioTracking"],
                 path: "Tests/Shared",
                 resources: [
-                    .copy("SampleDataFiles") // static files that are used in test funnctions.
+                    .copy("SampleDataFiles") // static files that are used in test functions.
                 ]),
 
         // Messaging Push 
