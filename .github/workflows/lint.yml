@@ -5,12 +5,12 @@ on: [pull_request]
 jobs:
   assert-formatted:
     name: Assert that code has been linted and formatted before merging
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install binny to run lint tools 
         run: |
-          curl --output binny https://github.com/customerio/binny/releases/download/latest/binny-macos-m1
+          curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-linux-x86_64
           chmod +x binny 
       - name: Run swiftformat. Fail if any errors. 
         run: make format && git diff --exit-code
