@@ -62,7 +62,7 @@ jobs:
           - sample-app: "CocoaPods-FCM"
             apn-or-fcm: FCM
 
-    runs-on: macos-latest
+    runs-on: macos-13
     name: Building app...${{ matrix.sample-app }}
     steps:
     - uses: actions/checkout@v4

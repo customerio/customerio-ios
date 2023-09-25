@@ -5,7 +5,7 @@ on: [pull_request]
 jobs:
   assert-formatted:
     name: Assert that code has been linted and formatted before merging
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - name: Install swiftformat and swiftlint 

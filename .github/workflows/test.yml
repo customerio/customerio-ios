@@ -8,8 +8,7 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   automated-tests:
-    runs-on: macos-latest
-    name: XCode macOS tests 
+    runs-on: macos-13
     permissions:
       checks: write # Need write permission to add test result check.
     steps:

@@ -133,7 +133,7 @@ jobs:
     if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}    
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - name: Checkout git tag that got created in previous step 
         uses: actions/checkout@v4
