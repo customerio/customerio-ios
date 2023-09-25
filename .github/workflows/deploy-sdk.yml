@@ -50,9 +50,8 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         id: semantic-release
         with:
-          # Hard-coding version as workaround https://github.com/semantic-release/commit-analyzer/issues/517#issuecomment-1697193361
           extra_plugins: |
-            conventional-changelog-conventionalcommits@6.1.0
+            conventional-changelog-conventionalcommits
             @semantic-release/changelog
             @semantic-release/git
             @semantic-release/github
