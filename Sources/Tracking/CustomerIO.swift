@@ -177,6 +177,7 @@ public class CustomerIO: CustomerIOInstance {
             shared.setupAutoScreenviewTracking()
         }
 
+        // TODO: - Remove this once you add methods to swizzle token in APN and FCM module
         // Swizzle apns/fcm token methods to register device.
         Self.shared.swizzleDidReceiveRemoteNotification()
         Self.shared.swizzleDidReceiveFCMRegistrationToken()
