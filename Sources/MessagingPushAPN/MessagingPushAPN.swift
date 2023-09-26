@@ -32,7 +32,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
         deviceToken: String
     )
 
-    func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?)
+//    func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?)
 
     #if canImport(UserNotifications)
     // Used for rich push
@@ -78,7 +78,15 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         messagingPush.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    public func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?) {}
+    /**
+     Configure `MessagingPushAPN`.
+     Call this function in your app if you want to configure the module.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    public static func configure(_ configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
+    ) {}
+
+    //    public func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?) {}
 
     #if canImport(UserNotifications)
     /**
