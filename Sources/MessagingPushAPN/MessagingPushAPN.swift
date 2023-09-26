@@ -32,8 +32,6 @@ public protocol MessagingPushAPNInstance: AutoMockable {
         deviceToken: String
     )
 
-//    func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?)
-
     #if canImport(UserNotifications)
     // Used for rich push
     @discardableResult
@@ -84,9 +82,9 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      */
     @available(iOSApplicationExtension, unavailable)
     public static func configure(_ configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
-    ) {}
-
-    //    public func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?) {}
+    ) {
+        shared.setupAutoFetchDeviceToken()
+    }
 
     #if canImport(UserNotifications)
     /**
