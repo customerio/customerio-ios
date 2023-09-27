@@ -176,11 +176,6 @@ public class CustomerIO: CustomerIOInstance {
             // Only call this code when not possibly being called from a NSE.
             shared.setupAutoScreenviewTracking()
         }
-
-        // TODO: - Remove this once you add methods to swizzle token in APN and FCM module
-        // Swizzle apns/fcm token methods to register device.
-        Self.shared.swizzleDidReceiveRemoteNotification()
-        Self.shared.swizzleDidReceiveFCMRegistrationToken()
     }
 
     /**
@@ -245,55 +240,6 @@ public class CustomerIO: CustomerIOInstance {
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
-    }
-
-    // Swizzled method for APN device token.
-    @objc
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let token = String(apnDeviceToken: deviceToken)
-        Self.shared.registerDeviceToken(token)
-    }
-
-    // Implement method swizzling for APN device token. Swizzling will ensure that the
-    // device token gets registered without needing the developer to add call respective
-    // Customer.io SDK methods to register the device.
-    @available(iOSApplicationExtension, unavailable)
-    func swizzleDidReceiveRemoteNotification() {
-        let appDelegate = UIApplication.shared.delegate
-        let appDelegateClass: AnyClass? = object_getClass(appDelegate)
-        let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-        let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-        guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
-            return
-        }
-        if let originalMethod = class_getInstanceMethod(appDelegateClass, originalSelector) {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
-    }
-
-    // Swizzled method for FCM Token. This method would not be called if the app is using APNS.
-    @objc
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        if let token = fcmToken {
-            Self.shared.registerDeviceToken(token)
-        }
-    }
-
-    // Implement method swizzling for FCM token. Swizzling the FCM token method will ensure
-    // that the token is registered with CIO even when the developer doesn't call the respective
-    // CIO method after token generation.
-    @available(iOSApplicationExtension, unavailable)
-    func swizzleDidReceiveFCMRegistrationToken() {
-        let messagingDelegate = Messaging.messaging().delegate
-        let messagingDelegateClass: AnyClass? = object_getClass(messagingDelegate)
-        let swizzledSelector = #selector(messaging(_:didReceiveRegistrationToken:))
-        let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
-        guard let swizzledMethod = class_getInstanceMethod(CustomerIO.self, swizzledSelector) else {
-            return
-        }
-        if let originalMethod = class_getInstanceMethod(messagingDelegateClass, originalSelector) {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
     }
 
     public var config: SdkConfig? {
