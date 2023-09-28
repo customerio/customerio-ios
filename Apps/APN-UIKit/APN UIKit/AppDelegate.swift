@@ -15,9 +15,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // didRegisterForRemoteNotifications delegate method will be called and it
         // provides a device token. In case, registration fails then
         // didFailToRegisterForRemoteNotifications will be called.
-        application.registerForRemoteNotifications()
         initializeCioAndInAppListeners()
         UNUserNotificationCenter.current().delegate = self
+
         return true
     }
 
@@ -54,6 +54,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MessagingPushAPN.configure { config in
             config.autoFetchDeviceToken = true
         }
+
+        UIApplication.shared.registerForRemoteNotifications()
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

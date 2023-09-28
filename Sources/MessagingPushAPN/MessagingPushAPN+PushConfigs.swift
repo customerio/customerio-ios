@@ -12,8 +12,12 @@ extension MessagingPushAPN {
     }
 
     private func swizzle(forOriginalClass: AnyClass?, forSwizzledClass: AnyClass?, original: Selector, new: Selector) {
-        guard let originalMethod = class_getInstanceMethod(forOriginalClass, original) else { return }
         guard let swizzledMethod = class_getInstanceMethod(forSwizzledClass, new) else { return }
+        guard let originalMethod = class_getInstanceMethod(forOriginalClass, original) else {
+            // Add method if it doesn't exist
+            class_addMethod(forOriginalClass, new, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
+            return
+        }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 
