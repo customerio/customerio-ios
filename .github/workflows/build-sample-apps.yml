@@ -66,11 +66,7 @@ jobs:
     name: Building app...${{ matrix.sample-app }}
     steps:
     - uses: actions/checkout@v4
-
-    - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: "15.0-beta"
+    - uses: ./.github/actions/setup-ios
 
     - name: Install CLI tools used in CI script 
       run: |
