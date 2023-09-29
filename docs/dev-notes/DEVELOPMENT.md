@@ -15,7 +15,7 @@ SERVED HOOKS: pre-commit, prepare-commit-msg
 
 ### Development tools 
 
-The SDK project uses various CLI tools for Swift/iOS development. The SDK uses the tool [binny](https://github.com/customerio/binny) to try and make use of these development tools easy to install and update. To setup `binny` and these development tools, follow these instructions:
+The SDK project leverages several CLI tools essential for Swift/iOS development. To ensure a consistent development environment, we use [binny](https://github.com/customerio/binny), a tool designed to streamline the installation and updating process of these development tools. Follow the steps below to get started:
 
 * [Install `binny` from the instructions in the `binny` project](https://github.com/customerio/binny#get-started).
 * Done! `binny` will automatically install the development tools for you when you need them later. 
