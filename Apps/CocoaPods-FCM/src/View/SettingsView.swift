@@ -156,7 +156,7 @@ struct SettingsView: View {
         init() {
             self.settingsManager = CioSettingsManager()
             self.keyValueStorage = KeyValueStore()
-            self.pushToken = CustomerIO.shared.registeredDeviceToken() ?? "(none)"
+            self.pushToken = keyValueStorage.pushToken ?? "(none)"
             self.settings = settingsManager.appSetSettings ?? CioSettings.getFromCioSdk()
         }
 
