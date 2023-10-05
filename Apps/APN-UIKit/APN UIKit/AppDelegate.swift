@@ -54,8 +54,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MessagingPushAPN.configure { config in
             config.autoFetchDeviceToken = true
         }
-
-        UIApplication.shared.registerForRemoteNotifications()
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

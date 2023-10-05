@@ -3,11 +3,17 @@ import UIKit
 
 extension MessagingPushAPN {
     func setupAutoFetchDeviceToken() {
+        // Register for push notifications
+        UIApplication.shared.registerForRemoteNotifications()
+        // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
+        swizzleDidRegisterForRemoteNotifications()
+    }
+
+    private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
         let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-
         swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelector, new: swizzledSelector)
     }
 
@@ -24,8 +30,6 @@ extension MessagingPushAPN {
     // Swizzled method for APN device token.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let token = String(apnDeviceToken: deviceToken)
-        print(token)
-//        Self.shared.registerDeviceToken(token)
+        Self.shared.registerDeviceToken(apnDeviceToken: deviceToken)
     }
 }
