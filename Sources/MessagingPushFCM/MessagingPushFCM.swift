@@ -79,6 +79,25 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         messagingPush.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
+    /**
+     Configure `MessagingPushFCM`.
+     Call this function in your app if you want to configure the module to
+     auto-fetch device token and auto-register device with Customer.io etc.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    public static func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
+    ) {
+        var pushConfigOptions = MessagingPushConfigOptions.Factory.create()
+
+        if let configureHandler = configureHandler {
+            configureHandler(&pushConfigOptions)
+        }
+
+        if pushConfigOptions.autoFetchDeviceToken {
+            shared.setupAutoFetchDeviceToken()
+        }
+    }
+
     #if canImport(UserNotifications)
     /**
      - returns:
