@@ -1,9 +1,5 @@
 import CioInternalCommon
-import FirebaseMessaging
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 public protocol CustomerIOInstance: AutoMockable {
     var siteId: String? { get }
