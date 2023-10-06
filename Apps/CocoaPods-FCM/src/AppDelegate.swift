@@ -29,6 +29,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             appSetSettings?.configureCioSdk(config: &config)
         }
         MessagingInApp.initialize(eventListener: self)
+        MessagingPush.initialize()
 
         // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
         UNUserNotificationCenter.current().delegate = self
@@ -47,6 +48,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Note: if this function does not exist, swizzle doesn't work. It's an optional function.
+
+//         super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+    }
+
     // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
     // the completion handler.
     @available(iOS 10.0, *)
@@ -57,27 +64,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             -> Void
     ) {
         completionHandler([.list, .banner, .badge, .sound])
-    }
-
-    // Function that gets called when push notification clicked
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        // Send Customer.io SDK click event to process. This enables features such as
-        // push metrics and deep links.
-        let handled = MessagingPush.shared.userNotificationCenter(
-            center,
-            didReceive: response,
-            withCompletionHandler: completionHandler
-        )
-
-        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
-        // completion handler. If the SDK did handle it, it called the completion handler for you.
-        if !handled {
-            completionHandler()
-        }
     }
 }
 

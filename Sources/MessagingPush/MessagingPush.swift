@@ -29,8 +29,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
     // currently no module initialization to perform.
+    @available(iOSApplicationExtension, unavailable)
     public static func initialize() {
         MessagingPush.shared.initializeModuleIfSdkInitialized()
+
+        MessagingPush.shared.setupCioPushClickHandling()
     }
 
     override public func inititlizeModule(diGraph: DIGraph) {
