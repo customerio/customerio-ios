@@ -94,7 +94,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         }
 
         if pushConfigOptions.autoFetchDeviceToken {
-//            shared.setupAutoFetchDeviceToken()
+            shared.setupAutoFetchDeviceToken()
         }
     }
 
