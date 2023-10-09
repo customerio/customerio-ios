@@ -17,7 +17,7 @@ extension MessagingPushFCM {
 
     @available(iOSApplicationExtension, unavailable)
     private func swizzleDidRegisterForRemoteNotifications() {
-        let appDelegate = UIApplication.shared.delegate
+        let appDelegate = MessagingDelegate.self
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
         let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
         let swizzledSelector = #selector(messaging(_:didReceiveRegistrationToken:))
@@ -28,7 +28,7 @@ extension MessagingPushFCM {
         guard let swizzledMethod = class_getInstanceMethod(forSwizzledClass, new) else { return }
         guard let originalMethod = class_getInstanceMethod(forOriginalClass, original) else {
             // Add method if it doesn't exist
-            class_addMethod(forOriginalClass, new, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
+            class_addMethod(forOriginalClass, original, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
             return
         }
         method_exchangeImplementations(originalMethod, swizzledMethod)
