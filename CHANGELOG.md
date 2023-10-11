@@ -1,3 +1,10 @@
+## [2.8.3](https://github.com/customerio/customerio-ios/compare/2.8.2...2.8.3) (2023-10-11)
+
+
+### Bug Fixes
+
+* prevent registering device with empty identifier existing BQ tasks ([#392](https://github.com/customerio/customerio-ios/issues/392)) ([867619f](https://github.com/customerio/customerio-ios/commit/867619f4885e0c2e438b55826557c3fa5649b035))
+
 ## [2.8.2](https://github.com/customerio/customerio-ios/compare/2.8.1...2.8.2) (2023-09-07)
 
 
