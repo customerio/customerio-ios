@@ -20,7 +20,7 @@ extension MessagingPushFCM {
         let appDelegate = MessagingDelegate.self
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
         let originalSelector = #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))
-        let swizzledSelector = #selector(messaging(_:didReceiveRegistrationToken:))
+        let swizzledSelector = #selector(MessagingPushFCM.messaging(_:didReceiveRegistrationToken:))
         swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushFCM.self, original: originalSelector, new: swizzledSelector)
     }
 
@@ -34,7 +34,7 @@ extension MessagingPushFCM {
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 
-    // Swizzled method for APN device token.
+    // Swizzled method for FCM device token.
     @objc
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         print(fcmToken)
