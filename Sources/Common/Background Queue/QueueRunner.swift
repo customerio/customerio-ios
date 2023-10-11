@@ -92,6 +92,13 @@ private extension CioQueueRunner {
             return onComplete(failureIfDontDecodeTaskData)
         }
 
+        // If a HTTP request is made to register device token with an empty identifier, either (1) a 302 will occur or (2) a "devices" profile will be created in a CIO workspace. Neither are ideal.
+        // The SDK has logic to prevent *new* register device tasks being added to the BQ if identifier is empty but existing tasks in the BQ will still occur.
+        // This logic is to clear those tasks from the BQ.
+        if taskData.profileIdentifier.isBlankOrEmpty() {
+            return onComplete(.success(()))
+        }
+
         performHttpRequest(
             endpoint: .registerDevice(identifier: taskData.profileIdentifier),
             requestBody: taskData.attributesJsonString?.data,
