@@ -12,7 +12,11 @@ extension MessagingPushFCM {
 //        Messaging.messaging().delegate = Self
 
         // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
-        swizzleDidRegisterForRemoteNotifications()
+//        swizzleDidRegisterForRemoteNotifications()
+        // Trying to fetch token again using firebase's methods
+        Messaging.messaging().token { token, _ in
+            print("Token \(token)")
+        }
     }
 
     @available(iOSApplicationExtension, unavailable)
