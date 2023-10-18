@@ -8,6 +8,7 @@ import UIKit
 extension MessagingPushFCM {
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
+        UIApplication.shared.registerForRemoteNotifications()
         swizzleDidRegisterForRemoteNotifications()
     }
 
