@@ -15,7 +15,7 @@ public class Gist: GistDelegate {
         siteId: String,
         dataCenter: String,
         logging: Bool = false,
-        env: GistEnvironment = .production
+        env: GistEnvironment = .development
     ) {
         Settings.Environment = env
         self.siteId = siteId
