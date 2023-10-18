@@ -56,6 +56,8 @@ class MessageQueueManager {
                     .fetchUserQueue(userToken: userToken, completionHandler: { response in
                         switch response {
                         case .success(let responses):
+                            // To prevent us from showing expired / revoked messages, clear user messages from local queue.
+                            self.clearUserMessagesFromLocalStore()
                             Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
                             for queueMessage in responses {
                                 let message = queueMessage.toMessage()
