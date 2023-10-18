@@ -1,3 +1,10 @@
+## [2.8.4](https://github.com/customerio/customerio-ios/compare/2.8.3...2.8.4) (2023-10-18)
+
+
+### Bug Fixes
+
+* in-app positioning and persistence ([#393](https://github.com/customerio/customerio-ios/issues/393)) ([b5a2f18](https://github.com/customerio/customerio-ios/commit/b5a2f18688e2d6d139f25016ecd0215e4da259c6))
+
 ## [2.8.3](https://github.com/customerio/customerio-ios/compare/2.8.2...2.8.3) (2023-10-11)
 
 
