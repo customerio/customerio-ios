@@ -3,10 +3,10 @@ import UIKit
 
 extension MessagingPushAPN {
     func setupAutoFetchDeviceToken() {
-        // Register for push notifications
-        UIApplication.shared.registerForRemoteNotifications()
         // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
         swizzleDidRegisterForRemoteNotifications()
+        // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method
+        UIApplication.shared.registerForRemoteNotifications()
     }
 
     private func swizzleDidRegisterForRemoteNotifications() {
