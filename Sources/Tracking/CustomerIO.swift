@@ -20,7 +20,7 @@ public protocol CustomerIOInstance: AutoMockable {
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody
     )
-    func registeredDeviceToken() -> String?
+    var registeredDeviceToken: String? { get }
     func clearIdentify()
 
     func track(
@@ -275,6 +275,18 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     /**
+     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
+     This returns an optional string value.
+     Example use:
+     ```
+     CustomerIO.shared.registeredDeviceToken
+     ```
+     */
+    public var registeredDeviceToken: String? {
+        implementation?.registeredDeviceToken
+    }
+
+    /**
      Identify a customer (aka: Add or update a profile).
 
      [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
@@ -297,10 +309,6 @@ public class CustomerIO: CustomerIOInstance {
 
     public func identify(identifier: String, body: [String: Any]) {
         implementation?.identify(identifier: identifier, body: body)
-    }
-
-    public func registeredDeviceToken() -> String? {
-        implementation?.registeredDeviceToken()
     }
 
     /**
