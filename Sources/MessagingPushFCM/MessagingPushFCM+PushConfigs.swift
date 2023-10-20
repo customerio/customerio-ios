@@ -8,8 +8,8 @@ import UIKit
 extension MessagingPushFCM {
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
-        UIApplication.shared.registerForRemoteNotifications()
         swizzleDidRegisterForRemoteNotifications()
+        UIApplication.shared.registerForRemoteNotifications()
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -38,7 +38,6 @@ extension MessagingPushFCM {
         Messaging.messaging().apnsToken = deviceToken
         Messaging.messaging().token(completion: { token, _ in
             guard let token = token else {
-                print("SOME ERROR")
                 return
             }
             Self.shared.registerDeviceToken(fcmToken: token)

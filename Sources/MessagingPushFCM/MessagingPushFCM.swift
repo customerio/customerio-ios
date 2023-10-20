@@ -85,7 +85,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
      auto-fetch device token and auto-register device with Customer.io etc.
      */
     @available(iOSApplicationExtension, unavailable)
-    public static func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
+    public static func initialize(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
     ) {
         var pushConfigOptions = MessagingPushConfigOptions.Factory.create()
 
