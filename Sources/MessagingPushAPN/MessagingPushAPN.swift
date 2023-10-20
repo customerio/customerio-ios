@@ -81,7 +81,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      Call this function in your app if you want to configure the module.
      */
     @available(iOSApplicationExtension, unavailable)
-    public static func configure(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
+    public static func initialize(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
     ) {
         var pushConfigOptions = MessagingPushConfigOptions.Factory.create()
 

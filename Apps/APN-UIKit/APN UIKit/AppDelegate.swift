@@ -51,7 +51,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
-        MessagingPushAPN.configure { config in
+        MessagingPushAPN.initialize { config in
             config.autoFetchDeviceToken = true
         }
     }
@@ -81,10 +81,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
-    }
-
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        MessagingPush.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
     }
 }
 
