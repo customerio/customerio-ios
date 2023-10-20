@@ -12,9 +12,16 @@ extension MessagingPushAPN {
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+
+        // Swizzle `didRegisterForRemoteNotificationsWithDeviceToken`
         let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelector, new: swizzledSelector)
+
+        // Swizzle `didFailToRegisterForRemoteNotificationsWithError`
+        let originalSelectorForDidFail = #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:))
+        let swizzledSelectorForDidFail = #selector(application(_:didFailToRegisterForRemoteNotificationsWithError:))
+        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelectorForDidFail, new: swizzledSelectorForDidFail)
     }
 
     private func swizzle(forOriginalClass: AnyClass?, forSwizzledClass: AnyClass?, original: Selector, new: Selector) {
@@ -31,5 +38,11 @@ extension MessagingPushAPN {
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Self.shared.registerDeviceToken(apnDeviceToken: deviceToken)
+    }
+
+    // Swizzled method for `didFailToRegisterForRemoteNotificationsWithError'
+    @objc
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        messagingPush.deleteDeviceToken()
     }
 }
