@@ -53,7 +53,8 @@ public extension CIOApiEndpoint {
             baseUrl = String(baseUrl.dropLast())
         }
 
-        return baseUrl + path
+        let fullPath = baseUrl + (path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path)
+        return fullPath
     }
 }
 

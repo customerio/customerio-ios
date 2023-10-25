@@ -1,3 +1,38 @@
+## [2.8.4](https://github.com/customerio/customerio-ios/compare/2.8.3...2.8.4) (2023-10-18)
+
+
+### Bug Fixes
+
+* in-app positioning and persistence ([#393](https://github.com/customerio/customerio-ios/issues/393)) ([b5a2f18](https://github.com/customerio/customerio-ios/commit/b5a2f18688e2d6d139f25016ecd0215e4da259c6))
+
+## [2.8.3](https://github.com/customerio/customerio-ios/compare/2.8.2...2.8.3) (2023-10-11)
+
+
+### Bug Fixes
+
+* prevent registering device with empty identifier existing BQ tasks ([#392](https://github.com/customerio/customerio-ios/issues/392)) ([867619f](https://github.com/customerio/customerio-ios/commit/867619f4885e0c2e438b55826557c3fa5649b035))
+
+## [2.8.2](https://github.com/customerio/customerio-ios/compare/2.8.1...2.8.2) (2023-09-07)
+
+
+### Bug Fixes
+
+* reduce memory and cpu usage while running background queue ([#379](https://github.com/customerio/customerio-ios/issues/379)) ([87a7eed](https://github.com/customerio/customerio-ios/commit/87a7eed5dc8e101a0d1c3f0b6e83d8b7d637cfcb))
+
+## [2.8.1](https://github.com/customerio/customerio-ios/compare/2.8.0...2.8.1) (2023-08-31)
+
+
+### Bug Fixes
+
+* added url path encoding ([#376](https://github.com/customerio/customerio-ios/issues/376)) ([fbfa384](https://github.com/customerio/customerio-ios/commit/fbfa384428fdcf3ea69d623e9728a76c4d5d0416))
+
+## [2.8.0](https://github.com/customerio/customerio-ios/compare/2.7.8...2.8.0) (2023-08-31)
+
+
+### Features
+
+* filter automatic screenview tracking events ([#367](https://github.com/customerio/customerio-ios/issues/367)) ([1a535f9](https://github.com/customerio/customerio-ios/commit/1a535f96761fbeb1a31a7d0820cab77ec4e12c5f))
+
 ## [2.7.8](https://github.com/customerio/customerio-ios/compare/2.7.7...2.7.8) (2023-08-14)
 
 

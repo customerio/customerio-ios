@@ -65,12 +65,8 @@ jobs:
     runs-on: macos-13
     name: Building app...${{ matrix.sample-app }}
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: "15.0-beta"
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/setup-ios
 
     - name: Install CLI tools used in CI script 
       run: |
@@ -99,7 +95,7 @@ jobs:
 
     - name: Does ${{ matrix.sample-app }} use CocoaPods? 
       id: check_podfile_exists
-      uses: andstor/file-existence-action@v1
+      uses: andstor/file-existence-action@v2
       with:
         files: "Apps/${{ matrix.sample-app }}/Podfile"
 

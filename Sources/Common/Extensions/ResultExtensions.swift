@@ -14,4 +14,8 @@ extension Result {
         default: return nil
         }
     }
+
+    var isSuccess: Bool {
+        success != nil
+    }
 }

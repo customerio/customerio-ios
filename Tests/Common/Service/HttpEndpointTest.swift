@@ -44,4 +44,31 @@ class HttpEndpointTest: UnitTest {
 
         XCTAssertEqual(actual, expected)
     }
+
+    func test_getUrlString_givenPathWithSpecialCharacters_expectEncodedPath() {
+        let identifierWithSpecialChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/?#[]@!$&'()*+,;=%"
+        let endpoint = CIOApiEndpoint.identifyCustomer(identifier: identifierWithSpecialChar)
+
+        let rawPath = "/api/v1/customers/\(identifierWithSpecialChar)"
+        let expectedPath = rawPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rawPath
+
+        let expected = "https://customer.io\(expectedPath)"
+
+        setHttpBaseUrls(trackingApi: "https://customer.io")
+
+        let actual = endpoint.getUrlString(baseUrls: httpBaseUrls)
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    func test_getUrl_givenUnencodedPathWithSpecialCharacter_expectValidUrl() {
+        let identifierWithSpecialChar = "social-login|1234567890abcde"
+        let endpoint = CIOApiEndpoint.identifyCustomer(identifier: identifierWithSpecialChar)
+
+        setHttpBaseUrls(trackingApi: "https://customer.io")
+
+        let actualUrl = endpoint.getUrl(baseUrls: httpBaseUrls)
+
+        XCTAssertNotNil(actualUrl, "Expected valid URL but got nil. Ensure path is encoded correctly.")
+    }
 }

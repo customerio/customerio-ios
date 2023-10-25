@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.3 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -836,42 +836,6 @@ public class HooksManagerMock: HooksManager, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingQueueRunnerHooks: [QueueRunnerHook] = []
-    /// `true` if the getter or setter of property is called at least once.
-    public var queueRunnerHooksCalled: Bool {
-        queueRunnerHooksGetCalled || queueRunnerHooksSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var queueRunnerHooksGetCalled: Bool {
-        queueRunnerHooksGetCallsCount > 0
-    }
-
-    public var queueRunnerHooksGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var queueRunnerHooksSetCalled: Bool {
-        queueRunnerHooksSetCallsCount > 0
-    }
-
-    public var queueRunnerHooksSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var queueRunnerHooks: [QueueRunnerHook] {
-        get {
-            mockCalled = true
-            queueRunnerHooksGetCallsCount += 1
-            return underlyingQueueRunnerHooks
-        }
-        set(value) {
-            mockCalled = true
-            queueRunnerHooksSetCallsCount += 1
-            underlyingQueueRunnerHooks = value
-        }
-    }
-
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
     public var underlyingScreenViewHooks: [ScreenTrackingHook] = []
     /// `true` if the getter or setter of property is called at least once.
     public var screenViewHooksCalled: Bool {
@@ -907,8 +871,6 @@ public class HooksManagerMock: HooksManager, Mock {
     public func resetMock() {
         profileIdentifyHooksGetCallsCount = 0
         profileIdentifyHooksSetCallsCount = 0
-        queueRunnerHooksGetCallsCount = 0
-        queueRunnerHooksSetCallsCount = 0
         screenViewHooksGetCallsCount = 0
         screenViewHooksSetCallsCount = 0
         addCallsCount = 0
@@ -1372,43 +1334,7 @@ public class ModuleHookProviderMock: ModuleHookProvider, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingQueueRunnerHook: QueueRunnerHook?
-    /// `true` if the getter or setter of property is called at least once.
-    public var queueRunnerHookCalled: Bool {
-        queueRunnerHookGetCalled || queueRunnerHookSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var queueRunnerHookGetCalled: Bool {
-        queueRunnerHookGetCallsCount > 0
-    }
-
-    public var queueRunnerHookGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var queueRunnerHookSetCalled: Bool {
-        queueRunnerHookSetCallsCount > 0
-    }
-
-    public var queueRunnerHookSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var queueRunnerHook: QueueRunnerHook? {
-        get {
-            mockCalled = true
-            queueRunnerHookGetCallsCount += 1
-            return underlyingQueueRunnerHook
-        }
-        set(value) {
-            mockCalled = true
-            queueRunnerHookSetCallsCount += 1
-            underlyingQueueRunnerHook = value
-        }
-    }
-
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    public var underlyingScreenTrackingHook: ScreenTrackingHook?
+    public var underlyingScreenTrackingHook: ScreenTrackingHook? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var screenTrackingHookCalled: Bool {
         screenTrackingHookGetCalled || screenTrackingHookSetCalled
@@ -1444,9 +1370,6 @@ public class ModuleHookProviderMock: ModuleHookProvider, Mock {
         profileIdentifyHook = nil
         profileIdentifyHookGetCallsCount = 0
         profileIdentifyHookSetCallsCount = 0
-        queueRunnerHook = nil
-        queueRunnerHookGetCallsCount = 0
-        queueRunnerHookSetCallsCount = 0
         screenTrackingHook = nil
         screenTrackingHookGetCallsCount = 0
         screenTrackingHookSetCallsCount = 0
@@ -2030,61 +1953,6 @@ public class QueueRunnerMock: QueueRunner, Mock {
         runTaskReceivedArguments = (task: task, onComplete: onComplete)
         runTaskReceivedInvocations.append((task: task, onComplete: onComplete))
         runTaskClosure?(task, onComplete)
-    }
-}
-
-/**
- Class to easily create a mocked version of the `QueueRunnerHook` class.
- This class is equipped with functions and properties ready for you to mock!
-
- Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
- See the SDK documentation to learn the basics behind using the mock classes in the SDK.
- */
-public class QueueRunnerHookMock: QueueRunnerHook, Mock {
-    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
-    public var mockCalled: Bool = false //
-
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
-
-    public func resetMock() {
-        runTaskCallsCount = 0
-        runTaskReceivedArguments = nil
-        runTaskReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
-    }
-
-    // MARK: - runTask
-
-    /// Number of times the function was called.
-    public private(set) var runTaskCallsCount = 0
-    /// `true` if the function was ever called.
-    public var runTaskCalled: Bool {
-        runTaskCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var runTaskReceivedArguments: (task: QueueTask, onComplete: (Result<Void, HttpRequestError>) -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var runTaskReceivedInvocations: [(task: QueueTask, onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
-    /// Value to return from the mocked function.
-    public var runTaskReturnValue: Bool!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `runTaskReturnValue`
-     */
-    public var runTaskClosure: ((QueueTask, @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool)?
-
-    /// Mocked function for `runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool {
-        mockCalled = true
-        runTaskCallsCount += 1
-        runTaskReceivedArguments = (task: task, onComplete: onComplete)
-        runTaskReceivedInvocations.append((task: task, onComplete: onComplete))
-        return runTaskClosure.map { $0(task, onComplete) } ?? runTaskReturnValue
     }
 }
 

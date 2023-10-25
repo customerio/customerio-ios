@@ -5,6 +5,10 @@ gc_keys.json
 app_store_connect_creds.json
 Package.resolved
 
+# binny - ignore the binny binary and tools that binny downloads. 
+tools/
+binny 
+
 #############################################################################
 # Below from: https://github.com/github/gitignore/blob/master/Swift.gitignore
 #############################################################################
