@@ -36,6 +36,8 @@ extension MessagingPushFCM {
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
+        // Registers listener with FCM SDK to always have the latest FCM token.
+        // Used to automatically register it with the SDK.
         Messaging.messaging().token(completion: { token, _ in
             guard let token = token else {
                 return
