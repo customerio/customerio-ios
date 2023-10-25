@@ -33,10 +33,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
         UNUserNotificationCenter.current().delegate = self
 
+        // Initialize Customer.io push messaging allows
+        // the SDK to automatically send FCM push tokens to
+        // Customer.io!
         MessagingPushFCM.initialize { config in
             config.autoFetchDeviceToken = true
         }
-
         return true
     }
 
