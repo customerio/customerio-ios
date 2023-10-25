@@ -1,7 +1,7 @@
 import Foundation
 
 // In-memory store of the BQ inventory. This acts as a cache to unnecessary reading the file system from the file system.
-internal protocol QueueInventoryMemoryStore {
+protocol QueueInventoryMemoryStore {
     var inventory: [QueueTaskMetadata]? { get set }
 }
 
