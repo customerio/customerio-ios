@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.3 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -60,9 +60,6 @@ extension DIGraph {
         _ = deviceAttributesProvider
         countDependenciesResolved += 1
 
-        _ = queueRunnerHook
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
     }
 
@@ -84,16 +81,6 @@ extension DIGraph {
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
         SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
-    }
-
-    // QueueRunnerHook
-    var queueRunnerHook: QueueRunnerHook {
-        getOverriddenInstance() ??
-            newQueueRunnerHook
-    }
-
-    private var newQueueRunnerHook: QueueRunnerHook {
-        TrackingQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
     }
 }
 

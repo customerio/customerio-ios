@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 #if canImport(UIKit)
 import UIKit
@@ -24,18 +25,50 @@ extension CustomerIO {
         guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
+
+    func performScreenTracking(onViewController viewController: UIViewController) {
+        guard let diGraph = diGraph else {
+            return // SDK not initialized yet. Therefore, we ignore event.
+        }
+
+        guard let name = viewController.getNameForAutomaticScreenViewTracking() else {
+            diGraph.logger.info("Automatic screenview tracking event ignored for \(viewController). Could not determine name to use for screen.")
+            return
+        }
+
+        // Before we track event, apply a filter to remove events that could be unhelpful.
+        let customerOverridenFilter = diGraph.sdkConfig.filterAutoScreenViewEvents
+        let defaultSdkFilter: (UIViewController) -> Bool = { viewController in
+            let isViewFromApple = viewController.bundleIdOfView?.hasPrefix("com.apple") ?? false
+
+            if isViewFromApple {
+                return false // filter out events that come from Apple's frameworks. We consider those irrelevant for customers.
+            }
+
+            // Views from customer's app or 3rd party SDKs are considered relevant and are tracked.
+            return true
+        }
+
+        let filter = customerOverridenFilter ?? defaultSdkFilter
+        let shouldTrackEvent = filter(viewController)
+
+        guard shouldTrackEvent else {
+            let isUsingSdkDefaultFilter = customerOverridenFilter == nil
+            diGraph.logger.debug("automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)")
+            return // event has been filtered out. Ignore it.
+        }
+
+        let addionalScreenViewData = CustomerIOImplementation.autoScreenViewBody?() ?? [:]
+        automaticScreenView(name: name, data: addionalScreenViewData)
+    }
 }
 
 // screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
 extension UIViewController {
-    var defaultScreenViewBody: ScreenViewData {
-        ScreenViewData()
-    }
-
     @objc func cio_swizzled_UIKit_viewDidAppear(_ animated: Bool) {
-        performScreenTracking()
+        performAutomaticScreenTracking()
 
         // this function looks like recursion, but it's how you call ViewController.viewDidAppear.
         cio_swizzled_UIKit_viewDidAppear(animated)
@@ -46,10 +79,10 @@ extension UIViewController {
         // this function looks like recursion, but it's how you call ViewController.viewDidDisappear.
         cio_swizzled_UIKit_viewDidDisappear(animated)
 
-        performScreenTracking()
+        performAutomaticScreenTracking()
     }
 
-    func performScreenTracking() {
+    func performAutomaticScreenTracking() {
         var rootViewController = viewIfLoaded?.window?.rootViewController
         if rootViewController == nil {
             rootViewController = getActiveRootViewController()
@@ -57,25 +90,27 @@ extension UIViewController {
         guard let viewController = getVisibleViewController(fromRootViewController: rootViewController) else {
             return
         }
-        let nameOfViewControllerClass = String(describing: type(of: viewController))
-        var name = nameOfViewControllerClass.replacingOccurrences(
+
+        CustomerIO.shared.performScreenTracking(onViewController: viewController)
+    }
+
+    func getNameForAutomaticScreenViewTracking() -> String? {
+        let nameOfViewControllerClass = String(describing: type(of: self))
+
+        let name = nameOfViewControllerClass.replacingOccurrences(
             of: "ViewController",
             with: "",
             options: .caseInsensitive
         )
-        if name.isEmpty || name == "" {
-            if let title = viewController.title {
-                name = title
-            } else {
-                // XXX: we couldn't infer a name, we should log it for debug purposes
-                return
-            }
+        if !name.isEmpty {
+            return name
         }
-        guard let data = CustomerIOImplementation.autoScreenViewBody?() else {
-            CustomerIO.shared.automaticScreenView(name: name, data: defaultScreenViewBody)
-            return
+
+        if title != nil {
+            return title
         }
-        CustomerIO.shared.automaticScreenView(name: name, data: data)
+
+        return nil
     }
 
     /**

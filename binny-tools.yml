@@ -1,0 +1,16 @@
+# Defines all of the CLI tools that are used by this project including hard-coded version for everyone to use. 
+# Learn more about config file: https://github.com/customerio/binny 
+- name: sourcery
+  version: 2.0.3
+  downloadUrl: https://github.com/krzysztofzablocki/Sourcery/releases/download/{version}/sourcery-{version}.zip
+  pathToBinaryInsideZip: "bin/sourcery"
+
+- name: swiftlint
+  version: 0.52.4
+  downloadUrl: https://github.com/realm/SwiftLint/releases/download/{version}/portable_swiftlint.zip
+  pathToBinaryInsideZip: "swiftlint"
+
+- name: swiftformat
+  version: 0.52.3
+  downloadUrl: "https://github.com/nicklockwood/SwiftFormat/releases/download/{version}/swiftformat.zip"
+  pathToBinaryInsideZip: "swiftformat"

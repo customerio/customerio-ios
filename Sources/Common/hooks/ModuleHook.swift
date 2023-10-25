@@ -5,7 +5,6 @@ import Foundation
 /// from initializing so many classes. So, initialize instances when requested.
 public protocol ModuleHookProvider: AutoMockable {
     var profileIdentifyHook: ProfileIdentifyHook? { get }
-    var queueRunnerHook: QueueRunnerHook? { get }
     var screenTrackingHook: ScreenTrackingHook? { get }
 }
 
@@ -20,13 +19,6 @@ public protocol ProfileIdentifyHook: AutoMockable {
     /// called before finishing the process of deleting which means you can still
     /// retrieve the identifier from SDK storage.
     func beforeProfileStoppedBeingIdentified(oldIdentifier: String)
-}
-
-// When a module wants to run background queue tasks, they implement this hook.
-public protocol QueueRunnerHook: AutoMockable {
-    /// called from background queue in `Tracking` module.
-    /// return `true` if the `task` belongs to that module.
-    func runTask(_ task: QueueTask, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) -> Bool
 }
 
 // Hook for when a screen view track event is sent
