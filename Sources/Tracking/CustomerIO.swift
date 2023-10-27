@@ -21,6 +21,8 @@ public protocol CustomerIOInstance: AutoMockable {
         body: RequestBody
     )
 
+    var registeredDeviceToken: String? { get }
+
     func clearIdentify()
 
     func track(
@@ -236,6 +238,18 @@ public class CustomerIO: CustomerIOInstance {
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
+    }
+
+    /**
+     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
+     This returns an optional string value.
+     Example use:
+     ```
+     CustomerIO.shared.registeredDeviceToken
+     ```
+     */
+    public var registeredDeviceToken: String? {
+        implementation?.registeredDeviceToken
     }
 
     public var config: SdkConfig? {
