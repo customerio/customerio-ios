@@ -156,4 +156,11 @@ class CustomerIOIntegrationTests: IntegrationTest {
         XCTAssertEqual(CustomerIO.shared.config!.siteId, givenSiteId)
         XCTAssertEqual(CustomerIO.shared.config!.apiKey, givenApiKey)
     }
+
+    // Note: It's very important that this is an integration test that uses *real* instances of ThreadUtil to run code in a real background thread and the dependencies in SDK initialization, such as CleanupRepository, are all real instances.
+    func test_initializeSdk_givenCallMultipleTimes_expectNoExceptions() {
+        for _ in 0 ..< 1000 {
+            CustomerIO.initialize(siteId: .random, apiKey: .random, region: .US, configure: nil)
+        }
+    }
 }
