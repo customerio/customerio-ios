@@ -1,3 +1,10 @@
+## [2.8.5](https://github.com/customerio/customerio-ios/compare/2.8.4...2.8.5) (2023-10-27)
+
+
+### Bug Fixes
+
+* when queue cannot find task, expect queue runs next task ([#397](https://github.com/customerio/customerio-ios/issues/397)) ([01ea7a6](https://github.com/customerio/customerio-ios/commit/01ea7a62981de1df13b3eec44d8c6433b77c5653))
+
 ## [2.8.4](https://github.com/customerio/customerio-ios/compare/2.8.3...2.8.4) (2023-10-18)
 
 
