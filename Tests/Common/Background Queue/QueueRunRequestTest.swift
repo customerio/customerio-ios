@@ -125,6 +125,40 @@ class QueueRunRequestTest: UnitTest {
 
     // MARK: runTasks
 
+    func test_runTasks_givenQueueTaskNotFoundInStorage_expectToContinueRunningQueue() {
+        // Setup the queue with 2 tasks.
+        // 1st task that cannot be found in queue storage.
+        // 2nd task that can be found and is expected to be executed.
+        let givenInventoryTaskStorageCannotFind = QueueTaskMetadata.random
+        let givenInventoryTaskInStorage = QueueTaskMetadata.random
+
+        var givenInventory = [givenInventoryTaskStorageCannotFind, givenInventoryTaskInStorage]
+        storageMock.getInventoryReturnValue = givenInventory
+
+        storageMock.getClosure = { taskStorageId in
+            if taskStorageId == givenInventoryTaskInStorage.taskPersistedId {
+                return QueueTask.random // queue storage found task in file system for 1 of the tasks
+            }
+
+            return nil
+        }
+
+        // setup runner and storage to run tasks successfully.
+        runnerMock.runTaskClosure = { _, onComplete in
+            onComplete(.success(()))
+        }
+        storageMock.deleteClosure = { taskStorageId in
+            givenInventory.removeAll(where: { $0.taskPersistedId == taskStorageId })
+            return true
+        }
+
+        runRequest.runTasks()
+
+        XCTAssertEqual(storageMock.getCallsCount, 2) // expect queue tried to get queue task from storage
+        XCTAssertEqual(runnerMock.runTaskCallsCount, 1)
+        XCTAssertEqual(requestManagerMock.requestCompleteCallsCount, 1)
+    }
+
     // runTasks() performs async operations inside of it. A stackoverflow/infinite loop can occur if these async operations do not run in sequential order.
     func test_runTasks_expectAsyncOperationsToPerformSequentially() {
         // Events, in order, that are expected to happen
