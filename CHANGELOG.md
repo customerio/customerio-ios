@@ -1,3 +1,10 @@
+## [2.9.0](https://github.com/customerio/customerio-ios/compare/2.8.5...2.9.0) (2023-10-31)
+
+
+### Features
+
+* get currently registered device token ([#398](https://github.com/customerio/customerio-ios/issues/398)) ([cdedab0](https://github.com/customerio/customerio-ios/commit/cdedab0fa9a9894789f4807fc90e7b7119ff9ae9))
+
 ## [2.8.5](https://github.com/customerio/customerio-ios/compare/2.8.4...2.8.5) (2023-10-27)
 
 
