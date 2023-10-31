@@ -298,7 +298,6 @@ class CustomerIOImplementationTest: UnitTest {
 
     func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectToken() {
         let givenDeviceToken = String.random
-        profileStoreMock.identifier = nil
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(customerIO.registeredDeviceToken, givenDeviceToken)
