@@ -29,12 +29,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             appSetSettings?.configureCioSdk(config: &config)
         }
         MessagingInApp.initialize(eventListener: self)
-        MessagingPush.initialize()
 
-        // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
-        UNUserNotificationCenter.current().delegate = self
+        MessagingPush.initialize() // setup CIO as the push click handler
+        UNUserNotificationCenter.current().delegate = self // change the push click handler to the host app. CIO SDK should still handle it though if SDK is working as intended.
 
-        Messaging.messaging().delegate = self
+        Messaging.messaging().delegate = self // listen to FCM SDK device token functions. Also, adds support for SwiftUI apps.
 
         return true
     }
@@ -49,9 +48,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Note: if this function does not exist, swizzle doesn't work. It's an optional function.
-
-//         super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        // We should see this message when the push gets clicked.
+        print("Received a push notification! \(response.notification.request.content.userInfo))")
     }
 
     // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
