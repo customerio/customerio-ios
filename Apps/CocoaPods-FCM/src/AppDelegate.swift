@@ -1,4 +1,5 @@
 import CioMessagingInApp
+import CioMessagingPush
 import CioMessagingPushFCM
 import CioTracking
 import FirebaseCore
@@ -29,9 +30,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             appSetSettings?.configureCioSdk(config: &config)
         }
         MessagingInApp.initialize(eventListener: self)
+        MessagingPush.initialize()
 
-        MessagingPush.initialize() // setup CIO as the push click handler
-        UNUserNotificationCenter.current().delegate = self // change the push click handler to the host app. CIO SDK should still handle it though if SDK is working as intended.
+//        MessagingPush.initialize() // setup CIO as the push click handler
+        UNUserNotificationCenter.current().delegate = self
 
         Messaging.messaging().delegate = self // listen to FCM SDK device token functions. Also, adds support for SwiftUI apps.
 

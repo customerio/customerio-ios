@@ -1,6 +1,7 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
+import UserNotifications
 
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
@@ -33,7 +34,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     public static func initialize() {
         MessagingPush.shared.initializeModuleIfSdkInitialized()
 
-        MessagingPush.shared.setupCioPushClickHandling()
+        MessagingPush.setupCioPushClickHandling()
     }
 
     override public func inititlizeModule(diGraph: DIGraph) {
