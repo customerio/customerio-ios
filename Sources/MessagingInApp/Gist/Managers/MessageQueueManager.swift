@@ -24,7 +24,11 @@ class MessageQueueManager {
 
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
-        localMessageStore.forEach { message in
+        let sortedMessages = localMessageStore.sorted {
+            guard let priority0 = $0.value.priority, let priority1 = $1.value.priority else { return false }
+            return priority0 < priority1
+        }
+        sortedMessages.forEach { message in
             handleMessage(message: message.value)
         }
     }
