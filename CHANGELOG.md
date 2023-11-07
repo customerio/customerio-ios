@@ -1,3 +1,10 @@
+## [2.9.1](https://github.com/customerio/customerio-ios/compare/2.9.0...2.9.1) (2023-11-07)
+
+
+### Bug Fixes
+
+* add priority field to message and sorting by priority within local store ([#401](https://github.com/customerio/customerio-ios/issues/401)) ([8315118](https://github.com/customerio/customerio-ios/commit/83151189b7fa6829bf4eca47431e8aeba2c943fd))
+
 ## [2.9.0](https://github.com/customerio/customerio-ios/compare/2.8.5...2.9.0) (2023-10-31)
 
 
