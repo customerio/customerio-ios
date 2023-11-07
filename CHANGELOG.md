@@ -1,3 +1,10 @@
+## [2.9.2](https://github.com/customerio/customerio-ios/compare/2.9.1...2.9.2) (2023-11-07)
+
+
+### Bug Fixes
+
+* memory exception during SDK initialization async tasks ([#399](https://github.com/customerio/customerio-ios/issues/399)) ([3404523](https://github.com/customerio/customerio-ios/commit/3404523677bcf4a184b50ba88390596a3615bb6e))
+
 ## [2.9.1](https://github.com/customerio/customerio-ios/compare/2.9.0...2.9.1) (2023-11-07)
 
 
