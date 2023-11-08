@@ -11,12 +11,12 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   automated-tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     permissions:
       checks: write # Need write permission to add test result check.
     steps:
     - uses: actions/checkout@v4
-    - uses: levibostian/setup-sd@add-file-extension
+    - run: cargo install sd 
     - run: ./scripts/update-version-cocoapods.sh "4.4.3"
     # - uses: ./.github/actions/setup-ios
     # # If running tests fails, sometimes it's because of scheme name is wrong. This gives us all available schemes. 
