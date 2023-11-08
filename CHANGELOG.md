@@ -1,3 +1,10 @@
+## [2.10.0](https://github.com/customerio/customerio-ios/compare/2.9.2...2.10.0) (2023-11-08)
+
+
+### Features
+
+* auto fetch device token and auto register device (apns) ([#391](https://github.com/customerio/customerio-ios/issues/391)) ([2fce84d](https://github.com/customerio/customerio-ios/commit/2fce84d0fc7801ddefcd1085b9a17b0859165d3b))
+
 ## [2.9.2](https://github.com/customerio/customerio-ios/compare/2.9.1...2.9.2) (2023-11-07)
 
 
