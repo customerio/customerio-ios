@@ -28,7 +28,7 @@ jobs:
       # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries. 
       # If using sd on macos, "brew install" works great. for Linux, this is the recommended way. 
       - name: Install sd CLI to use later in the workflow 
-        run: cargo install sd 
+        uses: kenji-miyake/setup-sd@v1
 
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
