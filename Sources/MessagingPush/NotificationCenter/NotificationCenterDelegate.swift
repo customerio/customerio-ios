@@ -7,17 +7,6 @@ public class CustomerIOUserNotificationCenterDelegate: NSObject, UNUserNotificat
 
     override private init() {}
 
-    @objc open weak var delegate: UNUserNotificationCenterDelegate? {
-        set {
-            print("setDelegate is called.se")
-
-            //  self.delegate = delegate // continue swizzle
-        }
-        get {
-            UNUserNotificationCenter.current().delegate
-        }
-    }
-
     public static func setupCioPushClickHandling() {
         UNUserNotificationCenter.current().setupCioPushClickHandling()
 
@@ -33,35 +22,40 @@ public class CustomerIOUserNotificationCenterDelegate: NSObject, UNUserNotificat
         }
     }
 
-    private let notificationCenterDelegateClasses = NSMutableSet()
+    public func setupSwizzling(delegate: UNUserNotificationCenterDelegate) {
+        if delegate is CustomerIOUserNotificationCenterDelegate {
+            return // avoid infinite loop. we dont want to swizzle our own delegate to avoid duplicate calls for push handling.
+        }
+
+        swizzle(
+            targetClass: type(of: delegate),
+            targetSelector: #selector(userNotificationCenter(_:didReceive:withCompletionHandler:)),
+            myClass: CustomerIOUserNotificationCenterDelegate.self,
+            mySelector: #selector(cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
+        )
+    }
 
     // Notification was interacted with.
     public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
     }
 
-    @objc func cio_swizzle_UNUserNotificationCenter_setDelegate(_ delegate: UNUserNotificationCenterDelegate) {
-        let classForDelegate: AnyClass = type(of: delegate)
-
-        // TODO: make sure that we only setup swizzling 1 time on this class.
-        // https://github.com/OneSignal/OneSignal-iOS-SDK/blob/main/iOS_SDK/OneSignalSDK/OneSignalNotifications/Categories/UNUserNotificationCenter%2BOneSignalNotifications.m#L186
-        notificationCenterDelegateClasses.add(classForDelegate)
-
-        swizzle(
-            targetClass: classForDelegate,
-            targetSelector: #selector(userNotificationCenter(_:didReceive:withCompletionHandler:)),
-            myClass: CustomerIOUserNotificationCenterDelegate.self,
-            mySelector: #selector(cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
-        )
-
-        // continue
-        cio_swizzle_UNUserNotificationCenter_setDelegate(delegate)
-    }
-
-    @objc func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    // called when a push is clicked.
+    @objc dynamic func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
 
-        // continue
+        // continue swizzle
+        cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
+    }
+}
+
+@available(iOSApplicationExtension, unavailable)
+extension UNUserNotificationCenterDelegate {
+    // called when a push is clicked.
+    func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+
+        // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
     }
 }
@@ -84,30 +78,16 @@ extension UNUserNotificationCenter {
         }
     }
 
-    func cioSetupDelegateSwizzling(delegate: UNUserNotificationCenterDelegate) {
-        swizzle(
-            targetClass: type(of: delegate),
-            targetSelector: #selector(delegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
-            myClass: UNUserNotificationCenter.self,
-            mySelector: #selector(cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
-        )
-    }
-
-    @objc func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        print("cio_swizzle_didReceive is called.")
-
-        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-
-        // continue
-        cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
-    }
-
+    // gets called when a new delegate gets set.
     @objc func cio_swizzle_setDelegate(delegate: UNUserNotificationCenterDelegate?) {
-        print("cio_swizzle_setDelegate is called.")
+        guard let delegate = delegate else {
+            cio_swizzle_setDelegate(delegate: delegate) // continue swizzle
+            return
+        }
 
-        cioSetupDelegateSwizzling(delegate: delegate!)
+        CustomerIOUserNotificationCenterDelegate.shared.setupSwizzling(delegate: delegate)
 
-        // continue the path
+        // continue swizzle
         cio_swizzle_setDelegate(delegate: delegate)
     }
 }
