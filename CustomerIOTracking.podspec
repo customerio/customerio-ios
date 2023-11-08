@@ -20,5 +20,5 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/Tracking/**/*"
   spec.module_name = "CioTracking" # the `import X` name when using SDK in Swift files
 
-  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"  
+  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
 end

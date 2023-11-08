@@ -26,7 +26,7 @@ class MessageQueueManager {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
         let sortedMessages = localMessageStore.sorted {
             switch ($0.value.priority, $1.value.priority) {
-            case let (priority0?, priority1?):
+            case (let priority0?, let priority1?):
                 // Both messages have a priority, so we compare them.
                 return priority0 < priority1
             case (nil, _):

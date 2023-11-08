@@ -1,3 +1,4 @@
+import CioTracking
 import UIKit
 import UserNotifications
 
@@ -72,7 +73,7 @@ class SettingsViewController: BaseViewController {
             apiKey = deepLinkApiKey
         }
         currentSettings = Settings(
-            deviceToken: storage.deviceToken ?? "Error",
+            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "https://track-sdk.customer.io/",
             siteId: siteId,
             apiKey: apiKey,
@@ -197,7 +198,7 @@ class SettingsViewController: BaseViewController {
 
     @IBAction func restoreDefaultSettings(_ sender: UIButton) {
         currentSettings = Settings(
-            deviceToken: storage.deviceToken ?? "Error",
+            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
             trackUrl: "https://track-sdk.customer.io/",
             siteId: BuildEnvironment.CustomerIO.siteId,
             apiKey: BuildEnvironment.CustomerIO.apiKey,

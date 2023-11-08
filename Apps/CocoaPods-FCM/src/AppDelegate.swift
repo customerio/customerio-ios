@@ -33,8 +33,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
         UNUserNotificationCenter.current().delegate = self
 
-        Messaging.messaging().delegate = self
-
+        // Initialize Customer.io push messaging allows
+        // the SDK to automatically send FCM push tokens to
+        // Customer.io!
+        MessagingPushFCM.initialize { config in
+            config.autoFetchDeviceToken = true
+        }
         return true
     }
 
@@ -110,17 +114,5 @@ extension AppDelegate: InAppEventListener {
             "action-value": actionValue,
             "action-name": actionName
         ])
-    }
-}
-
-extension AppDelegate: MessagingDelegate {
-    // FCM SDK calls this function when a FCM device token is available.
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Pass the FCM token to the Customer.io SDK:
-        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
-
-        // Save the FCM token to show in the settings screen of the app later.
-        // This is not required for the Customer.io SDK to work.
-        KeyValueStore().pushToken = fcmToken
     }
 }
