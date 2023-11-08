@@ -95,7 +95,7 @@ public class CioQueueRunRequest: QueueRunRequest {
 
                 // The task failed to execute like a HTTP failure. Update `lastFailedTask`.
                 updateWhileLoopLogicVariables(didTaskFail: true, taskJustExecuted: nextTaskToRunInventoryItem)
-                break
+                continue // quit loop early and move to next task.
             }
 
             logger.debug("queue tasks left to run: \(queueInventory.count)")

@@ -1,3 +1,31 @@
+## [2.9.2](https://github.com/customerio/customerio-ios/compare/2.9.1...2.9.2) (2023-11-07)
+
+
+### Bug Fixes
+
+* memory exception during SDK initialization async tasks ([#399](https://github.com/customerio/customerio-ios/issues/399)) ([3404523](https://github.com/customerio/customerio-ios/commit/3404523677bcf4a184b50ba88390596a3615bb6e))
+
+## [2.9.1](https://github.com/customerio/customerio-ios/compare/2.9.0...2.9.1) (2023-11-07)
+
+
+### Bug Fixes
+
+* add priority field to message and sorting by priority within local store ([#401](https://github.com/customerio/customerio-ios/issues/401)) ([8315118](https://github.com/customerio/customerio-ios/commit/83151189b7fa6829bf4eca47431e8aeba2c943fd))
+
+## [2.9.0](https://github.com/customerio/customerio-ios/compare/2.8.5...2.9.0) (2023-10-31)
+
+
+### Features
+
+* get currently registered device token ([#398](https://github.com/customerio/customerio-ios/issues/398)) ([cdedab0](https://github.com/customerio/customerio-ios/commit/cdedab0fa9a9894789f4807fc90e7b7119ff9ae9))
+
+## [2.8.5](https://github.com/customerio/customerio-ios/compare/2.8.4...2.8.5) (2023-10-27)
+
+
+### Bug Fixes
+
+* when queue cannot find task, expect queue runs next task ([#397](https://github.com/customerio/customerio-ios/issues/397)) ([01ea7a6](https://github.com/customerio/customerio-ios/commit/01ea7a62981de1df13b3eec44d8c6433b77c5653))
+
 ## [2.8.4](https://github.com/customerio/customerio-ios/compare/2.8.3...2.8.4) (2023-10-18)
 
 

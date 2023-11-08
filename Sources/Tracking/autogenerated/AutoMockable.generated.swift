@@ -214,7 +214,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingRegisteredDeviceToken: String?
+    public var underlyingRegisteredDeviceToken: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var registeredDeviceTokenCalled: Bool {
         registeredDeviceTokenGetCalled || registeredDeviceTokenSetCalled
