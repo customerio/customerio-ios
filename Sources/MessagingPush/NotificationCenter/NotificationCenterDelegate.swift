@@ -44,16 +44,8 @@ public class CustomerIOUserNotificationCenterDelegate: NSObject, UNUserNotificat
     @objc dynamic func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
 
-        // continue swizzle
-        cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
-    }
-}
-
-@available(iOSApplicationExtension, unavailable)
-extension UNUserNotificationCenterDelegate {
-    // called when a push is clicked.
-    func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        // TODO: duplicate metrics could be reported because we might be swizzling multiple delegates and so this function gets called X number of times.
+        // https://github.com/customerio/issues/issues/11150 should we do this?
 
         // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
