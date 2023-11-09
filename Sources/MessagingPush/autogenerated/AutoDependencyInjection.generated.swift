@@ -58,6 +58,9 @@ extension DIGraph {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = pushClickHandler
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -71,6 +74,30 @@ extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // PushClickHandler (singleton)
+    var pushClickHandler: PushClickHandler {
+        getOverriddenInstance() ??
+            sharedPushClickHandler
+    }
+
+    var sharedPushClickHandler: PushClickHandler {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_PushClickHandler_singleton_access").sync {
+            if let overridenDep: PushClickHandler = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: PushClickHandler.self)] as? PushClickHandler
+            let instance = existingSingletonInstance ?? _get_pushClickHandler()
+            self.singletons[String(describing: PushClickHandler.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_pushClickHandler() -> PushClickHandler {
+        PushClickHandlerImpl()
     }
 }
 

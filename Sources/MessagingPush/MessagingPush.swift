@@ -37,7 +37,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
-        MessagingPush.setupCioPushClickHandling()
+        diGraph.pushClickHandler.setupClickHandling()
 
         logger.info("MessagingPush module setup with SDK")
     }
