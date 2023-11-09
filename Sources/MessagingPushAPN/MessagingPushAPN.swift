@@ -83,6 +83,8 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
     ) {
+        MessagingPush.initialize() // initialize parent module to initialize features shared by APN and FCM modules
+
         var pushConfigOptions = MessagingPushConfigOptions.Factory.create()
 
         if let configureHandler = configureHandler {

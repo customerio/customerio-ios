@@ -28,18 +28,19 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         shared = MessagingPush()
     }
 
-    // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
-    // currently no module initialization to perform.
+    // Gets called when MessagingPushAPN.initialize() or MessagingPushFCM.initialize() called.
     @available(iOSApplicationExtension, unavailable)
     public static func initialize() {
         MessagingPush.shared.initializeModuleIfSdkInitialized()
-
-        MessagingPush.setupCioPushClickHandling()
     }
 
     override public func inititlizeModule(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
+
+        if diGraph.sdkConfig.autoTrackPushEvents {
+            MessagingPush.setupCioPushClickHandling()
+        }
 
         logger.info("MessagingPush module setup with SDK")
     }
