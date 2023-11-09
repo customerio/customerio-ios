@@ -1,7 +1,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import UserNotifications
 
 /**
  Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
