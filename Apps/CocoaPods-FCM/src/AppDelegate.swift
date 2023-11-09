@@ -1,5 +1,4 @@
 import CioMessagingInApp
-import CioMessagingPush
 import CioMessagingPushFCM
 import CioTracking
 import FirebaseCore
@@ -24,29 +23,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Initialize the Customer.io SDK
         CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
             // Modify properties in the config object to configure the Customer.io SDK.
+            config.autoTrackPushEvents = true
             // config.logLevel = .debug // Uncomment this line to enable debug logging.
 
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
         }
+        // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp.initialize(eventListener: self)
-        MessagingPush.initialize()
-
-        // Initialize Customer.io push messaging allows
-        // the SDK to automatically send FCM push tokens to
-        // Customer.io!
         MessagingPushFCM.initialize { config in
             config.autoFetchDeviceToken = true
         }
 
         return true
-    }
-
-    // Because this is a SwiftUI app, we need to add this function to inform FCM about an APN token being registered.
-    // Without this function, the FCM delegate will not be called with a FCM token registered.
-    // Docs: https://firebase.google.com/docs/cloud-messaging/ios/client#token-swizzle-disabled
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
     }
 }
 
