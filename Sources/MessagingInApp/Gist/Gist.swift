@@ -72,8 +72,9 @@ public class Gist: GistDelegate {
     }
 
     public func dismissMessage(instanceId: String? = nil, completionHandler: (() -> Void)? = nil) {
-        if let id = instanceId {
-            messageManager(instanceId: id)?.dismissMessage(completionHandler: completionHandler)
+        if let id = instanceId, let messageManager = messageManager(instanceId: id) {
+            messageManager.removePersistentMessage()
+            messageManager.dismissMessage(completionHandler: completionHandler)
         } else {
             getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
         }
@@ -83,15 +84,11 @@ public class Gist: GistDelegate {
 
     public func messageShown(message: Message) {
         Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
-        messageQueueManager.removeMessageFromLocalStore(message: message)
-        let userToken = UserManager().getUserToken()
-        LogManager(siteId: siteId, dataCenter: dataCenter)
-            .logView(message: message, userToken: userToken) { response in
-                if case .failure(let error) = response {
-                    Logger.instance.error(message:
-                        "Failed to log view for message: \(message.messageId) with error: \(error)")
-                }
-            }
+        if message.gistProperties.persistent != true {
+            logMessageView(message: message)
+        } else {
+            Logger.instance.debug(message: "Persistent message shown, skipping logging view")
+        }
         delegate?.messageShown(message: message)
     }
 
@@ -112,6 +109,17 @@ public class Gist: GistDelegate {
 
     public func embedMessage(message: Message, elementId: String) {
         delegate?.embedMessage(message: message, elementId: elementId)
+    }
+
+    func logMessageView(message: Message) {
+        messageQueueManager.removeMessageFromLocalStore(message: message)
+        let userToken = UserManager().getUserToken()
+        LogManager(siteId: siteId, dataCenter: dataCenter)
+            .logView(message: message, userToken: userToken) { response in
+                if case .failure(let error) = response {
+                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+                }
+            }
     }
 
     // Message Manager

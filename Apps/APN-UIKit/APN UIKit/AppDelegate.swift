@@ -15,9 +15,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // didRegisterForRemoteNotifications delegate method will be called and it
         // provides a device token. In case, registration fails then
         // didFailToRegisterForRemoteNotifications will be called.
-        application.registerForRemoteNotifications()
         initializeCioAndInAppListeners()
         UNUserNotificationCenter.current().delegate = self
+
         return true
     }
 
@@ -51,6 +51,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp.initialize(eventListener: self)
+        MessagingPushAPN.initialize { config in
+            config.autoFetchDeviceToken = true
+        }
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
@@ -78,15 +81,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
-    }
-
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        storage.deviceToken = String(apnDeviceToken: deviceToken)
-        MessagingPush.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-    }
-
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        MessagingPush.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
     }
 }
 

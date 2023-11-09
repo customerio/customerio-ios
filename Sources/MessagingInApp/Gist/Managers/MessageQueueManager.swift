@@ -24,7 +24,20 @@ class MessageQueueManager {
 
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
-        localMessageStore.forEach { message in
+        let sortedMessages = localMessageStore.sorted {
+            switch ($0.value.priority, $1.value.priority) {
+            case (let priority0?, let priority1?):
+                // Both messages have a priority, so we compare them.
+                return priority0 < priority1
+            case (nil, _):
+                // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
+                return false
+            case (_, nil):
+                // The second message has no priority, the first message should be ordered first.
+                return true
+            }
+        }
+        sortedMessages.forEach { message in
             handleMessage(message: message.value)
         }
     }
@@ -56,6 +69,8 @@ class MessageQueueManager {
                     .fetchUserQueue(userToken: userToken, completionHandler: { response in
                         switch response {
                         case .success(let responses):
+                            // To prevent us from showing expired / revoked messages, clear user messages from local queue.
+                            self.clearUserMessagesFromLocalStore()
                             Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
                             for queueMessage in responses {
                                 let message = queueMessage.toMessage()

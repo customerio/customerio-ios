@@ -32,10 +32,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingInApp.initialize(eventListener: self)
         MessagingPush.initialize()
 
-//        MessagingPush.initialize() // setup CIO as the push click handler
-        UNUserNotificationCenter.current().delegate = self
-
-        Messaging.messaging().delegate = self // listen to FCM SDK device token functions. Also, adds support for SwiftUI apps.
+        // Initialize Customer.io push messaging allows
+        // the SDK to automatically send FCM push tokens to
+        // Customer.io!
+        MessagingPushFCM.initialize { config in
+            config.autoFetchDeviceToken = true
+        }
 
         return true
     }
@@ -45,25 +47,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // Docs: https://firebase.google.com/docs/cloud-messaging/ios/client#token-swizzle-disabled
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
-    }
-}
-
-extension AppDelegate: UNUserNotificationCenterDelegate {
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // We should see this message when the push gets clicked.
-        print("Received a push notification! \(response.notification.request.content.userInfo))")
-    }
-
-    // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
-    // the completion handler.
-    @available(iOS 10.0, *)
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
-            -> Void
-    ) {
-        completionHandler([.list, .banner, .badge, .sound])
     }
 }
 
@@ -96,17 +79,5 @@ extension AppDelegate: InAppEventListener {
             "action-value": actionValue,
             "action-name": actionName
         ])
-    }
-}
-
-extension AppDelegate: MessagingDelegate {
-    // FCM SDK calls this function when a FCM device token is available.
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Pass the FCM token to the Customer.io SDK:
-        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
-
-        // Save the FCM token to show in the settings screen of the app later.
-        // This is not required for the Customer.io SDK to work.
-        KeyValueStore().pushToken = fcmToken
     }
 }

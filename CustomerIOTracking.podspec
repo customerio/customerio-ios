@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOTracking"
-  spec.version      = "2.8.3" # Don't modify this line - it's automatically updated
+  spec.version      = "2.10.0" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -20,5 +20,5 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/Tracking/**/*"
   spec.module_name = "CioTracking" # the `import X` name when using SDK in Swift files
 
-  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"  
+  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
 end
