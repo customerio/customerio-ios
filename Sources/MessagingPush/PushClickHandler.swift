@@ -49,8 +49,8 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         swizzle(
             targetClass: type(of: delegate),
             targetSelector: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
-            myClass: CustomerIOUserNotificationCenterDelegate.self,
-            mySelector: #selector(CustomerIOUserNotificationCenterDelegate.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
+            myClass: PushClickHandlerImpl.self,
+            mySelector: #selector(PushClickHandlerImpl.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
         )
     }
 }
