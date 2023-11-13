@@ -1,8 +1,10 @@
 import CioInternalCommon
+import CioTracking
 import Foundation
 import UserNotifications
 
 protocol PushClickHandler: AutoMockable {
+    func pushClicked(response: UNNotificationResponse) -> CustomerIOParsedPushPayload?
     func setupClickHandling()
 }
 
@@ -12,6 +14,18 @@ protocol PushClickHandler: AutoMockable {
 // sourcery: InjectRegister = "PushClickHandler"
 // sourcery: InjectSingleton
 class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenterDelegate {
+    private let pushHistory: PushHistory
+    private let jsonAdapter: JsonAdapter
+
+    private var customerIO: CustomerIO? {
+        sdkInitializedUtil.customerio
+    }
+
+    init(pushHistory: PushHistory, jsonAdapter: JsonAdapter) {
+        self.pushHistory = pushHistory
+        self.jsonAdapter = jsonAdapter
+    }
+
     func setupClickHandling() {
         // UNUserNotificationCenter.delegate is the 1 object in an iOS app that gets called when a push is clicked.
         // We can set the CIO SDK as the delegate, but another SDK or the host app can set itself as the delegate instead which
@@ -52,6 +66,73 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             myClass: PushClickHandlerImpl.self,
             mySelector: #selector(PushClickHandlerImpl.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
         )
+    }
+
+    func pushClicked(response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+        guard let parsedPush = CustomerIOParsedPushPayload
+            .parse(
+                notificationContent: response.notification.request.content,
+                jsonAdapter: jsonAdapter
+            )
+        else {
+            // Push not sent by CIO. Exit early. Return nil to indicate that the push not from CIO.
+            return nil
+        }
+
+        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
+            // The SDK has already handled this push previously. Exit early. Return parsed push to indicate push from CIO.
+            return parsedPush
+        }
+
+        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
+
+        if sdkConfig.autoTrackPushEvents {
+            var pushMetric = Metric.delivered
+
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+                pushMetric = Metric.opened
+            }
+
+            trackMetric(notificationContent: response.notification.request.content, event: pushMetric)
+        }
+
+        cleanupAfterPushInteractedWith(pushContent: pushContent)
+
+        switch response.actionIdentifier {
+        case UNNotificationDefaultActionIdentifier: // push notification was touched.
+            if let deepLinkUrl = pushContent.deepLink {
+                // A hack to get an instance of deepLinkUtil without making it a property of the MessagingPushImplementation class. deepLinkUtil is not available to app extensions but MessagingPushImplementation is.
+                // We get around this by getting a instance in this function, only.
+                if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
+                    deepLinkUtil.handleDeepLink(deepLinkUrl)
+                }
+            }
+        default: break
+        }
+    }
+
+    func trackMetric(
+        notificationContent: UNNotificationContent,
+        event: Metric
+    ) {
+        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
+              let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
+        else {
+            return
+        }
+
+        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    // There are files that are created just for displaying a rich push. After a push is interacted with, those files
+    // are no longer needed.
+    // This function's job is to cleanup after a push is no longer being displayed.
+    func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
+        pushContent.cioAttachments.forEach { attachment in
+            let localFilePath = attachment.url
+
+            try? FileManager.default.removeItem(at: localFilePath)
+        }
     }
 }
 

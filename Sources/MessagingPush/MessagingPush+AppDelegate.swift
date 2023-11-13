@@ -53,7 +53,8 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let pushContent = userNotificationCenter(center, didReceive: response) else {
+        // Time to handle rich push notifications.
+        guard let pushContent = pushClickHandler.pushClicked(response: response) else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so
             // allow another SDK
@@ -61,20 +62,6 @@ extension MessagingPushImplementation {
             return false
         }
 
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier: // push notification was touched.
-            if let deepLinkUrl = pushContent.deepLink {
-                // A hack to get an instance of deepLinkUtil without making it a property of the MessagingPushImplementation class. deepLinkUtil is not available to app extensions but MessagingPushImplementation is.
-                // We get around this by getting a instance in this function, only.
-                if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
-                    deepLinkUtil.handleDeepLink(deepLinkUrl)
-                }
-            }
-        default: break
-        }
-
-        // Push came from CIO and the SDK handled it. Therefore, call the completionHandler for the customer and return
-        // true telling them that the SDK handled the push for them.
         completionHandler()
         return true
     }
@@ -83,30 +70,7 @@ extension MessagingPushImplementation {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        if sdkConfig.autoTrackPushEvents {
-            var pushMetric = Metric.delivered
-
-            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-                pushMetric = Metric.opened
-            }
-
-            trackMetric(notificationContent: response.notification.request.content, event: pushMetric)
-        }
-
-        // Time to handle rich push notifications.
-        guard let pushContent = CustomerIOParsedPushPayload
-            .parse(
-                notificationContent: response.notification.request.content,
-                jsonAdapter: jsonAdapter
-            )
-        else {
-            // push does not contain a CIO rich payload, so end early
-            return nil
-        }
-
-        cleanupAfterPushInteractedWith(pushContent: pushContent)
-
-        return pushContent
+        pushClickHandler.pushClicked(response: response)
     }
 }
 #endif

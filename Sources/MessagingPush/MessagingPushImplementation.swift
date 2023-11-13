@@ -13,6 +13,7 @@ class MessagingPushImplementation: MessagingPushInstance {
     let sdkConfig: SdkConfig
     let backgroundQueue: Queue
     let sdkInitializedUtil: SdkInitializedUtil
+    let pushClickHandler: PushClickHandler
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
@@ -24,7 +25,8 @@ class MessagingPushImplementation: MessagingPushInstance {
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
         backgroundQueue: Queue,
-        sdkInitializedUtil: SdkInitializedUtil
+        sdkInitializedUtil: SdkInitializedUtil,
+        pushClickHandler: PushClickHandler
     ) {
         self.siteId = sdkConfig.siteId
         self.logger = logger
@@ -32,6 +34,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = sdkConfig
         self.backgroundQueue = backgroundQueue
         self.sdkInitializedUtil = sdkInitializedUtil
+        self.pushClickHandler = pushClickHandler
     }
 
     init(diGraph: DIGraph) {
@@ -41,6 +44,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = diGraph.sdkConfig
         self.backgroundQueue = diGraph.queue
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
+        self.pushClickHandler = diGraph.pushClickHandler
     }
 
     func deleteDeviceToken() {
@@ -54,30 +58,4 @@ class MessagingPushImplementation: MessagingPushInstance {
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-
-    #if canImport(UserNotifications)
-    func trackMetric(
-        notificationContent: UNNotificationContent,
-        event: Metric
-    ) {
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
-              let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
-        else {
-            return
-        }
-
-        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-    }
-
-    // There are files that are created just for displaying a rich push. After a push is interacted with, those files
-    // are no longer needed.
-    // This function's job is to cleanup after a push is no longer being displayed.
-    func cleanupAfterPushInteractedWith(pushContent: CustomerIOParsedPushPayload) {
-        pushContent.cioAttachments.forEach { attachment in
-            let localFilePath = attachment.url
-
-            try? FileManager.default.removeItem(at: localFilePath)
-        }
-    }
-    #endif
 }
