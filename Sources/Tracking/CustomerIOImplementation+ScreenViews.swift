@@ -20,6 +20,12 @@ extension CustomerIO {
         )
     }
 
+    private func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
+        guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
+        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+    }
+
     func performScreenTracking(onViewController viewController: UIViewController) {
         guard let diGraph = diGraph else {
             return // SDK not initialized yet. Therefore, we ignore event.
