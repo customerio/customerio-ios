@@ -29,19 +29,27 @@ public class CustomerIOParsedPushPayload {
 
     public var deepLink: URL? {
         get {
-            cio.push.link?.url
+            cio?.push.link?.url
         }
         set {
-            cioPush = cioPush.linkSet(newValue?.absoluteString)
+            if cioPush == nil {
+                cio = CioRichPushPayload(push: CioRichPushPayload.Push(link: newValue?.absoluteString, image: nil))
+            } else {
+                cioPush = cioPush?.linkSet(newValue?.absoluteString)
+            }
         }
     }
 
     public var image: URL? {
         get {
-            cio.push.image?.url
+            cio?.push.image?.url
         }
         set {
-            cioPush = cioPush.imageSet(newValue?.absoluteString)
+            if cioPush == nil {
+                cio = CioRichPushPayload(push: CioRichPushPayload.Push(link: nil, image: newValue?.absoluteString))
+            } else {
+                cioPush = cioPush?.imageSet(newValue?.absoluteString)
+            }
         }
     }
 
@@ -70,12 +78,14 @@ public class CustomerIOParsedPushPayload {
         mutableNotificationContent.attachments = existingAttachments
     }
 
-    private var cio: CioPushPayload {
+    // This can be nil if a simple push instead of rich
+    private var cio: CioRichPushPayload? {
         get {
-            // Disable swiftlint rule because this class can't initialize without this being valid +
-            // setter wont set unless a valid Object is created.
-            // swiftlint:disable:next force_cast
-            jsonAdapter.fromDictionary(mutableNotificationContent.userInfo["CIO"] as! [AnyHashable: Any])!
+            if let cioPushDictionary = mutableNotificationContent.userInfo["CIO"] as? [AnyHashable: Any] {
+                return jsonAdapter.fromDictionary(cioPushDictionary)
+            }
+
+            return nil
         }
         set {
             // assert we have a valid payload before we set it as the new value
@@ -86,12 +96,14 @@ public class CustomerIOParsedPushPayload {
         }
     }
 
-    private var cioPush: CioPushPayload.Push {
+    private var cioPush: CioRichPushPayload.Push? {
         get {
-            cio.push
+            cio?.push
         }
         set {
-            cio = CioPushPayload(push: newValue)
+            if let newValue = newValue {
+                cio = CioRichPushPayload(push: newValue)
+            }
         }
     }
 
@@ -119,10 +131,9 @@ public class CustomerIOParsedPushPayload {
             return nil
         }
 
-        guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],
-              let _: CioPushPayload = jsonAdapter.fromDictionary(cioUserInfo),
-              let mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent
-        else {
+        // Safely get a mutable instance of notification content. We expect this will be
+        // successful, but to be runtime safe, we will return nil if this fails.
+        guard let mutableNotificationContent = notificationContent.mutableCopy() as? UNMutableNotificationContent else {
             return nil
         }
 
@@ -153,7 +164,7 @@ public class CustomerIOParsedPushPayload {
 }
 #endif
 
-struct CioPushPayload: Codable {
+struct CioRichPushPayload: Codable {
     let push: Push
 
     struct Push: Codable, AutoLenses {
