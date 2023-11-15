@@ -4,7 +4,19 @@ import Foundation
 import UserNotifications
 
 protocol PushClickHandler: AutoMockable {
-    func pushClicked(_ response: UNNotificationResponse) -> CustomerIOParsedPushPayload?
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) -> CustomerIOParsedPushPayload?
+
+    // sourcery:Name=userNotificationCenterWithCompletionHandler
+    // sourcery:DuplicateMethod=userNotificationCenter
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) -> Bool
+
     func setupClickHandling()
 }
 
@@ -72,18 +84,37 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         )
     }
 
-    func pushClicked(_ response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
-        // Make sure that the push came from CIO.
-        guard let parsedPush = CustomerIOParsedPushPayload
-            .parse(
-                notificationContent: response.notification.request.content,
-                jsonAdapter: jsonAdapter
-            )
-        else {
-            // Push not sent by CIO. Exit early. Return nil to indicate that the push not from CIO.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
+            // push not sent from CIO. exit early
             return nil
         }
 
+        if response.didClickOnPush {
+            pushClicked(response, parsedPush: parsedPush)
+        }
+
+        return parsedPush
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) -> Bool {
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
+            // push did not come from CIO
+            // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so
+            // allow another SDK
+            // to call the completionHandler()
+            return false
+        }
+
+        if response.didClickOnPush {
+            pushClicked(response, parsedPush: parsedPush)
+        }
+
+        completionHandler()
+        return true
+    }
+
+    private func pushClicked(_ response: UNNotificationResponse, parsedPush: CustomerIOParsedPushPayload) {
         // TODO: prevent duplicate push metrics and deep link handling.
 
         // Now we are ready to handle the push click.
@@ -100,8 +131,6 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         if let deepLinkUrl = parsedPush.deepLink {
             deepLinkUtil.handleDeepLink(deepLinkUrl)
         }
-
-        return parsedPush
     }
 
     // There are files that are created just for displaying a rich push. After a push is interacted with, those files
@@ -130,9 +159,9 @@ extension PushClickHandlerImpl {
         cio_swizzled_setDelegate(delegate: delegate) // continue swizzle
     }
 
-    // Swizzled method that gets called when a push notification gets clicked on
+    // Swizzled method that gets called when a push notification gets clicked or swiped away
     @objc dynamic func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        _ = userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
 
         // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)

@@ -404,9 +404,13 @@ class PushClickHandlerMock: PushClickHandler, Mock {
     }
 
     public func resetMock() {
-        pushClickedCallsCount = 0
-        pushClickedReceivedArguments = nil
-        pushClickedReceivedInvocations = []
+        userNotificationCenterCallsCount = 0
+        userNotificationCenterReceivedArguments = nil
+        userNotificationCenterReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        userNotificationCenterWithCompletionHandlerReceivedArguments = nil
+        userNotificationCenterWithCompletionHandlerReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         setupClickHandlingCallsCount = 0
@@ -414,35 +418,59 @@ class PushClickHandlerMock: PushClickHandler, Mock {
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - pushClicked
+    // MARK: - userNotificationCenter
 
     /// Number of times the function was called.
-    private(set) var pushClickedCallsCount = 0
+    private(set) var userNotificationCenterCallsCount = 0
     /// `true` if the function was ever called.
-    var pushClickedCalled: Bool {
-        pushClickedCallsCount > 0
+    var userNotificationCenterCalled: Bool {
+        userNotificationCenterCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var pushClickedReceivedArguments: UNNotificationResponse?
+    private(set) var userNotificationCenterReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var pushClickedReceivedInvocations: [UNNotificationResponse] = []
+    private(set) var userNotificationCenterReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse)] = []
     /// Value to return from the mocked function.
-    var pushClickedReturnValue: CustomerIOParsedPushPayload?
+    var userNotificationCenterReturnValue: CustomerIOParsedPushPayload?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `pushClickedReturnValue`
+     then the mock will attempt to return the value for `userNotificationCenterReturnValue`
      */
-    var pushClickedClosure: ((UNNotificationResponse) -> CustomerIOParsedPushPayload?)?
+    var userNotificationCenterClosure: ((UNUserNotificationCenter, UNNotificationResponse) -> CustomerIOParsedPushPayload?)?
 
-    /// Mocked function for `pushClicked(_ response: UNNotificationResponse)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func pushClicked(_ response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
         mockCalled = true
-        pushClickedCallsCount += 1
-        pushClickedReceivedArguments = response
-        pushClickedReceivedInvocations.append(response)
-        return pushClickedClosure.map { $0(response) } ?? pushClickedReturnValue
+        userNotificationCenterCallsCount += 1
+        userNotificationCenterReceivedArguments = (center: center, response: response)
+        userNotificationCenterReceivedInvocations.append((center: center, response: response))
+        return userNotificationCenterClosure.map { $0(center, response) } ?? userNotificationCenterReturnValue
+    }
+
+    // MARK: - userNotificationCenter
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var userNotificationCenterWithCompletionHandlerReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var userNotificationCenterWithCompletionHandlerReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)] = []
+    /// Value to return from the mocked function.
+    var userNotificationCenterWithCompletionHandlerReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `userNotificationCenterWithCompletionHandlerReturnValue`
+     */
+    var userNotificationCenterWithCompletionHandlerClosure: ((UNUserNotificationCenter, UNNotificationResponse, @escaping () -> Void) -> Bool)?
+
+    /// Mocked function for `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) -> Bool {
+        mockCalled = true
+        userNotificationCenterCallsCount += 1
+        userNotificationCenterWithCompletionHandlerReceivedArguments = (center: center, response: response, completionHandler: completionHandler)
+        userNotificationCenterWithCompletionHandlerReceivedInvocations.append((center: center, response: response, completionHandler: completionHandler))
+        return userNotificationCenterWithCompletionHandlerClosure.map { $0(center, response, completionHandler) } ?? userNotificationCenterWithCompletionHandlerReturnValue
     }
 
     // MARK: - setupClickHandling
