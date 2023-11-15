@@ -1,10 +1,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-#if canImport(UserNotifications) && canImport(UIKit)
-import UIKit
-import UserNotifications
-#endif
 
 class MessagingPushImplementation: MessagingPushInstance {
     let siteId: String

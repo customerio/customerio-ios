@@ -53,13 +53,16 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        // Time to handle rich push notifications.
-        guard let pushContent = pushClickHandler.pushClicked(response: response) else {
+        guard let _ = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so
             // allow another SDK
             // to call the completionHandler()
             return false
+        }
+
+        if response.didClickOnPush {
+            _ = pushClickHandler.pushClicked(response)
         }
 
         completionHandler()
@@ -70,7 +73,16 @@ extension MessagingPushImplementation {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        pushClickHandler.pushClicked(response: response)
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
+            // push not sent from CIO. exit early
+            return nil
+        }
+
+        if response.didClickOnPush {
+            _ = pushClickHandler.pushClicked(response)
+        }
+
+        return parsedPush
     }
 }
 #endif

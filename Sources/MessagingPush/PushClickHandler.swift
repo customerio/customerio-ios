@@ -4,11 +4,11 @@ import Foundation
 import UserNotifications
 
 protocol PushClickHandler: AutoMockable {
-    func pushClicked(response: UNNotificationResponse) -> CustomerIOParsedPushPayload?
+    func pushClicked(_ response: UNNotificationResponse) -> CustomerIOParsedPushPayload?
     func setupClickHandling()
 }
 
-// Setup class to become a singleton to avoid instance being garbage collected. A strong reference needs to be held of instance.
+// Make class a singleton to avoid being garbage collected. A strong reference needs to be held of instance.
 // We are setting this class to be UNUserNotificationCenter.delegate instance and delegates are usually weak.
 //
 // sourcery: InjectRegister = "PushClickHandler"
@@ -16,14 +16,20 @@ protocol PushClickHandler: AutoMockable {
 class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenterDelegate {
     private let pushHistory: PushHistory
     private let jsonAdapter: JsonAdapter
+    private let sdkConfig: SdkConfig
+    let sdkInitializedUtil: SdkInitializedUtil
+    private let deepLinkUtil: DeepLinkUtil
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
     }
 
-    init(pushHistory: PushHistory, jsonAdapter: JsonAdapter) {
+    init(pushHistory: PushHistory, jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil) {
         self.pushHistory = pushHistory
         self.jsonAdapter = jsonAdapter
+        self.sdkConfig = sdkConfig
+        self.deepLinkUtil = deepLinkUtil
+        self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
     func setupClickHandling() {
@@ -68,7 +74,8 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         )
     }
 
-    func pushClicked(response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+    func pushClicked(_ response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
+        // Make sure that the push came from CIO.
         guard let parsedPush = CustomerIOParsedPushPayload
             .parse(
                 notificationContent: response.notification.request.content,
@@ -79,49 +86,29 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             return nil
         }
 
+        // Prevent handling a push click multiple times
         guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
             // The SDK has already handled this push previously. Exit early. Return parsed push to indicate push from CIO.
             return parsedPush
         }
-
         pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
 
+        // Now we are ready to handle the push click.
+        // Track metrics
         if sdkConfig.autoTrackPushEvents {
-            var pushMetric = Metric.delivered
-
-            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-                pushMetric = Metric.opened
-            }
-
-            trackMetric(notificationContent: response.notification.request.content, event: pushMetric)
+            customerIO?.trackMetric(deliveryID: parsedPush.deliveryId, event: .opened, deviceToken: parsedPush.deviceToken)
         }
 
-        cleanupAfterPushInteractedWith(pushContent: pushContent)
+        // Cleanup files on device that were used when the push was displayed. Files are no longer
+        // needed now that the push is no longer shown.
+        cleanupAfterPushInteractedWith(pushContent: parsedPush)
 
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier: // push notification was touched.
-            if let deepLinkUrl = pushContent.deepLink {
-                // A hack to get an instance of deepLinkUtil without making it a property of the MessagingPushImplementation class. deepLinkUtil is not available to app extensions but MessagingPushImplementation is.
-                // We get around this by getting a instance in this function, only.
-                if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
-                    deepLinkUtil.handleDeepLink(deepLinkUrl)
-                }
-            }
-        default: break
-        }
-    }
-
-    func trackMetric(
-        notificationContent: UNNotificationContent,
-        event: Metric
-    ) {
-        guard let deliveryID: String = notificationContent.userInfo["CIO-Delivery-ID"] as? String,
-              let deviceToken: String = notificationContent.userInfo["CIO-Delivery-Token"] as? String
-        else {
-            return
+        // Handle deep link, if there is one attached to push.
+        if let deepLinkUrl = parsedPush.deepLink {
+            deepLinkUtil.handleDeepLink(deepLinkUrl)
         }
 
-        trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        return parsedPush
     }
 
     // There are files that are created just for displaying a rich push. After a push is interacted with, those files

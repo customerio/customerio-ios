@@ -45,6 +45,10 @@ public class CustomerIOParsedPushPayload {
         }
     }
 
+    public let deliveryId: String
+
+    public let deviceToken: String
+
     public var cioAttachments: [UNNotificationAttachment] {
         mutableNotificationContent.attachments.filter { $0.identifier.starts(with: Self.cioAttachmentsPrefix) }
     }
@@ -96,10 +100,24 @@ public class CustomerIOParsedPushPayload {
     public let notificationContent: UNNotificationContent
 
     public static func parse(
+        response: UNNotificationResponse,
+        jsonAdapter: JsonAdapter
+    ) -> CustomerIOParsedPushPayload? {
+        parse(notificationContent: response.notification.request.content, jsonAdapter: jsonAdapter)
+    }
+
+    public static func parse(
         notificationContent: UNNotificationContent,
         jsonAdapter: JsonAdapter
     ) -> CustomerIOParsedPushPayload? {
         let raw = notificationContent.userInfo
+
+        // If these fields are not present, then this push did not get sent by CIO. Exit early.
+        guard let deliveryId = raw["CIO-Delivery-ID"] as? String,
+              let deviceToken = raw["CIO-Delivery-Token"] as? String
+        else {
+            return nil
+        }
 
         guard let cioUserInfo = raw["CIO"] as? [AnyHashable: Any],
               let _: CioPushPayload = jsonAdapter.fromDictionary(cioUserInfo),
@@ -109,6 +127,8 @@ public class CustomerIOParsedPushPayload {
         }
 
         return CustomerIOParsedPushPayload(
+            deliveryId: deliveryId,
+            deviceToken: deviceToken,
             originalNotificationContent: notificationContent,
             mutableNotificationContent: mutableNotificationContent,
             jsonAdapter: jsonAdapter
@@ -117,12 +137,17 @@ public class CustomerIOParsedPushPayload {
 
     // Used when modifying push content before showing and for parsing after displaying.
     private init(
+        deliveryId: String,
+        deviceToken: String,
         originalNotificationContent: UNNotificationContent,
         mutableNotificationContent: UNMutableNotificationContent,
         jsonAdapter: JsonAdapter
     ) {
+        self.deliveryId = deliveryId
+        self.deviceToken = deviceToken
         self.notificationContent = originalNotificationContent
         self.mutableNotificationContent = mutableNotificationContent
+
         self.jsonAdapter = jsonAdapter
     }
 }
