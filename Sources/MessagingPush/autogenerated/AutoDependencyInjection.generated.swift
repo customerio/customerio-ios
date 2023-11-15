@@ -61,6 +61,9 @@ extension DIGraph {
         _ = pushClickHandler
         countDependenciesResolved += 1
 
+        _ = userNotificationCenter
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -97,7 +100,17 @@ extension DIGraph {
     }
 
     private func _get_pushClickHandler() -> PushClickHandler {
-        PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil)
+        PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, userNotificationCenter: userNotificationCenter)
+    }
+
+    // UserNotificationCenter
+    var userNotificationCenter: UserNotificationCenter {
+        getOverriddenInstance() ??
+            newUserNotificationCenter
+    }
+
+    private var newUserNotificationCenter: UserNotificationCenter {
+        UserNotificationCenterImpl()
     }
 }
 

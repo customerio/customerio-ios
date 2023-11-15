@@ -28,17 +28,19 @@ protocol PushClickHandler: AutoMockable {
 class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenterDelegate {
     private let jsonAdapter: JsonAdapter
     private let sdkConfig: SdkConfig
-    let sdkInitializedUtil: SdkInitializedUtil
+    private let sdkInitializedUtil: SdkInitializedUtil
     private let deepLinkUtil: DeepLinkUtil
+    private var userNotificationCenter: UserNotificationCenter
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
     }
 
-    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil) {
+    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter) {
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
+        self.userNotificationCenter = userNotificationCenter
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
@@ -55,13 +57,13 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             mySelector: #selector(PushClickHandlerImpl.cio_swizzled_setDelegate(delegate:))
         )
 
-        if UNUserNotificationCenter.current().delegate == nil {
+        if userNotificationCenter.currentDelegate == nil {
             // Set our SDK as the click handler, if there isn't one already set in the app.
-            UNUserNotificationCenter.current().delegate = self
+            userNotificationCenter.currentDelegate = self
         } else {
             // This handles the case where a delegate may have already been assigned before our SDK is loaded into memory.
             // This re-assignment triggers NotifiationCenter.delegate setter that we swizzled so our SDK can swizzle in its logic.
-            UNUserNotificationCenter.current().delegate = UNUserNotificationCenter.current().delegate
+            userNotificationCenter.currentDelegate = userNotificationCenter.currentDelegate
         }
     }
 
