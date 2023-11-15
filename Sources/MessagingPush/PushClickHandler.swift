@@ -170,8 +170,7 @@ extension PushClickHandlerImpl {
 
 // TODO: cleanup duplicate swizzle functions all over codebase.
 
-// https://nshipster.com/swift-objc-runtime/
-// https://github.com/expo/expo/blob/ad56550cff90602645f215d5eebd53e59fe2df76/packages/expo-dev-launcher/ios/EXDevLauncherUtils.swift#L9-L24
+// Swizzle method convenient when original and swizzled methods both belong to same class.
 func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
     guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
     guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
@@ -185,12 +184,10 @@ func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
     }
 }
 
-// https://github.com/OneSignal/OneSignal-iOS-SDK/blob/5ac5927fca8361a3af9cee1262ac11fd49e218ee/iOS_SDK/OneSignalSDK/OneSignalCore/Source/Swizzling/OneSignalSelectorHelpers.m#L33
+// Swizzle method convenient when swizzled method is in a different class then the original method.
 func swizzle(targetClass: AnyClass, targetSelector: Selector, myClass: AnyClass, mySelector: Selector) {
-    // TODO: make this runtime safe.
     guard let newMethod = class_getInstanceMethod(myClass, mySelector) else {
-        fatalError()
-//        return
+        return
     }
     let newImplementation = method_getImplementation(newMethod)
 
@@ -199,14 +196,12 @@ func swizzle(targetClass: AnyClass, targetSelector: Selector, myClass: AnyClass,
     let existingMethod = class_getInstanceMethod(targetClass, targetSelector)
     if existingMethod != nil {
         guard let originalMethod = class_getInstanceMethod(targetClass, targetSelector) else {
-            fatalError()
-//            return
+            return
         }
         let originalImplementation = method_getImplementation(originalMethod)
 
         guard newImplementation != originalImplementation else {
-            fatalError()
-//            return
+            return
         }
 
         class_addMethod(targetClass, mySelector, newImplementation, methodTypeEncoding)
