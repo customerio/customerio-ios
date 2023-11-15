@@ -53,14 +53,26 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        pushClickHandler.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
+        // We get around this by getting a instance in this function, only.
+        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
+            return pushClickHandler.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        }
+
+        return false
     }
 
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        pushClickHandler.userNotificationCenter(center, didReceive: response)
+        // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
+        // We get around this by getting a instance in this function, only.
+        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
+            return pushClickHandler.userNotificationCenter(center, didReceive: response)
+        }
+
+        return nil
     }
 }
 #endif

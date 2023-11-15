@@ -9,7 +9,6 @@ class MessagingPushImplementation: MessagingPushInstance {
     let sdkConfig: SdkConfig
     let backgroundQueue: Queue
     let sdkInitializedUtil: SdkInitializedUtil
-    let pushClickHandler: PushClickHandler
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
@@ -21,8 +20,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
         backgroundQueue: Queue,
-        sdkInitializedUtil: SdkInitializedUtil,
-        pushClickHandler: PushClickHandler
+        sdkInitializedUtil: SdkInitializedUtil
     ) {
         self.siteId = sdkConfig.siteId
         self.logger = logger
@@ -30,7 +28,6 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = sdkConfig
         self.backgroundQueue = backgroundQueue
         self.sdkInitializedUtil = sdkInitializedUtil
-        self.pushClickHandler = pushClickHandler
     }
 
     init(diGraph: DIGraph) {
@@ -40,7 +37,6 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.sdkConfig = diGraph.sdkConfig
         self.backgroundQueue = diGraph.queue
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
-        self.pushClickHandler = diGraph.pushClickHandler
     }
 
     func deleteDeviceToken() {

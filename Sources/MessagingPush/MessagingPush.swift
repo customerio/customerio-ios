@@ -33,6 +33,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
 
+    @available(iOSApplicationExtension, unavailable)
     override public func inititlizeModule(diGraph: DIGraph) {
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")

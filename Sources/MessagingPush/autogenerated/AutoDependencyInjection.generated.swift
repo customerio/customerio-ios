@@ -80,11 +80,13 @@ extension DIGraph {
     }
 
     // PushClickHandler (singleton)
+    @available(iOSApplicationExtension, unavailable)
     var pushClickHandler: PushClickHandler {
         getOverriddenInstance() ??
             sharedPushClickHandler
     }
 
+    @available(iOSApplicationExtension, unavailable)
     var sharedPushClickHandler: PushClickHandler {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
@@ -99,6 +101,7 @@ extension DIGraph {
         }
     }
 
+    @available(iOSApplicationExtension, unavailable)
     private func _get_pushClickHandler() -> PushClickHandler {
         PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, userNotificationCenter: userNotificationCenter)
     }

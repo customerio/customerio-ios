@@ -20,6 +20,7 @@ protocol PushClickHandler: AutoMockable {
     func setupClickHandling()
 }
 
+@available(iOSApplicationExtension, unavailable)
 // Make class a singleton to avoid being garbage collected. A strong reference needs to be held of instance.
 // We are setting this class to be UNUserNotificationCenter.delegate instance and delegates are usually weak.
 //
@@ -147,6 +148,7 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 // Swizzle functions
 extension PushClickHandlerImpl {
     // Swizzled method that gets called when a new UNUserNotificationCenter.delegate gets set.
