@@ -32,16 +32,18 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     private let sdkInitializedUtil: SdkInitializedUtil
     private let deepLinkUtil: DeepLinkUtil
     private var userNotificationCenter: UserNotificationCenter
+    private let pushHistory: PushHistory
 
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
     }
 
-    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter) {
+    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter, pushHistory: PushHistory) {
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
         self.userNotificationCenter = userNotificationCenter
+        self.pushHistory = pushHistory
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
@@ -118,7 +120,11 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     }
 
     private func pushClicked(_ response: UNNotificationResponse, parsedPush: CustomerIOParsedPushPayload) {
-        // TODO: prevent duplicate push metrics and deep link handling.
+        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
+            // push has already been handled. exit early
+            return
+        }
+        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
 
         // Now we are ready to handle the push click.
         // Track metrics
