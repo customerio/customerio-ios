@@ -116,14 +116,6 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     }
 }
 
-// UNUserNotificationCenterDelegate functions
-extension PushClickHandlerImpl {
-    // Notification was interacted with.
-    @objc public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-    }
-}
-
 // Swizzle functions
 extension PushClickHandlerImpl {
     // Swizzled method that gets called when a new UNUserNotificationCenter.delegate gets set.
@@ -141,9 +133,6 @@ extension PushClickHandlerImpl {
     // Swizzled method that gets called when a push notification gets clicked on
     @objc dynamic func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-
-        // TODO: duplicate metrics could be reported because we might be swizzling multiple delegates and so this function gets called X number of times.
-        // https://github.com/customerio/issues/issues/11150 should we do this?
 
         // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
