@@ -14,7 +14,6 @@ protocol PushClickHandler: AutoMockable {
 // sourcery: InjectRegister = "PushClickHandler"
 // sourcery: InjectSingleton
 class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenterDelegate {
-    private let pushHistory: PushHistory
     private let jsonAdapter: JsonAdapter
     private let sdkConfig: SdkConfig
     let sdkInitializedUtil: SdkInitializedUtil
@@ -24,8 +23,7 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         sdkInitializedUtil.customerio
     }
 
-    init(pushHistory: PushHistory, jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil) {
-        self.pushHistory = pushHistory
+    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil) {
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
@@ -86,12 +84,7 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             return nil
         }
 
-        // Prevent handling a push click multiple times
-        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
-            // The SDK has already handled this push previously. Exit early. Return parsed push to indicate push from CIO.
-            return parsedPush
-        }
-        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
+        // TODO: prevent duplicate push metrics and deep link handling.
 
         // Now we are ready to handle the push click.
         // Track metrics
