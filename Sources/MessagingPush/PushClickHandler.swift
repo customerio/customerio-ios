@@ -181,7 +181,7 @@ extension PushClickHandlerImpl {
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
     }
 
-    // Swizzled method that gets called when a push notification gets clicked or swiped away
+    // Swizzled method that gets called before the OS displays the push. Used to determine if a push gets displayed while app is in foreground or not. 
     @objc dynamic func cio_swizzle_willPresent(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
             // push not sent from CIO. exit early and ignore request
