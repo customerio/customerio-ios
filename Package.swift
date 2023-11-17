@@ -16,6 +16,7 @@ import Foundation
 // Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
     .library(name: "Tracking", targets: ["CioTracking"]),
+    .library(name: "DataPipeline", targets: ["CioDataPipeline"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
@@ -74,6 +75,11 @@ let package = Package(
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush"),
+        
+        // Data Pipeline
+        .target(name: "CioDataPipeline",
+                dependencies: ["CioInternalCommon"],
+                path: "Sources/DataPipeline"),
 
         // APN
         .target(name: "CioMessagingPushAPN",
