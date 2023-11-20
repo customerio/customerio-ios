@@ -118,7 +118,7 @@ extension DIGraph {
     {% endfor %} 
 }
 
-extension DIServiceGraph {
+extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
     {% for dep in types.all where dep|annotated:"InjectRegisterShared" %}
     {% set class %}{{ dep.annotations["InjectRegisterShared"] }}{% endset %}
@@ -130,7 +130,7 @@ extension DIServiceGraph {
     // {{ class }} (singleton)
     {% call overrideGetterProperty class dep false true %}
     {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
-        return DispatchQueue(label: "DIServiceGraph_{{class}}_singleton_access").sync {
+        return DispatchQueue(label: "DIGraphShared_{{class}}_singleton_access").sync {
             if let overridenDep: {{ class }} = getOverriddenInstance() {
                 return overridenDep
             }

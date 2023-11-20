@@ -1,13 +1,15 @@
 import Foundation
 
-public class DIServiceGraph {
-    public static let shared: DIServiceGraph = .init()
+public protocol DIManager: AnyObject {
+    var overrides: [String: Any] { get set }
+    var singletons: [String: Any] { get set }
 
-    var singletons: [String: Any] = [:]
-    var overrides: [String: Any] = [:]
+    func override<T: Any>(value: T, forType type: T.Type)
+    func getOverriddenInstance<T: Any>() -> T?
+    func reset()
+}
 
-    init() {}
-
+public extension DIManager {
     /**
      Designed to be used only in test classes to override dependencies.
 
@@ -16,13 +18,13 @@ public class DIServiceGraph {
      DIGraph.shared.override(mockOffRoadWheels, OffRoadWheels.self)
      ```
      */
-    public func override<T>(value: T, forType type: T.Type) {
+    func override<T>(value: T, forType type: T.Type) {
         overrides[String(describing: type)] = value
     }
 
     // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
     // If an overridden instance exists and can be cast to the specified type, it is returned; otherwise, nil is returned.
-    public func getOverriddenInstance<T: Any>() -> T? {
+    func getOverriddenInstance<T: Any>() -> T? {
         // Get the type name as the key for the dictionary.
         let typeName = String(describing: T.self)
 
@@ -39,7 +41,7 @@ public class DIServiceGraph {
     }
 
     // Reset the DI graph (useful for testing)
-    public func reset() {
+    func reset() {
         singletons = [:]
         overrides = [:]
     }

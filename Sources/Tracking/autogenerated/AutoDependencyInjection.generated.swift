@@ -84,7 +84,7 @@ extension DIGraph {
     }
 }
 
-extension DIServiceGraph {
+extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
 }
 

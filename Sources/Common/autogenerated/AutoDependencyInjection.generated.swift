@@ -467,7 +467,7 @@ extension DIGraph {
     }
 }
 
-extension DIServiceGraph {
+extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
