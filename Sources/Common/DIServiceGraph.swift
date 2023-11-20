@@ -8,23 +8,34 @@ public class DIServiceGraph {
 
     init() {}
 
-    // Add a singleton service
-    public func addSingleton<T>(_ instance: T, forType type: T.Type) {
-        singletons[String(describing: type)] = instance
-    }
+    /**
+     Designed to be used only in test classes to override dependencies.
 
-    // Retrieve a singleton service
-    public func getSingleton<T>(ofType type: T.Type) -> T? {
-        let typeName = String(describing: type)
-        if let override = overrides[typeName] as? T {
-            return override
-        }
-        return singletons[typeName] as? T
-    }
-
-    // Override a service for testing
+     ```
+     let mockOffRoadWheels = // make a mock of OffRoadWheels class
+     DIGraph.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+     ```
+     */
     public func override<T>(value: T, forType type: T.Type) {
         overrides[String(describing: type)] = value
+    }
+
+    // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
+    // If an overridden instance exists and can be cast to the specified type, it is returned; otherwise, nil is returned.
+    public func getOverriddenInstance<T: Any>() -> T? {
+        // Get the type name as the key for the dictionary.
+        let typeName = String(describing: T.self)
+
+        guard overrides[typeName] != nil else {
+            return nil // no override set. Quit early.
+        }
+
+        // Get and cast the overridden instance from the dictionary.
+        guard let overriddenInstance = overrides[typeName] as? T else {
+            fatalError("Failed to cast overridden instance to type '\(typeName)'.")
+        }
+
+        return overriddenInstance
     }
 
     // Reset the DI graph (useful for testing)
