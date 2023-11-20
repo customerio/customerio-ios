@@ -1,6 +1,6 @@
 import Foundation
 
-public class ScopedDIGraph: DIServiceLocator {
+public class ScopedDIGraph: DIServiceGraph {
     private let sdkConfig: SdkConfig
     private var scopedServices: [String: Any] = [:]
 
