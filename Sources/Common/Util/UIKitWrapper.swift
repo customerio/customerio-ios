@@ -15,7 +15,7 @@ public protocol UIKitWrapper: AutoMockable {
 
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "UIKitWrapper"
-// sourcery: InjectRegisterShared = "ThreadUtil"
+// sourcery: InjectRegisterShared = "UIKitWrapper"
 public class UIKitWrapperImpl: UIKitWrapper {
     public func open(url: URL) {
         #if canImport(UIKit)

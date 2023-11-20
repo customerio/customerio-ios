@@ -476,7 +476,7 @@ extension DIServiceGraph {
     }
 
     private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: keyValueStorage)
+        CioSharedDataStore(keyValueStorage: sharedKeyValueStorage)
     }
 
     // ThreadUtil
@@ -489,6 +489,16 @@ extension DIServiceGraph {
         CioThreadUtil()
     }
 
+    // DeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
+    }
+
     // Logger
     public var logger: Logger {
         getOverriddenInstance() ??
@@ -496,19 +506,29 @@ extension DIServiceGraph {
     }
 
     private var newLogger: Logger {
-        ConsoleLogger(sdkConfig: sdkConfig)
+        SharedConsoleLogger()
     }
 
-    // ThreadUtil
+    // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
-    public var threadUtil: ThreadUtil {
+    public var uIKitWrapper: UIKitWrapper {
         getOverriddenInstance() ??
-            newThreadUtil
+            newUIKitWrapper
     }
 
     @available(iOSApplicationExtension, unavailable)
-    private var newThreadUtil: ThreadUtil {
+    private var newUIKitWrapper: UIKitWrapper {
         UIKitWrapperImpl()
+    }
+
+    // SharedKeyValueStorage
+    public var sharedKeyValueStorage: SharedKeyValueStorage {
+        getOverriddenInstance() ??
+            newSharedKeyValueStorage
+    }
+
+    private var newSharedKeyValueStorage: SharedKeyValueStorage {
+        UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
