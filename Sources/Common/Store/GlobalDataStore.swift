@@ -13,6 +13,7 @@ public protocol GlobalDataStore: AutoMockable {
 }
 
 // sourcery: InjectRegister = "GlobalDataStore"
+// sourcery: InjectRegisterShared = "GlobalDataStore"
 public class CioGlobalDataStore: GlobalDataStore {
     private let keyValueStorage: KeyValueStorage
 

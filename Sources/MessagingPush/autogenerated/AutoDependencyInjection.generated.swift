@@ -75,17 +75,7 @@ extension DIGraph {
 }
 
 extension DIServiceGraph {
-    // DeepLinkUtil
-    @available(iOSApplicationExtension, unavailable)
-    var deepLinkUtil: DeepLinkUtil {
-        getOverriddenInstance() ??
-            newDeepLinkUtil
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newDeepLinkUtil: DeepLinkUtil {
-        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
-    }
+    // Handle classes annotated with InjectRegisterShared
 }
 
 // swiftlint:enable all

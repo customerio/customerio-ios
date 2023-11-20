@@ -53,6 +53,7 @@ public enum CioLogLevel: String, CaseIterable {
 
 // log messages to console.
 // sourcery: InjectRegister = "Logger"
+// sourcery: InjectRegisterShared = "Logger"
 public class ConsoleLogger: Logger {
     // allows filtering in Console mac app
     public static let logSubsystem = "io.customer.sdk"

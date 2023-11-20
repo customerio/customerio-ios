@@ -119,14 +119,14 @@ extension DIGraph {
 }
 
 extension DIServiceGraph {
-
-    {% for dep in types.all where dep|annotated:"InjectRegister" %}
-    {% set class %}{{ dep.annotations["InjectRegister"] }}{% endset %}
-
-    {% if dep|annotated:"InjectCustom" %}
+    // Handle classes annotated with InjectRegisterShared
+    {% for dep in types.all where dep|annotated:"InjectRegisterShared" %}
+    {% set class %}{{ dep.annotations["InjectRegisterShared"] }}{% endset %}
+    
+    {% if dep|annotated:"InjectCustomShared" %}
     // {{ class }} (custom. property getter provided via extension)
     {% call overrideGetterProperty class dep true false %}
-    {% elif dep|annotated:"InjectSingleton" %}
+    {% elif dep|annotated:"InjectSingletonShared" %}
     // {{ class }} (singleton)
     {% call overrideGetterProperty class dep false true %}
     {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
