@@ -60,4 +60,6 @@ extension DIGraph {
     }
 }
 
+extension DIServiceGraph {}
+
 // swiftlint:enable all

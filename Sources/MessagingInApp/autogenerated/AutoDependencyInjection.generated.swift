@@ -85,4 +85,26 @@ extension DIGraph {
     }
 }
 
+extension DIServiceGraph {
+    // InAppProvider
+    var inAppProvider: InAppProvider {
+        getOverriddenInstance() ??
+            newInAppProvider
+    }
+
+    private var newInAppProvider: InAppProvider {
+        GistInAppProvider()
+    }
+
+    // ModuleHookProvider
+    var moduleHookProvider: ModuleHookProvider {
+        getOverriddenInstance() ??
+            newModuleHookProvider
+    }
+
+    private var newModuleHookProvider: ModuleHookProvider {
+        MessagingInAppModuleHookProvider()
+    }
+}
+
 // swiftlint:enable all

@@ -467,4 +467,328 @@ extension DIGraph {
     }
 }
 
+extension DIServiceGraph {
+    // DeviceInfo
+    public var deviceInfo: DeviceInfo {
+        getOverriddenInstance() ??
+            newDeviceInfo
+    }
+
+    private var newDeviceInfo: DeviceInfo {
+        CIODeviceInfo()
+    }
+
+    // HttpClient
+    public var httpClient: HttpClient {
+        getOverriddenInstance() ??
+            newHttpClient
+    }
+
+    private var newHttpClient: HttpClient {
+        CIOHttpClient(sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
+    }
+
+    // GlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        getOverriddenInstance() ??
+            newGlobalDataStore
+    }
+
+    private var newGlobalDataStore: GlobalDataStore {
+        CioGlobalDataStore(keyValueStorage: keyValueStorage)
+    }
+
+    // HooksManager (singleton)
+    public var hooksManager: HooksManager {
+        getOverriddenInstance() ??
+            sharedHooksManager
+    }
+
+    public var sharedHooksManager: HooksManager {
+        DispatchQueue(label: "DIServiceGraph_HooksManager_singleton_access").sync {
+            if let overridenDep: HooksManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
+            let instance = existingSingletonInstance ?? _get_hooksManager()
+            self.singletons[String(describing: HooksManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_hooksManager() -> HooksManager {
+        CioHooksManager()
+    }
+
+    // ProfileStore
+    public var profileStore: ProfileStore {
+        getOverriddenInstance() ??
+            newProfileStore
+    }
+
+    private var newProfileStore: ProfileStore {
+        CioProfileStore(keyValueStorage: keyValueStorage)
+    }
+
+    // Queue
+    public var queue: Queue {
+        getOverriddenInstance() ??
+            newQueue
+    }
+
+    private var newQueue: Queue {
+        CioQueue(storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+    }
+
+    // QueueQueryRunner
+    var queueQueryRunner: QueueQueryRunner {
+        getOverriddenInstance() ??
+            newQueueQueryRunner
+    }
+
+    private var newQueueQueryRunner: QueueQueryRunner {
+        CioQueueQueryRunner(logger: logger)
+    }
+
+    // QueueRequestManager (singleton)
+    public var queueRequestManager: QueueRequestManager {
+        getOverriddenInstance() ??
+            sharedQueueRequestManager
+    }
+
+    public var sharedQueueRequestManager: QueueRequestManager {
+        DispatchQueue(label: "DIServiceGraph_QueueRequestManager_singleton_access").sync {
+            if let overridenDep: QueueRequestManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
+            let instance = existingSingletonInstance ?? _get_queueRequestManager()
+            self.singletons[String(describing: QueueRequestManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_queueRequestManager() -> QueueRequestManager {
+        CioQueueRequestManager()
+    }
+
+    // QueueRunRequest
+    public var queueRunRequest: QueueRunRequest {
+        getOverriddenInstance() ??
+            newQueueRunRequest
+    }
+
+    private var newQueueRunRequest: QueueRunRequest {
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager, logger: logger, queryRunner: queueQueryRunner, threadUtil: threadUtil)
+    }
+
+    // QueueRunner
+    public var queueRunner: QueueRunner {
+        getOverriddenInstance() ??
+            newQueueRunner
+    }
+
+    private var newQueueRunner: QueueRunner {
+        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
+    }
+
+    // SimpleTimer
+    var simpleTimer: SimpleTimer {
+        getOverriddenInstance() ??
+            newSimpleTimer
+    }
+
+    private var newSimpleTimer: SimpleTimer {
+        CioSimpleTimer(logger: logger)
+    }
+
+    // SingleScheduleTimer (singleton)
+    var singleScheduleTimer: SingleScheduleTimer {
+        getOverriddenInstance() ??
+            sharedSingleScheduleTimer
+    }
+
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
+        DispatchQueue(label: "DIServiceGraph_SingleScheduleTimer_singleton_access").sync {
+            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
+            let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
+            self.singletons[String(describing: SingleScheduleTimer.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_singleScheduleTimer() -> SingleScheduleTimer {
+        CioSingleScheduleTimer(timer: simpleTimer)
+    }
+
+    // ThreadUtil
+    public var threadUtil: ThreadUtil {
+        getOverriddenInstance() ??
+            newThreadUtil
+    }
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
+    }
+
+    // Logger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
+    }
+
+    private var newLogger: Logger {
+        ConsoleLogger(sdkConfig: sdkConfig)
+    }
+
+    // HttpRetryPolicy
+    var httpRetryPolicy: HttpRetryPolicy {
+        getOverriddenInstance() ??
+            newHttpRetryPolicy
+    }
+
+    private var newHttpRetryPolicy: HttpRetryPolicy {
+        CustomerIOAPIHttpRetryPolicy()
+    }
+
+    // DeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
+    }
+
+    // FileStorage
+    public var fileStorage: FileStorage {
+        getOverriddenInstance() ??
+            newFileStorage
+    }
+
+    private var newFileStorage: FileStorage {
+        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
+    }
+
+    // QueueStorage
+    public var queueStorage: QueueStorage {
+        getOverriddenInstance() ??
+            newQueueStorage
+    }
+
+    private var newQueueStorage: QueueStorage {
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+    }
+
+    // JsonAdapter
+    public var jsonAdapter: JsonAdapter {
+        getOverriddenInstance() ??
+            newJsonAdapter
+    }
+
+    private var newJsonAdapter: JsonAdapter {
+        JsonAdapter(log: logger)
+    }
+
+    // LockManager (singleton)
+    public var lockManager: LockManager {
+        getOverriddenInstance() ??
+            sharedLockManager
+    }
+
+    public var sharedLockManager: LockManager {
+        DispatchQueue(label: "DIServiceGraph_LockManager_singleton_access").sync {
+            if let overridenDep: LockManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
+            let instance = existingSingletonInstance ?? _get_lockManager()
+            self.singletons[String(describing: LockManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_lockManager() -> LockManager {
+        LockManager()
+    }
+
+    // QueueInventoryMemoryStore (singleton)
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+        getOverriddenInstance() ??
+            sharedQueueInventoryMemoryStore
+    }
+
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+        DispatchQueue(label: "DIServiceGraph_QueueInventoryMemoryStore_singleton_access").sync {
+            if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
+            let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
+            self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
+        QueueInventoryMemoryStoreImpl()
+    }
+
+    // DateUtil
+    public var dateUtil: DateUtil {
+        getOverriddenInstance() ??
+            newDateUtil
+    }
+
+    private var newDateUtil: DateUtil {
+        SdkDateUtil()
+    }
+
+    // UIKitWrapper
+    @available(iOSApplicationExtension, unavailable)
+    public var uIKitWrapper: UIKitWrapper {
+        getOverriddenInstance() ??
+            newUIKitWrapper
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newUIKitWrapper: UIKitWrapper {
+        UIKitWrapperImpl()
+    }
+
+    // HttpRequestRunner
+    var httpRequestRunner: HttpRequestRunner {
+        getOverriddenInstance() ??
+            newHttpRequestRunner
+    }
+
+    private var newHttpRequestRunner: HttpRequestRunner {
+        UrlRequestHttpRequestRunner()
+    }
+
+    // UserAgentUtil
+    public var userAgentUtil: UserAgentUtil {
+        getOverriddenInstance() ??
+            newUserAgentUtil
+    }
+
+    private var newUserAgentUtil: UserAgentUtil {
+        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
+    }
+
+    // KeyValueStorage
+    public var keyValueStorage: KeyValueStorage {
+        getOverriddenInstance() ??
+            newKeyValueStorage
+    }
+
+    private var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+    }
+}
+
 // swiftlint:enable all

@@ -84,4 +84,26 @@ extension DIGraph {
     }
 }
 
+extension DIServiceGraph {
+    // CleanupRepository
+    var cleanupRepository: CleanupRepository {
+        getOverriddenInstance() ??
+            newCleanupRepository
+    }
+
+    private var newCleanupRepository: CleanupRepository {
+        CioCleanupRepository(queue: queue)
+    }
+
+    // DeviceAttributesProvider
+    var deviceAttributesProvider: DeviceAttributesProvider {
+        getOverriddenInstance() ??
+            newDeviceAttributesProvider
+    }
+
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfo)
+    }
+}
+
 // swiftlint:enable all
