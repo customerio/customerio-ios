@@ -1,4 +1,3 @@
-import CioInternalCommon
 import Foundation
 
 // Base class meant to be subclassed by top-level classes such as `MessagingPush` and `MessagingInApp`. Provides some
@@ -14,47 +13,27 @@ open class ModuleTopLevelObject<ImplementationClass> {
         alreadyCreatedImplementation ?? createAndSetImplementationInstance()
     }
 
-    private let sdkInitializedUtil: SdkInitializedUtil
-
     // for writing tests
-    // provide a nil implementation if you want `sdkInitializedUtil` logic to run and real instance of implementation to run in tests
-    public init(implementation: ImplementationClass?, sdkInitializedUtil: SdkInitializedUtil) {
+    public init(implementation: ImplementationClass?) {
         self.alreadyCreatedImplementation = implementation
-        self.sdkInitializedUtil = sdkInitializedUtil
     }
 
     // singleton constructor
     public init() {
-        self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
     private func createAndSetImplementationInstance() -> ImplementationClass? {
-        guard sdkInitializedUtil.isInitlaized, let postSdkInitializedData = sdkInitializedUtil.postInitializedData else {
-            // SDK not yet initialized. Don't run the code.
-            return nil
-        }
-
-        let newInstance = getImplementationInstance(diGraph: postSdkInitializedData.diGraph)
+        let newInstance = getImplementationInstance()
         alreadyCreatedImplementation = newInstance
         return newInstance
     }
 
-    // We want each top level module to have an initialize function so that features like hooks get setup as soon as the
-    // SDK is initialized.
-    public func initializeModuleIfSdkInitialized() {
-        guard sdkInitializedUtil.isInitlaized, let postSdkInitializedData = sdkInitializedUtil.postInitializedData else {
-            // SDK not yet initialized. Don't run the code.
-            return
-        }
-
-        inititlizeModule(diGraph: postSdkInitializedData.diGraph)
-    }
-
-    open func inititlizeModule(diGraph: DIGraph) {
+    // We want each top level module to have an initialize function so that features get setup as early as possible
+    open func inititlizeModule() {
         fatalError("forgot to override in subclass")
     }
 
-    open func getImplementationInstance(diGraph: DIGraph) -> ImplementationClass {
+    open func getImplementationInstance() -> ImplementationClass {
         fatalError("forgot to override in subclass")
     }
 }
