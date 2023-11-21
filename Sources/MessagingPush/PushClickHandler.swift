@@ -54,8 +54,8 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         swizzle(
             targetClass: UNUserNotificationCenter.self,
             targetSelector: #selector(setter: UNUserNotificationCenter.delegate),
-            myClass: PushClickHandlerImpl.self,
-            mySelector: #selector(PushClickHandlerImpl.cio_swizzled_setDelegate(delegate:))
+            myClass: UNUserNotificationCenter.self,
+            mySelector: #selector(UNUserNotificationCenter.cio_swizzled_setDelegate(delegate:))
         )
 
         if userNotificationCenter.currentDelegate == nil {
@@ -66,25 +66,6 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             // This re-assignment triggers NotifiationCenter.delegate setter that we swizzled so our SDK can swizzle in its logic.
             userNotificationCenter.currentDelegate = userNotificationCenter.currentDelegate
         }
-    }
-
-    func setupClickHandling(onDelegate delegate: UNUserNotificationCenterDelegate) {
-        // Only swizzle on delegates that are not part of the CIO SDK.
-        // Problems such as infinite loops when a push is clicked can occur if the CIO SDK is setup as the app's click handler *and*
-        // we setup swizzling on our own delegate.
-        if delegate is PushClickHandlerImpl {
-            return
-        }
-
-        // Another SDK or the host app has set itself as the new UNUserNotificationCenter.delegate. We want to make sure the CIO SDK
-        // can still handle push clicks to make integration of the CIO SDK easy and reliable. We use swizzling on the new delegate instance
-        // so our SDK still gets notified when a push is clicked, even though the new delegate is setup to handle the push click.
-        swizzle(
-            targetClass: type(of: delegate),
-            targetSelector: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
-            myClass: PushClickHandlerImpl.self,
-            mySelector: #selector(PushClickHandlerImpl.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
-        )
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) -> CustomerIOParsedPushPayload? {
@@ -150,22 +131,32 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
 
 @available(iOSApplicationExtension, unavailable)
 // Swizzle functions
-extension PushClickHandlerImpl {
+extension UNUserNotificationCenter {
     // Swizzled method that gets called when a new UNUserNotificationCenter.delegate gets set.
     @objc dynamic func cio_swizzled_setDelegate(delegate: UNUserNotificationCenterDelegate?) {
-        guard let delegate = delegate else {
-            cio_swizzled_setDelegate(delegate: delegate) // continue swizzle
-            return
-        }
+        if let delegate = delegate {
+            let doesDelegateBelongToCio = delegate is PushClickHandlerImpl
 
-        setupClickHandling(onDelegate: delegate)
+            // An infinite loop can occur if we handle push click in SDK's delegate *and* handle push click via swizzling. Skip swizzling if delete is SDK's delegate.
+            if !doesDelegateBelongToCio {
+                // Another SDK or the host app has set itself as the new UNUserNotificationCenter.delegate. We want to make sure the CIO SDK
+                // can still handle push clicks to make integration of the CIO SDK easy and reliable. We use swizzling on the new delegate instance
+                // so our SDK still gets notified when a push is clicked, even though the new delegate is setup to handle the push click.
+                swizzle(
+                    targetClass: type(of: delegate),
+                    targetSelector: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
+                    myClass: UNUserNotificationCenter.self,
+                    mySelector: #selector(UNUserNotificationCenter.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
+                )
+            }
+        }
 
         cio_swizzled_setDelegate(delegate: delegate) // continue swizzle
     }
 
     // Swizzled method that gets called when a push notification gets clicked or swiped away
     @objc dynamic func cio_swizzle_didReceive(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        _ = userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
 
         // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
