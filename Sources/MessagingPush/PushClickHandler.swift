@@ -75,7 +75,7 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         }
 
         if response.didClickOnPush {
-            pushClicked(response, parsedPush: parsedPush)
+            pushClicked(parsedPush)
         }
 
         return parsedPush
@@ -91,14 +91,14 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         }
 
         if response.didClickOnPush {
-            pushClicked(response, parsedPush: parsedPush)
+            pushClicked(parsedPush)
         }
 
         completionHandler()
         return true
     }
 
-    private func pushClicked(_ response: UNNotificationResponse, parsedPush: CustomerIOParsedPushPayload) {
+    private func pushClicked(_ parsedPush: CustomerIOParsedPushPayload) {
         // TODO: prevent duplicate push metrics and deep link handling.
 
         // Now we are ready to handle the push click.
@@ -131,6 +131,10 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
 
 @available(iOSApplicationExtension, unavailable)
 // Swizzle functions
+// I have found best success with swizzling when the swizzled functions are extensions added to the class
+// that we are trying to swizzle. Memory access errors have been thrown when when a swizzled method is trying
+// to access variables inside of a class. By using extensions and having swizzled functions make calls to the
+// SDK via static function calls, we can avoid those issues.
 extension UNUserNotificationCenter {
     // Swizzled method that gets called when a new UNUserNotificationCenter.delegate gets set.
     @objc dynamic func cio_swizzled_setDelegate(delegate: UNUserNotificationCenterDelegate?) {
