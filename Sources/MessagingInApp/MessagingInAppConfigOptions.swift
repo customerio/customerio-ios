@@ -1,4 +1,4 @@
 import CioInternalCommon
 
-public struct MessagingInAppConfigOptions: ModuleTopLevelConfig {
+public struct MessagingInAppConfigOptions {
 }

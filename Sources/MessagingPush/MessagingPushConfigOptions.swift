@@ -1,6 +1,6 @@
 import CioInternalCommon
 
-public struct MessagingPushConfigOptions: ModuleTopLevelConfig {
+public struct MessagingPushConfigOptions {
     // Used to create new instance of MessagingPushConfigOptions when the MessagingPushAPN module is configured.
     // Each property of the MessagingPushConfigOptions object can be modified by the user.
     public enum Factory {
