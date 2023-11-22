@@ -59,7 +59,7 @@ extension CustomerIO {
         }
 
         let addionalScreenViewData = CustomerIOImplementation.autoScreenViewBody?() ?? [:]
-        automaticScreenView(name: name, data: addionalScreenViewData)
+        screen(name: name, data: addionalScreenViewData)
     }
 }
 
