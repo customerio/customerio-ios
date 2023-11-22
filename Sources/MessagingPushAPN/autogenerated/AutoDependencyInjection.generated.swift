@@ -60,4 +60,8 @@ extension DIGraph {
     }
 }
 
+extension DIGraphShared {
+    // Handle classes annotated with InjectRegisterShared
+}
+
 // swiftlint:enable all
