@@ -116,7 +116,7 @@ extension DIGraph {
     }
 
     private var newPushHistory: PushHistory {
-        PushHistoryImpl(keyValueStorage: keyValueStorage)
+        PushHistoryImpl(keyValueStorage: keyValueStorage, lockManager: lockManager)
     }
 
     // UserNotificationCenter

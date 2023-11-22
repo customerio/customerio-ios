@@ -9,8 +9,8 @@ class PushHistoryTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        pushHistory = PushHistoryImpl(keyValueStorage: keyValueStorage)
-        pushHistory.numberOfPushesToTrack = 3 // make smaller number to make tests run faster and test edge cases
+        pushHistory = PushHistoryImpl(keyValueStorage: keyValueStorage, lockManager: lockManager)
+        pushHistory.maxSizeOfHistory = 3 // make smaller number to make tests run faster and test edge cases
     }
 
     // MARK: hasHandledPushClick
