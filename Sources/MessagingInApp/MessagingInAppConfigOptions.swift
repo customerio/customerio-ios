@@ -1,11 +1,24 @@
 import CioInternalCommon
 
+/**
+ Configuration options for in-app messaging module
+
+ Example usage:
+ ```
+ // create a new instance
+ let inAppMessagingConfig = MessagingInAppConfigOptions.Factory.create(siteId: siteId, region: .US)
+ ```
+ */
+// TODO: [CDP] Update docs to after module initialization changes for clarity on its usage
 public struct MessagingInAppConfigOptions {
+    // Used to create new instance of MessagingInAppConfigOptions when the MessagingInApp module is configured.
+    // Each property of the MessagingInAppConfigOptions object can be modified by the user.
     public enum Factory {
-        public static func create(siteId: String = "") -> MessagingInAppConfigOptions {
+        // TODO: [CDP] Rethink on how can we eliminate default value and force required properties
+        public static func create(siteId: String = "", region: Region = Region.US) -> MessagingInAppConfigOptions {
             MessagingInAppConfigOptions(
                 siteId: siteId,
-                region: Region.US
+                region: region
             )
         }
     }
@@ -15,11 +28,13 @@ public struct MessagingInAppConfigOptions {
         case region
     }
     
-    /// Immutable property to store the workspace site id set during SDK initialization.
+    /// Property to store workspace Site ID set during module initialization
+    /// Immutable for lazy updates only, can be updated using initialize method
     public private(set) var siteId: String
-    /// Immutable property to store the workspace Region set during SDK initialization.
+    /// Property to store workspace Region set during module initialization
+    /// Immutable for lazy updates only, can be updated using initialize method
     public private(set) var region: Region
-    
+
     public mutating func initialize(siteId: String, region: Region? = nil) {
         self.siteId = siteId
         if let region = region {
