@@ -11,26 +11,19 @@ class MessagingPushImplementation: MessagingPushInstance {
     let jsonAdapter: JsonAdapter
     let sdkConfig: SdkConfig
     let backgroundQueue: Queue
-    let sdkInitializedUtil: SdkInitializedUtil
-
-    private var customerIO: CustomerIO? {
-        sdkInitializedUtil.customerio
-    }
 
     /// testing init
     init(
         logger: Logger,
         jsonAdapter: JsonAdapter,
         sdkConfig: SdkConfig,
-        backgroundQueue: Queue,
-        sdkInitializedUtil: SdkInitializedUtil
+        backgroundQueue: Queue
     ) {
         self.siteId = sdkConfig.siteId
         self.logger = logger
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.backgroundQueue = backgroundQueue
-        self.sdkInitializedUtil = sdkInitializedUtil
     }
 
     init(diGraph: DIGraph) {
@@ -39,19 +32,21 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = diGraph.jsonAdapter
         self.sdkConfig = diGraph.sdkConfig
         self.backgroundQueue = diGraph.queue
-        self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
     func deleteDeviceToken() {
-        customerIO?.deleteDeviceToken()
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.deleteDeviceToken()
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        customerIO?.registerDeviceToken(deviceToken)
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.registerDeviceToken(deviceToken)
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
     #if canImport(UserNotifications)
