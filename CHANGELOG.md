@@ -1,3 +1,10 @@
+## [2.10.1](https://github.com/customerio/customerio-ios/compare/2.10.0...2.10.1) (2023-11-22)
+
+
+### Bug Fixes
+
+* cocoapods APN customers app not compiling ([#414](https://github.com/customerio/customerio-ios/issues/414)) ([e7aaa23](https://github.com/customerio/customerio-ios/commit/e7aaa23320bde6fff8aa35a1def9c6ba05602c46))
+
 ## [2.10.0](https://github.com/customerio/customerio-ios/compare/2.9.2...2.10.0) (2023-11-08)
 
 
