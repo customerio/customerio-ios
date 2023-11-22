@@ -42,6 +42,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     override public func getImplementationInstance() -> MessagingPushInstance {
+        // FIXME: [CDP] Create implementation instance
         // MessagingPushImplementation(diGraph: diGraph)
         fatalError("will be implemented later")
     }

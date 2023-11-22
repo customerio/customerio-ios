@@ -93,6 +93,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         let logger = diGraph.logger
         logger.debug("Setting up in-app module...")
 
+        // FIXME: [CDP] Update hooks to work as expected
         // Register MessagingPush module hooks now that the module is being initialized.
 //        let hooks = diGraph.hooksManager
 //        let moduleHookProvider = MessagingInAppModuleHookProvider()
@@ -102,6 +103,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     }
 
     public override func getImplementationInstance() -> MessagingInAppInstance {
+        // FIXME: [CDP] Create implementation instance
         // MessagingInAppImplementation(diGraph: diGraph)
         fatalError("will be implemented later")
     }
