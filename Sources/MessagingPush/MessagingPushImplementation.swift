@@ -6,31 +6,28 @@ import UserNotifications
 #endif
 
 class MessagingPushImplementation: MessagingPushInstance {
-    let siteId: String
     let logger: Logger
     let jsonAdapter: JsonAdapter
-    let sdkConfig: SdkConfig
+    let moduleConfig: MessagingPushConfigOptions
     let backgroundQueue: Queue
 
     /// testing init
     init(
         logger: Logger,
         jsonAdapter: JsonAdapter,
-        sdkConfig: SdkConfig,
+        moduleConfig: MessagingPushConfigOptions,
         backgroundQueue: Queue
     ) {
-        self.siteId = sdkConfig.siteId
         self.logger = logger
         self.jsonAdapter = jsonAdapter
-        self.sdkConfig = sdkConfig
+        self.moduleConfig = moduleConfig
         self.backgroundQueue = backgroundQueue
     }
 
-    init(diGraph: DIGraph) {
-        self.siteId = diGraph.sdkConfig.siteId
+    init(diGraph: DIGraph, moduleConfig: MessagingPushConfigOptions) {
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
-        self.sdkConfig = diGraph.sdkConfig
+        self.moduleConfig = moduleConfig
         self.backgroundQueue = diGraph.queue
     }
 
