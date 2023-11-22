@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
