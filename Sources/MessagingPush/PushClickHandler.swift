@@ -32,6 +32,7 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     private let sdkInitializedUtil: SdkInitializedUtil
     private let deepLinkUtil: DeepLinkUtil
     private var userNotificationCenter: UserNotificationCenter
+    private let pushHistory: PushHistory
 
     private var messagingPushConfig: MessagingPushConfigOptions
 
@@ -39,11 +40,12 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
         sdkInitializedUtil.customerio
     }
 
-    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter, messagingPushConfig: MessagingPushConfigOptions) {
+    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter, pushHistory: PushHistory, messagingPushConfig: MessagingPushConfigOptions) {
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
         self.userNotificationCenter = userNotificationCenter
+        self.pushHistory = pushHistory
         self.messagingPushConfig = messagingPushConfig
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
@@ -128,7 +130,11 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     }
 
     private func pushClicked(_ response: UNNotificationResponse, parsedPush: CustomerIOParsedPushPayload) {
-        // TODO: prevent duplicate push metrics and deep link handling.
+        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
+            // push has already been handled. exit early
+            return
+        }
+        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
 
         // Now we are ready to handle the push click.
         // Track metrics
@@ -181,7 +187,7 @@ extension PushClickHandlerImpl {
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
     }
 
-    // Swizzled method that gets called before the OS displays the push. Used to determine if a push gets displayed while app is in foreground or not. 
+    // Swizzled method that gets called before the OS displays the push. Used to determine if a push gets displayed while app is in foreground or not.
     @objc dynamic func cio_swizzle_willPresent(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
             // push not sent from CIO. exit early and ignore request
