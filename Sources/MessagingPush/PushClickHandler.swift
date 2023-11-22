@@ -33,15 +33,18 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
     private let deepLinkUtil: DeepLinkUtil
     private var userNotificationCenter: UserNotificationCenter
 
+    private var messagingPushConfig: MessagingPushConfigOptions
+
     private var customerIO: CustomerIO? {
         sdkInitializedUtil.customerio
     }
 
-    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter) {
+    init(jsonAdapter: JsonAdapter, sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, userNotificationCenter: UserNotificationCenter, messagingPushConfig: MessagingPushConfigOptions) {
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
         self.userNotificationCenter = userNotificationCenter
+        self.messagingPushConfig = messagingPushConfig
         self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
@@ -84,6 +87,13 @@ class PushClickHandlerImpl: NSObject, PushClickHandler, UNUserNotificationCenter
             targetSelector: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
             myClass: PushClickHandlerImpl.self,
             mySelector: #selector(PushClickHandlerImpl.cio_swizzle_didReceive(_:didReceive:withCompletionHandler:))
+        )
+
+        swizzle(
+            targetClass: type(of: delegate),
+            targetSelector: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)),
+            myClass: PushClickHandlerImpl.self,
+            mySelector: #selector(PushClickHandlerImpl.cio_swizzle_willPresent(_:willPresent:withCompletionHandler:))
         )
     }
 
@@ -169,6 +179,25 @@ extension PushClickHandlerImpl {
 
         // continue swizzle
         cio_swizzle_didReceive(center, didReceive: response, withCompletionHandler: completionHandler)
+    }
+
+    // Swizzled method that gets called before the OS displays the push. Used to determine if a push gets displayed while app is in foreground or not. 
+    @objc dynamic func cio_swizzle_willPresent(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
+            // push not sent from CIO. exit early and ignore request
+            return
+        }
+
+        if messagingPushConfig.showPushAppInForeground {
+            if #available(iOS 14.0, *) {
+                completionHandler([.list, .banner, .badge, .sound])
+            } else {
+                completionHandler([.badge, .sound])
+            }
+        }
+
+        // continue swizzle
+        cio_swizzle_willPresent(center, willPresent: notification, withCompletionHandler: completionHandler)
     }
 }
 
