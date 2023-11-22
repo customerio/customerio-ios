@@ -11,12 +11,14 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
     var profileIdentifyHook: ProfileIdentifyHook? {
         guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(diGraph: diGraph)
+        // FIXME: [CDP] Find workaround or reuse existing instance to utilize customer provided siteid
+        return MessagingInAppImplementation(diGraph: diGraph, moduleConfig: MessagingInAppConfigOptions.Factory.create())
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
         guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(diGraph: diGraph)
+        // FIXME: [CDP] Find workaround or reuse existing instance to utilize customer provided siteid
+        return MessagingInAppImplementation(diGraph: diGraph, moduleConfig: MessagingInAppConfigOptions.Factory.create())
     }
 }
