@@ -10,6 +10,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var shared = MessagingPush()
     private var globalDataStore: GlobalDataStore
 
+    // singleton instance of module configuration
+    @Atomic public static var moduleConfig: MessagingPushConfigOptions = .init()
+
     // testing constructor
     init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
         self.globalDataStore = globalDataStore
@@ -29,7 +32,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     // Gets called when MessagingPushAPN.initialize() or MessagingPushFCM.initialize() called.
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize() {
+    public static func initialize(config: MessagingPushConfigOptions? = nil) {
+        if let newConfig = config {
+            moduleConfig = newConfig
+        }
+
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
 

@@ -106,7 +106,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private func _get_pushClickHandler() -> PushClickHandler {
-        PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, userNotificationCenter: userNotificationCenter, pushHistory: pushHistory)
+        PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, userNotificationCenter: userNotificationCenter, pushHistory: pushHistory, messagingPushConfig: messagingPushConfigOptions)
     }
 
     // PushHistory
