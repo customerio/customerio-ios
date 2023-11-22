@@ -16,6 +16,22 @@ public struct MessagingPushConfigOptions {
         case autoTrackPushEvents
         case autoTrackDeviceAttributes
     }
+    
+    mutating func apply(with dictionary: [String: Any]) {
+        // Each SDK config option should be able to be set from `dictionary`.
+        // If one isn't provided, use current value instead.
+        
+        // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
+        if let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool {
+            self.autoFetchDeviceToken = autoFetchDeviceToken
+        }
+        if let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool {
+            self.autoTrackPushEvents = autoTrackPushEvents
+        }
+        if let autoTrackDeviceAttributes = dictionary[Keys.autoTrackDeviceAttributes.rawValue] as? Bool {
+            self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        }
+    }
 
     /**
      Enable automatic fetching of device token by the SDK without the need to write custom code by the customer.

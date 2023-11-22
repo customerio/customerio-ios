@@ -26,4 +26,19 @@ public struct MessagingInAppConfigOptions {
             self.region = region
         }
     }
+    
+    mutating func apply(with dictionary: [String: Any]) {
+        // Each SDK config option should be able to be set from `dictionary`.
+        // If one isn't provided, use current value instead.
+        
+        // If a parameter takes more logic to calculate, perform the logic up here.
+        if let regionStringValue = dictionary[Keys.region.rawValue] as? String {
+            self.region = Region.getRegion(from: regionStringValue)
+        }
+
+        // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
+        if let siteId = dictionary[Keys.siteId.rawValue] as? String {
+            self.siteId = siteId
+        }
+    }
 }
