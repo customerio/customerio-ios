@@ -7,6 +7,7 @@ import Foundation
 // Top-level class meaning it contains public facing SDK functions called by customers.
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
+// TODO: [CDP] Remove class if no longer needed
 open class ModuleTopLevelObject<ImplementationClass> {
     private(set) var alreadyCreatedImplementation: ImplementationClass?
     public var implementation: ImplementationClass? {
