@@ -11,9 +11,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     private var globalDataStore: GlobalDataStore
 
     // testing constructor
-    init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
+    init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore) {
         self.globalDataStore = globalDataStore
-        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
+        super.init(implementation: implementation)
     }
 
     // singleton constructor
@@ -30,18 +30,21 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
     // currently no module initialization to perform.
     public static func initialize() {
-        MessagingPush.shared.initializeModuleIfSdkInitialized()
+        MessagingPush.shared.inititlizeModule()
     }
 
-    override public func inititlizeModule(diGraph: DIGraph) {
+    override public func inititlizeModule() {
+        let diGraph = DIGraphShared.shared
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
         logger.info("MessagingPush module setup with SDK")
     }
 
-    override public func getImplementationInstance(diGraph: DIGraph) -> MessagingPushInstance {
-        MessagingPushImplementation(diGraph: diGraph)
+    override public func getImplementationInstance() -> MessagingPushInstance {
+        // FIXME: [CDP] Create implementation instance
+        // MessagingPushImplementation(diGraph: diGraph)
+        fatalError("will be implemented later")
     }
 
     /**
