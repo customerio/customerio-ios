@@ -15,10 +15,28 @@ public struct MessagingPushConfigOptions {
     // Each property of the MessagingPushConfigOptions object can be modified by the user.
     public enum Factory {
         public static func create() -> MessagingPushConfigOptions {
-            MessagingPushConfigOptions(
+            return MessagingPushConfigOptions(
                 autoFetchDeviceToken: true,
                 autoTrackPushEvents: true,
                 autoTrackDeviceAttributes: true
+            )
+        }
+
+        public static func create(with dictionary: [String: Any]) -> MessagingPushConfigOptions {
+            // Each SDK config option should be able to be set from `dictionary`.
+            // If one isn't provided, use current value instead.
+            
+            // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
+            let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool
+            let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool
+            let autoTrackDeviceAttributes = dictionary[Keys.autoTrackDeviceAttributes.rawValue] as? Bool
+
+            // Use default config options as fallback
+            let presetConfig = create()
+            return MessagingPushConfigOptions(
+                autoFetchDeviceToken: autoFetchDeviceToken ?? presetConfig.autoFetchDeviceToken,
+                autoTrackPushEvents: autoTrackPushEvents ?? presetConfig.autoTrackPushEvents,
+                autoTrackDeviceAttributes: autoTrackDeviceAttributes ?? presetConfig.autoTrackDeviceAttributes
             )
         }
     }
@@ -27,22 +45,6 @@ public struct MessagingPushConfigOptions {
         case autoFetchDeviceToken
         case autoTrackPushEvents
         case autoTrackDeviceAttributes
-    }
-    
-    mutating func apply(with dictionary: [String: Any]) {
-        // Each SDK config option should be able to be set from `dictionary`.
-        // If one isn't provided, use current value instead.
-        
-        // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
-        if let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool {
-            self.autoFetchDeviceToken = autoFetchDeviceToken
-        }
-        if let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool {
-            self.autoTrackPushEvents = autoTrackPushEvents
-        }
-        if let autoTrackDeviceAttributes = dictionary[Keys.autoTrackDeviceAttributes.rawValue] as? Bool {
-            self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
-        }
     }
 
     /**
