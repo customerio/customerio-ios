@@ -4,7 +4,7 @@ import Foundation
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
     private var diGraph: DIGraph? {
-        // TODO Fix DIGraph
+        // FIXME: [CDP] Get the right DIGraph
         nil
     }
 
