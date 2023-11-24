@@ -9,6 +9,7 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
+import CioTracking
 import CioInternalCommon
 
 /**
