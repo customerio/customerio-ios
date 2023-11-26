@@ -1,3 +1,4 @@
+import CioInternalCommon
 import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests

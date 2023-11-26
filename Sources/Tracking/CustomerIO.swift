@@ -1,4 +1,4 @@
-@_exported import CioInternalCommon
+import CioInternalCommon
 import Foundation
 
 public extension CustomerIOInstance {
@@ -22,7 +22,11 @@ public extension CustomerIOInstance {
 }
 
 public extension CustomerIO {
-    // Initialize for general usage
+    /**
+     Initialize the shared `instance` of `CustomerIO`.
+     Call this function when your app launches, before using `CustomerIO.instance`.
+     */
+    @available(iOSApplicationExtension, unavailable)
     static func initialize(
         siteId: String,
         apiKey: String,
