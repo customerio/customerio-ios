@@ -1,4 +1,4 @@
-@_exported import CioInternalCommon
+import CioInternalCommon
 import Foundation
 
 public extension CustomerIOInstance {
