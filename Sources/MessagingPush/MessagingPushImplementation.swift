@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
@@ -7,52 +6,44 @@ import UserNotifications
 #endif
 
 class MessagingPushImplementation: MessagingPushInstance {
-    let siteId: String
+    let moduleConfig: MessagingPushConfigOptions
     let logger: Logger
     let jsonAdapter: JsonAdapter
-    let sdkConfig: SdkConfig
     let backgroundQueue: Queue
-    let sdkInitializedUtil: SdkInitializedUtil
-
-    private var customerIO: CustomerIO? {
-        sdkInitializedUtil.customerio
-    }
 
     /// testing init
     init(
+        moduleConfig: MessagingPushConfigOptions,
         logger: Logger,
         jsonAdapter: JsonAdapter,
-        sdkConfig: SdkConfig,
-        backgroundQueue: Queue,
-        sdkInitializedUtil: SdkInitializedUtil
+        backgroundQueue: Queue
     ) {
-        self.siteId = sdkConfig.siteId
+        self.moduleConfig = moduleConfig
         self.logger = logger
         self.jsonAdapter = jsonAdapter
-        self.sdkConfig = sdkConfig
         self.backgroundQueue = backgroundQueue
-        self.sdkInitializedUtil = sdkInitializedUtil
     }
 
-    init(diGraph: DIGraph) {
-        self.siteId = diGraph.sdkConfig.siteId
+    init(diGraph: DIGraph, moduleConfig: MessagingPushConfigOptions) {
+        self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
-        self.sdkConfig = diGraph.sdkConfig
         self.backgroundQueue = diGraph.queue
-        self.sdkInitializedUtil = SdkInitializedUtilImpl()
     }
 
     func deleteDeviceToken() {
-        customerIO?.deleteDeviceToken()
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.deleteDeviceToken()
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        customerIO?.registerDeviceToken(deviceToken)
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.registerDeviceToken(deviceToken)
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        // FIXME: [CDP] Pass to Journey
+        // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
     #if canImport(UserNotifications)
