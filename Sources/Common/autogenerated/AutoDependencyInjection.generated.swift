@@ -467,4 +467,69 @@ extension DIGraph {
     }
 }
 
+extension DIGraphShared {
+    // Handle classes annotated with InjectRegisterShared
+    // GlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        getOverriddenInstance() ??
+            newGlobalDataStore
+    }
+
+    private var newGlobalDataStore: GlobalDataStore {
+        CioSharedDataStore(keyValueStorage: sharedKeyValueStorage)
+    }
+
+    // ThreadUtil
+    public var threadUtil: ThreadUtil {
+        getOverriddenInstance() ??
+            newThreadUtil
+    }
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
+    }
+
+    // DeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
+    }
+
+    // Logger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
+    }
+
+    private var newLogger: Logger {
+        SharedConsoleLogger()
+    }
+
+    // UIKitWrapper
+    @available(iOSApplicationExtension, unavailable)
+    public var uIKitWrapper: UIKitWrapper {
+        getOverriddenInstance() ??
+            newUIKitWrapper
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newUIKitWrapper: UIKitWrapper {
+        UIKitWrapperImpl()
+    }
+
+    // SharedKeyValueStorage
+    public var sharedKeyValueStorage: SharedKeyValueStorage {
+        getOverriddenInstance() ??
+            newSharedKeyValueStorage
+    }
+
+    private var newSharedKeyValueStorage: SharedKeyValueStorage {
+        UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
+    }
+}
+
 // swiftlint:enable all

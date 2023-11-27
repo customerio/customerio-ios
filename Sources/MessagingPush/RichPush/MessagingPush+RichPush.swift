@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 #if canImport(UserNotifications) && canImport(UIKit)
 import UIKit
@@ -60,7 +59,7 @@ extension MessagingPushImplementation {
 
         logger.info("push was sent from Customer.io. Processing the request...")
 
-        if sdkConfig.autoTrackPushEvents {
+        if moduleConfig.autoTrackPushEvents {
             logger.info("automatically tracking push metric: delivered")
             logger.debug("parsed deliveryId \(deliveryID), deviceToken: \(deviceToken)")
 

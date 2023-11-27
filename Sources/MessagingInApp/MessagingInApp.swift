@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 public protocol MessagingInAppInstance: AutoMockable {
@@ -21,8 +20,8 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // constructor that is called by test classes
     // This function's job is to populate the `shared` property with
     // overrides such as DI graph.
-    override init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
-        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
+    override init(implementation: MessagingInAppInstance?) {
+        super.init(implementation: implementation)
     }
 
     // constructor used in production with default DI graph
@@ -79,7 +78,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
             return
         }
 
-        initializeModuleIfSdkInitialized()
+        inititlizeModule()
 
         if let eventListener = eventListener {
             implementation.initialize(eventListener: eventListener)
@@ -88,20 +87,24 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         }
     }
 
-    override public func inititlizeModule(diGraph: DIGraph) {
+    override public func inititlizeModule() {
+        let diGraph = DIGraphShared.shared
         let logger = diGraph.logger
         logger.debug("Setting up in-app module...")
 
+        // FIXME: [CDP] Update hooks to work as expected
         // Register MessagingPush module hooks now that the module is being initialized.
-        let hooks = diGraph.hooksManager
-        let moduleHookProvider = MessagingInAppModuleHookProvider()
-        hooks.add(key: .messagingInApp, provider: moduleHookProvider)
+//        let hooks = diGraph.hooksManager
+//        let moduleHookProvider = MessagingInAppModuleHookProvider()
+//        hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
         logger.info("In-app module setup with SDK")
     }
 
-    override public func getImplementationInstance(diGraph: DIGraph) -> MessagingInAppInstance {
-        MessagingInAppImplementation(diGraph: diGraph)
+    override public func getImplementationInstance() -> MessagingInAppInstance {
+        // FIXME: [CDP] Create implementation instance
+        // MessagingInAppImplementation(diGraph: diGraph)
+        fatalError("will be implemented later")
     }
 
     // Dismiss in-app message

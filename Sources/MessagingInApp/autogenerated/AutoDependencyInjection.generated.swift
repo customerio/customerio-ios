@@ -3,7 +3,6 @@
 // swiftlint:disable all
 
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 /**
@@ -83,6 +82,10 @@ extension DIGraph {
     private var newModuleHookProvider: ModuleHookProvider {
         MessagingInAppModuleHookProvider()
     }
+}
+
+extension DIGraphShared {
+    // Handle classes annotated with InjectRegisterShared
 }
 
 // swiftlint:enable all

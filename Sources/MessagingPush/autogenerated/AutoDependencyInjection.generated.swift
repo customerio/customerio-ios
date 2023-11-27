@@ -3,7 +3,6 @@
 // swiftlint:disable all
 
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 /**
@@ -72,6 +71,10 @@ extension DIGraph {
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
+}
+
+extension DIGraphShared {
+    // Handle classes annotated with InjectRegisterShared
 }
 
 // swiftlint:enable all

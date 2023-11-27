@@ -4,7 +4,6 @@
 
 import CioInternalCommon
 import CioMessagingPush
-import CioTracking
 import Foundation
 
 /**
@@ -58,6 +57,10 @@ extension DIGraph {
 
         return countDependenciesResolved
     }
+}
+
+extension DIGraphShared {
+    // Handle classes annotated with InjectRegisterShared
 }
 
 // swiftlint:enable all

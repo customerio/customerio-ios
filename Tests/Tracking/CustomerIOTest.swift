@@ -1,4 +1,4 @@
-import CioInternalCommon
+@testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
 import SharedTests
@@ -23,7 +23,7 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_initialize_expectAddModuleHooks_expectRunCleanup() {
-        customerIO.postInitialize(diGraph: diGraph)
+        customerIO.postInitialize(diGraph: diGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: cleanupRepositoryMock)
 
         XCTAssertEqual(hooksMock.addCallsCount, 1)
         XCTAssertEqual(hooksMock.addReceivedArguments?.key, .tracking)

@@ -1,24 +1,24 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 // sourcery: InjectRegister = "ModuleHookProvider"
 class MessagingInAppModuleHookProvider: ModuleHookProvider {
-    private let sdkInitializedUtil = SdkInitializedUtilImpl()
-
     private var diGraph: DIGraph? {
-        sdkInitializedUtil.postInitializedData?.diGraph
+        // FIXME: [CDP] Get the right DIGraph
+        nil
     }
 
     var profileIdentifyHook: ProfileIdentifyHook? {
         guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(diGraph: diGraph)
+        // FIXME: [CDP] Find workaround by attaching hook to Journeys or reusing existing instance to utilize customer provided siteid
+        return MessagingInAppImplementation(diGraph: diGraph, moduleConfig: MessagingInAppConfigOptions.Factory.create())
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
         guard let diGraph = diGraph else { return nil }
 
-        return MessagingInAppImplementation(diGraph: diGraph)
+        // FIXME: [CDP] Find workaround by attaching hook to Journeys or reusing existing instance to utilize customer provided siteid
+        return MessagingInAppImplementation(diGraph: diGraph, moduleConfig: MessagingInAppConfigOptions.Factory.create())
     }
 }
