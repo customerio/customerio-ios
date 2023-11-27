@@ -84,7 +84,7 @@ extension MessagingPushImplementation {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        if sdkConfig.autoTrackPushEvents {
+        if moduleConfig.autoTrackPushEvents {
             var pushMetric = Metric.delivered
 
             if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
