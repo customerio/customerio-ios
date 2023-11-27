@@ -1,4 +1,4 @@
-import CioDataPipeline
+import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
