@@ -16,7 +16,7 @@ public struct MessagingInAppConfigOptions {
     public enum Factory {
         // TODO: [CDP] Rethink on how can we eliminate default value and force required properties
         public static func create(siteId: String = "", region: Region = Region.US) -> MessagingInAppConfigOptions {
-            return MessagingInAppConfigOptions(
+            MessagingInAppConfigOptions(
                 siteId: siteId,
                 region: region
             )
@@ -25,7 +25,7 @@ public struct MessagingInAppConfigOptions {
         public static func create(with dictionary: [String: Any]) -> MessagingInAppConfigOptions {
             // Each SDK config option should be able to be set from `dictionary`.
             // If one isn't provided, use current value instead.
-            
+
             // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
             let siteId = dictionary[Keys.siteId.rawValue] as? String
             let region = (dictionary[Keys.region.rawValue] as? String).map(Region.getRegion)
@@ -38,12 +38,12 @@ public struct MessagingInAppConfigOptions {
             )
         }
     }
-    
+
     public enum Keys: String {
         case siteId
         case region
     }
-    
+
     /// Property to store workspace Site ID set during module initialization
     /// Immutable for lazy updates only, can be updated using initialize method
     public private(set) var siteId: String

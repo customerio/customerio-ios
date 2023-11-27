@@ -15,7 +15,7 @@ public struct MessagingPushConfigOptions {
     // Each property of the MessagingPushConfigOptions object can be modified by the user.
     public enum Factory {
         public static func create() -> MessagingPushConfigOptions {
-            return MessagingPushConfigOptions(
+            MessagingPushConfigOptions(
                 autoFetchDeviceToken: true,
                 autoTrackPushEvents: true,
                 autoTrackDeviceAttributes: true
@@ -25,7 +25,7 @@ public struct MessagingPushConfigOptions {
         public static func create(with dictionary: [String: Any]) -> MessagingPushConfigOptions {
             // Each SDK config option should be able to be set from `dictionary`.
             // If one isn't provided, use current value instead.
-            
+
             // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
             let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool
             let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool

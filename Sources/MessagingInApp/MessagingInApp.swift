@@ -101,7 +101,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         logger.info("In-app module setup with SDK")
     }
 
-    public override func getImplementationInstance() -> MessagingInAppInstance {
+    override public func getImplementationInstance() -> MessagingInAppInstance {
         // FIXME: [CDP] Create implementation instance
         // MessagingInAppImplementation(diGraph: diGraph)
         fatalError("will be implemented later")

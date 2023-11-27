@@ -5,465 +5,530 @@
 import Foundation
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions. 
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code? 
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph: 
-    let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase. 
-}
-```
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
+ }
+ ```
 
-5. How do I use this graph in my test suite? 
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class 
-DIGraph().override(mockOffRoadWheels, OffRoadWheels.self) 
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DIGraph().reset()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DIGraph().reset()
+ ```
 
-*/
-
-
+ */
 
 extension DIGraph {
-    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions. 
-    // internal scope so each module can provide their own version of the function with the same name. 
-    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also. 
-    internal func testDependenciesAbleToResolve() -> Int {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = self.deviceInfo
+        _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = self.httpClient
+        _ = httpClient
         countDependenciesResolved += 1
 
-        _ = self.globalDataStore
+        _ = globalDataStore
         countDependenciesResolved += 1
 
-        _ = self.hooksManager
+        _ = hooksManager
         countDependenciesResolved += 1
 
-        _ = self.profileStore
+        _ = profileStore
         countDependenciesResolved += 1
 
-        _ = self.queue
+        _ = queue
         countDependenciesResolved += 1
 
-        _ = self.queueQueryRunner
+        _ = queueQueryRunner
         countDependenciesResolved += 1
 
-        _ = self.queueRequestManager
+        _ = queueRequestManager
         countDependenciesResolved += 1
 
-        _ = self.queueRunRequest
+        _ = queueRunRequest
         countDependenciesResolved += 1
 
-        _ = self.queueRunner
+        _ = queueRunner
         countDependenciesResolved += 1
 
-        _ = self.simpleTimer
+        _ = simpleTimer
         countDependenciesResolved += 1
 
-        _ = self.singleScheduleTimer
+        _ = singleScheduleTimer
         countDependenciesResolved += 1
 
-        _ = self.threadUtil
+        _ = threadUtil
         countDependenciesResolved += 1
 
-        _ = self.logger
+        _ = logger
         countDependenciesResolved += 1
 
-        _ = self.httpRetryPolicy
+        _ = httpRetryPolicy
         countDependenciesResolved += 1
 
-        _ = self.deviceMetricsGrabber
+        _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
-        _ = self.fileStorage
+        _ = fileStorage
         countDependenciesResolved += 1
 
-        _ = self.queueStorage
+        _ = queueStorage
         countDependenciesResolved += 1
 
-        _ = self.jsonAdapter
+        _ = jsonAdapter
         countDependenciesResolved += 1
 
-        _ = self.lockManager
+        _ = lockManager
         countDependenciesResolved += 1
 
-        _ = self.queueInventoryMemoryStore
+        _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
-        _ = self.dateUtil
+        _ = dateUtil
         countDependenciesResolved += 1
 
-        _ = self.uIKitWrapper
+        _ = uIKitWrapper
         countDependenciesResolved += 1
 
-        _ = self.httpRequestRunner
+        _ = httpRequestRunner
         countDependenciesResolved += 1
 
-        _ = self.userAgentUtil
+        _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = self.keyValueStorage
+        _ = keyValueStorage
         countDependenciesResolved += 1
 
-        return countDependenciesResolved    
+        return countDependenciesResolved
     }
 
     // DeviceInfo
-    public var deviceInfo: DeviceInfo {  
-        return getOverriddenInstance() ??
-            self.newDeviceInfo
+    public var deviceInfo: DeviceInfo {
+        getOverriddenInstance() ??
+            newDeviceInfo
     }
-    private var newDeviceInfo: DeviceInfo {    
-        return CIODeviceInfo()
+
+    private var newDeviceInfo: DeviceInfo {
+        CIODeviceInfo()
     }
+
     // HttpClient
-    public var httpClient: HttpClient {  
-        return getOverriddenInstance() ??
-            self.newHttpClient
+    public var httpClient: HttpClient {
+        getOverriddenInstance() ??
+            newHttpClient
     }
-    private var newHttpClient: HttpClient {    
-        return CIOHttpClient(sdkConfig: self.sdkConfig, jsonAdapter: self.jsonAdapter, httpRequestRunner: self.httpRequestRunner, globalDataStore: self.globalDataStore, logger: self.logger, timer: self.simpleTimer, retryPolicy: self.httpRetryPolicy, userAgentUtil: self.userAgentUtil)
+
+    private var newHttpClient: HttpClient {
+        CIOHttpClient(sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
     }
+
     // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {  
-        return getOverriddenInstance() ??
-            self.newGlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        getOverriddenInstance() ??
+            newGlobalDataStore
     }
-    private var newGlobalDataStore: GlobalDataStore {    
-        return CioGlobalDataStore(keyValueStorage: self.keyValueStorage)
+
+    private var newGlobalDataStore: GlobalDataStore {
+        CioGlobalDataStore(keyValueStorage: keyValueStorage)
     }
+
     // HooksManager (singleton)
-    public var hooksManager: HooksManager {  
-        return getOverriddenInstance() ??
-            self.sharedHooksManager
+    public var hooksManager: HooksManager {
+        getOverriddenInstance() ??
+            sharedHooksManager
     }
+
     public var sharedHooksManager: HooksManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
-        return DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
             if let overridenDep: HooksManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
             let instance = existingSingletonInstance ?? _get_hooksManager()
             self.singletons[String(describing: HooksManager.self)] = instance
-            return instance    
+            return instance
         }
     }
+
     private func _get_hooksManager() -> HooksManager {
-        return CioHooksManager()
+        CioHooksManager()
     }
+
     // ProfileStore
-    public var profileStore: ProfileStore {  
-        return getOverriddenInstance() ??
-            self.newProfileStore
+    public var profileStore: ProfileStore {
+        getOverriddenInstance() ??
+            newProfileStore
     }
-    private var newProfileStore: ProfileStore {    
-        return CioProfileStore(keyValueStorage: self.keyValueStorage)
+
+    private var newProfileStore: ProfileStore {
+        CioProfileStore(keyValueStorage: keyValueStorage)
     }
+
     // Queue
-    public var queue: Queue {  
-        return getOverriddenInstance() ??
-            self.newQueue
+    public var queue: Queue {
+        getOverriddenInstance() ??
+            newQueue
     }
-    private var newQueue: Queue {    
-        return CioQueue(storage: self.queueStorage, runRequest: self.queueRunRequest, jsonAdapter: self.jsonAdapter, logger: self.logger, sdkConfig: self.sdkConfig, queueTimer: self.singleScheduleTimer, dateUtil: self.dateUtil)
+
+    private var newQueue: Queue {
+        CioQueue(storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
+
     // QueueQueryRunner
-    internal var queueQueryRunner: QueueQueryRunner {  
-        return getOverriddenInstance() ??
-            self.newQueueQueryRunner
+    var queueQueryRunner: QueueQueryRunner {
+        getOverriddenInstance() ??
+            newQueueQueryRunner
     }
-    private var newQueueQueryRunner: QueueQueryRunner {    
-        return CioQueueQueryRunner(logger: self.logger)
+
+    private var newQueueQueryRunner: QueueQueryRunner {
+        CioQueueQueryRunner(logger: logger)
     }
+
     // QueueRequestManager (singleton)
-    public var queueRequestManager: QueueRequestManager {  
-        return getOverriddenInstance() ??
-            self.sharedQueueRequestManager
+    public var queueRequestManager: QueueRequestManager {
+        getOverriddenInstance() ??
+            sharedQueueRequestManager
     }
+
     public var sharedQueueRequestManager: QueueRequestManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
-        return DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
             if let overridenDep: QueueRequestManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
             let instance = existingSingletonInstance ?? _get_queueRequestManager()
             self.singletons[String(describing: QueueRequestManager.self)] = instance
-            return instance    
+            return instance
         }
     }
+
     private func _get_queueRequestManager() -> QueueRequestManager {
-        return CioQueueRequestManager()
+        CioQueueRequestManager()
     }
+
     // QueueRunRequest
-    public var queueRunRequest: QueueRunRequest {  
-        return getOverriddenInstance() ??
-            self.newQueueRunRequest
+    public var queueRunRequest: QueueRunRequest {
+        getOverriddenInstance() ??
+            newQueueRunRequest
     }
-    private var newQueueRunRequest: QueueRunRequest {    
-        return CioQueueRunRequest(runner: self.queueRunner, storage: self.queueStorage, requestManager: self.queueRequestManager, logger: self.logger, queryRunner: self.queueQueryRunner, threadUtil: self.threadUtil)
+
+    private var newQueueRunRequest: QueueRunRequest {
+        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager, logger: logger, queryRunner: queueQueryRunner, threadUtil: threadUtil)
     }
+
     // QueueRunner
-    public var queueRunner: QueueRunner {  
-        return getOverriddenInstance() ??
-            self.newQueueRunner
+    public var queueRunner: QueueRunner {
+        getOverriddenInstance() ??
+            newQueueRunner
     }
-    private var newQueueRunner: QueueRunner {    
-        return CioQueueRunner(jsonAdapter: self.jsonAdapter, logger: self.logger, httpClient: self.httpClient, hooksManager: self.hooksManager, sdkConfig: self.sdkConfig)
+
+    private var newQueueRunner: QueueRunner {
+        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
     }
+
     // SimpleTimer
-    internal var simpleTimer: SimpleTimer {  
-        return getOverriddenInstance() ??
-            self.newSimpleTimer
+    var simpleTimer: SimpleTimer {
+        getOverriddenInstance() ??
+            newSimpleTimer
     }
-    private var newSimpleTimer: SimpleTimer {    
-        return CioSimpleTimer(logger: self.logger)
+
+    private var newSimpleTimer: SimpleTimer {
+        CioSimpleTimer(logger: logger)
     }
+
     // SingleScheduleTimer (singleton)
-    internal var singleScheduleTimer: SingleScheduleTimer {  
-        return getOverriddenInstance() ??
-            self.sharedSingleScheduleTimer
+    var singleScheduleTimer: SingleScheduleTimer {
+        getOverriddenInstance() ??
+            sharedSingleScheduleTimer
     }
-    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
-        return DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
+
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
             if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
             let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
             self.singletons[String(describing: SingleScheduleTimer.self)] = instance
-            return instance    
+            return instance
         }
     }
+
     private func _get_singleScheduleTimer() -> SingleScheduleTimer {
-        return CioSingleScheduleTimer(timer: self.simpleTimer)
+        CioSingleScheduleTimer(timer: simpleTimer)
     }
+
     // ThreadUtil
-    public var threadUtil: ThreadUtil {  
-        return getOverriddenInstance() ??
-            self.newThreadUtil
+    public var threadUtil: ThreadUtil {
+        getOverriddenInstance() ??
+            newThreadUtil
     }
-    private var newThreadUtil: ThreadUtil {    
-        return CioThreadUtil()
+
+    private var newThreadUtil: ThreadUtil {
+        CioThreadUtil()
     }
+
     // Logger
-    public var logger: Logger {  
-        return getOverriddenInstance() ??
-            self.newLogger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
     }
-    private var newLogger: Logger {    
-        return ConsoleLogger(sdkConfig: self.sdkConfig)
+
+    private var newLogger: Logger {
+        ConsoleLogger(sdkConfig: sdkConfig)
     }
+
     // HttpRetryPolicy
-    internal var httpRetryPolicy: HttpRetryPolicy {  
-        return getOverriddenInstance() ??
-            self.newHttpRetryPolicy
+    var httpRetryPolicy: HttpRetryPolicy {
+        getOverriddenInstance() ??
+            newHttpRetryPolicy
     }
-    private var newHttpRetryPolicy: HttpRetryPolicy {    
-        return CustomerIOAPIHttpRetryPolicy()
+
+    private var newHttpRetryPolicy: HttpRetryPolicy {
+        CustomerIOAPIHttpRetryPolicy()
     }
+
     // DeviceMetricsGrabber
-    internal var deviceMetricsGrabber: DeviceMetricsGrabber {  
-        return getOverriddenInstance() ??
-            self.newDeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
     }
-    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {    
-        return DeviceMetricsGrabberImpl()
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
     }
+
     // FileStorage
-    public var fileStorage: FileStorage {  
-        return getOverriddenInstance() ??
-            self.newFileStorage
+    public var fileStorage: FileStorage {
+        getOverriddenInstance() ??
+            newFileStorage
     }
-    private var newFileStorage: FileStorage {    
-        return FileManagerFileStorage(sdkConfig: self.sdkConfig, logger: self.logger)
+
+    private var newFileStorage: FileStorage {
+        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
     }
+
     // QueueStorage
-    public var queueStorage: QueueStorage {  
-        return getOverriddenInstance() ??
-            self.newQueueStorage
+    public var queueStorage: QueueStorage {
+        getOverriddenInstance() ??
+            newQueueStorage
     }
-    private var newQueueStorage: QueueStorage {    
-        return FileManagerQueueStorage(fileStorage: self.fileStorage, jsonAdapter: self.jsonAdapter, lockManager: self.lockManager, sdkConfig: self.sdkConfig, logger: self.logger, dateUtil: self.dateUtil, inventoryStore: self.queueInventoryMemoryStore)
+
+    private var newQueueStorage: QueueStorage {
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
+
     // JsonAdapter
-    public var jsonAdapter: JsonAdapter {  
-        return getOverriddenInstance() ??
-            self.newJsonAdapter
+    public var jsonAdapter: JsonAdapter {
+        getOverriddenInstance() ??
+            newJsonAdapter
     }
-    private var newJsonAdapter: JsonAdapter {    
-        return JsonAdapter(log: self.logger)
+
+    private var newJsonAdapter: JsonAdapter {
+        JsonAdapter(log: logger)
     }
+
     // LockManager (singleton)
-    public var lockManager: LockManager {  
-        return getOverriddenInstance() ??
-            self.sharedLockManager
+    public var lockManager: LockManager {
+        getOverriddenInstance() ??
+            sharedLockManager
     }
+
     public var sharedLockManager: LockManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
-        return DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
             if let overridenDep: LockManager = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
             let instance = existingSingletonInstance ?? _get_lockManager()
             self.singletons[String(describing: LockManager.self)] = instance
-            return instance    
+            return instance
         }
     }
+
     private func _get_lockManager() -> LockManager {
-        return LockManager()
+        LockManager()
     }
+
     // QueueInventoryMemoryStore (singleton)
-    internal var queueInventoryMemoryStore: QueueInventoryMemoryStore {  
-        return getOverriddenInstance() ??
-            self.sharedQueueInventoryMemoryStore
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+        getOverriddenInstance() ??
+            sharedQueueInventoryMemoryStore
     }
-    internal var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
-        return DispatchQueue(label: "DIGraph_QueueInventoryMemoryStore_singleton_access").sync {
+
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_QueueInventoryMemoryStore_singleton_access").sync {
             if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
                 return overridenDep
             }
             let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
             let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
             self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
-            return instance    
+            return instance
         }
     }
+
     private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
-        return QueueInventoryMemoryStoreImpl()
+        QueueInventoryMemoryStoreImpl()
     }
+
     // DateUtil
-    public var dateUtil: DateUtil {  
-        return getOverriddenInstance() ??
-            self.newDateUtil
+    public var dateUtil: DateUtil {
+        getOverriddenInstance() ??
+            newDateUtil
     }
-    private var newDateUtil: DateUtil {    
-        return SdkDateUtil()
+
+    private var newDateUtil: DateUtil {
+        SdkDateUtil()
     }
+
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
-    public var uIKitWrapper: UIKitWrapper {  
-        return getOverriddenInstance() ??
-            self.newUIKitWrapper
+    public var uIKitWrapper: UIKitWrapper {
+        getOverriddenInstance() ??
+            newUIKitWrapper
     }
+
     @available(iOSApplicationExtension, unavailable)
-    private var newUIKitWrapper: UIKitWrapper {    
-        return UIKitWrapperImpl()
+    private var newUIKitWrapper: UIKitWrapper {
+        UIKitWrapperImpl()
     }
+
     // HttpRequestRunner
-    internal var httpRequestRunner: HttpRequestRunner {  
-        return getOverriddenInstance() ??
-            self.newHttpRequestRunner
+    var httpRequestRunner: HttpRequestRunner {
+        getOverriddenInstance() ??
+            newHttpRequestRunner
     }
-    private var newHttpRequestRunner: HttpRequestRunner {    
-        return UrlRequestHttpRequestRunner()
+
+    private var newHttpRequestRunner: HttpRequestRunner {
+        UrlRequestHttpRequestRunner()
     }
+
     // UserAgentUtil
-    public var userAgentUtil: UserAgentUtil {  
-        return getOverriddenInstance() ??
-            self.newUserAgentUtil
+    public var userAgentUtil: UserAgentUtil {
+        getOverriddenInstance() ??
+            newUserAgentUtil
     }
-    private var newUserAgentUtil: UserAgentUtil {    
-        return UserAgentUtilImpl(deviceInfo: self.deviceInfo, sdkConfig: self.sdkConfig)
+
+    private var newUserAgentUtil: UserAgentUtil {
+        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
+
     // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {  
-        return getOverriddenInstance() ??
-            self.newKeyValueStorage
+    public var keyValueStorage: KeyValueStorage {
+        getOverriddenInstance() ??
+            newKeyValueStorage
     }
-    private var newKeyValueStorage: KeyValueStorage {    
-        return UserDefaultsKeyValueStorage(sdkConfig: self.sdkConfig, deviceMetricsGrabber: self.deviceMetricsGrabber)
+
+    private var newKeyValueStorage: KeyValueStorage {
+        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
 extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
     // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {  
-        return getOverriddenInstance() ??
-            self.newGlobalDataStore
+    public var globalDataStore: GlobalDataStore {
+        getOverriddenInstance() ??
+            newGlobalDataStore
     }
+
     private var newGlobalDataStore: GlobalDataStore {
-        return CioSharedDataStore(keyValueStorage: self.sharedKeyValueStorage)
+        CioSharedDataStore(keyValueStorage: sharedKeyValueStorage)
     }
+
     // ThreadUtil
-    public var threadUtil: ThreadUtil {  
-        return getOverriddenInstance() ??
-            self.newThreadUtil
+    public var threadUtil: ThreadUtil {
+        getOverriddenInstance() ??
+            newThreadUtil
     }
+
     private var newThreadUtil: ThreadUtil {
-        return CioThreadUtil()
+        CioThreadUtil()
     }
+
     // DeviceMetricsGrabber
-    internal var deviceMetricsGrabber: DeviceMetricsGrabber {  
-        return getOverriddenInstance() ??
-            self.newDeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
     }
+
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
-        return DeviceMetricsGrabberImpl()
+        DeviceMetricsGrabberImpl()
     }
+
     // Logger
-    public var logger: Logger {  
-        return getOverriddenInstance() ??
-            self.newLogger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
     }
+
     private var newLogger: Logger {
-        return SharedConsoleLogger()
+        SharedConsoleLogger()
     }
+
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
-    public var uIKitWrapper: UIKitWrapper {  
-        return getOverriddenInstance() ??
-            self.newUIKitWrapper
+    public var uIKitWrapper: UIKitWrapper {
+        getOverriddenInstance() ??
+            newUIKitWrapper
     }
+
     @available(iOSApplicationExtension, unavailable)
     private var newUIKitWrapper: UIKitWrapper {
-        return UIKitWrapperImpl()
+        UIKitWrapperImpl()
     }
+
     // SharedKeyValueStorage
-    public var sharedKeyValueStorage: SharedKeyValueStorage {  
-        return getOverriddenInstance() ??
-            self.newSharedKeyValueStorage
+    public var sharedKeyValueStorage: SharedKeyValueStorage {
+        getOverriddenInstance() ??
+            newSharedKeyValueStorage
     }
+
     private var newSharedKeyValueStorage: SharedKeyValueStorage {
-        return UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: self.deviceMetricsGrabber)
+        UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 

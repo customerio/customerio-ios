@@ -20,8 +20,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
     }
 
     // singleton constructor
-    public init() {
-    }
+    public init() {}
 
     private func createAndSetImplementationInstance() -> ImplementationClass? {
         let newInstance = getImplementationInstance()
