@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -21,22 +20,19 @@ class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        let sdkInitializedUtil = SdkInitializedUtilImpl()
+        // FIXME: [CDP] Evaluate and fix
+        // let diGraph = DIGraphShared.shared
+        // let httpClient = diGraph.httpClient
 
-        guard let postSdkInitializedData = sdkInitializedUtil.postInitializedData else { return }
+        // let newRequest = RichPushRequest(
+        //     pushContent: content,
+        //     request: request,
+        //     httpClient: httpClient,
+        //     completionHandler: completionHandler
+        // )
+        // requests[requestId] = newRequest
 
-        let diGraph = postSdkInitializedData.diGraph
-        let httpClient = diGraph.httpClient
-
-        let newRequest = RichPushRequest(
-            pushContent: content,
-            request: request,
-            httpClient: httpClient,
-            completionHandler: completionHandler
-        )
-        requests[requestId] = newRequest
-
-        newRequest.start()
+        // newRequest.start()
     }
 
     func stopAll() {

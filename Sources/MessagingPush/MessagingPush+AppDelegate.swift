@@ -66,9 +66,10 @@ extension MessagingPushImplementation {
             if let deepLinkUrl = pushContent.deepLink {
                 // A hack to get an instance of deepLinkUtil without making it a property of the MessagingPushImplementation class. deepLinkUtil is not available to app extensions but MessagingPushImplementation is.
                 // We get around this by getting a instance in this function, only.
-                if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
-                    deepLinkUtil.handleDeepLink(deepLinkUrl)
-                }
+                // FIXME: [CDP] Get DeepLinkUtil instance
+                // if let deepLinkUtil = sdkInitializedUtil.postInitializedData?.diGraph.deepLinkUtil {
+                //     deepLinkUtil.handleDeepLink(deepLinkUrl)
+                // }
             }
         default: break
         }
