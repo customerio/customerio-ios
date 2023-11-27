@@ -53,3 +53,42 @@ public class CioGlobalDataStore: GlobalDataStore {
         keyValueStorage.deleteAll()
     }
 }
+
+// sourcery: InjectRegisterShared = "GlobalDataStore"
+public class CioSharedDataStore: GlobalDataStore {
+    private let keyValueStorage: SharedKeyValueStorage
+
+    public var pushDeviceToken: String? {
+        get {
+            keyValueStorage.string(.pushDeviceToken)
+        }
+        set {
+            keyValueStorage.setString(newValue, forKey: .pushDeviceToken)
+        }
+    }
+
+    public var httpRequestsPauseEnds: Date? {
+        get {
+            keyValueStorage.date(.httpRequestsPauseEnds)
+        }
+        set {
+            keyValueStorage.setDate(newValue, forKey: .httpRequestsPauseEnds)
+        }
+    }
+
+    public init(keyValueStorage: SharedKeyValueStorage) {
+        self.keyValueStorage = keyValueStorage
+    }
+
+    // How to get instance before DI graph is constructed
+    public static func getInstance() -> GlobalDataStore {
+        let newInstance = UserDefaultsSharedKeyValueStorage(
+            deviceMetricsGrabber: DeviceMetricsGrabberImpl()
+        )
+        return CioSharedDataStore(keyValueStorage: newInstance)
+    }
+
+    public func deleteAll() {
+        keyValueStorage.deleteAll()
+    }
+}

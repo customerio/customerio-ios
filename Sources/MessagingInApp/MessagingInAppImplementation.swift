@@ -1,10 +1,8 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
-    private let siteId: String
-    private let region: Region
+    private let moduleConfig: MessagingInAppConfigOptions
     private let logger: CioInternalCommon.Logger
     private var queue: Queue
     private var jsonAdapter: JsonAdapter
@@ -14,9 +12,8 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
 
-    init(diGraph: DIGraph) {
-        self.siteId = diGraph.sdkConfig.siteId
-        self.region = diGraph.sdkConfig.region
+    init(diGraph: DIGraph, moduleConfig: MessagingInAppConfigOptions) {
+        self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.queue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
@@ -26,7 +23,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     func initialize() {
-        inAppProvider.initialize(siteId: siteId, region: region, delegate: self)
+        inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.

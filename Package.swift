@@ -69,7 +69,7 @@ let package = Package(
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
@@ -92,7 +92,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
