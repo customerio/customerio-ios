@@ -1,3 +1,4 @@
+import CioDataPipeline
 import CioInternalCommon
 import Foundation
 
@@ -43,6 +44,9 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+
+        // Initialize the CIODataPipeline with the diGraph.
+        CIODataPipeline.initialize(diGraph: diGraph)
     }
 
     public var config: SdkConfig? {
@@ -83,6 +87,8 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        CIODataPipeline.shared().identify(userId: identifier, traits: jsonAdapter.toJson(body))
+
         if identifier.isBlankOrEmpty() {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
             return
@@ -165,6 +171,8 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
+        CIODataPipeline.shared().reset()
+
         logger.info("clearing identified profile")
 
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
@@ -191,6 +199,8 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
+        CIODataPipeline.shared().track(name: name, properties: jsonAdapter.toJson(data))
+
         _ = trackEvent(type: .event, name: name, data: data)
     }
 
@@ -206,6 +216,8 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
+        CIODataPipeline.shared().screen(title: name, properties: jsonAdapter.toJson(data))
+
         let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
 
         if eventWasTracked {
@@ -227,6 +239,8 @@ class CustomerIOImplementation: CustomerIOInstance {
      Adds device default and custom attributes and registers device token.
      */
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
+        CIODataPipeline.shared().setDeviceToken(deviceToken)
+
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,

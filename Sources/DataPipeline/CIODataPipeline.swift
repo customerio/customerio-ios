@@ -18,6 +18,10 @@ public class CIODataPipeline {
     public static func initialize(configuration: Configuration) {
         analytics = Analytics(configuration: configuration)
     }
+
+    public static func initialize(diGraph: DIGraph) {
+        analytics = Analytics(configuration: Configuration.configure(diGraph: diGraph))
+    }
 }
 
 // MARK: - System Modifiers
