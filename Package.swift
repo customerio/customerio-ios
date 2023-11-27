@@ -55,7 +55,7 @@ let package = Package(
                     path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
-                dependencies: ["CioInternalCommon", "CioDataPipeline"],
+                dependencies: ["CioInternalCommon", "CioDataPipelines"],
                 path: "Sources/Tracking"),
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
