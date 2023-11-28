@@ -22,7 +22,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
     }
-    
+
     func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
         var newConfig = moduleConfig
         configureHandler(&newConfig)

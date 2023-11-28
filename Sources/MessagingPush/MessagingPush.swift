@@ -68,7 +68,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     override public func getImplementationInstance() -> MessagingPushInstance? {
         MessagingPush.initialize()
     }
-    
+
     public func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
         implementation?.configure(with: configureHandler)
     }
