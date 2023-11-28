@@ -439,6 +439,14 @@ extension DIGraphShared {
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
         return DeviceMetricsGrabberImpl()
     }
+    // JsonAdapter
+    public var jsonAdapter: JsonAdapter {  
+        return getOverriddenInstance() ??
+            self.newJsonAdapter
+    }
+    private var newJsonAdapter: JsonAdapter {
+        return JsonAdapter(log: self.logger)
+    }
     // Logger
     public var logger: Logger {  
         return getOverriddenInstance() ??

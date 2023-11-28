@@ -56,12 +56,23 @@ extension DIGraph {
     internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = self.inAppProvider
+        countDependenciesResolved += 1
+
         _ = self.moduleHookProvider
         countDependenciesResolved += 1
 
         return countDependenciesResolved    
     }
 
+    // InAppProvider
+    internal var inAppProvider: InAppProvider {  
+        return getOverriddenInstance() ??
+            self.newInAppProvider
+    }
+    private var newInAppProvider: InAppProvider {    
+        return GistInAppProvider()
+    }
     // ModuleHookProvider
     internal var moduleHookProvider: ModuleHookProvider {  
         return getOverriddenInstance() ??

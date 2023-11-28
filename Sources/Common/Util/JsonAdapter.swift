@@ -27,6 +27,7 @@ import Foundation
  ```
  */
 // sourcery: InjectRegister = "JsonAdapter"
+// sourcery: InjectRegisterShared = "JsonAdapter"
 public class JsonAdapter {
     var decoder: JSONDecoder {
         let decoder = JSONDecoder()
