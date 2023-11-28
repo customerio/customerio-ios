@@ -42,11 +42,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             configureHandler(&moduleConfig)
         }
 
-        shared.initialize(moduleConfig: moduleConfig)
+        shared.initializeModule(moduleConfig: moduleConfig)
         return shared
     }
 
-    private func initialize(moduleConfig: MessagingPushConfigOptions) {
+    private func initializeModule(moduleConfig: MessagingPushConfigOptions) {
         if let pushImplementation = getImplementationInstance() {
             pushImplementation.configure { $0.apply(moduleConfig) }
             logger.info("\(moduleName) module already initialized. Applying updated config, ignoring re-initialization request.")
