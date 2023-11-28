@@ -66,29 +66,29 @@ extension MessagingPushImplementation {
             trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
         }
 
-        if let richPushContent = CustomerIOParsedPushPayload.parse(
-            notificationContent: request.content,
-            jsonAdapter: jsonAdapter
-        ) {
-            logger
-                .info("""
-                Parsing notification request to display rich content such as images, deep links, etc.
-                """)
-            logger.debug("push content: \(richPushContent)")
-
-            RichPushRequestHandler.shared.startRequest(
-                request,
-                content: richPushContent
-            ) { notificationContent in
-                self.logger.debug("rich push was composed \(notificationContent).")
-
-                self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: notificationContent)
-            }
-        } else {
-            logger.info("the push was a simple push, not a rich push. Processing is complete.")
-
-            finishTasksThenReturn(contentHandler: contentHandler, notificationContent: request.content)
-        }
+//        if let richPushContent = CustomerIOParsedPushPayload.parse(
+//            notificationContent: request.content,
+//            jsonAdapter: jsonAdapter
+//        ) {
+//            logger
+//                .info("""
+//                Parsing notification request to display rich content such as images, deep links, etc.
+//                """)
+//            logger.debug("push content: \(richPushContent)")
+//
+//            RichPushRequestHandler.shared.startRequest(
+//                request,
+//                content: richPushContent
+//            ) { notificationContent in
+//                self.logger.debug("rich push was composed \(notificationContent).")
+//
+//                self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: notificationContent)
+//            }
+//        } else {
+//            logger.info("the push was a simple push, not a rich push. Processing is complete.")
+//
+//            finishTasksThenReturn(contentHandler: contentHandler, notificationContent: request.content)
+//        }
 
         return true
     }
@@ -101,12 +101,12 @@ extension MessagingPushImplementation {
             .debug(
                 "running all background queue tasks and waiting until complete to prevent OS from killing notification service extension before all HTTP requests have been performed"
             )
-        backgroundQueue.run {
-            self.logger.debug("all background queue tasks done running.")
-            self.logger.info("Customer.io push processing is done!")
-
-            contentHandler(notificationContent)
-        }
+//        backgroundQueue.run {
+//            self.logger.debug("all background queue tasks done running.")
+//            self.logger.info("Customer.io push processing is done!")
+//
+//            contentHandler(notificationContent)
+//        }
     }
 
     /**

@@ -8,27 +8,19 @@ import UserNotifications
 class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
     let logger: Logger
-    let jsonAdapter: JsonAdapter
-    let backgroundQueue: Queue
 
     /// testing init
     init(
         moduleConfig: MessagingPushConfigOptions,
-        logger: Logger,
-        jsonAdapter: JsonAdapter,
-        backgroundQueue: Queue
+        logger: Logger
     ) {
         self.moduleConfig = moduleConfig
         self.logger = logger
-        self.jsonAdapter = jsonAdapter
-        self.backgroundQueue = backgroundQueue
     }
 
-    init(diGraph: DIGraph, moduleConfig: MessagingPushConfigOptions) {
+    init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
-        self.jsonAdapter = diGraph.jsonAdapter
-        self.backgroundQueue = diGraph.queue
     }
 
     func deleteDeviceToken() {
