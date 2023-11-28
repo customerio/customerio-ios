@@ -6,7 +6,7 @@ import UserNotifications
 #endif
 
 class MessagingPushImplementation: MessagingPushInstance {
-    let moduleConfig: MessagingPushConfigOptions
+    var moduleConfig: MessagingPushConfigOptions
     let logger: Logger
 
     /// testing init
@@ -21,6 +21,12 @@ class MessagingPushImplementation: MessagingPushInstance {
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
+    }
+    
+    func configure(configure configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
+        var newConfig = moduleConfig
+        configureHandler(&newConfig)
+        moduleConfig.apply(newConfig)
     }
 
     func deleteDeviceToken() {

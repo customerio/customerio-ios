@@ -46,8 +46,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     private func initialize(moduleConfig: MessagingPushConfigOptions) {
-        if implementation != nil {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
+        if let pushImplementation = implementation {
+            pushImplementation.configure { $0.apply(moduleConfig) }
+            logger.info("\(moduleName) module already initialized. Applying updated config, ignoring re-initialization request.")
             return
         }
 
@@ -65,6 +66,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     override public func getImplementationInstance() -> MessagingPushInstance? {
         MessagingPush.initialize()
+    }
+    
+    public func configure(configure configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
+        implementation?.configure(configure: configureHandler)
     }
 
     /**

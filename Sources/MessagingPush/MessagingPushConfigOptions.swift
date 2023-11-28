@@ -62,4 +62,12 @@ public struct MessagingPushConfigOptions {
      operating system, device locale, device model, app version etc
      */
     public var autoTrackDeviceAttributes: Bool
+    
+    /// Applies new configuration to this object
+    /// - Important: Ensure all mutable properties are updated accordingly
+    mutating func apply(_ newConfig: MessagingPushConfigOptions) {
+        self.autoFetchDeviceToken = newConfig.autoFetchDeviceToken
+        self.autoTrackPushEvents = newConfig.autoTrackPushEvents
+        self.autoTrackDeviceAttributes = newConfig.autoTrackDeviceAttributes
+    }
 }
