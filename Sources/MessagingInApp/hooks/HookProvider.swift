@@ -12,13 +12,13 @@ class MessagingInAppModuleHookProvider: ModuleHookProvider {
         // guard let diGraph = diGraph else { return nil }
 
         // FIXME: [CDP] Find workaround by attaching hook to Journeys or reusing existing instance to utilize customer provided siteid
-        return MessagingInApp.shared.implementation as? MessagingInAppImplementation
+        MessagingInApp.shared.implementation as? MessagingInAppImplementation
     }
 
     var screenTrackingHook: ScreenTrackingHook? {
         // guard let diGraph = diGraph else { return nil }
 
         // FIXME: [CDP] Find workaround by attaching hook to Journeys or reusing existing instance to utilize customer provided siteid
-        return MessagingInApp.shared.implementation as? MessagingInAppImplementation
+        MessagingInApp.shared.implementation as? MessagingInAppImplementation
     }
 }

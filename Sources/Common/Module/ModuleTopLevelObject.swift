@@ -16,7 +16,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
         }
         return instance
     }
-    
+
     // To identify the module in top-level objects and within log messages
     public let moduleName: String
     open var logger: Logger {
@@ -46,6 +46,6 @@ open class ModuleTopLevelObject<ImplementationClass> {
     // Feature modules (e.g. in-app) that require user input for initialization may not override this
     // method or can return `nil`.
     open func getImplementationInstance() -> ImplementationClass? {
-        return nil
+        nil
     }
 }

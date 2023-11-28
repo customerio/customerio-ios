@@ -63,8 +63,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    public override func getImplementationInstance() -> MessagingPushInstance? {
-        return MessagingPush.initialize()
+    override public func getImplementationInstance() -> MessagingPushInstance? {
+        MessagingPush.initialize()
     }
 
     /**

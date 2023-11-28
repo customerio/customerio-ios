@@ -14,7 +14,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.logger = diGraph.logger
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
-        self.initialize()
+        initialize()
     }
 
     private func initialize() {
