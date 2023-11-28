@@ -47,7 +47,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     private func initialize(moduleConfig: MessagingPushConfigOptions) {
-        if let pushImplementation = alreadyCreatedImplementation {
+        if let pushImplementation = getImplementationInstance() {
             pushImplementation.configure { $0.apply(moduleConfig) }
             logger.info("\(moduleName) module already initialized. Applying updated config, ignoring re-initialization request.")
             return
@@ -65,7 +65,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    override public func getImplementationInstance() -> MessagingPushInstance? {
+    override public func createImplementationInstance() -> MessagingPushInstance? {
         MessagingPush.initialize()
     }
 

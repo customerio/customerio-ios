@@ -8,7 +8,7 @@ import Foundation
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
 open class ModuleTopLevelObject<ImplementationClass> {
-    open private(set) var alreadyCreatedImplementation: ImplementationClass?
+    private(set) var alreadyCreatedImplementation: ImplementationClass?
     public var implementation: ImplementationClass? {
         let instance = alreadyCreatedImplementation ?? createAndSetImplementationInstance()
         if instance == nil {
@@ -32,7 +32,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
     }
 
     private func createAndSetImplementationInstance() -> ImplementationClass? {
-        let newInstance = getImplementationInstance()
+        let newInstance = createImplementationInstance()
         alreadyCreatedImplementation = newInstance
         return newInstance
     }
@@ -41,11 +41,15 @@ open class ModuleTopLevelObject<ImplementationClass> {
         alreadyCreatedImplementation = implementation
     }
 
+    open func getImplementationInstance() -> ImplementationClass? {
+        alreadyCreatedImplementation
+    }
+
     // Feature modules (e.g. push) which support auto-initialization without client configuration can
     // provide its instance here to ensure early initialization upon the first call
     // Feature modules (e.g. in-app) that require user input for initialization may not override this
     // method or can return `nil`.
-    open func getImplementationInstance() -> ImplementationClass? {
+    open func createImplementationInstance() -> ImplementationClass? {
         nil
     }
 }

@@ -59,7 +59,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     // Internal initializer for setting up the module with desired values
     private func inititlizeModule(moduleConfig: MessagingInAppConfigOptions) {
-        guard alreadyCreatedImplementation == nil else {
+        guard getImplementationInstance() == nil else {
             logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
             return
         }
