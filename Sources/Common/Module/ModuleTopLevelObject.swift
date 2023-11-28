@@ -18,7 +18,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
     }
     
     // To identify the module in top-level objects and within log messages
-    let moduleName: String
+    public let moduleName: String
     open var logger: Logger {
         DIGraphShared.shared.logger
     }

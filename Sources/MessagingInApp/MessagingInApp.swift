@@ -2,32 +2,27 @@ import CioInternalCommon
 import Foundation
 
 public protocol MessagingInAppInstance: AutoMockable {
-    // sourcery:Name=initialize
-    func initialize()
-    // sourcery:Name=initializeEventListener
-    func initialize(eventListener: InAppEventListener)
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    // sourcery:Name=initializeOrganizationId
-    func initialize(organizationId: String)
+    // sourcery:Name=setEventListener
+    func setEventListener(eventListener: InAppEventListener?)
 
     func dismissMessage()
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
     @Atomic public internal(set) static var shared = MessagingInApp()
+    private static let moduleName = "MessagingInApp"
 
     // constructor that is called by test classes
     // This function's job is to populate the `shared` property with
     // overrides such as DI graph.
-    override init(implementation: MessagingInAppInstance?) {
-        super.init(implementation: implementation)
+    init(implementation: MessagingInAppInstance?) {
+        super.init(moduleName: MessagingInApp.moduleName, implementation: implementation)
     }
 
     // constructor used in production with default DI graph
     // singleton constructor
-    override private init() {
-        super.init()
+    private init() {
+        super.init(moduleName: MessagingInApp.moduleName)
     }
 
     // for testing
@@ -41,70 +36,47 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // API for customers. Customers can use `MessagingInApp.initialize(...)` instead of `MessagingInApp.shared.initialize(...)`.
     // Trying to follow the same API as `CustomerIO` class with `initialize()`.
 
-    // Initialize SDK module
-    public static func initialize() {
-        shared.initialize()
+    /**
+     Initialize the shared `instance` of `MessagingInApp`.
+     Call this function when your app launches, before using `MessagingInApp.shared`.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    public static func initialize(
+        siteId: String,
+        region: Region,
+        configure configureHandler: ((inout MessagingInAppConfigOptions) -> Void)? = nil
+    ) -> MessagingInAppInstance {
+        var moduleConfig = MessagingInAppConfigOptions.Factory.create(siteId: siteId, region: region)
+
+        if let configureHandler = configureHandler {
+            configureHandler(&moduleConfig)
+        }
+
+        shared.inititlizeModule(moduleConfig: moduleConfig)
+        return shared
     }
 
-    public static func initialize(eventListener: InAppEventListener) {
-        shared.initialize(eventListener: eventListener)
-    }
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public static func initialize(organizationId: String) {
-        shared.initialize(organizationId: organizationId)
-    }
-
-    // MARK: initialize functions to initialize module.
-
-    // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
-
-    public func initialize() {
-        commonInitialize(eventListener: nil)
-    }
-
-    public func initialize(eventListener: InAppEventListener) {
-        commonInitialize(eventListener: eventListener)
-    }
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public func initialize(organizationId: String) {
-        commonInitialize(eventListener: nil)
-    }
-
-    private func commonInitialize(eventListener: InAppEventListener?) {
-        guard let implementation = implementation else {
-            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
+    // Internal initializer for setting up the module with desired values
+    private func inititlizeModule(moduleConfig: MessagingInAppConfigOptions) {
+        if implementation != nil {
+            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
             return
         }
 
-        inititlizeModule()
-
-        if let eventListener = eventListener {
-            implementation.initialize(eventListener: eventListener)
-        } else {
-            implementation.initialize()
-        }
-    }
-
-    override public func inititlizeModule() {
-        let diGraph = DIGraphShared.shared
-        let logger = diGraph.logger
-        logger.debug("Setting up in-app module...")
+        logger.debug("Setting up \(moduleName) module...")
+        let inAppImplementation = MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+        setImplementationInstance(implementation: inAppImplementation)
 
         // FIXME: [CDP] Update hooks to work as expected
         // Register MessagingPush module hooks now that the module is being initialized.
-//        let hooks = diGraph.hooksManager
-//        let moduleHookProvider = MessagingInAppModuleHookProvider()
-//        hooks.add(key: .messagingInApp, provider: moduleHookProvider)
-
-        logger.info("In-app module setup with SDK")
+        // let hooks = diGraph.hooksManager
+        // let moduleHookProvider = MessagingInAppModuleHookProvider()
+        // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
+        logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    override public func getImplementationInstance() -> MessagingInAppInstance {
-        // FIXME: [CDP] Create implementation instance
-        // MessagingInAppImplementation(diGraph: diGraph)
-        fatalError("will be implemented later")
+    public func setEventListener(eventListener: InAppEventListener?) {
+        implementation?.setEventListener(eventListener: eventListener)
     }
 
     // Dismiss in-app message

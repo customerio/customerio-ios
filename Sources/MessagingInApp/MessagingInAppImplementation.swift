@@ -4,42 +4,33 @@ import Foundation
 class MessagingInAppImplementation: MessagingInAppInstance {
     private let moduleConfig: MessagingInAppConfigOptions
     private let logger: CioInternalCommon.Logger
-    private var queue: Queue
-    private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
-    private var profileStore: ProfileStore
 
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
 
-    init(diGraph: DIGraph, moduleConfig: MessagingInAppConfigOptions) {
+    init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
-        self.queue = diGraph.queue
-        self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
-        self.profileStore = diGraph.profileStore
         self.threadUtil = diGraph.threadUtil
+        self.initialize()
     }
 
-    func initialize() {
+    private func initialize() {
         inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
-        if let identifier = profileStore.identifier {
-            inAppProvider.setProfileIdentifier(identifier)
-        }
+        // FIXME: [CDP] Fetch from Journey
+        // if let identifier = profileStore.identifier {
+        //     inAppProvider.setProfileIdentifier(identifier)
+        // }
     }
 
-    func initialize(eventListener: InAppEventListener) {
+    func setEventListener(eventListener: InAppEventListener?) {
         self.eventListener = eventListener
-        initialize()
     }
-
-    // Functions deprecated but need to exist for `MessagingInAppInstance` protocol.
-    // Do not call these functions but non-deprecated ones.
-    func initialize(organizationId: String) {}
 
     // Dismiss in-app message
     func dismissMessage() {
@@ -85,7 +76,8 @@ extension MessagingInAppImplementation: GistDelegate {
 
         if let deliveryId = getDeliveryId(from: message) {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-            _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
+            // FIXME: [CDP] Pass to Journey
+            // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
         }
     }
 
@@ -108,7 +100,8 @@ extension MessagingInAppImplementation: GistDelegate {
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: message) {
                 // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-                _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked, metaData: ["action_name": name, "action_value": action])
+                // FIXME: [CDP] Pass to Journey
+                // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked, metaData: ["action_name": name, "action_value": action])
             }
         }
 
