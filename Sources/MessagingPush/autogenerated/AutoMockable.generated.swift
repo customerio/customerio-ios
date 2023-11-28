@@ -225,8 +225,8 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
      */
     public var configureClosure: ((@escaping (inout MessagingPushConfigOptions) -> Void) -> Void)?
 
-    /// Mocked function for `configure(configure configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func configure(configure configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void) {
+    /// Mocked function for `configure(with configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func configure(with configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void) {
         self.mockCalled = true
         configureCallsCount += 1
         configureReceivedArguments = (configureHandler)

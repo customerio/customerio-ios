@@ -10,7 +10,7 @@ import UserNotifications
 // 1. Cannot be used in an App Extension so therefore, we cannot guarantee that the function
 //    exists in the SDK code at compile time.
 public protocol MessagingPushInstance: AutoMockable {
-    func configure(configure configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void))
+    func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void))
     func registerDeviceToken(_ deviceToken: String)
     func deleteDeviceToken()
     func trackMetric(

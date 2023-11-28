@@ -68,8 +68,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         MessagingPush.initialize()
     }
     
-    public func configure(configure configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
-        implementation?.configure(configure: configureHandler)
+    public func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
+        implementation?.configure(with: configureHandler)
     }
 
     /**
