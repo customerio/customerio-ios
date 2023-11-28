@@ -53,12 +53,12 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
             configureHandler(&moduleConfig)
         }
 
-        shared.inititlizeModule(moduleConfig: moduleConfig)
+        shared.initializeModule(moduleConfig: moduleConfig)
         return shared
     }
 
     // Internal initializer for setting up the module with desired values
-    private func inititlizeModule(moduleConfig: MessagingInAppConfigOptions) {
+    private func initializeModule(moduleConfig: MessagingInAppConfigOptions) {
         guard getImplementationInstance() == nil else {
             logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
             return
