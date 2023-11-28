@@ -8,19 +8,23 @@ import UserNotifications
 class MessagingPushImplementation: MessagingPushInstance {
     var moduleConfig: MessagingPushConfigOptions
     let logger: Logger
+    let jsonAdapter: JsonAdapter
 
     /// testing init
     init(
         moduleConfig: MessagingPushConfigOptions,
-        logger: Logger
+        logger: Logger,
+        jsonAdapter: JsonAdapter
     ) {
         self.moduleConfig = moduleConfig
         self.logger = logger
+        self.jsonAdapter = jsonAdapter
     }
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
+        self.jsonAdapter = diGraph.jsonAdapter
     }
 
     func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {

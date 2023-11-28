@@ -95,20 +95,19 @@ extension MessagingPushImplementation {
         }
 
         // Time to handle rich push notifications.
-//        guard let pushContent = CustomerIOParsedPushPayload
-//            .parse(
-//                notificationContent: response.notification.request.content,
-//                jsonAdapter: jsonAdapter
-//            )
-//        else {
-//            // push does not contain a CIO rich payload, so end early
-//            return nil
-//        }
+        guard let pushContent = CustomerIOParsedPushPayload
+            .parse(
+                notificationContent: response.notification.request.content,
+                jsonAdapter: jsonAdapter
+            )
+        else {
+            // push does not contain a CIO rich payload, so end early
+            return nil
+        }
 
-//        cleanupAfterPushInteractedWith(pushContent: pushContent)
+        cleanupAfterPushInteractedWith(pushContent: pushContent)
 
-//        return pushContent
-        return nil
+        return pushContent
     }
 }
 #endif
