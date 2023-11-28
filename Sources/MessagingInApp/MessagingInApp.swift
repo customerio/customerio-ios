@@ -41,6 +41,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
      Call this function when your app launches, before using `MessagingInApp.shared`.
      */
     @available(iOSApplicationExtension, unavailable)
+    @discardableResult
     public static func initialize(
         siteId: String,
         region: Region,
@@ -58,7 +59,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     // Internal initializer for setting up the module with desired values
     private func inititlizeModule(moduleConfig: MessagingInAppConfigOptions) {
-        if implementation != nil {
+        if alreadyCreatedImplementation != nil {
             logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
             return
         }

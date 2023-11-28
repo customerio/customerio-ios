@@ -8,7 +8,7 @@ import Foundation
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
 open class ModuleTopLevelObject<ImplementationClass> {
-    private(set) var alreadyCreatedImplementation: ImplementationClass?
+    private(set) open var alreadyCreatedImplementation: ImplementationClass?
     public var implementation: ImplementationClass? {
         let instance = alreadyCreatedImplementation ?? createAndSetImplementationInstance()
         if instance == nil {

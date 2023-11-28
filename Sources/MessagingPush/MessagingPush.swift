@@ -32,6 +32,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      Initialize the shared `instance` of `MessagingPush`.
      Call this function when your app launches, before using `MessagingPush.shared`.
      */
+    @discardableResult
     public static func initialize(
         configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
     ) -> MessagingPushInstance {
@@ -46,7 +47,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     private func initialize(moduleConfig: MessagingPushConfigOptions) {
-        if let pushImplementation = implementation {
+        if let pushImplementation = alreadyCreatedImplementation {
             pushImplementation.configure { $0.apply(moduleConfig) }
             logger.info("\(moduleName) module already initialized. Applying updated config, ignoring re-initialization request.")
             return
