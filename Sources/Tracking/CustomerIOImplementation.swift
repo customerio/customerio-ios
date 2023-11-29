@@ -87,7 +87,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        CIODataPipeline.shared().identify(userId: identifier, traits: jsonAdapter.toJson(body))
+        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
 
         if identifier.isBlankOrEmpty() {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
@@ -171,7 +171,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
-        CIODataPipeline.shared().reset()
+        CIODataPipeline.analytics.reset()
 
         logger.info("clearing identified profile")
 
@@ -199,7 +199,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
-        CIODataPipeline.shared().track(name: name, properties: jsonAdapter.toJson(data))
+        CIODataPipeline.analytics.track(name: name, properties: jsonAdapter.toJson(data))
 
         _ = trackEvent(type: .event, name: name, data: data)
     }
@@ -216,7 +216,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        CIODataPipeline.shared().screen(title: name, properties: jsonAdapter.toJson(data))
+        CIODataPipeline.analytics.screen(title: name, properties: jsonAdapter.toJson(data))
 
         let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
 
@@ -239,7 +239,7 @@ class CustomerIOImplementation: CustomerIOInstance {
      Adds device default and custom attributes and registers device token.
      */
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
-        CIODataPipeline.shared().setDeviceToken(deviceToken)
+        CIODataPipeline.analytics.setDeviceToken(deviceToken)
 
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
