@@ -33,6 +33,10 @@ Pod::Spec.new do |spec|
   spec.subspec "MessagingPush" do |ss|
     ss.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
   end
+  
+  spec.subspec "DataPipelines" do |ss|
+    ss.dependency "CustomerIODataPipelines", "= #{spec.version.to_s}"
+  end
 
   spec.subspec "MessagingPushAPN" do |ss|
     ss.dependency "CustomerIOMessagingPushAPN", "= #{spec.version.to_s}"

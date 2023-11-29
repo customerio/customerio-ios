@@ -16,6 +16,7 @@ import Foundation
 // Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
     .library(name: "Tracking", targets: ["CioTracking"]),
+    .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
@@ -41,7 +42,8 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
+        .package(name: "Segment", url: "https://github.com/segmentio/analytics-swift.git", .branch("main"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -74,6 +76,11 @@ let package = Package(
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush"),
+        
+        // Data Pipeline
+        .target(name: "CioDataPipelines",
+                dependencies: ["CioInternalCommon", .product(name: "Segment", package: "Segment")],
+                path: "Sources/DataPipeline"),
 
         // APN
         .target(name: "CioMessagingPushAPN",
