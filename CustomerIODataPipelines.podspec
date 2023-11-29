@@ -1,5 +1,5 @@
 Pod::Spec.new do |spec|
-  spec.name         = "CustomerIOTracking"
+  spec.name         = "CustomerIODataPipelines"
   spec.version      = "2.10.1" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
@@ -12,14 +12,14 @@ Pod::Spec.new do |spec|
   spec.swift_version = '5.3'
   spec.cocoapods_version = '>= 1.11.0'
 
-  spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms. 
+  spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms.
   spec.ios.deployment_target = "13.0"
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.source_files  = "Sources/Tracking/**/*"
-  spec.module_name = "CioTracking" # the `import X` name when using SDK in Swift files
-
-  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  spec.dependency "CustomerIODataPipelines", "= #{spec.version.to_s}"
+  spec.source_files  = "Sources/DataPipeline/**/*"
+  spec.module_name = "CioDataPipelines" # the `import X` name when using SDK in Swift files
+  
+  # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
+  spec.dependency "Segment", ">= 1.4.9"
 end

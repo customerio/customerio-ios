@@ -2,6 +2,7 @@ import CioInternalCommon
 import Foundation
 import Segment
 
+// TODO: Add APITest for it?
 extension CustomerIO {
     /**
      Applies the supplied closure to the currently loaded set of plugins.
@@ -10,7 +11,7 @@ extension CustomerIO {
 
      */
     func apply(closure: (Plugin) -> Void) {
-        CIODataPipeline.shared().apply(closure: closure)
+        CIODataPipeline.analytics.apply(closure: closure)
     }
 
     /**
@@ -22,7 +23,7 @@ extension CustomerIO {
      */
     @discardableResult
     func add(plugin: Plugin) -> Plugin {
-        CIODataPipeline.shared().add(plugin: plugin)
+        CIODataPipeline.analytics.add(plugin: plugin)
     }
 
     /**
@@ -34,7 +35,7 @@ extension CustomerIO {
      */
     @discardableResult
     func add(enrichment: @escaping EnrichmentClosure) -> Plugin {
-        CIODataPipeline.shared().add(enrichment: enrichment)
+        CIODataPipeline.analytics.add(enrichment: enrichment)
     }
 
     /**
@@ -43,18 +44,18 @@ extension CustomerIO {
      - Parameter pluginName: An plugin name.
      */
     func remove(plugin: Plugin) {
-        CIODataPipeline.shared().remove(plugin: plugin)
+        CIODataPipeline.analytics.remove(plugin: plugin)
     }
 
     func find<T: Plugin>(pluginType: T.Type) -> T? {
-        CIODataPipeline.shared().find(pluginType: pluginType)
+        CIODataPipeline.analytics.find(pluginType: pluginType)
     }
 
     func findAll<T: Plugin>(pluginType: T.Type) -> [T]? {
-        CIODataPipeline.shared().findAll(pluginType: pluginType)
+        CIODataPipeline.analytics.findAll(pluginType: pluginType)
     }
 
     func find(key: String) -> DestinationPlugin? {
-        CIODataPipeline.shared().find(key: key)
+        CIODataPipeline.analytics.find(key: key)
     }
 }
