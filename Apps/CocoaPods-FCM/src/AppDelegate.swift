@@ -30,7 +30,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
         MessagingInApp
             .initialize(siteId: siteId, region: .US)
-            .setEventListener(eventListener: self)
+            .setEventListener(self)
 
         // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
         UNUserNotificationCenter.current().delegate = self

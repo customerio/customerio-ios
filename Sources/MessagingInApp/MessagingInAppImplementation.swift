@@ -28,7 +28,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         // }
     }
 
-    func setEventListener(eventListener: InAppEventListener?) {
+    func setEventListener(_ eventListener: InAppEventListener?) {
         self.eventListener = eventListener
     }
 

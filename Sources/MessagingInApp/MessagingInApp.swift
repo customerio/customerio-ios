@@ -3,7 +3,7 @@ import Foundation
 
 public protocol MessagingInAppInstance: AutoMockable {
     // sourcery:Name=setEventListener
-    func setEventListener(eventListener: InAppEventListener?)
+    func setEventListener(_ eventListener: InAppEventListener?)
 
     func dismissMessage()
 }
@@ -76,8 +76,8 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    public func setEventListener(eventListener: InAppEventListener?) {
-        implementation?.setEventListener(eventListener: eventListener)
+    public func setEventListener(_ eventListener: InAppEventListener?) {
+        implementation?.setEventListener(eventListener)
     }
 
     // Dismiss in-app message

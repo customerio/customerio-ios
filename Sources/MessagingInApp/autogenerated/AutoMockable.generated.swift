@@ -441,8 +441,8 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
      */
     public var setEventListenerClosure: ((InAppEventListener?) -> Void)?
 
-    /// Mocked function for `setEventListener(eventListener: InAppEventListener?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func setEventListener(eventListener: InAppEventListener?) {
+    /// Mocked function for `setEventListener(_ eventListener: InAppEventListener?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setEventListener(_ eventListener: InAppEventListener?) {
         self.mockCalled = true
         setEventListenerCallsCount += 1
         setEventListenerReceivedArguments = (eventListener)
