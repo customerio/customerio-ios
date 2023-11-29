@@ -12,7 +12,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
     public var implementation: ImplementationClass? {
         let instance = alreadyCreatedImplementation ?? createAndSetImplementationInstance()
         if instance == nil {
-            logger.info("Module \(moduleName) is not yet initialized")
+            logger.info("Module \(moduleName) is not yet initialized. All requests made to module \(moduleName) will be ignored until it is initialized. See docs for help.")
         }
         return instance
     }
