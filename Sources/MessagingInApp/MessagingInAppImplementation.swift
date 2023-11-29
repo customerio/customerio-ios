@@ -22,7 +22,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.threadUtil = diGraph.threadUtil
     }
 
-    // TODO: temp constructor to make the SDK build
+    // TODO: temp constructor to make the SDK build remove it
     init(diGraph: DIGraph) {
         self.moduleConfig = MessagingInAppConfigOptions(siteId: "", region: Region.US)
         self.logger = diGraph.logger
