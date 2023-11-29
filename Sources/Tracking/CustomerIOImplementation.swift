@@ -233,6 +233,7 @@ class CustomerIOImplementation: CustomerIOInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
+        // TODO: after the addDeviceAttributes supporting method is created in CDP, move this line to that method
         CIODataPipeline.analytics.setDeviceToken(deviceToken)
 
         addDeviceAttributes(deviceToken: deviceToken)
