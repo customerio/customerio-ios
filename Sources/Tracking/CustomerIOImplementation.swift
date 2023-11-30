@@ -88,6 +88,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
         CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
 
         if identifier.isBlankOrEmpty() {
