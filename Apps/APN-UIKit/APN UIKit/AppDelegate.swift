@@ -50,7 +50,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
-        MessagingInApp.initialize(eventListener: self)
+        MessagingInApp
+            .initialize(siteId: siteId, region: .US)
+            .setEventListener(self)
         MessagingPushAPN.initialize { config in
             config.autoFetchDeviceToken = true
         }
