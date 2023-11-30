@@ -88,14 +88,14 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
-        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
-
         if identifier.isBlankOrEmpty() {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
             return
         }
         logger.info("identify profile \(identifier)")
+
+        // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
+        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
@@ -201,6 +201,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
+        // TODO: move this to trackEvent if it still exist after removal* of tracking
         CIODataPipeline.analytics.track(name: name, properties: jsonAdapter.toJson(data))
 
         _ = trackEvent(type: .event, name: name, data: data)
@@ -218,6 +219,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
+        // TODO: move this to trackEvent if it still exist after removal* of tracking
         CIODataPipeline.analytics.screen(title: name, properties: jsonAdapter.toJson(data))
 
         let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
