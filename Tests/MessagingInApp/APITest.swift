@@ -18,15 +18,10 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.initialize()
-        mock.initialize()
+        MessagingInApp.initialize(siteId: "", region: .US)
+        MessagingInApp.shared.setEventListener(self)
 
-        MessagingInApp.initialize(eventListener: self)
-        mock.initialize(eventListener: self)
-
-        // Function exists for backwards compatibility, but is deprecated.
-        MessagingInApp.initialize(organizationId: "")
-        mock.initialize(organizationId: "")
+        mock.setEventListener(self)
     }
 }
 
