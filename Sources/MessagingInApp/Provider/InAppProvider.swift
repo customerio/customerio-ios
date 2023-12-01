@@ -11,6 +11,7 @@ protocol InAppProvider: AutoMockable {
 }
 
 // sourcery: InjectRegister = "InAppProvider"
+// sourcery: InjectRegisterShared = "InAppProvider"
 class GistInAppProvider: InAppProvider {
     func initialize(siteId: String, region: Region, delegate: GistDelegate) {
         Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue)

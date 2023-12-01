@@ -7,18 +7,20 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
+    private static let moduleName = "MessagingPush"
+
     private var globalDataStore: GlobalDataStore
 
     // testing constructor
     init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore) {
         self.globalDataStore = globalDataStore
-        super.init(implementation: implementation)
+        super.init(moduleName: MessagingPush.moduleName, implementation: implementation)
     }
 
     // singleton constructor
-    override private init() {
+    private init() {
         self.globalDataStore = CioGlobalDataStore.getInstance()
-        super.init()
+        super.init(moduleName: MessagingPush.moduleName)
     }
 
     // for testing
@@ -26,24 +28,49 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         shared = MessagingPush()
     }
 
-    // At this time, we do not require `MessagingPush.initialize()` to be called to make the SDK work. There is
-    // currently no module initialization to perform.
-    public static func initialize() {
-        MessagingPush.shared.inititlizeModule()
+    /**
+     Initialize the shared `instance` of `MessagingPush`.
+     Call this function when your app launches, before using `MessagingPush.shared`.
+     */
+    @discardableResult
+    public static func initialize(
+        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
+    ) -> MessagingPushInstance {
+        var moduleConfig = MessagingPushConfigOptions.Factory.create()
+
+        if let configureHandler = configureHandler {
+            configureHandler(&moduleConfig)
+        }
+
+        shared.initializeModule(moduleConfig: moduleConfig)
+        return shared
     }
 
-    override public func inititlizeModule() {
-        let diGraph = DIGraphShared.shared
-        let logger = diGraph.logger
-        logger.debug("Setting up MessagingPush module...")
+    private func initializeModule(moduleConfig: MessagingPushConfigOptions) {
+        if let pushImplementation = getImplementationInstance() {
+            pushImplementation.configure { $0.apply(moduleConfig) }
+            logger.info("\(moduleName) module already initialized. Applying updated config, ignoring re-initialization request.")
+            return
+        }
 
-        logger.info("MessagingPush module setup with SDK")
+        logger.debug("Setting up \(moduleName) module...")
+        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+        setImplementationInstance(implementation: pushImplementation)
+
+        // FIXME: [CDP] Update hooks to work as expected
+        // Register MessagingPush module hooks now that the module is being initialized.
+        // let hooks = diGraph.hooksManager
+        // let moduleHookProvider = MessagingInAppModuleHookProvider()
+        // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
+        logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    override public func getImplementationInstance() -> MessagingPushInstance {
-        // FIXME: [CDP] Create implementation instance
-        // MessagingPushImplementation(diGraph: diGraph)
-        fatalError("will be implemented later")
+    override public func createImplementationInstance() -> MessagingPushInstance? {
+        MessagingPush.initialize()
+    }
+
+    public func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
+        implementation?.configure(with: configureHandler)
     }
 
     /**

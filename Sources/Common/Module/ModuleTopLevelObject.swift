@@ -7,33 +7,49 @@ import Foundation
 // Top-level class meaning it contains public facing SDK functions called by customers.
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
-// TODO: [CDP] Remove class if no longer needed
 open class ModuleTopLevelObject<ImplementationClass> {
     private(set) var alreadyCreatedImplementation: ImplementationClass?
     public var implementation: ImplementationClass? {
-        alreadyCreatedImplementation ?? createAndSetImplementationInstance()
+        let instance = alreadyCreatedImplementation ?? createAndSetImplementationInstance()
+        if instance == nil {
+            logger.info("Module \(moduleName) is not yet initialized. All requests made to module \(moduleName) will be ignored until it is initialized. See docs for help.")
+        }
+        return instance
     }
 
-    // for writing tests
-    public init(implementation: ImplementationClass?) {
-        self.alreadyCreatedImplementation = implementation
+    // To identify the module in top-level objects and within log messages
+    public let moduleName: String
+    open var logger: Logger {
+        DIGraphShared.shared.logger
     }
 
     // singleton constructor
-    public init() {}
+    // optionally accepts implementation instance for facilitating testing, allowing injection
+    // of a mock or stub implementation.
+    public init(moduleName: String, implementation: ImplementationClass? = nil) {
+        self.moduleName = moduleName
+        self.alreadyCreatedImplementation = implementation
+    }
 
     private func createAndSetImplementationInstance() -> ImplementationClass? {
-        let newInstance = getImplementationInstance()
+        let newInstance = createImplementationInstance()
         alreadyCreatedImplementation = newInstance
         return newInstance
     }
 
-    // We want each top level module to have an initialize function so that features get setup as early as possible
-    open func inititlizeModule() {
-        fatalError("forgot to override in subclass")
+    open func setImplementationInstance(implementation: ImplementationClass?) {
+        alreadyCreatedImplementation = implementation
     }
 
-    open func getImplementationInstance() -> ImplementationClass {
-        fatalError("forgot to override in subclass")
+    open func getImplementationInstance() -> ImplementationClass? {
+        alreadyCreatedImplementation
+    }
+
+    // Feature modules (e.g. push) which support auto-initialization without client configuration can
+    // provide its instance here to ensure early initialization upon the first call
+    // Feature modules (e.g. in-app) that require user input for initialization may not override this
+    // method or can return `nil`.
+    open func createImplementationInstance() -> ImplementationClass? {
+        nil
     }
 }

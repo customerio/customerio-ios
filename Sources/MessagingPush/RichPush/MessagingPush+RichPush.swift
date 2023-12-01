@@ -101,12 +101,13 @@ extension MessagingPushImplementation {
             .debug(
                 "running all background queue tasks and waiting until complete to prevent OS from killing notification service extension before all HTTP requests have been performed"
             )
-        backgroundQueue.run {
-            self.logger.debug("all background queue tasks done running.")
-            self.logger.info("Customer.io push processing is done!")
-
-            contentHandler(notificationContent)
-        }
+        // FIXME: [CDP] Request to Journey
+        // backgroundQueue.run {
+        //     self.logger.debug("all background queue tasks done running.")
+        //     self.logger.info("Customer.io push processing is done!")
+        //
+        //     contentHandler(notificationContent)
+        // }
     }
 
     /**
