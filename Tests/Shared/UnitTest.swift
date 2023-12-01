@@ -16,6 +16,7 @@ open class UnitTest: XCTestCase {
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely
     // to real app.
     public let testSiteId = "testing"
+    public var diGraphShared: DIGraphShared!
     public var diGraph: DIGraph!
 
     public var sdkConfig: SdkConfig {
@@ -74,6 +75,7 @@ open class UnitTest: XCTestCase {
 
         modifySdkConfig?(&newSdkConfig)
 
+        diGraphShared = DIGraphShared()
         diGraph = DIGraph(sdkConfig: newSdkConfig)
 
         dateUtilStub = DateUtilStub()
