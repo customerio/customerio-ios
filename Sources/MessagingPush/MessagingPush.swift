@@ -59,10 +59,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    override public func createImplementationInstance() -> MessagingPushInstance? {
-        MessagingPush.initialize()
-    }
-
     /**
      Register a new device token with Customer.io, associated with the current active customer. If there
      is no active customer, this will fail to register the device
