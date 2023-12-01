@@ -17,17 +17,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         initialize()
     }
 
-    // TODO: temp constructor to make the SDK build remove it
-    init(diGraph: DIGraph) {
-        self.moduleConfig = MessagingInAppConfigOptions(siteId: "", region: Region.US)
-        self.logger = diGraph.logger
-        self.queue = diGraph.queue
-        self.jsonAdapter = diGraph.jsonAdapter
-        self.inAppProvider = diGraph.inAppProvider
-        self.profileStore = diGraph.profileStore
-        self.threadUtil = diGraph.threadUtil
-    }
-
     private func initialize() {
         inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
 
