@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
@@ -43,6 +44,10 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+
+        // Initialiing the CIODataPipeline with the diGraph for now
+        // TODO: initialize this module with its own config
+        CIODataPipeline.initialize(diGraph: diGraph)
     }
 
     public var config: SdkConfig? {
@@ -88,6 +93,9 @@ class CustomerIOImplementation: CustomerIOInstance {
             return
         }
         logger.info("identify profile \(identifier)")
+
+        // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
+        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
@@ -167,6 +175,8 @@ class CustomerIOImplementation: CustomerIOInstance {
     public func clearIdentify() {
         logger.info("clearing identified profile")
 
+        CIODataPipeline.analytics.reset()
+
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             return
         }
@@ -191,6 +201,9 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
+        // TODO: move this to trackEvent if it still exist after removal* of tracking
+        CIODataPipeline.analytics.track(name: name, properties: jsonAdapter.toJson(data))
+
         _ = trackEvent(type: .event, name: name, data: data)
     }
 
@@ -206,6 +219,9 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
+        // TODO: move this to trackEvent if it still exist after removal* of tracking
+        CIODataPipeline.analytics.screen(title: name, properties: jsonAdapter.toJson(data))
+
         let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
 
         if eventWasTracked {
@@ -220,12 +236,16 @@ class CustomerIOImplementation: CustomerIOInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
+        // TODO: after the addDeviceAttributes supporting method is created in CDP, move this line to that method
+        CIODataPipeline.analytics.setDeviceToken(deviceToken)
+
         addDeviceAttributes(deviceToken: deviceToken)
     }
 
     /**
      Adds device default and custom attributes and registers device token.
      */
+    // TODO: Segment doesn't provide this method by default needs to get added
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
@@ -283,6 +303,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     /**
      Delete the currently registered device token
      */
+    // TODO: Segment doesn't provide this method by default needs to get added
     public func deleteDeviceToken() {
         logger.info("deleting device token request made")
 
@@ -314,6 +335,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     /**
      Track a push metric
      */
+    // TODO: Segment doesn't provide this method by default needs to get added
     public func trackMetric(
         deliveryID: String,
         event: Metric,

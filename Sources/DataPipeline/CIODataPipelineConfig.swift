@@ -5,8 +5,12 @@ import Segment
 extension Configuration {
     // TODO: Module Level configuration is going to be added here which will replace this config
     static var defaultConfiguration: Configuration {
-        let siteId = CustomerIO.shared.config?.siteId ?? ""
-        let apiKey = CustomerIO.shared.config?.apiKey ?? ""
+        configure(diGraph: CustomerIO.shared.diGraph)
+    }
+
+    static func configure(diGraph: DIGraph?) -> Configuration {
+        let siteId = diGraph?.sdkConfig.siteId ?? ""
+        let apiKey = diGraph?.sdkConfig.apiKey ?? ""
         let key = siteId + apiKey
         return Configuration(writeKey: key)
     }
