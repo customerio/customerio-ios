@@ -173,9 +173,9 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
-        CIODataPipeline.analytics.reset()
-
         logger.info("clearing identified profile")
+
+        CIODataPipeline.analytics.reset()
 
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             return
