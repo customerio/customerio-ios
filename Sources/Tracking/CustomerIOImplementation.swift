@@ -88,8 +88,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
-
         if identifier.isBlankOrEmpty() {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
             return
@@ -175,8 +173,6 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func clearIdentify() {
-        CIODataPipeline.analytics.reset()
-
         logger.info("clearing identified profile")
 
         CIODataPipeline.analytics.reset()
