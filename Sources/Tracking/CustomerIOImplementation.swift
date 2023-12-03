@@ -84,9 +84,9 @@ class CustomerIOImplementation: CustomerIOInstance {
     // this function could use a refactor. It's long and complex. Our automated tests are what keeps us feeling
     // confident in the code, but the code here is difficult to maintain.
     // swiftlint:disable:next function_body_length
-    public func identify<RequestBody: Encodable>(
+    public func identify(
         identifier: String,
-        body: RequestBody
+        body: [String: Any]
     ) {
         if identifier.isBlankOrEmpty() {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
@@ -95,7 +95,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         logger.info("identify profile \(identifier)")
 
         // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
-        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
+        CIODataPipeline.analytics.identify(userId: identifier, traits: body)
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
@@ -121,34 +121,7 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
         }
 
-        let jsonBodyString = jsonAdapter.toJsonString(body)
-        logger.debug("identify profile attributes \(jsonBodyString ?? "none")")
-
-        let queueTaskData = IdentifyProfileQueueTaskData(
-            identifier: identifier,
-            attributesJsonString: jsonBodyString
-        )
-
-        // If SDK previously identified profile X and X is being identified again, no use blocking the queue
-        // with a queue group.
-        var queueGroupStart: QueueTaskGroup? = .identifiedProfile(identifier: identifier)
-        if !isChangingIdentifiedProfile {
-            queueGroupStart = nil
-        }
-
-        let queueStatus = backgroundQueue.addTask(
-            type: QueueTaskType.identifyProfile.rawValue,
-            data: queueTaskData,
-            groupStart: queueGroupStart
-        )
-
-        // don't modify the state of the SDK until we confirm we added a background queue task successfully.
-        // XXX: better handle scenario when adding task to queue is not successful
-        guard queueStatus.success else {
-            // XXX: better handle scenario when adding task to queue is not successful
-            logger.debug("failed to enqueue identify task")
-            return
-        }
+        logger.debug("identify profile attributes \(body)")
 
         logger.debug("storing identifier on device storage \(identifier)")
         profileStore.identifier = identifier
@@ -166,10 +139,6 @@ class CustomerIOImplementation: CustomerIOInstance {
                 hook.profileIdentified(identifier: identifier)
             }
         }
-    }
-
-    public func identify(identifier: String, body: [String: Any]) {
-        identify(identifier: identifier, body: StringAnyEncodable(logger: logger, body))
     }
 
     public func clearIdentify() {
@@ -197,37 +166,15 @@ class CustomerIOImplementation: CustomerIOInstance {
         profileStore.identifier = nil
     }
 
-    public func track<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody?
-    ) {
-        // TODO: move this to trackEvent if it still exist after removal* of tracking
-        CIODataPipeline.analytics.track(name: name, properties: jsonAdapter.toJson(data))
-
-        _ = trackEvent(type: .event, name: name, data: data)
-    }
-
     public func track(name: String, data: [String: Any]) {
-        track(name: name, data: StringAnyEncodable(logger: logger, data))
+        CIODataPipeline.analytics.track(name: name, properties: data)
     }
 
     public func screen(name: String, data: [String: Any]) {
-        screen(name: name, data: StringAnyEncodable(logger: logger, data))
-    }
+        CIODataPipeline.analytics.screen(title: name, properties: data)
 
-    public func screen<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody
-    ) {
-        // TODO: move this to trackEvent if it still exist after removal* of tracking
-        CIODataPipeline.analytics.screen(title: name, properties: jsonAdapter.toJson(data))
-
-        let eventWasTracked = trackEvent(type: .screen, name: name, data: data)
-
-        if eventWasTracked {
-            hooks.screenViewHooks.forEach { hook in
-                hook.screenViewed(name: name)
-            }
+        hooks.screenViewHooks.forEach { hook in
+            hook.screenViewed(name: name)
         }
     }
 
@@ -354,52 +301,5 @@ class CustomerIOImplementation: CustomerIOInstance {
                 timestamp: Date()
             )
         )
-    }
-}
-
-extension CustomerIOImplementation {
-    // returns if an event was tracked. If no event was tracked (request was ignored), false will be returned.
-    private func trackEvent<RequestBody: Encodable>(
-        type: EventType,
-        name: String,
-        data: RequestBody?
-    ) -> Bool {
-        let eventTypeDescription = (type == .screen) ? "track screen view event" : "track event"
-
-        logger.info("\(eventTypeDescription) \(name)")
-
-        guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
-            // XXX: when we have anonymous profiles in SDK,
-            // we can decide to not ignore events when a profile is not logged yet.
-            logger.info("ignoring \(eventTypeDescription) \(name) because no profile currently identified")
-            return false
-        }
-
-        // JSON encoding with `data = nil` returns `"data":null`.
-        // API returns 400 "event data must be a hash" for that. `"data":{}` is a better default.
-        let data: AnyEncodable = (data == nil) ? AnyEncodable(EmptyRequestBody()) : AnyEncodable(data)
-
-        let requestBody = TrackRequestBody(type: type, name: name, data: data, timestamp: dateUtil.now)
-        guard let jsonBodyString = jsonAdapter.toJsonString(requestBody) else {
-            logger.error("attributes provided for \(eventTypeDescription) \(name) failed to JSON encode.")
-            return false
-        }
-        logger.debug("\(eventTypeDescription) attributes \(jsonBodyString)")
-
-        let queueData = TrackEventQueueTaskData(
-            identifier: currentlyIdentifiedProfileIdentifier,
-            attributesJsonString: jsonBodyString
-        )
-
-        // XXX: better handle scenario when adding task to queue is not successful
-        _ = backgroundQueue.addTask(
-            type: QueueTaskType.trackEvent.rawValue,
-            data: queueData,
-            blockingGroups: [
-                .identifiedProfile(identifier: currentlyIdentifiedProfileIdentifier)
-            ]
-        )
-
-        return true
     }
 }

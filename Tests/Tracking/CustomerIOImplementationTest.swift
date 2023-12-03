@@ -238,8 +238,7 @@ class CustomerIOImplementationTest: UnitTest {
             queueStatus: QueueStatus.successAddingSingleTask
         )
 
-        let data: EmptyRequestBody? = nil
-        customerIO.track(name: String.random, data: data)
+        customerIO.track(name: String.random, data: [:])
 
         XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
         XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)

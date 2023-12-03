@@ -5,19 +5,19 @@ public extension CustomerIOInstance {
     func identify(
         identifier: String
     ) {
-        identify(identifier: identifier, body: EmptyRequestBody())
+        identify(identifier: identifier, body: [:])
     }
 
     func track(
         name: String
     ) {
-        track(name: name, data: EmptyRequestBody())
+        track(name: name, data: [:])
     }
 
     func screen(
         name: String
     ) {
-        screen(name: name, data: EmptyRequestBody())
+        screen(name: name, data: [:])
     }
 }
 

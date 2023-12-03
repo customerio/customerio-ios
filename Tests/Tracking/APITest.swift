@@ -56,8 +56,6 @@ class TrackingAPITest: UnitTest {
         mock.identify(identifier: "")
         CustomerIO.shared.identify(identifier: "", body: dictionaryData)
         mock.identify(identifier: "", body: dictionaryData)
-        CustomerIO.shared.identify(identifier: "", body: encodableData)
-        mock.identify(identifier: "", body: encodableData)
 
         // clear identify
         CustomerIO.shared.clearIdentify()
@@ -68,16 +66,12 @@ class TrackingAPITest: UnitTest {
         mock.track(name: "")
         CustomerIO.shared.track(name: "", data: dictionaryData)
         mock.track(name: "", data: dictionaryData)
-        CustomerIO.shared.track(name: "", data: encodableData)
-        mock.track(name: "", data: encodableData)
 
         // screen tracking
         CustomerIO.shared.screen(name: "")
         mock.screen(name: "")
         CustomerIO.shared.screen(name: "", data: dictionaryData)
         mock.screen(name: "", data: dictionaryData)
-        CustomerIO.shared.screen(name: "", data: encodableData)
-        mock.screen(name: "", data: encodableData)
 
         // register push token
         CustomerIO.shared.registerDeviceToken("")
