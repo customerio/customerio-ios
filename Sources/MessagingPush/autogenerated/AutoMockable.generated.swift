@@ -147,11 +147,6 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     }
 
     public func resetMock() {
-        configureCallsCount = 0
-        configureReceivedArguments = nil
-        configureReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []
@@ -191,33 +186,6 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         #endif
 
         mockCalled = false // do last as resetting properties above can make this true
-    }
-
-    // MARK: - configure
-
-    /// Number of times the function was called.
-    public private(set) var configureCallsCount = 0
-    /// `true` if the function was ever called.
-    public var configureCalled: Bool {
-        configureCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var configureReceivedArguments: ((inout MessagingPushConfigOptions) -> Void)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var configureReceivedInvocations: [(inout MessagingPushConfigOptions) -> Void] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var configureClosure: ((@escaping (inout MessagingPushConfigOptions) -> Void) -> Void)?
-
-    /// Mocked function for `configure(with configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func configure(with configureHandler: @escaping (inout MessagingPushConfigOptions) -> Void) {
-        mockCalled = true
-        configureCallsCount += 1
-        configureReceivedArguments = configureHandler
-        configureReceivedInvocations.append(configureHandler)
-        configureClosure?(configureHandler)
     }
 
     // MARK: - registerDeviceToken

@@ -27,12 +27,6 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.jsonAdapter = diGraph.jsonAdapter
     }
 
-    func configure(with configureHandler: @escaping ((inout MessagingPushConfigOptions) -> Void)) {
-        var newConfig = moduleConfig
-        configureHandler(&newConfig)
-        moduleConfig.apply(newConfig)
-    }
-
     func deleteDeviceToken() {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.deleteDeviceToken()

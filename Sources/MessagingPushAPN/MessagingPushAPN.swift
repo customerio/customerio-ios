@@ -79,18 +79,19 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      Configure `MessagingPushAPN`.
      Call this function in your app if you want to configure the module.
      */
+    @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(configOptions configureHandler: ((inout MessagingPushConfigOptions) -> Void)?
-    ) {
-        var pushConfigOptions = MessagingPushConfigOptions.Factory.create()
+    public static func initialize(
+        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
+    ) -> MessagingPushInstance {
+        let implementation = MessagingPush.initialize(configure: configureHandler)
 
-        if let configureHandler = configureHandler {
-            configureHandler(&pushConfigOptions)
-        }
-
+        let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken {
             shared.setupAutoFetchDeviceToken()
         }
+
+        return implementation
     }
 
     #if canImport(UserNotifications)
