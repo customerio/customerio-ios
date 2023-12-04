@@ -177,21 +177,21 @@ extension UNUserNotificationCenter {
 
     // Swizzled method that gets called before the OS displays the push. Used to determine if a push gets displayed while app is in foreground or not.
     @objc dynamic func cio_swizzle_willPresent(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
-            // push not sent from CIO. exit early and ignore request
-            return
-        }
+//        guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
+//            // push not sent from CIO. exit early and ignore request
+//            return
+//        }
 
-        if messagingPushConfig.showPushAppInForeground {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
-            } else {
-                completionHandler([.badge, .sound])
-            }
-        }
+//        if messagingPushConfig.showPushAppInForeground {
+//            if #available(iOS 14.0, *) {
+//                completionHandler([.list, .banner, .badge, .sound])
+//            } else {
+//                completionHandler([.badge, .sound])
+//            }
+//        }
 
         // continue swizzle
-        cio_swizzle_willPresent(center, willPresent: notification, withCompletionHandler: completionHandler)
+//        cio_swizzle_willPresent(center, willPresent: notification, withCompletionHandler: completionHandler)
     }
 }
 
