@@ -62,7 +62,7 @@ public struct CIODataPipelineConfigOptions {
     public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
     #endif
     public var trackApplicationLifecycleEvents: Bool = true
-    
+
     /// Internal properties
     // property is used internally so disable swiftlint rule
     /**
