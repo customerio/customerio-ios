@@ -40,8 +40,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         let writeKey = "\(siteId):\(apiKey)"
         CustomerIO.initialize(writeKey: writeKey) { sdkConfig, cdpConfig in
-            sdkConfig.logLevel = .debug
-            cdpConfig.apiHost = ""
             sdkConfig.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
             cdpConfig.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
             cdpConfig.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
