@@ -44,7 +44,7 @@ public struct DataPipelineConfigOptions {
     public var cdnHost: String = Self.defaultCDNHost
 
     /// Dispatching configurations
-    public var flushAt: Seconds = 20
+    public var flushAt: Int = 20
     public var flushInterval: Seconds = 30
 
     /// Segment configurations
