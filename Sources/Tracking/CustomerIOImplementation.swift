@@ -355,6 +355,10 @@ class CustomerIOImplementation: CustomerIOInstance {
             )
         )
     }
+
+    func getAllStoredTasks() -> [QueueTaskMetadata]? {
+        backgroundQueue.getAllStoredTasks()
+    }
 }
 
 extension CustomerIOImplementation {
