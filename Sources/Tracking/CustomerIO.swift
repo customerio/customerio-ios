@@ -42,6 +42,11 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
+        if let allStoredTasks = implementation.getAllStoredTasks(), !allStoredTasks.isEmpty {
+            allStoredTasks.forEach { task in
+                print(task)
+            }
+        }
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
         if sdkConfig.autoTrackScreenViews {
