@@ -416,6 +416,11 @@ class PushClickHandlerMock: PushClickHandler, Mock {
         setupClickHandlingCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        didSetDelegateCallsCount = 0
+        didSetDelegateReceivedArguments = nil
+        didSetDelegateReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - userNotificationCenter
@@ -492,6 +497,33 @@ class PushClickHandlerMock: PushClickHandler, Mock {
         mockCalled = true
         setupClickHandlingCallsCount += 1
         setupClickHandlingClosure?()
+    }
+
+    // MARK: - didSetDelegate
+
+    /// Number of times the function was called.
+    private(set) var didSetDelegateCallsCount = 0
+    /// `true` if the function was ever called.
+    var didSetDelegateCalled: Bool {
+        didSetDelegateCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var didSetDelegateReceivedArguments: UNUserNotificationCenterDelegate??
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var didSetDelegateReceivedInvocations: [UNUserNotificationCenterDelegate?] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var didSetDelegateClosure: ((UNUserNotificationCenterDelegate?) -> Void)?
+
+    /// Mocked function for `didSetDelegate(_ delegate: UNUserNotificationCenterDelegate?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func didSetDelegate(_ delegate: UNUserNotificationCenterDelegate?) {
+        mockCalled = true
+        didSetDelegateCallsCount += 1
+        didSetDelegateReceivedArguments = delegate
+        didSetDelegateReceivedInvocations.append(delegate)
+        didSetDelegateClosure?(delegate)
     }
 }
 
