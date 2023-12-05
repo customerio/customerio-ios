@@ -12,8 +12,9 @@ public protocol CustomerIOInstance: AutoMockable {
 
     // sourcery:Name=identifyEncodable
     // sourcery:DuplicateMethod=identify
-    func identify<RequestBody: Encodable>(
+    func identify<RequestBody: Codable>(
         identifier: String,
+        // TODO: update AnyEncodable to AnyCodable?
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(body)"
         body: RequestBody
@@ -30,7 +31,7 @@ public protocol CustomerIOInstance: AutoMockable {
 
     // sourcery:Name=trackEncodable
     // sourcery:DuplicateMethod=track
-    func track<RequestBody: Encodable>(
+    func track<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
@@ -44,7 +45,7 @@ public protocol CustomerIOInstance: AutoMockable {
 
     // sourcery:Name=screenEncodable
     // sourcery:DuplicateMethod=screen
-    func screen<RequestBody: Encodable>(
+    func screen<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(data)"
@@ -223,7 +224,7 @@ public class CustomerIO: CustomerIOInstance {
      [Learn more](https://customer.io/docs/api/#operation/identify)
      - body: Request body of identifying profile. Use to define user attributes.
      */
-    public func identify<RequestBody: Encodable>(
+    public func identify<RequestBody: Codable>(
         identifier: String,
         body: RequestBody
     ) {
@@ -256,7 +257,7 @@ public class CustomerIO: CustomerIOInstance {
      - name: Name of the event you want to track.
      - data: Optional event body data
      */
-    public func track<RequestBody: Encodable>(
+    public func track<RequestBody: Codable>(
         name: String,
         data: RequestBody?
     ) {
@@ -280,7 +281,7 @@ public class CustomerIO: CustomerIOInstance {
      - name: Name of the currently active screen
      - data: Optional event body data
      */
-    public func screen<RequestBody: Encodable>(
+    public func screen<RequestBody: Codable>(
         name: String,
         data: RequestBody
     ) {
@@ -294,18 +295,6 @@ public class CustomerIO: CustomerIOInstance {
         guard let logger = diGraph?.logger else {
             return
         }
-        automaticScreenView(name: name, data: StringAnyEncodable(logger: logger, data))
-    }
-
-    // Designed to be called from swizzled methods for automatic screen tracking.
-    // Because swizzled functions are not able to determine what siteId instance of
-    // the SDK the app is using, we simply call `screen()` on all siteIds of the SDK
-    // and if automatic screen view tracking is not setup for that siteId, the function
-    // call to the instance will simply be ignored.
-    func automaticScreenView<RequestBody: Encodable>(
-        name: String,
-        data: RequestBody
-    ) {
         implementation?.screen(name: name, data: data)
     }
 

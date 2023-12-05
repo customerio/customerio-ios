@@ -66,7 +66,7 @@ class ExampleRepository {
     }
 }
 
-struct ExampleIdentifyRequestBody: Encodable {
+struct ExampleIdentifyRequestBody: Codable {
     // Include properties below for attributes you would like to associate with the customer.
     // Here, we are going to track the `first_name` of the customer.
     let firstName: String
