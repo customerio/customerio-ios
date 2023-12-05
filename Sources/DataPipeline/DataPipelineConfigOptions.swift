@@ -11,19 +11,19 @@ import UIKit
  Example use case:
  ```
  // create a new instance
- let dataPipelineConfig = CIODataPipelineConfigOptions.Factory.create(writeKey: "WRITE_KEY")
+ let dataPipelineConfig = DataPipelineConfigOptions.Factory.create(writeKey: "WRITE_KEY")
  // now, you can modify it
  dataPipelineConfig.apiHost = "https..."
  dataPipelineConfig.autoTrackScreenViews = false
  ```
  */
 // TODO: [CDP] Update docs to after module initialization changes for clarity on its usage
-public struct CIODataPipelineConfigOptions {
-    // Used to create new instance of CIODataPipelineConfigOptions when the CIODataPipeline module is configured.
-    // Each property of the CIODataPipelineConfigOptions object can be modified by the user.
+public struct DataPipelineConfigOptions {
+    // Used to create new instance of DataPipelineConfigOptions when the DataPipeline module is configured.
+    // Each property of the DataPipelineConfigOptions object can be modified by the user.
     public enum Factory {
-        public static func create(writeKey: String) -> CIODataPipelineConfigOptions {
-            CIODataPipelineConfigOptions(
+        public static func create(writeKey: String) -> DataPipelineConfigOptions {
+            DataPipelineConfigOptions(
                 writeKey: writeKey
             )
         }
