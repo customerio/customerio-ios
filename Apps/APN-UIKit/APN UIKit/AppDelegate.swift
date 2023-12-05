@@ -38,19 +38,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let storedApiKey = storage.apiKey {
             apiKey = storedApiKey
         }
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
-            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
-                config.trackingApiUrl = trackUrl
-            }
-        }
-        CustomerIO.initialize(writeKey: "writekey") { sdkConfig, cdpConfig in
+        let writeKey = "\(siteId):\(apiKey)"
+        CustomerIO.initialize(writeKey: writeKey) { sdkConfig, cdpConfig in
             sdkConfig.logLevel = .debug
             cdpConfig.apiHost = ""
+            sdkConfig.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+            cdpConfig.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
+            cdpConfig.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
+            cdpConfig.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
+            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
+                cdpConfig.apiHost = trackUrl
+                cdpConfig.cdnHost = trackUrl
+            }
         }
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
@@ -59,6 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushAPN.initialize { config in
             config.autoFetchDeviceToken = true
+            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
         }
     }
 
