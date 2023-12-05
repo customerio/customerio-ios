@@ -95,7 +95,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         logger.info("identify profile \(identifier)")
 
         // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
-        CIODataPipeline.analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
+        DataPipeline.shared.identify(identifier: identifier, body: body)
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
         let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
