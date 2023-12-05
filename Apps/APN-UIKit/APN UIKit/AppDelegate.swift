@@ -48,6 +48,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 config.trackingApiUrl = trackUrl
             }
         }
+        CustomerIO.initialize(writeKey: "writekey") { sdkConfig, cdpConfig in
+            sdkConfig.logLevel = .debug
+            cdpConfig.apiHost = ""
+        }
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp
