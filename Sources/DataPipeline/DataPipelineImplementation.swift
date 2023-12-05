@@ -5,13 +5,11 @@ class DataPipelineImplementation: CustomerIOInstance {
     let moduleConfig: DataPipelineConfigOptions
     let logger: Logger
     let analytics: Analytics
-    let jsonAdapter: JsonAdapter
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
-        self.jsonAdapter = diGraph.jsonAdapter
     }
 
     // Code below this line will be updated in later PRs
@@ -22,11 +20,11 @@ class DataPipelineImplementation: CustomerIOInstance {
     var config: CioInternalCommon.SdkConfig?
 
     func identify(identifier: String, body: [String: Any]) {
-        fatalError("will be implemented later")
+        analytics.identify(userId: identifier, traits: body)
     }
 
     func identify<RequestBody>(identifier: String, body: RequestBody) where RequestBody: Encodable {
-        analytics.identify(userId: identifier, traits: jsonAdapter.toJson(body))
+        fatalError("will be implemented later")
     }
 
     var registeredDeviceToken: String?
