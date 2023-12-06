@@ -365,7 +365,9 @@ class CustomerIOImplementation: CustomerIOInstance {
         let taskData = taskDetail.data
 
         switch taskDetail.taskType {
-        case .trackDeliveryMetric: print("SOmething")
+        case .trackDeliveryMetric:
+            // TODO: Segment doesn't provide this method by default needs to get added
+            print("Track Delivery Metrics")
         case .identifyProfile:
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
@@ -383,14 +385,18 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
         case .registerPushToken:
             print("Read TODO below")
-//            guard let readInventory: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
-//                return
-//            }
+            // guard let readInventory: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            //  return
+            // }
 
         // TODO: Check how to register device token with complete attributedJsonString
         // registerDeviceToken(readInventory.attributesJsonString)
-        case .deletePushToken: print("deletePushToken(task, onComplete: onComplete)")
-        case .trackPushMetric: print("trackPushMetric(task, onComplete: onComplete)")
+        case .deletePushToken:
+            // TODO: Segment doesn't provide this method by default needs to get added
+            print("Delete Push Token")
+        case .trackPushMetric:
+            // TODO: Segment doesn't provide this method by default needs to get added
+            print("Track Push Metrics")
         }
     }
 }
