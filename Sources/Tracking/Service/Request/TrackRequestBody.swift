@@ -13,6 +13,7 @@ enum EventType: String, Codable {
     case screen
 }
 
+// TODO: Is this the right place?
 public struct TrackEventTypeForAnalytics: Codable {
     let type: EventType
     let name: String
