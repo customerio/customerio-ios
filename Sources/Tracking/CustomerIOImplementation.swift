@@ -373,9 +373,9 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             identify(identifier: trackTaskData.identifier, body: trackTaskData.attributesJsonString)
+            backgroundQueue.deleteProcessedTask(task)
         case .trackEvent:
             guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
-            print(trackTaskData)
             guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else { return }
             switch trackType.type {
             case .screen:
@@ -383,6 +383,7 @@ class CustomerIOImplementation: CustomerIOInstance {
             case .event:
                 track(name: trackType.name, data: trackTaskData)
             }
+            backgroundQueue.deleteProcessedTask(task)
         case .registerPushToken:
             print("Read TODO below")
             // guard let readInventory: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {

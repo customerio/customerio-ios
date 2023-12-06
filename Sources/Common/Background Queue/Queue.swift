@@ -58,6 +58,8 @@ public protocol Queue: AutoMockable {
     func getAllStoredTasks() -> [QueueTaskMetadata]
 
     func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)?
+
+    func deleteProcessedTask(_ task: QueueTaskMetadata)
 }
 
 public extension Queue {
@@ -96,6 +98,10 @@ public extension Queue {
 
     func getAllStoredTasks() -> [QueueTaskMetadata] {
         getAllStoredTasks()
+    }
+
+    func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        deleteProcessedTask(task)
     }
 }
 
@@ -146,6 +152,13 @@ public class CioQueue: Queue {
         }
 
         return (task.data, queueTaskType)
+    }
+
+    public func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        let storageId = task.taskPersistedId
+        if !storage.delete(storageId: storageId) {
+            logger.error("Failed to delete task with storage id: \(storageId).")
+        }
     }
 
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
