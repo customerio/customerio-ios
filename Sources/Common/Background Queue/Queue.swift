@@ -56,6 +56,8 @@ public protocol Queue: AutoMockable {
     func deleteExpiredTasks()
 
     func getAllStoredTasks() -> [QueueTaskMetadata]
+
+    func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)?
 }
 
 public extension Queue {
@@ -133,6 +135,17 @@ public class CioQueue: Queue {
 
     public func getAllStoredTasks() -> [QueueTaskMetadata] {
         storage.getInventory()
+    }
+
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)? {
+        let persistedId = task.taskPersistedId
+        guard let queueTaskType = QueueTaskType(rawValue: task.taskType) else { return nil }
+        guard let task = storage.get(storageId: persistedId) else {
+            logger.error("Fetching task with storage id: \(persistedId) failed.")
+            return nil
+        }
+
+        return (task.data, queueTaskType)
     }
 
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {
