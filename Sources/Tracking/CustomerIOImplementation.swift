@@ -367,15 +367,20 @@ class CustomerIOImplementation: CustomerIOInstance {
         switch taskDetail.taskType {
         case .trackDeliveryMetric: print("SOmething")
         case .identifyProfile:
-            guard let readInventory: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
             }
-            identify(identifier: readInventory.identifier, body: readInventory.attributesJsonString)
+            identify(identifier: trackTaskData.identifier, body: trackTaskData.attributesJsonString)
         case .trackEvent:
-            guard let readInventory: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
-            let testt = jsonAdapter.fromJson(Data(readInventory.attributesJsonString.utf8))
-            print(readInventory)
-//            track(name: <#T##String#>, data: <#T##[String : Any]#>)
+            guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
+            print(trackTaskData)
+            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else { return }
+            switch trackType.type {
+            case .screen:
+                screen(name: trackType.name, data: trackTaskData)
+            case .event:
+                track(name: trackType.name, data: trackTaskData)
+            }
         case .registerPushToken:
             print("Read TODO below")
 //            guard let readInventory: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
