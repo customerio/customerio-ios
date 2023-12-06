@@ -3,6 +3,7 @@ import Foundation
 import Segment
 
 public protocol DataPipelinePlugin: AutoMockable {
+    @discardableResult func add(plugin: Plugin) -> Plugin
     func find<T: Plugin>(pluginType: T.Type) -> T?
 }
 

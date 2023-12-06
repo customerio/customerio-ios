@@ -31,7 +31,7 @@ public class AutoTrackingScreenViews: UtilityPlugin {
      */
     public var autoScreenViewBody: (() -> [String: Any])?
 
-    init(
+    public init(
         filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil,
 
         autoScreenViewBody: (() -> [String: Any])? = nil

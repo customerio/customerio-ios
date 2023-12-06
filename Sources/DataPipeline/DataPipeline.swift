@@ -1,9 +1,7 @@
 import CioInternalCommon
 import Segment
 
-public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePlugin {
-    func find<T: Plugin>(pluginType: T.Type) -> T?
-}
+public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePlugin {}
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
     @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
@@ -54,7 +52,6 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         logger.debug("Setting up \(moduleName) module...")
         let cdpImplementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: cdpImplementation)
-
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
@@ -123,6 +120,11 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    @discardableResult
+    public func add(plugin: Plugin) -> Plugin {
+        implementation?.add(plugin: plugin) ?? plugin
     }
 
     public func find<T: Segment.Plugin>(pluginType: T.Type) -> T? {

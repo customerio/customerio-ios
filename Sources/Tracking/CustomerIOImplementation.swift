@@ -10,6 +10,7 @@ import Foundation
  there is an instance of `CustomerIOImplementation` present, the SDK has been
  initialized successfully.
  */
+// TODO: revisit if its still needed at the end
 class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
         sdkConfig.siteId
