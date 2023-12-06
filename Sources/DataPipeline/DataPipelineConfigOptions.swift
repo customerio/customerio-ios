@@ -1,9 +1,6 @@
 import CioInternalCommon
 import Foundation
 import Segment
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /**
  Configuration options for the Customer.io Data Pipeline module.
