@@ -389,7 +389,7 @@ class CustomerIOImplementation: CustomerIOInstance {
             //  return
             // }
 
-        // TODO: Check how to register device token with complete attributedJsonString
+        // TODO: Check how to register device attributes using CDP
         // registerDeviceToken(readInventory.attributesJsonString)
         case .deletePushToken:
             // TODO: Segment doesn't provide this method by default needs to get added
