@@ -359,6 +359,35 @@ class CustomerIOImplementation: CustomerIOInstance {
     func getAllStoredTasks() -> [QueueTaskMetadata]? {
         backgroundQueue.getAllStoredTasks()
     }
+
+    func getStoredTask(for task: QueueTaskMetadata) {
+        guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
+        let taskData = taskDetail.data
+
+        switch taskDetail.taskType {
+        case .trackDeliveryMetric: print("SOmething")
+        case .identifyProfile:
+            guard let readInventory: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
+                return
+            }
+            identify(identifier: readInventory.identifier, body: readInventory.attributesJsonString)
+        case .trackEvent:
+            guard let readInventory: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
+            let testt = jsonAdapter.fromJson(Data(readInventory.attributesJsonString.utf8))
+            print(readInventory)
+//            track(name: <#T##String#>, data: <#T##[String : Any]#>)
+        case .registerPushToken:
+            print("Read TODO below")
+//            guard let readInventory: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+//                return
+//            }
+
+        // TODO: Check how to register device token with complete attributedJsonString
+        // registerDeviceToken(readInventory.attributesJsonString)
+        case .deletePushToken: print("deletePushToken(task, onComplete: onComplete)")
+        case .trackPushMetric: print("trackPushMetric(task, onComplete: onComplete)")
+        }
+    }
 }
 
 extension CustomerIOImplementation {
