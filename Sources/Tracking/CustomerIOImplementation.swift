@@ -98,7 +98,6 @@ class CustomerIOImplementation: CustomerIOInstance {
             return
         }
 
-        // TODO: move it below the identifier.isBlankOrEmpty if we decide to add that check even if we remove tracking code
         // Check which body is non-nil and proceed accordingly
         if let body = dictionaryBody {
             CIODataPipeline.analytics.identify(userId: identifier, traits: body)
