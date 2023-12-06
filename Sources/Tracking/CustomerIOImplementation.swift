@@ -48,6 +48,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         // Initialiing the CIODataPipeline with the diGraph for now
         // TODO: initialize this module with its own config
         CIODataPipeline.initialize(diGraph: diGraph)
+        DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
     }
 
     public var config: SdkConfig? {

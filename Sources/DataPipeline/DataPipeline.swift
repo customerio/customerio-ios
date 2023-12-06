@@ -100,10 +100,10 @@ public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOI
 
     public var deviceAttributes: [String: Any] {
         get {
-            implementation?.profileAttributes ?? [:]
+            implementation?.deviceAttributes ?? [:]
         }
         set {
-            alreadyCreatedImplementation?.profileAttributes = newValue
+            alreadyCreatedImplementation?.deviceAttributes = newValue
         }
     }
 

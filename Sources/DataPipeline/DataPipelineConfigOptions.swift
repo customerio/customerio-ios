@@ -23,9 +23,15 @@ public struct DataPipelineConfigOptions {
     // Each property of the DataPipelineConfigOptions object can be modified by the user.
     public enum Factory {
         public static func create(writeKey: String) -> DataPipelineConfigOptions {
-            DataPipelineConfigOptions(
-                writeKey: writeKey
-            )
+            DataPipelineConfigOptions(writeKey: writeKey)
+        }
+
+        public static func create(sdkConfig: SdkConfig) -> DataPipelineConfigOptions {
+            let writeKey = "\(sdkConfig.siteId):\(sdkConfig.apiKey)"
+            var result = DataPipelineConfigOptions(writeKey: writeKey)
+            result.flushAt = sdkConfig.backgroundQueueMinNumberOfTasks
+            result.flushInterval = sdkConfig.backgroundQueueSecondsDelay
+            return result
         }
     }
 

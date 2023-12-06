@@ -23,7 +23,7 @@ class DataPipelineImplementation: CustomerIOInstance {
         analytics.identify(userId: identifier, traits: body)
     }
 
-    func identify<RequestBody>(identifier: String, body: RequestBody) where RequestBody: Encodable {
+    func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
         fatalError("will be implemented later")
     }
 
@@ -37,7 +37,7 @@ class DataPipelineImplementation: CustomerIOInstance {
         fatalError("will be implemented later")
     }
 
-    func track<RequestBody>(name: String, data: RequestBody?) where RequestBody: Encodable {
+    func track<RequestBody: Codable>(name: String, data: RequestBody?) {
         fatalError("will be implemented later")
     }
 
@@ -45,7 +45,7 @@ class DataPipelineImplementation: CustomerIOInstance {
         fatalError("will be implemented later")
     }
 
-    func screen<RequestBody>(name: String, data: RequestBody?) where RequestBody: Encodable {
+    func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
         fatalError("will be implemented later")
     }
 
