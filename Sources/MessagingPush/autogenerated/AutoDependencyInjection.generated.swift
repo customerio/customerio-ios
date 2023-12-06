@@ -70,7 +70,7 @@ extension DIGraph {
         _ = userNotificationCenter
         countDependenciesResolved += 1
 
-        _ = iOSPushEventListener
+        _ = pushEventListener
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -83,7 +83,7 @@ extension DIGraph {
     }
 
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(pushEventListener: iOSPushEventListener)
+        AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener)
     }
 
     // DeepLinkUtil
@@ -128,28 +128,28 @@ extension DIGraph {
         UserNotificationCenterImpl()
     }
 
-    // iOSPushEventListener (singleton)
-    var iOSPushEventListener: iOSPushEventListener {
+    // PushEventListener (singleton)
+    var pushEventListener: PushEventListener {
         getOverriddenInstance() ??
-            sharediOSPushEventListener
+            sharedPushEventListener
     }
 
-    var sharediOSPushEventListener: iOSPushEventListener {
+    var sharedPushEventListener: PushEventListener {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_iOSPushEventListener_singleton_access").sync {
-            if let overridenDep: iOSPushEventListener = getOverriddenInstance() {
+        DispatchQueue(label: "DIGraph_PushEventListener_singleton_access").sync {
+            if let overridenDep: PushEventListener = getOverriddenInstance() {
                 return overridenDep
             }
-            let existingSingletonInstance = self.singletons[String(describing: iOSPushEventListener.self)] as? iOSPushEventListener
-            let instance = existingSingletonInstance ?? _get_iOSPushEventListener()
-            self.singletons[String(describing: iOSPushEventListener.self)] = instance
+            let existingSingletonInstance = self.singletons[String(describing: PushEventListener.self)] as? PushEventListener
+            let instance = existingSingletonInstance ?? _get_pushEventListener()
+            self.singletons[String(describing: PushEventListener.self)] = instance
             return instance
         }
     }
 
-    private func _get_iOSPushEventListener() -> iOSPushEventListener {
-        iOSPushEventListenerImpl(userNotificationCenter: userNotificationCenter, jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler)
+    private func _get_pushEventListener() -> PushEventListener {
+        iOSPushEventListener(userNotificationCenter: userNotificationCenter, jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler)
     }
 }
 

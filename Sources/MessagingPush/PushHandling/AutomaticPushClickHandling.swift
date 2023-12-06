@@ -37,9 +37,9 @@ protocol AutomaticPushClickHandling: AutoMockable {
 
 // sourcery: InjectRegister = "AutomaticPushClickHandling"
 class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
-    private let pushEventListener: iOSPushEventListener
+    private let pushEventListener: PushEventListener
 
-    init(pushEventListener: iOSPushEventListener) {
+    init(pushEventListener: PushEventListener) {
         self.pushEventListener = pushEventListener
     }
 

@@ -3,7 +3,7 @@ import CioTracking
 import Foundation
 import UserNotifications
 
-protocol iOSPushEventListener: AutoMockable {
+protocol PushEventListener: AutoMockable {
     var delegate: UNUserNotificationCenterDelegate { get }
     func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?)
     func beginListening()
@@ -12,9 +12,9 @@ protocol iOSPushEventListener: AutoMockable {
 // Singleton because:
 // 1. class stores data that needs to be kept in-memory.
 //
-// sourcery: InjectRegister = "iOSPushEventListener"
+// sourcery: InjectRegister = "PushEventListener"
 // sourcery: InjectSingleton
-class iOSPushEventListenerImpl: NSObject, iOSPushEventListener, UNUserNotificationCenterDelegate {
+class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
     private var userNotificationCenter: UserNotificationCenter
     private let jsonAdapter: JsonAdapter
     private var moduleConfig: MessagingPushConfigOptions
@@ -110,13 +110,13 @@ extension UNUserNotificationCenter {
 
         diGraph.logger.debug("New UNUserNotificationCenter.delegate set. Delegate class: \(String(describing: delegate))")
 
-        diGraph.iOSPushEventListener.newNotificationCenterDelegateSet(delegate)
+        diGraph.pushEventListener.newNotificationCenterDelegateSet(delegate)
 
         // Forward request to the original implementation that we swizzled. So that the app finishes setting UNUserNotificationCenter.delegate.
         //
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
-        cio_swizzled_setDelegate(delegate: diGraph.iOSPushEventListener.delegate)
+        cio_swizzled_setDelegate(delegate: diGraph.pushEventListener.delegate)
     }
 }
 
