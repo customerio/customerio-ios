@@ -20,12 +20,7 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
 
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
-
-        if sdkConfig.autoTrackScreenViews {
-            // Handle auto screen view tracking setup
-            // Note: setupAutoScreenviewTracking() needs to be implemented
-            shared.setupAutoScreenviewTracking()
-        }
+        // FIXME: [CDP] Update shared instance method to support DataPipeline
+        // initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
     }
 }

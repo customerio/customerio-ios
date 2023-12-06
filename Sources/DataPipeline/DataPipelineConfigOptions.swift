@@ -53,21 +53,5 @@ public struct DataPipelineConfigOptions {
     public var flushPolicies: [FlushPolicy] = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
     public var flushQueue: DispatchQueue = .init(label: "com.segment.operatingModeQueue", qos: .utility)
     public var operatingMode: OperatingMode = .asynchronous
-
-    /// Tracking configurations
-    public var autoScreenViewBody: (() -> [String: Any])?
-    public var autoTrackDeviceAttributes: Bool = true
-    public var autoTrackScreenViews: Bool = true
-    #if canImport(UIKit)
-    public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
-    #endif
     public var trackApplicationLifecycleEvents: Bool = true
-
-    /// Internal properties
-    // property is used internally so disable swiftlint rule
-    /**
-     Used internally at Customer.io to override some information in the SDK when the SDK is being used
-     as a wrapper/bridge such as with ReactNative.
-     */
-    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }

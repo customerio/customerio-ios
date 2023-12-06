@@ -63,7 +63,7 @@ public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOI
         implementation?.identify(identifier: identifier, body: body)
     }
 
-    public func identify<RequestBody>(identifier: String, body: RequestBody) where RequestBody: Encodable {
+    public func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
         implementation?.identify(identifier: identifier, body: body)
     }
 
@@ -77,7 +77,7 @@ public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOI
         implementation?.track(name: name, data: data)
     }
 
-    public func track<RequestBody>(name: String, data: RequestBody?) where RequestBody: Encodable {
+    public func track<RequestBody: Codable>(name: String, data: RequestBody?) {
         implementation?.track(name: name, data: data)
     }
 
@@ -85,7 +85,7 @@ public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOI
         implementation?.screen(name: name, data: data)
     }
 
-    public func screen<RequestBody>(name: String, data: RequestBody?) where RequestBody: Encodable {
+    public func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
         implementation?.screen(name: name, data: data)
     }
 

@@ -41,9 +41,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let writeKey = "\(siteId):\(apiKey)"
         CustomerIO.initialize(writeKey: writeKey) { sdkConfig, cdpConfig in
             sdkConfig.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+            sdkConfig.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
+
             cdpConfig.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
             cdpConfig.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            cdpConfig.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
             if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
                 cdpConfig.apiHost = trackUrl
                 cdpConfig.cdnHost = trackUrl
