@@ -43,13 +43,9 @@ public extension CustomerIO {
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
         if let allStoredTasks = implementation.getAllStoredTasks(), !allStoredTasks.isEmpty {
-//            allStoredTasks.forEach { task in
-//                print(task)
-//                implementation.getStoredTask(for: task)
-//
-//            }
-
-            implementation.getStoredTask(for: allStoredTasks[2])
+            allStoredTasks.forEach { task in
+                implementation.getStoredTask(for: task)
+            }
         }
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
