@@ -360,6 +360,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         backgroundQueue.getAllStoredTasks()
     }
 
+    // TODO: Pending: Clean this method
     func getStoredTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data

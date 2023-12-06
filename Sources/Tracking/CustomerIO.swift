@@ -42,6 +42,8 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
+        // Check if any unprocessed tasks are pending in the background queue.
+        // If so, iterate over them and process each one.
         if let allStoredTasks = implementation.getAllStoredTasks(), !allStoredTasks.isEmpty {
             allStoredTasks.forEach { task in
                 implementation.getStoredTask(for: task)
