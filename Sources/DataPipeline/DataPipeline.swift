@@ -34,8 +34,9 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     /**
-     Initialize the shared `instance` of `DataPipeline`.
-     Call this function when your app launches, before using `DataPipeline.shared`.
+     Initializes the shared `instance` of `DataPipeline`.
+     This function is automatically called when the SDK initialization is called, which should ideally be done on app launch,
+     before using any `DataPipeline` features.
      */
     @discardableResult
     public static func initialize(moduleConfig: DataPipelineConfigOptions) -> CustomerIOInstance {
