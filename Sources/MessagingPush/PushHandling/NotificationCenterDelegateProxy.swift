@@ -1,7 +1,11 @@
 import Foundation
 import UserNotifications
 
-// TODO: add comment expkaining tjhs
+/*
+Because the CIO SDK forces itself to be the app's only push click handler, we want our SDK to still be compatible with other SDKs that also need to handle pushes being clicked. 
+
+This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs. 
+*/
 public class NotificationCenterDelegateProxy: NSObject, UNUserNotificationCenterDelegate {
     public static let shared = NotificationCenterDelegateProxy()
 
