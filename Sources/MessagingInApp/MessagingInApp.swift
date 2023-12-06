@@ -16,13 +16,13 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // This function's job is to populate the `shared` property with
     // overrides such as DI graph.
     init(implementation: MessagingInAppInstance?) {
-        super.init(moduleName: MessagingInApp.moduleName, implementation: implementation)
+        super.init(moduleName: Self.moduleName, implementation: implementation)
     }
 
     // constructor used in production with default DI graph
     // singleton constructor
     private init() {
-        super.init(moduleName: MessagingInApp.moduleName)
+        super.init(moduleName: Self.moduleName)
     }
 
     // for testing
