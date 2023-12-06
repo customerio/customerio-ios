@@ -207,33 +207,33 @@ public class CioQueue: Queue {
         logger.debug("processing queue status \(status).")
         let isManyTasksInQueue = status.numTasksInQueue >= sdkConfig.backgroundQueueMinNumberOfTasks
 
-//        if isManyTasksInQueue {
-//            logger.info("queue met criteria to run automatically")
-//
-//            // cancel timer if one running since we will run the queue now
-//            queueTimer.cancel()
-//
-//            // not using [weak self] to assert that the queue will complete and callback once started.
-//            // this might keep this class in memory and not get garbage collected once customer is done using it
-//            // but it will get released once the queue is done running.
-//            runRequest.start {
-//                self.logger.info("queue completed all tasks")
-//            }
-//        } else {
-//            // Not enough tasks in the queue yet to run it now, so let's schedule them to run in the future.
-//            // It's expected that only 1 timer instance exists and is running in the SDK.
-//            let didSchedule = queueTimer.scheduleIfNotAlready(seconds: numberSecondsToScheduleTimer) {
-//                self.logger.info("queue timer: now running queue")
-//
-//                self.run {
-//                    self.logger.info("queue timer: queue done running")
-//                }
-//            }
-//
-//            if didSchedule {
-//                logger.info("queue timer: scheduled to run queue in \(numberSecondsToScheduleTimer) seconds")
-//            }
-//        }
+        if isManyTasksInQueue {
+            logger.info("queue met criteria to run automatically")
+
+            // cancel timer if one running since we will run the queue now
+            queueTimer.cancel()
+
+            // not using [weak self] to assert that the queue will complete and callback once started.
+            // this might keep this class in memory and not get garbage collected once customer is done using it
+            // but it will get released once the queue is done running.
+            runRequest.start {
+                self.logger.info("queue completed all tasks")
+            }
+        } else {
+            // Not enough tasks in the queue yet to run it now, so let's schedule them to run in the future.
+            // It's expected that only 1 timer instance exists and is running in the SDK.
+            let didSchedule = queueTimer.scheduleIfNotAlready(seconds: numberSecondsToScheduleTimer) {
+                self.logger.info("queue timer: now running queue")
+
+                self.run {
+                    self.logger.info("queue timer: queue done running")
+                }
+            }
+
+            if didSchedule {
+                logger.info("queue timer: scheduled to run queue in \(numberSecondsToScheduleTimer) seconds")
+            }
+        }
     }
 
     public func deleteExpiredTasks() {
