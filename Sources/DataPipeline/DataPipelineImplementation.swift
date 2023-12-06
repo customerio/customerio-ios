@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Segment
 
-class DataPipelineImplementation: CustomerIOInstance {
+class DataPipelineImplementation: DataPipelineInstance {
     let moduleConfig: DataPipelineConfigOptions
     let logger: Logger
     let analytics: Analytics
@@ -10,6 +10,7 @@ class DataPipelineImplementation: CustomerIOInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
+        analytics.add(plugin: AutoTrackingScreenViews())
     }
 
     // Code below this line will be updated in later PRs
@@ -24,7 +25,7 @@ class DataPipelineImplementation: CustomerIOInstance {
     }
 
     func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        fatalError("will be implemented later")
+        analytics.identify(userId: identifier, traits: body)
     }
 
     var registeredDeviceToken: String?
@@ -63,5 +64,19 @@ class DataPipelineImplementation: CustomerIOInstance {
 
     func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         fatalError("will be implemented later")
+    }
+
+    @discardableResult
+    func add(plugin: Plugin) -> Plugin {
+        analytics.add(plugin: plugin)
+    }
+
+    @discardableResult
+    func add(enrichment: @escaping EnrichmentClosure) -> Plugin {
+        analytics.add(enrichment: enrichment)
+    }
+
+    func find<T: Plugin>(pluginType: T.Type) -> T? {
+        analytics.find(pluginType: pluginType)
     }
 }

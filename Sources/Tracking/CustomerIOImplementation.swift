@@ -101,11 +101,11 @@ class CustomerIOImplementation: CustomerIOInstance {
 
         // Check which body is non-nil and proceed accordingly
         if let body = dictionaryBody {
-            CIODataPipeline.analytics.identify(userId: identifier, traits: body)
+            DataPipeline.shared.identify(identifier: identifier, body: body)
         } else if let body = codableBody {
-            CIODataPipeline.analytics.identify(userId: identifier, traits: body)
+            DataPipeline.shared.identify(identifier: identifier, body: body)
         } else {
-            CIODataPipeline.analytics.identify(userId: identifier)
+            DataPipeline.shared.identify(identifier: identifier)
         }
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier

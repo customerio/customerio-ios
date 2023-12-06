@@ -1,8 +1,13 @@
 import CioInternalCommon
+import Segment
 
-public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOInstance {
-    @Atomic public private(set) static var shared = DataPipeline()
-    @Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
+public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePlugin {
+    func find<T: Plugin>(pluginType: T.Type) -> T?
+}
+
+public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
+    @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
+    @CioInternalCommon.Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
     private static let moduleName = "DataPipeline"
 
     private init() {
@@ -117,5 +122,9 @@ public class DataPipeline: ModuleTopLevelObject<CustomerIOInstance>, CustomerIOI
 
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    public func find<T: Segment.Plugin>(pluginType: T.Type) -> T? {
+        implementation?.find(pluginType: pluginType)
     }
 }

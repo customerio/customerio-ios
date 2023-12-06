@@ -2,6 +2,10 @@ import CioInternalCommon
 import Foundation
 import Segment
 
+public protocol DataPipelinePlugin: AutoMockable {
+    func find<T: Plugin>(pluginType: T.Type) -> T?
+}
+
 // TODO: Add APITest for it?
 extension CustomerIO {
     /**
