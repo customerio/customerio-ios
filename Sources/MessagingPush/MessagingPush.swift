@@ -7,20 +7,20 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigOptions.Factory.create()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = .Factory.create()
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
     // testing constructor
     init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore) {
         self.globalDataStore = globalDataStore
-        super.init(moduleName: MessagingPush.moduleName, implementation: implementation)
+        super.init(moduleName: Self.moduleName, implementation: implementation)
     }
 
     // singleton constructor
     private init() {
         self.globalDataStore = CioGlobalDataStore.getInstance()
-        super.init(moduleName: MessagingPush.moduleName)
+        super.init(moduleName: Self.moduleName)
     }
 
     // for testing
@@ -53,7 +53,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         }
 
         logger.debug("Setting up \(moduleName) module...")
-        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: MessagingPush.moduleConfig)
+        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: pushImplementation)
 
         logger.info("\(moduleName) module successfully set up with SDK")
