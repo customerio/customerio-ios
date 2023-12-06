@@ -8,19 +8,21 @@ public extension CustomerIO {
     @available(iOSApplicationExtension, unavailable)
     static func initialize(
         writeKey: String,
-        configure configureHandler: ((inout SdkConfig, inout DataPipelineConfigOptions) -> Void)?
+        logLevel: CioLogLevel = .error,
+        configure configureHandler: ((inout DataPipelineConfigOptions) -> Void)?
     ) {
-        var sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         var cdpConfig = DataPipelineConfigOptions.Factory.create(writeKey: writeKey)
 
         if let configureHandler = configureHandler {
-            configureHandler(&sdkConfig, &cdpConfig)
+            configureHandler(&cdpConfig)
         }
 
-        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
 
         // FIXME: [CDP] Update shared instance method to support DataPipeline
+        CustomerIO.shared.implementation = implementation
+        // let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        // let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         // initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
     }
 }
