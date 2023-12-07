@@ -4,6 +4,12 @@ import Foundation
 import UserNotifications
 #endif
 
+/**
+ Functions that customers can call when they want to perform manual push click handling.
+
+ Example: MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+ */
+
 #if canImport(UserNotifications)
 @available(iOSApplicationExtension, unavailable)
 public extension MessagingPush {
@@ -53,26 +59,36 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
-        // We get around this by getting a instance in this function, only.
-        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
-            return pushClickHandler.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        guard let _: CustomerIOParsedPushPayload = userNotificationCenter(center, didReceive: response) else {
+            // push not sent from CIO. Exit early without calling completionHandler so that customer calls it instead.
+
+            return false
         }
 
-        return false
+        completionHandler()
+
+        return true
     }
 
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
-        // We get around this by getting a instance in this function, only.
-        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
-            return pushClickHandler.userNotificationCenter(center, didReceive: response)
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
+            // push not sent from CIO.
+
+            return nil
         }
 
-        return nil
+        if response.didClickOnPush {
+            // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
+            // We get around this by getting a instance in this function, only.
+            if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
+                pushClickHandler.pushClicked(parsedPush)
+            }
+        }
+
+        return parsedPush
     }
 }
 #endif

@@ -35,7 +35,33 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             config.autoFetchDeviceToken = true
         }
 
+        // Manually get FCM device token. Swizzling hasn't been working for me.
+        Messaging.messaging().delegate = self
+
+        // Register a 2nd push click listener besides the Customer.io SDK.
+        // Tests that the SDK is able to handle push clicks when there are multiple click listeners.
+        UNUserNotificationCenter.current().delegate = self
+
         return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+}
+
+extension AppDelegate: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        CustomerIO.shared.track(
+            name: "push clicked",
+            data: ["push": response.notification.request.content.userInfo]
+        )
     }
 }
 

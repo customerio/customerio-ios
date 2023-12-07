@@ -10,6 +10,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var shared = MessagingPush()
     private var globalDataStore: GlobalDataStore
 
+    @Atomic private var hasSetupModule = false
+
+    // singleton instance of module configuration
+    @Atomic public static var moduleConfig: MessagingPushConfigOptions = .init()
+
     // testing constructor
     init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
         self.globalDataStore = globalDataStore
@@ -29,16 +34,33 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     // Gets called when MessagingPushAPN.initialize() or MessagingPushFCM.initialize() called.
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize() {
+    public static func initialize(config: MessagingPushConfigOptions? = nil) {
+        if let newConfig = config {
+            moduleConfig = newConfig
+        }
+
         MessagingPush.shared.initializeModuleIfSdkInitialized()
     }
 
+    // Note: Make sure this function is only called 1 time. Module configuration can be modified at runtime, but the setup logic in this function that sets up logic such as listeners should only be called 1 time.
     @available(iOSApplicationExtension, unavailable)
     override public func inititlizeModule(diGraph: DIGraph) {
+        // Make this function thread-safe by immediately locking it.
+        diGraph.lockManager.getLock(id: .messagingPushModuleSetup).lock()
+        defer {
+            diGraph.lockManager.getLock(id: .messagingPushModuleSetup).unlock()
+        }
+
+        // Make sure this function is only called 1 time.
+        if hasSetupModule {
+            return
+        }
+        hasSetupModule = true
+
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
-        diGraph.pushClickHandler.setupClickHandling()
+        diGraph.automaticPushClickHandling.start()
 
         logger.info("MessagingPush module setup with SDK")
     }

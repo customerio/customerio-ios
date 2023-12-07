@@ -55,16 +55,37 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = automaticPushClickHandling
+        countDependenciesResolved += 1
+
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
         _ = pushClickHandler
         countDependenciesResolved += 1
 
+        _ = pushHistory
+        countDependenciesResolved += 1
+
         _ = userNotificationCenter
         countDependenciesResolved += 1
 
+        _ = pushEventListener
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
+    }
+
+    // AutomaticPushClickHandling
+    @available(iOSApplicationExtension, unavailable)
+    var automaticPushClickHandling: AutomaticPushClickHandling {
+        getOverriddenInstance() ??
+            newAutomaticPushClickHandling
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
+        AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener)
     }
 
     // DeepLinkUtil
@@ -79,31 +100,26 @@ extension DIGraph {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 
-    // PushClickHandler (singleton)
+    // PushClickHandler
     @available(iOSApplicationExtension, unavailable)
     var pushClickHandler: PushClickHandler {
         getOverriddenInstance() ??
-            sharedPushClickHandler
+            newPushClickHandler
     }
 
     @available(iOSApplicationExtension, unavailable)
-    var sharedPushClickHandler: PushClickHandler {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_PushClickHandler_singleton_access").sync {
-            if let overridenDep: PushClickHandler = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: PushClickHandler.self)] as? PushClickHandler
-            let instance = existingSingletonInstance ?? _get_pushClickHandler()
-            self.singletons[String(describing: PushClickHandler.self)] = instance
-            return instance
-        }
+    private var newPushClickHandler: PushClickHandler {
+        PushClickHandlerImpl(sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, pushHistory: pushHistory, customerIO: customerIOInstance)
     }
 
-    @available(iOSApplicationExtension, unavailable)
-    private func _get_pushClickHandler() -> PushClickHandler {
-        PushClickHandlerImpl(jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, userNotificationCenter: userNotificationCenter)
+    // PushHistory
+    var pushHistory: PushHistory {
+        getOverriddenInstance() ??
+            newPushHistory
+    }
+
+    private var newPushHistory: PushHistory {
+        PushHistoryImpl(keyValueStorage: keyValueStorage, lockManager: lockManager)
     }
 
     // UserNotificationCenter
@@ -114,6 +130,33 @@ extension DIGraph {
 
     private var newUserNotificationCenter: UserNotificationCenter {
         UserNotificationCenterImpl()
+    }
+
+    // PushEventListener (singleton)
+    @available(iOSApplicationExtension, unavailable)
+    var pushEventListener: PushEventListener {
+        getOverriddenInstance() ??
+            sharedPushEventListener
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    var sharedPushEventListener: PushEventListener {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_PushEventListener_singleton_access").sync {
+            if let overridenDep: PushEventListener = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: PushEventListener.self)] as? PushEventListener
+            let instance = existingSingletonInstance ?? _get_pushEventListener()
+            self.singletons[String(describing: PushEventListener.self)] = instance
+            return instance
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_pushEventListener() -> PushEventListener {
+        iOSPushEventListener(userNotificationCenter: userNotificationCenter, jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler)
     }
 }
 
