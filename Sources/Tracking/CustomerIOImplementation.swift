@@ -370,11 +370,13 @@ class CustomerIOImplementation: CustomerIOInstance {
             // TODO: Segment doesn't provide this method by default needs to get added
             print("Track Delivery Metrics")
         case .identifyProfile:
+            // [String: Any
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
             }
-            identify(identifier: trackTaskData.identifier, body: trackTaskData.attributesJsonString)
-            backgroundQueue.deleteProcessedTask(task)
+            guard let profileAttributes: [String: Any] = jsonAdapter.convertToStringAnyDictionary(trackTaskData.attributesJsonString!) else { return }
+            identify(identifier: trackTaskData.identifier, body: profileAttributes)
+//            backgroundQueue.deleteProcessedTask(task)
         case .trackEvent:
             guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
             guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else { return }

@@ -86,6 +86,17 @@ public class JsonAdapter {
         return nil
     }
 
+    public func convertToStringAnyDictionary(_ jsonString: String) -> [String: Any]? {
+        do {
+            let jsonData = Data(jsonString.utf8)
+
+            return try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any]
+        } catch {
+            print("Error decoding JSON: \(error)")
+        }
+        return nil
+    }
+
     /**
      Returns optional to be more convenient then try/catch all over the code base.
 
