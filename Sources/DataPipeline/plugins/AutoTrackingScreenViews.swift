@@ -123,7 +123,7 @@ extension UIViewController {
             return
         }
 
-        if let screenTrackingPlugin = DataPipeline.shared.find(pluginType: AutoTrackingScreenViews.self) {
+        if let screenTrackingPlugin = DataPipeline.shared.analytics.find(pluginType: AutoTrackingScreenViews.self) {
             screenTrackingPlugin.performScreenTracking(onViewController: viewController)
         }
     }

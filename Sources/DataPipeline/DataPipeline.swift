@@ -1,9 +1,15 @@
 import CioInternalCommon
 import Segment
 
-public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePlugin {}
+public protocol DataPipelineInstance: CustomerIOInstance {
+    var analytics: Analytics { get }
+}
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
+    public var analytics: Segment.Analytics {
+        implementation?.analytics ?? Analytics(configuration: Configuration(writeKey: "DEADINSTANCE"))
+    }
+
     @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
     @CioInternalCommon.Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
 
@@ -122,14 +128,5 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-    }
-
-    @discardableResult
-    public func add(plugin: Plugin) -> Plugin {
-        implementation?.add(plugin: plugin) ?? plugin
-    }
-
-    public func find<T: Segment.Plugin>(pluginType: T.Type) -> T? {
-        implementation?.find(pluginType: pluginType)
     }
 }
