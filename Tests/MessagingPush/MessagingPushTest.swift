@@ -19,17 +19,18 @@ class MessagignPushTest: IntegrationTest {
     // MARK: initialize
 
     func test_initialize_expectOnlyAbleToInitializeOnce_expectInitializeThreadSafe() {
+        // Run test multiple times to ensure thread safety. To try and catch a race condition, if one will exist.
         runTest(numberOfTimes: 500) {
             let expectAllThreadsToComplete = expectation(description: "All threads should complete")
             expectAllThreadsToComplete.expectedFulfillmentCount = 2
 
-            CioThreadUtil().runBackground {
+            runOnBackground {
                 MessagingPush.initialize()
 
                 expectAllThreadsToComplete.fulfill()
             }
 
-            CioThreadUtil().runBackground {
+            runOnBackground {
                 MessagingPush.initialize()
 
                 expectAllThreadsToComplete.fulfill()

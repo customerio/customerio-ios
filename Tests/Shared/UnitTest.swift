@@ -173,4 +173,10 @@ public extension UnitTest {
             tearDown()
         }
     }
+
+    func runOnBackground(_ block: @escaping () -> Void) {
+        CioThreadUtil().runBackground {
+            block()
+        }
+    }
 }
