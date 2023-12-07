@@ -10,7 +10,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
-        analytics.add(plugin: AutoTrackingScreenViews())
     }
 
     // Code below this line will be updated in later PRs

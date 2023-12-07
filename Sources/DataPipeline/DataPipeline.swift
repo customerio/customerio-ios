@@ -6,6 +6,7 @@ public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePlugin {}
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
     @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
     @CioInternalCommon.Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
+
     private static let moduleName = "DataPipeline"
 
     private init() {
@@ -52,6 +53,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         logger.debug("Setting up \(moduleName) module...")
         let cdpImplementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: cdpImplementation)
+
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
