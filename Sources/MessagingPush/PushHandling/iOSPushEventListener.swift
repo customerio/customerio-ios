@@ -15,7 +15,7 @@ protocol PushEventListener: AutoMockable {
 //
 // sourcery: InjectRegister = "PushEventListener"
 // sourcery: InjectSingleton
-class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
+class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
     private var userNotificationCenter: UserNotificationCenter
     private let jsonAdapter: JsonAdapter
     private var moduleConfig: MessagingPushConfigOptions
