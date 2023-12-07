@@ -9,6 +9,7 @@ protocol PushEventListener: AutoMockable {
     func beginListening()
 }
 
+@available(iOSApplicationExtension, unavailable)
 // Singleton because:
 // 1. class stores data that needs to be kept in-memory.
 //

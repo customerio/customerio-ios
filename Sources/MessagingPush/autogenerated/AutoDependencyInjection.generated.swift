@@ -77,11 +77,13 @@ extension DIGraph {
     }
 
     // AutomaticPushClickHandling
+    @available(iOSApplicationExtension, unavailable)
     var automaticPushClickHandling: AutomaticPushClickHandling {
         getOverriddenInstance() ??
             newAutomaticPushClickHandling
     }
 
+    @available(iOSApplicationExtension, unavailable)
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
         AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener)
     }
@@ -99,11 +101,13 @@ extension DIGraph {
     }
 
     // PushClickHandler
+    @available(iOSApplicationExtension, unavailable)
     var pushClickHandler: PushClickHandler {
         getOverriddenInstance() ??
             newPushClickHandler
     }
 
+    @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
         PushClickHandlerImpl(sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, pushHistory: pushHistory, customerIO: customerIOInstance)
     }
@@ -129,11 +133,13 @@ extension DIGraph {
     }
 
     // PushEventListener (singleton)
+    @available(iOSApplicationExtension, unavailable)
     var pushEventListener: PushEventListener {
         getOverriddenInstance() ??
             sharedPushEventListener
     }
 
+    @available(iOSApplicationExtension, unavailable)
     var sharedPushEventListener: PushEventListener {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
@@ -148,6 +154,7 @@ extension DIGraph {
         }
     }
 
+    @available(iOSApplicationExtension, unavailable)
     private func _get_pushEventListener() -> PushEventListener {
         iOSPushEventListener(userNotificationCenter: userNotificationCenter, jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler)
     }

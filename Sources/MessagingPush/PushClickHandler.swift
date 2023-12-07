@@ -3,10 +3,12 @@ import CioTracking
 import Foundation
 import UserNotifications
 
+@available(iOSApplicationExtension, unavailable)
 protocol PushClickHandler: AutoMockable {
     func pushClicked(_ push: CustomerIOParsedPushPayload)
 }
 
+@available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "PushClickHandler"
 class PushClickHandlerImpl: PushClickHandler {
     private let sdkConfig: SdkConfig
