@@ -10,6 +10,12 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic public private(set) static var shared = MessagingPush()
     private var globalDataStore: GlobalDataStore
 
+    /*
+     It's preferred to get a lock from lockmanager. Because this is a top-level class where the digraph may be nil, it's more difficult to get a lock from lockmanager.
+
+     Because this class is a singleton, we can create a lock instance that will be shared in all calls to this class.
+     */
+    private let lock = Lock.unsafeInit()
     @Atomic private var hasSetupModule = false
 
     // singleton instance of module configuration
@@ -46,9 +52,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, unavailable)
     override public func inititlizeModule(diGraph: DIGraph) {
         // Make this function thread-safe by immediately locking it.
-        diGraph.lockManager.getLock(id: .messagingPushModuleSetup).lock()
+        lock.lock()
         defer {
-            diGraph.lockManager.getLock(id: .messagingPushModuleSetup).unlock()
+            lock.unlock()
         }
 
         // Make sure this function is only called 1 time.
