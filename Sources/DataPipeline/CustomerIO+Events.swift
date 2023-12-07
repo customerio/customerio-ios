@@ -23,7 +23,7 @@ public extension CustomerIO {
     ///      https://segment.io/libraries/ios#ids
     /// - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     func identify<T: Codable>(userId: String, traits: T?) {
-        CIODataPipeline.analytics.identify(userId: userId, traits: traits)
+        DataPipeline.shared.identify(identifier: userId, body: traits)
     }
 
     /// Associate a user with their unique ID and record traits about them.
