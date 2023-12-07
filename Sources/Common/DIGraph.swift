@@ -7,8 +7,8 @@ public class DIGraph {
         self.sdkConfig = sdkConfig
     }
 
-    @Atomic public var overrides: [String: Any] = [:]
-    @Atomic public var singletons: [String: Any] = [:]
+    public var overrides: [String: Any] = [:]
+    public var singletons: [String: Any] = [:]
 
     /**
      Designed to be used only in test classes to override dependencies.
