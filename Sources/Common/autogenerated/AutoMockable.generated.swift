@@ -403,7 +403,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         identifyClosure?(identifier, body)
     }
 
-    // MARK: - identify<RequestBody: Encodable>
+    // MARK: - identify<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
     public private(set) var identifyEncodableReceivedArguments: (identifier: String, body: AnyEncodable)?
@@ -414,8 +414,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `identify<RequestBody: Encodable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func identify<RequestBody: Encodable>(identifier: String, body: RequestBody) {
+    /// Mocked function for `identify<RequestBody: Codable>(identifier: String, body: RequestBody)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
         mockCalled = true
         identifyCallsCount += 1
         identifyEncodableReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
@@ -471,7 +471,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         trackClosure?(name, data)
     }
 
-    // MARK: - track<RequestBody: Encodable>
+    // MARK: - track<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
     public private(set) var trackEncodableReceivedArguments: (name: String, data: AnyEncodable)?
@@ -482,8 +482,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var trackEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `track<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func track<RequestBody: Encodable>(name: String, data: RequestBody?) {
+    /// Mocked function for `track<RequestBody: Codable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func track<RequestBody: Codable>(name: String, data: RequestBody?) {
         mockCalled = true
         trackCallsCount += 1
         trackEncodableReceivedArguments = (name: name, data: AnyEncodable(data))
@@ -518,7 +518,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         screenClosure?(name, data)
     }
 
-    // MARK: - screen<RequestBody: Encodable>
+    // MARK: - screen<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
     public private(set) var screenEncodableReceivedArguments: (name: String, data: AnyEncodable)?
@@ -529,8 +529,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      */
     public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
 
-    /// Mocked function for `screen<RequestBody: Encodable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func screen<RequestBody: Encodable>(name: String, data: RequestBody?) {
+    /// Mocked function for `screen<RequestBody: Codable>(name: String, data: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
         mockCalled = true
         screenCallsCount += 1
         screenEncodableReceivedArguments = (name: name, data: AnyEncodable(data))

@@ -154,3 +154,22 @@ public extension CustomerIO {
         CIODataPipeline.analytics.openURL(url, options: options)
     }
 }
+
+extension DataPipelineConfigOptions {
+    func toSegmentConfiguration() -> Configuration {
+        let result = Configuration(writeKey: writeKey)
+        result.trackApplicationLifecycleEvents(trackApplicationLifecycleEvents)
+        result.flushAt(flushAt)
+        result.flushInterval(flushInterval)
+        result.defaultSettings(defaultSettings)
+        // Force set to false as we will never add Segment destination
+        // User can disable CIO destination to achieve same results
+        result.autoAddSegmentDestination(false)
+        result.apiHost(apiHost)
+        result.cdnHost(cdnHost)
+        result.flushPolicies(flushPolicies)
+        result.operatingMode(operatingMode)
+        result.flushQueue(flushQueue)
+        return result
+    }
+}
