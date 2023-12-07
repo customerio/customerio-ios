@@ -2126,6 +2126,11 @@ public class QueueMock: Queue, Mock {
         getTaskDetailReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        deleteProcessedTaskCallsCount = 0
+        deleteProcessedTaskReceivedArguments = nil
+        deleteProcessedTaskReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - addTrackInAppDeliveryTask
@@ -2292,6 +2297,33 @@ public class QueueMock: Queue, Mock {
         getTaskDetailReceivedArguments = task
         getTaskDetailReceivedInvocations.append(task)
         return getTaskDetailClosure.map { $0(task) } ?? getTaskDetailReturnValue
+    }
+
+    // MARK: - deleteProcessedTask
+
+    /// Number of times the function was called.
+    public private(set) var deleteProcessedTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteProcessedTaskCalled: Bool {
+        deleteProcessedTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var deleteProcessedTaskReceivedArguments: QueueTaskMetadata?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var deleteProcessedTaskReceivedInvocations: [QueueTaskMetadata] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var deleteProcessedTaskClosure: ((QueueTaskMetadata) -> Void)?
+
+    /// Mocked function for `deleteProcessedTask(_ task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        mockCalled = true
+        deleteProcessedTaskCallsCount += 1
+        deleteProcessedTaskReceivedArguments = task
+        deleteProcessedTaskReceivedInvocations.append(task)
+        deleteProcessedTaskClosure?(task)
     }
 }
 
