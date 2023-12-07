@@ -45,10 +45,9 @@ public extension CustomerIO {
         // Check if any unprocessed tasks are pending in the background queue.
         // If so, iterate over them and process each one.
         if let allStoredTasks = implementation.getAllStoredTasks(), !allStoredTasks.isEmpty {
-//            allStoredTasks.forEach { task in
-//                implementation.getStoredTask(for: task)
-//            }
-            implementation.getStoredTask(for: allStoredTasks[1])
+            allStoredTasks.forEach { task in
+                implementation.getStoredTask(for: task)
+            }
         }
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
