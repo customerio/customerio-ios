@@ -5,6 +5,9 @@ import Segment
 import UIKit
 #endif
 
+// screen view tracking is not available for notification service extension. disable all functions having to deal with
+// screen view tracking feature.
+@available(iOSApplicationExtension, unavailable)
 public class AutoTrackingScreenViews: UtilityPlugin {
     public let type = PluginType.utility
 
@@ -123,6 +126,7 @@ extension UIViewController {
             return
         }
 
+        // find if AutoTrackingScreenViews plugin was added, if so ask it to perform tracking
         if let screenTrackingPlugin = DataPipeline.shared.analytics.find(pluginType: AutoTrackingScreenViews.self) {
             screenTrackingPlugin.performScreenTracking(onViewController: viewController)
         }
