@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
@@ -45,9 +46,8 @@ public extension CustomerIO {
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
         if sdkConfig.autoTrackScreenViews {
-            // Handle auto screen view tracking setup
-            // Note: setupAutoScreenviewTracking() needs to be implemented
-            shared.setupAutoScreenviewTracking()
+            // automatically add the AutoTrackingScreenViews plugin
+            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
         }
     }
 

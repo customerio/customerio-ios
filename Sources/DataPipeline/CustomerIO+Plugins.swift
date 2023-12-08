@@ -11,7 +11,7 @@ extension CustomerIO {
 
      */
     func apply(closure: (Plugin) -> Void) {
-        CIODataPipeline.analytics.apply(closure: closure)
+        DataPipeline.shared.analytics.apply(closure: closure)
     }
 
     /**
@@ -23,7 +23,7 @@ extension CustomerIO {
      */
     @discardableResult
     func add(plugin: Plugin) -> Plugin {
-        CIODataPipeline.analytics.add(plugin: plugin)
+        DataPipeline.shared.analytics.add(plugin: plugin)
     }
 
     /**
@@ -35,7 +35,7 @@ extension CustomerIO {
      */
     @discardableResult
     func add(enrichment: @escaping EnrichmentClosure) -> Plugin {
-        CIODataPipeline.analytics.add(enrichment: enrichment)
+        DataPipeline.shared.analytics.add(enrichment: enrichment)
     }
 
     /**
@@ -44,18 +44,18 @@ extension CustomerIO {
      - Parameter pluginName: An plugin name.
      */
     func remove(plugin: Plugin) {
-        CIODataPipeline.analytics.remove(plugin: plugin)
+        DataPipeline.shared.analytics.remove(plugin: plugin)
     }
 
     func find<T: Plugin>(pluginType: T.Type) -> T? {
-        CIODataPipeline.analytics.find(pluginType: pluginType)
+        DataPipeline.shared.analytics.find(pluginType: pluginType)
     }
 
     func findAll<T: Plugin>(pluginType: T.Type) -> [T]? {
-        CIODataPipeline.analytics.findAll(pluginType: pluginType)
+        DataPipeline.shared.analytics.findAll(pluginType: pluginType)
     }
 
     func find(key: String) -> DestinationPlugin? {
-        CIODataPipeline.analytics.find(key: key)
+        DataPipeline.shared.analytics.find(key: key)
     }
 }

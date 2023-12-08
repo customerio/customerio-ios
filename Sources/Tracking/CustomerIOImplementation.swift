@@ -10,6 +10,7 @@ import Foundation
  there is an instance of `CustomerIOImplementation` present, the SDK has been
  initialized successfully.
  */
+// TODO: revisit if its still needed at the end
 class CustomerIOImplementation: CustomerIOInstance {
     public var siteId: String? {
         sdkConfig.siteId
@@ -45,9 +46,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
-        // Initialiing the CIODataPipeline with the diGraph for now
-        // TODO: initialize this module with its own config
-        CIODataPipeline.initialize(diGraph: diGraph)
         DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
     }
 
@@ -101,11 +99,11 @@ class CustomerIOImplementation: CustomerIOInstance {
 
         // Check which body is non-nil and proceed accordingly
         if let body = dictionaryBody {
-            CIODataPipeline.analytics.identify(userId: identifier, traits: body)
+            DataPipeline.shared.identify(identifier: identifier, body: body)
         } else if let body = codableBody {
-            CIODataPipeline.analytics.identify(userId: identifier, traits: body)
+            DataPipeline.shared.identify(identifier: identifier, body: body)
         } else {
-            CIODataPipeline.analytics.identify(userId: identifier)
+            DataPipeline.shared.identify(identifier: identifier)
         }
 
         let currentlyIdentifiedProfileIdentifier = profileStore.identifier
@@ -153,7 +151,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     public func clearIdentify() {
         logger.info("clearing identified profile")
 
-        CIODataPipeline.analytics.reset()
+        DataPipeline.shared.clearIdentify()
 
         guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
             return
@@ -179,16 +177,15 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody?
     ) {
-        // TODO: move this to trackEvent if it still exist after removal* of tracking
-        CIODataPipeline.analytics.track(name: name, properties: data)
+        DataPipeline.shared.track(name: name, data: data)
     }
 
     public func track(name: String, data: [String: Any]) {
-        CIODataPipeline.analytics.track(name: name, properties: data)
+        DataPipeline.shared.track(name: name, data: data)
     }
 
     public func screen(name: String, data: [String: Any]) {
-        CIODataPipeline.analytics.screen(title: name, properties: data)
+        DataPipeline.shared.screen(name: name, data: data)
 
         hooks.screenViewHooks.forEach { hook in
             hook.screenViewed(name: name)
@@ -199,7 +196,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         name: String,
         data: RequestBody
     ) {
-        CIODataPipeline.analytics.screen(title: name, properties: data)
+        DataPipeline.shared.screen(name: name, data: data)
 
         hooks.screenViewHooks.forEach { hook in
             hook.screenViewed(name: name)
@@ -211,9 +208,6 @@ class CustomerIOImplementation: CustomerIOInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        // TODO: after the addDeviceAttributes supporting method is created in CDP, move this line to that method
-        CIODataPipeline.analytics.setDeviceToken(deviceToken)
-
         addDeviceAttributes(deviceToken: deviceToken)
     }
 
@@ -222,6 +216,9 @@ class CustomerIOImplementation: CustomerIOInstance {
      */
     // TODO: Segment doesn't provide this method by default needs to get added
     private func addDeviceAttributes(deviceToken: String, customAttributes: [String: Any] = [:]) {
+        // TODO: add support for device attributes in DataPipeline
+        DataPipeline.shared.registerDeviceToken(deviceToken)
+
         logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // no matter what, save the device token for use later. if a customer is identified later,
@@ -282,6 +279,8 @@ class CustomerIOImplementation: CustomerIOInstance {
     public func deleteDeviceToken() {
         logger.info("deleting device token request made")
 
+        DataPipeline.shared.deleteDeviceToken()
+
         guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
             logger.info("no device token exists so ignoring request to delete")
             return // no device token to delete, ignore request
@@ -310,7 +309,6 @@ class CustomerIOImplementation: CustomerIOInstance {
     /**
      Track a push metric
      */
-    // TODO: Segment doesn't provide this method by default needs to get added
     public func trackMetric(
         deliveryID: String,
         event: Metric,
@@ -319,6 +317,8 @@ class CustomerIOImplementation: CustomerIOInstance {
         logger.info("push metric \(event.rawValue)")
 
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
+        DataPipeline.shared.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
 
         _ = backgroundQueue.addTask(
             type: QueueTaskType.trackPushMetric.rawValue,
