@@ -468,6 +468,45 @@ extension DIGraph {
 }
 
 extension DIGraphShared {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
+        _ = globalDataStore
+        countDependenciesResolved += 1
+
+        _ = threadUtil
+        countDependenciesResolved += 1
+
+        _ = deviceMetricsGrabber
+        countDependenciesResolved += 1
+
+        _ = eventListenersRegistry
+        countDependenciesResolved += 1
+
+        _ = eventStorage
+        countDependenciesResolved += 1
+
+        _ = jsonAdapter
+        countDependenciesResolved += 1
+
+        _ = logger
+        countDependenciesResolved += 1
+
+        _ = eventBus
+        countDependenciesResolved += 1
+
+        _ = uIKitWrapper
+        countDependenciesResolved += 1
+
+        _ = sharedKeyValueStorage
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
+    }
+
     // Handle classes annotated with InjectRegisterShared
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
@@ -499,6 +538,26 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
+    // EventListenersRegistry
+    var eventListenersRegistry: EventListenersRegistry {
+        getOverriddenInstance() ??
+            newEventListenersRegistry
+    }
+
+    private var newEventListenersRegistry: EventListenersRegistry {
+        EventListenersManager(eventStorage: eventStorage)
+    }
+
+    // EventStorage
+    var eventStorage: EventStorage {
+        getOverriddenInstance() ??
+            newEventStorage
+    }
+
+    private var newEventStorage: EventStorage {
+        EventStorageManager()
+    }
+
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
         getOverriddenInstance() ??
@@ -517,6 +576,16 @@ extension DIGraphShared {
 
     private var newLogger: Logger {
         SharedConsoleLogger()
+    }
+
+    // EventBus
+    var eventBus: EventBus {
+        getOverriddenInstance() ??
+            newEventBus
+    }
+
+    private var newEventBus: EventBus {
+        SharedEventBus(listenersRegistry: eventListenersRegistry)
     }
 
     // UIKitWrapper

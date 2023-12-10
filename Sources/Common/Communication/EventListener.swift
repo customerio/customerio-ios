@@ -6,9 +6,9 @@ import Foundation
 /// Uses Combine's `PassthroughSubject` to emit events and manage subscriptions.
 /// Allows for type-safe handling of events and supports execution on specified schedulers.
 final class EventListener {
-    private let publisher = PassthroughSubject<EventRepresentable, Never>()
+    private let publisher = PassthroughSubject<any EventRepresentable, Never>()
 
-    func send(_ event: EventRepresentable) {
+    func send(_ event: any EventRepresentable) {
         publisher.send(event)
     }
 

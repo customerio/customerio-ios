@@ -85,6 +85,18 @@ extension DIGraph {
 }
 
 extension DIGraphShared {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
+        _ = inAppProvider
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
+    }
+
     // Handle classes annotated with InjectRegisterShared
     // InAppProvider
     var inAppProvider: InAppProvider {
