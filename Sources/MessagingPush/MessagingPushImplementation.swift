@@ -10,58 +10,38 @@ class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
     let logger: Logger
     let jsonAdapter: JsonAdapter
-    let eventBus: EventBus
-    var subscriptions: Set<AnyCancellable> = []
 
-    var eventStorage: EventStorage
+    private let eventHandlingManager: EventHandlingManager
 
     /// testing init
     init(
         moduleConfig: MessagingPushConfigOptions,
         logger: Logger,
         jsonAdapter: JsonAdapter,
-        eventBus: EventBus,
-        eventStorage: EventStorage
+        eventHandlingManager: EventHandlingManager
     ) {
         self.moduleConfig = moduleConfig
         self.logger = logger
         self.jsonAdapter = jsonAdapter
-        self.eventBus = eventBus
-        self.eventStorage = eventStorage
+        self.eventHandlingManager = eventHandlingManager
     }
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
-        self.eventBus = diGraph.eventBus
-        self.eventStorage = diGraph.eventStorage
+        self.eventHandlingManager = EventHandlingManager(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
 
         handleNewSubscriptionEvent()
     }
 
     private func handleNewSubscriptionEvent() {
-        eventBus.onReceive(NewSubscriptionEvent.self) { [weak self] newSubEvent in
-            guard let self = self else { return }
-            switch newSubEvent.subscribedEventType {
-            case String(describing: TrackMetricEvent.self):
-                self.loadAndSendStoredEvents(ofType: TrackMetricEvent.self)
-            // Add cases for other event types
-            default:
-                break
-            }
-        }.store(in: &subscriptions)
-    }
-
-    private func loadAndSendStoredEvents<E: EventRepresentable>(ofType eventType: E.Type) {
-        do {
-            let key = String(describing: eventType)
-            let storedEvents: [E] = try eventStorage.loadAllEvents(ofType: eventType, withKey: key)
-            storedEvents.forEach { eventBus.send($0) }
-        } catch {
-            // More robust error handling
-            handleEventStorageError(error)
-        }
+        let interestedEventTypes = [
+            TrackMetricEvent.key,
+            RegisterDeviceTokenEvent.key,
+            DeleteDeviceTokenEvent.key
+        ]
+        eventHandlingManager.handleNewSubscriptions(for: interestedEventTypes)
     }
 
     private func handleEventStorageError(_ error: Error) {
@@ -73,33 +53,21 @@ class MessagingPushImplementation: MessagingPushInstance {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.deleteDeviceToken()
 
-        eventBus.send(DeleteDeviceTokenEvent())
+        eventHandlingManager.sendOrSaveEvent(event: DeleteDeviceTokenEvent())
     }
 
     func registerDeviceToken(_ deviceToken: String) {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.registerDeviceToken(deviceToken)
 
-        eventBus.send(RegisterDeviceTokenEvent(token: deviceToken))
+        eventHandlingManager.sendOrSaveEvent(event: RegisterDeviceTokenEvent(token: deviceToken))
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
 
-        eventBus.send(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
-    }
-
-    func sendOrSaveEvent(event: any EventRepresentable) {
-        if eventBus.send(event) == false {
-            let key = String(describing: event.self)
-            do {
-                try eventStorage.store(event: event, forKey: key)
-            } catch {
-                // Handle the error
-                print(error)
-            }
-        }
+        eventHandlingManager.sendOrSaveEvent(event: TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
     }
 
     #if canImport(UserNotifications)

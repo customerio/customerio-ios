@@ -23,7 +23,7 @@ final class EventListenersManager: EventListenersRegistry {
     /// - Parameter eventType: The type of the event.
     /// - Returns: An `EventListener` for the given event type.
     func getOrCreateListener<E: EventRepresentable>(forEventType eventType: E.Type) -> EventListener {
-        let key = String(describing: eventType)
+        let key = eventType.key
         return queue.sync {
             if let existingListener = self.listeners[key] {
                 return existingListener
@@ -39,14 +39,14 @@ final class EventListenersManager: EventListenersRegistry {
     /// - Parameter eventType: The type of the event.
     /// - Returns: An optional `EventListener` for the given event type.
     func getListener<E: EventRepresentable>(forEventType eventType: E.Type) -> EventListener? {
-        let key = String(describing: eventType)
+        let key = eventType.key
         return queue.sync {
             return self.listeners[key]
         }
     }
 
     func hasListener<E: EventRepresentable>(forEventType eventType: E.Type) -> Bool {
-        let key = String(describing: eventType)
+        let key = eventType.key
         return listeners[key] != nil
     }
 }

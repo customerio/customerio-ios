@@ -9,7 +9,19 @@ import Foundation
 /// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
 /// Events include a `params` dictionary for additional data, enhancing flexibility.
 public protocol EventRepresentable: Equatable, Codable {
+    var key: String { get }
     var params: [String: String] { get }
+}
+
+// Default key
+public extension EventRepresentable {
+    static var key: String {
+        String(describing: Self.self)
+    }
+
+    var key: String {
+        Self.key
+    }
 }
 
 public struct ProfileIdentifiedEvent: EventRepresentable {
@@ -77,6 +89,6 @@ public struct NewSubscriptionEvent: EventRepresentable {
     public let subscribedEventType: String
 
     init<E: EventRepresentable>(subscribedEventType: E.Type, params: [String: String] = [:]) {
-        self.subscribedEventType = String(describing: subscribedEventType)
+        self.subscribedEventType = E.key
     }
 }
