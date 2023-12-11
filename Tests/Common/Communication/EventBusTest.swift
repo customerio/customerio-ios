@@ -80,7 +80,7 @@ extension EventBusTests {
         .store(in: &subscriptions)
 
         // when
-        eventBus.send(ScreenViewedEvent(params: expectedParams, name: "Planets"))
+        eventBus.send(ScreenViewedEvent(name: "Planets", params: expectedParams))
 
         // then
         waitForExpectations(timeout: 10)
