@@ -74,7 +74,7 @@ public struct DeleteDeviceTokenEvent: EventRepresentable {
 
 public struct NewSubscriptionEvent: EventRepresentable {
     public var params: [String: String] = [:]
-    let subscribedEventType: String
+    public let subscribedEventType: String
 
     init<E: EventRepresentable>(subscribedEventType: E.Type, params: [String: String] = [:]) {
         self.subscribedEventType = String(describing: subscribedEventType)

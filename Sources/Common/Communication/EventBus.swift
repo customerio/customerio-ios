@@ -61,7 +61,7 @@ public protocol EventBus: AnyObject {
 
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
-class SharedEventBus: EventBus {
+public class SharedEventBus: EventBus {
     private var listenersRegistry: EventListenersRegistry
 
     /// Initializes a new instance of `SharedEventBus`.

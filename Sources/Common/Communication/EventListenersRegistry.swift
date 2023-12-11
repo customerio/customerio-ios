@@ -1,6 +1,6 @@
 import Foundation
 
-protocol EventListenersRegistry {
+public protocol EventListenersRegistry {
     func getOrCreateListener<E: EventRepresentable>(forEventType eventType: E.Type) -> EventListener
     func getListener<E: EventRepresentable>(forEventType eventType: E.Type) -> EventListener?
     func hasListener<E: EventRepresentable>(forEventType eventType: E.Type) -> Bool
