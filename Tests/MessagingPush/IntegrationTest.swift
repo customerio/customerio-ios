@@ -6,6 +6,10 @@ class IntegrationTest: SharedTests.IntegrationTest {
     private let notificationCenterMock = UserNotificationCenterMock()
 
     override func setUp() {
+        setUp(shouldInitializeModule: true)
+    }
+
+    func setUp(shouldInitializeModule: Bool = true) {
         MessagingPush.resetSharedInstance()
 
         super.setUp()
@@ -17,6 +21,8 @@ class IntegrationTest: SharedTests.IntegrationTest {
         diGraph.override(value: notificationCenterMock, forType: UserNotificationCenter.self)
 
         // Sets up features such as hooks for test to be more realistic to production
-        MessagingPush.initialize()
+        if shouldInitializeModule {
+            MessagingPush.initialize()
+        }
     }
 }

@@ -9,11 +9,9 @@ class MessagignPushTest: IntegrationTest {
     private let automaticPushClickHandlingMock = AutomaticPushClickHandlingMock()
 
     override func setUp() {
-        super.setUp()
+        super.setUp(shouldInitializeModule: false) // we manually initialize module in test functions.
 
         diGraph.override(value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self)
-
-        MessagingPush.resetSharedInstance()
     }
 
     // MARK: initialize
@@ -40,5 +38,20 @@ class MessagignPushTest: IntegrationTest {
 
             XCTAssertEqual(automaticPushClickHandlingMock.startCallsCount, 1)
         }
+    }
+
+    func test_initialize_givenDefaultModuleConfigOptions_expectStartAutoPushClickHandling() {
+        MessagingPush.initialize()
+
+        XCTAssertEqual(automaticPushClickHandlingMock.startCallsCount, 1)
+    }
+
+    func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
+        var givenModuleConfig = MessagingPushConfigOptions()
+        givenModuleConfig.autoPushClickHandling = false
+
+        MessagingPush.initialize(config: givenModuleConfig)
+
+        XCTAssertFalse(automaticPushClickHandlingMock.startCalled)
     }
 }
