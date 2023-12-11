@@ -32,11 +32,7 @@ public class CustomerIOParsedPushPayload {
             cio?.push.link?.url
         }
         set {
-            if cioPush == nil {
-                cio = CioRichPushPayload(push: CioRichPushPayload.Push(link: newValue?.absoluteString, image: nil))
-            } else {
-                cioPush = cioPush?.linkSet(newValue?.absoluteString)
-            }
+            cioPush = cioPush?.linkSet(newValue?.absoluteString)
         }
     }
 
@@ -45,11 +41,7 @@ public class CustomerIOParsedPushPayload {
             cio?.push.image?.url
         }
         set {
-            if cioPush == nil {
-                cio = CioRichPushPayload(push: CioRichPushPayload.Push(link: nil, image: newValue?.absoluteString))
-            } else {
-                cioPush = cioPush?.imageSet(newValue?.absoluteString)
-            }
+            cioPush = cioPush?.imageSet(newValue?.absoluteString)
         }
     }
 

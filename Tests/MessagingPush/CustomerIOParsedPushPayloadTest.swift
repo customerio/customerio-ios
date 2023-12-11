@@ -139,26 +139,50 @@ class CustomerIOParsedPushPayloadTest: UnitTest {
         XCTAssertEqual(given, pushContent.body)
     }
 
-    func test_deepLink_givenSet_expectGetSameValue() {
+    func test_deepLink_givenSimplePush_givenSet_expectIgnoreRequest() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = getValidPushContent(richContent: nil)
+
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        XCTAssertNil(pushContent.deepLink)
+
+        pushContent.deepLink = "cio://\(String.random)".url
+
+        XCTAssertNil(pushContent.deepLink)
+    }
+
+    func test_deepLink_givenRichPush_givenSet_expectGetSameValue() {
         let given = "cio://\(String.random)".url
         let content = UNMutableNotificationContent()
-        content.userInfo = getValidPushContent()
-        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        content.userInfo = getValidPushContent(richContent: CioRichPushPayload(push: CioRichPushPayload.Push(link: nil, image: nil)))
 
-        XCTAssertNotEqual(given, pushContent.deepLink)
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        XCTAssertNil(pushContent.deepLink)
 
         pushContent.deepLink = given
 
         XCTAssertEqual(given, pushContent.deepLink)
     }
 
+    func test_image_givenSimplePush_givenSet_expectIgnoreRequest() {
+        let content = UNMutableNotificationContent()
+        content.userInfo = getValidPushContent(richContent: nil)
+
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        XCTAssertNil(pushContent.image)
+
+        pushContent.image = "https://\(String.random).jpg".url
+
+        XCTAssertNil(pushContent.image)
+    }
+
     func test_image_givenSet_expectGetSameValue() {
         let given = "https://\(String.random).jpg".url
         let content = UNMutableNotificationContent()
-        content.userInfo = getValidPushContent()
-        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        content.userInfo = getValidPushContent(richContent: CioRichPushPayload(push: CioRichPushPayload.Push(link: nil, image: nil)))
 
-        XCTAssertNotEqual(given, pushContent.image)
+        let pushContent = CustomerIOParsedPushPayload.parse(notificationContent: content, jsonAdapter: jsonAdapter)!
+        XCTAssertNil(pushContent.image)
 
         pushContent.image = given
 
