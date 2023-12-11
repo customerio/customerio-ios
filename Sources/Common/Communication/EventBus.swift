@@ -10,7 +10,7 @@ public protocol EventBus: AnyObject {
     ///
     /// - Parameters:
     ///     - event: An instance of the event that conforms to the `EventRepresentable` protocol.
-    func send<E: EventRepresentable>(_ event: E)
+    @discardableResult func send<E: EventRepresentable>(_ event: E) -> Bool
 
     /// Triggers action when EventBus emits an event.
     ///
@@ -30,42 +30,94 @@ public protocol EventBus: AnyObject {
     @discardableResult func onReceive<E: EventRepresentable, S: Scheduler>(_ eventType: E.Type, performOn scheduler: S, action: @escaping (E) -> Void) -> AnyCancellable
 }
 
-/// Main interface for sending events and registering listeners.
+/// `SharedEventBus` is a centralized component that manages event distribution in an application.
+/// It allows for the sending of events and the registration of listeners to handle specific event types.
 ///
-/// Implements `EventTransmittable` protocol, providing methods to send events and register listeners.
-/// Uses `EventListenersRegistry` to manage listeners.
+/// The EventBus follows a publish-subscribe pattern, enabling loose coupling between event producers and consumers.
+///
+/// Usage:
+/// - To send an event: `eventBus.send(myEvent)`
+/// - To listen for an event: `eventBus.onReceive(MyEventType.self) { event in /* handle event */ }`
+///
+/// Important:
+/// - `SharedEventBus` emits `NewSubscriptionEvent` when a new listener subscribes to a specific event type.
+///   This allows other parts of the system to react to changes in event listeners.
+/// - Be cautious when subscribing to `NewSubscriptionEvent` within its own handler.
+///   Creating a new subscription to `NewSubscriptionEvent` in its handler can lead to unintended recursion
+///   and should be avoided to prevent potential infinite loops.
+///
+/// Thread Safety:
+/// - `SharedEventBus` is designed to be thread-safe. It ensures that events are sent and listeners are registered
+///   in a thread-safe manner.
+///
+/// Example:
+/// ```
+/// let eventBus = SharedEventBus(listenersRegistry: ...)
+/// eventBus.onReceive(ProfileIdentifiedEvent.self) { event in
+///     print("Received ProfileIdentifiedEvent with identifier: \(event.identifier)")
+/// }
+/// eventBus.send(ProfileIdentifiedEvent(identifier: "user123"))
+/// ```
+
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
 class SharedEventBus: EventBus {
     private var listenersRegistry: EventListenersRegistry
 
+    /// Initializes a new instance of `SharedEventBus`.
+    ///
+    /// - Parameter listenersRegistry: The registry used to manage listeners for different event types.
     public init(listenersRegistry: EventListenersRegistry) {
         self.listenersRegistry = listenersRegistry
     }
 
-    public func send<E>(_ event: E) where E: EventRepresentable {
-        if let listener = listenersRegistry.getListener(forEventType: E.self) {
-            listener.send(event)
-        } else {
-            listenersRegistry.bufferEvent(event) // Buffer the event
+    /// Sends an event to the corresponding listeners.
+    ///
+    /// - Parameter event: The event to be sent. Must conform to `EventRepresentable`.
+    @discardableResult public func send<E>(_ event: E) -> Bool where E: EventRepresentable {
+        guard let listener = listenersRegistry.getListener(forEventType: E.self) else {
+            return false
         }
+        listener.send(event)
+        return true
     }
 
+    /// Registers a listener for a specific event type and performs the provided action when that event is emitted.
+    ///
+    /// - Parameters:
+    ///   - eventType: The type of event to listen for.
+    ///   - action: The action to perform when an event of the specified type is emitted.
+    /// - Returns: A cancellable instance used to unsubscribe from the event.
     @discardableResult
     public func onReceive<E: EventRepresentable>(_ eventType: E.Type, perform action: @escaping (E) -> Void) -> AnyCancellable {
-        subscribeAndReplay(eventType: eventType, action: action)
+        subscribeAndNotify(eventType: eventType, action: action)
     }
 
+    /// Registers a listener for a specific event type on a specified scheduler and performs the provided action when that event is emitted.
+    ///
+    /// - Parameters:
+    ///   - eventType: The type of event to listen for.
+    ///   - scheduler: The scheduler on which to perform the action.
+    ///   - action: The action to perform when an event of the specified type is emitted.
+    /// - Returns: A cancellable instance used to unsubscribe from the event.
     @discardableResult
     public func onReceive<E: EventRepresentable, S: Scheduler>(_ eventType: E.Type, performOn scheduler: S, action: @escaping (E) -> Void) -> AnyCancellable {
-        subscribeAndReplay(eventType: eventType, scheduler: scheduler, action: action)
+        subscribeAndNotify(eventType: eventType, scheduler: scheduler, action: action)
     }
 
-    private func subscribeAndReplay<E: EventRepresentable>(
+    /// A helper method to manage the subscription and notify about new subscriptions.
+    ///
+    /// - Parameters:
+    ///   - eventType: The type of event to listen for.
+    ///   - scheduler: An optional scheduler on which to perform the action.
+    ///   - action: The action to perform when an event of the specified type is emitted.
+    /// - Returns: A cancellable instance used to unsubscribe from the event.
+    private func subscribeAndNotify<E: EventRepresentable>(
         eventType: E.Type,
         scheduler: (any Scheduler)? = nil, // Optional scheduler
         action: @escaping (E) -> Void
     ) -> AnyCancellable {
+        let isNewListener = !listenersRegistry.hasListener(forEventType: E.self)
         let listener = listenersRegistry.getOrCreateListener(forEventType: E.self)
 
         let subscription: AnyCancellable
@@ -75,8 +127,11 @@ class SharedEventBus: EventBus {
             subscription = listener.registerSubscription(action: action)
         }
 
-        let key = String(describing: E.self)
-        listenersRegistry.replayBufferedEvents(for: key, to: listener)
+        // Prevent emitting NewSubscriptionEvent for its own subscriptions
+        if isNewListener, eventType != NewSubscriptionEvent.self {
+            // Notify about the new subscription
+            send(NewSubscriptionEvent(subscribedEventType: E.self))
+        }
 
         return subscription
     }

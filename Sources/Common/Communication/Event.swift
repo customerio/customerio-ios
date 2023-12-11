@@ -28,3 +28,12 @@ struct TrackMetricEvent: EventRepresentable, Codable {
     let event: String
     let deviceToken: String
 }
+
+struct NewSubscriptionEvent: EventRepresentable, Codable {
+    var params: [String: String] = [:]
+    let subscribedEventType: String
+
+    init<E: EventRepresentable>(subscribedEventType: E.Type) {
+        self.subscribedEventType = String(describing: subscribedEventType)
+    }
+}

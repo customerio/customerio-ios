@@ -545,7 +545,7 @@ extension DIGraphShared {
     }
 
     private var newEventListenersRegistry: EventListenersRegistry {
-        EventListenersManager(eventStorage: eventStorage)
+        EventListenersManager()
     }
 
     // EventStorage
