@@ -4,7 +4,11 @@ import Foundation
 ///
 /// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
 /// Events include a `params` dictionary for additional data, enhancing flexibility.
-public protocol EventRepresentable: Codable, Equatable {
+/// Defines a structure for events in the system.
+///
+/// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
+/// Events include a `params` dictionary for additional data, enhancing flexibility.
+public protocol EventRepresentable: Equatable, Codable {
     var params: [String: String] { get }
 }
 
@@ -36,13 +40,13 @@ public struct ResetEvent: EventRepresentable {
     }
 }
 
-struct TrackMetricEvent: EventRepresentable {
-    var params: [String: String] = [:]
-    let deliveryID: String
-    let event: String
-    let deviceToken: String
+public struct TrackMetricEvent: EventRepresentable {
+    public var params: [String: String] = [:]
+    public let deliveryID: String
+    public let event: String
+    public let deviceToken: String
 
-    init(deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
+    public init(deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
@@ -50,8 +54,26 @@ struct TrackMetricEvent: EventRepresentable {
     }
 }
 
-struct NewSubscriptionEvent: EventRepresentable {
-    var params: [String: String] = [:]
+public struct RegisterDeviceTokenEvent: EventRepresentable {
+    public var params: [String: String] = [:]
+    public let token: String
+
+    public init(token: String, params: [String: String] = [:]) {
+        self.token = token
+        self.params = params
+    }
+}
+
+public struct DeleteDeviceTokenEvent: EventRepresentable {
+    public var params: [String: String] = [:]
+
+    public init(params: [String: String] = [:]) {
+        self.params = params
+    }
+}
+
+public struct NewSubscriptionEvent: EventRepresentable {
+    public var params: [String: String] = [:]
     let subscribedEventType: String
 
     init<E: EventRepresentable>(subscribedEventType: E.Type, params: [String: String] = [:]) {

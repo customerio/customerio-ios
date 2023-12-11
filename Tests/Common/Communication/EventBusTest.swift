@@ -188,7 +188,7 @@ extension EventBusTests {
     func test_send_givenEventOnMainThread_expectEventReceivedOnBackgroundThread() throws {
         // given
         let threadExpectation = expectation(description: "Should receive an event on the background thread")
-        eventBus.onReceive(ResetEvent.self, performOn: DispatchQueue.global(qos: .background)) { _ in
+        eventBus.onReceive(DeleteDeviceTokenEvent.self, performOn: DispatchQueue.global(qos: .background)) { _ in
             if !Thread.current.isMainThread {
                 threadExpectation.fulfill()
             }
@@ -197,7 +197,7 @@ extension EventBusTests {
 
         // when
         DispatchQueue.main.async {
-            self.eventBus.send(ResetEvent())
+            self.eventBus.send(DeleteDeviceTokenEvent())
         }
 
         // then
@@ -264,9 +264,9 @@ extension EventBusTests {
 
     func test_sendEvent_givenSubscribers_expectTrueReturned() throws {
         // given
-        let event = ProfileIdentifiedEvent(identifier: String.random)
-        let eventExpectation = expectation(description: "Expect ProfileIdentifiedEvent to be received")
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { _ in
+        let event = RegisterDeviceTokenEvent(token: String.random)
+        let eventExpectation = expectation(description: "Expect RegisterDeviceTokenEvent to be received")
+        eventBus.onReceive(RegisterDeviceTokenEvent.self) { _ in
             eventExpectation.fulfill()
         }.store(in: &subscriptions)
 
