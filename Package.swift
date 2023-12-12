@@ -43,7 +43,7 @@ let package = Package(
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
         .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
-        .package(name: "Segment", url: "https://github.com/customerio/cdp-analytics-swift.git", .branch("rehan/analytics-integration"))
+        .package(name: "Segment", url: "https://github.com/customerio/cdp-analytics-swift.git", .branch("main"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.

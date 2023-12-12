@@ -21,5 +21,5 @@ Pod::Spec.new do |spec|
   spec.module_name = "CioDataPipelines" # the `import X` name when using SDK in Swift files
   
   # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
-  spec.dependency 'Segment', :git => 'https://github.com/customerio/cdp-analytics-swift.git', :branch => 'rehan/analytics-integration'
+  spec.dependency 'Segment', :git => 'https://github.com/customerio/cdp-analytics-swift.git', :branch => 'main'
 end
