@@ -363,7 +363,10 @@ class CustomerIOImplementation: CustomerIOInstance {
             backgroundQueue.deleteProcessedTask(task)
         case .registerPushToken:
             // TODO: Segment doesn't provide this metohod by default. Needs to be added.
-            print("Register Device Token")
+            guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
+            guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else { return }
+            guard let device = deviceAttributes["device"] as? [String: Any], let token = device["id"] as? String else { return }
+            registerDeviceToken(token)
         case .deletePushToken:
             deleteDeviceToken()
         case .trackPushMetric:
