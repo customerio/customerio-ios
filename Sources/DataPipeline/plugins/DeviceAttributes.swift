@@ -14,8 +14,12 @@ class DeviceAttributes: Plugin {
         guard var workingEvent = event else { return event }
 
         if var context = workingEvent.context?.dictionaryValue, let attributes = attributes {
-            context[keyPath: "device.attributes"] = attributes
             do {
+                if let device = context[keyPath: "device"] as? [String: Any] {
+                    context["device"] = device.mergeWith(attributes)
+                } else {
+                    context["device"] = attributes
+                }
                 workingEvent.context = try JSON(context)
             } catch {
                 analytics?.reportInternalError(error)
