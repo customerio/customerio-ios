@@ -27,9 +27,12 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.identify(userId: identifier, traits: body)
     }
 
-    var registeredDeviceToken: String?
+    var registeredDeviceToken: String? {
+        analytics.find(pluginType: DeviceToken.self)?.token
+    }
 
     func clearIdentify() {
+        deleteDeviceToken()
         analytics.reset()
     }
 
@@ -49,19 +52,51 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.screen(title: name, properties: data)
     }
 
-    var profileAttributes: [String: Any] = [:]
+    var profileAttributes: [String: Any] {
+        get { analytics.traits() ?? [:] }
+        set {
+            let userId = analytics.userId ?? analytics.anonymousId
+            analytics.identify(userId: userId, traits: newValue)
+        }
+    }
 
-    var deviceAttributes: [String: Any] = [:]
+    var deviceAttributes: [String: Any] {
+        get {
+            let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self)
+            return attributesPlugin?.attributes ?? [:]
+        }
+        set {
+            if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
+                attributesPlugin.attributes = newValue
+            } else {
+                let attributesPlugin = DeviceAttributes()
+                attributesPlugin.attributes = newValue
+                analytics.add(plugin: attributesPlugin)
+            }
+        }
+    }
 
     func registerDeviceToken(_ deviceToken: String) {
         analytics.setDeviceToken(deviceToken)
     }
 
     func deleteDeviceToken() {
-        fatalError("will be implemented later")
+        // Remove DeviceToken to prevent attaching the token to every request
+        if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
+            analytics.remove(plugin: tokenPlugin)
+        }
+
+        // Remove DeviceAttributes to avoid attaching attributes to every request.
+        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
+            attributesPlugin.attributes = nil
+            analytics.remove(plugin: attributesPlugin)
+        }
     }
 
-    func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
-        fatalError("will be implemented later")
+    func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
+        // FIXME: [CDP] Update name to match the expectation
+        let name = "Push Metric"
+        let properties = MetricEvent(event: name, metric: event, deliveryId: deliveryID, deliveryToken: deviceToken)
+        analytics.track(name: name, properties: properties)
     }
 }

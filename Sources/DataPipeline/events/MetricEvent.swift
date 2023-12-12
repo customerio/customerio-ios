@@ -17,7 +17,7 @@ class MetricEvent: RawEvent {
 
     public init(event: String, metric: Metric, deliveryId: String, deliveryToken: String) {
         self.event = event
-        // FIXME: Update JSON to match the server's expectation
+        // FIXME: [CDP] Update JSON to match the server's expectation
         let properties = [
             "event": metric.rawValue,
             "deliveryId": deliveryId,
