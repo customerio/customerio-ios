@@ -13,25 +13,15 @@ protocol PushClickHandler: AutoMockable {
 class PushClickHandlerImpl: PushClickHandler {
     private let sdkConfig: SdkConfig
     private let deepLinkUtil: DeepLinkUtil
-    private let pushHistory: PushHistory
     private let customerIO: CustomerIOInstance
 
-    init(sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, pushHistory: PushHistory, customerIO: CustomerIOInstance) {
+    init(sdkConfig: SdkConfig, deepLinkUtil: DeepLinkUtil, customerIO: CustomerIOInstance) {
         self.sdkConfig = sdkConfig
         self.deepLinkUtil = deepLinkUtil
-        self.pushHistory = pushHistory
         self.customerIO = customerIO
     }
 
     func pushClicked(_ parsedPush: CustomerIOParsedPushPayload) {
-        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
-            // push has already been handled. exit early
-            return
-        }
-        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
-
-        // Now we are ready to handle the push click.
-
         // Track metrics
         if sdkConfig.autoTrackPushEvents {
             customerIO.trackMetric(deliveryID: parsedPush.deliveryId, event: .opened, deviceToken: parsedPush.deviceToken)

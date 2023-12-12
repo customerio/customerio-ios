@@ -2,8 +2,11 @@ import CioInternalCommon
 import Foundation
 
 protocol PushHistory: AutoMockable {
-    func hasHandledPushClick(deliveryId: String) -> Bool
-    func handledPushClick(deliveryId: String)
+    func hasHandledPushDidReceive(pushId: String) -> Bool
+    func didHandlePushDidReceive(pushId: String)
+
+    func hasHandledPushWillPresent(pushId: String) -> Bool
+    func didHandlePushWillPresent(pushId: String)
 }
 
 // sourcery: InjectRegister = "PushHistory"
@@ -13,44 +16,59 @@ class PushHistoryImpl: PushHistory {
 
     var maxSizeOfHistory = 100
 
-    // internal getter for tests to access
-    private(set) var lastPushesClicked: [String] {
-        get {
-            let stringRepresentationOfArray = keyValueStorage.string(.pushNotificationsClicked) ?? ""
-
-            return stringRepresentationOfArray.split(separator: ",").map { String($0) }
-        }
-        set {
-            let stringRepresentationOfArray = newValue.joined(separator: ",")
-            keyValueStorage.setString(stringRepresentationOfArray, forKey: .pushNotificationsClicked)
-        }
-    }
-
     init(keyValueStorage: KeyValueStorage, lockManager: LockManager) {
         self.keyValueStorage = keyValueStorage
         self.lock = lockManager.getLock(id: .pushHistory)
     }
 
-    func hasHandledPushClick(deliveryId: String) -> Bool {
+    func hasHandledPushDidReceive(pushId: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
-        return lastPushesClicked.contains(deliveryId)
+        return getHistory(for: .pushNotificationsHandledDidReceive).contains(pushId)
     }
 
-    func handledPushClick(deliveryId: String) {
+    func hasHandledPushWillPresent(pushId: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
-        var clickHistory = lastPushesClicked
+        return getHistory(for: .pushNotificationsHandledWillPresent).contains(pushId)
+    }
+
+    func didHandlePushDidReceive(pushId: String) {
+        sharedDidHandle(pushId: pushId, historyKey: .pushNotificationsHandledDidReceive)
+    }
+
+    func didHandlePushWillPresent(pushId: String) {
+        sharedDidHandle(pushId: pushId, historyKey: .pushNotificationsHandledWillPresent)
+    }
+}
+
+extension PushHistoryImpl {
+    private func sharedDidHandle(pushId: String, historyKey: KeyValueStorageKey) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var clickHistory = getHistory(for: historyKey)
 
         if clickHistory.count >= maxSizeOfHistory {
             // Remove oldest push click from history.
             clickHistory = Array(clickHistory.dropFirst())
         }
 
-        clickHistory.append(deliveryId)
+        clickHistory.append(pushId)
 
-        lastPushesClicked = clickHistory
+        setHistory(clickHistory, for: historyKey)
+    }
+
+    private func getHistory(for key: KeyValueStorageKey) -> [String] {
+        let stringRepresentationOfArray = keyValueStorage.string(key) ?? ""
+
+        return stringRepresentationOfArray.split(separator: ",").map { String($0) }
+    }
+
+    private func setHistory(_ history: [String], for key: KeyValueStorageKey) {
+        let stringRepresentationOfArray = history.joined(separator: ",")
+        keyValueStorage.setString(stringRepresentationOfArray, forKey: key)
     }
 }

@@ -613,74 +613,142 @@ class PushHistoryMock: PushHistory, Mock {
     }
 
     public func resetMock() {
-        hasHandledPushClickCallsCount = 0
-        hasHandledPushClickReceivedArguments = nil
-        hasHandledPushClickReceivedInvocations = []
+        hasHandledPushDidReceiveCallsCount = 0
+        hasHandledPushDidReceiveReceivedArguments = nil
+        hasHandledPushDidReceiveReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        handledPushClickCallsCount = 0
-        handledPushClickReceivedArguments = nil
-        handledPushClickReceivedInvocations = []
+        didHandlePushDidReceiveCallsCount = 0
+        didHandlePushDidReceiveReceivedArguments = nil
+        didHandlePushDidReceiveReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        hasHandledPushWillPresentCallsCount = 0
+        hasHandledPushWillPresentReceivedArguments = nil
+        hasHandledPushWillPresentReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        didHandlePushWillPresentCallsCount = 0
+        didHandlePushWillPresentReceivedArguments = nil
+        didHandlePushWillPresentReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - hasHandledPushClick
+    // MARK: - hasHandledPushDidReceive
 
     /// Number of times the function was called.
-    private(set) var hasHandledPushClickCallsCount = 0
+    private(set) var hasHandledPushDidReceiveCallsCount = 0
     /// `true` if the function was ever called.
-    var hasHandledPushClickCalled: Bool {
-        hasHandledPushClickCallsCount > 0
+    var hasHandledPushDidReceiveCalled: Bool {
+        hasHandledPushDidReceiveCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var hasHandledPushClickReceivedArguments: String?
+    private(set) var hasHandledPushDidReceiveReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var hasHandledPushClickReceivedInvocations: [String] = []
+    private(set) var hasHandledPushDidReceiveReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
-    var hasHandledPushClickReturnValue: Bool!
+    var hasHandledPushDidReceiveReturnValue: Bool!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `hasHandledPushClickReturnValue`
+     then the mock will attempt to return the value for `hasHandledPushDidReceiveReturnValue`
      */
-    var hasHandledPushClickClosure: ((String) -> Bool)?
+    var hasHandledPushDidReceiveClosure: ((String) -> Bool)?
 
-    /// Mocked function for `hasHandledPushClick(deliveryId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func hasHandledPushClick(deliveryId: String) -> Bool {
+    /// Mocked function for `hasHandledPushDidReceive(pushId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func hasHandledPushDidReceive(pushId: String) -> Bool {
         mockCalled = true
-        hasHandledPushClickCallsCount += 1
-        hasHandledPushClickReceivedArguments = deliveryId
-        hasHandledPushClickReceivedInvocations.append(deliveryId)
-        return hasHandledPushClickClosure.map { $0(deliveryId) } ?? hasHandledPushClickReturnValue
+        hasHandledPushDidReceiveCallsCount += 1
+        hasHandledPushDidReceiveReceivedArguments = pushId
+        hasHandledPushDidReceiveReceivedInvocations.append(pushId)
+        return hasHandledPushDidReceiveClosure.map { $0(pushId) } ?? hasHandledPushDidReceiveReturnValue
     }
 
-    // MARK: - handledPushClick
+    // MARK: - didHandlePushDidReceive
 
     /// Number of times the function was called.
-    private(set) var handledPushClickCallsCount = 0
+    private(set) var didHandlePushDidReceiveCallsCount = 0
     /// `true` if the function was ever called.
-    var handledPushClickCalled: Bool {
-        handledPushClickCallsCount > 0
+    var didHandlePushDidReceiveCalled: Bool {
+        didHandlePushDidReceiveCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var handledPushClickReceivedArguments: String?
+    private(set) var didHandlePushDidReceiveReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var handledPushClickReceivedInvocations: [String] = []
+    private(set) var didHandlePushDidReceiveReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var handledPushClickClosure: ((String) -> Void)?
+    var didHandlePushDidReceiveClosure: ((String) -> Void)?
 
-    /// Mocked function for `handledPushClick(deliveryId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func handledPushClick(deliveryId: String) {
+    /// Mocked function for `didHandlePushDidReceive(pushId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func didHandlePushDidReceive(pushId: String) {
         mockCalled = true
-        handledPushClickCallsCount += 1
-        handledPushClickReceivedArguments = deliveryId
-        handledPushClickReceivedInvocations.append(deliveryId)
-        handledPushClickClosure?(deliveryId)
+        didHandlePushDidReceiveCallsCount += 1
+        didHandlePushDidReceiveReceivedArguments = pushId
+        didHandlePushDidReceiveReceivedInvocations.append(pushId)
+        didHandlePushDidReceiveClosure?(pushId)
+    }
+
+    // MARK: - hasHandledPushWillPresent
+
+    /// Number of times the function was called.
+    private(set) var hasHandledPushWillPresentCallsCount = 0
+    /// `true` if the function was ever called.
+    var hasHandledPushWillPresentCalled: Bool {
+        hasHandledPushWillPresentCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var hasHandledPushWillPresentReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var hasHandledPushWillPresentReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
+    var hasHandledPushWillPresentReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `hasHandledPushWillPresentReturnValue`
+     */
+    var hasHandledPushWillPresentClosure: ((String) -> Bool)?
+
+    /// Mocked function for `hasHandledPushWillPresent(pushId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func hasHandledPushWillPresent(pushId: String) -> Bool {
+        mockCalled = true
+        hasHandledPushWillPresentCallsCount += 1
+        hasHandledPushWillPresentReceivedArguments = pushId
+        hasHandledPushWillPresentReceivedInvocations.append(pushId)
+        return hasHandledPushWillPresentClosure.map { $0(pushId) } ?? hasHandledPushWillPresentReturnValue
+    }
+
+    // MARK: - didHandlePushWillPresent
+
+    /// Number of times the function was called.
+    private(set) var didHandlePushWillPresentCallsCount = 0
+    /// `true` if the function was ever called.
+    var didHandlePushWillPresentCalled: Bool {
+        didHandlePushWillPresentCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var didHandlePushWillPresentReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var didHandlePushWillPresentReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var didHandlePushWillPresentClosure: ((String) -> Void)?
+
+    /// Mocked function for `didHandlePushWillPresent(pushId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func didHandlePushWillPresent(pushId: String) {
+        mockCalled = true
+        didHandlePushWillPresentCallsCount += 1
+        didHandlePushWillPresentReceivedArguments = pushId
+        didHandlePushWillPresentReceivedInvocations.append(pushId)
+        didHandlePushWillPresentClosure?(pushId)
     }
 }
 
