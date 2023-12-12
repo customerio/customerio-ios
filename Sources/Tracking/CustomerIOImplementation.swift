@@ -365,11 +365,10 @@ class CustomerIOImplementation: CustomerIOInstance {
             // TODO: Segment doesn't provide this metohod by default. Needs to be added.
             print("Register Device Token")
         case .deletePushToken:
-            // TODO: Segment doesn't provide this method by default needs to get added
-            print("Delete Push Token")
+            deleteDeviceToken()
         case .trackPushMetric:
-            // TODO: Segment doesn't provide this method by default needs to get added
-            print("Track Push Metrics")
+            guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else { return }
+            trackMetric(deliveryID: trackPushTaskData.deliveryId, event: trackPushTaskData.event, deviceToken: trackPushTaskData.deviceToken)
         }
     }
 }
