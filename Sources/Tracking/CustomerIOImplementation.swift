@@ -335,7 +335,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         backgroundQueue.getAllStoredTasks()
     }
 
-    // TODO: Pending: Clean this method
+    // TODO: Pending: Clean this method + device attributes + clean individual way to delete processed tasks
     func getStoredTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
@@ -343,7 +343,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         switch taskDetail.taskType {
         case .trackDeliveryMetric:
             // TODO: Segment doesn't provide this method by default needs to get added
-            print("Track Delivery Metrics")
+            print("Track Delivery Metrics for in-app - Needs discussion/help")
         case .identifyProfile:
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
@@ -362,16 +362,18 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
             backgroundQueue.deleteProcessedTask(task)
         case .registerPushToken:
-            // TODO: Segment doesn't provide this metohod by default. Needs to be added.
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
             guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else { return }
             guard let device = deviceAttributes["device"] as? [String: Any], let token = device["id"] as? String else { return }
             registerDeviceToken(token)
+            backgroundQueue.deleteProcessedTask(task)
         case .deletePushToken:
             deleteDeviceToken()
+            backgroundQueue.deleteProcessedTask(task)
         case .trackPushMetric:
             guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else { return }
             trackMetric(deliveryID: trackPushTaskData.deliveryId, event: trackPushTaskData.event, deviceToken: trackPushTaskData.deviceToken)
+            backgroundQueue.deleteProcessedTask(task)
         }
     }
 }
