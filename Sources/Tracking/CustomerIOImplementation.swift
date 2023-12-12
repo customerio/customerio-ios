@@ -348,7 +348,7 @@ class CustomerIOImplementation: CustomerIOInstance {
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
             }
-            guard let profileAttributes: [String: Any] = jsonAdapter.convertToStringAnyDictionary(trackTaskData.attributesJsonString!) else { return }
+            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else { return }
             identify(identifier: trackTaskData.identifier, body: profileAttributes)
             backgroundQueue.deleteProcessedTask(task)
         case .trackEvent:

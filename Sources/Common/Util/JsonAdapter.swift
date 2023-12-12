@@ -86,7 +86,7 @@ public class JsonAdapter {
         return nil
     }
 
-    public func convertToStringAnyDictionary(_ jsonString: String) -> [String: Any]? {
+    public func fromJsonString(_ jsonString: String) -> [String: Any]? {
         do {
             let jsonData = Data(jsonString.utf8)
 
