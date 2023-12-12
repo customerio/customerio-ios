@@ -32,6 +32,8 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func clearIdentify() {
+        // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
+        // we had to call this explicitly. Rethink on how can we make one call for both customers.
         deleteDeviceToken()
         analytics.reset()
     }
@@ -81,12 +83,12 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func deleteDeviceToken() {
-        // Remove DeviceToken to prevent attaching the token to every request
+        // Remove DeviceToken plugin to prevent attaching the token to every request
         if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
             analytics.remove(plugin: tokenPlugin)
         }
 
-        // Remove DeviceAttributes to avoid attaching attributes to every request.
+        // Remove DeviceAttributes plugin to avoid attaching attributes to every request.
         if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
             attributesPlugin.attributes = nil
             analytics.remove(plugin: attributesPlugin)
