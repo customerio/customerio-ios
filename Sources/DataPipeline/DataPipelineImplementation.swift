@@ -71,6 +71,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
                 attributesPlugin.attributes = newValue
             } else {
+                // TODO: [CDP] Verify with server's expectation
                 let attributesPlugin = DeviceAttributes()
                 attributesPlugin.attributes = newValue
                 analytics.add(plugin: attributesPlugin)
