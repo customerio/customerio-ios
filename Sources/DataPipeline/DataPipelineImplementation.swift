@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Segment
 
-class DataPipelineImplementation: CustomerIOInstance {
+class DataPipelineImplementation: DataPipelineInstance {
     let moduleConfig: DataPipelineConfigOptions
     let logger: Logger
     let analytics: Analytics
@@ -24,29 +24,29 @@ class DataPipelineImplementation: CustomerIOInstance {
     }
 
     func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        fatalError("will be implemented later")
+        analytics.identify(userId: identifier, traits: body)
     }
 
     var registeredDeviceToken: String?
 
     func clearIdentify() {
-        fatalError("will be implemented later")
+        analytics.reset()
     }
 
     func track(name: String, data: [String: Any]) {
-        fatalError("will be implemented later")
+        analytics.track(name: name, properties: data)
     }
 
     func track<RequestBody: Codable>(name: String, data: RequestBody?) {
-        fatalError("will be implemented later")
+        analytics.track(name: name, properties: data)
     }
 
     func screen(name: String, data: [String: Any]) {
-        fatalError("will be implemented later")
+        analytics.screen(title: name, properties: data)
     }
 
     func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
-        fatalError("will be implemented later")
+        analytics.screen(title: name, properties: data)
     }
 
     var profileAttributes: [String: Any] = [:]
@@ -54,7 +54,7 @@ class DataPipelineImplementation: CustomerIOInstance {
     var deviceAttributes: [String: Any] = [:]
 
     func registerDeviceToken(_ deviceToken: String) {
-        fatalError("will be implemented later")
+        analytics.setDeviceToken(deviceToken)
     }
 
     func deleteDeviceToken() {

@@ -8,66 +8,66 @@ import Segment
 public extension CustomerIO {
     /// Enable/Disable analytics capture
     var enabled: Bool {
-        CIODataPipeline.analytics.enabled
+        DataPipeline.shared.analytics.enabled
     }
 
     /// Returns the anonymousId currently in use.
     var anonymousId: String {
-        CIODataPipeline.analytics.anonymousId
+        DataPipeline.shared.analytics.anonymousId
     }
 
     /// Returns the userId that was specified in the last identify call.
     var userId: String? {
-        CIODataPipeline.analytics.userId
+        DataPipeline.shared.analytics.userId
     }
 
     /// Returns the current operating mode this instance was given.
     var operatingMode: OperatingMode {
-        CIODataPipeline.analytics.operatingMode
+        DataPipeline.shared.analytics.operatingMode
     }
 
     /// Adjusts the flush interval post configuration.
     var flushInterval: TimeInterval {
-        CIODataPipeline.analytics.flushInterval
+        DataPipeline.shared.analytics.flushInterval
     }
 
     /// Adjusts the flush-at count post configuration.
     var flushAt: Int {
-        CIODataPipeline.analytics.flushAt
+        DataPipeline.shared.analytics.flushAt
     }
 
     /// Returns a list of currently active flush policies.
     var flushPolicies: [FlushPolicy] {
-        CIODataPipeline.analytics.flushPolicies
+        DataPipeline.shared.analytics.flushPolicies
     }
 
     /// Returns the traits that were specified in the last identify call.
     func traits<T: Codable>() -> T? {
-        CIODataPipeline.analytics.traits()
+        DataPipeline.shared.analytics.traits()
     }
 
     /// Returns the traits that were specified in the last identify call, as a dictionary.
     func traits() -> [String: Any]? {
-        CIODataPipeline.analytics.traits()
+        DataPipeline.shared.analytics.traits()
     }
 
     /// Tells this instance of Analytics to flush any queued events up to Segment.com.  This command will also
     /// be sent to each plugin present in the system.  A completion handler can be optionally given and will be
     /// called when flush has completed.
     func flush(completion: (() -> Void)? = nil) {
-        CIODataPipeline.analytics.flush(completion: completion)
+        DataPipeline.shared.analytics.flush(completion: completion)
     }
 
     /// Resets this instance of Analytics to a clean slate.  Traits, UserID's, anonymousId, etc are all cleared or reset.  This
     /// command will also be sent to each plugin present in the system.
     func reset() {
-        CIODataPipeline.analytics.reset()
+        DataPipeline.shared.analytics.reset()
     }
 
     /// Retrieve the version of this library in use.
     /// - Returns: A string representing the version in "BREAKING.FEATURE.FIX" format.
     func version() -> String {
-        CIODataPipeline.analytics.version()
+        DataPipeline.shared.analytics.version()
     }
 }
 
@@ -75,7 +75,7 @@ public extension CustomerIO {
     /// Manually retrieve the settings that were supplied from Segment.com.
     /// - Returns: A Settings object containing integration settings, tracking plan, etc.
     func settings() -> Settings? {
-        CIODataPipeline.analytics.settings()
+        DataPipeline.shared.analytics.settings()
     }
 
     /// Manually enable a destination plugin.  This is useful when a given DestinationPlugin doesn't have any Segment tie-ins at all.
@@ -83,29 +83,29 @@ public extension CustomerIO {
     /// - Parameters:
     ///   - plugin: The destination plugin to enable.
     func manuallyEnableDestination(plugin: DestinationPlugin) {
-        CIODataPipeline.analytics.manuallyEnableDestination(plugin: plugin)
+        DataPipeline.shared.analytics.manuallyEnableDestination(plugin: plugin)
     }
 }
 
 public extension CustomerIO {
     /// Determine if there are any events that have yet to be sent to Segment
     var hasUnsentEvents: Bool {
-        CIODataPipeline.analytics.hasUnsentEvents
+        DataPipeline.shared.analytics.hasUnsentEvents
     }
 
     /// Provides a list of finished, but unsent events.
     var pendingUploads: [URL]? {
-        CIODataPipeline.analytics.pendingUploads
+        DataPipeline.shared.analytics.pendingUploads
     }
 
     /// Purge all pending event upload files.
     func purgeStorage() {
-        CIODataPipeline.analytics.purgeStorage()
+        DataPipeline.shared.analytics.purgeStorage()
     }
 
     /// Purge a single event upload file.
     func purgeStorage(fileURL: URL) {
-        CIODataPipeline.analytics.purgeStorage(fileURL: fileURL)
+        DataPipeline.shared.analytics.purgeStorage(fileURL: fileURL)
     }
 
     /// Wait until the Analytics object has completed startup.
@@ -114,7 +114,7 @@ public extension CustomerIO {
     /// before executing commands.  GUI apps could potentially use this via
     /// a background thread if needed.
     func waitUntilStarted() {
-        CIODataPipeline.analytics.waitUntilStarted()
+        DataPipeline.shared.analytics.waitUntilStarted()
     }
 }
 
@@ -134,7 +134,7 @@ public extension CustomerIO {
      ```
      */
     func openURL<T: Codable>(_ url: URL, options: T? = nil) {
-        CIODataPipeline.analytics.openURL(url, options: options)
+        DataPipeline.shared.analytics.openURL(url, options: options)
     }
 
     /**
@@ -151,7 +151,7 @@ public extension CustomerIO {
      ```
      */
     func openURL(_ url: URL, options: [String: Any] = [:]) {
-        CIODataPipeline.analytics.openURL(url, options: options)
+        DataPipeline.shared.analytics.openURL(url, options: options)
     }
 }
 

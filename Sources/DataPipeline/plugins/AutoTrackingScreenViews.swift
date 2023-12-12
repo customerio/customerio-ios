@@ -1,12 +1,49 @@
 import CioInternalCommon
 import Foundation
+import Segment
 #if canImport(UIKit)
 import UIKit
+#endif
 
 // screen view tracking is not available for notification service extension. disable all functions having to deal with
 // screen view tracking feature.
 @available(iOSApplicationExtension, unavailable)
-extension CustomerIO {
+public class AutoTrackingScreenViews: UtilityPlugin {
+    public let type = PluginType.utility
+
+    public var analytics: Segment.Analytics?
+    public var diGraph = DIGraphShared.shared
+
+    static let notificationName = Notification.Name(rawValue: "AutoTrackingScreenViewsNotification")
+    static let screenNameKey = "name"
+
+    #if canImport(UIKit)
+    /**
+     Filter automatic screenview events to remove events that are irrelevant to your app.
+
+     Return `true` from function if you would like the screenview event to be tracked.
+
+     Default: `nil`, which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
+     */
+    public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
+    #endif
+
+    /**
+     Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
+     this to override our defaults and pass custom values in the body of the `screen` event
+     */
+    public var autoScreenViewBody: (() -> [String: Any])?
+
+    public init(
+        filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil,
+
+        autoScreenViewBody: (() -> [String: Any])? = nil
+    ) {
+        self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
+        self.autoScreenViewBody = autoScreenViewBody
+        setupAutoScreenviewTracking()
+    }
+
     func setupAutoScreenviewTracking() {
         swizzle(
             forClass: UIViewController.self,
@@ -25,19 +62,17 @@ extension CustomerIO {
         guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
+}
 
+extension AutoTrackingScreenViews {
     func performScreenTracking(onViewController viewController: UIViewController) {
-        guard let diGraph = diGraph else {
-            return // SDK not initialized yet. Therefore, we ignore event.
-        }
-
         guard let name = viewController.getNameForAutomaticScreenViewTracking() else {
             diGraph.logger.info("Automatic screenview tracking event ignored for \(viewController). Could not determine name to use for screen.")
             return
         }
 
         // Before we track event, apply a filter to remove events that could be unhelpful.
-        let customerOverridenFilter = diGraph.sdkConfig.filterAutoScreenViewEvents
+        let customerOverridenFilter = filterAutoScreenViewEvents
         let defaultSdkFilter: (UIViewController) -> Bool = { viewController in
             let isViewFromApple = viewController.bundleIdOfView?.hasPrefix("com.apple") ?? false
 
@@ -58,8 +93,8 @@ extension CustomerIO {
             return // event has been filtered out. Ignore it.
         }
 
-        let addionalScreenViewData = CustomerIOImplementation.autoScreenViewBody?() ?? [:]
-        screen(name: name, data: addionalScreenViewData)
+        let addionalScreenViewData = autoScreenViewBody?() ?? [:]
+        analytics?.screen(title: name, properties: addionalScreenViewData)
     }
 }
 
@@ -91,7 +126,10 @@ extension UIViewController {
             return
         }
 
-        CustomerIO.shared.performScreenTracking(onViewController: viewController)
+        // find if AutoTrackingScreenViews plugin was added, if so ask it to perform tracking
+        if let screenTrackingPlugin = DataPipeline.shared.analytics.find(pluginType: AutoTrackingScreenViews.self) {
+            screenTrackingPlugin.performScreenTracking(onViewController: viewController)
+        }
     }
 
     func getNameForAutomaticScreenViewTracking() -> String? {
@@ -157,11 +195,3 @@ extension UIViewController {
         return nil
     }
 }
-
-#else
-extension CustomerIOImplementation {
-    func setupAutoScreenviewTracking() {
-        // XXX: log warning that tracking is not available
-    }
-}
-#endif
