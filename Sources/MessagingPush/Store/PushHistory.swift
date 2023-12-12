@@ -36,16 +36,16 @@ class PushHistoryImpl: PushHistory {
     }
 
     func didHandlePushDidReceive(pushId: String) {
-        sharedDidHandle(pushId: pushId, historyKey: .pushNotificationsHandledDidReceive)
+        didHandle(pushId: pushId, historyKey: .pushNotificationsHandledDidReceive)
     }
 
     func didHandlePushWillPresent(pushId: String) {
-        sharedDidHandle(pushId: pushId, historyKey: .pushNotificationsHandledWillPresent)
+        didHandle(pushId: pushId, historyKey: .pushNotificationsHandledWillPresent)
     }
 }
 
 extension PushHistoryImpl {
-    private func sharedDidHandle(pushId: String, historyKey: KeyValueStorageKey) {
+    private func didHandle(pushId: String, historyKey: KeyValueStorageKey) {
         lock.lock()
         defer { lock.unlock() }
 

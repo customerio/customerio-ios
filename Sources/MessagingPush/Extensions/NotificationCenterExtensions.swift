@@ -19,6 +19,7 @@ extension UNNotificationResponse {
 
 extension UNNotification {
     var pushId: String {
+        // Unique ID for each push notification.
         request.identifier
     }
 }
