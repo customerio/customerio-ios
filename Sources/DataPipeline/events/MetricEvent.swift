@@ -1,6 +1,7 @@
 import CioInternalCommon
 import Segment
 
+/// An extension of Segment's RawEvent to track push and in-app metrics
 class MetricEvent: RawEvent {
     public var type: String? = "track"
     public var anonymousId: String?

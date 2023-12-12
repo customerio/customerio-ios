@@ -1,6 +1,7 @@
 import CioInternalCommon
 import Segment
 
+/// Plugin class that adds device attributes to Segment requests
 class DeviceAttributes: Plugin {
     public let type = PluginType.before
     public weak var analytics: Analytics?
