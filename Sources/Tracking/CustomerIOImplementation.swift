@@ -202,7 +202,7 @@ class CustomerIOImplementation: CustomerIOInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        logger.info("registering device token \(deviceToken)")
+        logger.info("initiating device token registration for \(deviceToken)")
         // if the request is not forwarded to DataPipeline, make sure to save the device token for later use.
         // so if a customer is identified later, we can reference the token and register it to a new profile.
 
@@ -237,7 +237,7 @@ class CustomerIOImplementation: CustomerIOInstance {
      */
     // TODO: Segment doesn't provide this method by default needs to get added
     public func deleteDeviceToken() {
-        logger.info("deleting device token")
+        logger.info("initiating request to delete device token")
 
         guard (globalDataStore.pushDeviceToken) != nil else {
             logger.info("no device token exists so ignoring request to delete")
