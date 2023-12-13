@@ -140,6 +140,8 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func deleteDeviceToken() {
+        logger.info("deleting device token request made")
+
         removeDevicePlugins()
     }
 
@@ -148,11 +150,13 @@ class DataPipelineImplementation: DataPipelineInstance {
         // Remove DeviceToken plugin to prevent attaching the token to every request
         if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
             analytics.remove(plugin: tokenPlugin)
+            logger.info("DeviceToken plugin removed")
         }
 
         // Remove DeviceAttributes plugin to avoid attaching attributes to every request.
         if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
             analytics.remove(plugin: attributesPlugin)
+            logger.info("DeviceAttributes plugin removed")
         }
     }
 

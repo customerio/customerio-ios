@@ -210,33 +210,7 @@ class CustomerIOImplementation: CustomerIOInstance {
      */
     // TODO: Segment doesn't provide this method by default needs to get added
     public func deleteDeviceToken() {
-        logger.info("deleting device token request made")
-
         DataPipeline.shared.deleteDeviceToken()
-
-        guard let existingDeviceToken = globalDataStore.pushDeviceToken else {
-            logger.info("no device token exists so ignoring request to delete")
-            return // no device token to delete, ignore request
-        }
-        // Do not delete push token from device storage. The token is valid
-        // once given to SDK. We need it for future profile identifications.
-
-        guard let identifiedProfileId = profileStore.identifier else {
-            logger.info("no profile identified so not removing device token from profile")
-            return // no profile to delete token from, ignore request
-        }
-
-        _ = backgroundQueue.addTask(
-            type: QueueTaskType.deletePushToken.rawValue,
-            data: DeletePushNotificationQueueTaskData(
-                profileIdentifier: identifiedProfileId,
-                deviceToken: existingDeviceToken
-            ),
-            blockingGroups: [
-                .registeredPushToken(token: existingDeviceToken),
-                .identifiedProfile(identifier: identifiedProfileId)
-            ]
-        )
     }
 
     /**
