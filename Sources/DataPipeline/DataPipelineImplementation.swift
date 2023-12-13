@@ -2,14 +2,24 @@ import CioInternalCommon
 import Segment
 
 class DataPipelineImplementation: DataPipelineInstance {
-    let moduleConfig: DataPipelineConfigOptions
-    let logger: Logger
+    private let moduleConfig: DataPipelineConfigOptions
+    private let logger: Logger
     let analytics: Analytics
+
+    private var globalDataStore: GlobalDataStore
+    // private let deviceAttributesProvider: DeviceAttributesProvider
+    private let dateUtil: DateUtil
+    private let deviceInfo: DeviceInfo
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
+
+        self.globalDataStore = diGraph.globalDataStore
+        // self.deviceAttributesProvider = diGraph.deviceAttributesProvider
+        self.dateUtil = diGraph.dateUtil
+        self.deviceInfo = diGraph.deviceInfo
     }
 
     // Code below this line will be updated in later PRs
@@ -68,18 +78,18 @@ class DataPipelineImplementation: DataPipelineInstance {
             return attributesPlugin?.attributes ?? [:]
         }
         set {
-            if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
-                attributesPlugin.attributes = newValue
-            } else {
-                // TODO: [CDP] Verify with server's expectation
-                let attributesPlugin = DeviceAttributes()
-                attributesPlugin.attributes = newValue
-                analytics.add(plugin: attributesPlugin)
-            }
+            addDeviceAttributes(newValue)
         }
     }
 
     func registerDeviceToken(_ deviceToken: String) {
+        logger.info("registering device token \(deviceToken)")
+        logger.debug("storing device token to device storage \(deviceToken)")
+        // save the device token for later use.
+        // segment plugin doesn't store token anywhere so we need to pass token to it every time
+        // storing it so we can reference the token and register on app relaunch
+        globalDataStore.pushDeviceToken = deviceToken
+
         analytics.setDeviceToken(deviceToken)
     }
 
@@ -94,6 +104,39 @@ class DataPipelineImplementation: DataPipelineInstance {
             attributesPlugin.attributes = nil
             analytics.remove(plugin: attributesPlugin)
         }
+    }
+
+    /**
+     Adds device default and custom attributes using DeviceAttributes plugin
+     */
+    private func addDeviceAttributes(_ customAttributes: [String: Any] = [:]) {
+        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
+        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
+        // is
+        // required to prevent SDK execution for unsupported OS.
+        if deviceInfo.osName == nil {
+            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
+            return
+        }
+
+        // Consolidate all Apple platforms under iOS
+        let deviceOsName = "iOS"
+        // deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
+        let defaultDeviceAttributes: [String: Any] = [:]
+        let deviceAttributes: [String: Any] = [
+            "platform": deviceOsName,
+            "lastUsed": dateUtil.now
+        ].mergeWith(defaultDeviceAttributes)
+            .mergeWith(customAttributes)
+        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
+            attributesPlugin.attributes = deviceAttributes
+        } else {
+            // TODO: [CDP] Verify with server's expectation
+            let attributesPlugin = DeviceAttributes()
+            attributesPlugin.attributes = deviceAttributes
+            analytics.add(plugin: attributesPlugin)
+        }
+        // }
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
