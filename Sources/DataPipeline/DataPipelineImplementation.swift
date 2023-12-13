@@ -53,7 +53,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     func clearIdentify() {
         // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
         // we had to call this explicitly. Rethink on how can we make one call for both customers.
-        deleteDeviceToken()
+        removeDevicePlugins()
         analytics.reset()
     }
 
@@ -91,34 +91,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         }
     }
 
-    func registerDeviceToken(_ deviceToken: String) {
-        logger.debug("storing device token to device storage \(deviceToken)")
-        // save the device token for later use.
-        // segment plugin doesn't store token anywhere so we need to pass token to it every time
-        // storing it so we can reference the token and register on app relaunch
-        globalDataStore.pushDeviceToken = deviceToken
-        setDeviceToken(deviceToken)
-    }
-
-    /// Internal method for passing the device token to the plugin
-    private func setDeviceToken(_ deviceToken: String) {
-        logger.info("registering device token \(deviceToken)")
-        analytics.setDeviceToken(deviceToken)
-    }
-
-    func deleteDeviceToken() {
-        // Remove DeviceToken plugin to prevent attaching the token to every request
-        if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
-            analytics.remove(plugin: tokenPlugin)
-        }
-
-        // Remove DeviceAttributes plugin to avoid attaching attributes to every request.
-        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
-            attributesPlugin.attributes = nil
-            analytics.remove(plugin: attributesPlugin)
-        }
-    }
-
     /// Adds device default and custom attributes using DeviceAttributes plugin
     private func addDeviceAttributes(_ customAttributes: [String: Any]) {
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
@@ -149,6 +121,38 @@ class DataPipelineImplementation: DataPipelineInstance {
             let attributesPlugin = DeviceAttributes()
             attributesPlugin.attributes = deviceAttributes
             analytics.add(plugin: attributesPlugin)
+        }
+    }
+    
+    func registerDeviceToken(_ deviceToken: String) {
+        logger.debug("storing device token to device storage \(deviceToken)")
+        // save the device token for later use.
+        // segment plugin doesn't store token anywhere so we need to pass token to it every time
+        // storing it so we can reference the token and register on app relaunch
+        globalDataStore.pushDeviceToken = deviceToken
+        setDeviceToken(deviceToken)
+    }
+
+    /// Internal method for passing the device token to the plugin
+    private func setDeviceToken(_ deviceToken: String) {
+        logger.info("registering device token \(deviceToken)")
+        analytics.setDeviceToken(deviceToken)
+    }
+
+    func deleteDeviceToken() {
+        removeDevicePlugins()
+    }
+
+    /// Internal method for removing attached plugins to stop sending device token and attributes
+    private func removeDevicePlugins() {
+        // Remove DeviceToken plugin to prevent attaching the token to every request
+        if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
+            analytics.remove(plugin: tokenPlugin)
+        }
+
+        // Remove DeviceAttributes plugin to avoid attaching attributes to every request.
+        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
+            analytics.remove(plugin: attributesPlugin)
         }
     }
 
