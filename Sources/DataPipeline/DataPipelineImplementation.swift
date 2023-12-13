@@ -47,13 +47,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     var registeredDeviceToken: String? {
-        analytics.find(pluginType: DeviceToken.self)?.token
+        analytics.find(pluginType: DeviceAttributes.self)?.token
     }
 
     func clearIdentify() {
         // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
         // we had to call this explicitly. Rethink on how can we make one call for both customers.
-        removeDevicePlugins()
+        removeDevicePlugin()
         analytics.reset()
     }
 
@@ -87,12 +87,13 @@ class DataPipelineImplementation: DataPipelineInstance {
             return attributesPlugin?.attributes ?? [:]
         }
         set {
-            addDeviceAttributes(newValue)
+            let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self)
+            addDeviceAttributes(token: attributesPlugin?.token, attributes: newValue)
         }
     }
 
     /// Adds device default and custom attributes using DeviceAttributes plugin
-    private func addDeviceAttributes(_ customAttributes: [String: Any] = [:]) {
+    private func addDeviceAttributes(token deviceToken: String? = nil, attributes customAttributes: [String: Any] = [:]) {
         // Consolidate all Apple platforms under iOS
         let deviceOsName = "iOS"
         // FIXME: [CDP] Fetch the right defaultDeviceAttributes here
@@ -105,14 +106,18 @@ class DataPipelineImplementation: DataPipelineInstance {
             ])
             .mergeWith(customAttributes)
 
-        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
-            attributesPlugin.attributes = deviceAttributes
+        // Make sure DeviceAttributes plugin is attached
+        let attributesPlugin: DeviceAttributes
+        if let plugin = analytics.find(pluginType: DeviceAttributes.self) {
+            attributesPlugin = plugin
         } else {
-            // TODO: [CDP] Verify with server's expectation
-            let attributesPlugin = DeviceAttributes()
-            attributesPlugin.attributes = deviceAttributes
+            attributesPlugin = DeviceAttributes()
             analytics.add(plugin: attributesPlugin)
         }
+
+        // TODO: [CDP] Verify with server's expectation
+        attributesPlugin.attributes = deviceAttributes
+        attributesPlugin.token = deviceToken
     }
 
     func registerDeviceToken(_ deviceToken: String) {
@@ -127,8 +132,6 @@ class DataPipelineImplementation: DataPipelineInstance {
     /// Internal method for passing the device token to the plugin
     private func setDeviceToken(_ deviceToken: String) {
         logger.info("registering device token \(deviceToken)")
-        // Add device attributes first so they are updated for unsupported OS too
-        addDeviceAttributes()
 
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
         // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
@@ -137,24 +140,18 @@ class DataPipelineImplementation: DataPipelineInstance {
             logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
             return
         }
-        analytics.setDeviceToken(deviceToken)
+        addDeviceAttributes(token: deviceToken)
     }
 
     func deleteDeviceToken() {
         logger.info("deleting device token request made")
 
-        removeDevicePlugins()
+        removeDevicePlugin()
     }
 
     /// Internal method for removing attached plugins to stop sending device token and attributes
-    private func removeDevicePlugins() {
-        // Remove DeviceToken plugin to prevent attaching the token to every request
-        if let tokenPlugin = analytics.find(pluginType: DeviceToken.self) {
-            analytics.remove(plugin: tokenPlugin)
-            logger.info("DeviceToken plugin removed")
-        }
-
-        // Remove DeviceAttributes plugin to avoid attaching attributes to every request.
+    private func removeDevicePlugin() {
+        // Remove DeviceAttributes plugin to avoid attaching token and attributes to every request.
         if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
             analytics.remove(plugin: attributesPlugin)
             logger.info("DeviceAttributes plugin removed")
