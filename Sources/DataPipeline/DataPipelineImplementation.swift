@@ -20,6 +20,15 @@ class DataPipelineImplementation: DataPipelineInstance {
         // self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+        
+        self.initialize()
+    }
+    
+    private func initialize() {
+        if let token = globalDataStore.pushDeviceToken {
+            // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
+            setDeviceToken(token)
+        }
     }
 
     // Code below this line will be updated in later PRs
@@ -83,13 +92,17 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        logger.info("registering device token \(deviceToken)")
         logger.debug("storing device token to device storage \(deviceToken)")
         // save the device token for later use.
         // segment plugin doesn't store token anywhere so we need to pass token to it every time
         // storing it so we can reference the token and register on app relaunch
         globalDataStore.pushDeviceToken = deviceToken
+        setDeviceToken(deviceToken)
+    }
 
+    /// Internal method for passing the device token to the plugin
+    private func setDeviceToken(_ deviceToken: String) {
+        logger.info("registering device token \(deviceToken)")
         analytics.setDeviceToken(deviceToken)
     }
 
@@ -106,9 +119,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         }
     }
 
-    /**
-     Adds device default and custom attributes using DeviceAttributes plugin
-     */
+    /// Adds device default and custom attributes using DeviceAttributes plugin
     private func addDeviceAttributes(_ customAttributes: [String: Any] = [:]) {
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
         // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
