@@ -20,10 +20,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         // self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
-        
-        self.initialize()
+
+        initialize()
     }
-    
+
     private func initialize() {
         if let token = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
@@ -132,13 +132,16 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // Consolidate all Apple platforms under iOS
         let deviceOsName = "iOS"
+        // FIXME: [CDP] Fetch the right defaultDeviceAttributes here
         // deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
         let defaultDeviceAttributes: [String: Any] = [:]
         let deviceAttributes: [String: Any] = [
             "platform": deviceOsName,
             "lastUsed": dateUtil.now
-        ].mergeWith(defaultDeviceAttributes)
-            .mergeWith(customAttributes)
+        ]
+        .mergeWith(defaultDeviceAttributes)
+        .mergeWith(customAttributes)
+
         if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
             attributesPlugin.attributes = deviceAttributes
         } else {
@@ -147,7 +150,6 @@ class DataPipelineImplementation: DataPipelineInstance {
             attributesPlugin.attributes = deviceAttributes
             analytics.add(plugin: attributesPlugin)
         }
-        // }
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
