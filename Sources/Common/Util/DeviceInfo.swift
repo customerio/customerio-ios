@@ -26,6 +26,7 @@ public protocol DeviceInfo: AutoMockable {
 // Class tested via QA testing.
 //
 // sourcery: InjectRegister = "DeviceInfo"
+// sourcery: InjectRegisterShared = "DeviceInfo"
 public class CIODeviceInfo: DeviceInfo {
     public var deviceManufacturer: String = "Apple"
 
