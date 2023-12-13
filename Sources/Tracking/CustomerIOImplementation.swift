@@ -65,93 +65,15 @@ class CustomerIOImplementation: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
-        handleCommonIdentificationTasks(identifier: identifier, codableBody: body)
+        DataPipeline.shared.identify(identifier: identifier, body: body)
     }
 
     public func identify(identifier: String, body: [String: Any]) {
-        handleCommonIdentificationTasks(identifier: identifier, dictionaryBody: body)
-    }
-
-    func handleCommonIdentificationTasks(identifier: String, dictionaryBody: [String: Any]? = nil, codableBody: Codable? = nil) {
-        if identifier.isBlankOrEmpty() {
-            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
-            return
-        }
-
-        // Check which body is non-nil and proceed accordingly
-        if let body = dictionaryBody {
-            DataPipeline.shared.identify(identifier: identifier, body: body)
-        } else if let body = codableBody {
-            DataPipeline.shared.identify(identifier: identifier, body: body)
-        } else {
-            DataPipeline.shared.identify(identifier: identifier)
-        }
-
-        let currentlyIdentifiedProfileIdentifier = profileStore.identifier
-        let isChangingIdentifiedProfile = currentlyIdentifiedProfileIdentifier != nil &&
-            currentlyIdentifiedProfileIdentifier != identifier
-        let isFirstTimeIdentifying = currentlyIdentifiedProfileIdentifier == nil
-
-        if let currentlyIdentifiedProfileIdentifier = currentlyIdentifiedProfileIdentifier,
-           isChangingIdentifiedProfile {
-            logger.info("changing profile from id \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
-
-            logger
-                .debug(
-                    "deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with."
-                )
-            deleteDeviceToken()
-
-            logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeIdentifiedProfileChange(
-                    oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                    newIdentifier: identifier
-                )
-            }
-        }
-
-        logger.debug("storing identifier on device storage \(identifier)")
-        profileStore.identifier = identifier
-
-        if isFirstTimeIdentifying || isChangingIdentifiedProfile {
-            if let existingDeviceToken = globalDataStore.pushDeviceToken {
-                logger.debug("registering existing device token to newly identified profile: \(identifier)")
-                // this code assumes that the newly identified profile has been saved to device storage. only call this
-                // function until after the SDK stores the new profile identifier
-                registerDeviceToken(existingDeviceToken)
-            }
-
-            logger.debug("running hooks profile identified \(identifier)")
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.profileIdentified(identifier: identifier)
-            }
-        }
+        DataPipeline.shared.identify(identifier: identifier, body: body)
     }
 
     public func clearIdentify() {
-        logger.info("clearing identified profile")
-
         DataPipeline.shared.clearIdentify()
-
-        guard let currentlyIdentifiedProfileIdentifier = profileStore.identifier else {
-            return
-        }
-
-        logger
-            .debug(
-                "delete device token from \(currentlyIdentifiedProfileIdentifier) to stop sending push to a profile that is no longer identified"
-            )
-        deleteDeviceToken()
-
-        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfileIdentifier)")
-        hooks.profileIdentifyHooks.forEach { hook in
-            hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        }
-
-        logger.debug("deleting profile info from device storage")
-        // remove device identifier from storage last so hooks can succeed.
-        profileStore.identifier = nil
     }
 
     public func track<RequestBody: Codable>(
