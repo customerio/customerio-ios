@@ -123,7 +123,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             analytics.add(plugin: attributesPlugin)
         }
     }
-    
+
     func registerDeviceToken(_ deviceToken: String) {
         logger.debug("storing device token to device storage \(deviceToken)")
         // save the device token for later use.
