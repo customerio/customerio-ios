@@ -9,7 +9,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
-    private let eventHandlingManager: EventHandlingManager
+    private let busEventManager: EventBusHandler
     private var subscriptions: Set<AnyCancellable> = []
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
@@ -17,20 +17,20 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.logger = diGraph.logger
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
-        self.eventHandlingManager = EventHandlingManager(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
+        self.busEventManager = EventBusHandler(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
         initialize()
     }
 
     private func initialize() {
         inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
 
-        eventHandlingManager.eventBus.onReceive(ProfileIdentifiedEvent.self) { event in
+        busEventManager.onReceive(ProfileIdentifiedEvent.self) { event in
             self.logger.debug("registering profile \(event.identifier) for in-app")
 
             self.inAppProvider.setProfileIdentifier(event.identifier)
         }.store(in: &subscriptions)
 
-        eventHandlingManager.eventBus.onReceive(ScreenViewedEvent.self) { event in
+        busEventManager.onReceive(ScreenViewedEvent.self) { event in
             self.logger.debug("setting route for in-app to \(event.name)")
 
             // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
@@ -39,7 +39,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
             }
         }.store(in: &subscriptions)
 
-        eventHandlingManager.eventBus.onReceive(ResetEvent.self) { _ in
+        busEventManager.onReceive(ResetEvent.self) { _ in
             self.logger.debug("removing profile for in-app")
 
             self.inAppProvider.clearIdentify()
@@ -77,7 +77,8 @@ extension MessagingInAppImplementation: GistDelegate {
             // FIXME: [CDP] Pass to Journey
             // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
 
-//            eventHandlingManager.sendOrSaveEvent(event: TrackInAppMetricEvent(deliveryID: deliveryId, event: ""))
+            // TODO: add the TrackInAppMetricEvent
+//            busEventManager.send(TrackInAppMetricEvent(deliveryID: deliveryId, event: "")
         }
     }
 
