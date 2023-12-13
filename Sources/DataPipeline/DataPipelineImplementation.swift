@@ -54,6 +54,24 @@ class DataPipelineImplementation: DataPipelineInstance {
         // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
         // we had to call this explicitly. Rethink on how can we make one call for both customers.
         removeDevicePlugin()
+        logger.info("clearing identified profile")
+
+        guard let currentlyIdentifiedProfile = analytics.userId else {
+            analytics.reset()
+            return
+        }
+
+        logger.debug("delete device token from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
+        removeDevicePlugins()
+
+        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
+        // hooks.profileIdentifyHooks.forEach { hook in
+        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
+        // }
+
+        logger.debug("resetting user profile")
+        // remove device identifier from storage last so hooks can succeed.
         analytics.reset()
     }
 
