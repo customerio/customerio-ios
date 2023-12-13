@@ -55,24 +55,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         // we had to call this explicitly. Rethink on how can we make one call for both customers.
         removeDevicePlugin()
         logger.info("clearing identified profile")
-
-        guard let currentlyIdentifiedProfile = analytics.userId else {
-            analytics.reset()
-            return
-        }
-
-        logger.debug("delete device token from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
-        removeDevicePlugins()
-
-        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
-        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
-        // hooks.profileIdentifyHooks.forEach { hook in
-        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        // }
-
-        logger.debug("resetting user profile")
-        // remove device identifier from storage last so hooks can succeed.
-        analytics.reset()
+        commonClearIdentify()
     }
 
     func track(name: String, data: [String: Any]) {
@@ -115,11 +98,9 @@ class DataPipelineImplementation: DataPipelineInstance {
         
         if let currentlyIdentifiedProfile = currentlyIdentifiedProfile, isChangingIdentifiedProfile {
             logger.info("changing profile from id \(currentlyIdentifiedProfile) to \(userId)")
-            
-            logger.debug("deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with.")
-            logger.debug("deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with.")
-            deleteDeviceToken()
-            
+            // profile might have changed without clearIdentify call; resetting all plugins to the correct state is required for proper functionality
+            commonClearIdentify()
+
             logger.debug("running hooks changing profile from \(currentlyIdentifiedProfile) to \(userId)")
             // FIXME: [CDP] Request Journeys to invoke profile changing hooks
             // hooks.profileIdentifyHooks.forEach { hook in
@@ -149,6 +130,26 @@ class DataPipelineImplementation: DataPipelineInstance {
         } else {
             analytics.identify(userId: userId, traits: attributesDict)
         }
+    }
+
+    private func commonClearIdentify() {
+        guard let currentlyIdentifiedProfile = analytics.userId else {
+            logger.debug("no profile identified, ignoring clearIdentify request")
+            return
+        }
+
+        logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
+        removeDevicePlugins()
+
+        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
+        // hooks.profileIdentifyHooks.forEach { hook in
+        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
+        // }
+
+        logger.debug("resetting user profile")
+        // remove device identifier from storage last so hooks can succeed.
+        analytics.reset()
     }
 
     var deviceAttributes: [String: Any] {
