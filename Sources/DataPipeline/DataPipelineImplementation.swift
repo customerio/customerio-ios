@@ -120,7 +120,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     /// Adds device default and custom attributes using DeviceAttributes plugin
-    private func addDeviceAttributes(_ customAttributes: [String: Any] = [:]) {
+    private func addDeviceAttributes(_ customAttributes: [String: Any]) {
         // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
         // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
         // is
@@ -135,12 +135,12 @@ class DataPipelineImplementation: DataPipelineInstance {
         // FIXME: [CDP] Fetch the right defaultDeviceAttributes here
         // deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
         let defaultDeviceAttributes: [String: Any] = [:]
-        let deviceAttributes: [String: Any] = [
-            "platform": deviceOsName,
-            "lastUsed": dateUtil.now
-        ]
-        .mergeWith(defaultDeviceAttributes)
-        .mergeWith(customAttributes)
+        let deviceAttributes: [String: Any] = defaultDeviceAttributes
+            .mergeWith([
+                "platform": deviceOsName,
+                "lastUsed": dateUtil.now
+            ])
+            .mergeWith(customAttributes)
 
         if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
             attributesPlugin.attributes = deviceAttributes
