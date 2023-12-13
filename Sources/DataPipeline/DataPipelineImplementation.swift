@@ -46,6 +46,13 @@ class DataPipelineImplementation: DataPipelineInstance {
         commonIdentifyProfile(userId: identifier, attributesCodable: body)
     }
 
+    /// Associate a user with their unique ID and record traits about them.
+    /// - Parameters:
+    ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
+    func identify<RequestBody: Codable>(body: RequestBody) {
+        analytics.identify(traits: body)
+    }
+
     var registeredDeviceToken: String? {
         analytics.find(pluginType: DeviceAttributes.self)?.token
     }
@@ -91,11 +98,11 @@ class DataPipelineImplementation: DataPipelineInstance {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
             return
         }
-        
+
         let currentlyIdentifiedProfile = analytics.userId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
-        
+
         if let currentlyIdentifiedProfile = currentlyIdentifiedProfile, isChangingIdentifiedProfile {
             logger.info("changing profile from id \(currentlyIdentifiedProfile) to \(userId)")
             // profile might have changed without clearIdentify call; resetting all plugins to the correct state is required for proper functionality
@@ -110,7 +117,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             //     )
             // }
         }
-        
+
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = globalDataStore.pushDeviceToken {
                 logger.debug("registering existing device token to newly identified profile: \(userId)")
@@ -118,7 +125,7 @@ class DataPipelineImplementation: DataPipelineInstance {
                 // function until after the SDK stores the new profile identifier
                 registerDeviceToken(existingDeviceToken)
             }
-            
+
             logger.debug("running hooks profile identified \(userId)")
             // FIXME: [CDP] Request Journeys to invoke profile identify hooks
             // hooks.profileIdentifyHooks.forEach { hook in
