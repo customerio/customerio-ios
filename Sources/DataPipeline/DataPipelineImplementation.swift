@@ -92,16 +92,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     /// Adds device default and custom attributes using DeviceAttributes plugin
-    private func addDeviceAttributes(_ customAttributes: [String: Any]) {
-        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
-        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
-        // is
-        // required to prevent SDK execution for unsupported OS.
-        if deviceInfo.osName == nil {
-            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
-            return
-        }
-
+    private func addDeviceAttributes(_ customAttributes: [String: Any] = [:]) {
         // Consolidate all Apple platforms under iOS
         let deviceOsName = "iOS"
         // FIXME: [CDP] Fetch the right defaultDeviceAttributes here
@@ -136,6 +127,16 @@ class DataPipelineImplementation: DataPipelineInstance {
     /// Internal method for passing the device token to the plugin
     private func setDeviceToken(_ deviceToken: String) {
         logger.info("registering device token \(deviceToken)")
+        // Add device attributes first so they are updated for unsupported OS too
+        addDeviceAttributes()
+
+        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
+        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
+        // is required to prevent SDK execution for unsupported OS.
+        if deviceInfo.osName == nil {
+            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
+            return
+        }
         analytics.setDeviceToken(deviceToken)
     }
 
