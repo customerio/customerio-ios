@@ -48,15 +48,8 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public var profileAttributes: [String: Any] {
-        get {
-            [:]
-        }
-        set {
-            guard let existingProfileIdentifier = profileStore.identifier else {
-                return
-            }
-            identify(identifier: existingProfileIdentifier, body: newValue)
-        }
+        get { DataPipeline.shared.profileAttributes }
+        set { DataPipeline.shared.profileAttributes = newValue }
     }
 
     public var deviceAttributes: [String: Any] {
