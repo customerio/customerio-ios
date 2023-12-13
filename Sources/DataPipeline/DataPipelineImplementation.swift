@@ -39,11 +39,11 @@ class DataPipelineImplementation: DataPipelineInstance {
     var config: CioInternalCommon.SdkConfig?
 
     func identify(identifier: String, body: [String: Any]) {
-        analytics.identify(userId: identifier, traits: body)
+        commonIdentifyProfile(userId: identifier, attributesDict: body)
     }
 
     func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        analytics.identify(userId: identifier, traits: body)
+        commonIdentifyProfile(userId: identifier, attributesCodable: body)
     }
 
     var registeredDeviceToken: String? {
@@ -76,8 +76,60 @@ class DataPipelineImplementation: DataPipelineInstance {
     var profileAttributes: [String: Any] {
         get { analytics.traits() ?? [:] }
         set {
-            let userId = analytics.userId ?? analytics.anonymousId
-            analytics.identify(userId: userId, traits: newValue)
+            let userId = analytics.userId
+            guard let userId = userId, userId.isBlankOrEmpty() else {
+                logger.error("No user identified: Identifier is null or empty. If you don't have a userId but want to record traits, just pass traits into the event and they will be associated with the anonymousId of that user.")
+                return
+            }
+            commonIdentifyProfile(userId: userId, attributesDict: newValue)
+        }
+    }
+
+    private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
+        if userId.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
+            return
+        }
+        
+        let currentlyIdentifiedProfile = analytics.userId
+        let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
+        let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
+        
+        if let currentlyIdentifiedProfile = currentlyIdentifiedProfile, isChangingIdentifiedProfile {
+            logger.info("changing profile from id \(currentlyIdentifiedProfile) to \(userId)")
+            
+            logger.debug("deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with.")
+            logger.debug("deleting token from previously identified profile to prevent sending messages to it. It's assumed that for privacy and messaging relevance, you only want to send messages to devices that a profile is currently identifed with.")
+            deleteDeviceToken()
+            
+            logger.debug("running hooks changing profile from \(currentlyIdentifiedProfile) to \(userId)")
+            // FIXME: [CDP] Request Journeys to invoke profile changing hooks
+            // hooks.profileIdentifyHooks.forEach { hook in
+            //     hook.beforeIdentifiedProfileChange(
+            //         oldIdentifier: currentlyIdentifiedProfile,
+            //         newIdentifier: userId
+            //     )
+            // }
+        }
+        
+        if isFirstTimeIdentifying || isChangingIdentifiedProfile {
+            if let existingDeviceToken = globalDataStore.pushDeviceToken {
+                logger.debug("registering existing device token to newly identified profile: \(userId)")
+                // this code assumes that the newly identified profile has been saved to device storage. only call this
+                // function until after the SDK stores the new profile identifier
+                registerDeviceToken(existingDeviceToken)
+            }
+            
+            logger.debug("running hooks profile identified \(userId)")
+            // FIXME: [CDP] Request Journeys to invoke profile identify hooks
+            // hooks.profileIdentifyHooks.forEach { hook in
+            //     hook.profileIdentified(identifier: userId)
+            // }
+        }
+        if let attributes = attributesCodable {
+            analytics.identify(userId: userId, traits: attributes)
+        } else {
+            analytics.identify(userId: userId, traits: attributesDict)
         }
     }
 
