@@ -146,6 +146,9 @@ class DataPipelineImplementation: DataPipelineInstance {
     func deleteDeviceToken() {
         logger.info("deleting device token request made")
 
+        // Do not delete push token from device storage. The token is valid
+        // once given to SDK. We need it for future profile identifications.
+
         removeDevicePlugin()
     }
 

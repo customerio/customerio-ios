@@ -71,7 +71,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public var registeredDeviceToken: String? {
-        globalDataStore.pushDeviceToken
+        DataPipeline.shared.registeredDeviceToken
     }
 
     public func identify<RequestBody: Codable>(
@@ -202,55 +202,13 @@ class CustomerIOImplementation: CustomerIOInstance {
      is no active customer, this will fail to register the device
      */
     public func registerDeviceToken(_ deviceToken: String) {
-        logger.info("initiating device token registration for \(deviceToken)")
-        // if the request is not forwarded to DataPipeline, make sure to save the device token for later use.
-        // so if a customer is identified later, we can reference the token and register it to a new profile.
-
-        guard let identifier = DataPipeline.shared.analytics.userId else {
-            logger.debug("storing device token to device storage \(deviceToken)")
-            globalDataStore.pushDeviceToken = deviceToken
-
-            logger.info("no profile identified, so not registering device token to a profile")
-            return
-        }
-        if identifier.isBlankOrEmpty() {
-            logger.debug("storing device token to device storage \(deviceToken)")
-            globalDataStore.pushDeviceToken = deviceToken
-
-            logger.error("profile cannot be identified: Identifier is empty, so not registering device token to a profile")
-            return
-        }
-
-        // OS name might not be available if running on non-apple product. We currently only support iOS for the SDK
-        // and iOS should always be non-nil. Though, we are consolidating all Apple platforms under iOS but this check
-        // is
-        // required to prevent SDK execution for unsupported OS.
-        if deviceInfo.osName == nil {
-            logger.info("SDK being executed from unsupported OS. Ignoring request to register push token.")
-            return
-        }
         DataPipeline.shared.registerDeviceToken(deviceToken)
     }
 
     /**
      Delete the currently registered device token
      */
-    // TODO: Segment doesn't provide this method by default needs to get added
     public func deleteDeviceToken() {
-        logger.info("initiating request to delete device token")
-
-        guard (globalDataStore.pushDeviceToken) != nil else {
-            logger.info("no device token exists so ignoring request to delete")
-            return // no device token to delete, ignore request
-        }
-        // Do not delete push token from device storage. The token is valid
-        // once given to SDK. We need it for future profile identifications.
-
-        guard (DataPipeline.shared.analytics.userId) != nil else {
-            logger.info("no profile identified so not removing device token from profile")
-            return // no profile to delete token from, ignore request
-        }
-
         DataPipeline.shared.deleteDeviceToken()
     }
 
