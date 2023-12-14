@@ -215,13 +215,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
         var properties: [String: Any] = metaData.mergeWith([
             "metric": event.rawValue,
-            "delivery_id": deliveryID,
+            "delivery_id": deliveryID
         ])
 
         if let token = deviceToken {
             properties["device_token"] = token
         }
-        
+
         analytics.track(name: "Report Metric", properties: properties)
     }
 }
