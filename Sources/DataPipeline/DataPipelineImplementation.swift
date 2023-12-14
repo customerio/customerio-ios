@@ -119,8 +119,8 @@ class DataPipelineImplementation: DataPipelineInstance {
         //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
         // }
 
+        // reset all to default state
         logger.debug("resetting user profile")
-        // remove device identifier from storage last so hooks can succeed.
         analytics.reset()
     }
 
