@@ -126,6 +126,7 @@ extension PushClickHandlerTest {
     func getPush(content: [AnyHashable: Any], deliveryId: String = .random, deviceToken: String = .random) -> CustomerIOParsedPushPayload {
         var content = content
 
+        // swiftlint:disable:next force_cast
         let notificationContent = UNNotificationContent().mutableCopy() as! UNMutableNotificationContent
 
         content["CIO-Delivery-ID"] = deliveryId
