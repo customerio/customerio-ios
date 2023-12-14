@@ -11,14 +11,14 @@ class MessagingPushImplementation: MessagingPushInstance {
     let logger: Logger
     let jsonAdapter: JsonAdapter
 
-    private let eventHandlingManager: EventHandlingManager
+    private let eventHandlingManager: EventBusHandler
 
     /// testing init
     init(
         moduleConfig: MessagingPushConfigOptions,
         logger: Logger,
         jsonAdapter: JsonAdapter,
-        eventHandlingManager: EventHandlingManager
+        eventHandlingManager: EventBusHandler
     ) {
         self.moduleConfig = moduleConfig
         self.logger = logger
@@ -30,18 +30,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
-        self.eventHandlingManager = EventHandlingManager(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
-
-        handleNewSubscriptionEvent()
-    }
-
-    private func handleNewSubscriptionEvent() {
-        let interestedEventTypes = [
-            TrackMetricEvent.key,
-            RegisterDeviceTokenEvent.key,
-            DeleteDeviceTokenEvent.key
-        ]
-        eventHandlingManager.handleNewSubscriptions(for: interestedEventTypes)
+        self.eventHandlingManager = EventBusHandler(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
     }
 
     private func handleEventStorageError(_ error: Error) {
@@ -53,21 +42,21 @@ class MessagingPushImplementation: MessagingPushInstance {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.deleteDeviceToken()
 
-        eventHandlingManager.sendOrSaveEvent(event: DeleteDeviceTokenEvent())
+        eventHandlingManager.postEvent(DeleteDeviceTokenEvent())
     }
 
     func registerDeviceToken(_ deviceToken: String) {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.registerDeviceToken(deviceToken)
 
-        eventHandlingManager.sendOrSaveEvent(event: RegisterDeviceTokenEvent(token: deviceToken))
+        eventHandlingManager.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         // FIXME: [CDP] Pass to Journey
         // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
 
-        eventHandlingManager.sendOrSaveEvent(event: TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
+        eventHandlingManager.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
     }
 
     #if canImport(UserNotifications)

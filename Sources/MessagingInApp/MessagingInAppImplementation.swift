@@ -24,26 +24,26 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private func initialize() {
         inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
 
-        busEventManager.onReceive(ProfileIdentifiedEvent.self) { event in
+        busEventManager.addObserver(ProfileIdentifiedEvent.self) { event in
             self.logger.debug("registering profile \(event.identifier) for in-app")
 
             self.inAppProvider.setProfileIdentifier(event.identifier)
-        }.store(in: &subscriptions)
+        }
 
-        busEventManager.onReceive(ScreenViewedEvent.self) { event in
+        busEventManager.addObserver(ScreenViewedEvent.self) { event in
             self.logger.debug("setting route for in-app to \(event.name)")
 
             // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
             self.threadUtil.runMain {
                 self.inAppProvider.setRoute(event.name)
             }
-        }.store(in: &subscriptions)
+        }
 
-        busEventManager.onReceive(ResetEvent.self) { _ in
+        busEventManager.addObserver(ResetEvent.self) { _ in
             self.logger.debug("removing profile for in-app")
 
             self.inAppProvider.clearIdentify()
-        }.store(in: &subscriptions)
+        }
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
@@ -76,9 +76,7 @@ extension MessagingInAppImplementation: GistDelegate {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             // FIXME: [CDP] Pass to Journey
             // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
-
-            // TODO: add the TrackInAppMetricEvent
-//            busEventManager.send(TrackInAppMetricEvent(deliveryID: deliveryId, event: "")
+            busEventManager.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
 
@@ -102,7 +100,7 @@ extension MessagingInAppImplementation: GistDelegate {
             if let deliveryId = getDeliveryId(from: message) {
                 // the state of the SDK does not change if adding this queue task isn't successful so ignore result
                 // FIXME: [CDP] Pass to Journey
-                // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked, metaData: ["action_name": name, "action_value": action])
+                busEventManager.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["action_name": name, "action_value": action]))
             }
         }
 
