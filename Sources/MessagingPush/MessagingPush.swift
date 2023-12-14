@@ -19,7 +19,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @Atomic private var hasSetupModule = false
 
     // singleton instance of module configuration
-    @Atomic public static var moduleConfig: MessagingPushConfigOptions = .init()
+    @Atomic public var moduleConfig: MessagingPushConfigOptions = .init()
 
     // testing constructor
     init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore, sdkInitializedUtil: SdkInitializedUtil) {
@@ -42,7 +42,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(config: MessagingPushConfigOptions? = nil) {
         if let newConfig = config {
-            moduleConfig = newConfig
+            shared.moduleConfig = newConfig
         }
 
         MessagingPush.shared.initializeModuleIfSdkInitialized()
@@ -66,7 +66,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
-        diGraph.automaticPushClickHandling.start()
+        if diGraph.sdkConfig.autoTrackPushEvents {
+            diGraph.automaticPushClickHandling.start()
+        }
 
         logger.info("MessagingPush module setup with SDK")
     }
