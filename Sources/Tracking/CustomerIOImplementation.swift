@@ -68,6 +68,10 @@ class CustomerIOImplementation: CustomerIOInstance {
         DataPipeline.shared.identify(identifier: identifier, body: body)
     }
 
+    public func identify(body: Codable) {
+        DataPipeline.shared.identify(body: body)
+    }
+
     public func identify(identifier: String, body: [String: Any]) {
         DataPipeline.shared.identify(identifier: identifier, body: body)
     }

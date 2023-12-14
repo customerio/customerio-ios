@@ -142,10 +142,10 @@ class DataPipelineImplementation: DataPipelineInstance {
             return
         }
 
-        logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
-        removeDevicePlugin()
+        // logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
+        // TODO: [CDP] Confirm how can we delete devices for CDP
 
-        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
         // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
         // hooks.profileIdentifyHooks.forEach { hook in
         //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)

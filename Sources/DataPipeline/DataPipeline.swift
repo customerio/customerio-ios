@@ -63,6 +63,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.identify(identifier: identifier, body: body)
     }
 
+    public func identify(body: Codable) {
+        implementation?.identify(body: body)
+    }
+
     public var registeredDeviceToken: String? { implementation?.registeredDeviceToken }
 
     public func clearIdentify() {
