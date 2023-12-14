@@ -49,7 +49,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     /// Associate a user with their unique ID and record traits about them.
     /// - Parameters:
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
-    func identify<RequestBody: Codable>(body: RequestBody) {
+    func identify(body: Codable) {
         analytics.identify(traits: body)
     }
 
@@ -82,8 +82,8 @@ class DataPipelineImplementation: DataPipelineInstance {
         get { analytics.traits() ?? [:] }
         set {
             let userId = analytics.userId
-            guard let userId = userId, userId.isBlankOrEmpty() else {
-                logger.error("No user identified: Identifier is null or empty. If you don't have a userId but want to record traits, just pass traits into the event and they will be associated with the anonymousId of that user.")
+            guard let userId = userId else {
+                logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
                 return
             }
             commonIdentifyProfile(userId: userId, attributesDict: newValue)
@@ -91,39 +91,12 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
-        if userId.isBlankOrEmpty() {
-            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
-            return
-        }
-
         let currentlyIdentifiedProfile = analytics.userId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
-        if let currentlyIdentifiedProfile = currentlyIdentifiedProfile, isChangingIdentifiedProfile {
-            logger.info("changing profile from id \(currentlyIdentifiedProfile) to \(userId)")
-            // profile might have changed without clearIdentify call; resetting all plugins to the correct state is required for proper functionality
-            commonClearIdentify()
-
-            logger.debug("running hooks changing profile from \(currentlyIdentifiedProfile) to \(userId)")
-            // FIXME: [CDP] Request Journeys to invoke profile changing hooks
-            // hooks.profileIdentifyHooks.forEach { hook in
-            //     hook.beforeIdentifiedProfileChange(
-            //         oldIdentifier: currentlyIdentifiedProfile,
-            //         newIdentifier: userId
-            //     )
-            // }
-        }
-
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
-            if let existingDeviceToken = globalDataStore.pushDeviceToken {
-                logger.debug("registering existing device token to newly identified profile: \(userId)")
-                // this code assumes that the newly identified profile has been saved to device storage. only call this
-                // function until after the SDK stores the new profile identifier
-                registerDeviceToken(existingDeviceToken)
-            }
-
-            logger.debug("running hooks profile identified \(userId)")
+            // logger.debug("running hooks profile identified \(userId)")
             // FIXME: [CDP] Request Journeys to invoke profile identify hooks
             // hooks.profileIdentifyHooks.forEach { hook in
             //     hook.profileIdentified(identifier: userId)
@@ -137,11 +110,6 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func commonClearIdentify() {
-        guard let currentlyIdentifiedProfile = analytics.userId else {
-            logger.debug("no profile identified, ignoring clearIdentify request")
-            return
-        }
-
         // logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         // TODO: [CDP] Confirm how can we delete devices for CDP
 
