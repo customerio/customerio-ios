@@ -7,7 +7,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     let analytics: Analytics
 
     private var globalDataStore: GlobalDataStore
-    // private let deviceAttributesProvider: DeviceAttributesProvider
+    private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
 
@@ -17,7 +17,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
         self.globalDataStore = diGraph.globalDataStore
-        // self.deviceAttributesProvider = diGraph.deviceAttributesProvider
+        self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
@@ -96,28 +96,26 @@ class DataPipelineImplementation: DataPipelineInstance {
     private func addDeviceAttributes(token deviceToken: String? = nil, attributes customAttributes: [String: Any] = [:]) {
         // Consolidate all Apple platforms under iOS
         let deviceOsName = "iOS"
-        // FIXME: [CDP] Fetch the right defaultDeviceAttributes here
-        // deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-        let defaultDeviceAttributes: [String: Any] = [:]
-        let deviceAttributes: [String: Any] = defaultDeviceAttributes
-            .mergeWith([
-                "platform": deviceOsName,
-                "lastUsed": dateUtil.now
-            ])
-            .mergeWith(customAttributes)
+        deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
+            let deviceAttributes: [String: Any] = defaultDeviceAttributes
+                .mergeWith([
+                    "platform": deviceOsName,
+                    "lastUsed": self.dateUtil.now
+                ])
+                .mergeWith(customAttributes)
 
-        // Make sure DeviceAttributes plugin is attached
-        let attributesPlugin: DeviceAttributes
-        if let plugin = analytics.find(pluginType: DeviceAttributes.self) {
-            attributesPlugin = plugin
-        } else {
-            attributesPlugin = DeviceAttributes()
-            analytics.add(plugin: attributesPlugin)
+            // Make sure DeviceAttributes plugin is attached
+            let attributesPlugin: DeviceAttributes
+            if let plugin = self.analytics.find(pluginType: DeviceAttributes.self) {
+                attributesPlugin = plugin
+            } else {
+                attributesPlugin = DeviceAttributes()
+                self.analytics.add(plugin: attributesPlugin)
+            }
+
+            attributesPlugin.attributes = deviceAttributes
+            attributesPlugin.token = deviceToken
         }
-
-        // TODO: [CDP] Verify with server's expectation
-        attributesPlugin.attributes = deviceAttributes
-        attributesPlugin.token = deviceToken
     }
 
     func registerDeviceToken(_ deviceToken: String) {

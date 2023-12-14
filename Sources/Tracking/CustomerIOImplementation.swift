@@ -23,9 +23,6 @@ class CustomerIOImplementation: CustomerIOInstance {
     private let logger: Logger
     private var globalDataStore: GlobalDataStore
     private let sdkConfig: SdkConfig
-    private let deviceAttributesProvider: DeviceAttributesProvider
-    private let dateUtil: DateUtil
-    private let deviceInfo: DeviceInfo
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -42,9 +39,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.logger = diGraph.logger
         self.globalDataStore = diGraph.globalDataStore
         self.sdkConfig = diGraph.sdkConfig
-        self.deviceAttributesProvider = diGraph.deviceAttributesProvider
-        self.dateUtil = diGraph.dateUtil
-        self.deviceInfo = diGraph.deviceInfo
 
         DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
     }
