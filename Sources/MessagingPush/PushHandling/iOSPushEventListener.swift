@@ -12,32 +12,63 @@ protocol PushEventListener: AutoMockable {
 @available(iOSApplicationExtension, unavailable)
 // Singleton because:
 // 1. class stores data that needs to be kept in-memory.
-//
-// sourcery: InjectRegister = "PushEventListener"
-// sourcery: InjectSingleton
 class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
-    private var userNotificationCenter: UserNotificationCenter
-    private let jsonAdapter: JsonAdapter
-    private var moduleConfig: MessagingPushConfigOptions
-    private let pushClickHandler: PushClickHandler
-    private let pushHistory: PushHistory
+    private var overrideUserNotificationCenter: UserNotificationCenter?
+    private var overrideJsonAdapter: JsonAdapter?
+    private var overrideModuleConfig: MessagingPushConfigOptions?
+    private var overridePushClickHandler: PushClickHandler?
+    private var overridePushHistory: PushHistory?
+
+    private var diGraph: DIGraph? {
+        SdkInitializedUtilImpl().postInitializedData?.diGraph
+    }
+
+    private var userNotificationCenter: UserNotificationCenter? {
+        overrideUserNotificationCenter ?? diGraph?.userNotificationCenter
+    }
+
+    private var jsonAdapter: JsonAdapter? {
+        overrideJsonAdapter ?? diGraph?.jsonAdapter
+    }
+
+    private var moduleConfig: MessagingPushConfigOptions? {
+        overrideModuleConfig ?? diGraph?.messagingPushConfigOptions
+    }
+
+    private var pushClickHandler: PushClickHandler? {
+        overridePushClickHandler ?? diGraph?.pushClickHandler
+    }
+
+    private var pushHistory: PushHistory? {
+        overridePushHistory ?? diGraph?.pushHistory
+    }
+
+    public static let shared = iOSPushEventListener()
 
     // Make sure that this proxy is held in-memory.
     private let notificationCenterDelegateProxy = NotificationCenterDelegateProxy()
 
+    // Init for testing. Injecting mocks.
     init(userNotificationCenter: UserNotificationCenter, jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory) {
-        self.userNotificationCenter = userNotificationCenter
-        self.jsonAdapter = jsonAdapter
-        self.moduleConfig = moduleConfig
-        self.pushClickHandler = pushClickHandler
-        self.pushHistory = pushHistory
+        self.overrideUserNotificationCenter = userNotificationCenter
+        self.overrideJsonAdapter = jsonAdapter
+        self.overrideModuleConfig = moduleConfig
+        self.overridePushClickHandler = pushClickHandler
+        self.overridePushHistory = pushHistory
     }
 
     var delegate: UNUserNotificationCenterDelegate {
         self
     }
 
+    // singleton init
+    override init() {}
+
     func beginListening() {
+        guard var userNotificationCenter = userNotificationCenter else {
+            return
+        }
+
         // Sets up swizzling of `UNUserNotificationCenter.current().delegate` setter to get notified when a new delegate is set on host app.
         swizzle(
             forClass: UNUserNotificationCenter.self,
@@ -54,6 +85,13 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        guard let pushClickHandler = pushClickHandler,
+              let pushHistory = pushHistory,
+              let jsonAdapter = jsonAdapter
+        else {
+            return
+        }
+
         guard !pushHistory.hasHandledPushDidReceive(pushId: response.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
@@ -78,6 +116,13 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        guard let pushHistory = pushHistory,
+              let jsonAdapter = jsonAdapter,
+              let moduleConfig = moduleConfig
+        else {
+            return
+        }
+
         guard !pushHistory.hasHandledPushWillPresent(pushId: notification.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
@@ -107,6 +152,13 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         } else {
             completionHandler([]) // do not show push while app in foreground
         }
+    }
+}
+
+extension DIGraph {
+    @available(iOSApplicationExtension, unavailable)
+    var pushEventListener: PushEventListener {
+        iOSPushEventListener.shared
     }
 }
 
