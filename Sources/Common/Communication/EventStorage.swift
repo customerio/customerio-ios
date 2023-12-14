@@ -7,84 +7,58 @@ public protocol EventStorage {
         event: E,
         forKey key: String
     ) throws
-    func loadAllEvents<E: EventRepresentable>(
+    func loadAllEvents<E: EventRepresentable & Codable>(
         ofType type: E.Type,
         withKey key: String
     ) throws -> [E]
-    func clearEvent(forKey key: String) throws
+    func remove(forKey key: String) throws
     func clearAllEvents() throws
 }
 
 // sourcery: InjectRegisterShared = "EventStorage"
 public class EventStorageManager: EventStorage {
-    private let fileManager: FileManager = .default
-    private let documentsDirectory: URL
+    private let userDefaults: UserDefaults
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
 
-    init() {
-        self.documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+    init(userDefaults: UserDefaults = .standard) {
+        // Creating a dedicated UserDefaults suite for events
+        guard let eventUserDefaults = UserDefaults(suiteName: "eventbus.eventstorage") else {
+            fatalError("Unable to create a UserDefaults suite for events")
+        }
+        self.userDefaults = eventUserDefaults
     }
 
     public func store<E: Codable>(event: E, forKey key: String) throws {
-        // Append a unique identifier (e.g., current timestamp) to the filename.
-        let uniqueID = UUID().uuidString
-        let filename = "\(key)_\(uniqueID).json"
-        // put *all* files into our own "io.customer" directory to isolate files.
-        var saveLocationUrl = documentsDirectory.appendingPathComponent("io.customer", isDirectory: true)
-
-        // isolate all events
-        saveLocationUrl = saveLocationUrl.appendingPathComponent("event-storage", isDirectory: true)
-
-        let fileURL = saveLocationUrl.appendingPathComponent(filename, isDirectory: false)
-
-        let data = try JSONEncoder().encode(event)
-        try data.write(to: fileURL, options: [.atomicWrite])
-    }
-
-    public func loadAllEvents<E>(ofType type: E.Type, withKey key: String) throws -> [E] where E: EventRepresentable {
-        try loadAllCodableEvents(ofType: type, withKey: key)
+        do {
+            let data = try encoder.encode(event)
+            var eventsData = [Data]()
+            if let existingData = userDefaults.array(forKey: key) as? [Data] {
+                eventsData = existingData
+            }
+            eventsData.append(data)
+            userDefaults.set(eventsData, forKey: key)
+        } catch {
+            print("Failed to store event: \(error)")
+        }
     }
 
     // Load all events of a specific type.
-    public func loadAllCodableEvents<E: Codable>(ofType type: E.Type, withKey key: String) throws -> [E] {
-        let filePrefix = "\(key)_"
-        let eventFiles = try listFiles(withPrefix: filePrefix)
-        var events = [E]()
-
-        for fileURL in eventFiles {
-            let data = try Data(contentsOf: fileURL)
-            let event = try JSONDecoder().decode(E.self, from: data)
-            events.append(event)
-
-            // Optionally, remove the file after loading
-            try fileManager.removeItem(at: fileURL)
+    public func loadAllEvents<E: Codable>(ofType type: E.Type, withKey key: String) throws -> [E] {
+        guard let eventsData = userDefaults.array(forKey: key) as? [Data] else {
+            return []
         }
 
-        return events
-    }
-
-    public func loadAllEvents<E>(ofType type: E.Type, withKey key: String) throws -> [any EventRepresentable] where E: EventRepresentable {
-        try loadAllCodableEvents(ofType: type, withKey: key)
-    }
-
-    // Helper method to list all files with a specific prefix.
-    private func listFiles(withPrefix prefix: String) throws -> [URL] {
-        let files = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
-        return files.filter { $0.lastPathComponent.starts(with: prefix) }
-    }
-
-    public func clearEvent(forKey key: String) throws {
-        let filePrefix = "\(key)_"
-        let eventFiles = try listFiles(withPrefix: filePrefix)
-
-        for fileURL in eventFiles {
-            try fileManager.removeItem(at: fileURL)
+        return eventsData.compactMap { data in
+            try? decoder.decode(E.self, from: data)
         }
+    }
+
+    public func remove(forKey key: String) throws {
+        userDefaults.removeObject(forKey: key)
     }
 
     public func clearAllEvents() throws {
-        let contents = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
-        for fileURL in contents where fileURL.pathExtension == "json" {
-            try fileManager.removeItem(at: fileURL)
-        }
+        userDefaults.deleteAll()
     }
 }

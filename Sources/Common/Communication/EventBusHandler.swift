@@ -4,63 +4,64 @@ import Foundation
 public class EventBusHandler {
     private let eventBus: EventBus
     private let eventStorage: EventStorage
+    private var memoryStorage: [String: [any EventRepresentable]] = [:]
 
     public init(eventBus: EventBus, eventStorage: EventStorage) {
         self.eventBus = eventBus
         self.eventStorage = eventStorage
+        loadEventsFromStorage()
     }
 
-    public func send<E>(_ event: E) where E: EventRepresentable {
-        if eventBus.send(event) == false {
-            let key = event.key
+    private func loadEventsFromStorage() {
+        EventTypesRegistry.allEventTypes().forEach { eventType in
             do {
-                try eventStorage.store(event: event, forKey: key)
+                let key = eventType.key
+                let events: [any EventRepresentable] = try eventStorage.loadAllEvents(ofType: eventType, withKey: key)
+                memoryStorage[key, default: []].append(contentsOf: events)
             } catch {
-                print("Error storing event: \(error)")
+                // Handle the error, for example, log it or take some recovery actions
+                print("Error loading events for \(eventType): \(error)")
             }
         }
     }
 
-    @discardableResult
-    public func onReceive<E: EventRepresentable>(_ eventType: E.Type, perform action: @escaping (E) -> Void) -> AnyCancellable {
-        subscribeAndReplay(eventType: eventType, action: action)
+    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
+        eventBus.addObserver(eventType, action: action)
+        replayEvents(forType: eventType)
     }
 
-    @discardableResult
-    public func onReceive<E: EventRepresentable, S: Scheduler>(_ eventType: E.Type, performOn scheduler: S, action: @escaping (E) -> Void) -> AnyCancellable {
-        subscribeAndReplay(eventType: eventType, scheduler: scheduler, action: action)
-    }
-
-    private func subscribeAndReplay<E: EventRepresentable>(
-        eventType: E.Type,
-        scheduler: (any Scheduler)? = nil, // Optional scheduler
-        action: @escaping (E) -> Void
-    ) -> AnyCancellable {
-        let listener = eventBus.listenersRegistry.getOrCreateListener(forEventType: E.self)
-
-        let subscription: AnyCancellable
-        if let scheduler = scheduler {
-            subscription = listener.registerSubscription(scheduler: scheduler, action: action)
-        } else {
-            subscription = listener.registerSubscription(action: action)
+    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) {
+        let key = eventType.key
+        if let storedEvents = memoryStorage[key] as? [E] {
+            storedEvents.forEach { eventBus.post($0, on: nil) }
         }
-
-        let key = String(describing: E.self)
-
-        loadAndSendStoredEvents(ofType: E.self, to: listener)
-
-        return subscription
     }
 
-    /// Generic method to load and send stored events of a specific type.
-    /// - Parameter eventType: The type of event to load and send.
-    private func loadAndSendStoredEvents<E: EventRepresentable>(ofType eventType: E.Type, to listener: EventListener) {
+    public func postEvent<E: EventRepresentable>(_ event: E) {
+        let hasObservers = eventBus.post(event, on: nil)
+        if !hasObservers {
+            storeEvent(event)
+        } else {
+            removeFromStorage(event)
+        }
+    }
+
+    private func storeEvent<E: EventRepresentable>(_ event: E) {
+        let key = event.key
+        memoryStorage[key, default: []].append(event)
         do {
-            let key = eventType.key
-            let storedEvents: [E] = try eventStorage.loadAllEvents(ofType: eventType, withKey: key)
-            storedEvents.forEach { eventBus.send($0) }
+            try eventStorage.store(event: event, forKey: key)
         } catch {
-            // TODO: handle the error
+            print("Error storing event: \(error)")
+        }
+    }
+
+    private func removeFromStorage<E: EventRepresentable>(_ event: E) {
+        let key = event.key
+        do {
+            try eventStorage.remove(forKey: key)
+        } catch {
+            print("Error removing event from storage: \(error)")
         }
     }
 }

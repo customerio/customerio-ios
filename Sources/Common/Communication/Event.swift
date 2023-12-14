@@ -24,6 +24,23 @@ public extension EventRepresentable {
     }
 }
 
+// Event Types Registry
+public enum EventTypesRegistry {
+    static func allEventTypes() -> [any EventRepresentable.Type] {
+        // Add all your event types here
+        [
+            ProfileIdentifiedEvent.self,
+            ScreenViewedEvent.self,
+            ResetEvent.self,
+            TrackMetricEvent.self,
+            TrackInAppMetricEvent.self,
+            RegisterDeviceTokenEvent.self,
+            DeleteDeviceTokenEvent.self,
+            NewSubscriptionEvent.self
+        ]
+    }
+}
+
 public struct ProfileIdentifiedEvent: EventRepresentable {
     public var params: [String: String] = [:]
     public let identifier: String
@@ -63,6 +80,18 @@ public struct TrackMetricEvent: EventRepresentable {
         self.deliveryID = deliveryID
         self.event = event
         self.deviceToken = deviceToken
+    }
+}
+
+public struct TrackInAppMetricEvent: EventRepresentable {
+    public var params: [String: String] = [:]
+    public let deliveryID: String
+    public let event: String
+
+    public init(deliveryID: String, event: String, params: [String: String] = [:]) {
+        self.params = params
+        self.deliveryID = deliveryID
+        self.event = event
     }
 }
 
