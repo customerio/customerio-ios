@@ -196,9 +196,31 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        // FIXME: [CDP] Update name to match the expectation
-        let name = "Push Metric"
-        let properties = MetricEvent(event: name, metric: event, deliveryId: deliveryID, deliveryToken: deviceToken)
-        analytics.track(name: name, properties: properties)
+        logger.info("push metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    func trackInAppMetric(deliveryID: String, event: Metric, metaData: [String: Any]) {
+        logger.info("in-app metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) metaData \(metaData)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, metaData: metaData)
+    }
+
+    private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
+        var properties: [String: Any] = metaData.mergeWith([
+            "metric": event.rawValue,
+            "delivery_id": deliveryID,
+        ])
+
+        if let token = deviceToken {
+            properties["device_token"] = token
+        }
+        
+        analytics.track(name: "Report Metric", properties: properties)
     }
 }
