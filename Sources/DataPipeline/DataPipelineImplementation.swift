@@ -25,6 +25,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func initialize(diGraph: DIGraphShared) {
+        // add CustomerIO destination plugin
+        if moduleConfig.autoAddCustomerIODestination {
+            let customerIODestination = CustomerIODestination()
+            customerIODestination.analytics = analytics
+            analytics.add(plugin: customerIODestination)
+        }
+
         if let existingDeviceToken = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin and ensure device attributes are updated
             addDeviceAttributes(token: existingDeviceToken)
