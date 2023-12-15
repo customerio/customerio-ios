@@ -137,6 +137,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         DataPipeline.shared.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
+    // TODO: Write test case
     func handleQueueBacklog() {
         let allStoredTasks = backgroundQueue.getAllStoredTasks()
         if allStoredTasks.count <= 0 {
@@ -151,6 +152,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         }
     }
 
+    // TODO: Write test case
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
