@@ -24,25 +24,6 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     /**
-     Initialize the shared `instance` of `DataPipeline`.
-     Call this function when your app launches, before using `DataPipeline.shared`.
-     */
-    @discardableResult
-    public static func initialize(
-        writeKey: String,
-        configure configureHandler: ((inout DataPipelineConfigOptions) -> Void)? = nil
-    ) -> CustomerIOInstance {
-        var configOptions = moduleConfig ?? DataPipelineConfigOptions.Factory.create(writeKey: writeKey)
-
-        if let configureHandler = configureHandler {
-            configureHandler(&configOptions)
-        }
-
-        shared.initializeModule()
-        return shared
-    }
-
-    /**
      Initializes the shared `instance` of `DataPipeline`.
      This function is automatically called when the SDK initialization is called, which should ideally be done on app launch,
      before using any `DataPipeline` features.
@@ -80,6 +61,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
         implementation?.identify(identifier: identifier, body: body)
+    }
+
+    public func identify(body: Codable) {
+        implementation?.identify(body: body)
     }
 
     public var registeredDeviceToken: String? { implementation?.registeredDeviceToken }
