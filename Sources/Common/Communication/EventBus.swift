@@ -11,6 +11,8 @@ public protocol EventBus {
     func removeObserver<E: EventRepresentable>(for eventType: E.Type)
 }
 
+/// `SharedEventBus` manages the distribution of events to registered observers.
+/// It uses the NotificationCenter for event delivery and manages observer lifecycles.
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
 public class SharedEventBus: EventBus {
@@ -26,6 +28,11 @@ public class SharedEventBus: EventBus {
         DIGraphShared.shared.logger.debug("SharedEventBus initialized")
     }
 
+    /// Posts an event to the EventBus.
+    /// - Parameters:
+    ///   - event: The event to be posted.
+    ///   - queue: An optional DispatchQueue on which to post the event. If nil, uses the current queue.
+    /// - Returns: Boolean indicating if there were any observers for the event.
     @discardableResult
     public func post<E>(_ event: E, on queue: DispatchQueue? = nil) -> Bool where E: EventRepresentable {
         var hasObservers = false
@@ -37,6 +44,7 @@ public class SharedEventBus: EventBus {
                     self.notificationCenter.post(name: NSNotification.Name(E.key), object: event)
                 }
 
+                // Posts the event asynchronously on the provided queue or immediately if no queue is provided.
                 if let queue = queue {
                     queue.async(execute: postAction)
                 } else {
@@ -47,6 +55,10 @@ public class SharedEventBus: EventBus {
         return hasObservers
     }
 
+    /// Adds an observer for a specific event type.
+    /// - Parameters:
+    ///   - eventType: The event type to observe.
+    ///   - action: The action to execute when the event is observed.
     public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
         queue.sync {
             let key = E.key
@@ -63,6 +75,8 @@ public class SharedEventBus: EventBus {
         }
     }
 
+    /// Removes all observers from the EventBus.
+    /// This is typically used for cleanup or when resetting the event handling system.
     public func removeAllObservers() {
         queue.sync {
             observers.forEach { _, observerList in
@@ -74,6 +88,8 @@ public class SharedEventBus: EventBus {
         }
     }
 
+    /// Removes all observers for a specific event type.
+    /// - Parameter eventType: The event type for which to remove observers.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
         queue.sync {
             let key = E.key
