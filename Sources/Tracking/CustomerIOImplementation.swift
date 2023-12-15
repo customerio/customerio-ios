@@ -146,22 +146,24 @@ class CustomerIOImplementation: CustomerIOInstance {
 
         threadUtil.runBackground { [weak self] in
             allStoredTasks.forEach { task in
-                self?.getStoredTask(for: task)
+                self?.getAndProcessTask(for: task)
             }
         }
     }
 
-    // TODO: Pending: Clean this method + device attributes + clean individual way to delete processed tasks
-    func getStoredTask(for task: QueueTaskMetadata) {
+    func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
-
+        var isProcessed = true
         switch taskDetail.taskType {
         case .trackDeliveryMetric:
             // TODO: Segment doesn't provide this method by default needs to get added
+            // Remove isProcessed when the method is added
             print("Track Delivery Metrics for in-app - Needs discussion")
+            isProcessed = false
         case .identifyProfile:
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
+                isProcessed = false
                 return
             }
             if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
@@ -173,29 +175,47 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             identify(identifier: trackTaskData.identifier, body: profileAttributes)
-            backgroundQueue.deleteProcessedTask(task)
         case .trackEvent:
-            guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
-            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else { return }
+            guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else {
+                isProcessed = false
+                return
+            }
+            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else {
+                isProcessed = false
+                return
+            }
             switch trackType.type {
             case .screen:
                 screen(name: trackType.name, data: trackTaskData)
             case .event:
                 track(name: trackType.name, data: trackTaskData)
             }
-            backgroundQueue.deleteProcessedTask(task)
         case .registerPushToken:
-            guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
-            guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else { return }
-            guard let device = deviceAttributes["device"] as? [String: Any] else { return }
+            guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+                isProcessed = false
+                return
+            }
+            guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
+                isProcessed = false
+                return
+            }
+            guard let device = deviceAttributes["device"] as? [String: Any] else {
+                isProcessed = false
+                return
+            }
             self.deviceAttributes = device
-            backgroundQueue.deleteProcessedTask(task)
         case .deletePushToken:
             deleteDeviceToken()
-            backgroundQueue.deleteProcessedTask(task)
         case .trackPushMetric:
-            guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else { return }
+            guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
+                isProcessed = false
+                return
+            }
             trackMetric(deliveryID: trackPushTaskData.deliveryId, event: trackPushTaskData.event, deviceToken: trackPushTaskData.deviceToken)
+        }
+
+        // Remove the task from the queue if the task has been prpcessed successfully
+        if isProcessed {
             backgroundQueue.deleteProcessedTask(task)
         }
     }
