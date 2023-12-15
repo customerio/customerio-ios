@@ -340,6 +340,10 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         identifyEncodableReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        identifyAnonymousEncodableReceivedArguments = nil
+        identifyAnonymousEncodableReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         clearIdentifyCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -421,6 +425,26 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         identifyEncodableReceivedArguments = (identifier: identifier, body: AnyEncodable(body))
         identifyEncodableReceivedInvocations.append((identifier: identifier, body: AnyEncodable(body)))
         identifyEncodableClosure?(identifier, AnyEncodable(body))
+    }
+
+    // MARK: - identify
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var identifyAnonymousEncodableReceivedArguments: Codable?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var identifyAnonymousEncodableReceivedInvocations: [Codable] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var identifyAnonymousEncodableClosure: ((Codable) -> Void)?
+
+    /// Mocked function for `identify(body: Codable)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func identify(body: Codable) {
+        mockCalled = true
+        identifyCallsCount += 1
+        identifyAnonymousEncodableReceivedArguments = body
+        identifyAnonymousEncodableReceivedInvocations.append(body)
+        identifyAnonymousEncodableClosure?(body)
     }
 
     // MARK: - clearIdentify

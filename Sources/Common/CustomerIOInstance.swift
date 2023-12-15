@@ -20,6 +20,10 @@ public protocol CustomerIOInstance: AutoMockable {
         body: RequestBody
     )
 
+    // sourcery:Name=identifyAnonymousEncodable
+    // sourcery:DuplicateMethod=identify
+    func identify(body: Codable)
+
     var registeredDeviceToken: String? { get }
 
     func clearIdentify()
@@ -229,6 +233,10 @@ public class CustomerIO: CustomerIOInstance {
         body: RequestBody
     ) {
         implementation?.identify(identifier: identifier, body: body)
+    }
+
+    public func identify(body: Codable) {
+        implementation?.identify(body: body)
     }
 
     public func identify(identifier: String, body: [String: Any]) {
