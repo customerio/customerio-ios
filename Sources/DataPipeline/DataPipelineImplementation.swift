@@ -167,12 +167,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         deviceAttributesPlugin.token = deviceToken
 
         // Consolidate all Apple platforms under iOS
-        let deviceOsName = "iOS"
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes: [String: Any] = defaultDeviceAttributes
                 .mergeWith([
-                    "platform": deviceOsName,
-                    "lastUsed": self.dateUtil.now
+                    "last_used": self.dateUtil.now
                 ])
                 .mergeWith(customAttributes)
             self.deviceAttributesPlugin.attributes = deviceAttributes

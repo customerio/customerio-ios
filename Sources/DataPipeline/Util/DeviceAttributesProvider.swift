@@ -23,19 +23,19 @@ class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         }
 
         var deviceAttributes = [
-            "cioSdkVersion": deviceInfo.sdkVersion,
-            "appVersion": deviceInfo.customerAppVersion,
-            "deviceLocale": deviceInfo.deviceLocale,
-            "deviceManufacturer": deviceInfo.deviceManufacturer
+            "cio_sdk_version": deviceInfo.sdkVersion,
+            "app_version": deviceInfo.customerAppVersion,
+            "device_locale": deviceInfo.deviceLocale,
+            "device_manufacturer": deviceInfo.deviceManufacturer
         ]
         if let deviceModel = deviceInfo.deviceModel {
-            deviceAttributes["deviceModel"] = deviceModel
+            deviceAttributes["device_model"] = deviceModel
         }
         if let deviceOsVersion = deviceInfo.osVersion {
-            deviceAttributes["deviceOS"] = deviceOsVersion
+            deviceAttributes["device_os"] = deviceOsVersion
         }
         deviceInfo.isPushSubscribed { isSubscribed in
-            deviceAttributes["pushEnabled"] = String(isSubscribed)
+            deviceAttributes["push_enabled"] = String(isSubscribed)
 
             onComplete(deviceAttributes)
         }
