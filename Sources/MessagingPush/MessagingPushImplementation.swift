@@ -4,7 +4,6 @@ import Foundation
 import UIKit
 import UserNotifications
 #endif
-import Combine
 
 class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
@@ -39,23 +38,14 @@ class MessagingPushImplementation: MessagingPushInstance {
     }
 
     func deleteDeviceToken() {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.deleteDeviceToken()
-
         eventHandlingManager.postEvent(DeleteDeviceTokenEvent())
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.registerDeviceToken(deviceToken)
-
         eventHandlingManager.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-
         eventHandlingManager.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
     }
 
