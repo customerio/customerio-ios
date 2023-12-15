@@ -13,39 +13,47 @@ class PushHistoryTest: IntegrationTest {
         pushHistory.maxSizeOfHistory = 3 // make smaller number to make tests run faster and test edge cases
     }
 
-    // MARK: hasHandledPushClick
+    // MARK: hasHandledPush
 
-    func test_hasHandledPushClick_givenNoPushesClicked_expectFalse() {
-        XCTAssertFalse(pushHistory.hasHandledPushClick(deliveryId: .random))
+    func test_hasHandledPush_givenPushNotHandled_expectFalse() {
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: String.random))
     }
 
-    func test_hasHandledPushClick_givenHasClickedOtherPushes_expectFalse() {
-        pushHistory.handledPushClick(deliveryId: .random)
+    func test_hasHandledPush_givenPushPreviouslyHandled_expectTrue() {
+        let givenPushId = String.random
 
-        XCTAssertFalse(pushHistory.hasHandledPushClick(deliveryId: .random))
+        // Handle push for first time
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
+
+        // Check that function returns true
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
     }
 
-    func test_hasHandledPushClick_givenHasHandledThatPush_expectTrue() {
-        let givenDeliveryId = String.random
+    func test_hasHandledPush_givenUniquePushIds_expectEachPushHandledOnlyOnce() {
+        let givenPushId1 = String.random
+        let givenPushId2 = String.random
+        let givenPushId3 = String.random
 
-        pushHistory.handledPushClick(deliveryId: givenDeliveryId)
+        // Handle push for first time
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
 
-        XCTAssertTrue(pushHistory.hasHandledPushClick(deliveryId: givenDeliveryId))
+        // Check that function returns true
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
     }
 
-    // MARK: handledPushClick
+    func test_hasHandledPush_givenSamePushId_givenUniquePushEvents_expectEachPushEventHandledOnce() {
+        let givenPushId = String.random
 
-    func test_handledPushClick_expectMaintainHistoryOfLastPushesClicked() {
-        let givenDeliveryId1 = String.random
-        let givenDeliveryId2 = String.random
-        let givenDeliveryId3 = String.random
-        let givenDeliveryId4 = String.random
+        // Handle push for first time
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId))
 
-        pushHistory.handledPushClick(deliveryId: givenDeliveryId1)
-        pushHistory.handledPushClick(deliveryId: givenDeliveryId2)
-        pushHistory.handledPushClick(deliveryId: givenDeliveryId3)
-        pushHistory.handledPushClick(deliveryId: givenDeliveryId4)
-
-        XCTAssertEqual(pushHistory.lastPushesClicked, [givenDeliveryId2, givenDeliveryId3, givenDeliveryId4])
+        // Check that function returns true
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId))
     }
 }
