@@ -54,12 +54,11 @@ class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        guard !pushHistory.hasHandledPushDidReceive(pushId: response.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return
         }
-        pushHistory.didHandlePushDidReceive(pushId: response.pushId)
 
         guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
@@ -78,12 +77,11 @@ class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        guard !pushHistory.hasHandledPushWillPresent(pushId: notification.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return
         }
-        pushHistory.didHandlePushWillPresent(pushId: notification.pushId)
 
         guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
