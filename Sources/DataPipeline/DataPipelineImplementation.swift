@@ -21,10 +21,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
-        initialize()
+        initialize(diGraph: diGraph)
     }
 
-    private func initialize() {
+    private func initialize(diGraph: DIGraphShared) {
         if let token = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
             setDeviceToken(token)
@@ -39,11 +39,18 @@ class DataPipelineImplementation: DataPipelineInstance {
     var config: CioInternalCommon.SdkConfig?
 
     func identify(identifier: String, body: [String: Any]) {
-        analytics.identify(userId: identifier, traits: body)
+        commonIdentifyProfile(userId: identifier, attributesDict: body)
     }
 
     func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        analytics.identify(userId: identifier, traits: body)
+        commonIdentifyProfile(userId: identifier, attributesCodable: body)
+    }
+
+    /// Associate a user with their unique ID and record traits about them.
+    /// - Parameters:
+    ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
+    func identify(body: Codable) {
+        analytics.identify(traits: body)
     }
 
     var registeredDeviceToken: String? {
@@ -51,10 +58,8 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func clearIdentify() {
-        // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
-        // we had to call this explicitly. Rethink on how can we make one call for both customers.
-        removeDevicePlugin()
-        analytics.reset()
+        logger.info("clearing identified profile")
+        commonClearIdentify()
     }
 
     func track(name: String, data: [String: Any]) {
@@ -76,9 +81,47 @@ class DataPipelineImplementation: DataPipelineInstance {
     var profileAttributes: [String: Any] {
         get { analytics.traits() ?? [:] }
         set {
-            let userId = analytics.userId ?? analytics.anonymousId
-            analytics.identify(userId: userId, traits: newValue)
+            let userId = analytics.userId
+            guard let userId = userId else {
+                logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
+                return
+            }
+            commonIdentifyProfile(userId: userId, attributesDict: newValue)
         }
+    }
+
+    private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
+        let currentlyIdentifiedProfile = analytics.userId
+        let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
+        let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
+
+        if isFirstTimeIdentifying || isChangingIdentifiedProfile {
+            // logger.debug("running hooks profile identified \(userId)")
+            // FIXME: [CDP] Request Journeys to invoke profile identify hooks
+            // hooks.profileIdentifyHooks.forEach { hook in
+            //     hook.profileIdentified(identifier: userId)
+            // }
+        }
+        if let attributes = attributesCodable {
+            analytics.identify(userId: userId, traits: attributes)
+        } else {
+            analytics.identify(userId: userId, traits: attributesDict)
+        }
+    }
+
+    private func commonClearIdentify() {
+        // logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
+        // TODO: [CDP] Confirm how can we delete devices for CDP
+
+        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
+        // hooks.profileIdentifyHooks.forEach { hook in
+        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
+        // }
+
+        // reset all to default state
+        logger.debug("resetting user profile")
+        analytics.reset()
     }
 
     var deviceAttributes: [String: Any] {
@@ -153,9 +196,33 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        // FIXME: [CDP] Update name to match the expectation
-        let name = "Push Metric"
-        let properties = MetricEvent(event: name, metric: event, deliveryId: deliveryID, deliveryToken: deviceToken)
-        analytics.track(name: name, properties: properties)
+        logger.info("push metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    func trackInAppMetric(deliveryID: String, event: Metric, metaData: [String: Any]) {
+        logger.info("in-app metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) metaData \(metaData)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, metaData: metaData)
+    }
+
+    /// Tracks metric events for push and in-app messages
+    private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
+        // property keys should be camelCase
+        var properties: [String: Any] = metaData.mergeWith([
+            "metric": event.rawValue,
+            "deliveryId": deliveryID
+        ])
+
+        if let token = deviceToken {
+            properties["recipient"] = token
+        }
+
+        analytics.track(name: "Journeys Delivery Metric", properties: properties)
     }
 }

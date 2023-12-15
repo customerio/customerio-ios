@@ -45,6 +45,9 @@ public extension CustomerIO {
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
+        if sdkConfig.logLevel == .debug {
+            CustomerIO.shared.setDebugLogsEnabled(true)
+        }
         if sdkConfig.autoTrackScreenViews {
             // automatically add the AutoTrackingScreenViews plugin
             DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
