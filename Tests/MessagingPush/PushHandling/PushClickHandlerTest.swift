@@ -16,7 +16,10 @@ class PushClickHandlerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        setupTest(autoTrackPushEvents: sdkConfig.autoTrackPushEvents)
+        // Set default values of mocks to avoid having to add to every test function.
+        pushHistoryMock.hasHandledPushClickReturnValue = false
+
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, pushHistory: pushHistoryMock, customerIO: customerIOMock)
     }
 
     // MARK: pushClicked
@@ -53,9 +56,7 @@ class PushClickHandlerTest: UnitTest {
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkReceivedArguments, URL(string: givenDeepLink))
     }
 
-    func test_pushClicked_givenEnabledAutomaticPushEvents_expectTrackOpenedEvent() {
-        setupTest(autoTrackPushEvents: true)
-
+    func test_pushClicked_expectTrackOpenedEvent() {
         let givenPush = getPush(content: [
             "CIO": [
                 "push": [
@@ -69,24 +70,8 @@ class PushClickHandlerTest: UnitTest {
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
     }
 
-    func test_pushClicked_givenDisableAutomaticPushEvents_expectDoNotTrackOpenedEvent() {
-        setupTest(autoTrackPushEvents: false)
-
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
-
-        pushClickHandler.pushClicked(givenPush)
-
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 0)
-    }
-
     func test_pushClicked_expectIgnoreRequestIfAlreadyHandledPush() {
-        setupTest(autoTrackPushEvents: true) // using push tracking as our indicator if a request is ignored
+        // Note: Using push tracking as our indicator if a request is ignored
 
         // Indicate we have already processed the push
         pushHistoryMock.hasHandledPushClickReturnValue = true
@@ -112,17 +97,6 @@ class PushClickHandlerTest: UnitTest {
 }
 
 extension PushClickHandlerTest {
-    func setupTest(autoTrackPushEvents: Bool) {
-        super.setUp(modifySdkConfig: { config in
-            config.autoTrackPushEvents = autoTrackPushEvents
-        })
-
-        // Set default values of mocks to avoid having to add to every test function.
-        pushHistoryMock.hasHandledPushClickReturnValue = false
-
-        pushClickHandler = PushClickHandlerImpl(sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtilMock, pushHistory: pushHistoryMock, customerIO: customerIOMock)
-    }
-
     func getPush(content: [AnyHashable: Any], deliveryId: String = .random, deviceToken: String = .random) -> CustomerIOParsedPushPayload {
         var content = content
 

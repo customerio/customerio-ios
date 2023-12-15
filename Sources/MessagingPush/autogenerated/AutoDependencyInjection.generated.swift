@@ -136,7 +136,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
-        PushClickHandlerImpl(sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtil, pushHistory: pushHistory, customerIO: customerIOInstance)
+        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, pushHistory: pushHistory, customerIO: customerIOInstance)
     }
 
     // PushHistory
