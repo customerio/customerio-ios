@@ -23,6 +23,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     private let logger: Logger
     private var globalDataStore: GlobalDataStore
     private let sdkConfig: SdkConfig
+    private let threadUtil: ThreadUtil
 
     static var autoScreenViewBody: (() -> [String: Any])?
 
@@ -39,7 +40,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.logger = diGraph.logger
         self.globalDataStore = diGraph.globalDataStore
         self.sdkConfig = diGraph.sdkConfig
-
+        self.threadUtil = diGraph.threadUtil
         DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
     }
 
@@ -136,8 +137,18 @@ class CustomerIOImplementation: CustomerIOInstance {
         DataPipeline.shared.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    func getAllStoredTasks() -> [QueueTaskMetadata]? {
-        backgroundQueue.getAllStoredTasks()
+    func handleQueueBacklog() {
+        let allStoredTasks = backgroundQueue.getAllStoredTasks()
+        if allStoredTasks.count <= 0 {
+            logger.info("No tasks pending in the background queue to be executed.")
+            return
+        }
+
+        threadUtil.runBackground { [weak self] in
+            allStoredTasks.forEach { task in
+                self?.getStoredTask(for: task)
+            }
+        }
     }
 
     // TODO: Pending: Clean this method + device attributes + clean individual way to delete processed tasks
