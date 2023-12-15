@@ -474,6 +474,9 @@ public extension DIGraphShared {
     internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = deviceInfo
+        countDependenciesResolved += 1
+
         _ = globalDataStore
         countDependenciesResolved += 1
 
@@ -490,6 +493,9 @@ public extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = jsonAdapter
+        countDependenciesResolved += 1
+
+        _ = dateUtil
         countDependenciesResolved += 1
 
         _ = logger

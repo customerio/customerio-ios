@@ -37,6 +37,26 @@ class DataPipelineImplementation: DataPipelineInstance {
             // if the device token exists, pass it to the plugin and ensure device attributes are updated
             addDeviceAttributes(token: existingDeviceToken)
         }
+
+        // plugin to publish data pipeline events
+        analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
+
+        // subscribe to journey events
+        subscribeToJourneyEvents()
+    }
+
+    private func subscribeToJourneyEvents() {
+        busEventManager.addObserver(TrackMetricEvent.self) { metric in
+            self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
+        }
+
+        busEventManager.addObserver(TrackInAppMetricEvent.self) { metric in
+            self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
+        }
+
+        busEventManager.addObserver(RegisterDeviceTokenEvent.self) { event in
+            self.registerDeviceToken(event.token)
+        }
     }
 
     // Code below this line will be updated in later PRs
@@ -79,13 +99,10 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func screen(name: String, data: [String: Any]) {
-        busEventManager.postEvent(ScreenViewedEvent(name: name))
         analytics.screen(title: name, properties: data)
     }
 
     func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
-        busEventManager.postEvent(ScreenViewedEvent(name: name))
-
         analytics.screen(title: name, properties: data)
     }
 
@@ -119,12 +136,6 @@ class DataPipelineImplementation: DataPipelineInstance {
                 // register device to newly identified profile
                 addDeviceAttributes(token: existingDeviceToken)
             }
-
-            // logger.debug("running hooks profile identified \(userId)")
-            // FIXME: [CDP] Request Journeys to invoke profile identify hooks
-            // hooks.profileIdentifyHooks.forEach { hook in
-            //     hook.profileIdentified(identifier: userId)
-            // }
         }
     }
 
@@ -132,12 +143,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
-
-        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
-        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
-        // hooks.profileIdentifyHooks.forEach { hook in
-        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        // }
 
         // reset all to default state
         logger.debug("resetting user profile")
@@ -205,15 +210,19 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        logger.info("push metric \(event.rawValue)")
+        trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
+    }
+
+    func trackPushMetric(deliveryID: String, event: String, deviceToken: String) {
+        logger.info("push metric \(event)")
 
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
         trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    func trackInAppMetric(deliveryID: String, event: Metric, metaData: [String: Any]) {
-        logger.info("in-app metric \(event.rawValue)")
+    func trackInAppMetric(deliveryID: String, event: String, metaData: [String: String]) {
+        logger.info("in-app metric \(event)")
 
         logger.debug("delivery id \(deliveryID) metaData \(metaData)")
 
@@ -221,12 +230,12 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     /// Tracks metric events for push and in-app messages
-    private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
+    private func trackMetricEvent(deliveryID: String, event: String, deviceToken: String? = nil, metaData: [String: String] = [:]) {
         // property keys should be camelCase
-        var properties: [String: Any] = metaData.mergeWith([
-            "metric": event.rawValue,
-            "deliveryId": deliveryID
-        ])
+        var properties: [String: String] = metaData
+
+        properties["metric"] = event
+        properties["deliveryId"] = deliveryID
 
         if let token = deviceToken {
             properties["recipient"] = token
