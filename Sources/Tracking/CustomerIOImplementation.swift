@@ -145,9 +145,9 @@ class CustomerIOImplementation: CustomerIOInstance {
         }
 
         threadUtil.runBackground { [weak self] in
-            allStoredTasks.forEach { task in
-                self?.getStoredTask(for: task)
-            }
+//            allStoredTasks.forEach { task in
+            self?.getStoredTask(for: allStoredTasks[0])
+//            }
         }
     }
 
@@ -164,9 +164,16 @@ class CustomerIOImplementation: CustomerIOInstance {
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 return
             }
-            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else { return }
+            if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
+                identify(identifier: trackTaskData.identifier)
+                return
+            }
+            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
+                identify(identifier: trackTaskData.identifier)
+                return
+            }
             identify(identifier: trackTaskData.identifier, body: profileAttributes)
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         case .trackEvent:
             guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
             guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else { return }
@@ -176,20 +183,20 @@ class CustomerIOImplementation: CustomerIOInstance {
             case .event:
                 track(name: trackType.name, data: trackTaskData)
             }
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         case .registerPushToken:
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else { return }
             guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else { return }
             guard let device = deviceAttributes["device"] as? [String: Any], let token = device["id"] as? String else { return }
             registerDeviceToken(token)
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         case .deletePushToken:
             deleteDeviceToken()
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         case .trackPushMetric:
             guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else { return }
             trackMetric(deliveryID: trackPushTaskData.deliveryId, event: trackPushTaskData.event, deviceToken: trackPushTaskData.deviceToken)
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         }
     }
 }
