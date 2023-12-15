@@ -133,20 +133,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         event: Metric,
         deviceToken: String
     ) {
-        logger.info("push metric \(event.rawValue)")
-
-        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
-
         DataPipeline.shared.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
-
-        _ = backgroundQueue.addTask(
-            type: QueueTaskType.trackPushMetric.rawValue,
-            data: MetricRequest(
-                deliveryId: deliveryID,
-                event: event,
-                deviceToken: deviceToken,
-                timestamp: Date()
-            )
-        )
     }
 }

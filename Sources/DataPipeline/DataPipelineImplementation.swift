@@ -21,10 +21,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
-        initialize()
+        initialize(diGraph: diGraph)
     }
 
-    private func initialize() {
+    private func initialize(diGraph: DIGraphShared) {
         if let token = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
             setDeviceToken(token)
@@ -196,9 +196,33 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        // FIXME: [CDP] Update name to match the expectation
-        let name = "Push Metric"
-        let properties = MetricEvent(event: name, metric: event, deliveryId: deliveryID, deliveryToken: deviceToken)
-        analytics.track(name: name, properties: properties)
+        logger.info("push metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    func trackInAppMetric(deliveryID: String, event: Metric, metaData: [String: Any]) {
+        logger.info("in-app metric \(event.rawValue)")
+
+        logger.debug("delivery id \(deliveryID) metaData \(metaData)")
+
+        trackMetricEvent(deliveryID: deliveryID, event: event, metaData: metaData)
+    }
+
+    /// Tracks metric events for push and in-app messages
+    private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
+        // property keys should be camelCase
+        var properties: [String: Any] = metaData.mergeWith([
+            "metric": event.rawValue,
+            "deliveryId": deliveryID
+        ])
+
+        if let token = deviceToken {
+            properties["recipient"] = token
+        }
+
+        analytics.track(name: "Journeys Delivery Metric", properties: properties)
     }
 }
