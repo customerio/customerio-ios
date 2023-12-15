@@ -21,14 +21,11 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
-        initialize()
+        initialize(diGraph: diGraph)
     }
 
-    private func initialize() {
-        if let token = globalDataStore.pushDeviceToken {
-            // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
-            setDeviceToken(token)
-        }
+    private func initialize(diGraph: DIGraphShared) {
+        analytics.add(plugin: ConsoleLogger(diGraph: diGraph))
     }
 
     // Code below this line will be updated in later PRs
