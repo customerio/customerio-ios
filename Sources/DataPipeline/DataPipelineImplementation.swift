@@ -184,6 +184,7 @@ class DataPipelineImplementation: DataPipelineInstance {
                 return
             }
 
+            // TODO: [CDP] Reverify event name before going live
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
     }
@@ -227,6 +228,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             properties["recipient"] = token
         }
 
+        // TODO: [CDP] Reverify event name before going live
         analytics.track(name: "Journeys Delivery Metric", properties: properties)
     }
 }
