@@ -111,20 +111,16 @@ public class CustomerIO: CustomerIOInstance {
         self.diGraph = diGraph
     }
 
-    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph, module: ModuleHookProvider, cleanupRepositoryImp: CleanupRepository) {
+    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph, cleanupRepositoryImp: CleanupRepository) {
         shared.implementation = implementation
         shared.diGraph = diGraph
-        shared.postInitialize(diGraph: diGraph, module: module, cleanupRepositoryImp: cleanupRepositoryImp)
+        shared.postInitialize(diGraph: diGraph, cleanupRepositoryImp: cleanupRepositoryImp)
     }
 
-    func postInitialize(diGraph: DIGraph, module: ModuleHookProvider, cleanupRepositoryImp: CleanupRepository) {
-        let hooks = diGraph.hooksManager
+    func postInitialize(diGraph: DIGraph, cleanupRepositoryImp: CleanupRepository) {
         let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
         let siteId = diGraph.sdkConfig.siteId
-
-        // Register Tracking module hooks now that the module is being initialized.
-        hooks.add(key: .tracking, provider: module)
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.

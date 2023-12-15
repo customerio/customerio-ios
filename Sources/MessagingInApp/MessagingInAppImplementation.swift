@@ -1,4 +1,5 @@
 import CioInternalCommon
+import Combine
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
@@ -8,17 +9,41 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
+    private let busEventManager: EventBusHandler
+    private var subscriptions: Set<AnyCancellable> = []
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
+        self.busEventManager = EventBusHandler(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
         initialize()
     }
 
     private func initialize() {
         inAppProvider.initialize(siteId: moduleConfig.siteId, region: moduleConfig.region, delegate: self)
+
+        busEventManager.onReceive(ProfileIdentifiedEvent.self) { event in
+            self.logger.debug("registering profile \(event.identifier) for in-app")
+
+            self.inAppProvider.setProfileIdentifier(event.identifier)
+        }.store(in: &subscriptions)
+
+        busEventManager.onReceive(ScreenViewedEvent.self) { event in
+            self.logger.debug("setting route for in-app to \(event.name)")
+
+            // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
+            self.threadUtil.runMain {
+                self.inAppProvider.setRoute(event.name)
+            }
+        }.store(in: &subscriptions)
+
+        busEventManager.onReceive(ResetEvent.self) { _ in
+            self.logger.debug("removing profile for in-app")
+
+            self.inAppProvider.clearIdentify()
+        }.store(in: &subscriptions)
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
@@ -38,33 +63,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 }
 
-extension MessagingInAppImplementation: ProfileIdentifyHook {
-    public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {}
-
-    public func profileIdentified(identifier: String) {
-        logger.debug("registering profile \(identifier) for in-app")
-
-        inAppProvider.setProfileIdentifier(identifier)
-    }
-
-    public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
-        logger.debug("removing profile for in-app")
-
-        inAppProvider.clearIdentify()
-    }
-}
-
-extension MessagingInAppImplementation: ScreenTrackingHook {
-    public func screenViewed(name: String) {
-        logger.debug("setting route for in-app to \(name)")
-
-        // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
-        threadUtil.runMain {
-            self.inAppProvider.setRoute(name)
-        }
-    }
-}
-
 extension MessagingInAppImplementation: GistDelegate {
     public func embedMessage(message: Message, elementId: String) {}
 
@@ -78,6 +76,9 @@ extension MessagingInAppImplementation: GistDelegate {
             // the state of the SDK does not change if adding this queue task isn't successful so ignore result
             // FIXME: [CDP] Pass to Journey
             // _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
+
+            // TODO: add the TrackInAppMetricEvent
+//            busEventManager.send(TrackInAppMetricEvent(deliveryID: deliveryId, event: "")
         }
     }
 

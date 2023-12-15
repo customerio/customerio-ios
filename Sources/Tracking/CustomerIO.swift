@@ -43,7 +43,7 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: newDiGraph, cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
         if sdkConfig.autoTrackScreenViews {
             // automatically add the AutoTrackingScreenViews plugin
@@ -68,12 +68,12 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: newSdkConfig.toSdkConfig())
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: newDiGraph, cleanupRepositoryImp: newDiGraph.cleanupRepository)
     }
 
     // Initialize for Integration Tests
     static func initializeIntegrationTests(diGraph: DIGraph) {
         let implementation = CustomerIOImplementation(diGraph: diGraph)
-        initializeSharedInstance(with: implementation, diGraph: diGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: diGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: diGraph, cleanupRepositoryImp: diGraph.cleanupRepository)
     }
 }

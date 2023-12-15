@@ -28,6 +28,8 @@ public protocol EventBus: AnyObject {
     ///     - action: The action to perform when an event is emitted by EventBus. The  event instance is passed as a parameter to action.
     /// - Returns: A cancellable instance, which needs to be stored as long as action needs to be triggered. Deallocation of the result will unsubscribe from the event and action will not be triggered.
     @discardableResult func onReceive<E: EventRepresentable, S: Scheduler>(_ eventType: E.Type, performOn scheduler: S, action: @escaping (E) -> Void) -> AnyCancellable
+
+    var listenersRegistry: EventListenersRegistry { get }
 }
 
 /// `SharedEventBus` is a centralized component that manages event distribution in an application.
@@ -61,8 +63,8 @@ public protocol EventBus: AnyObject {
 
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
-class SharedEventBus: EventBus {
-    private var listenersRegistry: EventListenersRegistry
+public class SharedEventBus: EventBus {
+    public var listenersRegistry: EventListenersRegistry
 
     /// Initializes a new instance of `SharedEventBus`.
     ///

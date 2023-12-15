@@ -1,22 +1,22 @@
 import Foundation
 
-protocol EventStorage: AutoMockable {
+public protocol EventStorage {
     func store<E: Codable>(
         // sourcery:Type=AnyEncodable
         // sourcery:TypeCast="AnyEncodable(event)"
         event: E,
         forKey key: String
     ) throws
-    func loadAllEvents(
-        ofType type: any EventRepresentable.Type,
+    func loadAllEvents<E: EventRepresentable>(
+        ofType type: E.Type,
         withKey key: String
-    ) throws -> [any EventRepresentable]
+    ) throws -> [E]
     func clearEvent(forKey key: String) throws
     func clearAllEvents() throws
 }
 
 // sourcery: InjectRegisterShared = "EventStorage"
-class EventStorageManager: EventStorage {
+public class EventStorageManager: EventStorage {
     private let fileManager: FileManager = .default
     private let documentsDirectory: URL
 
@@ -24,7 +24,7 @@ class EventStorageManager: EventStorage {
         self.documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
     }
 
-    func store<E: Codable>(event: E, forKey key: String) throws {
+    public func store<E: Codable>(event: E, forKey key: String) throws {
         // Append a unique identifier (e.g., current timestamp) to the filename.
         let uniqueID = UUID().uuidString
         let filename = "\(key)_\(uniqueID).json"
@@ -40,12 +40,12 @@ class EventStorageManager: EventStorage {
         try data.write(to: fileURL, options: [.atomicWrite])
     }
 
-    func loadAllEvents(ofType type: any EventRepresentable.Type, withKey key: String) throws -> [any EventRepresentable] {
+    public func loadAllEvents<E>(ofType type: E.Type, withKey key: String) throws -> [E] where E: EventRepresentable {
         try loadAllCodableEvents(ofType: type, withKey: key)
     }
 
     // Load all events of a specific type.
-    func loadAllCodableEvents<E: Codable>(ofType type: E.Type, withKey key: String) throws -> [E] {
+    public func loadAllCodableEvents<E: Codable>(ofType type: E.Type, withKey key: String) throws -> [E] {
         let filePrefix = "\(key)_"
         let eventFiles = try listFiles(withPrefix: filePrefix)
         var events = [E]()
@@ -62,13 +62,17 @@ class EventStorageManager: EventStorage {
         return events
     }
 
+    public func loadAllEvents<E>(ofType type: E.Type, withKey key: String) throws -> [any EventRepresentable] where E: EventRepresentable {
+        try loadAllCodableEvents(ofType: type, withKey: key)
+    }
+
     // Helper method to list all files with a specific prefix.
     private func listFiles(withPrefix prefix: String) throws -> [URL] {
         let files = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
         return files.filter { $0.lastPathComponent.starts(with: prefix) }
     }
 
-    func clearEvent(forKey key: String) throws {
+    public func clearEvent(forKey key: String) throws {
         let filePrefix = "\(key)_"
         let eventFiles = try listFiles(withPrefix: filePrefix)
 
@@ -77,7 +81,7 @@ class EventStorageManager: EventStorage {
         }
     }
 
-    func clearAllEvents() throws {
+    public func clearAllEvents() throws {
         let contents = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
         for fileURL in contents where fileURL.pathExtension == "json" {
             try fileManager.removeItem(at: fileURL)

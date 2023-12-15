@@ -549,7 +549,7 @@ extension DIGraphShared {
     }
 
     // EventStorage
-    var eventStorage: EventStorage {
+    public var eventStorage: EventStorage {
         getOverriddenInstance() ??
             newEventStorage
     }
@@ -579,7 +579,7 @@ extension DIGraphShared {
     }
 
     // EventBus
-    var eventBus: EventBus {
+    public var eventBus: EventBus {
         getOverriddenInstance() ??
             newEventBus
     }
