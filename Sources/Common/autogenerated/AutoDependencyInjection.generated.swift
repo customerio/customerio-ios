@@ -467,11 +467,11 @@ extension DIGraph {
     }
 }
 
-extension DIGraphShared {
+public extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    func testDependenciesAbleToResolve() -> Int {
+    internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
         _ = globalDataStore
@@ -483,7 +483,7 @@ extension DIGraphShared {
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
-        _ = eventListenersRegistry
+        _ = eventBusHandler
         countDependenciesResolved += 1
 
         _ = eventStorage
@@ -509,7 +509,7 @@ extension DIGraphShared {
 
     // Handle classes annotated with InjectRegisterShared
     // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {
+    var globalDataStore: GlobalDataStore {
         getOverriddenInstance() ??
             newGlobalDataStore
     }
@@ -519,7 +519,7 @@ extension DIGraphShared {
     }
 
     // ThreadUtil
-    public var threadUtil: ThreadUtil {
+    var threadUtil: ThreadUtil {
         getOverriddenInstance() ??
             newThreadUtil
     }
@@ -529,7 +529,7 @@ extension DIGraphShared {
     }
 
     // DeviceMetricsGrabber
-    var deviceMetricsGrabber: DeviceMetricsGrabber {
+    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
         getOverriddenInstance() ??
             newDeviceMetricsGrabber
     }
@@ -538,18 +538,30 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
-    // EventListenersRegistry
-    var eventListenersRegistry: EventListenersRegistry {
+    // EventBusHandler (singleton)
+    var eventBusHandler: EventBusHandler {
         getOverriddenInstance() ??
-            newEventListenersRegistry
+            sharedEventBusHandler
     }
 
-    private var newEventListenersRegistry: EventListenersRegistry {
-        EventListenersManager()
+    var sharedEventBusHandler: EventBusHandler {
+        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
+            if let overridenDep: EventBusHandler = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventBusHandler.self)] as? EventBusHandler
+            let instance = existingSingletonInstance ?? _get_eventBusHandler()
+            self.singletons[String(describing: EventBusHandler.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventBusHandler() -> EventBusHandler {
+        EventBusHandler(eventBus: eventBus, eventStorage: eventStorage)
     }
 
     // EventStorage
-    public var eventStorage: EventStorage {
+    var eventStorage: EventStorage {
         getOverriddenInstance() ??
             newEventStorage
     }
@@ -559,7 +571,7 @@ extension DIGraphShared {
     }
 
     // JsonAdapter
-    public var jsonAdapter: JsonAdapter {
+    var jsonAdapter: JsonAdapter {
         getOverriddenInstance() ??
             newJsonAdapter
     }
@@ -569,7 +581,7 @@ extension DIGraphShared {
     }
 
     // Logger
-    public var logger: Logger {
+    var logger: Logger {
         getOverriddenInstance() ??
             newLogger
     }
@@ -578,19 +590,31 @@ extension DIGraphShared {
         SharedConsoleLogger()
     }
 
-    // EventBus
-    public var eventBus: EventBus {
+    // EventBus (singleton)
+    var eventBus: EventBus {
         getOverriddenInstance() ??
-            newEventBus
+            sharedEventBus
     }
 
-    private var newEventBus: EventBus {
-        SharedEventBus(listenersRegistry: eventListenersRegistry)
+    var sharedEventBus: EventBus {
+        DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
+            if let overridenDep: EventBus = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventBus.self)] as? EventBus
+            let instance = existingSingletonInstance ?? _get_eventBus()
+            self.singletons[String(describing: EventBus.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventBus() -> EventBus {
+        SharedEventBus()
     }
 
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
-    public var uIKitWrapper: UIKitWrapper {
+    var uIKitWrapper: UIKitWrapper {
         getOverriddenInstance() ??
             newUIKitWrapper
     }
@@ -601,7 +625,7 @@ extension DIGraphShared {
     }
 
     // SharedKeyValueStorage
-    public var sharedKeyValueStorage: SharedKeyValueStorage {
+    var sharedKeyValueStorage: SharedKeyValueStorage {
         getOverriddenInstance() ??
             newSharedKeyValueStorage
     }

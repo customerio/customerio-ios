@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 
+// sourcery: InjectRegisterShared = "EventBusHandler"
+// sourcery: InjectSingleton
 public class EventBusHandler {
     private let eventBus: EventBus
     private let eventStorage: EventStorage

@@ -17,7 +17,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.logger = diGraph.logger
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
-        self.busEventManager = EventBusHandler(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
+        self.busEventManager = diGraph.eventBusHandler
         initialize()
     }
 

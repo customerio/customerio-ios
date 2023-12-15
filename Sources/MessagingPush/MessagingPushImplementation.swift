@@ -29,7 +29,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
-        self.eventHandlingManager = EventBusHandler(eventBus: diGraph.eventBus, eventStorage: diGraph.eventStorage)
+        self.eventHandlingManager = diGraph.eventBusHandler
     }
 
     private func handleEventStorageError(_ error: Error) {

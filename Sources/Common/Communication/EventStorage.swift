@@ -17,17 +17,9 @@ public protocol EventStorage {
 
 // sourcery: InjectRegisterShared = "EventStorage"
 public class EventStorageManager: EventStorage {
-    private let userDefaults: UserDefaults
+    private var userDefaults: UserDefaults = .init(suiteName: "eventbus.eventstorage") ?? .standard
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-
-    init(userDefaults: UserDefaults = .standard) {
-        // Creating a dedicated UserDefaults suite for events
-        guard let eventUserDefaults = UserDefaults(suiteName: "eventbus.eventstorage") else {
-            fatalError("Unable to create a UserDefaults suite for events")
-        }
-        self.userDefaults = eventUserDefaults
-    }
 
     public func store<E: Codable>(event: E, forKey key: String) throws {
         do {

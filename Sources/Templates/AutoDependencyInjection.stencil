@@ -141,7 +141,7 @@ extension DIGraphShared {
     {% if dep|annotated:"InjectCustomShared" %}
     // {{ class }} (custom. property getter provided via extension)
     {% call overrideGetterProperty class dep true false %}
-    {% elif dep|annotated:"InjectSingletonShared" %}
+    {% elif dep|annotated:"InjectSingleton" %}
     // {{ class }} (singleton)
     {% call overrideGetterProperty class dep false true %}
     {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {

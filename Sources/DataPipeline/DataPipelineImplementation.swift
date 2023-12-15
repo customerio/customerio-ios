@@ -5,11 +5,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     let moduleConfig: DataPipelineConfigOptions
     let logger: Logger
     let analytics: Analytics
+    let busEventManager: EventBusHandler
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
+        self.busEventManager = diGraph.eventBusHandler
     }
 
     // Code below this line will be updated in later PRs
@@ -25,6 +27,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
         analytics.identify(userId: identifier, traits: body)
+        busEventManager.postEvent(ProfileIdentifiedEvent(identifier: identifier))
     }
 
     var registeredDeviceToken: String? {
@@ -34,6 +37,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     func clearIdentify() {
         // TODO: [CDP] CustomerIOImplementation also call deleteDeviceToken from clearIdentify, but customers using DataPipeline only,
         // we had to call this explicitly. Rethink on how can we make one call for both customers.
+        busEventManager.postEvent(ResetEvent())
         deleteDeviceToken()
         analytics.reset()
     }
@@ -47,10 +51,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func screen(name: String, data: [String: Any]) {
+        busEventManager.postEvent(ScreenViewedEvent(name: name))
         analytics.screen(title: name, properties: data)
     }
 
     func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
+        busEventManager.postEvent(ScreenViewedEvent(name: name))
+
         analytics.screen(title: name, properties: data)
     }
 

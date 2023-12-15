@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Specifies methods for sending events and registering for event notifications.
 /// Supports type-safe event handling and scheduler-based execution.
-public protocol EventBus: AutoMockable {
+public protocol EventBus {
     @discardableResult func post<E: EventRepresentable>(_ event: E, on queue: DispatchQueue?) -> Bool
     func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void)
     func removeAllObservers()
@@ -14,16 +14,16 @@ public protocol EventBus: AutoMockable {
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
 public class SharedEventBus: EventBus {
-    private let notificationCenter: NotificationCenter
+    private var notificationCenter: NotificationCenter = .default
     private var observers: [String: [NSObjectProtocol]] = [:]
     private let queue = DispatchQueue(label: "com.eventbus.shared")
 
-    public init(notificationCenter: NotificationCenter = .default) {
-        self.notificationCenter = notificationCenter
-    }
-
     deinit {
         removeAllObservers()
+    }
+
+    init() {
+        DIGraphShared.shared.logger.debug("SharedEventBus initialized")
     }
 
     @discardableResult
@@ -31,7 +31,7 @@ public class SharedEventBus: EventBus {
         var hasObservers = false
         self.queue.sync {
             let key = E.key
-            if let observerList = observers[key], !observerList.isEmpty {
+            if let observerList = self.observers[key], !observerList.isEmpty {
                 hasObservers = true
                 let postAction = {
                     self.notificationCenter.post(name: NSNotification.Name(E.key), object: event)
