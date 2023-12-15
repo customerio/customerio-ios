@@ -24,10 +24,10 @@ public struct MessagingPushConfigOptions {
 extension DIGraph {
     var messagingPushConfigOptions: MessagingPushConfigOptions {
         get {
-            MessagingPush.moduleConfig
+            MessagingPush.shared.moduleConfig
         }
         set {
-            MessagingPush.moduleConfig = newValue
+            MessagingPush.shared.moduleConfig = newValue
         }
     }
 }

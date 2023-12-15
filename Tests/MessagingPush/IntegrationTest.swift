@@ -1,3 +1,4 @@
+@testable import CioInternalCommon
 @testable import CioMessagingPush
 import Foundation
 import SharedTests
@@ -6,9 +7,13 @@ class IntegrationTest: SharedTests.IntegrationTest {
     private let notificationCenterMock = UserNotificationCenterMock()
 
     override func setUp() {
+        setUp(shouldInitializeModule: false, modifySdkConfig: nil)
+    }
+
+    func setUp(shouldInitializeModule: Bool = true, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
         MessagingPush.resetSharedInstance()
 
-        super.setUp()
+        super.setUp(modifySdkConfig: modifySdkConfig)
 
         // CIO is already initialized from super class
 
@@ -17,6 +22,8 @@ class IntegrationTest: SharedTests.IntegrationTest {
         diGraph.override(value: notificationCenterMock, forType: UserNotificationCenter.self)
 
         // Sets up features such as hooks for test to be more realistic to production
-        MessagingPush.initialize()
+        if shouldInitializeModule {
+            MessagingPush.initialize()
+        }
     }
 }
