@@ -15,7 +15,7 @@ protocol PushEventListener: AutoMockable {
 //
 // sourcery: InjectRegister = "PushEventListener"
 // sourcery: InjectSingleton
-class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
+class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
     private var userNotificationCenter: UserNotificationCenter
     private let jsonAdapter: JsonAdapter
     private var moduleConfig: MessagingPushConfigOptions
@@ -108,6 +108,20 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
             completionHandler([]) // do not show push while app in foreground
         }
     }
+
+    // Swizzle method convenient when original and swizzled methods both belong to same class.
+    func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
+        guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
+        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
+
+        let didAddMethod = class_addMethod(forClass, original, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
+
+        if didAddMethod {
+            class_replaceMethod(forClass, new, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod))
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
+    }
 }
 
 // This is a bit confusing and makes the code a little more complex. However, it's the most reliable way found to get UNUserNotificationCenter.delegate swizzling to work by using an extension.
@@ -134,21 +148,5 @@ extension UNUserNotificationCenter {
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
         cio_swizzled_setDelegate(delegate: diGraph.pushEventListener.delegate)
-    }
-}
-
-// TODO: cleanup duplicate swizzle functions all over codebase.
-
-// Swizzle method convenient when original and swizzled methods both belong to same class.
-func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
-    guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
-    guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
-
-    let didAddMethod = class_addMethod(forClass, original, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
-
-    if didAddMethod {
-        class_replaceMethod(forClass, new, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod))
-    } else {
-        method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 }

@@ -29,7 +29,7 @@ import Foundation
 
  The goal of this feature is:
  1. The customer does not need to interact with `UNUserNotificationCenter` themselves to get the CIO SDK to process when a push is clicked. The CIO SDK should be able to set this up itself.
- 2. The CIO SDK should be able to stay compatible with other SDKs that also want to handle push click events. A customer should be able to install 2+ push notification SDKs in an app and all of them are able to work, even though iOS only allows 1 `UNUserNotificationCenterDelegate` instnace to be set in the app.
+ 2. The CIO SDK should be able to stay compatible with other SDKs that also want to handle push click events. A customer should be able to install 2+ push notification SDKs in an app and all of them are able to work, even though iOS only allows 1 `UNUserNotificationCenterDelegate` instance to be set in the app.
  */
 @available(iOSApplicationExtension, unavailable)
 protocol AutomaticPushClickHandling: AutoMockable {
