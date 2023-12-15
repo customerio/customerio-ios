@@ -6,24 +6,31 @@ class DeviceAttributes: Plugin {
     public let type = PluginType.before
     public weak var analytics: Analytics?
 
+    public var token: String?
     public var attributes: [String: Any]?
 
     public required init() {}
 
     public func execute<T: RawEvent>(event: T?) -> T? {
-        guard var workingEvent = event else { return event }
+        guard var workingEvent = event,
+              var context = workingEvent.context?.dictionaryValue
+        else { return event }
 
-        if var context = workingEvent.context?.dictionaryValue, let attributes = attributes {
-            do {
+        do {
+            if let token = token {
+                context[keyPath: "device.token"] = token
+                workingEvent.context = try JSON(context)
+            }
+            if let attributes = attributes {
                 if let device = context[keyPath: "device"] as? [String: Any] {
                     context["device"] = device.mergeWith(attributes)
                 } else {
                     context["device"] = attributes
                 }
                 workingEvent.context = try JSON(context)
-            } catch {
-                analytics?.reportInternalError(error)
             }
+        } catch {
+            analytics?.reportInternalError(error)
         }
         return workingEvent
     }

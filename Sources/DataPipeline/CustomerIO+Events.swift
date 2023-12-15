@@ -40,7 +40,7 @@ public extension CustomerIO {
     ///     https://segment.io/libraries/ios#ids
     /// In the case when user logs out, make sure to call ``reset()`` to clear user's identity info.
     func identify(userId: String) {
-        DataPipeline.shared.analytics.identify(userId: userId)
+        DataPipeline.shared.identify(identifier: userId, body: [:])
     }
 
     func screen<P: Codable>(title: String, category: String? = nil, properties: P?) {
@@ -91,7 +91,7 @@ public extension CustomerIO {
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     /// In the case when user logs out, make sure to call ``reset()`` to clear user's identity info.
     func identify(userId: String, traits: [String: Any]? = nil) {
-        DataPipeline.shared.analytics.identify(userId: userId, traits: traits)
+        DataPipeline.shared.identify(identifier: userId, body: traits ?? [:])
     }
 
     /// Track a screen change with a title, category and other properties.

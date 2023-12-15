@@ -54,25 +54,34 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = cleanupRepository
+        _ = deviceAttributesProvider
         countDependenciesResolved += 1
 
         return countDependenciesResolved
     }
 
-    // CleanupRepository
-    var cleanupRepository: CleanupRepository {
+    // DeviceAttributesProvider
+    var deviceAttributesProvider: DeviceAttributesProvider {
         getOverriddenInstance() ??
-            newCleanupRepository
+            newDeviceAttributesProvider
     }
 
-    private var newCleanupRepository: CleanupRepository {
-        CioCleanupRepository(queue: queue)
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(deviceInfo: deviceInfo)
     }
 }
 
 extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
+    // DeviceAttributesProvider
+    var deviceAttributesProvider: DeviceAttributesProvider {
+        getOverriddenInstance() ??
+            newDeviceAttributesProvider
+    }
+
+    private var newDeviceAttributesProvider: DeviceAttributesProvider {
+        SdkDeviceAttributesProvider(deviceInfo: deviceInfo)
+    }
 }
 
 // swiftlint:enable all
