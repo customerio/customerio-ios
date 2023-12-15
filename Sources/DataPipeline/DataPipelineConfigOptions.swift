@@ -57,4 +57,7 @@ public struct DataPipelineConfigOptions {
     public var flushQueue: DispatchQueue = .init(label: "com.segment.operatingModeQueue", qos: .utility)
     public var operatingMode: OperatingMode = .asynchronous
     public var trackApplicationLifecycleEvents: Bool = true
+
+    /// Configuration options for users to easily add available plugins
+    public var autoTrackDeviceAttributes: Bool = true
 }

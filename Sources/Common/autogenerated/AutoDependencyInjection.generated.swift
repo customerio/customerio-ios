@@ -508,6 +508,16 @@ public extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // DeviceInfo
+    var deviceInfo: DeviceInfo {
+        getOverriddenInstance() ??
+            newDeviceInfo
+    }
+
+    private var newDeviceInfo: DeviceInfo {
+        CIODeviceInfo()
+    }
+
     // GlobalDataStore
     var globalDataStore: GlobalDataStore {
         getOverriddenInstance() ??
@@ -578,6 +588,16 @@ public extension DIGraphShared {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
+    }
+
+    // DateUtil
+    var dateUtil: DateUtil {
+        getOverriddenInstance() ??
+            newDateUtil
+    }
+
+    private var newDateUtil: DateUtil {
+        SdkDateUtil()
     }
 
     // Logger
