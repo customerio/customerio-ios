@@ -19,7 +19,6 @@ class CustomerIOImplementation: CustomerIOInstance {
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private var profileStore: ProfileStore
-    private var hooks: HooksManager
     private let logger: Logger
     private var globalDataStore: GlobalDataStore
     private let sdkConfig: SdkConfig
@@ -38,7 +37,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
-        self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
         self.globalDataStore = diGraph.globalDataStore
         self.sdkConfig = diGraph.sdkConfig
@@ -101,7 +99,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         if let body = dictionaryBody {
             DataPipeline.shared.identify(identifier: identifier, body: body)
         } else if let body = codableBody {
-            DataPipeline.shared.identify(identifier: identifier, body: body)
+            DataPipeline.shared.identify(identifier: identifier)
         } else {
             DataPipeline.shared.identify(identifier: identifier)
         }
@@ -122,12 +120,12 @@ class CustomerIOImplementation: CustomerIOInstance {
             deleteDeviceToken()
 
             logger.debug("running hooks changing profile from \(currentlyIdentifiedProfileIdentifier) to \(identifier)")
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.beforeIdentifiedProfileChange(
-                    oldIdentifier: currentlyIdentifiedProfileIdentifier,
-                    newIdentifier: identifier
-                )
-            }
+//            hooks.profileIdentifyHooks.forEach { hook in
+//                hook.beforeIdentifiedProfileChange(
+//                    oldIdentifier: currentlyIdentifiedProfileIdentifier,
+//                    newIdentifier: identifier
+//                )
+//            }
         }
 
         logger.debug("storing identifier on device storage \(identifier)")
@@ -142,9 +140,6 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
 
             logger.debug("running hooks profile identified \(identifier)")
-            hooks.profileIdentifyHooks.forEach { hook in
-                hook.profileIdentified(identifier: identifier)
-            }
         }
     }
 
@@ -164,9 +159,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         deleteDeviceToken()
 
         logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfileIdentifier)")
-        hooks.profileIdentifyHooks.forEach { hook in
-            hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        }
 
         logger.debug("deleting profile info from device storage")
         // remove device identifier from storage last so hooks can succeed.
@@ -186,10 +178,6 @@ class CustomerIOImplementation: CustomerIOInstance {
 
     public func screen(name: String, data: [String: Any]) {
         DataPipeline.shared.screen(name: name, data: data)
-
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
     }
 
     public func screen<RequestBody: Codable>(
@@ -197,10 +185,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody
     ) {
         DataPipeline.shared.screen(name: name, data: data)
-
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
     }
 
     /**
