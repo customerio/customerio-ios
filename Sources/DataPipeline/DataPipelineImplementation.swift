@@ -25,7 +25,10 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func initialize(diGraph: DIGraphShared) {
-        analytics.add(plugin: ConsoleLogger(diGraph: diGraph))
+        if let token = globalDataStore.pushDeviceToken {
+            // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
+            setDeviceToken(token)
+        }
     }
 
     // Code below this line will be updated in later PRs
