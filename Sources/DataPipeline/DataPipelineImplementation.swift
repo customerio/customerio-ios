@@ -103,6 +103,12 @@ class DataPipelineImplementation: DataPipelineInstance {
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
+        if let attributes = attributesCodable {
+            analytics.identify(userId: userId, traits: attributes)
+        } else {
+            analytics.identify(userId: userId, traits: attributesDict)
+        }
+
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = registeredDeviceToken {
                 logger.debug("registering existing device token to newly identified profile: \(userId)")
@@ -115,12 +121,6 @@ class DataPipelineImplementation: DataPipelineInstance {
             // hooks.profileIdentifyHooks.forEach { hook in
             //     hook.profileIdentified(identifier: userId)
             // }
-        }
-
-        if let attributes = attributesCodable {
-            analytics.identify(userId: userId, traits: attributes)
-        } else {
-            analytics.identify(userId: userId, traits: attributesDict)
         }
     }
 
