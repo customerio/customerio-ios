@@ -74,7 +74,7 @@ class PushClickHandlerTest: IntegrationTest {
         // Note: Using push tracking as our indicator if a request is ignored
 
         // Indicate we have already processed the push
-        pushHistoryMock.hasHandledPushClickReturnValue = true
+        pushHistoryMock.hasHandledPushReturnValue = true
 
         let givenPush = getPush(content: [
             "CIO": [
@@ -90,7 +90,7 @@ class PushClickHandlerTest: IntegrationTest {
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 0)
 
         // To be thorough, call again and make sure assertions change as expected
-        pushHistoryMock.hasHandledPushClickReturnValue = false
+        pushHistoryMock.hasHandledPushReturnValue = false
         pushClickHandler.pushClicked(givenPush)
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
     }

@@ -12,25 +12,15 @@ protocol PushClickHandler: AutoMockable {
 // sourcery: InjectRegister = "PushClickHandler"
 class PushClickHandlerImpl: PushClickHandler {
     private let deepLinkUtil: DeepLinkUtil
-    private let pushHistory: PushHistory
     private let customerIO: CustomerIOInstance
 
-    init(deepLinkUtil: DeepLinkUtil, pushHistory: PushHistory, customerIO: CustomerIOInstance) {
+    init(deepLinkUtil: DeepLinkUtil, customerIO: CustomerIOInstance) {
         self.deepLinkUtil = deepLinkUtil
-        self.pushHistory = pushHistory
         self.customerIO = customerIO
     }
 
     // Note: This function is called from automatic and manual push click handlers.
     func pushClicked(_ parsedPush: CustomerIOParsedPushPayload) {
-        guard !pushHistory.hasHandledPushClick(deliveryId: parsedPush.deliveryId) else {
-            // push has already been handled. exit early
-            return
-        }
-        pushHistory.handledPushClick(deliveryId: parsedPush.deliveryId)
-
-        // Now we are ready to handle the push click.
-
         customerIO.trackMetric(deliveryID: parsedPush.deliveryId, event: .opened, deviceToken: parsedPush.deviceToken)
 
         // Cleanup files on device that were used when the push was displayed. Files are no longer

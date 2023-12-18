@@ -7,5 +7,6 @@ public enum KeyValueStorageKey: String {
     case identifiedProfileId
     case pushDeviceToken
     case httpRequestsPauseEnds
-    case pushNotificationsClicked
+    case pushNotificationsHandledDidReceive
+    case pushNotificationsHandledWillPresent
 }

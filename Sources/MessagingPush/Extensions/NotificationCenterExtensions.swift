@@ -1,12 +1,29 @@
 import Foundation
 import UserNotifications
 
-extension UNNotificationResponse {
+/**
+ Extensions for classes inside of the iOS UserNotifications framework.
+ */
+
+extension UNNotificationResponse { // class provided when a push is clicked or swiped away
     var didClickOnPush: Bool {
         actionIdentifier == UNNotificationDefaultActionIdentifier
     }
 
     var didSwipeAwayPush: Bool {
         actionIdentifier == UNNotificationDismissActionIdentifier
+    }
+}
+
+extension UNNotificationResponse {
+    var pushId: String {
+        notification.pushId
+    }
+}
+
+extension UNNotification {
+    var pushId: String {
+        // Unique ID for each push notification.
+        request.identifier
     }
 }
