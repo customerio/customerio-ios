@@ -25,9 +25,16 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func initialize(diGraph: DIGraphShared) {
-        if let token = globalDataStore.pushDeviceToken {
-            // if the device token exists, pass it to the plugin to ensure device attributes are updated with each request
-            setDeviceToken(token)
+        // add CustomerIO destination plugin
+        if moduleConfig.autoAddCustomerIODestination {
+            let customerIODestination = CustomerIODestination()
+            customerIODestination.analytics = analytics
+            analytics.add(plugin: customerIODestination)
+        }
+
+        if let existingDeviceToken = globalDataStore.pushDeviceToken {
+            // if the device token exists, pass it to the plugin and ensure device attributes are updated
+            addDeviceAttributes(token: existingDeviceToken)
         }
     }
 
@@ -54,7 +61,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     var registeredDeviceToken: String? {
-        analytics.find(pluginType: DeviceAttributes.self)?.token
+        deviceAttributesPlugin.token
     }
 
     func clearIdentify() {
@@ -81,7 +88,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     var profileAttributes: [String: Any] {
         get { analytics.traits() ?? [:] }
         set {
-            let userId = analytics.userId
+            let userId = registeredUserId
             guard let userId = userId else {
                 logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
                 return
@@ -91,27 +98,35 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
-        let currentlyIdentifiedProfile = analytics.userId
+        let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
+        if let attributes = attributesCodable {
+            analytics.identify(userId: userId, traits: attributes)
+        } else {
+            analytics.identify(userId: userId, traits: attributesDict)
+        }
+
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
+            if let existingDeviceToken = registeredDeviceToken {
+                logger.debug("registering existing device token to newly identified profile: \(userId)")
+                // register device to newly identified profile
+                addDeviceAttributes(token: existingDeviceToken)
+            }
+
             // logger.debug("running hooks profile identified \(userId)")
             // FIXME: [CDP] Request Journeys to invoke profile identify hooks
             // hooks.profileIdentifyHooks.forEach { hook in
             //     hook.profileIdentified(identifier: userId)
             // }
         }
-        if let attributes = attributesCodable {
-            analytics.identify(userId: userId, traits: attributes)
-        } else {
-            analytics.identify(userId: userId, traits: attributesDict)
-        }
     }
 
     private func commonClearIdentify() {
-        // logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
-        // TODO: [CDP] Confirm how can we delete devices for CDP
+        let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
+        logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
+        deleteDeviceToken()
 
         // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
         // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
@@ -124,40 +139,52 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.reset()
     }
 
+    func deleteDeviceToken() {
+        logger.info("deleting device token request made")
+
+        // Do not delete push token from device storage. The token is valid
+        // once given to SDK. We need it for future profile identifications.
+
+        // send delete device event to remove it from current profile
+        analytics.track(name: "Device Deleted")
+    }
+
     var deviceAttributes: [String: Any] {
-        get {
-            let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self)
-            return attributesPlugin?.attributes ?? [:]
-        }
+        get { [:] }
         set {
-            let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self)
-            addDeviceAttributes(token: attributesPlugin?.token, attributes: newValue)
+            logger.info("updating device attributes")
+            addDeviceAttributes(token: deviceAttributesPlugin.token, attributes: newValue)
         }
     }
 
-    /// Adds device default and custom attributes using DeviceAttributes plugin
-    private func addDeviceAttributes(token deviceToken: String? = nil, attributes customAttributes: [String: Any] = [:]) {
+    /// Internal method for passing device token to the plugin and updating device attributes
+    private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
+        if let existingDeviceToken = deviceAttributesPlugin.token, existingDeviceToken != deviceToken {
+            // token has been refreshed, delete old token to avoid registering same device multiple times
+            deleteDeviceToken()
+        }
+        deviceAttributesPlugin.token = deviceToken
+
         // Consolidate all Apple platforms under iOS
-        let deviceOsName = "iOS"
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes: [String: Any] = defaultDeviceAttributes
                 .mergeWith([
-                    "platform": deviceOsName,
-                    "lastUsed": self.dateUtil.now
+                    "last_used": self.dateUtil.now
                 ])
                 .mergeWith(customAttributes)
+            self.deviceAttributesPlugin.attributes = deviceAttributes
 
-            // Make sure DeviceAttributes plugin is attached
-            let attributesPlugin: DeviceAttributes
-            if let plugin = self.analytics.find(pluginType: DeviceAttributes.self) {
-                attributesPlugin = plugin
-            } else {
-                attributesPlugin = DeviceAttributes()
-                self.analytics.add(plugin: attributesPlugin)
+            guard self.deviceAttributesPlugin.token != nil else {
+                self.logger.debug("no device token found, ignoring device attributes request")
+                return
+            }
+            guard self.registeredUserId != nil else {
+                self.logger.info("no profile identified, so not registering device token to a profile")
+                return
             }
 
-            attributesPlugin.attributes = deviceAttributes
-            attributesPlugin.token = deviceToken
+            // TODO: [CDP] Reverify event name before going live
+            self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
     }
 
@@ -165,34 +192,11 @@ class DataPipelineImplementation: DataPipelineInstance {
         logger.debug("storing device token to device storage \(deviceToken)")
         // save the device token for later use.
         // segment plugin doesn't store token anywhere so we need to pass token to it every time
-        // storing it so we can reference the token and register on app relaunch
+        // storing it so we can reference the token and update device plugin app relaunch
         globalDataStore.pushDeviceToken = deviceToken
-        setDeviceToken(deviceToken)
-    }
 
-    /// Internal method for passing the device token to the plugin
-    private func setDeviceToken(_ deviceToken: String) {
         logger.info("registering device token \(deviceToken)")
-
         addDeviceAttributes(token: deviceToken)
-    }
-
-    func deleteDeviceToken() {
-        logger.info("deleting device token request made")
-
-        // Do not delete push token from device storage. The token is valid
-        // once given to SDK. We need it for future profile identifications.
-
-        removeDevicePlugin()
-    }
-
-    /// Internal method for removing attached plugins to stop sending device token and attributes
-    private func removeDevicePlugin() {
-        // Remove DeviceAttributes plugin to avoid attaching token and attributes to every request.
-        if let attributesPlugin = analytics.find(pluginType: DeviceAttributes.self) {
-            analytics.remove(plugin: attributesPlugin)
-            logger.info("DeviceAttributes plugin removed")
-        }
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
@@ -223,6 +227,27 @@ class DataPipelineImplementation: DataPipelineInstance {
             properties["recipient"] = token
         }
 
+        // TODO: [CDP] Reverify event name before going live
         analytics.track(name: "Journeys Delivery Metric", properties: properties)
+    }
+}
+
+// extension methods to simplify and reduce repetitive coding
+extension DataPipelineImplementation {
+    /// returns user id for currently identifier profile
+    var registeredUserId: String? {
+        analytics.userId
+    }
+
+    /// returns DeviceAttributes if attached; if not, attaches them and then returns the instance
+    private var deviceAttributesPlugin: DeviceAttributes {
+        let attributesPlugin: DeviceAttributes
+        if let plugin = analytics.find(pluginType: DeviceAttributes.self) {
+            attributesPlugin = plugin
+        } else {
+            attributesPlugin = DeviceAttributes()
+            analytics.add(plugin: attributesPlugin)
+        }
+        return attributesPlugin
     }
 }
