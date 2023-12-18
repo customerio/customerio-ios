@@ -2,11 +2,27 @@ import CioInternalCommon
 import Foundation
 
 protocol PushHistory: AutoMockable {
-    func hasHandledPushDidReceive(pushId: String) -> Bool
-    func didHandlePushDidReceive(pushId: String)
+    /**
+     Thread-safe method to check if a push event has been handled before.
 
-    func hasHandledPushWillPresent(pushId: String) -> Bool
-    func didHandlePushWillPresent(pushId: String)
+     If the push has not been handled before, it will be marked as handled. This is to prevent race conditions. Code such as this may have a race condition bug that we want to prevent:
+
+     ```
+     let hasPushBeenHandled = pushHistory.hasHandledPush(pushId)
+     if !hasPushBeenHandled {
+       pushHistory.markPushAsHandled(pushId)
+     }
+     ```
+     By having 1 thread-safe function perform the check and mark, we can prevent this scenario.
+
+     @return true if push has been handled before. false otherwise.
+     */
+    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String) -> Bool
+}
+
+enum PushHistoryEvent {
+    case didReceive
+    case willPresent
 }
 
 // sourcery: InjectRegister = "PushHistory"
@@ -21,35 +37,28 @@ class PushHistoryImpl: PushHistory {
         self.lock = lockManager.getLock(id: .pushHistory)
     }
 
-    func hasHandledPushDidReceive(pushId: String) -> Bool {
+    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
-        return getHistory(for: .pushNotificationsHandledDidReceive).contains(pushId)
-    }
+        let hasHandledAlready = getHistory(for: pushEvent).contains(pushId)
 
-    func hasHandledPushWillPresent(pushId: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
+        if hasHandledAlready {
+            return true // push has already been handled. exit early
+        }
 
-        return getHistory(for: .pushNotificationsHandledWillPresent).contains(pushId)
-    }
+        markEventAsHandled(pushId: pushId, event: pushEvent)
 
-    func didHandlePushDidReceive(pushId: String) {
-        didHandle(pushId: pushId, historyKey: .pushNotificationsHandledDidReceive)
-    }
-
-    func didHandlePushWillPresent(pushId: String) {
-        didHandle(pushId: pushId, historyKey: .pushNotificationsHandledWillPresent)
+        return false // push has not yet been handled.
     }
 }
 
 extension PushHistoryImpl {
-    private func didHandle(pushId: String, historyKey: KeyValueStorageKey) {
+    private func markEventAsHandled(pushId: String, event: PushHistoryEvent) {
         lock.lock()
         defer { lock.unlock() }
 
-        var clickHistory = getHistory(for: historyKey)
+        var clickHistory = getHistory(for: event)
 
         if clickHistory.count >= maxSizeOfHistory {
             // Remove oldest push click from history.
@@ -58,17 +67,26 @@ extension PushHistoryImpl {
 
         clickHistory.append(pushId)
 
-        setHistory(clickHistory, for: historyKey)
+        setHistory(clickHistory, forEvent: event)
     }
 
-    private func getHistory(for key: KeyValueStorageKey) -> [String] {
-        let stringRepresentationOfArray = keyValueStorage.string(key) ?? ""
+    private func getKeyValueStorageKey(forEvent event: PushHistoryEvent) -> KeyValueStorageKey {
+        switch event {
+        case .didReceive:
+            return .pushNotificationsHandledDidReceive
+        case .willPresent:
+            return .pushNotificationsHandledWillPresent
+        }
+    }
+
+    private func getHistory(for event: PushHistoryEvent) -> [String] {
+        let stringRepresentationOfArray = keyValueStorage.string(getKeyValueStorageKey(forEvent: event)) ?? ""
 
         return stringRepresentationOfArray.split(separator: ",").map { String($0) }
     }
 
-    private func setHistory(_ history: [String], for key: KeyValueStorageKey) {
+    private func setHistory(_ history: [String], forEvent event: PushHistoryEvent) {
         let stringRepresentationOfArray = history.joined(separator: ",")
-        keyValueStorage.setString(stringRepresentationOfArray, forKey: key)
+        keyValueStorage.setString(stringRepresentationOfArray, forKey: getKeyValueStorageKey(forEvent: event))
     }
 }

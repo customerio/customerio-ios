@@ -121,12 +121,11 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
             return
         }
 
-        guard !pushHistory.hasHandledPushDidReceive(pushId: response.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return
         }
-        pushHistory.didHandlePushDidReceive(pushId: response.pushId)
 
         guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
@@ -152,12 +151,11 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
             return
         }
 
-        guard !pushHistory.hasHandledPushWillPresent(pushId: notification.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return
         }
-        pushHistory.didHandlePushWillPresent(pushId: notification.pushId)
 
         guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
@@ -180,6 +178,20 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
             }
         } else {
             completionHandler([]) // do not show push while app in foreground
+        }
+    }
+
+    // Swizzle method convenient when original and swizzled methods both belong to same class.
+    func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
+        guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
+        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
+
+        let didAddMethod = class_addMethod(forClass, original, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
+
+        if didAddMethod {
+            class_replaceMethod(forClass, new, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod))
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
         }
     }
 }
@@ -218,21 +230,5 @@ extension UNUserNotificationCenter {
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
         cio_swizzled_setDelegate(delegate: diGraph.pushEventListener.delegate)
-    }
-}
-
-// TODO: cleanup duplicate swizzle functions all over codebase.
-
-// Swizzle method convenient when original and swizzled methods both belong to same class.
-func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
-    guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
-    guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
-
-    let didAddMethod = class_addMethod(forClass, original, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod))
-
-    if didAddMethod {
-        class_replaceMethod(forClass, new, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod))
-    } else {
-        method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 }

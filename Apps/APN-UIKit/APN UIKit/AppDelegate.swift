@@ -13,8 +13,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         initializeCioAndInAppListeners()
 
-        // Register a 2nd push click listener besides the Customer.io SDK.
-        // Tests that the SDK is able to handle push clicks when there are multiple click listeners.
+        /**
+         Registers the `AppDelegate` class to handle when a push notification gets clicked.
+         This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
+         Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature. Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
+
+         We register a click handler in this app for testing purposes, only. To test that the Customer.io SDK is compatible with other SDKs that want to process push notifications not sent by Customer.io.
+         */
         UNUserNotificationCenter.current().delegate = self
 
         return true
@@ -87,12 +92,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
             name: "push clicked",
             data: ["push": response.notification.request.content.userInfo]
         )
     }
+
+    // For testing purposes, it's suggested to not include the willPresent function in the AppDelegate.
+    // The automatic push click handling feature uses swizzling. A good edge case to test with swizzling is when
+    // there is an optional function of UNUserNotificationCenterDelegate not implemented. By not including willPresent, we are able to test this case.
+//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
 }
 
 // In-app event listeners to handle user's response to in-app messages.

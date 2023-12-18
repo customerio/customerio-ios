@@ -51,9 +51,10 @@ extension MessagingPushImplementation {
         logger.info("did receive notification request. Checking if message was a push sent from Customer.io...")
         logger.debug("notification request: \(request.content.userInfo)")
 
-        guard let deliveryID: String = request.content.userInfo["CIO-Delivery-ID"] as? String,
-              let deviceToken: String = request.content.userInfo["CIO-Delivery-Token"] as? String
-        else {
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(
+            notificationContent: request.content,
+            jsonAdapter: jsonAdapter
+        ) else {
             logger.info("the notification was not sent by Customer.io. Ignoring notification request.")
             return false
         }
@@ -62,33 +63,18 @@ extension MessagingPushImplementation {
 
         if sdkConfig.autoTrackPushEvents {
             logger.info("automatically tracking push metric: delivered")
-            logger.debug("parsed deliveryId \(deliveryID), deviceToken: \(deviceToken)")
+            logger.debug("parsed deliveryId \(parsedPush.deliveryId), deviceToken: \(parsedPush.deviceToken)")
 
-            trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
+            trackMetric(deliveryID: parsedPush.deliveryId, event: .delivered, deviceToken: parsedPush.deviceToken)
         }
 
-        if let richPushContent = CustomerIOParsedPushPayload.parse(
-            notificationContent: request.content,
-            jsonAdapter: jsonAdapter
-        ) {
-            logger
-                .info("""
-                Parsing notification request to display rich content such as images, deep links, etc.
-                """)
-            logger.debug("push content: \(richPushContent)")
+        RichPushRequestHandler.shared.startRequest(
+            request,
+            content: parsedPush
+        ) { notificationContent in
+            self.logger.debug("rich push was composed \(notificationContent).")
 
-            RichPushRequestHandler.shared.startRequest(
-                request,
-                content: richPushContent
-            ) { notificationContent in
-                self.logger.debug("rich push was composed \(notificationContent).")
-
-                self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: notificationContent)
-            }
-        } else {
-            logger.info("the push was a simple push, not a rich push. Processing is complete.")
-
-            finishTasksThenReturn(contentHandler: contentHandler, notificationContent: request.content)
+            self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: notificationContent)
         }
 
         return true
