@@ -21,16 +21,18 @@ class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     private var moduleConfig: MessagingPushConfigOptions
     private let pushClickHandler: PushClickHandler
     private let pushHistory: PushHistory
+    private let logger: Logger
 
     // Make sure that this proxy is held in-memory.
     private let notificationCenterDelegateProxy = NotificationCenterDelegateProxy()
 
-    init(userNotificationCenter: UserNotificationCenter, jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory) {
+    init(userNotificationCenter: UserNotificationCenter, jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, logger: Logger) {
         self.userNotificationCenter = userNotificationCenter
         self.jsonAdapter = jsonAdapter
         self.moduleConfig = moduleConfig
         self.pushClickHandler = pushClickHandler
         self.pushHistory = pushHistory
+        self.logger = logger
     }
 
     var delegate: UNUserNotificationCenterDelegate {
@@ -54,6 +56,8 @@ class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        logger.debug("Push event: didReceive. push: \(response))")
+
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
@@ -77,6 +81,8 @@ class IOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        logger.debug("Push event: willPresent. push: \(notification)")
+
         guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
