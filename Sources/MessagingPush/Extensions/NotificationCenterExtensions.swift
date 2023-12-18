@@ -10,3 +10,16 @@ extension UNNotificationResponse {
         actionIdentifier == UNNotificationDismissActionIdentifier
     }
 }
+
+extension UNNotificationResponse {
+    var pushId: String {
+        notification.pushId
+    }
+}
+
+extension UNNotification {
+    var pushId: String {
+        // Unique ID for each push notification.
+        request.identifier
+    }
+}
