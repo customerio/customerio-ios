@@ -40,12 +40,16 @@ protocol AutomaticPushClickHandling: AutoMockable {
 // sourcery: InjectRegister = "AutomaticPushClickHandling"
 class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
     private let pushEventListener: PushEventListener
+    private let logger: Logger
 
-    init(pushEventListener: PushEventListener) {
+    init(pushEventListener: PushEventListener, logger: Logger) {
         self.pushEventListener = pushEventListener
+        self.logger = logger
     }
 
     func start() {
+        logger.debug("Starting automatic push click handling.")
+
         pushEventListener.beginListening()
     }
 }
