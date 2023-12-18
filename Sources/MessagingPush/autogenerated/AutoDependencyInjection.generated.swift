@@ -61,9 +61,6 @@ extension DIGraph {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
-        _ = pushEventListener
-        countDependenciesResolved += 1
-
         _ = pushClickHandler
         countDependenciesResolved += 1
 
@@ -98,33 +95,6 @@ extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
-    }
-
-    // PushEventListener (singleton)
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventListener: PushEventListener {
-        getOverriddenInstance() ??
-            sharedPushEventListener
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    var sharedPushEventListener: PushEventListener {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_PushEventListener_singleton_access").sync {
-            if let overridenDep: PushEventListener = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: PushEventListener.self)] as? PushEventListener
-            let instance = existingSingletonInstance ?? _get_pushEventListener()
-            self.singletons[String(describing: PushEventListener.self)] = instance
-            return instance
-        }
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private func _get_pushEventListener() -> PushEventListener {
-        IOSPushEventListener(userNotificationCenter: userNotificationCenter, jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
     }
 
     // PushClickHandler
