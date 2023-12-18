@@ -31,8 +31,6 @@ class PushClickHandlerImpl: PushClickHandler {
 
         // Now we are ready to handle the push click.
 
-        // Do not check SdkConfig if automatic push tracking is enabled. Always track opened metric.
-        // This function is also called by manual push click handling.
         customerIO.trackMetric(deliveryID: parsedPush.deliveryId, event: .opened, deviceToken: parsedPush.deviceToken)
 
         // Cleanup files on device that were used when the push was displayed. Files are no longer
