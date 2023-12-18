@@ -82,7 +82,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener)
+        AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener, logger: logger)
     }
 
     // DeepLinkUtil

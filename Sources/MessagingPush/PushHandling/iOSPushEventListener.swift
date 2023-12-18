@@ -69,6 +69,10 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         overridePushHistory ?? diGraph?.pushHistory
     }
 
+    private var logger: Logger? {
+        diGraph?.logger
+    }
+
     // Convenient getter of the digraph for dependency getters above.
     private var diGraph: DIGraph? {
         SdkInitializedUtilImpl().postInitializedData?.diGraph
@@ -120,6 +124,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         else {
             return
         }
+        logger?.debug("Push event: didReceive. push: \(response))")
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId) else {
             // push has already been handled. exit early
@@ -150,6 +155,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         else {
             return
         }
+        logger?.debug("Push event: willPresent. push: \(notification)")
 
         guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId) else {
             // push has already been handled. exit early
