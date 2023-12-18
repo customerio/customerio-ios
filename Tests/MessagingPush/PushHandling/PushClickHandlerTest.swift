@@ -6,17 +6,16 @@ import SharedTests
 import UserNotifications
 import XCTest
 
-class PushClickHandlerTest: UnitTest {
+class PushClickHandlerTest: IntegrationTest {
     private var pushClickHandler: PushClickHandler!
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
-    private let pushHistoryMock = PushHistoryMock()
     private let customerIOMock = CustomerIOInstanceMock()
 
     override func setUp() {
         super.setUp()
 
-        setupTest(autoTrackPushEvents: sdkConfig.autoTrackPushEvents)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
     }
 
     // MARK: pushClicked
@@ -53,9 +52,7 @@ class PushClickHandlerTest: UnitTest {
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkReceivedArguments, URL(string: givenDeepLink))
     }
 
-    func test_pushClicked_givenEnabledAutomaticPushEvents_expectTrackOpenedEvent() {
-        setupTest(autoTrackPushEvents: true)
-
+    func test_pushClicked_expectTrackOpenedEvent() {
         let givenPush = getPush(content: [
             "CIO": [
                 "push": [
@@ -67,70 +64,5 @@ class PushClickHandlerTest: UnitTest {
         pushClickHandler.pushClicked(givenPush)
 
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
-    }
-
-    func test_pushClicked_givenDisableAutomaticPushEvents_expectDoNotTrackOpenedEvent() {
-        setupTest(autoTrackPushEvents: false)
-
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
-
-        pushClickHandler.pushClicked(givenPush)
-
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 0)
-    }
-
-    func test_pushClicked_expectIgnoreRequestIfAlreadyHandledPush() {
-        setupTest(autoTrackPushEvents: true) // using push tracking as our indicator if a request is ignored
-
-        // Indicate we have already processed the push
-        pushHistoryMock.hasHandledPushReturnValue = true
-
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
-
-        pushClickHandler.pushClicked(givenPush)
-
-        // Assert request was ignored
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 0)
-
-        // To be thorough, call again and make sure assertions change as expected
-        pushHistoryMock.hasHandledPushReturnValue = false
-        pushClickHandler.pushClicked(givenPush)
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
-    }
-}
-
-extension PushClickHandlerTest {
-    func setupTest(autoTrackPushEvents: Bool) {
-        super.setUp(modifySdkConfig: { config in
-            config.autoTrackPushEvents = autoTrackPushEvents
-        })
-
-        pushClickHandler = PushClickHandlerImpl(sdkConfig: sdkConfig, deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
-    }
-
-    func getPush(content: [AnyHashable: Any], deliveryId: String = .random, deviceToken: String = .random) -> CustomerIOParsedPushPayload {
-        var content = content
-
-        // swiftlint:disable:next force_cast
-        let notificationContent = UNNotificationContent().mutableCopy() as! UNMutableNotificationContent
-
-        content["CIO-Delivery-ID"] = deliveryId
-        content["CIO-Delivery-Token"] = deviceToken
-
-        notificationContent.userInfo = content
-
-        return CustomerIOParsedPushPayload.parse(notificationContent: notificationContent, jsonAdapter: jsonAdapter)!
     }
 }

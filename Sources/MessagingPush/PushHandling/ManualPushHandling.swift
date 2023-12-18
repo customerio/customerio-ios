@@ -81,14 +81,20 @@ extension MessagingPushImplementation {
         }
 
         if response.didClickOnPush {
-            // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
-            // We get around this by getting a instance in this function, only.
-            if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
-                pushClickHandler.pushClicked(parsedPush)
-            }
+            manualPushClickHandling(cioPush: parsedPush)
         }
 
         return parsedPush
+    }
+
+    // Function that contains the logic for when a customer is wanting to manual handle a push click event.
+    // Function created for logic to be testable since automated test suite crashes when trying to access some UserNotification framework classes such as UNUserNotificationCenter.
+    func manualPushClickHandling(cioPush: CustomerIOParsedPushPayload) {
+        // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
+        // We get around this by getting a instance in this function, only.
+        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
+            pushClickHandler.pushClicked(cioPush)
+        }
     }
 }
 #endif

@@ -2,6 +2,7 @@
 @testable import CioMessagingPush
 import Foundation
 import SharedTests
+import UserNotifications
 
 class IntegrationTest: SharedTests.IntegrationTest {
     private let notificationCenterMock = UserNotificationCenterMock()
@@ -25,5 +26,19 @@ class IntegrationTest: SharedTests.IntegrationTest {
         if shouldInitializeModule {
             MessagingPush.initialize()
         }
+    }
+
+    func getPush(content: [AnyHashable: Any], deliveryId: String = .random, deviceToken: String = .random) -> CustomerIOParsedPushPayload {
+        var content = content
+
+        // swiftlint:disable:next force_cast
+        let notificationContent = UNNotificationContent().mutableCopy() as! UNMutableNotificationContent
+
+        content["CIO-Delivery-ID"] = deliveryId
+        content["CIO-Delivery-Token"] = deviceToken
+
+        notificationContent.userInfo = content
+
+        return CustomerIOParsedPushPayload.parse(notificationContent: notificationContent, jsonAdapter: jsonAdapter)!
     }
 }

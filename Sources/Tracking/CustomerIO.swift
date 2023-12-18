@@ -427,6 +427,10 @@ public class CustomerIO: CustomerIOInstance {
 // Convenient way for other modules to access CustomerIOInstance as well as being able to mock CustomerIOInstance.
 public extension DIGraph {
     var customerIOInstance: CustomerIOInstance {
-        CustomerIO.shared
+        if let override: CustomerIOInstance = getOverriddenInstance() {
+            return override
+        }
+
+        return CustomerIO.shared
     }
 } // swiftlint:disable:this file_length
