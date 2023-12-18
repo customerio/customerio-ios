@@ -10,16 +10,12 @@ class PushClickHandlerTest: IntegrationTest {
     private var pushClickHandler: PushClickHandler!
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
-    private let pushHistoryMock = PushHistoryMock()
     private let customerIOMock = CustomerIOInstanceMock()
 
     override func setUp() {
         super.setUp()
 
-        // Set default values of mocks to avoid having to add to every test function.
-        pushHistoryMock.hasHandledPushClickReturnValue = false
-
-        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, pushHistory: pushHistoryMock, customerIO: customerIOMock)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
     }
 
     // MARK: pushClicked
@@ -67,31 +63,6 @@ class PushClickHandlerTest: IntegrationTest {
 
         pushClickHandler.pushClicked(givenPush)
 
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
-    }
-
-    func test_pushClicked_expectIgnoreRequestIfAlreadyHandledPush() {
-        // Note: Using push tracking as our indicator if a request is ignored
-
-        // Indicate we have already processed the push
-        pushHistoryMock.hasHandledPushReturnValue = true
-
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
-
-        pushClickHandler.pushClicked(givenPush)
-
-        // Assert request was ignored
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 0)
-
-        // To be thorough, call again and make sure assertions change as expected
-        pushHistoryMock.hasHandledPushReturnValue = false
-        pushClickHandler.pushClicked(givenPush)
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
     }
 }
