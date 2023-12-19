@@ -4,6 +4,7 @@ import Segment
 public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
     func processIdentifyFromBGQ(identifier: String, body: [String: Any]?)
+    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any])
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -119,10 +120,16 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
+}
 
-    // MARK: Background queue migration
+// MARK: Background queue migration
 
-    public func processIdentifyFromBGQ(identifier: String, body: [String: Any]? = nil) {
+public extension DataPipeline {
+    func processIdentifyFromBGQ(identifier: String, body: [String: Any]? = nil) {
         implementation?.processIdentifyFromBGQ(identifier: identifier, body: body)
+    }
+
+    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
+        implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, properties: properties)
     }
 }

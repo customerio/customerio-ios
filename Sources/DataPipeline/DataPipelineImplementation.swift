@@ -267,4 +267,13 @@ extension DataPipelineImplementation {
         }
         analytics.process(event: identifyEvent)
     }
+
+    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
+        var screenEvent = ScreenEvent(title: name, category: nil)
+        screenEvent.userId = identifier
+        if let jsonTraits = try? JSON(properties) {
+            screenEvent.properties = jsonTraits
+        }
+        analytics.process(event: screenEvent)
+    }
 }
