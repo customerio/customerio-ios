@@ -3,6 +3,7 @@ import Segment
 
 public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
+    func processIdentifyFromBGQ(identifier: String, body: [String: Any]?)
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -117,5 +118,11 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+
+    // MARK: Background queue migration
+
+    public func processIdentifyFromBGQ(identifier: String, body: [String: Any]? = nil) {
+        implementation?.processIdentifyFromBGQ(identifier: identifier, body: body)
     }
 }

@@ -251,3 +251,20 @@ extension DataPipelineImplementation {
         return attributesPlugin
     }
 }
+
+// To process pending tasks in background queue
+extension DataPipelineImplementation {
+    func processIdentifyFromBGQ(identifier: String, body: [String: Any]?) {
+        var identifyEvent = IdentifyEvent(userId: identifier, traits: nil)
+
+        let contextDict = ["journeys": ["identifiers": ["id": identifier]]]
+        if let context = try? JSON(contextDict) {
+            identifyEvent.context = context
+        }
+        if let traits = body {
+            let jsonTraits = try? JSON(traits)
+            identifyEvent.traits = jsonTraits
+        }
+        analytics.process(event: identifyEvent)
+    }
+}
