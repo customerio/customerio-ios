@@ -99,6 +99,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             name: "push clicked",
             data: ["push": response.notification.request.content.userInfo]
         )
+
+        completionHandler()
     }
 
     // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
