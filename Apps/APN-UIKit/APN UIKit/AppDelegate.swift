@@ -101,10 +101,10 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         )
     }
 
-    // For testing purposes, it's suggested to not include the willPresent function in the AppDelegate.
-    // The automatic push click handling feature uses swizzling. A good edge case to test with swizzling is when
-    // there is an optional function of UNUserNotificationCenterDelegate not implemented. By not including willPresent, we are able to test this case.
-//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .badge, .sound])
+    }
 }
 
 // In-app event listeners to handle user's response to in-app messages.
