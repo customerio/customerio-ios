@@ -5,6 +5,7 @@ public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
     func processIdentifyFromBGQ(identifier: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any])
+    func processEventFromBGQ(identifier: String, name: String, properties: [String: Any])
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -129,7 +130,13 @@ public extension DataPipeline {
         implementation?.processIdentifyFromBGQ(identifier: identifier, body: body)
     }
 
-    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
-        implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, properties: properties)
+    func processEventFromBGQ(type: String, identifier: String, name: String, properties: [String: Any]) {
+        switch type {
+        case "screen":
+            implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, properties: properties)
+        case "event":
+            implementation?.processEventFromBGQ(identifier: identifier, name: name, properties: properties)
+        default: break
+        }
     }
 }

@@ -94,7 +94,6 @@ class CustomerIOImplementation: CustomerIOInstance {
 
     public func screen(name: String, data: [String: Any]) {
         DataPipeline.shared.screen(name: name, data: data)
-
         hooks.screenViewHooks.forEach { hook in
             hook.screenViewed(name: name)
         }
@@ -105,7 +104,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody
     ) {
         DataPipeline.shared.screen(name: name, data: data)
-
         hooks.screenViewHooks.forEach { hook in
             hook.screenViewed(name: name)
         }
@@ -169,14 +167,14 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-                identify(identifier: trackTaskData.identifier)
+                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier)
                 return
             }
             guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-                identify(identifier: trackTaskData.identifier)
+                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier)
                 return
             }
-            identify(identifier: trackTaskData.identifier, body: profileAttributes)
+            DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, body: profileAttributes)
         case .trackEvent:
             guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -186,12 +184,11 @@ class CustomerIOImplementation: CustomerIOInstance {
                 isProcessed = false
                 return
             }
-            switch trackType.type {
-            case .screen:
-                screen(name: trackType.name, data: trackTaskData)
-            case .event:
-                track(name: trackType.name, data: trackTaskData)
+            var properties = [String: Any]()
+            if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
+                properties = attributes
             }
+            DataPipeline.shared.processEventFromBGQ(type: trackType.type.rawValue, identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
         case .registerPushToken:
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false

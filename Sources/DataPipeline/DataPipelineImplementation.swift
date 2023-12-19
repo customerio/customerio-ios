@@ -271,9 +271,18 @@ extension DataPipelineImplementation {
     func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
         var screenEvent = ScreenEvent(title: name, category: nil)
         screenEvent.userId = identifier
-        if let jsonTraits = try? JSON(properties) {
-            screenEvent.properties = jsonTraits
+        if let jsonProperties = try? JSON(properties) {
+            screenEvent.properties = jsonProperties
         }
         analytics.process(event: screenEvent)
+    }
+
+    func processEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
+        var trackEvent = TrackEvent(event: name, properties: nil)
+        trackEvent.userId = identifier
+        if let jsonProperties = try? JSON(properties) {
+            trackEvent.properties = jsonProperties
+        }
+        analytics.process(event: trackEvent)
     }
 }
