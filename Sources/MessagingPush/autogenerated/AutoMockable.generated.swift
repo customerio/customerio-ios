@@ -630,9 +630,9 @@ class PushHistoryMock: PushHistory, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var hasHandledPushReceivedArguments: (pushEvent: PushHistoryEvent, pushId: String)?
+    private(set) var hasHandledPushReceivedArguments: (pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var hasHandledPushReceivedInvocations: [(pushEvent: PushHistoryEvent, pushId: String)] = []
+    private(set) var hasHandledPushReceivedInvocations: [(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)] = []
     /// Value to return from the mocked function.
     var hasHandledPushReturnValue: Bool!
     /**
@@ -640,15 +640,15 @@ class PushHistoryMock: PushHistory, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `hasHandledPushReturnValue`
      */
-    var hasHandledPushClosure: ((PushHistoryEvent, String) -> Bool)?
+    var hasHandledPushClosure: ((PushHistoryEvent, String, Date) -> Bool)?
 
-    /// Mocked function for `hasHandledPush(pushEvent: PushHistoryEvent, pushId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String) -> Bool {
+    /// Mocked function for `hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date) -> Bool {
         mockCalled = true
         hasHandledPushCallsCount += 1
-        hasHandledPushReceivedArguments = (pushEvent: pushEvent, pushId: pushId)
-        hasHandledPushReceivedInvocations.append((pushEvent: pushEvent, pushId: pushId))
-        return hasHandledPushClosure.map { $0(pushEvent, pushId) } ?? hasHandledPushReturnValue
+        hasHandledPushReceivedArguments = (pushEvent: pushEvent, pushId: pushId, pushDeliveryDate: pushDeliveryDate)
+        hasHandledPushReceivedInvocations.append((pushEvent: pushEvent, pushId: pushId, pushDeliveryDate: pushDeliveryDate))
+        return hasHandledPushClosure.map { $0(pushEvent, pushId, pushDeliveryDate) } ?? hasHandledPushReturnValue
     }
 }
 

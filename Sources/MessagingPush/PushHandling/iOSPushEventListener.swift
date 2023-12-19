@@ -126,7 +126,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         }
         logger?.debug("Push event: didReceive. push: \(response))")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId, pushDeliveryDate: response.pushDeliveryDate) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return
@@ -157,7 +157,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         }
         logger?.debug("Push event: willPresent. push: \(notification)")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId, pushDeliveryDate: notification.date) else {
             // push has already been handled. exit early
             // Prevents infinite loops if our NotificationCenter delegate calls other delegates via proxy and then those nested delegates calls our delegate again.
             return

@@ -19,6 +19,10 @@ extension UNNotificationResponse {
     var pushId: String {
         notification.pushId
     }
+
+    var pushDeliveryDate: Date {
+        notification.date
+    }
 }
 
 extension UNNotification {
