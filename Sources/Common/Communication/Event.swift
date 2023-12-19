@@ -1,5 +1,6 @@
 import Foundation
 
+public typealias AnyEventRepresentable = any EventRepresentable
 /// Defines a structure for events in the system.
 ///
 /// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
@@ -40,6 +41,29 @@ public enum EventTypesRegistry {
             DeleteDeviceTokenEvent.self,
             NewSubscriptionEvent.self
         ]
+    }
+
+    static func getEventType(for key: String) throws -> (any EventRepresentable.Type) {
+        switch key {
+        case ProfileIdentifiedEvent.key:
+            return ProfileIdentifiedEvent.self
+        case ScreenViewedEvent.key:
+            return ScreenViewedEvent.self
+        case ResetEvent.key:
+            return ResetEvent.self
+        case TrackMetricEvent.key:
+            return TrackMetricEvent.self
+        case TrackInAppMetricEvent.key:
+            return TrackInAppMetricEvent.self
+        case RegisterDeviceTokenEvent.key:
+            return RegisterDeviceTokenEvent.self
+        case DeleteDeviceTokenEvent.key:
+            return DeleteDeviceTokenEvent.self
+        case NewSubscriptionEvent.key:
+            return NewSubscriptionEvent.self
+        default:
+            throw EventBusError.invalidEventType
+        }
     }
 }
 

@@ -4,11 +4,12 @@ import Foundation
 ///
 /// Specifies methods for sending events and registering for event notifications.
 /// Supports type-safe event handling and scheduler-based execution.
-public protocol EventBus {
-    @discardableResult func post<E: EventRepresentable>(_ event: E, on queue: DispatchQueue?) -> Bool
-    func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void)
+public protocol EventBus: AutoMockable {
+    @discardableResult
+    func post(_ event: AnyEventRepresentable, on queue: DispatchQueue?) -> Bool
+    func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void)
     func removeAllObservers()
-    func removeObserver<E: EventRepresentable>(for eventType: E.Type)
+    func removeObserver(for eventType: String)
 }
 
 /// `SharedEventBus` manages the distribution of events to registered observers.
@@ -34,14 +35,14 @@ public class SharedEventBus: EventBus {
     ///   - queue: An optional DispatchQueue on which to post the event. If nil, uses the current queue.
     /// - Returns: Boolean indicating if there were any observers for the event.
     @discardableResult
-    public func post<E>(_ event: E, on queue: DispatchQueue? = nil) -> Bool where E: EventRepresentable {
+    public func post(_ event: AnyEventRepresentable, on queue: DispatchQueue? = nil) -> Bool {
         var hasObservers = false
         self.queue.sync {
-            let key = E.key
+            let key = event.key
             if let observerList = self.observers[key], !observerList.isEmpty {
                 hasObservers = true
                 let postAction = {
-                    self.notificationCenter.post(name: NSNotification.Name(E.key), object: event)
+                    self.notificationCenter.post(name: NSNotification.Name(key), object: event)
                 }
 
                 // Posts the event asynchronously on the provided queue or immediately if no queue is provided.
@@ -59,18 +60,17 @@ public class SharedEventBus: EventBus {
     /// - Parameters:
     ///   - eventType: The event type to observe.
     ///   - action: The action to execute when the event is observed.
-    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
+    public func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) {
         queue.sync {
-            let key = E.key
-            let observer = notificationCenter.addObserver(forName: NSNotification.Name(key), object: nil, queue: nil) { notification in
-                if let event = notification.object as? E {
+            let observer = notificationCenter.addObserver(forName: NSNotification.Name(eventType), object: nil, queue: nil) { notification in
+                if let event = notification.object as? AnyEventRepresentable {
                     action(event)
                 }
             }
-            if observers[key] != nil {
-                observers[key]?.append(observer)
+            if observers[eventType] != nil {
+                observers[eventType]?.append(observer)
             } else {
-                observers[key] = [observer]
+                observers[eventType] = [observer]
             }
         }
     }
@@ -90,14 +90,13 @@ public class SharedEventBus: EventBus {
 
     /// Removes all observers for a specific event type.
     /// - Parameter eventType: The event type for which to remove observers.
-    public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
+    public func removeObserver(for eventType: String) {
         queue.sync {
-            let key = E.key
-            if let observerList = observers[key] {
+            if let observerList = observers[eventType] {
                 for observer in observerList {
                     notificationCenter.removeObserver(observer)
                 }
-                observers[key] = nil
+                observers[eventType] = nil
             }
         }
     }
