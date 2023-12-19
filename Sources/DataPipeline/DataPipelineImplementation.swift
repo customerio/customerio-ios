@@ -285,4 +285,14 @@ extension DataPipelineImplementation {
         }
         analytics.process(event: trackEvent)
     }
+
+    func processDeleteTokenFromBGQ(identifier: String) {
+        var trackDeleteEvent = TrackEvent(event: "Device Deleted", properties: nil)
+        trackDeleteEvent.userId = identifier
+        let contextDict = ["journeys": ["identifiers": ["id": identifier]]]
+        if let context = try? JSON(contextDict) {
+            trackDeleteEvent.context = context
+        }
+        analytics.process(event: trackDeleteEvent)
+    }
 }

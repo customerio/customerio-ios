@@ -188,7 +188,9 @@ class CustomerIOImplementation: CustomerIOInstance {
             if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
                 properties = attributes
             }
-            DataPipeline.shared.processEventFromBGQ(type: trackType.type.rawValue, identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
+            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
+                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
+
         case .registerPushToken:
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -204,7 +206,8 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
             self.deviceAttributes = device
         case .deletePushToken:
-            deleteDeviceToken()
+            // TODO: CHECK FOR IDENTIFIER
+            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: "")
         case .trackPushMetric:
             guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
