@@ -1,348 +1,186 @@
 @testable import CioInternalCommon
-import Combine
 import SharedTests
 import XCTest
 
-final class EventBusTests: UnitTest {
-    var eventBus: EventBus!
-    var subscriptions: Set<AnyCancellable>!
+class SharedEventBusTests: UnitTest {
+    var eventBus: SharedEventBus!
+    var notificationReceived: Bool!
 
-    override func setUpWithError() throws {
-        eventBus = SharedEventBus(
-            listenersRegistry: EventListenersManager())
-        subscriptions = []
+    override func setUp() {
+        super.setUp()
+        eventBus = SharedEventBus()
+        notificationReceived = false
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() {
         eventBus = nil
-        subscriptions = nil
-    }
-}
-
-// MARK: - Events test
-
-extension EventBusTests {
-    func test_send_givenProfileIdentifiedEvent_expectEventReceived() throws {
-        // given
-        let expectedEvent = ProfileIdentifiedEvent(identifier: String.random)
-
-        // and
-        let eventExpectation = expectation(description: "Should receive ProfileIdentifiedEvent event")
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { actualEvent in
-            if actualEvent == expectedEvent {
-                eventExpectation.fulfill()
-            }
-        }
-        .store(in: &subscriptions)
-
-        // when
-        eventBus.send(expectedEvent)
-
-        // then
-        waitForExpectations(timeout: 10)
+        super.tearDown()
     }
 
-    func test_send_givenProfileIdentifiedEventWithAnotherEventListener_expectNoEventReceived() throws {
-        // given
-        let eventExpectation = expectation(description: "Should not receive an event")
-        eventExpectation.isInverted = true
-
-        eventBus.onReceive(AnotherEvent.self) { _ in
-            eventExpectation.fulfill()
+    func testPostEventWithObserver() {
+        let exp = expectation(description: "Event received")
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            self.notificationReceived = true
+            exp.fulfill()
         }
-        .store(in: &subscriptions)
 
-        // when
-        eventBus.send(ProfileIdentifiedEvent(identifier: String.random))
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
 
-        // then
+        waitForExpectations(timeout: 1)
+        XCTAssertTrue(notificationReceived)
+    }
+
+    func testPostEventWithoutObserver() {
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        let hasObservers = eventBus.post(event)
+        XCTAssertFalse(hasObservers)
+    }
+
+    func testMultipleObserversForSameEvent() {
+        let exp1 = expectation(description: "First observer received event")
+        let exp2 = expectation(description: "Second observer received event")
+
+        var firstObserverNotified = false
+        var secondObserverNotified = false
+
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            firstObserverNotified = true
+            exp1.fulfill()
+        }
+
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            secondObserverNotified = true
+            exp2.fulfill()
+        }
+
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
+
+        waitForExpectations(timeout: 1)
+        XCTAssertTrue(firstObserverNotified, "First observer should receive the event")
+        XCTAssertTrue(secondObserverNotified, "Second observer should receive the event")
+    }
+
+    func testObserversForDifferentEventTypes() {
+        let exp1 = expectation(description: "Observer for event type 1 receives event")
+        let exp2 = expectation(description: "Observer for event type 2 receives event")
+
+        var observer1Notified = false
+        var observer2Notified = false
+
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            observer1Notified = true
+            exp1.fulfill()
+        }
+
+        eventBus.addObserver(ScreenViewedEvent.key) { _ in
+            observer2Notified = true
+            exp2.fulfill()
+        }
+
+        let event1 = ProfileIdentifiedEvent(identifier: "123")
+        let event2 = ScreenViewedEvent(name: "ABC")
+
+        eventBus.post(event1)
+        eventBus.post(event2)
+
+        waitForExpectations(timeout: 1)
+        XCTAssertTrue(observer1Notified, "Observer for ProfileIdentifiedEvent should be notified")
+        XCTAssertTrue(observer2Notified, "Observer for ScreenViewedEvent should be notified")
+    }
+
+    func testMultipleObserversForSameEventType() {
+        let exp1 = expectation(description: "First observer receives event")
+        let exp2 = expectation(description: "Second observer receives event")
+
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp1.fulfill() }
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp2.fulfill() }
+
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
+
         waitForExpectations(timeout: 1)
     }
-}
 
-// MARK: - Events with Params
+    func testRemovingSpecificObserver() {
+        let exp = expectation(description: "Event received")
+        exp.isInverted = true
 
-extension EventBusTests {
-    func test_send_givenEventWithParams_expectEventWithParamsReceived() throws {
-        // given
-        let expectedParams: [String: String] = [
-            "planet": "Hoth",
-            "distanceInParsecs": "10"
-        ]
-
-        // end
-        let eventExpectation = expectation(description: "Should receive Screen event with custom parameters")
-        eventBus.onReceive(ScreenViewedEvent.self) { actualParams in
-            if actualParams.params == expectedParams {
-                eventExpectation.fulfill()
-            }
+        // Add and immediately remove the observer
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            exp.fulfill()
         }
-        .store(in: &subscriptions)
+        eventBus.removeObserver(for: ProfileIdentifiedEvent.key)
 
-        // when
-        eventBus.send(ScreenViewedEvent(name: "Planets", params: expectedParams))
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
 
-        // then
-        waitForExpectations(timeout: 10)
+        // Expectation should not be fulfilled as observer has been removed
+        waitForExpectations(timeout: 1)
+        XCTAssertFalse(notificationReceived, "Observer should not receive the event after being removed")
     }
 
-    func test_send_givenEventWithoutParams_expectEventWithoutParamsReceived() throws {
-        // given
-        let eventExpectation = expectation(description: "Should receive Reset event without parameters")
-        eventBus.onReceive(ResetEvent.self) { event in
-            if event.params.isEmpty {
-                eventExpectation.fulfill()
-            }
-        }
-        .store(in: &subscriptions)
+    func testObserverReceivingMultipleNotifications() {
+        let exp = expectation(description: "Observer receives multiple events")
+        exp.expectedFulfillmentCount = 2
 
-        // when
-        eventBus.send(ResetEvent())
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp.fulfill() }
 
-        // then
-        waitForExpectations(timeout: 10)
-    }
+        let event1 = ProfileIdentifiedEvent(identifier: "123")
+        let event2 = ProfileIdentifiedEvent(identifier: "456")
+        eventBus.post(event1)
+        eventBus.post(event2)
 
-    func test_send_givenEvent_andListeningForAnotherEvent_expectNoEventReceived() throws {
-        // given
-        let threadExpectation = expectation(description: "Should not receive an event")
-        threadExpectation.isInverted = true
-
-        eventBus.onReceive(ResetEvent.self) { _ in
-            threadExpectation.fulfill()
-        }
-        .store(in: &subscriptions)
-
-        // when
-        eventBus.send(ProfileIdentifiedEvent(identifier: String.random))
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-
-    func test_send_givenAnEvent_andListeningForAnotherOnDifferentThread_expectNoEventReceived() throws {
-        // given
-        let threadExpectation = expectation(description: "Should not receive an event on the main thread")
-        threadExpectation.isInverted = true
-
-        eventBus.onReceive(ProfileIdentifiedEvent.self, performOn: DispatchQueue.main) { _ in
-            threadExpectation.fulfill()
-        }
-        .store(in: &subscriptions)
-
-        // when
-        DispatchQueue.global(qos: .background).async {
-            self.eventBus.send(ResetEvent())
-        }
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-}
-
-// MARK: - Threading
-
-extension EventBusTests {
-    func test_send_givenEventOnBackgroundThread_expectEventReceivedOnSameThread() throws {
-        // given
-        var sendThread: Thread?
-
-        // and
-        let threadExpectation = expectation(description: "Should receive an event on the same thread that was used to send the event")
-        eventBus.onReceive(TrackMetricEvent.self) { _ in
-            if Thread.current == sendThread {
-                threadExpectation.fulfill()
-            }
-        }
-        .store(in: &subscriptions)
-
-        // when
-        DispatchQueue.global(qos: .background).async {
-            sendThread = Thread.current
-            self.eventBus.send(TrackMetricEvent(deliveryID: String.random, event: String.random, deviceToken: String.random))
-        }
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-
-    func test_send_givenResetEventOnBackgroundThread_expectEventReceivedOnMainThread() throws {
-        // given
-        let threadExpectation = expectation(description: "Should receive an event on the main thread")
-        eventBus.onReceive(ResetEvent.self, performOn: DispatchQueue.main) { _ in
-            if Thread.current.isMainThread {
-                threadExpectation.fulfill()
-            }
-        }
-        .store(in: &subscriptions)
-
-        // when
-        DispatchQueue.global(qos: .background).async {
-            self.eventBus.send(ResetEvent())
-        }
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-
-    func test_send_givenEventOnMainThread_expectEventReceivedOnBackgroundThread() throws {
-        // given
-        let threadExpectation = expectation(description: "Should receive an event on the background thread")
-        eventBus.onReceive(DeleteDeviceTokenEvent.self, performOn: DispatchQueue.global(qos: .background)) { _ in
-            if !Thread.current.isMainThread {
-                threadExpectation.fulfill()
-            }
-        }
-        .store(in: &subscriptions)
-
-        // when
-        DispatchQueue.main.async {
-            self.eventBus.send(DeleteDeviceTokenEvent())
-        }
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-}
-
-// MARK: - Other
-
-extension EventBusTests {
-    func test_send_givenEventWithMultipleSubscribers_expectMultipleEventsReceived() throws {
-        // given
-        let eventExpectation = expectation(description: "Should receive events")
-        eventExpectation.expectedFulfillmentCount = 2
-
-        eventBus.onReceive(AnotherEvent.self) { _ in
-            eventExpectation.fulfill()
-        }
-        .store(in: &subscriptions)
-
-        eventBus.onReceive(AnotherEvent.self) { _ in
-            eventExpectation.fulfill()
-        }
-        .store(in: &subscriptions)
-
-        // when
-        eventBus.send(AnotherEvent())
-
-        // then
-        waitForExpectations(timeout: 10)
-    }
-
-    func test_send_givenEventWithNoStoredSubscription_expectNoEventReceived() throws {
-        // given
-        let threadExpectation = expectation(description: "Should not receive an event")
-        threadExpectation.isInverted = true
-
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { _ in
-            threadExpectation.fulfill()
-        }
-        // .store(in: &subscriptions) -> don't store subscription, so it is deallocated immediately
-
-        // when
-        eventBus.send(ProfileIdentifiedEvent(identifier: String.random))
-
-        // then
         waitForExpectations(timeout: 1)
     }
-}
 
-// MARK: - Send response
+    func testRemovingAllObservers() {
+        let exp = expectation(description: "Event received")
+        exp.isInverted = true
 
-extension EventBusTests {
-    func test_sendEvent_givenNoSubscribers_expectFalseReturned() throws {
-        // given
-        let event = ProfileIdentifiedEvent(identifier: String.random)
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            exp.fulfill()
+        }
 
-        // when
-        let wasEventHandled = eventBus.send(event)
+        eventBus.removeAllObservers()
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
 
-        // then
-        XCTAssertFalse(wasEventHandled, "Expected send to return false as there are no subscribers for the event")
+        waitForExpectations(timeout: 1)
+        XCTAssertFalse(notificationReceived, "No observers should receive the event after removing all")
     }
 
-    func test_sendEvent_givenSubscribers_expectTrueReturned() throws {
-        // given
-        let event = RegisterDeviceTokenEvent(token: String.random)
-        let eventExpectation = expectation(description: "Expect RegisterDeviceTokenEvent to be received")
-        eventBus.onReceive(RegisterDeviceTokenEvent.self) { _ in
-            eventExpectation.fulfill()
-        }.store(in: &subscriptions)
+    func testPostEventOnSpecificQueue() {
+        let exp = expectation(description: "Event received on specific queue")
+        let queue = DispatchQueue(label: "test.queue")
+        let key = DispatchSpecificKey<String>()
+        queue.setSpecific(key: key, value: "test.queue")
 
-        // when
-        let wasEventHandled = eventBus.send(event)
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
+            if DispatchQueue.getSpecific(key: key) == "test.queue" {
+                exp.fulfill()
+            } else {
+                XCTFail("Notification should be received on the specified queue")
+            }
+        }
 
-        // then
-        XCTAssertTrue(wasEventHandled, "Expected send to return true as there are subscribers for the event")
-        waitForExpectations(timeout: 10)
-    }
-}
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event, on: queue)
 
-// MARK: - NewSubscriptionEvent Logic
-
-extension EventBusTests {
-    func test_send_givenNewSubscription_expectNewSubscriptionEventEmitted() throws {
-        // given
-        let newSubEventExpectation = expectation(description: "Should receive NewSubscriptionEvent for ProfileIdentifiedEvent")
-        var newSubscriptionEventType: String?
-
-        eventBus.onReceive(NewSubscriptionEvent.self) { newSubEvent in
-            newSubscriptionEventType = newSubEvent.subscribedEventType
-            newSubEventExpectation.fulfill()
-        }.store(in: &subscriptions)
-
-        // when
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { _ in }
-            .store(in: &subscriptions)
-
-        // then
-        waitForExpectations(timeout: 10)
-        XCTAssertEqual(newSubscriptionEventType, String(describing: ProfileIdentifiedEvent.self))
+        waitForExpectations(timeout: 1)
     }
 
-    func test_send_givenRepeatedSubscription_expectNoNewSubscriptionEventEmitted() throws {
-        // given
-        let newSubEventExpectation = expectation(description: "Should not receive additional NewSubscriptionEvent for ProfileIdentifiedEvent")
-        newSubEventExpectation.isInverted = true
+    func testObserverNotNotifiedAfterRemoval() {
+        let exp = expectation(description: "Observer should not receive event")
+        exp.isInverted = true
 
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { _ in }
-            .store(in: &subscriptions)
+        eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp.fulfill() }
+        eventBus.removeObserver(for: ProfileIdentifiedEvent.key)
 
-        eventBus.onReceive(NewSubscriptionEvent.self) { _ in
-            newSubEventExpectation.fulfill()
-        }.store(in: &subscriptions)
+        let event = ProfileIdentifiedEvent(identifier: "123")
+        eventBus.post(event)
 
-        // when
-        eventBus.onReceive(ProfileIdentifiedEvent.self) { _ in }
-            .store(in: &subscriptions)
-
-        // then
-        waitForExpectations(timeout: 2)
-    }
-
-    func test_send_givenNewSubscriptionToNewSubscriptionEvent_expectNoNewSubscriptionEventEmitted() throws {
-        // given
-        let newSubEventExpectation = expectation(description: "Should not receive NewSubscriptionEvent for its own subscription")
-        newSubEventExpectation.isInverted = true
-
-        eventBus.onReceive(NewSubscriptionEvent.self) { _ in
-            newSubEventExpectation.fulfill()
-        }.store(in: &subscriptions)
-
-        // when
-        eventBus.onReceive(NewSubscriptionEvent.self) { _ in }
-            .store(in: &subscriptions)
-
-        // then
-        waitForExpectations(timeout: 2)
-    }
-}
-
-// MARK: - Mocked data
-
-private extension EventBusTests {
-    struct AnotherEvent: EventRepresentable {
-        var params: [String: String] = [:]
+        waitForExpectations(timeout: 1)
     }
 }
