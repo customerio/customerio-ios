@@ -142,7 +142,6 @@ class CustomerIOImplementation: CustomerIOInstance {
             logger.info("No tasks pending in the background queue to be executed.")
             return
         }
-
         threadUtil.runBackground { [weak self] in
             allStoredTasks.forEach { task in
                 self?.getAndProcessTask(for: task)
@@ -196,18 +195,23 @@ class CustomerIOImplementation: CustomerIOInstance {
                 isProcessed = false
                 return
             }
-            guard let deviceAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
+            guard let allAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
                 isProcessed = false
                 return
             }
-            guard let device = deviceAttributes["device"] as? [String: Any] else {
+            guard let device = allAttributes["device"] as? [String: Any] else {
                 isProcessed = false
                 return
             }
-            self.deviceAttributes = device
+            if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
+                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: "DUGUU-GUGGGU", attributes: attributes)
+            }
         case .deletePushToken:
-            // TODO: CHECK FOR IDENTIFIER
-            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: "")
+            guard let deletePushData: DeletePushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+                isProcessed = false
+                return
+            }
+            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken)
         case .trackPushMetric:
             guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -218,7 +222,7 @@ class CustomerIOImplementation: CustomerIOInstance {
 
         // Remove the task from the queue if the task has been prpcessed successfully
         if isProcessed {
-            backgroundQueue.deleteProcessedTask(task)
+//            backgroundQueue.deleteProcessedTask(task)
         }
     }
 }

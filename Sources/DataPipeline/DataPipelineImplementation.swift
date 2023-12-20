@@ -303,21 +303,14 @@ extension DataPipelineImplementation {
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         var tokenDict: [String: Any] = ["token": token, "type": "ios"]
 
-        deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            var deviceAttributes: [String: Any] = defaultDeviceAttributes
-                .mergeWith([
-                    "last_used": self.dateUtil.now
-                ])
-            if let attributes = attributes {
-                tokenDict = tokenDict.mergeWith(attributes)
-            }
-
-            tokenDict = tokenDict.mergeWith(deviceAttributes)
-            let deviceDict: [String: Any] = ["device": tokenDict]
-            if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
-                trackDeleteEvent.context = context
-            }
-            self.analytics.process(event: trackDeleteEvent)
+        if let attributes = attributes {
+            tokenDict = tokenDict.mergeWith(attributes)
         }
+
+        let deviceDict: [String: Any] = ["device": tokenDict]
+        if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
+            trackDeleteEvent.context = context
+        }
+        analytics.process(event: trackDeleteEvent)
     }
 }
