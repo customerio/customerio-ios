@@ -204,7 +204,7 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
-                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: "DUGUU-GUGGGU", attributes: attributes)
+                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, attributes: attributes)
             }
         case .deletePushToken:
             guard let deletePushData: DeletePushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
