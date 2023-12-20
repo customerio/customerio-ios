@@ -168,6 +168,10 @@ class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
 
         XCTAssertEqusl(pushClickHandlerMock.pushClickedCount, 2) // should be handled again, even though we have already handled push with that push ID before.
     }
+    
+    // TODO: the test class here tests only when a push is clicked. Add test functions for when a push is received on the device and we need to determine if we should show the push while app in foreground or not. 
+    // Another way to put it, we need to test our SDK's logic of: 
+    // userNotificationCenter(willPresent:)
 }
 
 extension AutomaticPushClickHandlingInsetegrationTest {
