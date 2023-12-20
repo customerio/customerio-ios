@@ -143,4 +143,13 @@ class DashboardViewController: BaseViewController {
             }
         }
     }
+
+    @IBAction func send3rdPartyPush(_ sender: UIButton) {
+        // Display a local push notification on the system. This will test compatability when a push is clicked that was not sent by Customer.io.
+        let content = UNMutableNotificationContent()
+        content.title = "local push"
+        content.body = "Try clicking me and see host app handle the push instead of Customer.io SDK"
+        let request = UNNotificationRequest(identifier: "local-push-not-from-cio", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
 }

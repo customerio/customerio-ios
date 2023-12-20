@@ -1,3 +1,4 @@
+@testable import CioInternalCommon
 @testable import CioMessagingPush
 import Foundation
 import SharedTests
@@ -9,23 +10,24 @@ class PushHistoryTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        pushHistory = PushHistoryImpl(keyValueStorage: keyValueStorage, lockManager: lockManager)
+        pushHistory = PushHistoryImpl(lockManager: lockManager)
     }
 
     // MARK: hasHandledPush
 
     func test_hasHandledPush_givenPushNotHandled_expectFalse() {
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: String.random))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: String.random, pushDeliveryDate: Date()))
     }
 
     func test_hasHandledPush_givenPushPreviouslyHandled_expectTrue() {
         let givenPushId = String.random
+        let givenDate = Date().subtract(10, .minute)
 
         // Handle push for first time
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
 
         // Check that function returns true
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
     }
 
     func test_hasHandledPush_givenUniquePushIds_expectEachPushHandledOnlyOnce() {
@@ -33,52 +35,70 @@ class PushHistoryTest: IntegrationTest {
         let givenPushId2 = String.random
         let givenPushId3 = String.random
 
+        let givenDate = Date().subtract(10, .minute)
+
         // Handle push for first time
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1, pushDeliveryDate: givenDate))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2, pushDeliveryDate: givenDate))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3, pushDeliveryDate: givenDate))
 
         // Check that function returns true
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1, pushDeliveryDate: givenDate))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2, pushDeliveryDate: givenDate))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3, pushDeliveryDate: givenDate))
+    }
+
+    func test_hasHandledPush_givenUniqueDeliveryDates_expectEachPushHandledOnlyOnce() {
+        let givenPushId = String.random
+
+        let givenDate1 = Date().subtract(10, .minute)
+        let givenDate2 = Date().subtract(5, .minute)
+        let givenDate3 = Date().subtract(2, .minute)
+
+        // Handle push for first time
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate1))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate2))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate3))
+
+        // Check that function returns true
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate1))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate2))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate3))
     }
 
     func test_hasHandledPush_givenSamePushId_givenUniquePushEvents_expectEachPushEventHandledOnce() {
+        // Tests that each push event has it's own set of history.
+        // Make sure that all parameters except for the push event is the same.
         let givenPushId = String.random
+        let givenDate = Date().subtract(10, .minute)
 
         // Handle push for first time
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId, pushDeliveryDate: givenDate))
 
         // Check that function returns true
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
+        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: givenPushId, pushDeliveryDate: givenDate))
     }
 
-    func test_hasHandledPush_expectPushHistorySizeIsLimited() {
-        pushHistory.maxSizeOfHistory = 3
+    func test_hasHandledPush_expectThreadSafe() {
+        runTest(numberOfTimes: 100) {
+            let givenPushId = String.random
+            let givenDate = Date().subtract(10, .minute)
 
-        let givenPushId1 = String.random
-        let givenPushId2 = String.random
-        let givenPushId3 = String.random
-        let givenPushId4 = String.random
+            let expectBackgroundThreadCheckToComplete = expectation(description: "Background thread check should complete")
 
-        // Check that push history is kept for 3 pushes.
-        // If the function returns false and then true, we know the history was kept for that push to return "true" for the second call.
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
+            // Handle push
+            XCTAssertFalse(self.pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
 
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId2))
+            // Assert that the push was handled when accessing from a different thread.
+            runOnBackground {
+                XCTAssertTrue(self.pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
 
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId3))
+                expectBackgroundThreadCheckToComplete.fulfill()
+            }
 
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId4))
-        XCTAssertTrue(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId4))
-
-        // We expect that the 1st push is no longer in history. So, it should return false for the next call.
-        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId1))
+            waitForExpectations()
+        }
     }
 }
