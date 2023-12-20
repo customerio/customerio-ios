@@ -128,15 +128,6 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId, pushDeliveryDate: response.pushDeliveryDate) else {
             // push has already been handled. exit early
-
-            /*
-             Some 3rd party SDKs (such as FCM SDK) have an implementation of swizzling that can create an infinite loop with our notification center proxy. We keep a history of push notifications that have been handled to prevent this infinite loop.
-
-             Example scenario of infinite loop:
-             - This `userNotificationCenter(didReceive:)` function gets called by OS when a push is clicked.
-             - Our notification center proxy calls the FCM SDK’s `userNotificationCenter(didReceive:)` function. FCM's swizzling implementation involves making a call back to the host app's current UserNotificationCenter.delegate (which is our SDK). See code: https://github.com/firebase/firebase-ios-sdk/blob/5890db966963fd76cfd020d68c0067a7741bef06/FirebaseMessaging/Sources/FIRMessagingRemoteNotificationsProxy.m#L498-L504
-             ... this call to the host app's current delegate means that this function is called again. Once this function is called again, we have gotten into an infinite loop.
-             */
             return
         }
 
