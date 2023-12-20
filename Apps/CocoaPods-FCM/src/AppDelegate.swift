@@ -69,6 +69,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             name: "push clicked",
             data: ["push": response.notification.request.content.userInfo]
         )
+
+        completionHandler()
     }
 
     // For testing purposes, it's suggested to not include the willPresent function in the AppDelegate.

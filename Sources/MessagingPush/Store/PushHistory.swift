@@ -17,7 +17,7 @@ protocol PushHistory: AutoMockable {
 
      @return true if push has been handled before. false otherwise.
      */
-    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String) -> Bool
+    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date) -> Bool
 }
 
 enum PushHistoryEvent {
@@ -25,68 +25,46 @@ enum PushHistoryEvent {
     case willPresent
 }
 
+/**
+ Thread-safe store of push notifications that have been handled by the SDK. Used to prevent possible duplication of handling of events.
+
+ Singleton because this is an in-memory store.
+ */
 // sourcery: InjectRegister = "PushHistory"
+// sourcery: InjectSingleton
 class PushHistoryImpl: PushHistory {
-    private let keyValueStorage: KeyValueStorage
     private let lock: Lock
 
-    var maxSizeOfHistory = 100
+    @Atomic private var history: [PushHistoryEvent: Set<Push>] = [:]
 
-    init(keyValueStorage: KeyValueStorage, lockManager: LockManager) {
-        self.keyValueStorage = keyValueStorage
+    init(lockManager: LockManager) {
         self.lock = lockManager.getLock(id: .pushHistory)
     }
 
-    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String) -> Bool {
+    func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date) -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
-        let hasHandledAlready = getHistory(for: pushEvent).contains(pushId)
+        var eventsHistory = history[pushEvent] ?? Set<Push>()
+
+        let push = Push(pushId: pushId, pushDeliveryDate: pushDeliveryDate)
+        let hasHandledAlready = eventsHistory.contains(push)
 
         if hasHandledAlready {
             return true // push has already been handled. exit early
         }
 
-        markEventAsHandled(pushId: pushId, event: pushEvent)
+        eventsHistory.insert(push)
+
+        history[pushEvent] = eventsHistory
 
         return false // push has not yet been handled.
     }
-}
 
-extension PushHistoryImpl {
-    private func markEventAsHandled(pushId: String, event: PushHistoryEvent) {
-        lock.lock()
-        defer { lock.unlock() }
-
-        var clickHistory = getHistory(for: event)
-
-        if clickHistory.count >= maxSizeOfHistory {
-            // Remove oldest push click from history.
-            clickHistory = Array(clickHistory.dropFirst())
-        }
-
-        clickHistory.append(pushId)
-
-        setHistory(clickHistory, forEvent: event)
-    }
-
-    private func getKeyValueStorageKey(forEvent event: PushHistoryEvent) -> KeyValueStorageKey {
-        switch event {
-        case .didReceive:
-            return .pushNotificationsHandledDidReceive
-        case .willPresent:
-            return .pushNotificationsHandledWillPresent
-        }
-    }
-
-    private func getHistory(for event: PushHistoryEvent) -> [String] {
-        let stringRepresentationOfArray = keyValueStorage.string(getKeyValueStorageKey(forEvent: event)) ?? ""
-
-        return stringRepresentationOfArray.split(separator: ",").map { String($0) }
-    }
-
-    private func setHistory(_ history: [String], forEvent event: PushHistoryEvent) {
-        let stringRepresentationOfArray = history.joined(separator: ",")
-        keyValueStorage.setString(stringRepresentationOfArray, forKey: getKeyValueStorageKey(forEvent: event))
+    // In order to uniquely identify a push notification from another, the identifier is not enough. For local notifications especially,
+    // it's possible that 2+ push notifications will have the same identifier. This is why we also include the date that the push was displayed.
+    private struct Push: Hashable {
+        let pushId: String
+        let pushDeliveryDate: Date
     }
 }

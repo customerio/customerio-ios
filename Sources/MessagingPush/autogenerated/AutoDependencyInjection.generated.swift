@@ -109,14 +109,28 @@ extension DIGraph {
         PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, customerIO: customerIOInstance)
     }
 
-    // PushHistory
+    // PushHistory (singleton)
     var pushHistory: PushHistory {
         getOverriddenInstance() ??
-            newPushHistory
+            sharedPushHistory
     }
 
-    private var newPushHistory: PushHistory {
-        PushHistoryImpl(keyValueStorage: keyValueStorage, lockManager: lockManager)
+    var sharedPushHistory: PushHistory {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_PushHistory_singleton_access").sync {
+            if let overridenDep: PushHistory = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: PushHistory.self)] as? PushHistory
+            let instance = existingSingletonInstance ?? _get_pushHistory()
+            self.singletons[String(describing: PushHistory.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_pushHistory() -> PushHistory {
+        PushHistoryImpl(lockManager: lockManager)
     }
 
     // UserNotificationCenter
