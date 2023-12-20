@@ -6,7 +6,7 @@ public protocol DataPipelineInstance: CustomerIOInstance {
     func processIdentifyFromBGQ(identifier: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any])
     func processEventFromBGQ(identifier: String, name: String, properties: [String: Any])
-    func processDeleteTokenFromBGQ(identifier: String)
+    func processDeleteTokenFromBGQ(identifier: String, token: String)
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -139,7 +139,7 @@ public extension DataPipeline {
         implementation?.processEventFromBGQ(identifier: identifier, name: name, properties: properties)
     }
 
-    func processDeleteTokenFromBGQ(identifier: String) {
-        implementation?.processDeleteTokenFromBGQ(identifier: identifier)
+    func processDeleteTokenFromBGQ(identifier: String, token: String) {
+        implementation?.processDeleteTokenFromBGQ(identifier: identifier, token: token)
     }
 }

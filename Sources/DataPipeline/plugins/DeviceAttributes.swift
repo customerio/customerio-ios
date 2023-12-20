@@ -17,7 +17,8 @@ class DeviceAttributes: Plugin {
         else { return event }
 
         do {
-            if let token = token {
+            let bgToken = context[keyPath: "device.token"] as? String
+            if let token = token, bgToken == nil {
                 context[keyPath: "device.token"] = token
                 workingEvent.context = try JSON(context)
             }
