@@ -3,12 +3,6 @@ import CioTracking
 import Foundation
 import UserNotifications
 
-protocol PushEventListener: AutoMockable {
-    var delegate: UNUserNotificationCenterDelegate { get }
-    func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?)
-    func beginListening()
-}
-
 @available(iOSApplicationExtension, unavailable)
 /**
 
@@ -34,7 +28,7 @@ protocol PushEventListener: AutoMockable {
  - During the native iOS SDK's initialization, the SDK's digraph instance is re-created. All objects (and singletons) in that old digraph instance are deleted from memory.
  - That's bad! If the PushEventListener singleton instance was stored in the digraph, it would be deleted from memory. The OS would no longer be able to send push notification callbacks to the SDK.
  */
-class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
+class iOSPushEventListener: BaseSdkPushEventListener {
     // Singleton instance of this class maintained outside of the digraph.
     public static let shared = iOSPushEventListener()
 
@@ -90,10 +84,6 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         self.overridePushHistory = pushHistory
     }
 
-    var delegate: UNUserNotificationCenterDelegate {
-        self
-    }
-
     // singleton init
     override init() {}
 
@@ -117,16 +107,16 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         notificationCenterDelegateProxy.newNotificationCenterDelegateSet(newDelegate)
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    override func onPushClicked(_ push: PushNotification, completionHandler: @escaping () -> Void) {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
             return
         }
-        logger?.debug("Push event: didReceive. push: \(response))")
+        logger?.debug("Push event: didReceive. push: \(push))")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId, pushDeliveryDate: response.pushDeliveryDate) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
             // push has already been handled. exit early
             return
         }
@@ -149,7 +139,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         completionHandler()
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    override func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
               let moduleConfig = moduleConfig

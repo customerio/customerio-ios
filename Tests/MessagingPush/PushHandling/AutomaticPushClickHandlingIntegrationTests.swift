@@ -180,7 +180,7 @@ extension AutomaticPushClickHandlingInsetegrationTest {
         // We are acting as if we are the iOS OS and a push notification got clicked on the device.
 
         // First, iOS will get the current UNUserNotificationCenterDelegate instance set on the host iOS app.
-        let hostAppDelegate = notificationCenterMock.currentDelegate
+        let hostAppDelegate: iOSPushEventListener = notificationCenterMock.currentDelegate
 
         // Then, iOS will call this function on the delegate.
         // Note: It's important that we test that the `withContentHandler` callback function gets called either by our SDK (when we handle it), or the 3rd party handler.
@@ -188,12 +188,11 @@ extension AutomaticPushClickHandlingInsetegrationTest {
         let expectCompletionHandlerCalled = expectation(description: "Expect completion handler called by a click handler")
         expectCompletionHandlerCalled.expectedFulfillmentCount = 1 // Test will fail if called 2+ times which could indicate a bug because only 1 push click handler should be calling it.
 
-        // TODO: We may need to change the syntax of this line below.
         // It's difficult to create an instance of UNNotificationRequest because it's initializer is internal.
         // Therefore, we may need to call a different function then the one below. However, we will make sure that we are still testing the logic of our SDK when this function is called in production.
-        hostAppDelegate?.userNotificationCenter?(notificationCenterMock, didReceive: UNNotificationRequestMock(), withContentHandler: { _ in
+        hostAppDelegate?.pushClicked(PushNotification(pushContent)) { _ in
             expectCompletionHandlerCalled.fulfill()
-        })
+        }
 
         waitForExpectations(for: [expectCompletionHandlerCalled])
     }
