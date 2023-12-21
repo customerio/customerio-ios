@@ -150,6 +150,8 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     // TODO: Write test case
+    // START WITH: Track push metric and then track in-app metric.
+    // Uncomment delete task from queue code at the end of this method
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
@@ -217,7 +219,7 @@ class CustomerIOImplementation: CustomerIOInstance {
                 isProcessed = false
                 return
             }
-            trackMetric(deliveryID: trackPushTaskData.deliveryId, event: trackPushTaskData.event, deviceToken: trackPushTaskData.deviceToken)
+            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, type: trackPushTaskData.event.rawValue, deliveryId: trackPushTaskData.deliveryId)
         }
 
         // Remove the task from the queue if the task has been prpcessed successfully

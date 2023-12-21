@@ -8,6 +8,7 @@ public protocol DataPipelineInstance: CustomerIOInstance {
     func processEventFromBGQ(identifier: String, name: String, properties: [String: Any])
     func processDeleteTokenFromBGQ(identifier: String, token: String)
     func processRegisterDeviceFromBGQ(identifier: String, token: String, attributes: [String: Any]?)
+    func processPushMetricsFromBGQ(token: String, type: String, deliveryId: String)
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -146,5 +147,9 @@ public extension DataPipeline {
 
     func processRegisterDeviceFromBGQ(identifier: String, token: String, attributes: [String: Any]? = nil) {
         implementation?.processRegisterDeviceFromBGQ(identifier: identifier, token: token, attributes: attributes)
+    }
+
+    func processPushMetricsFromBGQ(token: String, type: String, deliveryId: String) {
+        implementation?.processPushMetricsFromBGQ(token: token, type: type, deliveryId: deliveryId)
     }
 }

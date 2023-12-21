@@ -298,8 +298,8 @@ extension DataPipelineImplementation {
     }
 
     func processRegisterDeviceFromBGQ(identifier: String, token: String, attributes: [String: Any]? = nil) {
-        var trackDeleteEvent = TrackEvent(event: "Device Created or Updated", properties: nil)
-        trackDeleteEvent.userId = identifier
+        var trackRegisterTokenEvent = TrackEvent(event: "Device Created or Updated", properties: nil)
+        trackRegisterTokenEvent.userId = identifier
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         var tokenDict: [String: Any] = ["token": token, "type": "ios"]
 
@@ -309,8 +309,24 @@ extension DataPipelineImplementation {
 
         let deviceDict: [String: Any] = ["device": tokenDict]
         if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
-            trackDeleteEvent.context = context
+            trackRegisterTokenEvent.context = context
         }
-        analytics.process(event: trackDeleteEvent)
+        analytics.process(event: trackRegisterTokenEvent)
+    }
+
+    func processPushMetricsFromBGQ(token: String, type: String, deliveryId: String) {
+        let event = type == "delivered" ? "Push Delivered" : "Push Opened"
+        let properties = try? JSON(["event": type])
+
+        var trackPushMetricEvent = TrackEvent(event: event, properties: properties)
+//        trackPushMetricEvent.userId = nil // problem here
+
+        let journeyDict: [String: Any] = ["journeys": ["identifiers": ["object_id": deliveryId, "object_type_id": "delivery"]]]
+        let tokenDict: [String: Any] = ["token": token]
+        let deviceDict: [String: Any] = ["device": tokenDict]
+        if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
+            trackPushMetricEvent.context = context
+        }
+        analytics.process(event: trackPushMetricEvent)
     }
 }
