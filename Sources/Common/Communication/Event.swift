@@ -70,8 +70,8 @@ public enum EventTypesRegistry {
 // MARK: - Event Structs
 
 public struct ProfileIdentifiedEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let identifier: String
 
     public init(storageId: String = UUID().uuidString, identifier: String, params: [String: String] = [:]) {
@@ -82,8 +82,8 @@ public struct ProfileIdentifiedEvent: EventRepresentable {
 }
 
 public struct ScreenViewedEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let name: String
 
     public init(storageId: String = UUID().uuidString, name: String, params: [String: String] = [:]) {
@@ -94,8 +94,8 @@ public struct ScreenViewedEvent: EventRepresentable {
 }
 
 public struct ResetEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
 
     public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
         self.storageId = storageId
@@ -104,8 +104,8 @@ public struct ResetEvent: EventRepresentable {
 }
 
 public struct TrackMetricEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let deliveryID: String
     public let event: String
     public let deviceToken: String
@@ -120,8 +120,8 @@ public struct TrackMetricEvent: EventRepresentable {
 }
 
 public struct TrackInAppMetricEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let deliveryID: String
     public let event: String
 
@@ -134,8 +134,8 @@ public struct TrackInAppMetricEvent: EventRepresentable {
 }
 
 public struct RegisterDeviceTokenEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let token: String
 
     public init(storageId: String = UUID().uuidString, token: String, params: [String: String] = [:]) {
@@ -146,8 +146,8 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
 }
 
 public struct DeleteDeviceTokenEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
 
     public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
         self.storageId = storageId
@@ -156,12 +156,13 @@ public struct DeleteDeviceTokenEvent: EventRepresentable {
 }
 
 public struct NewSubscriptionEvent: EventRepresentable {
-    public var storageId: String
-    public var params: [String: String] = [:]
+    public let storageId: String
+    public let params: [String: String]
     public let subscribedEventType: String
 
     init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, params: [String: String] = [:]) {
         self.storageId = storageId
         self.subscribedEventType = E.key
+        self.params = params
     }
 }
