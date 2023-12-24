@@ -17,6 +17,8 @@ public protocol EventRepresentable: Equatable, Codable {
 public extension EventRepresentable {
     static var key: String {
         String(describing: Self.self)
+    }
+
     var key: String {
         Self.key
     }
