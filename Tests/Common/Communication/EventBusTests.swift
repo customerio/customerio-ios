@@ -15,6 +15,8 @@ class EventBusTests: UnitTest {
         super.tearDown()
     }
 
+    // MARK: - Observer Notification Tests
+
     func testPostEventWithObserver() async throws {
         let exp = XCTestExpectation(description: "Event received")
         var notificationReceived = false
@@ -35,6 +37,8 @@ class EventBusTests: UnitTest {
         let hasObservers = await eventBus.post(event)
         XCTAssertFalse(hasObservers)
     }
+
+    // MARK: - Multiple Observer Tests
 
     func testMultipleObserversForSameEvent() async {
         let exp1 = XCTestExpectation(description: "First observer received event")
@@ -101,6 +105,8 @@ class EventBusTests: UnitTest {
         await fulfillment(of: [exp1, exp2], timeout: 1)
     }
 
+    // MARK: - Observer Removal Tests
+
     func testRemovingSpecificObserver() async {
         let exp = XCTestExpectation(description: "Event received")
         exp.isInverted = true
@@ -112,20 +118,6 @@ class EventBusTests: UnitTest {
 
         let event = ProfileIdentifiedEvent(identifier: "123")
         await eventBus.post(event)
-
-        await fulfillment(of: [exp], timeout: 1)
-    }
-
-    func testObserverReceivingMultipleNotifications() async {
-        let exp = XCTestExpectation(description: "Observer receives multiple events")
-        exp.expectedFulfillmentCount = 2
-
-        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp.fulfill() }
-
-        let event1 = ProfileIdentifiedEvent(identifier: "123")
-        let event2 = ProfileIdentifiedEvent(identifier: "456")
-        await eventBus.post(event1)
-        await eventBus.post(event2)
 
         await fulfillment(of: [exp], timeout: 1)
     }
@@ -156,6 +148,22 @@ class EventBusTests: UnitTest {
 
         let event = ProfileIdentifiedEvent(identifier: "123")
         await eventBus.post(event)
+
+        await fulfillment(of: [exp], timeout: 1)
+    }
+
+    // MARK: - Asynchronous and Thread Safety Tests
+
+    func testObserverReceivingMultipleNotifications() async {
+        let exp = XCTestExpectation(description: "Observer receives multiple events")
+        exp.expectedFulfillmentCount = 2
+
+        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp.fulfill() }
+
+        let event1 = ProfileIdentifiedEvent(identifier: "123")
+        let event2 = ProfileIdentifiedEvent(identifier: "456")
+        await eventBus.post(event1)
+        await eventBus.post(event2)
 
         await fulfillment(of: [exp], timeout: 1)
     }
