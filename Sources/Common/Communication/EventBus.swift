@@ -39,7 +39,10 @@ actor SharedEventBus: EventBus {
 
     deinit {
         // Clean up by removing all observers when the EventBus is deinitialized.
-        Task { await removeAllObservers() }
+        // Capture a weak reference to self to avoid retain cycles
+        Task { [weak self] in
+            await self?.removeAllObservers()
+        }
     }
 
     init() {
