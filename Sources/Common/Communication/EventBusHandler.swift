@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 
+/// `EventBusHandler` acts as a central hub for managing events in the application.
+/// It interfaces with both an event bus for real-time event handling and an event storage system for persisting events.
 // sourcery: InjectRegisterShared = "EventBusHandler"
 // sourcery: InjectSingleton
 public class EventBusHandler {
@@ -9,6 +11,12 @@ public class EventBusHandler {
     private var memoryStorage: [String: [AnyEventRepresentable]] = [:]
     private let logger: Logger
 
+    /// Initializes the EventBusHandler with dependencies for event bus and storage.
+    /// - Parameters:
+    ///   - eventBus: An instance of EventBus to handle event posting and observer management.
+    ///   - eventStorage: An instance of EventStorage to manage event persistence.
+    ///   - logger: A logger for logging information and errors.
+    /// Automatically loads events from file-based storage into in-memory storage upon initialization.
     public init(eventBus: EventBus, eventStorage: EventStorage, logger: Logger) {
         self.eventBus = eventBus
         self.eventStorage = eventStorage
@@ -16,6 +24,7 @@ public class EventBusHandler {
         Task { await loadEventsFromStorage() }
     }
 
+    /// Loads events from persistent storage into in-memory storage for quick access and event replay.
     private func loadEventsFromStorage() async {
         for eventType in EventTypesRegistry.allEventTypes() {
             do {
@@ -28,6 +37,10 @@ public class EventBusHandler {
         }
     }
 
+    /// Adds an observer for a specific event type and replays any stored events of that type to the new observer.
+    /// - Parameters:
+    ///   - eventType: The event type to observe.
+    ///   - action: The action to execute when the event is observed.
     public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
         logger.debug("EventBusHandler: Adding observer for event type - \(eventType)")
 
@@ -43,10 +56,14 @@ public class EventBusHandler {
         replayEvents(forType: eventType)
     }
 
+    /// Removes an observer for a specific event type.
+    /// - Parameter eventType: The event type for which to remove the observer.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
         Task { await eventBus.removeObserver(for: E.key) }
     }
 
+    /// Replays events of a specific type to any new observers, ensuring they receive past events.
+    /// - Parameter eventType: The event type for which to replay events.
     private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) {
         let key = eventType.key
         if let storedEvents = memoryStorage[key] as? [E] {
@@ -62,6 +79,8 @@ public class EventBusHandler {
         }
     }
 
+    /// Posts an event to the EventBus and stores it if there are no observers.
+    /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
         logger.debug("EventBusHandler: Posting event - \(event)")
         Task {
@@ -74,6 +93,8 @@ public class EventBusHandler {
         }
     }
 
+    /// Stores an event in persistent storage.
+    /// - Parameter event: The event to store.
     private func storeEvent<E: EventRepresentable>(_ event: E) async {
         do {
             try await eventStorage.store(event: event)
@@ -82,6 +103,8 @@ public class EventBusHandler {
         }
     }
 
+    /// Removes an event from persistent storage.
+    /// - Parameter event: The event to remove.
     public func removeFromStorage<E: EventRepresentable>(_ event: E) async {
         await eventStorage.remove(ofType: event.key, withStorageId: event.storageId)
     }
