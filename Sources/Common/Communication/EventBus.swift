@@ -16,6 +16,8 @@ public protocol EventBus: AutoMockable {
 ///
 /// Specifies methods for sending events and registering for event notifications.
 /// Supports type-safe event handling and scheduler-based execution.
+// sourcery: InjectRegisterShared = "EventBus"
+// sourcery: InjectSingleton
 actor SharedEventBus: EventBus {
     private var notificationCenter: NotificationCenter = .default
     private var observers: [String: [NSObjectProtocol]] = [:]

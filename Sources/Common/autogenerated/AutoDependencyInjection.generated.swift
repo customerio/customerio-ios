@@ -559,6 +559,16 @@ extension DIGraphShared {
         SharedConsoleLogger()
     }
 
+    // EventBus
+    var eventBus: EventBus {
+        getOverriddenInstance() ??
+            newEventBus
+    }
+
+    private var newEventBus: EventBus {
+        SharedEventBus()
+    }
+
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
     public var uIKitWrapper: UIKitWrapper {
