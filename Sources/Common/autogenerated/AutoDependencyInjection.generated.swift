@@ -509,6 +509,16 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
+    // EventBusHandler
+    public var eventBusHandler: EventBusHandler {
+        getOverriddenInstance() ??
+            newEventBusHandler
+    }
+
+    private var newEventBusHandler: EventBusHandler {
+        EventBusHandler(eventBus: eventBus, eventStorage: eventStorage, logger: logger)
+    }
+
     // EventStorage
     var eventStorage: EventStorage {
         getOverriddenInstance() ??
