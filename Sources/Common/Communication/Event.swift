@@ -1,24 +1,29 @@
 import Foundation
 
-/// Defines a structure for events in the system.
+/// Protocol defining the structure and requirements of events in the system.
 ///
-/// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
-/// Events include a `params` dictionary for additional data, enhancing flexibility.
+/// Conformance to this protocol ensures compatibility with the EventBus system.
+/// Events can carry additional data through a `params` dictionary, offering flexibility for different use cases.
 public protocol EventRepresentable: Equatable, Codable {
-    /// A unique key representing the type of the event.
+    /// A unique key representing the event type.
+    /// This is used to differentiate and manage different kinds of events.
     var key: String { get }
-    /// A unique identifier for each event instance, used for storage and retrieval.
+    /// A unique identifier for each event instance.
+    /// This identifier aids in storage and retrieval operations.
     var storageId: String { get }
-    /// Parameters associated with the event, represented as a dictionary.
+    /// A dictionary containing parameters or data associated with the event.
     var params: [String: String] { get }
 }
 
-// Default key
+// Default implementation for `EventRepresentable`
 public extension EventRepresentable {
+    // Provides a default implementation of the `key` property.
+    /// It uses the type's name as a unique key.
     static var key: String {
         String(describing: Self.self)
     }
 
+    /// Returns the default `key` for the instance.
     var key: String {
         Self.key
     }
@@ -26,8 +31,11 @@ public extension EventRepresentable {
 
 // MARK: - Event Types Registry
 
-/// Registry of all event types in the system.
+/// A registry for all event types used within the system.
+/// This enum can be extended to include new event types as they are defined.
 public enum EventTypesRegistry {
+    /// Returns an array of all event types available in the system.
+    /// This is used to manage and interact with different types of events.
     static func allEventTypes() -> [any EventRepresentable.Type] {
         // Add all your event types here
         [
@@ -44,6 +52,9 @@ public enum EventTypesRegistry {
 }
 
 // MARK: - Event Structs
+
+// Each event struct should have properties relevant to its specific use case.
+// They must include `storageId`, `params`, and any other relevant information.
 
 public struct ProfileIdentifiedEvent: EventRepresentable {
     public let storageId: String
