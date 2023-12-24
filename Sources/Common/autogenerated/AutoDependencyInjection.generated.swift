@@ -531,13 +531,25 @@ extension DIGraphShared {
         EventBusHandler(eventBus: eventBus, eventStorage: eventStorage, logger: logger)
     }
 
-    // EventStorage
+    // EventStorage (singleton)
     var eventStorage: EventStorage {
         getOverriddenInstance() ??
-            newEventStorage
+            sharedEventStorage
     }
 
-    private var newEventStorage: EventStorage {
+    var sharedEventStorage: EventStorage {
+        DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
+            if let overridenDep: EventStorage = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventStorage.self)] as? EventStorage
+            let instance = existingSingletonInstance ?? _get_eventStorage()
+            self.singletons[String(describing: EventStorage.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventStorage() -> EventStorage {
         EventStorageManager(logger: logger, jsonAdapter: jsonAdapter)
     }
 

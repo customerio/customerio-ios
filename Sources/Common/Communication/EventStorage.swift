@@ -29,6 +29,7 @@ enum EventBusError: Error {
 ///
 /// This class handles the persistence of events using the file system, ensuring data integrity and consistency.
 // sourcery: InjectRegisterShared = "EventStorage"
+// sourcery: InjectSingleton
 actor EventStorageManager: EventStorage {
     private let fileManager = FileManager.default
     public var baseDirectory: URL
