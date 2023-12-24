@@ -1,5 +1,6 @@
 import Foundation
 
+public typealias AnyEventRepresentable = any EventRepresentable
 /// Defines a structure for events in the system.
 ///
 /// Each specific event type conforms to `EventRepresentable`, making them compatible with the EventBus system.
