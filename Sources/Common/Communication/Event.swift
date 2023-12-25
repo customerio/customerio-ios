@@ -74,6 +74,18 @@ public enum EventTypesRegistry {
     }
 }
 
+/// Generates a unique storage ID for an event.
+///
+/// This function combines the current time in milliseconds since the Unix epoch
+/// with a UUID string to ensure a high degree of uniqueness, even in concurrent environments.
+/// The timestamp component ensures a chronological element in the ID, which is useful for ordering,
+/// while the UUID component guarantees uniqueness to avoid collisions in a high-throughput scenario.
+///
+/// - Returns: A unique string that combines a high-precision timestamp and a UUID.
+public func getStorageID() -> String {
+    String(Date().timeIntervalSince1970 * 1000) + "-\(UUID().uuidString)"
+}
+
 // MARK: - Event Structs
 
 // Each event struct should have properties relevant to its specific use case.
@@ -84,7 +96,7 @@ public struct ProfileIdentifiedEvent: EventRepresentable {
     public let params: [String: String]
     public let identifier: String
 
-    public init(storageId: String = UUID().uuidString, identifier: String, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), identifier: String, params: [String: String] = [:]) {
         self.storageId = storageId
         self.identifier = identifier
         self.params = params
@@ -96,7 +108,7 @@ public struct ScreenViewedEvent: EventRepresentable {
     public let params: [String: String]
     public let name: String
 
-    public init(storageId: String = UUID().uuidString, name: String, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), name: String, params: [String: String] = [:]) {
         self.storageId = storageId
         self.name = name
         self.params = params
@@ -107,7 +119,7 @@ public struct ResetEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
 
-    public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
     }
@@ -120,7 +132,7 @@ public struct TrackMetricEvent: EventRepresentable {
     public let event: String
     public let deviceToken: String
 
-    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
@@ -135,7 +147,7 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     public let deliveryID: String
     public let event: String
 
-    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), deliveryID: String, event: String, params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
@@ -148,7 +160,7 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let params: [String: String]
     public let token: String
 
-    public init(storageId: String = UUID().uuidString, token: String, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), token: String, params: [String: String] = [:]) {
         self.storageId = storageId
         self.token = token
         self.params = params
@@ -159,7 +171,7 @@ public struct DeleteDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
 
-    public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
+    public init(storageId: String = getStorageID(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
     }
@@ -170,7 +182,7 @@ public struct NewSubscriptionEvent: EventRepresentable {
     public let params: [String: String]
     public let subscribedEventType: String
 
-    init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, params: [String: String] = [:]) {
+    init<E: EventRepresentable>(storageId: String = getStorageID(), subscribedEventType: E.Type, params: [String: String] = [:]) {
         self.storageId = storageId
         self.subscribedEventType = E.key
         self.params = params
