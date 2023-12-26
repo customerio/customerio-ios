@@ -52,8 +52,10 @@ public class EventBusHandler {
             }
         }
 
-        Task { await eventBus.addObserver(eventType.key, action: adaptedAction) }
-        replayEvents(forType: eventType)
+        Task {
+            await eventBus.addObserver(eventType.key, action: adaptedAction)
+            await replayEvents(forType: eventType)
+        }
     }
 
     /// Removes an observer for a specific event type.
@@ -64,18 +66,27 @@ public class EventBusHandler {
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
     /// - Parameter eventType: The event type for which to replay events.
-    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) {
+    public func replayEvents<E: EventRepresentable>(forType eventType: E.Type) async {
         let key = eventType.key
-        if let storedEvents = memoryStorage[key] as? [E] {
-            storedEvents.forEach { event in
-                logger.debug("EventBusHandler: Replaying event type - \(event)")
-                Task {
-                    let isSent = await eventBus.post(event)
+        logger.debug("Replaying events for key: \(key)")
+        // Check if the key exists and the type is correct
+        if let storedEvents = memoryStorage[key], !storedEvents.isEmpty {
+            logger.debug("Found stored events for key: \(key)")
+
+            for event in storedEvents {
+                // Add additional type check here if necessary
+                if let specificEvent = event as? E {
+                    logger.debug("Replaying event: \(specificEvent)")
+                    let isSent = await eventBus.post(specificEvent)
                     if isSent {
-                        await removeFromStorage(event)
+                        await removeFromStorage(specificEvent)
                     }
+                } else {
+                    logger.debug("Event type mismatch for event: \(event)")
                 }
             }
+        } else {
+            logger.debug("No stored events for key: \(key)")
         }
     }
 
