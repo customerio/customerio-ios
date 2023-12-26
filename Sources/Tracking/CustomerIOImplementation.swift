@@ -221,9 +221,9 @@ class CustomerIOImplementation: CustomerIOInstance {
             DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.toString())
         }
 
-        // Remove the task from the queue if the task has been prpcessed successfully
+        // Remove the task from the queue if the task has been processed successfully
         if isProcessed {
-//            backgroundQueue.deleteProcessedTask(task)
+            backgroundQueue.deleteProcessedTask(task)
         }
     }
 }

@@ -96,10 +96,12 @@ public extension Queue {
         addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups)
     }
 
+    // Get list of all unprocessed tasks in background queue
     func getAllStoredTasks() -> [QueueTaskMetadata] {
         getAllStoredTasks()
     }
 
+    // Delete already processed task from the background queue
     func deleteProcessedTask(_ task: QueueTaskMetadata) {
         deleteProcessedTask(task)
     }
