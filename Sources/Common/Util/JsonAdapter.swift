@@ -86,10 +86,10 @@ public class JsonAdapter {
         return nil
     }
 
+    // Converts jsonString to a dictionary
     public func fromJsonString(_ jsonString: String) -> [String: Any]? {
         do {
             let jsonData = Data(jsonString.utf8)
-
             return try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any]
         } catch {
             print("Error decoding JSON: \(error)")
