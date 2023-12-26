@@ -253,6 +253,7 @@ extension DataPipelineImplementation {
 }
 
 // To process pending tasks in background queue
+// BGQ in each of the following methods refer to background queue
 extension DataPipelineImplementation {
     func processIdentifyFromBGQ(identifier: String, body: [String: Any]?) {
         var identifyEvent = IdentifyEvent(userId: identifier, traits: nil)

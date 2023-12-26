@@ -150,8 +150,10 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     // TODO: Write test case
-    // START WITH: Track push metric and then track in-app metric.
-    // Uncomment delete task from queue code at the end of this method
+    /**
+     Retrieves a task from the queue based on its metadata.
+     Fetches `type` of the task and processes accordingly
+     */
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
@@ -162,6 +164,8 @@ class CustomerIOImplementation: CustomerIOInstance {
             // Remove isProcessed when the method is added
             print("Track Delivery Metrics for in-app - Needs discussion")
             isProcessed = false
+
+        // Processes identify profile and profile attributes
         case .identifyProfile:
             guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -176,6 +180,8 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, body: profileAttributes)
+
+        // Process `screen` and `event` types
         case .trackEvent:
             guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -191,6 +197,8 @@ class CustomerIOImplementation: CustomerIOInstance {
             }
             trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
                 : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
+
+        // Processes register device token and device attributes
         case .registerPushToken:
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
@@ -207,12 +215,15 @@ class CustomerIOImplementation: CustomerIOInstance {
             if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
                 DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, attributes: attributes)
             }
+        // Processes delete device token
         case .deletePushToken:
             guard let deletePushData: DeletePushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
                 return
             }
             DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken)
+
+        // Processes push metrics
         case .trackPushMetric:
             guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false
