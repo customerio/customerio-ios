@@ -8,7 +8,7 @@ import Foundation
 public class EventBusHandler {
     private let eventBus: EventBus
     private let eventStorage: EventStorage
-    private var memoryStorage: [String: [AnyEventRepresentable]] = [:]
+    private let memoryStorage: MemoryStorage = .init()
     private let logger: Logger
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
@@ -30,7 +30,7 @@ public class EventBusHandler {
             do {
                 let key = eventType.key
                 let events: [AnyEventRepresentable] = try await eventStorage.loadEvents(ofType: key)
-                memoryStorage[key, default: []].append(contentsOf: events)
+                await memoryStorage.storeEvents(events, forKey: key)
             } catch {
                 logger.debug("Error loading events for \(eventType): \(error)")
             }
@@ -52,8 +52,10 @@ public class EventBusHandler {
             }
         }
 
-        Task { await eventBus.addObserver(eventType.key, action: adaptedAction) }
-        replayEvents(forType: eventType)
+        Task {
+            await eventBus.addObserver(eventType.key, action: adaptedAction)
+            await replayEvents(forType: eventType)
+        }
     }
 
     /// Removes an observer for a specific event type.
@@ -64,16 +66,16 @@ public class EventBusHandler {
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
     /// - Parameter eventType: The event type for which to replay events.
-    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) {
+    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) async {
         let key = eventType.key
-        if let storedEvents = memoryStorage[key] as? [E] {
-            storedEvents.forEach { event in
-                logger.debug("EventBusHandler: Replaying event type - \(event)")
-                Task {
-                    let isSent = await eventBus.post(event)
-                    if isSent {
-                        await removeFromStorage(event)
-                    }
+        let storedEvents = await memoryStorage.eventsForKey(key)
+
+        for event in storedEvents {
+            if let specificEvent = event as? E {
+                logger.debug("EventBusHandler: Replaying event type - \(specificEvent)")
+                let isSent = await eventBus.post(specificEvent)
+                if isSent {
+                    await removeFromStorage(specificEvent)
                 }
             }
         }
@@ -85,7 +87,7 @@ public class EventBusHandler {
         logger.debug("EventBusHandler: Posting event - \(event)")
         Task {
             let hasObservers = await eventBus.post(event)
-            memoryStorage[event.key, default: []].append(event)
+            await memoryStorage.appendEvent(event)
             if !hasObservers {
                 logger.debug("EventBusHandler: Storing event in memory - \(event)")
                 await storeEvent(event)
