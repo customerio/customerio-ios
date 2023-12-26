@@ -4,8 +4,8 @@ import Segment
 public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
     func processIdentifyFromBGQ(identifier: String, body: [String: Any]?)
-    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any])
-    func processEventFromBGQ(identifier: String, name: String, properties: [String: Any])
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
     func processDeleteTokenFromBGQ(identifier: String, token: String)
     func processRegisterDeviceFromBGQ(identifier: String, token: String, attributes: [String: Any]?)
     func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
@@ -133,12 +133,12 @@ public extension DataPipeline {
         implementation?.processIdentifyFromBGQ(identifier: identifier, body: body)
     }
 
-    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
-        implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, properties: properties)
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
     }
 
-    func processEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
-        implementation?.processEventFromBGQ(identifier: identifier, name: name, properties: properties)
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        implementation?.processEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
     }
 
     func processDeleteTokenFromBGQ(identifier: String, token: String) {

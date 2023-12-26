@@ -17,4 +17,5 @@ enum EventType: String, Codable {
 public struct TrackEventTypeForAnalytics: Codable {
     let type: EventType
     let name: String
+    let timestamp: Date?
 }

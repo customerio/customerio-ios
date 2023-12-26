@@ -147,6 +147,8 @@ class CustomerIOImplementation: CustomerIOInstance {
                 self?.getAndProcessTask(for: task)
             }
         }
+
+//        getAndProcessTask(for: allStoredTasks[0])
     }
 
     // TODO: Write test case
@@ -189,9 +191,8 @@ class CustomerIOImplementation: CustomerIOInstance {
             if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
                 properties = attributes
             }
-            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
-                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, properties: properties)
-
+            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
+                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
         case .registerPushToken:
             guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
                 isProcessed = false

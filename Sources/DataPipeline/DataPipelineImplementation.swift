@@ -268,18 +268,20 @@ extension DataPipelineImplementation {
         analytics.process(event: identifyEvent)
     }
 
-    func processScreenEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String, properties: [String: Any]) {
         var screenEvent = ScreenEvent(title: name, category: nil)
         screenEvent.userId = identifier
+        screenEvent.timestamp = timestamp
         if let jsonProperties = try? JSON(properties) {
             screenEvent.properties = jsonProperties
         }
         analytics.process(event: screenEvent)
     }
 
-    func processEventFromBGQ(identifier: String, name: String, properties: [String: Any]) {
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String, properties: [String: Any]) {
         var trackEvent = TrackEvent(event: name, properties: nil)
         trackEvent.userId = identifier
+        trackEvent.timestamp = timestamp
         if let jsonProperties = try? JSON(properties) {
             trackEvent.properties = jsonProperties
         }
