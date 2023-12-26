@@ -147,8 +147,6 @@ class CustomerIOImplementation: CustomerIOInstance {
                 self?.getAndProcessTask(for: task)
             }
         }
-
-//        getAndProcessTask(for: allStoredTasks[0])
     }
 
     // TODO: Write test case
