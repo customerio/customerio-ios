@@ -31,7 +31,7 @@ public class EventBusHandler {
     }
 
     /// Loads events from persistent storage into in-memory storage for quick access and event replay.
-    public func loadEventsFromStorage() async {
+    private func loadEventsFromStorage() async {
         for eventType in EventTypesRegistry.allEventTypes() {
             do {
                 let key = eventType.key
