@@ -54,7 +54,7 @@ actor EventStorageManager: EventStorage {
 
     func store(event: AnyEventRepresentable) async throws {
         let eventTypeDirectory = baseDirectory.appendingPathComponent(event.key)
-        try await createDirectoryIfNeeded(eventTypeDirectory)
+        try createDirectoryIfNeeded(eventTypeDirectory)
 
         let eventFileURL = eventTypeDirectory.appendingPathComponent("\(event.storageId).json")
         let eventData = try jsonAdapter.encoder.encode(event)
@@ -93,7 +93,7 @@ actor EventStorageManager: EventStorage {
 
     /// Creates a directory at the specified URL if it does not already exist.
     /// - Parameter directory: The directory URL to create.
-    private func createDirectoryIfNeeded(_ directory: URL) async throws {
+    private func createDirectoryIfNeeded(_ directory: URL) throws {
         guard !fileManager.fileExists(atPath: directory.path) else { return }
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     }
