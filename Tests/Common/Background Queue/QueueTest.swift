@@ -103,6 +103,21 @@ class QueueTest: UnitTest {
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
     }
+
+    func test_givenMultipleTasks_expectTaskMetaData() {
+        let inventory = [
+            QueueTaskMetadata.random,
+            QueueTaskMetadata.random
+        ]
+        storageMock.getInventoryReturnValue = inventory
+
+        XCTAssertEqual(queue.getAllStoredTasks(), inventory)
+    }
+
+    func test_givenNoTasks_expectNoMetaData() {
+        storageMock.getInventoryReturnValue = []
+        XCTAssertEqual(queue.getAllStoredTasks(), [])
+    }
 }
 
 extension QueueTest {

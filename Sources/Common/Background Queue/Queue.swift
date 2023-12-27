@@ -141,7 +141,6 @@ public class CioQueue: Queue {
         self.dateUtil = dateUtil
     }
 
-    // TODO: Write test case
     public func getAllStoredTasks() -> [QueueTaskMetadata] {
         storage.getInventory()
     }
