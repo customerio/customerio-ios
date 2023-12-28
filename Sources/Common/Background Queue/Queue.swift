@@ -145,7 +145,6 @@ public class CioQueue: Queue {
         storage.getInventory()
     }
 
-    // TODO: Write test case
     public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)? {
         let persistedId = task.taskPersistedId
         guard let queueTaskType = QueueTaskType(rawValue: task.taskType) else { return nil }
@@ -157,7 +156,6 @@ public class CioQueue: Queue {
         return (task.data, queueTaskType)
     }
 
-    // TODO: Write test case
     public func deleteProcessedTask(_ task: QueueTaskMetadata) {
         let storageId = task.taskPersistedId
         if !storage.delete(storageId: storageId) {

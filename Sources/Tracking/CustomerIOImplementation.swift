@@ -135,7 +135,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         DataPipeline.shared.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    // TODO: Write test case
     func handleQueueBacklog() {
         let allStoredTasks = backgroundQueue.getAllStoredTasks()
         if allStoredTasks.count <= 0 {
@@ -149,7 +148,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         }
     }
 
-    // TODO: Write test case
     /**
      Retrieves a task from the queue based on its metadata.
      Fetches `type` of the task and processes accordingly
@@ -158,6 +156,13 @@ class CustomerIOImplementation: CustomerIOInstance {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
         var isProcessed = true
+
+        // Remove the task from the queue if the task has been processed successfully
+        defer {
+            if isProcessed {
+                backgroundQueue.deleteProcessedTask(task)
+            }
+        }
         switch taskDetail.taskType {
         case .trackDeliveryMetric:
             // TODO: Segment doesn't provide this method by default needs to get added
@@ -230,11 +235,6 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.toString())
-        }
-
-        // Remove the task from the queue if the task has been processed successfully
-        if isProcessed {
-            backgroundQueue.deleteProcessedTask(task)
         }
     }
 }

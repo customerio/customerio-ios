@@ -6,6 +6,9 @@ import XCTest
 class QueueTest: UnitTest {
     var queue: Queue!
     var implementationQueue: Queue!
+    var queueStorage: QueueStorage {
+        diGraph.queueStorage
+    }
 
     private let storageMock = QueueStorageMock()
     private let runRequestMock = QueueRunRequestMock()
@@ -104,6 +107,8 @@ class QueueTest: UnitTest {
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
     }
 
+    // MARK: getAllStoredTasks
+
     func test_givenMultipleTasks_expectTaskMetaData() {
         let inventory = [
             QueueTaskMetadata.random,
@@ -117,6 +122,18 @@ class QueueTest: UnitTest {
     func test_givenNoTasks_expectNoMetaData() {
         storageMock.getInventoryReturnValue = []
         XCTAssertEqual(queue.getAllStoredTasks(), [])
+    }
+
+    // MARK: deleteProcessedTask
+
+    func test_givenTaskMetaData_expectDeleteTask() {
+        let givenType = QueueTaskType.identifyProfile.rawValue
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        storageMock.deleteReturnValue = true
+        XCTAssertNotNil(queue.deleteProcessedTask(givenCreatedTask))
+        XCTAssertEqual(storageMock.deleteCallsCount, 1)
     }
 }
 
