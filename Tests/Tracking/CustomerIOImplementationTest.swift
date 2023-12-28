@@ -441,18 +441,16 @@ class CustomerIOImplementationTest: UnitTest {
         var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
         let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let encoder = JSONEncoder()
-        let givenData = try? encoder.encode(givenTask)
-
+        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
         let counter = 3000
         for _ in 1 ... counter {
-            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenData ?? Data(), groupStart: nil, blockingGroups: nil)
+            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
                 .createdTask!
             inventory.append(givenCreatedTask)
         }
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: givenData ?? Data(), taskType: givenType)
+        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
 
         XCTAssertNotNil(implementation.handleQueueBacklog())
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)

@@ -11,6 +11,7 @@ class QueueTest: UnitTest {
     }
 
     private let storageMock = QueueStorageMock()
+    private let queueMock = QueueMock()
     private let runRequestMock = QueueRunRequestMock()
     private let queueTimerMock = SingleScheduleTimerMock()
 
@@ -134,6 +135,39 @@ class QueueTest: UnitTest {
         storageMock.deleteReturnValue = true
         XCTAssertNotNil(queue.deleteProcessedTask(givenCreatedTask))
         XCTAssertEqual(storageMock.deleteCallsCount, 1)
+    }
+
+    // MARK: getTaskDetail
+
+    func test_givenTask_expectTaskDetail() {
+        let givenType = QueueTaskType.identifyProfile
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        let givenIdentifyTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
+        let givenQueueTaskData = jsonAdapter.toJson(givenIdentifyTask)!
+        let givenQueueTask = QueueTask(storageId: .random, type: givenType.rawValue, data: givenQueueTaskData, runResults: QueueTaskRunResults(totalRuns: 0))
+
+        queueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
+        storageMock.getReturnValue = givenQueueTask
+
+        XCTAssertNotNil(queue.getTaskDetail(givenCreatedTask))
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.data, givenQueueTaskData)
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.taskType, givenType)
+    }
+
+    func test_givenTaskNotFoundInStorage_expectNil() {
+        let givenType = QueueTaskType.identifyProfile
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        XCTAssertNil(queue.getTaskDetail(givenCreatedTask))
+    }
+
+    func test_givenTaskWithInValidTaskType_expectNil() {
+        let givenCreatedTask = queueStorage.create(type: String.random, data: String.random.data, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        XCTAssertNil(queue.getTaskDetail(givenCreatedTask))
     }
 }
 
