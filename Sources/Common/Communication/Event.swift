@@ -1,7 +1,8 @@
 import Foundation
 
+public typealias AnyEventRepresentable = any EventRepresentable
+
 /// Protocol defining the structure and requirements of events in the system.
-///
 /// Conformance to this protocol ensures compatibility with the EventBus system.
 /// Events can carry additional data through a `params` dictionary, offering flexibility for different use cases.
 public protocol EventRepresentable: Equatable, Codable {
