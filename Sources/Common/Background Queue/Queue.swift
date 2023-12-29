@@ -54,6 +54,12 @@ public protocol Queue: AutoMockable {
     func run(onComplete: @escaping () -> Void)
 
     func deleteExpiredTasks()
+
+    func getAllStoredTasks() -> [QueueTaskMetadata]
+
+    func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)?
+
+    func deleteProcessedTask(_ task: QueueTaskMetadata)
 }
 
 public extension Queue {
@@ -89,6 +95,16 @@ public extension Queue {
     ) -> ModifyQueueResult {
         addTask(type: type, data: data, groupStart: nil, blockingGroups: blockingGroups)
     }
+
+    // Get list of all unprocessed tasks in background queue
+    func getAllStoredTasks() -> [QueueTaskMetadata] {
+        getAllStoredTasks()
+    }
+
+    // Delete already processed task from the background queue
+    func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        deleteProcessedTask(task)
+    }
 }
 
 // sourcery: InjectRegister = "Queue"
@@ -123,6 +139,28 @@ public class CioQueue: Queue {
         self.sdkConfig = sdkConfig
         self.queueTimer = queueTimer
         self.dateUtil = dateUtil
+    }
+
+    public func getAllStoredTasks() -> [QueueTaskMetadata] {
+        storage.getInventory()
+    }
+
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)? {
+        let persistedId = task.taskPersistedId
+        let timestamp = task.createdAt
+        guard let queueTaskType = QueueTaskType(rawValue: task.taskType) else { return nil }
+        guard let task = storage.get(storageId: persistedId) else {
+            logger.error("Fetching task with storage id: \(persistedId) failed.")
+            return nil
+        }
+        return (task.data, queueTaskType, timestamp)
+    }
+
+    public func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        let storageId = task.taskPersistedId
+        if !storage.delete(storageId: storageId) {
+            logger.error("Failed to delete task with storage id: \(storageId).")
+        }
     }
 
     public func addTrackInAppDeliveryTask(deliveryId: String, event: InAppMetric, metaData: [String: String]) -> ModifyQueueResult {

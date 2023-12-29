@@ -92,9 +92,13 @@ class LoginViewController: BaseViewController {
         if let name = firstNameTextField.text, !name.isEmpty {
             body = ["first_name": name]
         }
-        CustomerIO.shared.identify(identifier: emailId, body: body)
         storage.userEmailId = emailId
         loginRouter?.routeToDashboard()
+        guard let data = body else {
+            CustomerIO.shared.identify(identifier: emailId)
+            return
+        }
+        CustomerIO.shared.identify(identifier: emailId, body: data)
     }
 
     @objc func settingsTapped() {
