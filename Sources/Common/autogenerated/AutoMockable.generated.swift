@@ -2306,16 +2306,16 @@ public class QueueMock: Queue, Mock {
     /// Arguments from *all* of the times that the function was called.
     public private(set) var getTaskDetailReceivedInvocations: [QueueTaskMetadata] = []
     /// Value to return from the mocked function.
-    public var getTaskDetailReturnValue: (data: Data, taskType: QueueTaskType)?
+    public var getTaskDetailReturnValue: (data: Data, taskType: QueueTaskType, timestamp: Date)?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getTaskDetailReturnValue`
      */
-    public var getTaskDetailClosure: ((QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)?)?
+    public var getTaskDetailClosure: ((QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)?)?
 
     /// Mocked function for `getTaskDetail(_ task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)? {
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)? {
         mockCalled = true
         getTaskDetailCallsCount += 1
         getTaskDetailReceivedArguments = task
