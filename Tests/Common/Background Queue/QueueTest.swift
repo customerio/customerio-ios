@@ -148,12 +148,13 @@ class QueueTest: UnitTest {
         let givenQueueTaskData = jsonAdapter.toJson(givenIdentifyTask)!
         let givenQueueTask = QueueTask(storageId: .random, type: givenType.rawValue, data: givenQueueTaskData, runResults: QueueTaskRunResults(totalRuns: 0))
 
-        queueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
+        queueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: givenCreatedTask.createdAt)
         storageMock.getReturnValue = givenQueueTask
 
         XCTAssertNotNil(queue.getTaskDetail(givenCreatedTask))
         XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.data, givenQueueTaskData)
         XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.taskType, givenType)
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.timestamp, givenCreatedTask.createdAt)
     }
 
     func test_givenTaskNotFoundInStorage_expectNil() {
