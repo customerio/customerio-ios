@@ -18,6 +18,9 @@ class CustomerIOImplementationTest: UnitTest {
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let deviceInfoMock = DeviceInfoMock()
+    var queueStorage: QueueStorage {
+        diGraph.queueStorage
+    }
 
     override func setUp() {
         super.setUp()
@@ -25,12 +28,11 @@ class CustomerIOImplementationTest: UnitTest {
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: hooksMock, forType: HooksManager.self)
-        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
+//        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
         diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
 
         hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
-
         implementation = CustomerIOImplementation(diGraph: diGraph)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
@@ -314,9 +316,9 @@ class CustomerIOImplementationTest: UnitTest {
         profileStoreMock.identifier = givenIdentifier
         deviceInfoMock.underlyingOsName = "iOS"
         backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
-            onComplete(givenDefaultAttributes)
-        }
+//        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
+//            onComplete(givenDefaultAttributes)
+//        }
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
@@ -425,5 +427,57 @@ class CustomerIOImplementationTest: UnitTest {
         XCTAssertEqual(actualQueueTaskData?.deliveryId, givenDeliveryId)
         XCTAssertEqual(actualQueueTaskData?.event, givenEvent)
         XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
+    }
+
+    // MARK: handleQueueBacklog/getAndProcessTask
+
+    func test_givenEmptyBacklog_expectNoTasksProcessed() {
+        backgroundQueueMock.getAllStoredTasksReturnValue = []
+        XCTAssertNotNil(implementation.handleQueueBacklog())
+        XCTAssertEqual(backgroundQueueMock.getAllStoredTasksCallsCount, 1)
+    }
+
+    func test_givenBacklog_expectTaskProcessed() {
+        var inventory: [QueueTaskMetadata] = []
+        let givenType = QueueTaskType.identifyProfile
+        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
+        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
+        let counter = 3000
+        for _ in 1 ... counter {
+            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
+                .createdTask!
+            inventory.append(givenCreatedTask)
+        }
+
+        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
+        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
+
+        XCTAssertNotNil(implementation.handleQueueBacklog())
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
+    }
+
+    func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
+        var inventory: [QueueTaskMetadata] = []
+        let givenType = QueueTaskType.identifyProfile
+        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        inventory.append(givenCreatedTask)
+
+        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
+        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType)
+
+        XCTAssertNotNil(implementation.handleQueueBacklog())
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+}
+
+extension CustomerIOImplementationTest {
+    private func createMetaDataTask(forType type: QueueTaskType) -> QueueTaskMetadata {
+        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
+        let encoder = JSONEncoder()
+        let givenData = try? encoder.encode(givenTask)
+        let givenCreatedTask = queueStorage.create(type: type.rawValue, data: givenData ?? Data(), groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        return givenCreatedTask
     }
 }

@@ -52,7 +52,7 @@ actor EventStorageManager: EventStorage {
         self.baseDirectory = baseDirectory
     }
 
-    func store(event: AnyEventRepresentable) async throws {
+    func store(event: AnyEventRepresentable) throws {
         let eventTypeDirectory = baseDirectory.appendingPathComponent(event.key)
         try createDirectoryIfNeeded(eventTypeDirectory)
 
@@ -61,7 +61,7 @@ actor EventStorageManager: EventStorage {
         try eventData.write(to: eventFileURL)
     }
 
-    func loadEvents(ofType eventType: String) async throws -> [AnyEventRepresentable] {
+    func loadEvents(ofType eventType: String) throws -> [AnyEventRepresentable] {
         let eventTypeDirectory = baseDirectory.appendingPathComponent(eventType)
         guard fileManager.fileExists(atPath: eventTypeDirectory.path) else { return [] }
 
@@ -82,7 +82,7 @@ actor EventStorageManager: EventStorage {
     }
 
     // Removes a specific event file
-    func remove(ofType eventType: String, withStorageId storageId: String) async {
+    func remove(ofType eventType: String, withStorageId storageId: String) {
         let eventFileURL = baseDirectory.appendingPathComponent(eventType).appendingPathComponent("\(storageId).json")
         do {
             try fileManager.removeItem(at: eventFileURL)

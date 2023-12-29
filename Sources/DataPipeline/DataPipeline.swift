@@ -3,6 +3,12 @@ import Segment
 
 public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
+    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -117,5 +123,33 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+}
+
+// MARK: Background queue migration
+
+public extension DataPipeline {
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {
+        implementation?.processIdentifyFromBGQ(identifier: identifier, timestamp: timestamp, body: body)
+    }
+
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        implementation?.processScreenEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
+    }
+
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        implementation?.processEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
+    }
+
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
+        implementation?.processDeleteTokenFromBGQ(identifier: identifier, token: token, timestamp: timestamp)
+    }
+
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]? = nil) {
+        implementation?.processRegisterDeviceFromBGQ(identifier: identifier, token: token, timestamp: timestamp, attributes: attributes)
+    }
+
+    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any] = [:]) {
+        implementation?.processPushMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData)
     }
 }

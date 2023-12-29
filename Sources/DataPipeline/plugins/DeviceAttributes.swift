@@ -17,7 +17,15 @@ class DeviceAttributes: Plugin {
         else { return event }
 
         do {
-            if let token = token {
+            // **Background queue migration safeguard:**
+            //
+            // This fetches the device token from the context.device.token, and casts the value as string
+            // Value of token is fed from `processRegisterDeviceFromBGQ` method.
+            let bgToken = context[keyPath: "device.token"] as? String
+            // Prevents unexpected token overwriting in this method
+            // maintaining effective working during background queue migration.
+            // This check does not affect non-background queue migration calls or direct CDP calls
+            if let token = token, bgToken == nil {
                 context[keyPath: "device.token"] = token
                 workingEvent.context = try JSON(context)
             }
