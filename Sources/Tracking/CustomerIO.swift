@@ -43,6 +43,9 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
+        // Check if any unprocessed tasks are pending in the background queue.
+        implementation.handleQueueBacklog()
+
         initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
 
         if sdkConfig.logLevel == .debug {

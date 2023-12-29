@@ -6,8 +6,12 @@ import XCTest
 class QueueTest: UnitTest {
     var queue: Queue!
     var implementationQueue: Queue!
+    var queueStorage: QueueStorage {
+        diGraph.queueStorage
+    }
 
     private let storageMock = QueueStorageMock()
+    private let queueMock = QueueMock()
     private let runRequestMock = QueueRunRequestMock()
     private let queueTimerMock = SingleScheduleTimerMock()
 
@@ -102,6 +106,69 @@ class QueueTest: UnitTest {
         waitForExpectations()
 
         XCTAssertEqual(runRequestMock.startCallsCount, 1)
+    }
+
+    // MARK: getAllStoredTasks
+
+    func test_givenMultipleTasks_expectTaskMetaData() {
+        let inventory = [
+            QueueTaskMetadata.random,
+            QueueTaskMetadata.random
+        ]
+        storageMock.getInventoryReturnValue = inventory
+
+        XCTAssertEqual(queue.getAllStoredTasks(), inventory)
+    }
+
+    func test_givenNoTasks_expectNoMetaData() {
+        storageMock.getInventoryReturnValue = []
+        XCTAssertEqual(queue.getAllStoredTasks(), [])
+    }
+
+    // MARK: deleteProcessedTask
+
+    func test_givenTaskMetaData_expectDeleteTask() {
+        let givenType = QueueTaskType.identifyProfile.rawValue
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        storageMock.deleteReturnValue = true
+        XCTAssertNotNil(queue.deleteProcessedTask(givenCreatedTask))
+        XCTAssertEqual(storageMock.deleteCallsCount, 1)
+    }
+
+    // MARK: getTaskDetail
+
+    func test_givenTask_expectTaskDetail() {
+        let givenType = QueueTaskType.identifyProfile
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        let givenIdentifyTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
+        let givenQueueTaskData = jsonAdapter.toJson(givenIdentifyTask)!
+        let givenQueueTask = QueueTask(storageId: .random, type: givenType.rawValue, data: givenQueueTaskData, runResults: QueueTaskRunResults(totalRuns: 0))
+
+        queueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: givenCreatedTask.createdAt)
+        storageMock.getReturnValue = givenQueueTask
+
+        XCTAssertNotNil(queue.getTaskDetail(givenCreatedTask))
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.data, givenQueueTaskData)
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.taskType, givenType)
+        XCTAssertEqual(queue.getTaskDetail(givenCreatedTask)?.timestamp, givenCreatedTask.createdAt)
+    }
+
+    func test_givenTaskNotFoundInStorage_expectNil() {
+        let givenType = QueueTaskType.identifyProfile
+        let givenData = String.random.data!
+        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenData, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        XCTAssertNil(queue.getTaskDetail(givenCreatedTask))
+    }
+
+    func test_givenTaskWithInValidTaskType_expectNil() {
+        let givenCreatedTask = queueStorage.create(type: String.random, data: String.random.data, groupStart: nil, blockingGroups: nil)
+            .createdTask!
+        XCTAssertNil(queue.getTaskDetail(givenCreatedTask))
     }
 }
 
