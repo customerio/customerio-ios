@@ -155,7 +155,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
-        let timestamp = taskDetail.timestamp.toString()
+        let timestamp = taskDetail.timestamp.string(format: .iso8601noMilliseconds).toString()
         var isProcessed = true
 
         // Remove the task from the queue if the task has been processed successfully
