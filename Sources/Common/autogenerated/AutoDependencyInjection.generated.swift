@@ -509,6 +509,16 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
+    // EventStorage
+    var eventStorage: EventStorage {
+        getOverriddenInstance() ??
+            newEventStorage
+    }
+
+    private var newEventStorage: EventStorage {
+        EventStorageManager(logger: logger, jsonAdapter: jsonAdapter)
+    }
+
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
         getOverriddenInstance() ??
