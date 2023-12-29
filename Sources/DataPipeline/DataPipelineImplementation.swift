@@ -255,8 +255,9 @@ extension DataPipelineImplementation {
 // To process pending tasks in background queue
 // BGQ in each of the following methods refer to background queue
 extension DataPipelineImplementation {
-    func processIdentifyFromBGQ(identifier: String, body: [String: Any]?) {
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
         var identifyEvent = IdentifyEvent(userId: identifier, traits: nil)
+        identifyEvent.timestamp = timestamp
 
         let contextDict = ["journeys": ["identifiers": ["id": identifier]]]
         if let context = try? JSON(contextDict) {
@@ -289,9 +290,10 @@ extension DataPipelineImplementation {
         analytics.process(event: trackEvent)
     }
 
-    func processDeleteTokenFromBGQ(identifier: String, token: String) {
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
         var trackDeleteEvent = TrackEvent(event: "Device Deleted", properties: nil)
         trackDeleteEvent.userId = identifier
+        trackDeleteEvent.timestamp = timestamp
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         let deviceDict: [String: Any] = ["device": ["token": token, "type": "ios"]]
         if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
@@ -300,9 +302,10 @@ extension DataPipelineImplementation {
         analytics.process(event: trackDeleteEvent)
     }
 
-    func processRegisterDeviceFromBGQ(identifier: String, token: String, attributes: [String: Any]? = nil) {
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]? = nil) {
         var trackRegisterTokenEvent = TrackEvent(event: "Device Created or Updated", properties: nil)
         trackRegisterTokenEvent.userId = identifier
+        trackRegisterTokenEvent.timestamp = timestamp
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         var tokenDict: [String: Any] = ["token": token, "type": "ios"]
 

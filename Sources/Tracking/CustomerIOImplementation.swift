@@ -155,6 +155,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
+        let timestamp = taskDetail.timestamp.toString()
         var isProcessed = true
 
         // Remove the task from the queue if the task has been processed successfully
@@ -177,14 +178,14 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier)
+                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
                 return
             }
             guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier)
+                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
                 return
             }
-            DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, body: profileAttributes)
+            DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
 
         // Process `screen` and `event` types
         case .trackEvent:
@@ -218,7 +219,7 @@ class CustomerIOImplementation: CustomerIOInstance {
                 return
             }
             if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
-                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, attributes: attributes)
+                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
             }
         // Processes delete device token
         case .deletePushToken:
@@ -226,7 +227,7 @@ class CustomerIOImplementation: CustomerIOInstance {
                 isProcessed = false
                 return
             }
-            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken)
+            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
 
         // Processes push metrics
         case .trackPushMetric:

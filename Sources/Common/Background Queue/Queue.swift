@@ -57,7 +57,7 @@ public protocol Queue: AutoMockable {
 
     func getAllStoredTasks() -> [QueueTaskMetadata]
 
-    func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)?
+    func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)?
 
     func deleteProcessedTask(_ task: QueueTaskMetadata)
 }
@@ -145,15 +145,15 @@ public class CioQueue: Queue {
         storage.getInventory()
     }
 
-    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType)? {
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)? {
         let persistedId = task.taskPersistedId
+        let timestamp = task.createdAt
         guard let queueTaskType = QueueTaskType(rawValue: task.taskType) else { return nil }
         guard let task = storage.get(storageId: persistedId) else {
             logger.error("Fetching task with storage id: \(persistedId) failed.")
             return nil
         }
-
-        return (task.data, queueTaskType)
+        return (task.data, queueTaskType, timestamp)
     }
 
     public func deleteProcessedTask(_ task: QueueTaskMetadata) {
