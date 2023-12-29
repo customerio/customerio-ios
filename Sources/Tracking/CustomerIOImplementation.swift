@@ -138,7 +138,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     func handleQueueBacklog() {
         let allStoredTasks = backgroundQueue.getAllStoredTasks()
         if allStoredTasks.count <= 0 {
-            logger.info("No tasks pending in the background queue to be executed.")
+            logger.info("CIO-CDP Migration: No tasks pending in the background queue to be executed.")
             return
         }
         threadUtil.runBackground { [weak self] in
@@ -161,7 +161,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         // Remove the task from the queue if the task has been processed successfully
         defer {
             if isProcessed {
-                backgroundQueue.deleteProcessedTask(task)
+//                backgroundQueue.deleteProcessedTask(task)
             }
         }
         switch taskDetail.taskType {
