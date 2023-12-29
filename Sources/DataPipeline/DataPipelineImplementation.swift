@@ -326,10 +326,6 @@ extension DataPipelineImplementation {
             "deliveryId": deliveryId,
             "recipient": token
         ])
-//        if let token = deviceToken {
-//            properties["recipient"] = token
-//        }
-
         // TODO: [CDP] Reverify event name before going live
         var trackPushMetricEvent = TrackEvent(event: "Journeys Delivery Metric", properties: try? JSON(properties))
         trackPushMetricEvent.timestamp = timestamp
