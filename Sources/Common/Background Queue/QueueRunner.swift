@@ -17,7 +17,6 @@ public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
         jsonAdapter: JsonAdapter,
         logger: Logger,
         httpClient: HttpClient,
-        hooksManager: HooksManager,
         sdkConfig: SdkConfig
     ) {
         super.init(

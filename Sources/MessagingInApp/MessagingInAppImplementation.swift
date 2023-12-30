@@ -61,33 +61,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 }
 
-extension MessagingInAppImplementation: ProfileIdentifyHook {
-    public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {}
-
-    public func profileIdentified(identifier: String) {
-        logger.debug("registering profile \(identifier) for in-app")
-
-        inAppProvider.setProfileIdentifier(identifier)
-    }
-
-    public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
-        logger.debug("removing profile for in-app")
-
-        inAppProvider.clearIdentify()
-    }
-}
-
-extension MessagingInAppImplementation: ScreenTrackingHook {
-    public func screenViewed(name: String) {
-        logger.debug("setting route for in-app to \(name)")
-
-        // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
-        threadUtil.runMain {
-            self.inAppProvider.setRoute(name)
-        }
-    }
-}
-
 extension MessagingInAppImplementation: GistDelegate {
     public func embedMessage(message: Message, elementId: String) {}
 

@@ -19,7 +19,6 @@ class CustomerIOImplementation: CustomerIOInstance {
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private var profileStore: ProfileStore
-    private var hooks: HooksManager
     private let logger: Logger
     private var globalDataStore: GlobalDataStore
     private let sdkConfig: SdkConfig
@@ -36,7 +35,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         self.backgroundQueue = diGraph.queue
         self.jsonAdapter = diGraph.jsonAdapter
         self.profileStore = diGraph.profileStore
-        self.hooks = diGraph.hooksManager
         self.logger = diGraph.logger
         self.globalDataStore = diGraph.globalDataStore
         self.sdkConfig = diGraph.sdkConfig
@@ -94,9 +92,6 @@ class CustomerIOImplementation: CustomerIOInstance {
 
     public func screen(name: String, data: [String: Any]) {
         DataPipeline.shared.screen(name: name, data: data)
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
     }
 
     public func screen<RequestBody: Codable>(
@@ -104,9 +99,6 @@ class CustomerIOImplementation: CustomerIOInstance {
         data: RequestBody
     ) {
         DataPipeline.shared.screen(name: name, data: data)
-        hooks.screenViewHooks.forEach { hook in
-            hook.screenViewed(name: name)
-        }
     }
 
     /**
