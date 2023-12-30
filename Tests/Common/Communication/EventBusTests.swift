@@ -130,7 +130,7 @@ class EventBusTests: UnitTest {
             exp.fulfill()
         }
 
-        await eventBus.removeAllObservers()
+        await eventBus.removeObserver(for: ProfileIdentifiedEvent.key)
         let event = ProfileIdentifiedEvent(identifier: "123")
         await eventBus.post(event)
 
