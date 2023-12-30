@@ -136,12 +136,6 @@ class DataPipelineImplementation: DataPipelineInstance {
                 // register device to newly identified profile
                 addDeviceAttributes(token: existingDeviceToken)
             }
-
-            // logger.debug("running hooks profile identified \(userId)")
-            // FIXME: [CDP] Request Journeys to invoke profile identify hooks
-            // hooks.profileIdentifyHooks.forEach { hook in
-            //     hook.profileIdentified(identifier: userId)
-            // }
         }
     }
 
@@ -149,12 +143,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
-
-        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
-        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
-        // hooks.profileIdentifyHooks.forEach { hook in
-        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        // }
 
         // reset all to default state
         logger.debug("resetting user profile")

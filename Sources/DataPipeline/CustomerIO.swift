@@ -19,10 +19,8 @@ public extension CustomerIO {
 
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
 
-        // FIXME: [CDP] Update shared instance method to support DataPipeline
-        CustomerIO.shared.implementation = implementation
-        // let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
-        // let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-        // initializeSharedInstance(with: implementation, diGraph: newDiGraph, module: TrackingModuleHookProvider(), cleanupRepositoryImp: newDiGraph.cleanupRepository)
+        let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+        initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
 }

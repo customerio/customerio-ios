@@ -119,7 +119,6 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     func postInitialize(diGraph: DIGraph) {
-        let threadUtil = diGraph.threadUtil
         let logger = diGraph.logger
         let siteId = diGraph.sdkConfig.siteId
 
