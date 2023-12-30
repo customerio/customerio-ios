@@ -2,6 +2,7 @@ import Foundation
 
 public typealias AnyEventRepresentable = any EventRepresentable
 
+/// Protocol defining the structure and requirements of events in the system.
 /// Conformance to this protocol ensures compatibility with the EventBus system.
 /// Events can carry additional data through a `params` dictionary, offering flexibility for different use cases.
 public protocol EventRepresentable: Equatable, Codable {
@@ -13,6 +14,8 @@ public protocol EventRepresentable: Equatable, Codable {
     var storageId: String { get }
     /// A dictionary containing parameters or data associated with the event.
     var params: [String: String] { get }
+    /// Timestamp indicating when the event was created.
+    var timestamp: Date { get }
 }
 
 // Default implementation for `EventRepresentable`
@@ -74,16 +77,24 @@ public enum EventTypesRegistry {
     }
 }
 
-/// Generates a unique storage ID for an event.
+/// Generates a unique storage identifier for an event.
+/// The identifier combines a high-resolution timestamp with a UUID.
 ///
-/// This function combines the current time in milliseconds since the Unix epoch
-/// with a UUID string to ensure a high degree of uniqueness, even in concurrent environments.
-/// The timestamp component ensures a chronological element in the ID, which is useful for ordering,
-/// while the UUID component guarantees uniqueness to avoid collisions in a high-throughput scenario.
+/// The timestamp component ensures a chronological element in the ID,
+/// which is useful for ordering, while the UUID component guarantees
+/// uniqueness to avoid collisions in a high-throughput scenario.
 ///
-/// - Returns: A unique string that combines a high-precision timestamp and a UUID.
-public func getStorageID() -> String {
-    String(Date().timeIntervalSince1970 * 1000) + "-\(UUID().uuidString)"
+/// - Parameter date: The date object used to generate the timestamp part of the ID.
+/// - Returns: A unique string that combines the timestamp and a UUID.
+public func getStorageID(date: Date) -> String {
+    // Convert the date to a Unix timestamp in milliseconds.
+    let timestampPart = String(date.timeIntervalSince1970 * 1000)
+
+    // Generate a UUID string.
+    let uuidPart = UUID().uuidString
+
+    // Concatenate the timestamp and UUID to form the storage ID.
+    return timestampPart + "-" + uuidPart
 }
 
 // MARK: - Event Structs
@@ -95,10 +106,12 @@ public struct ProfileIdentifiedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let identifier: String
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), identifier: String, params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.identifier = identifier
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -107,10 +120,12 @@ public struct ScreenViewedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let name: String
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), name: String, params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, name: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.name = name
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -118,9 +133,11 @@ public struct ScreenViewedEvent: EventRepresentable {
 public struct ResetEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -131,13 +148,15 @@ public struct TrackMetricEvent: EventRepresentable {
     public let deliveryID: String
     public let event: String
     public let deviceToken: String
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
         self.deviceToken = deviceToken
+        self.timestamp = timestamp
     }
 }
 
@@ -146,12 +165,14 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     public let params: [String: String]
     public let deliveryID: String
     public let event: String
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), deliveryID: String, event: String, params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, deliveryID: String, event: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
+        self.timestamp = timestamp
     }
 }
 
@@ -159,10 +180,12 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let token: String
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), token: String, params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, token: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.token = token
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -170,9 +193,11 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
 public struct DeleteDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
+    public let timestamp: Date
 
-    public init(storageId: String = getStorageID(), params: [String: String] = [:]) {
-        self.storageId = storageId
+    public init(storageId: String? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -181,10 +206,12 @@ public struct NewSubscriptionEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let subscribedEventType: String
+    public let timestamp: Date
 
-    init<E: EventRepresentable>(storageId: String = getStorageID(), subscribedEventType: E.Type, params: [String: String] = [:]) {
-        self.storageId = storageId
+    init<E: EventRepresentable>(storageId: String? = nil, subscribedEventType: E.Type, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId ?? getStorageID(date: timestamp)
         self.subscribedEventType = E.key
+        self.timestamp = timestamp
         self.params = params
     }
 }

@@ -1118,9 +1118,6 @@ public class EventBusMock: EventBus, Mock {
         addObserverReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        removeAllObserversCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
         removeObserverCallsCount = 0
         removeObserverReceivedArguments = nil
         removeObserverReceivedInvocations = []
@@ -1185,27 +1182,6 @@ public class EventBusMock: EventBus, Mock {
         addObserverReceivedArguments = (eventType: eventType, action: action)
         addObserverReceivedInvocations.append((eventType: eventType, action: action))
         addObserverClosure?(eventType, action)
-    }
-
-    // MARK: - removeAllObservers
-
-    /// Number of times the function was called.
-    public private(set) var removeAllObserversCallsCount = 0
-    /// `true` if the function was ever called.
-    public var removeAllObserversCalled: Bool {
-        removeAllObserversCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var removeAllObserversClosure: (() -> Void)?
-
-    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func removeAllObservers() {
-        mockCalled = true
-        removeAllObserversCallsCount += 1
-        removeAllObserversClosure?()
     }
 
     // MARK: - removeObserver
@@ -2564,6 +2540,19 @@ public class QueueMock: Queue, Mock {
         deleteExpiredTasksCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        getAllStoredTasksCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        getTaskDetailCallsCount = 0
+        getTaskDetailReceivedArguments = nil
+        getTaskDetailReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        deleteProcessedTaskCallsCount = 0
+        deleteProcessedTaskReceivedArguments = nil
+        deleteProcessedTaskReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - addTrackInAppDeliveryTask
@@ -2674,6 +2663,89 @@ public class QueueMock: Queue, Mock {
         mockCalled = true
         deleteExpiredTasksCallsCount += 1
         deleteExpiredTasksClosure?()
+    }
+
+    // MARK: - getAllStoredTasks
+
+    /// Number of times the function was called.
+    public private(set) var getAllStoredTasksCallsCount = 0
+    /// `true` if the function was ever called.
+    public var getAllStoredTasksCalled: Bool {
+        getAllStoredTasksCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    public var getAllStoredTasksReturnValue: [QueueTaskMetadata]!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getAllStoredTasksReturnValue`
+     */
+    public var getAllStoredTasksClosure: (() -> [QueueTaskMetadata])?
+
+    /// Mocked function for `getAllStoredTasks()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getAllStoredTasks() -> [QueueTaskMetadata] {
+        mockCalled = true
+        getAllStoredTasksCallsCount += 1
+        return getAllStoredTasksClosure.map { $0() } ?? getAllStoredTasksReturnValue
+    }
+
+    // MARK: - getTaskDetail
+
+    /// Number of times the function was called.
+    public private(set) var getTaskDetailCallsCount = 0
+    /// `true` if the function was ever called.
+    public var getTaskDetailCalled: Bool {
+        getTaskDetailCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var getTaskDetailReceivedArguments: QueueTaskMetadata?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var getTaskDetailReceivedInvocations: [QueueTaskMetadata] = []
+    /// Value to return from the mocked function.
+    public var getTaskDetailReturnValue: (data: Data, taskType: QueueTaskType, timestamp: Date)?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getTaskDetailReturnValue`
+     */
+    public var getTaskDetailClosure: ((QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)?)?
+
+    /// Mocked function for `getTaskDetail(_ task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)? {
+        mockCalled = true
+        getTaskDetailCallsCount += 1
+        getTaskDetailReceivedArguments = task
+        getTaskDetailReceivedInvocations.append(task)
+        return getTaskDetailClosure.map { $0(task) } ?? getTaskDetailReturnValue
+    }
+
+    // MARK: - deleteProcessedTask
+
+    /// Number of times the function was called.
+    public private(set) var deleteProcessedTaskCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteProcessedTaskCalled: Bool {
+        deleteProcessedTaskCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var deleteProcessedTaskReceivedArguments: QueueTaskMetadata?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var deleteProcessedTaskReceivedInvocations: [QueueTaskMetadata] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var deleteProcessedTaskClosure: ((QueueTaskMetadata) -> Void)?
+
+    /// Mocked function for `deleteProcessedTask(_ task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteProcessedTask(_ task: QueueTaskMetadata) {
+        mockCalled = true
+        deleteProcessedTaskCallsCount += 1
+        deleteProcessedTaskReceivedArguments = task
+        deleteProcessedTaskReceivedInvocations.append(task)
+        deleteProcessedTaskClosure?(task)
     }
 }
 

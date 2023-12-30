@@ -53,16 +53,16 @@ actor EventStorageManager: EventStorage {
         self.baseDirectory = baseDirectory
     }
 
-    func store(event: AnyEventRepresentable) async throws {
+    func store(event: AnyEventRepresentable) throws {
         let eventTypeDirectory = baseDirectory.appendingPathComponent(event.key)
-        try await createDirectoryIfNeeded(eventTypeDirectory)
+        try createDirectoryIfNeeded(eventTypeDirectory)
 
         let eventFileURL = eventTypeDirectory.appendingPathComponent("\(event.storageId).json")
         let eventData = try jsonAdapter.encoder.encode(event)
         try eventData.write(to: eventFileURL)
     }
 
-    func loadEvents(ofType eventType: String) async throws -> [AnyEventRepresentable] {
+    func loadEvents(ofType eventType: String) throws -> [AnyEventRepresentable] {
         let eventTypeDirectory = baseDirectory.appendingPathComponent(eventType)
         guard fileManager.fileExists(atPath: eventTypeDirectory.path) else { return [] }
 
@@ -84,7 +84,7 @@ actor EventStorageManager: EventStorage {
     }
 
     // Removes a specific event file
-    func remove(ofType eventType: String, withStorageId storageId: String) async {
+    func remove(ofType eventType: String, withStorageId storageId: String) {
         let eventFileURL = baseDirectory.appendingPathComponent(eventType).appendingPathComponent("\(storageId).json")
         do {
             try fileManager.removeItem(at: eventFileURL)
@@ -95,7 +95,7 @@ actor EventStorageManager: EventStorage {
 
     /// Creates a directory at the specified URL if it does not already exist.
     /// - Parameter directory: The directory URL to create.
-    private func createDirectoryIfNeeded(_ directory: URL) async throws {
+    private func createDirectoryIfNeeded(_ directory: URL) throws {
         guard !fileManager.fileExists(atPath: directory.path) else { return }
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     }

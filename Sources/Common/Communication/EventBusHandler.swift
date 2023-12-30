@@ -60,7 +60,7 @@ public class EventBusHandler {
 
         Task {
             await eventBus.addObserver(eventType.key, action: adaptedAction)
-            await replayEvents(forType: eventType)
+            await replayEvents(forType: eventType, action: adaptedAction)
         }
     }
 
@@ -72,7 +72,7 @@ public class EventBusHandler {
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
     /// - Parameter eventType: The event type for which to replay events.
-    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type) async {
+    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type, action: @escaping (AnyEventRepresentable) -> Void) async {
         let key = eventType.key
         logger.debug("Replaying events for key: \(key)")
         let storedEvents = await eventCache.getEvent(key)
@@ -81,10 +81,8 @@ public class EventBusHandler {
             logger.debug("Found stored events for key: \(key)")
             if let specificEvent = event as? E {
                 logger.debug("EventBusHandler: Replaying event type - \(specificEvent)")
-                let isSent = await eventBus.post(specificEvent)
-                if isSent {
-                    await removeFromStorage(specificEvent)
-                }
+                action(specificEvent)
+                await removeFromStorage(specificEvent)
             }
         }
     }

@@ -13,13 +13,14 @@ public protocol EventCache: AutoMockable {
 // sourcery: InjectSingleton
 actor EventCacheManager: EventCache {
     /// Storage dictionary to hold arrays of `AnyEventRepresentable` events, keyed by their unique keys.
-    private var storage: [String: [AnyEventRepresentable]] = [:]
+    private var storage: [String: RingBuffer<AnyEventRepresentable>] = [:]
+    private let maxEventsPerType: Int = 100
 
     /// Appends an event to the storage.
     /// - Parameters:
     ///   - event: The event to append.
     func addEvent(event: AnyEventRepresentable) {
-        storage[event.key, default: []].append(event)
+        storeEvents([event], forKey: event.key)
     }
 
     /// Stores a collection of events under a specific key.
@@ -28,18 +29,17 @@ actor EventCacheManager: EventCache {
     ///   - events: The events to store.
     ///   - key: The key under which to store the events.
     func storeEvents(_ events: [AnyEventRepresentable], forKey key: String) {
-        if storage[key] != nil {
-            storage[key]?.append(contentsOf: events)
-        } else {
-            storage[key] = events
+        if storage[key] == nil {
+            storage[key] = RingBuffer(capacity: maxEventsPerType)
         }
+        storage[key]?.enqueue(contentsOf: events)
     }
 
     /// Retrieves events associated with a given key.
     /// - Parameter key: The key for which to retrieve events.
     /// - Returns: An array of events associated with the key.
     func getEvent(_ key: String) -> [AnyEventRepresentable] {
-        storage[key] ?? []
+        storage[key]?.toArray() ?? []
     }
 
     /// Removes all events associated with a given key.
