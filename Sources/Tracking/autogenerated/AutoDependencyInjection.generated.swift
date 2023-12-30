@@ -54,20 +54,7 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = cleanupRepository
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
-    }
-
-    // CleanupRepository
-    var cleanupRepository: CleanupRepository {
-        getOverriddenInstance() ??
-            newCleanupRepository
-    }
-
-    private var newCleanupRepository: CleanupRepository {
-        CioCleanupRepository(queue: queue)
     }
 }
 

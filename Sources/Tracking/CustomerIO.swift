@@ -46,7 +46,7 @@ public extension CustomerIO {
         // Check if any unprocessed tasks are pending in the background queue.
         implementation.handleQueueBacklog()
 
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph, cleanupRepositoryImp: newDiGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: newDiGraph)
 
         if sdkConfig.logLevel == .debug {
             CustomerIO.shared.setDebugLogsEnabled(true)
@@ -74,12 +74,12 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: newSdkConfig.toSdkConfig())
         let implementation = CustomerIOImplementation(diGraph: newDiGraph)
 
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph, cleanupRepositoryImp: newDiGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
 
     // Initialize for Integration Tests
     static func initializeIntegrationTests(diGraph: DIGraph) {
         let implementation = CustomerIOImplementation(diGraph: diGraph)
-        initializeSharedInstance(with: implementation, diGraph: diGraph, cleanupRepositoryImp: diGraph.cleanupRepository)
+        initializeSharedInstance(with: implementation, diGraph: diGraph)
     }
 }

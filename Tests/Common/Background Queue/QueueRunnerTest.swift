@@ -11,7 +11,7 @@ class QueueRunnerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        runner = CioQueueRunner(jsonAdapter: jsonAdapter, logger: log, httpClient: httpClientMock, hooksManager: diGraph.hooksManager, sdkConfig: sdkConfig)
+        runner = CioQueueRunner(jsonAdapter: jsonAdapter, logger: log, httpClient: httpClientMock, sdkConfig: sdkConfig)
     }
 
     // MARK: registerPushToken

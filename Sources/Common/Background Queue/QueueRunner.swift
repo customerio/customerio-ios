@@ -13,7 +13,7 @@ public protocol QueueRunner: AutoMockable {
 
 // sourcery: InjectRegister = "QueueRunner"
 public class CioQueueRunner: ApiSyncQueueRunner, QueueRunner {
-    init(
+    override init(
         jsonAdapter: JsonAdapter,
         logger: Logger,
         httpClient: HttpClient,
