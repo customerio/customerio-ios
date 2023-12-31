@@ -36,7 +36,7 @@ class EventStorageTest: UnitTest {
 
     // MARK: - Event Storage Tests
 
-    func testStoreEvent() async throws {
+    func test_storeEvent_givenValidEvent_expectFileExists() async throws {
         let event = ProfileIdentifiedEvent(identifier: "testID")
         try await eventStorageManager.store(event: event)
 
@@ -47,7 +47,7 @@ class EventStorageTest: UnitTest {
         XCTAssertTrue(fileExists, "Event file should exist after storing")
     }
 
-    func testStoreCreatesDirectoryIfNeeded() async throws {
+    func test_storeEvent_givenNewEventType_expectDirectoryCreated() async throws {
         let event = ResetEvent() // Assume this is a new event type
         try await eventStorageManager.store(event: event)
 
@@ -58,7 +58,7 @@ class EventStorageTest: UnitTest {
 
     // MARK: - Event Retrieval Tests
 
-    func testLoadStoredEvents() async throws {
+    func test_loadEvents_givenStoredEvent_expectEventLoaded() async throws {
         let event = ProfileIdentifiedEvent(identifier: "testID")
         try await eventStorageManager.store(event: event)
 
@@ -67,18 +67,18 @@ class EventStorageTest: UnitTest {
         XCTAssertTrue(containsEvent, "Loaded events should contain the stored event")
     }
 
-    func testLoadEventsWhenDirectoryDoesNotExist() async throws {
+    func test_loadEvents_givenNonExistentDirectory_expectEmptyArray() async throws {
         let nonExistentEventType = "NonExistentEvent"
         let loadedEvents = try await eventStorageManager.loadEvents(ofType: nonExistentEventType)
         XCTAssertTrue(loadedEvents.isEmpty, "Loading events for a non-existent directory should return an empty array")
     }
 
-    func testLoadEventsOfNonexistentType() async throws {
+    func test_loadEvents_givenNonexistentEventType_expectEmptyArray() async throws {
         let loadedEvents = try await eventStorageManager.loadEvents(ofType: "NonexistentType")
         XCTAssertTrue(loadedEvents.isEmpty, "Loading events for a nonexistent type should return an empty array")
     }
 
-    func testLoadEventsWithCorruptDataContinuesLoading() async throws {
+    func test_loadEvents_givenCorruptDataInFile_expectValidEventsLoaded() async throws {
         // Ensure the directory for the event type exists
         let eventTypeDirectory = await eventStorageManager.baseDirectory.appendingPathComponent(ProfileIdentifiedEvent.key)
         try FileManager.default.createDirectory(at: eventTypeDirectory, withIntermediateDirectories: true)
@@ -100,7 +100,7 @@ class EventStorageTest: UnitTest {
 
     // MARK: - Event Removal Tests
 
-    func testRemoveEvent() async throws {
+    func test_removeEvent_givenStoredEvent_expectEventRemoved() async throws {
         let event = ProfileIdentifiedEvent(identifier: "testID")
         try await eventStorageManager.store(event: event)
 
@@ -113,7 +113,7 @@ class EventStorageTest: UnitTest {
         XCTAssertFalse(fileExists, "Event file should not exist after removal")
     }
 
-    func testRemoveEventWhenFileDoesNotExist() async throws {
+    func test_removeEvent_givenNonExistentFile_expectNoErrorThrown() async throws {
         let eventType = ProfileIdentifiedEvent.key
         let nonExistentStorageId = UUID().uuidString
         await eventStorageManager.remove(ofType: eventType, withStorageId: nonExistentStorageId)
@@ -122,7 +122,7 @@ class EventStorageTest: UnitTest {
 
     // MARK: - Concurrency and Ordering Tests
 
-    func testConcurrentEventStorageAndRetrieval() async throws {
+    func test_concurrentEventStorageAndRetrieval_givenMultipleEvents_expectAllEventsStoredAndRetrieved() async throws {
         // Create multiple events
         let events = (1 ... 10).map { ProfileIdentifiedEvent(identifier: "\($0)") }
 
@@ -140,7 +140,7 @@ class EventStorageTest: UnitTest {
         XCTAssertEqual(loadedEvents.count, events.count, "All stored events should be retrieved")
     }
 
-    func testEventOrdering() async throws {
+    func test_eventOrdering_givenSequentiallyStoredEvents_expectEventsRetrievedInStoredOrder() async throws {
         // Store events in a specific order
         let events = (1 ... 5).map { ProfileIdentifiedEvent(identifier: "Event\($0)") }
         for event in events {

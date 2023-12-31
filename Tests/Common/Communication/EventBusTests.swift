@@ -17,7 +17,7 @@ class EventBusTests: UnitTest {
 
     // MARK: - Observer Notification Tests
 
-    func testPostEventWithObserver() async throws {
+    func test_postEvent_givenObserverRegistered_expectNotificationReceived() async throws {
         let exp = XCTestExpectation(description: "Event received")
         var notificationReceived = false
         await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
@@ -32,7 +32,7 @@ class EventBusTests: UnitTest {
         XCTAssertTrue(notificationReceived)
     }
 
-    func testPostEventWithoutObserver() async {
+    func test_postEvent_givenNoObserver_expectNoObserversNotified() async {
         let event = ProfileIdentifiedEvent(identifier: "123")
         let hasObservers = await eventBus.post(event)
         XCTAssertFalse(hasObservers)
@@ -40,7 +40,7 @@ class EventBusTests: UnitTest {
 
     // MARK: - Multiple Observer Tests
 
-    func testMultipleObserversForSameEvent() async {
+    func test_postEvent_givenMultipleObserversForSameEvent_expectAllObserversNotified() async {
         let exp1 = XCTestExpectation(description: "First observer received event")
         let exp2 = XCTestExpectation(description: "Second observer received event")
 
@@ -65,7 +65,7 @@ class EventBusTests: UnitTest {
         XCTAssertTrue(secondObserverNotified, "Second observer should receive the event")
     }
 
-    func testObserversForDifferentEventTypes() async {
+    func test_postEvent_givenObserversForDifferentEventTypes_expectCorrespondingObserversNotified() async {
         let exp1 = XCTestExpectation(description: "Observer for event type 1 receives event")
         let exp2 = XCTestExpectation(description: "Observer for event type 2 receives event")
 
@@ -92,7 +92,7 @@ class EventBusTests: UnitTest {
         XCTAssertTrue(observer2Notified, "Observer for ScreenViewedEvent should be notified")
     }
 
-    func testMultipleObserversForSameEventType() async {
+    func test_postEvent_givenMultipleObserversForSameEventType_expectAllObserversNotified() async {
         let exp1 = XCTestExpectation(description: "First observer receives event")
         let exp2 = XCTestExpectation(description: "Second observer receives event")
 
@@ -107,7 +107,7 @@ class EventBusTests: UnitTest {
 
     // MARK: - Observer Removal Tests
 
-    func testRemovingSpecificObserver() async {
+    func test_removeObserver_givenSpecificObserverRemoved_expectObserverNotNotified() async {
         let exp = XCTestExpectation(description: "Event received")
         exp.isInverted = true
 
@@ -122,7 +122,7 @@ class EventBusTests: UnitTest {
         await fulfillment(of: [exp], timeout: 1)
     }
 
-    func testRemovingAllObservers() async {
+    func test_removeAllObservers_givenAllObserversRemoved_expectNoObserversNotified() async {
         let exp = XCTestExpectation(description: "Event received")
         exp.isInverted = true
 
@@ -137,7 +137,7 @@ class EventBusTests: UnitTest {
         await fulfillment(of: [exp], timeout: 1)
     }
 
-    func testObserverNotNotifiedAfterRemoval() async {
+    func test_postEvent_givenObserverRemoved_expectObserverNotNotified() async {
         let exp = XCTestExpectation(description: "Observer should not receive event")
         exp.isInverted = true
 
@@ -154,7 +154,7 @@ class EventBusTests: UnitTest {
 
     // MARK: - Asynchronous and Thread Safety Tests
 
-    func testObserverReceivingMultipleNotifications() async {
+    func test_postEvent_givenMultipleEvents_expectMultipleNotifications() async {
         let exp = XCTestExpectation(description: "Observer receives multiple events")
         exp.expectedFulfillmentCount = 2
 
@@ -168,7 +168,7 @@ class EventBusTests: UnitTest {
         await fulfillment(of: [exp], timeout: 1)
     }
 
-    func testObserverOrderPreservation() async throws {
+    func test_postEvent_givenOrderedObservers_expectNotificationOrderPreserved() async throws {
         var receivedEventsOrder: [String] = []
 
         await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
@@ -185,7 +185,7 @@ class EventBusTests: UnitTest {
         XCTAssertEqual(receivedEventsOrder, ["FirstObserver", "SecondObserver"], "Observers should receive events in the order they were added")
     }
 
-    func testAsynchronousEventPosting() async throws {
+    func test_postEvent_givenAsynchronousPosting_expectAllEventsReceived() async throws {
         let expectationCount = 10
         var expectations: [XCTestExpectation] = []
 
@@ -209,7 +209,7 @@ class EventBusTests: UnitTest {
         await fulfillment(of: expectations, timeout: 5)
     }
 
-    func testThreadSafetyOfEventBus() async throws {
+    func test_concurrentEventPosting_givenMultipleThreads_expectThreadSafety() async throws {
         let concurrentQueue = DispatchQueue(label: "test.concurrentQueue", attributes: .concurrent)
         let iterationCount = 100
         let resultHolder = ResultHolder(count: iterationCount)
