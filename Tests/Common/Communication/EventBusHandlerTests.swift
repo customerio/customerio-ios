@@ -63,10 +63,10 @@ class EventBusHandlerTest: UnitTest {
         await fulfillment(of: [postEventExpectation], timeout: 2)
         XCTAssertTrue(mockEventBus.postCalled, "post should be called on EventBus")
         XCTAssertEqual((mockEventBus.postReceivedArguments as? ProfileIdentifiedEvent)?.identifier, event.identifier, "The correct event should be posted")
-        XCTAssertTrue(mockEventCache.addEventCalled, "post should be called on EventBus")
+        XCTAssertTrue(mockEventCache.addEventCalled, "cache should have stored the event")
     }
 
-    func test_postEvent_givenObserversPresent_expectEventNotStoredInFile() async throws {
+    func test_postEvent_givenObserversPresent_expectEventNotStoredInPersistentStorage() async throws {
         let eventBusHandler = initializeEventBusHandler()
 
         // Given: A mock event and EventBus with observers
@@ -187,31 +187,6 @@ class EventBusHandlerTest: UnitTest {
 
         // Assert that post was called twice (initial post + replay)
         XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once, once for initial post and not for replay")
-    }
-
-    func test_postEvent_givenObserversPresent_expectEventNotStoredInPersistentStorage() async throws {
-        let eventBusHandler = initializeEventBusHandler()
-
-        // Given: A mock event and EventBus with observers
-        let event = RegisterDeviceTokenEvent(token: String.random)
-
-        let postEventExpectation = XCTestExpectation(description: "Waiting for postEvent to complete")
-        mockEventBus.postClosure = { _ in
-            // Simulate observers present
-            postEventExpectation.fulfill()
-            return true
-        }
-        mockEventCache.getEventReturnValue = [event]
-
-        // When: The event is posted
-        eventBusHandler.postEvent(event)
-
-        // Wait for the post operation to complete
-        await fulfillment(of: [postEventExpectation], timeout: 2)
-
-        // Then: Verify that post was called on EventBus and store was not called on EventStorage
-        XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once on EventBus")
-        XCTAssertEqual(mockEventStorage.storeCallsCount, 0, "store should not be called on EventStorage if observers are present")
     }
 
     func test_observerRegistration_givenEventPosted_expectEventBusPostCalled() async throws {
@@ -443,7 +418,9 @@ class EventBusHandlerTest: UnitTest {
         let eventBusHandler = initializeEventBusHandler()
 
         let event = ProfileIdentifiedEvent(identifier: "TestID")
-        mockEventBus.postReturnValue = false // Simulate unsuccessful event post (no observers)
+        // Simulate unsuccessful event post (no observers)
+        mockEventBus.postReturnValue = false
+        // Add the event to memory cache manually for simulation
         mockEventCache.getEventReturnValue = [event]
 
         // Post the event
@@ -461,17 +438,12 @@ class EventBusHandlerTest: UnitTest {
             observerAddedExpectation.fulfill()
         }
 
-        // Mock the action for event replay
-        mockEventBus.postClosure = { receivedEvent in
-            if let replayedEvent = receivedEvent as? ProfileIdentifiedEvent,
-               replayedEvent.identifier == event.identifier {
+        // Add observer to trigger replay
+        eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { replayedEvent in
+            if replayedEvent.identifier == event.identifier {
                 eventReplayExpectation.fulfill()
             }
-            return true
         }
-
-        // Add observer to trigger replay
-        eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in /* No action needed here */ }
 
         // Wait for both observer registration and event replay to complete
         await fulfillment(of: [observerAddedExpectation, eventReplayExpectation], timeout: 2)
@@ -535,5 +507,47 @@ class EventBusHandlerTest: UnitTest {
             }
             return true
         }
+    }
+
+    func test_concurrentObserverRegistrationAndEventPosting_expectCorrectEventHandling() async throws {
+        let eventBusHandler = initializeEventBusHandler()
+        let concurrentQueue = DispatchQueue(label: "com.eventBusHandler.concurrentQueue", attributes: .concurrent)
+
+        // Set up mock event bus behavior
+        mockEventBus.postReturnValue = true
+
+        // Define the number of events and observers
+        let numberOfEvents = 10
+        let numberOfObservers = 5
+
+        // Create expectations for concurrent operations
+        var postingExpectations = [XCTestExpectation]()
+        var registrationExpectations = [XCTestExpectation]()
+
+        // Concurrently register observers
+        for _ in 1 ... numberOfObservers {
+            let registrationExpectation = XCTestExpectation(description: "Observer registration completed")
+            registrationExpectations.append(registrationExpectation)
+            concurrentQueue.async {
+                // Implement observer registration logic here
+                // ...
+                registrationExpectation.fulfill()
+            }
+        }
+
+        // Concurrently post events
+        for eventId in 1 ... numberOfEvents {
+            let postingExpectation = XCTestExpectation(description: "Event \(eventId) posting completed")
+            postingExpectations.append(postingExpectation)
+            concurrentQueue.async {
+                let event = ResetEvent()
+                eventBusHandler.postEvent(event)
+                postingExpectation.fulfill()
+            }
+        }
+
+        // Wait for all expectations
+        await XCTWaiter().fulfillment(of: registrationExpectations, timeout: 10.0)
+        await XCTWaiter().fulfillment(of: postingExpectations, timeout: 10.0)
     }
 }

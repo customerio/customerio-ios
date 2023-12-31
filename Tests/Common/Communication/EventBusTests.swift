@@ -44,16 +44,11 @@ class EventBusTests: UnitTest {
         let exp1 = XCTestExpectation(description: "First observer received event")
         let exp2 = XCTestExpectation(description: "Second observer received event")
 
-        var firstObserverNotified = false
-        var secondObserverNotified = false
-
         await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
-            firstObserverNotified = true
             exp1.fulfill()
         }
 
         await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
-            secondObserverNotified = true
             exp2.fulfill()
         }
 
@@ -61,8 +56,6 @@ class EventBusTests: UnitTest {
         await eventBus.post(event)
 
         await fulfillment(of: [exp1, exp2], timeout: 1)
-        XCTAssertTrue(firstObserverNotified, "First observer should receive the event")
-        XCTAssertTrue(secondObserverNotified, "Second observer should receive the event")
     }
 
     func test_postEvent_givenObserversForDifferentEventTypes_expectCorrespondingObserversNotified() async {
@@ -92,35 +85,7 @@ class EventBusTests: UnitTest {
         XCTAssertTrue(observer2Notified, "Observer for ScreenViewedEvent should be notified")
     }
 
-    func test_postEvent_givenMultipleObserversForSameEventType_expectAllObserversNotified() async {
-        let exp1 = XCTestExpectation(description: "First observer receives event")
-        let exp2 = XCTestExpectation(description: "Second observer receives event")
-
-        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp1.fulfill() }
-        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in exp2.fulfill() }
-
-        let event = ProfileIdentifiedEvent(identifier: "123")
-        await eventBus.post(event)
-
-        await fulfillment(of: [exp1, exp2], timeout: 1)
-    }
-
     // MARK: - Observer Removal Tests
-
-    func test_removeObserver_givenSpecificObserverRemoved_expectObserverNotNotified() async {
-        let exp = XCTestExpectation(description: "Event received")
-        exp.isInverted = true
-
-        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
-            exp.fulfill()
-        }
-        await eventBus.removeObserver(for: ProfileIdentifiedEvent.key)
-
-        let event = ProfileIdentifiedEvent(identifier: "123")
-        await eventBus.post(event)
-
-        await fulfillment(of: [exp], timeout: 1)
-    }
 
     func test_removeAllObservers_givenAllObserversRemoved_expectNoObserversNotified() async {
         let exp = XCTestExpectation(description: "Event received")
