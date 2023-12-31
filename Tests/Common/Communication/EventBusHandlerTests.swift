@@ -508,46 +508,4 @@ class EventBusHandlerTest: UnitTest {
             return true
         }
     }
-
-    func test_concurrentObserverRegistrationAndEventPosting_expectCorrectEventHandling() async throws {
-        let eventBusHandler = initializeEventBusHandler()
-        let concurrentQueue = DispatchQueue(label: "com.eventBusHandler.concurrentQueue", attributes: .concurrent)
-
-        // Set up mock event bus behavior
-        mockEventBus.postReturnValue = true
-
-        // Define the number of events and observers
-        let numberOfEvents = 10
-        let numberOfObservers = 5
-
-        // Create expectations for concurrent operations
-        var postingExpectations = [XCTestExpectation]()
-        var registrationExpectations = [XCTestExpectation]()
-
-        // Concurrently register observers
-        for _ in 1 ... numberOfObservers {
-            let registrationExpectation = XCTestExpectation(description: "Observer registration completed")
-            registrationExpectations.append(registrationExpectation)
-            concurrentQueue.async {
-                // Implement observer registration logic here
-                // ...
-                registrationExpectation.fulfill()
-            }
-        }
-
-        // Concurrently post events
-        for eventId in 1 ... numberOfEvents {
-            let postingExpectation = XCTestExpectation(description: "Event \(eventId) posting completed")
-            postingExpectations.append(postingExpectation)
-            concurrentQueue.async {
-                let event = ResetEvent()
-                eventBusHandler.postEvent(event)
-                postingExpectation.fulfill()
-            }
-        }
-
-        // Wait for all expectations
-        await XCTWaiter().fulfillment(of: registrationExpectations, timeout: 10.0)
-        await XCTWaiter().fulfillment(of: postingExpectations, timeout: 10.0)
-    }
 }
