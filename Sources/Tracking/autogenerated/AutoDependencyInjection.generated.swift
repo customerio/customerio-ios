@@ -54,34 +54,34 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = analyticsMigrationAssistant
+        _ = dataPipelineMigrationAssistant
         countDependenciesResolved += 1
 
         return countDependenciesResolved
     }
 
-    // AnalyticsMigrationAssistant (singleton)
-    var analyticsMigrationAssistant: AnalyticsMigrationAssistant {
+    // DataPipelineMigrationAssistant (singleton)
+    var dataPipelineMigrationAssistant: DataPipelineMigrationAssistant {
         getOverriddenInstance() ??
-            sharedAnalyticsMigrationAssistant
+            sharedDataPipelineMigrationAssistant
     }
 
-    var sharedAnalyticsMigrationAssistant: AnalyticsMigrationAssistant {
+    var sharedDataPipelineMigrationAssistant: DataPipelineMigrationAssistant {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_AnalyticsMigrationAssistant_singleton_access").sync {
-            if let overridenDep: AnalyticsMigrationAssistant = getOverriddenInstance() {
+        DispatchQueue(label: "DIGraph_DataPipelineMigrationAssistant_singleton_access").sync {
+            if let overridenDep: DataPipelineMigrationAssistant = getOverriddenInstance() {
                 return overridenDep
             }
-            let existingSingletonInstance = self.singletons[String(describing: AnalyticsMigrationAssistant.self)] as? AnalyticsMigrationAssistant
-            let instance = existingSingletonInstance ?? _get_analyticsMigrationAssistant()
-            self.singletons[String(describing: AnalyticsMigrationAssistant.self)] = instance
+            let existingSingletonInstance = self.singletons[String(describing: DataPipelineMigrationAssistant.self)] as? DataPipelineMigrationAssistant
+            let instance = existingSingletonInstance ?? _get_dataPipelineMigrationAssistant()
+            self.singletons[String(describing: DataPipelineMigrationAssistant.self)] = instance
             return instance
         }
     }
 
-    private func _get_analyticsMigrationAssistant() -> AnalyticsMigrationAssistant {
-        AnalyticsMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil)
+    private func _get_dataPipelineMigrationAssistant() -> DataPipelineMigrationAssistant {
+        DataPipelineMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil)
     }
 }
 

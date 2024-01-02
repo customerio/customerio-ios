@@ -2,10 +2,10 @@ import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
-// sourcery: InjectRegister = "AnalyticsMigrationAssistant"
+// sourcery: InjectRegister = "DataPipelineMigrationAssistant"
 // sourcery: InjectSingleton
 /// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
-class AnalyticsMigrationAssistant {
+class DataPipelineMigrationAssistant {
     private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter

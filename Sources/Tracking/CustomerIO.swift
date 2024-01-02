@@ -44,7 +44,7 @@ public extension CustomerIO {
 
         // Check if any unprocessed tasks are pending in the background queue.
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-        let migrationAssistant = newDiGraph.analyticsMigrationAssistant
+        let migrationAssistant = newDiGraph.dataPipelineMigrationAssistant
         migrationAssistant.handleQueueBacklog()
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
