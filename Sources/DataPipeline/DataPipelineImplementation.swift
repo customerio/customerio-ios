@@ -241,8 +241,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             properties["recipient"] = token
         }
 
-        // TODO: [CDP] Reverify event name before going live
-        analytics.track(name: "Journeys Delivery Metric", properties: properties)
+        analytics.track(name: "Report Delivery Event", properties: properties)
     }
 }
 
@@ -340,8 +339,7 @@ extension DataPipelineImplementation {
             "deliveryId": deliveryId,
             "recipient": token
         ])
-        // TODO: [CDP] Reverify event name before going live
-        var trackPushMetricEvent = TrackEvent(event: "Journeys Delivery Metric", properties: try? JSON(properties))
+        var trackPushMetricEvent = TrackEvent(event: "Report Delivery Event", properties: try? JSON(properties))
         trackPushMetricEvent.timestamp = timestamp
         analytics.process(event: trackPushMetricEvent)
     }
