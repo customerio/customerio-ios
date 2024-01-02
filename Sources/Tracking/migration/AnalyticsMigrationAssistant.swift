@@ -4,6 +4,7 @@ import Foundation
 
 // sourcery: InjectRegister = "AnalyticsMigrationAssistant"
 // sourcery: InjectSingleton
+/// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
 class AnalyticsMigrationAssistant {
     private let logger: Logger
     private let backgroundQueue: Queue
