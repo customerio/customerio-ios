@@ -232,6 +232,10 @@ public class CustomerIO: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        if let optionalValue = body as? Any?, optionalValue == nil {
+            implementation?.identify(identifier: identifier, body: EmptyRequestBody())
+            return
+        }
         implementation?.identify(identifier: identifier, body: body)
     }
 
