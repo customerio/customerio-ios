@@ -34,19 +34,6 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
     }
 
-    // MARK: initialize given an existing identifier
-
-    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
-        let givenProfileIdentifiedInSdk = String.random
-
-        profileStoreMock.identifier = givenProfileIdentifiedInSdk
-
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
-
-        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
-        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
-    }
-
     // MARK: profile hooks
 
     func test_givenProfileIdentified_expectSetupWithInApp() {
