@@ -54,7 +54,34 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = analyticsMigrationAssistant
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
+    }
+
+    // AnalyticsMigrationAssistant (singleton)
+    var analyticsMigrationAssistant: AnalyticsMigrationAssistant {
+        getOverriddenInstance() ??
+            sharedAnalyticsMigrationAssistant
+    }
+
+    var sharedAnalyticsMigrationAssistant: AnalyticsMigrationAssistant {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_AnalyticsMigrationAssistant_singleton_access").sync {
+            if let overridenDep: AnalyticsMigrationAssistant = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: AnalyticsMigrationAssistant.self)] as? AnalyticsMigrationAssistant
+            let instance = existingSingletonInstance ?? _get_analyticsMigrationAssistant()
+            self.singletons[String(describing: AnalyticsMigrationAssistant.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_analyticsMigrationAssistant() -> AnalyticsMigrationAssistant {
+        AnalyticsMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil)
     }
 }
 

@@ -40,11 +40,12 @@ public extension CustomerIO {
             configureHandler(&sdkConfig)
         }
 
-        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-        let implementation = CustomerIOImplementation(diGraph: newDiGraph)
+        let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
 
         // Check if any unprocessed tasks are pending in the background queue.
-        implementation.handleQueueBacklog()
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+        let migrationAssistant = newDiGraph.analyticsMigrationAssistant
+        migrationAssistant.handleQueueBacklog()
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
 
@@ -71,15 +72,17 @@ public extension CustomerIO {
             configureHandler(&newSdkConfig)
         }
 
-        let newDiGraph = DIGraph(sdkConfig: newSdkConfig.toSdkConfig())
-        let implementation = CustomerIOImplementation(diGraph: newDiGraph)
+        let sdkConfig = newSdkConfig.toSdkConfig()
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+        let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
 
     // Initialize for Integration Tests
     static func initializeIntegrationTests(diGraph: DIGraph) {
-        let implementation = CustomerIOImplementation(diGraph: diGraph)
-        initializeSharedInstance(with: implementation, diGraph: diGraph)
+        // FIXME: [CDP] Fix tests using DataPipeline
+        // let implementation = CustomerIOImplementation(diGraph: diGraph)
+        // initializeSharedInstance(with: implementation, diGraph: diGraph)
     }
 }
