@@ -12,6 +12,12 @@ struct RingBuffer<T> {
     // Flag to indicate if the buffer is full.
     private var isFull: Bool = false
 
+    // Public read-only accessor for isFull
+    // Added for testing
+    public func isBufferFull() -> Bool {
+        isFull
+    }
+
     /// Initializes the ring buffer with a specified capacity.
     /// - Parameter capacity: The maximum number of elements the buffer can hold.
     init(capacity: Int) {

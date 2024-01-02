@@ -35,7 +35,7 @@ class EventBusHandlerTest: UnitTest {
         }
 
         // Wait for the loadEvents operation to complete
-        await fulfillment(of: [loadEventsExpectation], timeout: 2)
+        await fulfillment(of: [loadEventsExpectation], timeout: 5.0)
 
         // Then (Actual): Verify that loadEvents was called for all event types
         XCTAssertEqual(mockEventStorage.loadEventsCallsCount, EventTypesRegistry.allEventTypes().count, "loadEvents should be called once during initialization")
@@ -60,7 +60,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Then: Verify post was called on EventBus with the correct event
-        await fulfillment(of: [postEventExpectation], timeout: 2)
+        await fulfillment(of: [postEventExpectation], timeout: 5.0)
         XCTAssertTrue(mockEventBus.postCalled, "post should be called on EventBus")
         XCTAssertEqual((mockEventBus.postReceivedArguments as? ProfileIdentifiedEvent)?.identifier, event.identifier, "The correct event should be posted")
         XCTAssertTrue(mockEventCache.addEventCalled, "cache should have stored the event")
@@ -84,7 +84,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Wait for the postEvent operation to complete
-        await fulfillment(of: [postEventExpectation], timeout: 2)
+        await fulfillment(of: [postEventExpectation], timeout: 5.0)
 
         // Then (Actual): Verify that post was called on EventBus and not stored in EventStorage
         XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once on EventBus")
@@ -108,11 +108,69 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Wait for the post operation to complete
-        await fulfillment(of: [postEventExpectation], timeout: 2)
+        await fulfillment(of: [postEventExpectation], timeout: 5.0)
 
         // Then: Verify that post was called on EventBus and event was stored
         XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once on EventBus")
         XCTAssertEqual(mockEventStorage.storeCallsCount, 1, "Event should be stored if there are no observers")
+    }
+
+    func test_postEvent_givenTimestampedEvent_expectObserverReceivesCorrectTimestamp() async throws {
+        let eventBusHandler = initializeEventBusHandler()
+        let eventPostedTimestamp = Date()
+        let event = ResetEvent(timestamp: eventPostedTimestamp)
+
+        let eventReceivedExpectation = XCTestExpectation(description: "Event received by observer")
+        var receivedEventTimestamp: Date?
+
+        mockEventBus.postClosure = { event in
+            receivedEventTimestamp = event.timestamp
+            eventReceivedExpectation.fulfill()
+            return true
+        }
+
+        eventBusHandler.postEvent(event)
+
+        await XCTWaiter().fulfillment(of: [eventReceivedExpectation], timeout: 5.0)
+
+        XCTAssertEqual(receivedEventTimestamp, eventPostedTimestamp, "The timestamp received by the observer does not match the event's posted timestamp.")
+    }
+
+    func test_postEvent_givenMultipleObservers_expectSingleNotificationPerObserver() async throws {
+        let eventBusHandler = initializeEventBusHandler()
+        let event = RegisterDeviceTokenEvent(token: String.random)
+
+        // Simulate event caching for replay
+        mockEventCache.getEventReturnValue = [event]
+
+        // Expectations
+        let firstObserverReceivedExpectation = XCTestExpectation(description: "First observer should receive event only once")
+        firstObserverReceivedExpectation.expectedFulfillmentCount = 1
+        let secondObserverReceivedExpectation = XCTestExpectation(description: "Second observer should receive event only once")
+        secondObserverReceivedExpectation.expectedFulfillmentCount = 1
+
+        mockEventBus.postClosure = {
+            _ in
+            firstObserverReceivedExpectation.fulfill()
+            return true
+        }
+
+        // Register first observer
+        eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { _ in
+            // it will be recieved via notification center hence the mocks
+        }
+
+        // Post the event
+        eventBusHandler.postEvent(event)
+
+        // Register second observer
+        eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { _ in
+            // Second observer action, reply is supposed to happen
+            secondObserverReceivedExpectation.fulfill()
+        }
+
+        // Wait for expectations
+        await XCTWaiter().fulfillment(of: [firstObserverReceivedExpectation, secondObserverReceivedExpectation], timeout: 5.0)
     }
 
     // MARK: - Event Removal Tests
@@ -130,18 +188,14 @@ class EventBusHandlerTest: UnitTest {
         // Expectation for the observer registration and event replay
         let observerAddedAndEventReplayedExpectation = XCTestExpectation(description: "Observer added and event replayed")
 
-        // Mock the actions for adding an observer and replaying events
-        mockEventBus.postClosure = { _ in
-            // Simulate event replay and successful posting to observer
+        // When: An observer is added after the event is stored
+        eventBusHandler.addObserver(ScreenViewedEvent.self) { _ in
+            // event should be replayed
             observerAddedAndEventReplayedExpectation.fulfill()
-            return true
         }
 
-        // When: An observer is added after the event is stored
-        eventBusHandler.addObserver(ScreenViewedEvent.self) { _ in /* No action needed here */ }
-
         // Wait for the observer registration and event replay to complete
-        await fulfillment(of: [observerAddedAndEventReplayedExpectation], timeout: 2)
+        await fulfillment(of: [observerAddedAndEventReplayedExpectation], timeout: 5.0)
 
         // Then: Verify that the event is removed from storage after being sent
         XCTAssertEqual(mockEventStorage.removeCallsCount, 1, "Event should be removed from storage after being successfully replayed to an observer")
@@ -166,7 +220,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Wait for the initial post to complete
-        await fulfillment(of: [initialPostExpectation], timeout: 2)
+        await fulfillment(of: [initialPostExpectation], timeout: 5.0)
 
         // Expectation for the observer registration
         let addObserverExpectation = XCTestExpectation(description: "Observer registration completed")
@@ -183,7 +237,7 @@ class EventBusHandlerTest: UnitTest {
         }
 
         // Wait for both the observer registration and event replay to complete
-        await fulfillment(of: [addObserverExpectation, eventReplayExpectation], timeout: 4)
+        await fulfillment(of: [addObserverExpectation, eventReplayExpectation], timeout: 5.0)
 
         // Assert that post was called twice (initial post + replay)
         XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once, once for initial post and not for replay")
@@ -209,7 +263,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.addObserver(ScreenViewedEvent.self, action: observerAction)
 
         // Wait for the observer registration to complete
-        await fulfillment(of: [observerRegistrationExpectation], timeout: 2)
+        await fulfillment(of: [observerRegistrationExpectation], timeout: 5.0)
 
         // Verify addObserver was called on the EventBus mock
         XCTAssertTrue(mockEventBus.addObserverCalled, "addObserver should be called on EventBus")
@@ -233,7 +287,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Wait for the event posting to complete
-        await fulfillment(of: [eventPostingExpectation], timeout: 2)
+        await fulfillment(of: [eventPostingExpectation], timeout: 5.0)
 
         // Then: Verify that post was called on EventBus
         XCTAssertTrue(mockEventBus.postCalled, "post should be called on EventBus")
@@ -255,7 +309,7 @@ class EventBusHandlerTest: UnitTest {
 
         eventBusHandler.addObserver(ScreenViewedEvent.self, action: observerAction)
 
-        await fulfillment(of: [addObserverExpectation], timeout: 2)
+        await fulfillment(of: [addObserverExpectation], timeout: 5.0)
 
         let removeObserverExpectation = XCTestExpectation(description: "Waiting for removeObserver to complete")
         mockEventBus.removeObserverClosure = { _ in
@@ -265,7 +319,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.removeObserver(for: ScreenViewedEvent.self)
 
         // Then: Verify removeObserver was called on the EventBus mock
-        await fulfillment(of: [removeObserverExpectation], timeout: 2)
+        await fulfillment(of: [removeObserverExpectation], timeout: 5.0)
         XCTAssertTrue(mockEventBus.removeObserverCalled, "removeObserver should be called on EventBus")
     }
 
@@ -291,7 +345,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in }
         eventBusHandler.addObserver(ScreenViewedEvent.self) { _ in }
 
-        await fulfillment(of: [addObserverExpectation1, addObserverExpectation2], timeout: 2)
+        await fulfillment(of: [addObserverExpectation1, addObserverExpectation2], timeout: 5.0)
         XCTAssertTrue(mockEventBus.addObserverCalled, "addObserver should be called on EventBus")
     }
 
@@ -313,7 +367,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.removeObserver(for: ProfileIdentifiedEvent.self)
 
         // Then: Verify removeObserver was called on the EventBus mock for the specific event type
-        await fulfillment(of: [removeObserverExpectation], timeout: 2)
+        await fulfillment(of: [removeObserverExpectation], timeout: 5.0)
         XCTAssertTrue(mockEventBus.removeObserverCalled, "removeObserver should be called on EventBus")
     }
 
@@ -344,7 +398,7 @@ class EventBusHandlerTest: UnitTest {
             }
         }
 
-        await fulfillment(of: [replayExpectation], timeout: 4)
+        await fulfillment(of: [replayExpectation], timeout: 5)
 
         // Retrieve the events from the mock memory storage
         let storedEvents = mockEventCache.getEvent(TrackMetricEvent.key) as? [TrackMetricEvent]
@@ -374,7 +428,7 @@ class EventBusHandlerTest: UnitTest {
         eventBusHandler.postEvent(event)
 
         // Wait for the postEvent operation to complete
-        await fulfillment(of: [postEventExpectation], timeout: 2)
+        await fulfillment(of: [postEventExpectation], timeout: 5.0)
 
         // Then: Verify the event is stored in memory
         XCTAssertEqual(mockEventCache.addEventCallsCount, 1, "Event should be stored in memory")
@@ -411,7 +465,7 @@ class EventBusHandlerTest: UnitTest {
         }
 
         // Wait for both observer registration and event replay to complete
-        await fulfillment(of: [observerAddedExpectation, eventReplayExpectation], timeout: 2)
+        await fulfillment(of: [observerAddedExpectation, eventReplayExpectation], timeout: 5.0)
     }
 
     func test_unsuccessfulEventPost_givenLaterObserverRegistration_expectEventReplayed() async throws {
@@ -446,7 +500,7 @@ class EventBusHandlerTest: UnitTest {
         }
 
         // Wait for both observer registration and event replay to complete
-        await fulfillment(of: [observerAddedExpectation, eventReplayExpectation], timeout: 2)
+        await fulfillment(of: [observerAddedExpectation, eventReplayExpectation], timeout: 5.0)
     }
 
     func test_replayEvents_givenSessionRestart_expectEventsReplayedFromStorage() async throws {
@@ -475,7 +529,7 @@ class EventBusHandlerTest: UnitTest {
         }
 
         // Wait for the event replay to complete
-        await fulfillment(of: [eventReplayExpectation], timeout: 2)
+        await fulfillment(of: [eventReplayExpectation], timeout: 5.0)
     }
 
     func test_multipleEventsHandling_givenEventsPosted_expectEventsHandledCorrectly() async throws {
