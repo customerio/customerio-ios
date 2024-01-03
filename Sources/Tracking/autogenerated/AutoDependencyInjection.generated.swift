@@ -54,7 +54,34 @@ extension DIGraph {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = dataPipelineMigrationAssistant
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
+    }
+
+    // DataPipelineMigrationAssistant (singleton)
+    var dataPipelineMigrationAssistant: DataPipelineMigrationAssistant {
+        getOverriddenInstance() ??
+            sharedDataPipelineMigrationAssistant
+    }
+
+    var sharedDataPipelineMigrationAssistant: DataPipelineMigrationAssistant {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraph_DataPipelineMigrationAssistant_singleton_access").sync {
+            if let overridenDep: DataPipelineMigrationAssistant = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: DataPipelineMigrationAssistant.self)] as? DataPipelineMigrationAssistant
+            let instance = existingSingletonInstance ?? _get_dataPipelineMigrationAssistant()
+            self.singletons[String(describing: DataPipelineMigrationAssistant.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_dataPipelineMigrationAssistant() -> DataPipelineMigrationAssistant {
+        DataPipelineMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil)
     }
 }
 
