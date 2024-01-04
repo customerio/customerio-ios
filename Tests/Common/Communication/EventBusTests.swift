@@ -177,11 +177,11 @@ class EventBusTests: UnitTest {
     func test_concurrentEventPosting_givenMultipleThreads_expectThreadSafety() async throws {
         let concurrentQueue = DispatchQueue(label: "test.concurrentQueue", attributes: .concurrent)
         let iterationCount = 100
+
+        // Initializing ResultHolder to track the results of event postings in concurrent loop.
         let resultHolder = ResultHolder(count: iterationCount)
 
-        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in
-            // Observer action
-        }
+        await eventBus.addObserver(ProfileIdentifiedEvent.key) { _ in }
 
         DispatchQueue.concurrentPerform(iterations: iterationCount) { index in
             concurrentQueue.async {
@@ -200,6 +200,19 @@ class EventBusTests: UnitTest {
         for index in 0 ..< iterationCount {
             let result = await resultHolder.results[index]
             XCTAssertTrue(result, "All events should be posted successfully in a thread-safe manner")
+        }
+    }
+
+    /// `ResultHolder` is  an actor that safely handles concurrent modifications to its state.
+    private actor ResultHolder {
+        var results: [Bool]
+
+        init(count: Int) {
+            self.results = [Bool](repeating: false, count: count)
+        }
+
+        func updateResult(at index: Int, with value: Bool) {
+            results[index] = value
         }
     }
 }
