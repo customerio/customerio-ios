@@ -3,6 +3,11 @@ import CioTracking
 import Foundation
 import UserNotifications
 
+protocol PushEventListener {
+    func onPushClicked(_ push: PushNotification, completionHandler: @escaping () -> Void)
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
+}
+
 @available(iOSApplicationExtension, unavailable)
 /**
 
