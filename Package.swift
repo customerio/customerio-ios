@@ -81,6 +81,9 @@ let package = Package(
         .target(name: "CioDataPipelines",
                 dependencies: ["CioInternalCommon", .product(name: "Segment", package: "Segment")],
                 path: "Sources/DataPipeline"),
+        .testTarget(name: "DataPipelineTests",
+                    dependencies: ["SharedTests"],
+                    path: "Tests/DataPipeline"),
 
         // APN
         .target(name: "CioMessagingPushAPN",
