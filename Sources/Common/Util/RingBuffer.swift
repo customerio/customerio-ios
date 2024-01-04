@@ -25,7 +25,7 @@ struct RingBuffer<T> {
     }
 
     /// Adds an element to the end of the buffer.
-    /// If the buffer is full, it overwrites the oldest element.
+    /// If the buffer is full, it pushes the oldest element out.
     /// - Parameter element: The element to be added.
     mutating func enqueue(_ element: T) {
         array[tail] = element

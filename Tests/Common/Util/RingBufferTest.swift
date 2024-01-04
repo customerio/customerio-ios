@@ -14,11 +14,11 @@ class RingBufferTest: UnitTest {
         XCTAssertNil(ringBuffer.dequeue(), "Buffer should be empty")
     }
 
-    func test_EnqueueBeyondCapacity_ShouldOverwriteOldestElement() {
+    func test_EnqueueBeyondCapacity_ShouldPushOldestElement() {
         var ringBuffer = RingBuffer<Int>(capacity: 2)
         ringBuffer.enqueue(1)
         ringBuffer.enqueue(2)
-        ringBuffer.enqueue(3) // This should overwrite the first element (1)
+        ringBuffer.enqueue(3) // This should push out the oldest element (1) to make room
 
         XCTAssertEqual(ringBuffer.dequeue(), 2, "Dequeued element should be 2 after overwriting")
         XCTAssertEqual(ringBuffer.dequeue(), 3, "Dequeued element should be 3")
