@@ -14,6 +14,8 @@ public protocol EventRepresentable: Equatable, Codable {
     var storageId: String { get }
     /// A dictionary containing parameters or data associated with the event.
     var params: [String: String] { get }
+    /// Timestamp indicating when the event was created.
+    var timestamp: Date { get }
 }
 
 // Default implementation for `EventRepresentable`
@@ -84,10 +86,12 @@ public struct ProfileIdentifiedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let identifier: String
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, identifier: String, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.identifier = identifier
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -96,10 +100,12 @@ public struct ScreenViewedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let name: String
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, name: String, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, name: String, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.name = name
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -107,9 +113,11 @@ public struct ScreenViewedEvent: EventRepresentable {
 public struct ResetEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -120,13 +128,15 @@ public struct TrackMetricEvent: EventRepresentable {
     public let deliveryID: String
     public let event: String
     public let deviceToken: String
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
         self.deviceToken = deviceToken
+        self.timestamp = timestamp
     }
 }
 
@@ -135,12 +145,14 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     public let params: [String: String]
     public let deliveryID: String
     public let event: String
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
+        self.timestamp = timestamp
     }
 }
 
@@ -148,10 +160,12 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let token: String
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, token: String, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, token: String, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.token = token
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -159,9 +173,11 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
 public struct DeleteDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
+    public let timestamp: Date
 
-    public init(storageId: String = UUID().uuidString, params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
+        self.timestamp = timestamp
         self.params = params
     }
 }
@@ -170,10 +186,12 @@ public struct NewSubscriptionEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let subscribedEventType: String
+    public let timestamp: Date
 
-    init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, params: [String: String] = [:]) {
+    init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.subscribedEventType = E.key
+        self.timestamp = timestamp
         self.params = params
     }
 }
