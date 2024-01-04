@@ -83,7 +83,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     var registeredDeviceToken: String? {
-        deviceAttributesPlugin.token
+        globalDataStore.pushDeviceToken
     }
 
     func clearIdentify() {
@@ -123,6 +123,11 @@ class DataPipelineImplementation: DataPipelineInstance {
         let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
+
+        if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
+            logger.debug("deleting registered device token from existing profile: \(currentlyIdentifiedProfile ?? "nil")")
+            deleteDeviceToken()
+        }
 
         if let attributes = attributesCodable {
             analytics.identify(userId: userId, traits: attributes)
