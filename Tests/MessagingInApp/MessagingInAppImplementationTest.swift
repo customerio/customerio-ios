@@ -17,9 +17,9 @@ class MessagingInAppImplementationTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        diGraph.override(value: inAppProviderMock, forType: InAppProvider.self)
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
+        diGraphShared.override(value: inAppProviderMock, forType: InAppProvider.self)
+        diGraphShared.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraphShared.override(value: backgroundQueueMock, forType: Queue.self)
 
         messagingInApp = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
         messagingInApp.setEventListener(eventListenerMock)
@@ -57,6 +57,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let given = String.random
 
         messagingInApp.screenViewed(name: given)
+        let expectation = XCTestExpectation(description: "Wait for 1 second")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
 
         XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
