@@ -5,6 +5,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     let analytics: Analytics
+    let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
     private let deviceAttributesProvider: DeviceAttributesProvider
@@ -16,6 +17,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.logger = diGraph.logger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
+        self.eventBusHandler = diGraph.eventBusHandler
         self.globalDataStore = diGraph.globalDataStore
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
@@ -35,6 +37,26 @@ class DataPipelineImplementation: DataPipelineInstance {
         if let existingDeviceToken = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin and ensure device attributes are updated
             addDeviceAttributes(token: existingDeviceToken)
+        }
+
+        // plugin to publish data pipeline events
+        analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
+
+        // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
+        subscribeToJourneyEvents()
+    }
+
+    private func subscribeToJourneyEvents() {
+        eventBusHandler.addObserver(TrackMetricEvent.self) { metric in
+            self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
+        }
+
+        eventBusHandler.addObserver(TrackInAppMetricEvent.self) { metric in
+            self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
+        }
+
+        eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
+            self.registerDeviceToken(event.token)
         }
     }
 
@@ -200,15 +222,19 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        logger.info("push metric \(event.rawValue)")
+        trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
+    }
+
+    func trackPushMetric(deliveryID: String, event: String, deviceToken: String) {
+        logger.info("push metric \(event)")
 
         logger.debug("delivery id \(deliveryID) device token \(deviceToken)")
 
         trackMetricEvent(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 
-    func trackInAppMetric(deliveryID: String, event: Metric, metaData: [String: Any]) {
-        logger.info("in-app metric \(event.rawValue)")
+    func trackInAppMetric(deliveryID: String, event: String, metaData: [String: String]) {
+        logger.info("in-app metric \(event)")
 
         logger.debug("delivery id \(deliveryID) metaData \(metaData)")
 
@@ -216,12 +242,12 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     /// Tracks metric events for push and in-app messages
-    private func trackMetricEvent(deliveryID: String, event: Metric, deviceToken: String? = nil, metaData: [String: Any] = [:]) {
+    private func trackMetricEvent(deliveryID: String, event: String, deviceToken: String? = nil, metaData: [String: String] = [:]) {
         // property keys should be camelCase
-        var properties: [String: Any] = metaData.mergeWith([
-            "metric": event.rawValue,
-            "deliveryId": deliveryID
-        ])
+        var properties: [String: String] = metaData
+
+        properties["metric"] = event
+        properties["deliveryId"] = deliveryID
 
         if let token = deviceToken {
             properties["recipient"] = token
