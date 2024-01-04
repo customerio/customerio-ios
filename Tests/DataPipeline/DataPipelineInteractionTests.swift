@@ -90,35 +90,37 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let events = outputReader.events
-        let deletedEvents = events.filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
+        let deletedEvents = outputReader.events.filterDeviceDeleted()
         XCTAssertEqual(deletedEvents.count, 1)
         XCTAssertEqual(deletedEvents[0].getDeviceToken(), givenDeviceToken)
     }
 
-    func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+    func test_identify_givenProfileReidentified_expectDoNotDeleteDeviceToken() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = givenIdentifier
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenDeviceToken = String.random
+
+        configureDeviceInfo()
+        globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+        let deletedEvents = outputReader.events.filterDeviceDeleted()
+        XCTAssertEqual(deletedEvents.count, 0)
     }
 
-    func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
-        let givenIdentifier = String.random
-        profileStoreMock.identifier = nil
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+    func test_identify_givenProfileNotIdentified_expectNoDeviceEvents() {
+        let givenDeviceToken = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        configureDeviceInfo()
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        let events = outputReader.events
+        let createdEvents = events.filterDeviceCreated()
+        XCTAssertEqual(createdEvents.count, 0)
+        let deletedEvents = events.filterDeviceDeleted()
+        XCTAssertEqual(deletedEvents.count, 0)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
@@ -473,5 +475,15 @@ private extension RawEvent {
             return context[keyPath: "device.token"] as? String
         }
         return nil
+    }
+}
+
+private extension [RawEvent] {
+    func filterDeviceDeleted() -> [RawEvent] {
+        filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
+    }
+
+    func filterDeviceCreated() -> [RawEvent] {
+        filter { ($0 as? TrackEvent)?.event == "Device Created or Updated" }
     }
 }
