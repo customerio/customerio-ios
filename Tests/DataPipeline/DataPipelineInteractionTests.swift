@@ -4,7 +4,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class CustomerIOImplementationTest: UnitTest {
+class DataPipelineInteractionTests: UnitTest {
     private var implementation: CustomerIOImplementation!
     // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
     // This is a workaround until this code base contains implementation tests. There have been bugs
@@ -452,7 +452,7 @@ class CustomerIOImplementationTest: UnitTest {
     }
 }
 
-extension CustomerIOImplementationTest {
+extension DataPipelineInteractionTests {
     private func createMetaDataTask(forType type: QueueTaskType) -> QueueTaskMetadata {
         let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
         let encoder = JSONEncoder()
