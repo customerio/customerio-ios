@@ -14,20 +14,3 @@ extension UNNotificationResponse { // class provided when a push is clicked or s
         actionIdentifier == UNNotificationDismissActionIdentifier
     }
 }
-
-extension UNNotificationResponse {
-    var pushId: String {
-        notification.pushId
-    }
-
-    var pushDeliveryDate: Date {
-        notification.date
-    }
-}
-
-extension UNNotification {
-    var pushId: String {
-        // Unique ID for each push notification.
-        request.identifier
-    }
-}

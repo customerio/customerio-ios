@@ -104,6 +104,13 @@ public class CustomerIOParsedPushPayload {
     public let notificationContent: UNNotificationContent
 
     public static func parse(
+        pushNotification: PushNotification,
+        jsonAdapter: JsonAdapter
+    ) -> CustomerIOParsedPushPayload? {
+        parse(notificationContent: pushNotification.rawNotification.request.content, jsonAdapter: jsonAdapter)
+    }
+
+    public static func parse(
         response: UNNotificationResponse,
         jsonAdapter: JsonAdapter
     ) -> CustomerIOParsedPushPayload? {
