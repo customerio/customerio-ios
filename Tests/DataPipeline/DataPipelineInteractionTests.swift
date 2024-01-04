@@ -1,35 +1,49 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
-@testable import CioTracking
+@testable import Segment
 import Foundation
 import SharedTests
 import XCTest
 
 class DataPipelineInteractionTests: UnitTest {
-    private var implementation: CustomerIOImplementation!
     // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
     // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `CustomerIOImplementation`.
+    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
     private var customerIO: CustomerIO!
+    private var analytics: Analytics!
+    private var outputReader: OutputReaderPlugin!
 
-    private let backgroundQueueMock = QueueMock()
-    private let profileStoreMock = ProfileStoreMock()
-    private let globalDataStoreMock = GlobalDataStoreMock()
     private let deviceInfoMock = DeviceInfoMock()
-    var queueStorage: QueueStorage {
-        diGraph.queueStorage
-    }
+    private let globalDataStoreMock = GlobalDataStoreMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-//        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        // Override for both shared and simple graph. Data Pipeline module primarily relies on the shared graph,
+        // while some older classes from tracking still utilize the simple graph.
+        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
-        implementation = CustomerIOImplementation(diGraph: diGraph)
+        let moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
+        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
+
+        DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
+
+        // Setting up analytics for testing
+        analytics = implementation.analytics
+        // OutputReaderPlugin helps validating interactions with analytics
+        outputReader = OutputReaderPlugin()
+        analytics.add(plugin: outputReader)
+        // wait for analytics queue to start emitting events
+        waitUntilStarted(analytics: analytics)
+    }
+
+    override func tearDown() {
+        customerIO.clearIdentify()
+        super.tearDown()
     }
 
     // MARK: identify
