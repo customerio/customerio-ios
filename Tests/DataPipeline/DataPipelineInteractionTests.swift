@@ -1,7 +1,7 @@
 @testable import CioDataPipelines
 @testable import CioInternalCommon
-@testable import Segment
 import Foundation
+@testable import Segment
 import SharedTests
 import XCTest
 
@@ -50,44 +50,31 @@ class DataPipelineInteractionTests: UnitTest {
 
     // testing `identify()` with request body. Will make an integration test for all `identify()` functions
     // but copy/paste identify unit tests not needed since only 1 function has logic in it.
-    //
-    // NOTE: At this time, the `CustomerIOHttpTest` is that integration test. After refactoring the code
-    // to make the DI graph work as intended and the http request runner is in the graph we can make
-    // integration tests with a mocked request runner.
 
-    func test_identify_expectSetNewProfileInDeviceStorage() {
+    func test_identify_expectSetNewProfileWithoutAttributes() {
         let givenIdentifier = String.random
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(analytics.userId)
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(profileStoreMock.identifier, givenIdentifier)
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        XCTAssertEqual(analytics.traits()?.count, 0)
     }
 
-    func test_identify_expectAddTaskBackgroundQueue() {
+    func test_identify_expectSetNewProfileWithAttributes() {
         let givenIdentifier = String.random
-        let givenBody = ["first_name": "Dana"]
-
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.identifyProfile.rawValue)
+        let identifyEvent: IdentifyEvent? = outputReader.lastEvent as? IdentifyEvent
+        XCTAssertEqual(analytics.userId, givenIdentifier)
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data
-            .value as? IdentifyProfileQueueTaskData
-
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, jsonAdapter.toJsonString(givenBody))
+        let traits = identifyEvent?.traits?.dictionaryValue
+        XCTAssertEqual(traits?.count, 2)
+        XCTAssertEqual(traits?["email"] as? String, (givenBody["email"] as! String))
+        XCTAssertEqual(traits?["age"] as? Int, (givenBody["age"] as! Int))
     }
 
     func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectDeleteDeviceToken() {
