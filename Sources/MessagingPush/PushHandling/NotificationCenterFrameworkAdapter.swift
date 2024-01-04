@@ -35,11 +35,31 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        pushEventListener.onPushClicked(PushNotification(notification: response.notification), completionHandler: completionHandler)
+        let wasClickEventHandled = pushEventListener.onPushAction(PushNotificationAction(response: response))
+
+        if wasClickEventHandled {
+            // call the completion handler so the customer does not need to.
+            completionHandler()
+        }
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        pushEventListener.shouldDisplayPushAppInForeground(PushNotification(notification: notification), completionHandler: completionHandler)
+        let response = pushEventListener.shouldDisplayPushAppInForeground(PushNotification(notification: notification))
+        guard let shouldShowPush = response else {
+            // push not handled by CIO SDK. Exit early. Another click handler will call the completion handler.
+
+            return
+        }
+
+        if shouldShowPush {
+            if #available(iOS 14.0, *) {
+                completionHandler([.list, .banner, .badge, .sound])
+            } else {
+                completionHandler([.badge, .sound])
+            }
+        } else {
+            completionHandler([])
+        }
     }
 }
 
@@ -48,12 +68,13 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
 // an instance of this class, first.
 //
 // This allows us to write automated tests around our SDK's push handling logic because classes inside of `UserUnotifications` internal and not mockable.
-struct PushNotification {
+public struct PushNotification {
     let pushId: String
     let deliveryDate: Date
     let title: String
     let message: String
     let data: [AnyHashable: Any]
+    let rawNotification: UNNotification
 
     init(notification: UNNotification) { // Parses a `UserNotification` framework class
         self.pushId = notification.request.identifier
@@ -61,5 +82,16 @@ struct PushNotification {
         self.title = notification.request.content.title
         self.message = notification.request.content.body
         self.data = notification.request.content.userInfo
+        self.rawNotification = notification
+    }
+}
+
+public struct PushNotificationAction {
+    let pushNotification: PushNotification // the push that had an action performed on it
+    let didClickOnPush: Bool
+
+    init(response: UNNotificationResponse) {
+        self.pushNotification = PushNotification(notification: response.notification)
+        self.didClickOnPush = response.didClickOnPush
     }
 }

@@ -3,9 +3,17 @@ import CioTracking
 import Foundation
 import UserNotifications
 
-protocol PushEventListener {
-    func onPushClicked(_ push: PushNotification, completionHandler: @escaping () -> Void)
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
+protocol PushEventListener: AutoMockable {
+    // Called when a push notification was acted upon. Either clicked or swiped away.
+    //
+    // return true if push was handled by this SDK. Meaning, the push notification was sent by CIO.
+    func onPushAction(_ push: PushNotificationAction) -> Bool
+    // return nil if the push was not handled by CIO SDK.
+    // return true if should diplay the push in foreground.
+    func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool?
+
+    func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?)
+    func beginListening()
 }
 
 @available(iOSApplicationExtension, unavailable)
@@ -89,10 +97,6 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         self.overridePushHistory = pushHistory
     }
 
-    var delegate: UNUserNotificationCenterDelegate {
-        self
-    }
-
     // singleton init
     override init() {}
 
@@ -116,76 +120,71 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         notificationCenterDelegateProxy.newNotificationCenterDelegateSet(newDelegate)
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    func onPushAction(_ pushAction: PushNotificationAction) -> Bool {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
-            return
+            return false
         }
-        logger?.debug("Push event: didReceive. push: \(response))")
+        let push = pushAction.pushNotification
+        logger?.debug("On push action event. push: \(push))")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: response.pushId, pushDeliveryDate: response.pushDeliveryDate) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
             // push has already been handled. exit early
-            return
+            return true
         }
 
-        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
+        guard let parsedPush = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
-            notificationCenterDelegateProxy.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
 
-            return
+            // TODO: move proxy call to NotificationCenterFrameworkAdapterImpl since it's what has knowledge about parameters required to call proxy.
+//            notificationCenterDelegateProxy.pushClicked(push, completionHandler: completionHandler)
+
+            return false
         }
 
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
 
-        if response.didClickOnPush {
+        if pushAction.didClickOnPush {
             pushClickHandler.pushClicked(parsedPush)
         }
 
-        completionHandler()
+        return true
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool? {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
               let moduleConfig = moduleConfig
         else {
-            return
+            return nil
         }
-        logger?.debug("Push event: willPresent. push: \(notification)")
+        logger?.debug("Push event: willPresent. push: \(push)")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: notification.pushId, pushDeliveryDate: notification.date) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
             // push has already been handled. exit early
 
             // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
-            return
+            return nil
         }
 
-        guard let _ = CustomerIOParsedPushPayload.parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter) else {
+        guard let _ = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
-            notificationCenterDelegateProxy.userNotificationCenter(center, willPresent: notification, withCompletionHandler: completionHandler)
 
-            return
+            // TODO: move proxy call to NotificationCenterFrameworkAdapterImpl since it's what has knowledge about parameters required to call proxy.
+//             notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
+
+            return nil
         }
 
         logger?.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
 
-        // Make sure to call completionHandler() so the customer does not need to.
-        if moduleConfig.showPushAppInForeground {
-            // Tell the OS to show the push while app in foreground using 1 of the below options, depending on version of OS
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
-            } else {
-                completionHandler([.badge, .sound])
-            }
-        } else {
-            completionHandler([]) // do not show push while app in foreground
-        }
+        return moduleConfig.showPushAppInForeground
     }
 
     // Swizzle method convenient when original and swizzled methods both belong to same class.
@@ -236,6 +235,6 @@ extension UNUserNotificationCenter {
         //
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
-        cio_swizzled_setDelegate(delegate: diGraph.pushEventListener.delegate)
+        cio_swizzled_setDelegate(delegate: diGraph.notificationCenterFrameworkAdapter.delegate)
     }
 }
