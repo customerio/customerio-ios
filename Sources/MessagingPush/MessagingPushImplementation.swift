@@ -9,37 +9,38 @@ class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
     let logger: Logger
     let jsonAdapter: JsonAdapter
+    let eventBusHandler: EventBusHandler
 
     /// testing init
     init(
         moduleConfig: MessagingPushConfigOptions,
         logger: Logger,
-        jsonAdapter: JsonAdapter
+        jsonAdapter: JsonAdapter,
+        eventBusHandler: EventBusHandler
     ) {
         self.moduleConfig = moduleConfig
         self.logger = logger
         self.jsonAdapter = jsonAdapter
+        self.eventBusHandler = eventBusHandler
     }
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
+        self.eventBusHandler = diGraph.eventBusHandler
     }
 
     func deleteDeviceToken() {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.deleteDeviceToken()
+        eventBusHandler.postEvent(DeleteDeviceTokenEvent())
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.registerDeviceToken(deviceToken)
+        eventBusHandler.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        // FIXME: [CDP] Pass to Journey
-        // customerIO?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        eventBusHandler.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
     }
 
     #if canImport(UserNotifications)

@@ -509,23 +509,47 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
-    // EventBusHandler
+    // EventBusHandler (singleton)
     public var eventBusHandler: EventBusHandler {
         getOverriddenInstance() ??
-            newEventBusHandler
+            sharedEventBusHandler
     }
 
-    private var newEventBusHandler: EventBusHandler {
+    public var sharedEventBusHandler: EventBusHandler {
+        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
+            if let overridenDep: EventBusHandler = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventBusHandler.self)] as? EventBusHandler
+            let instance = existingSingletonInstance ?? _get_eventBusHandler()
+            self.singletons[String(describing: EventBusHandler.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventBusHandler() -> EventBusHandler {
         EventBusHandler(eventBus: eventBus, eventStorage: eventStorage, logger: logger)
     }
 
-    // EventStorage
+    // EventStorage (singleton)
     var eventStorage: EventStorage {
         getOverriddenInstance() ??
-            newEventStorage
+            sharedEventStorage
     }
 
-    private var newEventStorage: EventStorage {
+    var sharedEventStorage: EventStorage {
+        DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
+            if let overridenDep: EventStorage = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventStorage.self)] as? EventStorage
+            let instance = existingSingletonInstance ?? _get_eventStorage()
+            self.singletons[String(describing: EventStorage.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventStorage() -> EventStorage {
         EventStorageManager(logger: logger, jsonAdapter: jsonAdapter)
     }
 
@@ -559,13 +583,25 @@ extension DIGraphShared {
         SharedConsoleLogger()
     }
 
-    // EventBus
+    // EventBus (singleton)
     var eventBus: EventBus {
         getOverriddenInstance() ??
-            newEventBus
+            sharedEventBus
     }
 
-    private var newEventBus: EventBus {
+    var sharedEventBus: EventBus {
+        DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
+            if let overridenDep: EventBus = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventBus.self)] as? EventBus
+            let instance = existingSingletonInstance ?? _get_eventBus()
+            self.singletons[String(describing: EventBus.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventBus() -> EventBus {
         SharedEventBus()
     }
 
