@@ -19,7 +19,7 @@ class DataPipelineInteractionTests: UnitTest {
     override func setUp() {
         super.setUp()
 
-        // Override for both shared and simple graph. Data Pipeline module primarily relies on the shared graph,
+        // override for both shared and simple graph. Data Pipeline module primarily relies on the shared graph,
         // while some older classes from tracking still utilize the simple graph.
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
@@ -32,7 +32,7 @@ class DataPipelineInteractionTests: UnitTest {
         DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
 
-        // Setting up analytics for testing
+        // setting up analytics for testing
         analytics = implementation.analytics
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = OutputReaderPlugin()
