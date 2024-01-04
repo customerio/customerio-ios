@@ -12,8 +12,7 @@ struct RingBuffer<T> {
     // Flag to indicate if the buffer is full.
     private var isFull: Bool = false
 
-    // Public read-only accessor for isFull
-    // Added for testing
+    // Public read-only accessor for isFul
     public func isBufferFull() -> Bool {
         isFull
     }
