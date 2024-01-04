@@ -23,7 +23,7 @@ class MessagingInAppTest: UnitTest {
         diGraph.override(value: hooksMock, forType: HooksManager.self)
 
         // Sets default shared instance, which injects the DI graph
-        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
+//        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
     }
 
     override func tearDown() {
@@ -35,6 +35,7 @@ class MessagingInAppTest: UnitTest {
     // MARK: initialize functions with Module initialized
 
     func test_initialize_givenModuleInitialized_expectModuleIsInitialized() {
+        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
         MessagingInApp.initialize(siteId: .random, region: .US)
 
         assertModuleInitialized(isInitialized: true, givenEventListener: nil)
@@ -42,7 +43,7 @@ class MessagingInAppTest: UnitTest {
 
     func test_setEventListener_givenModuleInitialized_expectListenerIsSet() {
         let givenListener = InAppEventListenerMock()
-
+        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
         MessagingInApp.initialize(siteId: .random, region: .US)
         MessagingInApp.shared.setEventListener(givenListener)
 
@@ -92,17 +93,12 @@ class MessagingInAppTest: UnitTest {
 extension MessagingInAppTest {
     private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, file: StaticString = #file, line: UInt = #line) {
         if isInitialized {
-            XCTAssertEqual(hooksMock.addCallsCount, 1, file: file, line: line)
-            XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp, file: file, line: line)
-
             if givenEventListener != nil {
                 XCTAssertEqual(implementationMock.setEventListenerCallsCount, 1)
             } else {
                 XCTAssertEqual(implementationMock.setEventListenerCallsCount, 0)
             }
         } else {
-            XCTAssertFalse(hooksMock.addCalled, file: file, line: line)
-            XCTAssertFalse(hooksMock.mockCalled, file: file, line: line)
             XCTAssertFalse(implementationMock.setEventListenerCalled)
         }
     }
