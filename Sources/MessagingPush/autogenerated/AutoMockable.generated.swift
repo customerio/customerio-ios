@@ -530,9 +530,9 @@ class PushEventListenerMock: PushEventListener, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var onPushActionReceivedArguments: PushNotificationAction?
+    private(set) var onPushActionReceivedArguments: (push: PushNotification, didClickOnPush: Bool)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var onPushActionReceivedInvocations: [PushNotificationAction] = []
+    private(set) var onPushActionReceivedInvocations: [(push: PushNotification, didClickOnPush: Bool)] = []
     /// Value to return from the mocked function.
     var onPushActionReturnValue: Bool!
     /**
@@ -540,15 +540,15 @@ class PushEventListenerMock: PushEventListener, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `onPushActionReturnValue`
      */
-    var onPushActionClosure: ((PushNotificationAction) -> Bool)?
+    var onPushActionClosure: ((PushNotification, Bool) -> Bool)?
 
-    /// Mocked function for `onPushAction(_ push: PushNotificationAction)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func onPushAction(_ push: PushNotificationAction) -> Bool {
+    /// Mocked function for `onPushAction(_ push: PushNotification, didClickOnPush: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool {
         mockCalled = true
         onPushActionCallsCount += 1
-        onPushActionReceivedArguments = push
-        onPushActionReceivedInvocations.append(push)
-        return onPushActionClosure.map { $0(push) } ?? onPushActionReturnValue
+        onPushActionReceivedArguments = (push: push, didClickOnPush: didClickOnPush)
+        onPushActionReceivedInvocations.append((push: push, didClickOnPush: didClickOnPush))
+        return onPushActionClosure.map { $0(push, didClickOnPush) } ?? onPushActionReturnValue
     }
 
     // MARK: - shouldDisplayPushAppInForeground

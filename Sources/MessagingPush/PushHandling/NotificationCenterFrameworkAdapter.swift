@@ -5,7 +5,7 @@ import UserNotifications
  The push features in the SDK interact with the iOS framework, `UserNotifications`.
  In order for us to write automated tests around our code that interacts with this framework, we treat `UserNotifications` as a dependency and mock it.
 
- The code in this file is our SDK's interface to the `UserNotifications` framework. Instead of our SDK
+ This file is part of that by being the adapter between our SDK and the iOS framework.
  */
 
 protocol NotificationCenterFrameworkAdapter {
@@ -35,7 +35,7 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let wasClickEventHandled = pushEventListener.onPushAction(PushNotificationAction(response: response))
+        let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.notification.didClickOnPush)
 
         if wasClickEventHandled {
             // call the completion handler so the customer does not need to.
@@ -83,15 +83,5 @@ public struct PushNotification {
         self.message = notification.request.content.body
         self.data = notification.request.content.userInfo
         self.rawNotification = notification
-    }
-}
-
-public struct PushNotificationAction {
-    let pushNotification: PushNotification // the push that had an action performed on it
-    let didClickOnPush: Bool
-
-    init(response: UNNotificationResponse) {
-        self.pushNotification = PushNotification(notification: response.notification)
-        self.didClickOnPush = response.didClickOnPush
     }
 }

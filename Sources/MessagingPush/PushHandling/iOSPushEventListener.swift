@@ -7,7 +7,7 @@ protocol PushEventListener: AutoMockable {
     // Called when a push notification was acted upon. Either clicked or swiped away.
     //
     // return true if push was handled by this SDK. Meaning, the push notification was sent by CIO.
-    func onPushAction(_ push: PushNotificationAction) -> Bool
+    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool
     // return nil if the push was not handled by CIO SDK.
     // return true if should diplay the push in foreground.
     func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool?
@@ -41,7 +41,7 @@ protocol PushEventListener: AutoMockable {
  - During the native iOS SDK's initialization, the SDK's digraph instance is re-created. All objects (and singletons) in that old digraph instance are deleted from memory.
  - That's bad! If the PushEventListener singleton instance was stored in the digraph, it would be deleted from memory. The OS would no longer be able to send push notification callbacks to the SDK.
  */
-class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCenterDelegate {
+class iOSPushEventListener: PushEventListener {
     // Singleton instance of this class maintained outside of the digraph.
     public static let shared = iOSPushEventListener()
 
@@ -97,8 +97,8 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         self.overridePushHistory = pushHistory
     }
 
-    // singleton init
-    override init() {}
+    // singleton constructor
+    private init() {}
 
     func beginListening() {
         guard var userNotificationCenter = userNotificationCenter else {
@@ -120,14 +120,13 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
         notificationCenterDelegateProxy.newNotificationCenterDelegateSet(newDelegate)
     }
 
-    func onPushAction(_ pushAction: PushNotificationAction) -> Bool {
+    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
             return false
         }
-        let push = pushAction.pushNotification
         logger?.debug("On push action event. push: \(push))")
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
@@ -148,7 +147,7 @@ class iOSPushEventListener: NSObject, PushEventListener, UNUserNotificationCente
 
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
 
-        if pushAction.didClickOnPush {
+        if didClickOnPush {
             pushClickHandler.pushClicked(parsedPush)
         }
 
