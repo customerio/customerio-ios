@@ -21,9 +21,6 @@ class MessagingInAppTest: UnitTest {
         sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
 
         diGraph.override(value: hooksMock, forType: HooksManager.self)
-
-        // Sets default shared instance, which injects the DI graph
-//        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
     }
 
     override func tearDown() {
