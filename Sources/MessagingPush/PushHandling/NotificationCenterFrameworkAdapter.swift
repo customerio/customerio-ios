@@ -35,7 +35,7 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.notification.didClickOnPush)
+        let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.didClickOnPush)
 
         if wasClickEventHandled {
             // call the completion handler so the customer does not need to.
