@@ -79,7 +79,8 @@ actor EventStorageManager: EventStorage {
                 logger.error("Warning: Could not decode event at \(url). Error: \(error)")
             }
         }
-        return events
+        // Sort events based on their timestamp.
+        return events.sorted(by: { $0.timestamp < $1.timestamp })
     }
 
     // Removes a specific event file
