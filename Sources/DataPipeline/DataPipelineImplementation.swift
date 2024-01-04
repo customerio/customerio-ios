@@ -42,7 +42,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
-        // subscribe to journey events
+        // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
     }
 
