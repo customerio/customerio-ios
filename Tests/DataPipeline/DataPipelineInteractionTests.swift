@@ -73,25 +73,27 @@ class DataPipelineInteractionTests: UnitTest {
 
         let traits = identifyEvent?.traits?.dictionaryValue
         XCTAssertEqual(traits?.count, 2)
-        XCTAssertEqual(traits?["email"] as? String, (givenBody["email"] as! String))
+        XCTAssertEqual(traits?["first_name"] as? String, (givenBody["first_name"] as! String))
         XCTAssertEqual(traits?["age"] as? Int, (givenBody["age"] as! Int))
     }
 
-    func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectDeleteDeviceToken() {
+    // MARK: device token
+
+    func test_identify_givenPreviouslyIdentifiedProfile_expectDeleteDeviceToken() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = String.random
         let givenDeviceToken = String.random
+
+        configureDeviceInfo()
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted.count, 1)
-        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted, [givenDeviceToken])
+        let events = outputReader.events
+        let deletedEvents = events.filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(deletedEvents[0].getDeviceToken(), givenDeviceToken)
     }
 
     func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
@@ -454,12 +456,22 @@ class DataPipelineInteractionTests: UnitTest {
 }
 
 extension DataPipelineInteractionTests {
-    private func createMetaDataTask(forType type: QueueTaskType) -> QueueTaskMetadata {
-        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let encoder = JSONEncoder()
-        let givenData = try? encoder.encode(givenTask)
-        let givenCreatedTask = queueStorage.create(type: type.rawValue, data: givenData ?? Data(), groupStart: nil, blockingGroups: nil)
-            .createdTask!
-        return givenCreatedTask
+    private func configureDeviceInfo() {
+        deviceInfoMock.underlyingSdkVersion = "3.0.0"
+        deviceInfoMock.underlyingCustomerAppVersion = "1.2.3"
+        deviceInfoMock.underlyingDeviceLocale = String.random
+        deviceInfoMock.underlyingDeviceManufacturer = String.random
+        deviceInfoMock.isPushSubscribedClosure = { onComplete in
+            onComplete(true)
+        }
+    }
+}
+
+private extension RawEvent {
+    func getDeviceToken() -> String? {
+        if let context = context?.dictionaryValue {
+            return context[keyPath: "device.token"] as? String
+        }
+        return nil
     }
 }
