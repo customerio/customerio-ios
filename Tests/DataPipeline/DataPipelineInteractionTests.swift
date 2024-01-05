@@ -297,18 +297,21 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: registerDeviceToken
 
-    func test_registerDeviceToken_givenNoCustomerIdentified_expectNoAddingToQueue_expectStoreDeviceToken() {
+    func test_registerDeviceToken_givenNoProfileIdentified_expectNoDeviceEvent() {
         let givenDeviceToken = String.random
-        profileStoreMock.identifier = nil
 
+        configureDeviceInfo()
+        outputReader.resetPlugin()
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
     func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectToken() {
         let givenDeviceToken = String.random
+
+        configureDeviceInfo()
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(customerIO.registeredDeviceToken, givenDeviceToken)
