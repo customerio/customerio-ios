@@ -34,6 +34,19 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
     }
 
+    // MARK: initialize given an existing identifier
+
+    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
+        let givenProfileIdentifiedInSdk = String.random
+
+        profileStoreMock.identifier = givenProfileIdentifiedInSdk
+
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
+//        FIXME: [CDP] Fetch from Journey and update the test case
+//        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
+//        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
+    }
+
     // MARK: profile hooks
 
     func test_givenProfileIdentified_expectSetupWithInApp() {
@@ -73,6 +86,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
+        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
+        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+             success: true,
+             queueStatus: QueueStatus.successAddingSingleTask
+         ) */
         // Message opened
         XCTAssertFalse(eventListenerMock.messageShownCalled)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -111,6 +129,11 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_eventListeners_expectCallListenerForEachEvent() {
         let givenGistMessage = Message.random
 
+        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
+        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+             success: true,
+             queueStatus: QueueStatus.successAddingSingleTask
+         ) */
         // Message opened
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 0)
         messagingInApp.messageShown(message: givenGistMessage)
@@ -146,7 +169,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenCurrentRoute = String.random
         let givenAction = "gist://close"
         let givenName = String.random
-
+        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
+        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+             success: true,
+             queueStatus: QueueStatus.successAddingSingleTask
+         ) */
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
 
         messagingInApp.action(
@@ -160,6 +187,10 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, expectedInAppMessage)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
+
+        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
+        // make sure there is no click tracking for "close" action
+        // XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskCallsCount, 0)
     }
 
     func test_dismissMessage_givenNoInAppMessage_expectNoError() {
