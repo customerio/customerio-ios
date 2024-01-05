@@ -12,6 +12,11 @@ struct RingBuffer<T> {
     // Flag to indicate if the buffer is full.
     private var isFull: Bool = false
 
+    // Public read-only accessor for isFull
+    public func isBufferFull() -> Bool {
+        isFull
+    }
+
     /// Initializes the ring buffer with a specified capacity.
     /// - Parameter capacity: The maximum number of elements the buffer can hold.
     init(capacity: Int) {
@@ -20,7 +25,7 @@ struct RingBuffer<T> {
     }
 
     /// Adds an element to the end of the buffer.
-    /// If the buffer is full, it overwrites the oldest element.
+    /// If the buffer is full, it removes the oldest element.
     /// - Parameter element: The element to be added.
     mutating func enqueue(_ element: T) {
         array[tail] = element
