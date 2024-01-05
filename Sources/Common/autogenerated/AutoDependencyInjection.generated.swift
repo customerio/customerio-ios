@@ -62,9 +62,6 @@ extension DIGraph {
         _ = globalDataStore
         countDependenciesResolved += 1
 
-        _ = hooksManager
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -164,30 +161,6 @@ extension DIGraph {
         CioGlobalDataStore(keyValueStorage: keyValueStorage)
     }
 
-    // HooksManager (singleton)
-    public var hooksManager: HooksManager {
-        getOverriddenInstance() ??
-            sharedHooksManager
-    }
-
-    public var sharedHooksManager: HooksManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_HooksManager_singleton_access").sync {
-            if let overridenDep: HooksManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: HooksManager.self)] as? HooksManager
-            let instance = existingSingletonInstance ?? _get_hooksManager()
-            self.singletons[String(describing: HooksManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_hooksManager() -> HooksManager {
-        CioHooksManager()
-    }
-
     // ProfileStore
     public var profileStore: ProfileStore {
         getOverriddenInstance() ??
@@ -259,7 +232,7 @@ extension DIGraph {
     }
 
     private var newQueueRunner: QueueRunner {
-        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, hooksManager: hooksManager, sdkConfig: sdkConfig)
+        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
     }
 
     // SimpleTimer
@@ -528,7 +501,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        EventBusHandler(eventBus: eventBus, eventStorage: eventStorage, logger: logger)
+        EventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
 
     // EventStorage (singleton)
