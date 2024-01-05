@@ -29,6 +29,14 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         super.init(moduleName: Self.moduleName)
     }
 
+    #if DEBUG
+    /// Updates the implementation instance. To be used for testing purposes only.
+    static func setupSharedTestInstance(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) {
+        shared.setImplementationInstance(implementation: implementation)
+        moduleConfig = config
+    }
+    #endif
+
     /**
      Initializes the shared `instance` of `DataPipeline`.
      This function is automatically called when the SDK initialization is called, which should ideally be done on app launch,
