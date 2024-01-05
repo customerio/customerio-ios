@@ -120,6 +120,11 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
+        if userId.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
+            return
+        }
+
         let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
