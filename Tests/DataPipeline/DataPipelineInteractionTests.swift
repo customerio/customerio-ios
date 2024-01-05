@@ -191,7 +191,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertTrue(event is TrackEvent)
         XCTAssertEqual(event?.type, "track")
         XCTAssertEqual(event?.userId, givenIdentifier)
-        
+
         let properties = (event as? TrackEvent)?.properties?.dictionaryValue
         XCTAssertEqual(properties?.count, 2)
         XCTAssertEqual(properties?["first_name"] as? String, (givenData["first_name"] as! String))
