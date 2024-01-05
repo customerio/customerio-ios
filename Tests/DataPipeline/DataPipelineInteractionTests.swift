@@ -125,46 +125,36 @@ class DataPipelineInteractionTests: UnitTest {
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
-        profileStoreMock.identifier = nil
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(analytics.userId)
     }
 
-    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
         let givenPreviouslyIdentifiedProfile = String.random
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
 
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
-
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
-        XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
+        let events = outputReader.events
+        let createdEvents = events.filterDeviceCreated()
+        XCTAssertEqual(createdEvents.count, 0)
+        let deletedEvents = events.filterDeviceDeleted()
+        XCTAssertEqual(deletedEvents.count, 0)
+        XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
     }
 
     // MARK: clearIdentify
 
-    func test_clearIdentify_givenNoPreviouslyIdentifiedCustomer_expectDoNotRunHooks_expectStorageSetNil() {
-        profileStoreMock.identifier = nil
-
-        customerIO.clearIdentify()
-
-        XCTAssertNil(profileStoreMock.identifier)
-    }
-
-    func test_clearIdentify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectStorageSetNil() {
+    func test_clearIdentify_givenPreviouslyIdentifiedProfile_expectUserSetNil() {
         let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
+        customerIO.identify(identifier: givenIdentifier)
 
         customerIO.clearIdentify()
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(analytics.userId)
     }
 
     func test_clearIdentify_expectAbleToGetIdentifierFromStorageInHooks() {
@@ -187,32 +177,25 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: track
 
-    func test_track_givenNoProfileIdentified_expectIgnoreRequest() {
-        profileStoreMock.identifier = nil
-
-        customerIO.track(name: String.random)
-
-        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
-    }
-
     func test_track_expectAddTaskToQueue_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
-        let givenData = ["first_name": "Dana"]
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
+        customerIO.identify(identifier: givenIdentifier)
 
+        outputReader.events.removeAll()
         customerIO.track(name: String.random, data: givenData)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
-
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
-
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
+        let events = outputReader.events
+        let event = outputReader.lastEvent
+        XCTAssertEqual(events.count, 1)
+        XCTAssertTrue(event is TrackEvent)
+        XCTAssertEqual(event?.type, "track")
+        XCTAssertEqual(event?.userId, givenIdentifier)
+        
+        let properties = (event as? TrackEvent)?.properties?.dictionaryValue
+        XCTAssertEqual(properties?.count, 2)
+        XCTAssertEqual(properties?["first_name"] as? String, (givenData["first_name"] as! String))
+        XCTAssertEqual(properties?["age"] as? Int, (givenData["age"] as! Int))
     }
 
     // Tests bug found in: https://github.com/customerio/customerio-ios/issues/134#issuecomment-1028090193
