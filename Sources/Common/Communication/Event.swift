@@ -77,26 +77,6 @@ public enum EventTypesRegistry {
     }
 }
 
-/// Generates a unique storage identifier for an event.
-/// The identifier combines a high-resolution timestamp with a UUID.
-///
-/// The timestamp component ensures a chronological element in the ID,
-/// which is useful for ordering, while the UUID component guarantees
-/// uniqueness to avoid collisions in a high-throughput scenario.
-///
-/// - Parameter date: The date object used to generate the timestamp part of the ID.
-/// - Returns: A unique string that combines the timestamp and a UUID.
-public func getStorageID(date: Date) -> String {
-    // Convert the date to a Unix timestamp in milliseconds.
-    let timestampPart = String(date.timeIntervalSince1970 * 1000)
-
-    // Generate a UUID string.
-    let uuidPart = UUID().uuidString
-
-    // Concatenate the timestamp and UUID to form the storage ID.
-    return timestampPart + "-" + uuidPart
-}
-
 // MARK: - Event Structs
 
 // Each event struct should have properties relevant to its specific use case.
@@ -108,8 +88,8 @@ public struct ProfileIdentifiedEvent: EventRepresentable {
     public let identifier: String
     public let timestamp: Date
 
-    public init(storageId: String? = nil, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.identifier = identifier
         self.timestamp = timestamp
         self.params = params
@@ -122,8 +102,8 @@ public struct ScreenViewedEvent: EventRepresentable {
     public let name: String
     public let timestamp: Date
 
-    public init(storageId: String? = nil, name: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, name: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.name = name
         self.timestamp = timestamp
         self.params = params
@@ -135,8 +115,8 @@ public struct ResetEvent: EventRepresentable {
     public let params: [String: String]
     public let timestamp: Date
 
-    public init(storageId: String? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.timestamp = timestamp
         self.params = params
     }
@@ -150,8 +130,8 @@ public struct TrackMetricEvent: EventRepresentable {
     public let deviceToken: String
     public let timestamp: Date
 
-    public init(storageId: String? = nil, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
@@ -167,8 +147,8 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     public let event: String
     public let timestamp: Date
 
-    public init(storageId: String? = nil, deliveryID: String, event: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, deliveryID: String, event: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
@@ -182,8 +162,8 @@ public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let token: String
     public let timestamp: Date
 
-    public init(storageId: String? = nil, token: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, token: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.token = token
         self.timestamp = timestamp
         self.params = params
@@ -195,8 +175,8 @@ public struct DeleteDeviceTokenEvent: EventRepresentable {
     public let params: [String: String]
     public let timestamp: Date
 
-    public init(storageId: String? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    public init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.timestamp = timestamp
         self.params = params
     }
@@ -208,8 +188,8 @@ public struct NewSubscriptionEvent: EventRepresentable {
     public let subscribedEventType: String
     public let timestamp: Date
 
-    init<E: EventRepresentable>(storageId: String? = nil, subscribedEventType: E.Type, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId ?? getStorageID(date: timestamp)
+    init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
         self.subscribedEventType = E.key
         self.timestamp = timestamp
         self.params = params
