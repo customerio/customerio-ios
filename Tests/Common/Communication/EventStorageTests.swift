@@ -142,7 +142,17 @@ class EventStorageTest: UnitTest {
 
     func test_eventOrdering_givenSequentiallyStoredEvents_expectEventsRetrievedInStoredOrder() async throws {
         // Store events in a specific order
-        let events = (1 ... 5).map { ProfileIdentifiedEvent(identifier: "Event\($0)") }
+        var events = [ProfileIdentifiedEvent]()
+
+        for i in 1 ... 5 {
+            let event = ProfileIdentifiedEvent(identifier: "Event\(i)")
+            events.append(event)
+            // Adding a delay of 1 second. This is necessary because each event includes a timestamp
+            // created with Date(), which has a precision up to the second. The delay ensures that
+            // each event has a distinct timestamp.
+            try await Task.sleep(nanoseconds: 1000000000)
+        }
+
         for event in events {
             try await eventStorageManager.store(event: event)
         }
