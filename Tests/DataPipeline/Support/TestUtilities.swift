@@ -31,6 +31,11 @@ class OutputReaderPlugin: Plugin {
         print("[CIO]-[OutputReaderPlugin] \(eventSummary)")
         return event
     }
+
+    func resetPlugin() {
+        events.removeAll()
+        lastEvent = nil
+    }
 }
 
 // MARK: - Helper Methods

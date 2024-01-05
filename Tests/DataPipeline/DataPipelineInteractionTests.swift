@@ -94,12 +94,13 @@ class DataPipelineInteractionTests: UnitTest {
         configureDeviceInfo()
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deletedEvents = filterDeviceDeleted(outputReader.events)
-        XCTAssertEqual(deletedEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(deletedEvents[0]), givenDeviceToken)
+        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
+        XCTAssertEqual(deviceDeletedEvents.count, 1)
+        XCTAssertEqual(getDeviceToken(deviceDeletedEvents[0]), givenDeviceToken)
     }
 
     func test_identify_givenProfileReidentified_expectDoNotDeleteDeviceToken() {
@@ -110,32 +111,43 @@ class DataPipelineInteractionTests: UnitTest {
         configureDeviceInfo()
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deletedEvents = filterDeviceDeleted(outputReader.events)
-        XCTAssertEqual(deletedEvents.count, 0)
+        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
+        XCTAssertEqual(deviceDeletedEvents.count, 0)
     }
 
     func test_identify_givenProfileNotIdentified_expectNoDeviceEvents() {
         let givenDeviceToken = String.random
-
         configureDeviceInfo()
-        customerIO.registerDeviceToken(givenDeviceToken)
 
+        customerIO.registerDeviceToken(givenDeviceToken)
         let events = outputReader.events
-        let createdEvents = filterDeviceCreated(events)
-        XCTAssertEqual(createdEvents.count, 0)
-        let deletedEvents = filterDeviceDeleted(events)
-        XCTAssertEqual(deletedEvents.count, 0)
+
+        let deviceCreatedEvents = filterDeviceCreated(events)
+        XCTAssertEqual(deviceCreatedEvents.count, 0)
+
+        let deviceDeletedEvents = filterDeviceDeleted(events)
+        XCTAssertEqual(deviceDeletedEvents.count, 0)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
 
         customerIO.identify(identifier: givenIdentifier)
+        let events = outputReader.events
 
+        let identifyEvents = filterIdentify(events)
+        XCTAssertEqual(identifyEvents.count, 0)
         XCTAssertNil(analytics.userId)
+
+        let deviceCreatedEvents = filterDeviceCreated(events)
+        XCTAssertEqual(deviceCreatedEvents.count, 0)
+
+        let deviceDeletedEvents = filterDeviceDeleted(events)
+        XCTAssertEqual(deviceDeletedEvents.count, 0)
     }
 
     func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectRequestIgnored() {
@@ -143,14 +155,20 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviouslyIdentifiedProfile = String.random
 
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
-        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
+        customerIO.identify(identifier: givenIdentifier)
         let events = outputReader.events
-        let createdEvents = filterDeviceCreated(events)
-        XCTAssertEqual(createdEvents.count, 0)
-        let deletedEvents = filterDeviceDeleted(events)
-        XCTAssertEqual(deletedEvents.count, 0)
+
+        let identifyEvents = filterIdentify(events)
+        XCTAssertEqual(identifyEvents.count, 0)
         XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
+
+        let deviceCreatedEvents = filterDeviceCreated(events)
+        XCTAssertEqual(deviceCreatedEvents.count, 0)
+
+        let deviceDeletedEvents = filterDeviceDeleted(events)
+        XCTAssertEqual(deviceDeletedEvents.count, 0)
     }
 
     // MARK: clearIdentify
@@ -187,9 +205,10 @@ class DataPipelineInteractionTests: UnitTest {
     func test_track_expectAddTaskToQueue_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
-        customerIO.identify(identifier: givenIdentifier)
 
-        outputReader.events.removeAll()
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
+
         customerIO.track(name: String.random, data: givenData)
 
         let events = outputReader.events
@@ -486,6 +505,10 @@ extension DataPipelineInteractionTests {
             return context[keyPath: "device.token"] as? String
         }
         return nil
+    }
+
+    func filterIdentify(_ events: [RawEvent]) -> [IdentifyEvent] {
+        events.compactMap { $0 as? IdentifyEvent }
     }
 
     func filterDeviceDeleted(_ events: [RawEvent]) -> [RawEvent] {
