@@ -212,13 +212,13 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.track(name: String.random, data: givenData)
 
         let events = outputReader.events
-        let event = outputReader.lastEvent
         XCTAssertEqual(events.count, 1)
+
+        let event = outputReader.lastEvent
         XCTAssertTrue(event is TrackEvent)
-        XCTAssertEqual(event?.type, "track")
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        let properties = (event as? TrackEvent)?.properties?.dictionaryValue
+        let properties = getProperties(event)
         assertDictionariesEqual(givenData, properties) { key, expected, actual in
             switch key {
             case "first_name":
@@ -236,23 +236,21 @@ class DataPipelineInteractionTests: UnitTest {
     // We want instead: `{"data": {}, ...}`
     func test_track_givenDataNil_expectSaveEmptyRequestData() {
         let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         let data: EmptyRequestBody? = nil
         customerIO.track(name: String.random, data: data)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        let events = outputReader.events
+        XCTAssertEqual(events.count, 1)
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+        let event = outputReader.lastEvent
+        XCTAssertTrue(event is TrackEvent)
+        XCTAssertEqual(event?.userId, givenIdentifier)
 
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(#"{"data":{}"#))
-        XCTAssertFalse(actualQueueTaskData!.attributesJsonString.contains("null"))
+        let properties = getProperties(event)
+        XCTAssertNil(properties)
     }
 
     // MARK: screen
@@ -500,11 +498,15 @@ extension DataPipelineInteractionTests {
         }
     }
 
-    func getDeviceToken(_ event: RawEvent) -> String? {
-        if let context = event.context?.dictionaryValue {
+    func getDeviceToken(_ event: RawEvent?) -> String? {
+        if let context = event?.context?.dictionaryValue {
             return context[keyPath: "device.token"] as? String
         }
         return nil
+    }
+
+    func getProperties(_ event: RawEvent?) -> [String: Any]? {
+        (event as? TrackEvent)?.properties?.dictionaryValue
     }
 
     func filterIdentify(_ events: [RawEvent]) -> [IdentifyEvent] {
