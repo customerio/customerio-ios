@@ -209,6 +209,22 @@ public class CustomerIO: CustomerIOInstance {
         identifier: String,
         body: RequestBody
     ) {
+        // This code handles a specific scenario where a user
+        // unexpectedly provides a `nil` value for the RequestBody
+        // parameter, which the method isn't designed to handle directly.
+        // To prevent errors and ensure compatibility, this condition checks
+        // if the `body` is `nil`. If it is, it substitutes it with an
+        // EmptyRequestBody() object before passing it along to the
+        // identify(). This replacement safeguards against possible
+        // issues that could arise(eg. app crash). While the `identify`
+        // method itself provide polymorphic capabilities to handle `nil`,
+        // this specific check within this method offers an additional
+        // layer of protection and clarity for this case.
+        // (refer https://github.com/customerio/customerio-ios/blob/94cbf686c3c2a405534cfe908f7166558a3e0b5d/Sources/Tracking/CustomerIO.swift#L71-L75)
+        if let optionalValue = body as? Any?, optionalValue == nil {
+            implementation?.identify(identifier: identifier, body: EmptyRequestBody())
+            return
+        }
         implementation?.identify(identifier: identifier, body: body)
     }
 

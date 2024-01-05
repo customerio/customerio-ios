@@ -13,7 +13,6 @@ struct RingBuffer<T> {
     private var isFull: Bool = false
 
     // Public read-only accessor for isFull
-    // Added for testing
     public func isBufferFull() -> Bool {
         isFull
     }
@@ -26,7 +25,7 @@ struct RingBuffer<T> {
     }
 
     /// Adds an element to the end of the buffer.
-    /// If the buffer is full, it overwrites the oldest element.
+    /// If the buffer is full, it removes the oldest element.
     /// - Parameter element: The element to be added.
     mutating func enqueue(_ element: T) {
         array[tail] = element
