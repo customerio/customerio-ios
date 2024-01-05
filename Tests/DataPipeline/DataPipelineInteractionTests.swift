@@ -72,9 +72,16 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(analytics.userId, givenIdentifier)
 
         let traits = identifyEvent?.traits?.dictionaryValue
-        XCTAssertEqual(traits?.count, 2)
-        XCTAssertEqual(traits?["first_name"] as? String, (givenBody["first_name"] as! String))
-        XCTAssertEqual(traits?["age"] as? Int, (givenBody["age"] as! Int))
+        assertDictionariesEqual(givenBody, traits) { key, expected, actual in
+            switch key {
+            case "first_name":
+                return (expected as! String) == actual as? String
+            case "age":
+                return (expected as! Int) == actual as? Int
+            default:
+                return false
+            }
+        }
     }
 
     // MARK: device token
@@ -90,9 +97,9 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deletedEvents = outputReader.events.filterDeviceDeleted()
+        let deletedEvents = filterDeviceDeleted(outputReader.events)
         XCTAssertEqual(deletedEvents.count, 1)
-        XCTAssertEqual(deletedEvents[0].getDeviceToken(), givenDeviceToken)
+        XCTAssertEqual(getDeviceToken(deletedEvents[0]), givenDeviceToken)
     }
 
     func test_identify_givenProfileReidentified_expectDoNotDeleteDeviceToken() {
@@ -106,7 +113,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deletedEvents = outputReader.events.filterDeviceDeleted()
+        let deletedEvents = filterDeviceDeleted(outputReader.events)
         XCTAssertEqual(deletedEvents.count, 0)
     }
 
@@ -117,9 +124,9 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.registerDeviceToken(givenDeviceToken)
 
         let events = outputReader.events
-        let createdEvents = events.filterDeviceCreated()
+        let createdEvents = filterDeviceCreated(events)
         XCTAssertEqual(createdEvents.count, 0)
-        let deletedEvents = events.filterDeviceDeleted()
+        let deletedEvents = filterDeviceDeleted(events)
         XCTAssertEqual(deletedEvents.count, 0)
     }
 
@@ -139,9 +146,9 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         let events = outputReader.events
-        let createdEvents = events.filterDeviceCreated()
+        let createdEvents = filterDeviceCreated(events)
         XCTAssertEqual(createdEvents.count, 0)
-        let deletedEvents = events.filterDeviceDeleted()
+        let deletedEvents = filterDeviceDeleted(events)
         XCTAssertEqual(deletedEvents.count, 0)
         XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
     }
@@ -193,9 +200,16 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(event?.userId, givenIdentifier)
 
         let properties = (event as? TrackEvent)?.properties?.dictionaryValue
-        XCTAssertEqual(properties?.count, 2)
-        XCTAssertEqual(properties?["first_name"] as? String, (givenData["first_name"] as! String))
-        XCTAssertEqual(properties?["age"] as? Int, (givenData["age"] as! Int))
+        assertDictionariesEqual(givenData, properties) { key, expected, actual in
+            switch key {
+            case "first_name":
+                return (expected as! String) == actual as? String
+            case "age":
+                return (expected as! Int) == actual as? Int
+            default:
+                return false
+            }
+        }
     }
 
     // Tests bug found in: https://github.com/customerio/customerio-ios/issues/134#issuecomment-1028090193
@@ -450,23 +464,35 @@ extension DataPipelineInteractionTests {
             onComplete(true)
         }
     }
-}
 
-private extension RawEvent {
-    func getDeviceToken() -> String? {
-        if let context = context?.dictionaryValue {
+    func assertDictionariesEqual(_ expected: [String: Any], _ actual: [String: Any]?, isValueEqual: (_ key: String, _ expectedValue: Any?, _ actualValue: Any?) -> Bool) {
+        guard let actual = actual else {
+            XCTFail("actual dictionary is nil")
+            return
+        }
+
+        guard expected.keys == actual.keys else {
+            XCTFail("actual dictionary has different keys from expected value")
+            return
+        }
+
+        for key in expected.keys {
+            XCTAssertTrue(isValueEqual(key, expected[key], actual[key]))
+        }
+    }
+
+    func getDeviceToken(_ event: RawEvent) -> String? {
+        if let context = event.context?.dictionaryValue {
             return context[keyPath: "device.token"] as? String
         }
         return nil
     }
-}
 
-private extension [RawEvent] {
-    func filterDeviceDeleted() -> [RawEvent] {
-        filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
+    func filterDeviceDeleted(_ events: [RawEvent]) -> [RawEvent] {
+        events.filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
     }
 
-    func filterDeviceCreated() -> [RawEvent] {
-        filter { ($0 as? TrackEvent)?.event == "Device Created or Updated" }
+    func filterDeviceCreated(_ events: [RawEvent]) -> [RawEvent] {
+        events.filter { ($0 as? TrackEvent)?.event == "Device Created or Updated" }
     }
 }
