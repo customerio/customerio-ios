@@ -7,8 +7,8 @@ import Foundation
 // sourcery: InjectSingleton
 public class EventBusHandler {
     private let eventBus: EventBus
+    private let eventCache: EventCache
     private let eventStorage: EventStorage
-    private let memoryStorage: MemoryStorage = .init()
     private let logger: Logger
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
@@ -17,20 +17,26 @@ public class EventBusHandler {
     ///   - eventStorage: An instance of EventStorage to manage event persistence.
     ///   - logger: A logger for logging information and errors.
     /// Automatically loads events from file-based storage into in-memory storage upon initialization.
-    public init(eventBus: EventBus, eventStorage: EventStorage, logger: Logger) {
+    public init(
+        eventBus: EventBus,
+        eventCache: EventCache,
+        eventStorage: EventStorage,
+        logger: Logger
+    ) {
         self.eventBus = eventBus
+        self.eventCache = eventCache
         self.eventStorage = eventStorage
         self.logger = logger
         Task { await loadEventsFromStorage() }
     }
 
     /// Loads events from persistent storage into in-memory storage for quick access and event replay.
-    private func loadEventsFromStorage() async {
+    public func loadEventsFromStorage() async {
         for eventType in EventTypesRegistry.allEventTypes() {
             do {
                 let key = eventType.key
                 let events: [AnyEventRepresentable] = try await eventStorage.loadEvents(ofType: key)
-                await memoryStorage.storeEvents(events, forKey: key)
+                await eventCache.storeEvents(events, forKey: key)
             } catch {
                 logger.debug("Error loading events for \(eventType): \(error)")
             }
@@ -68,9 +74,11 @@ public class EventBusHandler {
     /// - Parameter eventType: The event type for which to replay events.
     private func replayEvents<E: EventRepresentable>(forType eventType: E.Type, action: @escaping (AnyEventRepresentable) -> Void) async {
         let key = eventType.key
-        let storedEvents = await memoryStorage.eventsForKey(key)
+        logger.debug("Replaying events for key: \(key)")
+        let storedEvents = await eventCache.getEvent(key)
 
         for event in storedEvents {
+            logger.debug("Found stored events for key: \(key)")
             if let specificEvent = event as? E {
                 logger.debug("EventBusHandler: Replaying event type - \(specificEvent)")
                 action(specificEvent)
@@ -85,7 +93,7 @@ public class EventBusHandler {
         logger.debug("EventBusHandler: Posting event - \(event)")
         Task {
             let hasObservers = await eventBus.post(event)
-            await memoryStorage.appendEvent(event)
+            await eventCache.addEvent(event: event)
             if !hasObservers {
                 logger.debug("EventBusHandler: Storing event in memory - \(event)")
                 await storeEvent(event)
