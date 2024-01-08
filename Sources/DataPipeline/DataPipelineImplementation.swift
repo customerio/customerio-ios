@@ -177,8 +177,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         // Do not delete push token from device storage. The token is valid
         // once given to SDK. We need it for future profile identifications.
 
-        // send delete device event to remove it from current profile
-        analytics.track(name: "Device Deleted")
+        if let _ = registeredDeviceToken {
+            // send delete device event to remove it from current profile only if the token was registered before
+            analytics.track(name: "Device Deleted")
+        }
     }
 
     var deviceAttributes: [String: Any] {
