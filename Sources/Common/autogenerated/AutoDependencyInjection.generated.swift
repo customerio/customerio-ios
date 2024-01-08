@@ -528,7 +528,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        EventBusHandler(eventBus: eventBus, eventStorage: eventStorage, logger: logger)
+        EventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
 
     // EventCache (singleton)
