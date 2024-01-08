@@ -57,8 +57,13 @@ public class Gist: GistDelegate {
     // MARK: Message Actions
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-        if shownMessageQueueIds.contains(message.queueId) {
-            Logger.instance.info(message: "Message \(message.queueId) already shown, skipping.")
+        guard let queueId = message.queueId else {
+            Logger.instance.error(message: "Message does not have a queueId.")
+            return false
+        }
+
+        if shownMessageQueueIds.contains(queueId) {
+            Logger.instance.info(message: "Message \(queueId) already shown, skipping.")
             return false
         }
         
@@ -67,7 +72,7 @@ public class Gist: GistDelegate {
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
-            shownMessageQueueIds.insert(message.queueId)
+            shownMessageQueueIds.insert(queueId)
             return true
         }
         return false
