@@ -384,33 +384,41 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: deleteDeviceToken
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = nil
-        profileStoreMock.identifier = nil
+        customerIO.clearIdentify()
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let events = outputReader.events
+        XCTAssertEqual(events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = nil
-        profileStoreMock.identifier = String.random
+        let givenIdentifier = String.random
+
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let events = outputReader.events
+        XCTAssertEqual(events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
         globalDataStoreMock.pushDeviceToken = String.random
-        profileStoreMock.identifier = nil
+        customerIO.clearIdentify()
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
+        XCTAssertEqual(deviceDeletedEvents.count, 1)
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
