@@ -4,6 +4,7 @@ import UIKit
 public class Gist: GistDelegate {
     private var messageQueueManager = MessageQueueManager()
     private var messageManagers: [MessageManager] = []
+    private var shownMessageQueueIds: Set<String> = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
@@ -56,11 +57,17 @@ public class Gist: GistDelegate {
     // MARK: Message Actions
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
+        if shownMessageQueueIds.contains(message.queueId) {
+            Logger.instance.info(message: "Message \(message.queueId) already shown, skipping.")
+            return false
+        }
+        
         if let messageManager = getModalMessageManager() {
             Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
+            shownMessageQueueIds.insert(message.queueId)
             return true
         }
         return false
