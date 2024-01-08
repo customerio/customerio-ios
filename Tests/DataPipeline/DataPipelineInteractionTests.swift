@@ -422,26 +422,23 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectAddTaskToQueue() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
 
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.deletePushToken.rawValue)
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data
-            .value as? DeletePushNotificationQueueTaskData
+        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
+        let deviceDeletedEvent = getDeviceToken(outputReader.lastEvent)
+        XCTAssertEqual(deviceDeletedEvents.count, 1)
+        XCTAssertEqual(deviceDeletedEvent, givenDeviceToken)
 
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
-
-        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
     // MARK: trackMetric
