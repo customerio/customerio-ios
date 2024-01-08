@@ -5,7 +5,7 @@ import SharedTests
 import UserNotifications
 
 class IntegrationTest: SharedTests.IntegrationTest {
-    public let notificationCenterMock = UserNotificationCenterMock()
+    private let notificationCenterMock = UserNotificationCenterMock()
 
     override func setUp() {
         setUp(shouldInitializeModule: false, modifySdkConfig: nil)
