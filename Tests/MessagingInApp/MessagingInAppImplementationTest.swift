@@ -193,6 +193,34 @@ class MessagingInAppImplementationTest: UnitTest {
         // XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskCallsCount, 0)
     }
 
+    func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() {
+        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
+        /*
+         let givenGistMessage = Message.random
+         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
+         let givenCurrentRoute = String.random
+         let givenAction = String.random
+         let givenName = String.random
+         let givenMetaData = ["action_name": givenName, "action_value": givenAction]
+
+         backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
+             success: true,
+             queueStatus: QueueStatus.successAddingSingleTask
+         )
+
+         messagingInApp.action(
+             message: givenGistMessage,
+             currentRoute: givenCurrentRoute,
+             action: givenAction,
+             name: givenName
+         )
+
+         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.deliveryId, expectedInAppMessage.deliveryId)
+         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.event, .clicked)
+         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.metaData, givenMetaData)
+          */
+    }
+
     func test_dismissMessage_givenNoInAppMessage_expectNoError() {
         // Dismiss in-app message
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
