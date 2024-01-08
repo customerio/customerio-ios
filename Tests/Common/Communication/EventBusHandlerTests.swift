@@ -14,7 +14,7 @@ class EventBusHandlerTest: UnitTest {
     }
 
     private func initializeEventBusHandler() -> EventBusHandler {
-        EventBusHandler(
+        CioEventBusHandler(
             eventBus: mockEventBus,
             eventCache: mockEventCache,
             eventStorage: mockEventStorage,

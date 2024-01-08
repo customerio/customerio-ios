@@ -1,11 +1,19 @@
 import Combine
 import Foundation
 
+public protocol EventBusHandler {
+    func loadEventsFromStorage() async
+    func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void)
+    func removeObserver<E: EventRepresentable>(for eventType: E.Type)
+    func postEvent<E: EventRepresentable>(_ event: E)
+    func removeFromStorage<E: EventRepresentable>(_ event: E) async
+}
+
 /// `EventBusHandler` acts as a central hub for managing events in the application.
 /// It interfaces with both an event bus for real-time event handling and an event storage system for persisting events.
 // sourcery: InjectRegisterShared = "EventBusHandler"
 // sourcery: InjectSingleton
-public class EventBusHandler {
+public class CioEventBusHandler: EventBusHandler {
     private let eventBus: EventBus
     private let eventCache: EventCache
     private let eventStorage: EventStorage
