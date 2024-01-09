@@ -60,6 +60,12 @@ class DataPipelineInteractionTests: UnitTest {
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
         XCTAssertEqual(analytics.traits()?.count, 0)
+
+        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+
+        let identifyEvent = filterIdentify(outputReader.events).first
+        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
+        XCTAssertEqual(identifyEvent?.traits?.dictionaryValue?.count, 0)
     }
 
     func test_identify_expectSetNewProfileWithAttributes() {
@@ -68,20 +74,23 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
-        let identifyEvent: IdentifyEvent? = outputReader.lastEvent as? IdentifyEvent
-        XCTAssertEqual(analytics.userId, givenIdentifier)
-
-        let traits = identifyEvent?.traits?.dictionaryValue
-        assertDictionariesEqual(givenBody, traits) { key in
+        let traitsComparer: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void = { key, expected, actual in
             switch key {
             case "first_name":
-                XCTAssertEqual((givenBody[key] as! String), traits?[key] as? String)
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
             case "age":
-                XCTAssertEqual((givenBody[key] as! Int), traits?[key] as? Int)
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
             default:
                 XCTFail("unexpected key received: '\(key)'")
             }
         }
+
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        assertDictionariesEqual(givenBody, analytics.traits(), compare: traitsComparer)
+
+        let identifyEvent = filterIdentify(outputReader.events).first
+        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
+        assertDictionariesEqual(givenBody, identifyEvent?.traits?.dictionaryValue, compare: traitsComparer)
     }
 
     // MARK: device token
@@ -293,13 +302,12 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertTrue(event is TrackEvent)
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        let properties = getProperties(event)
-        assertDictionariesEqual(givenData, properties) { key in
+        assertDictionariesEqual(givenData, getProperties(event)) { key, expected, actual in
             switch key {
             case "first_name":
-                XCTAssertEqual((givenData[key] as! String), properties?[key] as? String)
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
             case "age":
-                XCTAssertEqual((givenData[key] as! Int), properties?[key] as? Int)
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
             default:
                 XCTFail("unexpected key received: '\(key)'")
             }
@@ -358,13 +366,12 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertTrue(event is ScreenEvent)
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        let properties = getProperties(event)
-        assertDictionariesEqual(givenData, properties) { key in
+        assertDictionariesEqual(givenData, getProperties(event)) { key, expected, actual in
             switch key {
             case "first_name":
-                XCTAssertEqual((givenData[key] as! String), properties?[key] as? String)
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
             case "age":
-                XCTAssertEqual((givenData[key] as! Int), properties?[key] as? Int)
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
             default:
                 XCTFail("unexpected key received: '\(key)'")
             }
@@ -425,13 +432,12 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(getDeviceToken(deviceCreatedEvent), givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        let properties = getProperties(deviceCreatedEvent)
-        assertDictionariesEqual(expectedAttributes, properties) { key in
+        assertDictionariesEqual(expectedAttributes, getProperties(deviceCreatedEvent)) { key, expected, actual in
             switch key {
             case "foo":
-                XCTAssertEqual((expectedAttributes[key] as! String), properties?[key] as? String)
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
             case "last_used":
-//                XCTAssertEqual((expectedAttributes[key] as! Date), properties?[key] as? Date)
+//                XCTAssertEqual((expected[key] as! Date), actual[key] as? Date)
                 break
             default:
                 XCTFail("unexpected key received: '\(key)'")
@@ -557,7 +563,7 @@ extension DataPipelineInteractionTests {
     func assertDictionariesEqual(
         _ expected: [String: Any],
         _ actual: [String: Any]?,
-        compare: (_ key: String) -> Void,
+        compare: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void,
         file: StaticString = #file,
         line: UInt = #line
     ) {
@@ -572,7 +578,7 @@ extension DataPipelineInteractionTests {
         }
 
         for key in expected.keys {
-            compare(key)
+            compare(key, expected, actual)
         }
     }
 
