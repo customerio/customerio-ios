@@ -134,20 +134,74 @@ extension UNUserNotificationCenter {
 // an instance of this class, first.
 //
 // This allows us to write automated tests around our SDK's push handling logic because classes inside of `UserUnotifications` internal and not mockable.
-public struct PushNotification {
-    let pushId: String
-    let deliveryDate: Date
-    let title: String
-    let message: String
-    let data: [AnyHashable: Any]
-    let rawNotification: UNNotification
+public protocol PushNotification {
+    var pushId: String { get }
+    var deliveryDate: Date { get }
+    var title: String { get }
+    var message: String { get }
+    var data: [AnyHashable: Any] { get }
+}
 
-    init(notification: UNNotification) { // Parses a `UserNotification` framework class
-        self.pushId = notification.request.identifier
-        self.deliveryDate = notification.date
-        self.title = notification.request.content.title
-        self.message = notification.request.content.body
-        self.data = notification.request.content.userInfo
-        self.rawNotification = notification
+// Conforms UNNotification to the PushNotification protocol.
+class UNNotificationWrapper: PushNotification {
+    public let notification: UNNotification
+
+    var pushId: String {
+        notification.request.identifier
+    }
+
+    var deliveryDate: Date {
+        notification.date
+    }
+
+    var title: String {
+        notification.request.content.title
+    }
+
+    var message: String {
+        notification.request.content.body
+    }
+
+    var data: [AnyHashable: Any] {
+        notification.request.content.userInfo
+    }
+
+    init(notification: UNNotification) {
+        self.notification = notification
+    }
+}
+
+// Represents `UNUserNotificationCenterDelegate` in the iOS framework, `UserNotifications`.
+// We do this because classes in `UserNotifications` framework is not testable.
+protocol PushEventHandler {
+    // Called when a push notification was acted upon. Either clicked or swiped away.
+    // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`
+    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)
+    // Called when a push is received and the app is in the foreground. iOS asks the host app if the push should be shown, or not.
+    // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)`
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
+}
+
+class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
+    private let delegate: UNUserNotificationCenterDelegate
+
+    init(delegate: UNUserNotificationCenterDelegate) {
+        self.delegate = delegate
+    }
+
+    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void) {
+        guard let unnotification = push as? UNNotificationWrapper else {
+            return
+        }
+
+        delegate.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: unnotification, withCompletionHandler: completionHandler)
+    }
+
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        guard let unnotification = push as? UNNotificationWrapper else {
+            return
+        }
+
+        delegate.userNotificationCenter?(UNUserNotificationCenter.current(), willPresent: unnotification.notification, withCompletionHandler: completionHandler)
     }
 }

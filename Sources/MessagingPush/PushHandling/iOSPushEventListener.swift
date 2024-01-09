@@ -3,16 +3,6 @@ import CioTracking
 import Foundation
 import UserNotifications
 
-protocol PushEventListener: AutoMockable {
-    // Called when a push notification was acted upon. Either clicked or swiped away.
-    //
-    // return true if push was handled by this SDK. Meaning, the push notification was sent by CIO.
-    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool
-    // return nil if the push was not handled by CIO SDK.
-    // return true if should diplay the push in foreground.
-    func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool?
-}
-
 @available(iOSApplicationExtension, unavailable)
 /**
 
@@ -107,8 +97,7 @@ class iOSPushEventListener: PushEventListener {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            // TODO: move proxy call to NotificationCenterFrameworkAdapterImpl since it's what has knowledge about parameters required to call proxy.
-//            notificationCenterDelegateProxy.pushClicked(push, completionHandler: completionHandler)
+            notificationCenterDelegateProxy.pushClicked(push, completionHandler: completionHandler)
 
             return false
         }
