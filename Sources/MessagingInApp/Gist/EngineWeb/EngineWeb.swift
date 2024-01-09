@@ -43,6 +43,7 @@ public class EngineWeb: NSObject {
         webView.isOpaque = false
         webView.backgroundColor = UIColor.clear
         webView.scrollView.backgroundColor = UIColor.clear
+        webView.scrollView.bounces = false
 
         let js = "window.parent.postMessage = function(message) {webkit.messageHandlers.gist.postMessage(message)}"
         let messageHandlerScript = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
