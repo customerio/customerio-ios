@@ -32,7 +32,7 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
         NotificationCenterDelegateProxyImpl.shared
     }
-    
+
     init(pushEventHandler: PushEventHandler, userNotificationCenter: UserNotificationCenter) {
         self.pushEventHandler = pushEventHandler
         self.userNotificationCenter = userNotificationCenter
@@ -58,45 +58,18 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
         guard let newDelegate = newDelegate else {
             return
         }
-        
+
         notificationCenterDelegateProxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: newDelegate))
     }
 
     // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        pushEventHandler.onPushAction(UNNotificationWrapper(notification: response.notification)), completionHandler: completionHandler)
-        
-        // TODO: move this completionhandler logic into pusheventhandler
-        let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.didClickOnPush)
-
-        if wasClickEventHandled {
-            // call the completion handler so the customer does not need to.
-            completionHandler()
-        }
+        pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification), completionHandler: completionHandler)
-        
-        
-        // TODO: move this completionhandler logic into pusheventhandler
-        let response = pushEventListener.shouldDisplayPushAppInForeground(PushNotification(notification: notification))
-        guard let shouldShowPush = response else {
-            // push not handled by CIO SDK. Exit early. Another click handler will call the completion handler.
-
-            return
-        }
-
-        if shouldShowPush {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
-            } else {
-                completionHandler([.badge, .sound])
-            }
-        } else {
-            completionHandler([])
-        }
     }
 
     // Swizzle method convenient when original and swizzled methods both belong to same class.
@@ -154,6 +127,29 @@ public protocol PushNotification {
     var data: [AnyHashable: Any] { get }
 }
 
+// Represents UNNotificationResponse instance.
+public protocol PushNotificationAction {
+    var push: PushNotification { get }
+    var didClickOnPush: Bool { get }
+}
+
+// Conforms UNNotificationResponse to the PushNotification protocol.
+class UNNotificationResponseWrapper: PushNotificationAction {
+    public let response: UNNotificationResponse
+
+    var push: PushNotification {
+        UNNotificationWrapper(notification: response.notification)
+    }
+
+    var didClickOnPush: Bool {
+        response.didClickOnPush
+    }
+
+    init(response: UNNotificationResponse) {
+        self.response = response
+    }
+}
+
 // Conforms UNNotification to the PushNotification protocol.
 class UNNotificationWrapper: PushNotification {
     public let notification: UNNotification
@@ -185,15 +181,17 @@ class UNNotificationWrapper: PushNotification {
 
 // Represents `UNUserNotificationCenterDelegate` in the iOS framework, `UserNotifications`.
 // We do this because classes in `UserNotifications` framework is not testable.
-internal protocol PushEventHandler {
+protocol PushEventHandler {
     // Called when a push notification was acted upon. Either clicked or swiped away.
     // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`
-    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)
     // Called when a push is received and the app is in the foreground. iOS asks the host app if the push should be shown, or not.
     // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)`
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
 }
 
+// Makes `UNUserNotificationCenterDelegate` conform to `PushEventHandler`.
+// This allows our SDK to call UserNotification.UNUserNotificationCenterDelegate instances in production, even though our SDK has abstracted the framework away.
 class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
     private let delegate: UNUserNotificationCenterDelegate
 
@@ -201,12 +199,12 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
         self.delegate = delegate
     }
 
-    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void) {
-        guard let unnotification = push as? UNNotificationWrapper else {
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+        guard let userNotificationsWrapperInstance = pushAction as? UNNotificationResponseWrapper else {
             return
         }
 
-        delegate.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: unnotification, withCompletionHandler: completionHandler)
+        delegate.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: userNotificationsWrapperInstance.response, withCompletionHandler: completionHandler)
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

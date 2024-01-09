@@ -107,7 +107,7 @@ extension DIGraph {
     }
 
     private var newNotificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
-        NotificationCenterFrameworkAdapterImpl(pushEventListener: pushEventListener, userNotificationCenter: userNotificationCenter)
+        NotificationCenterFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter)
     }
 
     // PushClickHandler

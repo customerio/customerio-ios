@@ -28,7 +28,7 @@ import UserNotifications
  - During the native iOS SDK's initialization, the SDK's digraph instance is re-created. All objects (and singletons) in that old digraph instance are deleted from memory.
  - That's bad! If the PushEventListener singleton instance was stored in the digraph, it would be deleted from memory. The OS would no longer be able to send push notification callbacks to the SDK.
  */
-class iOSPushEventListener: PushEventListener {
+class iOSPushEventListener: PushEventHandler {
     // Singleton instance of this class maintained outside of the digraph.
     public static let shared = iOSPushEventListener()
 
@@ -82,18 +82,19 @@ class iOSPushEventListener: PushEventListener {
     // singleton constructor
     private init() {}
 
-    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool {
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
-            return false
+            return
         }
-        logger?.debug("On push action event. push: \(push))")
+        let push = pushAction.push
+        logger?.debug("On push action event. push action: \(pushAction))")
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
             // push has already been handled. exit early
-            return true
+            return
         }
 
         guard let parsedPush = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
@@ -103,24 +104,25 @@ class iOSPushEventListener: PushEventListener {
 
             notificationCenterDelegateProxy.onPushAction(push, completionHandler: completionHandler)
 
-            return false
+            return
         }
 
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
 
-        if didClickOnPush {
+        if pushAction.didClickOnPush {
             pushClickHandler.pushClicked(parsedPush)
         }
 
-        return true
+        // call the completion handler so the customer does not need to.
+        completionHandler()
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool? {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
               let moduleConfig = moduleConfig
         else {
-            return nil
+            return
         }
         logger?.debug("Push event: willPresent. push: \(push)")
 
@@ -128,7 +130,7 @@ class iOSPushEventListener: PushEventListener {
             // push has already been handled. exit early
 
             // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
-            return nil
+            return
         }
 
         guard let _ = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
@@ -138,21 +140,32 @@ class iOSPushEventListener: PushEventListener {
 
             notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
 
-            return nil
+            return
         }
 
         logger?.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
 
-        return moduleConfig.showPushAppInForeground
+        let shouldShowPush = moduleConfig.showPushAppInForeground
+
+        // Call the completionHandler so customer does not need to.
+        if shouldShowPush {
+            if #available(iOS 14.0, *) {
+                completionHandler([.list, .banner, .badge, .sound])
+            } else {
+                completionHandler([.badge, .sound])
+            }
+        } else {
+            completionHandler([])
+        }
     }
 }
 
-// Manually add a getter for the PushEventListener in the digraph.
+// Manually add a getter for the PushEventHandler in the digraph.
 // We must use this manual approach instead of auto generated code because the PushEventListener maintains its own singleton instance outside of the digraph.
 // This getter is allows other classes to use the digraph to get the singleton instance of the PushEventListener, if needed.
 extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
-    var pushEventListener: PushEventListener {
+    var pushEventHandler: PushEventHandler {
         iOSPushEventListener.shared
     }
 }

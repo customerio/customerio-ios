@@ -4,7 +4,7 @@ import UserNotifications
 
 protocol NotificationCenterDelegateProxy: AutoMockable {
     func addPushEventHandler(_ newHandler: PushEventHandler)
-    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
 }
 
@@ -19,7 +19,7 @@ class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
     // Use a map so that we only save 1 instance of a given Delegate.
     private var nestedDelegates: [String: PushEventHandler] = [:]
 
-    func addPushEventHandler(_ newHandler: PushClickHandler) {
+    func addPushEventHandler(_ newHandler: PushEventHandler) {
         // TODO: this line below seems fragile. If we change the class name, this could break.
         // could digraph inject instance of the SDK's intance before setting singleton?
         let doesDelegateBelongToCio = newHandler is iOSPushEventListener
@@ -31,9 +31,9 @@ class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
         nestedDelegates[String(describing: newHandler)] = newHandler
     }
 
-    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void) {
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         nestedDelegates.forEach { _, delegate in
-            delegate.onPushAction(push, completionHandler: completionHandler)
+            delegate.onPushAction(pushAction, completionHandler: completionHandler)
         }
     }
 
