@@ -57,22 +57,12 @@ public class Gist: GistDelegate {
     // MARK: Message Actions
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-        guard let queueId = message.queueId else {
-            Logger.instance.error(message: "Message does not have a queueId.")
-            return false
-        }
 
-        if shownMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message \(queueId) already shown, skipping.")
-            return false
-        }
-        
         if let messageManager = getModalMessageManager() {
             Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
-            shownMessageQueueIds.insert(queueId)
             return true
         }
         return false
@@ -95,6 +85,13 @@ public class Gist: GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
+        let queueId = message.queueId
+        
+        if queueId != nil && shownMessageQueueIds.contains(queueId!) {
+            Logger.instance.info(message: "Message \(queueId!) already shown, skipping.")
+            return
+        }
+
         Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
@@ -102,6 +99,10 @@ public class Gist: GistDelegate {
             Logger.instance.debug(message: "Persistent message shown, skipping logging view")
         }
         delegate?.messageShown(message: message)
+        
+        if queueId != nil {
+            shownMessageQueueIds.insert(queueId!)
+        }
     }
 
     public func messageDismissed(message: Message) {
