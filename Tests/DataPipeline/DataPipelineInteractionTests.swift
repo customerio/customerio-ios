@@ -25,12 +25,6 @@ class DataPipelineInteractionTests: UnitTest {
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
-        // override for both shared and simple graph. Data Pipeline module primarily relies on the shared graph,
-        // while some older classes from tracking still utilize the simple graph.
-        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
-        diGraph.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
         let moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
         let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
