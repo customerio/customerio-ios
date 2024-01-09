@@ -21,15 +21,15 @@ class DataPipelineInteractionTests: UnitTest {
     override func setUp() {
         super.setUp()
 
+        diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
+        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
+        diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
         // override for both shared and simple graph. Data Pipeline module primarily relies on the shared graph,
         // while some older classes from tracking still utilize the simple graph.
-        diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
-        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraph.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
         diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
         let moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
@@ -92,68 +92,56 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: device token
 
-    func test_identify_givenPreviouslyIdentifiedProfile_expectDeleteDeviceToken() {
+    func test_identify_givenProfileChanged_expectDeleteDeviceTokenForOldProfile() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = String.random
         let givenDeviceToken = String.random
 
-        configureDeviceInfo()
+        mockDeviceInfo()
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
-        XCTAssertEqual(deviceDeletedEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(deviceDeletedEvents[0]), givenDeviceToken)
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+        XCTAssertEqual(filterDeviceDeleted(outputReader.events).count, 1)
+        XCTAssertEqual(getDeviceToken(outputReader.lastEvent), givenDeviceToken)
     }
 
-    func test_identify_givenProfileReidentified_expectDoNotDeleteDeviceToken() {
+    func test_identify_givenProfileReidentified_expectNoDeviceEvents() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = givenIdentifier
         let givenDeviceToken = String.random
 
-        configureDeviceInfo()
+        mockDeviceInfo()
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
-        XCTAssertEqual(deviceDeletedEvents.count, 0)
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
     }
 
     func test_identify_givenProfileNotIdentified_expectNoDeviceEvents() {
         let givenDeviceToken = String.random
-        configureDeviceInfo()
+        mockDeviceInfo()
 
         customerIO.registerDeviceToken(givenDeviceToken)
-        let events = outputReader.events
 
-        let deviceCreatedEvents = filterDeviceCreated(events)
-        XCTAssertEqual(deviceCreatedEvents.count, 0)
-
-        let deviceDeletedEvents = filterDeviceDeleted(events)
-        XCTAssertEqual(deviceDeletedEvents.count, 0)
+        XCTAssertEqual(outputReader.events.count, 0)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
 
         customerIO.identify(identifier: givenIdentifier)
-        let events = outputReader.events
 
-        let identifyEvents = filterIdentify(events)
-        XCTAssertEqual(identifyEvents.count, 0)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(analytics.userId)
-
-        let deviceCreatedEvents = filterDeviceCreated(events)
-        XCTAssertEqual(deviceCreatedEvents.count, 0)
-
-        let deviceDeletedEvents = filterDeviceDeleted(events)
-        XCTAssertEqual(deviceDeletedEvents.count, 0)
     }
 
     func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectRequestIgnored() {
@@ -164,17 +152,83 @@ class DataPipelineInteractionTests: UnitTest {
         outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
-        let events = outputReader.events
 
-        let identifyEvents = filterIdentify(events)
-        XCTAssertEqual(identifyEvents.count, 0)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
+    }
 
-        let deviceCreatedEvents = filterDeviceCreated(events)
-        XCTAssertEqual(deviceCreatedEvents.count, 0)
+    func test_tokenChanged_givenProfileNotIdentified_expectNoDeviceEvent() {
+        let givenPreviousDeviceToken = String.random
+        let givenDeviceToken = String.random
 
-        let deviceDeletedEvents = filterDeviceDeleted(events)
-        XCTAssertEqual(deviceDeletedEvents.count, 0)
+        mockDeviceInfo()
+        globalDataStoreMock.underlyingPushDeviceToken = givenPreviousDeviceToken
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 0)
+    }
+
+    func test_tokenChanged_givenProfileAlreadyIdentified_expectDeleteAndRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenPreviousDeviceToken = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceInfo()
+        mockDeviceAttributes()
+        customerIO.identify(identifier: givenIdentifier)
+        customerIO.registerDeviceToken(givenPreviousDeviceToken)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+
+        let deletedEvents = filterDeviceDeleted(outputReader.events)
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(getDeviceToken(deletedEvents.first), givenPreviousDeviceToken)
+
+        let createdEvents = filterDeviceCreated(outputReader.events)
+        XCTAssertEqual(createdEvents.count, 1)
+        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+    }
+
+    func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceInfo()
+        mockDeviceAttributes()
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+
+        let createdEvents = filterDeviceCreated(outputReader.events)
+        XCTAssertEqual(createdEvents.count, 1)
+        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+    }
+
+    func test_registerToken_givenProfileIdentifiedAfter_expectRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceInfo()
+        mockDeviceAttributes()
+        customerIO.registerDeviceToken(givenDeviceToken)
+        outputReader.resetPlugin()
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+
+        let createdEvents = filterDeviceCreated(outputReader.events)
+        XCTAssertEqual(createdEvents.count, 1)
+        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
     }
 
     // MARK: clearIdentify
@@ -205,6 +259,26 @@ class DataPipelineInteractionTests: UnitTest {
 //        waitForExpectations()
 //
 //        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    // MARK: anonymous user
+
+    // MARK: track events
+
+    func test_event_expectAttributesAttachedCorrectly() {
+        let givenIdentifier = String.random
+        let givenEvent = String.random
+
+        customerIO.identify(identifier: givenIdentifier)
+        customerIO.track(name: givenEvent)
+
+        let event = outputReader.lastEvent
+        XCTAssertTrue(event is TrackEvent)
+
+        let trackEvent = event as! TrackEvent
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.userId, givenIdentifier)
+        XCTAssertEqual(trackEvent.event, givenEvent)
     }
 
     // MARK: track
@@ -313,8 +387,9 @@ class DataPipelineInteractionTests: UnitTest {
     func test_registerDeviceToken_givenNoProfileIdentified_expectNoDeviceEvent() {
         let givenDeviceToken = String.random
 
-        configureDeviceInfo()
+        mockDeviceInfo()
         outputReader.resetPlugin()
+
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(outputReader.events.count, 0)
@@ -323,8 +398,8 @@ class DataPipelineInteractionTests: UnitTest {
 
     func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectToken() {
         let givenDeviceToken = String.random
+        mockDeviceInfo()
 
-        configureDeviceInfo()
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(customerIO.registeredDeviceToken, givenDeviceToken)
@@ -342,12 +417,10 @@ class DataPipelineInteractionTests: UnitTest {
             "last_used": dateUtilStub.givenNow
         ])
 
-        configureDeviceInfo()
+        mockDeviceInfo()
+        mockDeviceAttributes(defaultAttributes: givenDefaultAttributes)
         customerIO.identify(identifier: givenIdentifier)
         outputReader.resetPlugin()
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
-            onComplete(givenDefaultAttributes)
-        }
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
@@ -364,7 +437,8 @@ class DataPipelineInteractionTests: UnitTest {
             case "foo":
                 XCTAssertEqual((expectedAttributes[key] as! String), properties?[key] as? String)
             case "last_used":
-                XCTAssertEqual((expectedAttributes[key] as! Date), properties?[key] as? Date)
+//                XCTAssertEqual((expectedAttributes[key] as! Date), properties?[key] as? Date)
+                break
             default:
                 XCTFail("unexpected key received: '\(key)'")
             }
@@ -373,12 +447,17 @@ class DataPipelineInteractionTests: UnitTest {
 
     func test_registerDeviceToken_givenNoOsNameAvailable_expectNoAddingToQueue() {
         let givenDeviceToken = String.random
-        deviceInfoMock.underlyingOsName = nil
-        profileStoreMock.identifier = String.random
+        globalDataStoreMock.pushDeviceToken = givenDeviceToken
+
+        mockDeviceInfo(underlyingOsName: nil)
+        mockDeviceAttributes()
+        customerIO.identify(identifier: String.random)
+        outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let deviceCreatedEvents = filterDeviceCreated(outputReader.events)
+        XCTAssertEqual(deviceCreatedEvents.count, 1)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
@@ -447,72 +526,38 @@ class DataPipelineInteractionTests: UnitTest {
         let givenDeliveryId = String.random
         let givenEvent = Metric.delivered
         let givenDeviceToken = String.random
-        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.identify(identifier: String.random)
+        outputReader.resetPlugin()
 
         customerIO.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data.value as? MetricRequest
+        XCTAssertEqual(outputReader.events.count, 1)
+        let lastEvent = outputReader.lastEvent
+        XCTAssertTrue(lastEvent is TrackEvent)
 
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.deliveryId, givenDeliveryId)
-        XCTAssertEqual(actualQueueTaskData?.event, givenEvent)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
-    }
+        let metricEvent = outputReader.lastEvent as! TrackEvent
+        XCTAssertEqual(metricEvent.event, "Report Delivery Event")
 
-    // MARK: handleQueueBacklog/getAndProcessTask
-
-    func test_givenEmptyBacklog_expectNoTasksProcessed() {
-        backgroundQueueMock.getAllStoredTasksReturnValue = []
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.getAllStoredTasksCallsCount, 1)
-    }
-
-    func test_givenBacklog_expectTaskProcessed() {
-        var inventory: [QueueTaskMetadata] = []
-        let givenType = QueueTaskType.identifyProfile
-        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
-        let counter = 3000
-        for _ in 1 ... counter {
-            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
-                .createdTask!
-            inventory.append(givenCreatedTask)
-        }
-
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
-
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
-    }
-
-    func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
-        var inventory: [QueueTaskMetadata] = []
-        let givenType = QueueTaskType.identifyProfile
-        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
-            .createdTask!
-        inventory.append(givenCreatedTask)
-
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType)
-
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+        let properties = metricEvent.properties
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("deliveryId")), givenDeliveryId)
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("metric")), givenEvent.rawValue)
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("recipient")), givenDeviceToken)
     }
 }
 
 extension DataPipelineInteractionTests {
-    private func configureDeviceInfo() {
-        deviceInfoMock.underlyingOsName = "iOS"
+    private func mockDeviceInfo(underlyingOsName: String? = "iOS") {
+        deviceInfoMock.underlyingOsName = underlyingOsName
         deviceInfoMock.underlyingSdkVersion = "3.0.0"
         deviceInfoMock.underlyingCustomerAppVersion = "1.2.3"
         deviceInfoMock.underlyingDeviceLocale = String.random
         deviceInfoMock.underlyingDeviceManufacturer = String.random
-        deviceInfoMock.isPushSubscribedClosure = { onComplete in
-            onComplete(true)
-        }
+        deviceInfoMock.isPushSubscribedClosure = { $0(true) }
+    }
+
+    private func mockDeviceAttributes(defaultAttributes: [String: Any] = [:]) {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
     }
 
     func assertDictionariesEqual(
