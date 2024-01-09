@@ -1,41 +1,45 @@
+import CioInternalCommon
 import Foundation
 import UserNotifications
+
+protocol NotificationCenterDelegateProxy: AutoMockable {
+    func addPushEventHandler(_ newHandler: PushEventHandler)
+    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
+}
 
 /*
  Because the CIO SDK forces itself to be the app's only push click handler, we want our SDK to still be compatible with other SDKs that also need to handle pushes being clicked.
 
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
-public class NotificationCenterDelegateProxy: NSObject, UNUserNotificationCenterDelegate {
+class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
     public static let shared = NotificationCenterDelegateProxy()
 
     // Use a map so that we only save 1 instance of a given Delegate.
-    private var nestedDelegates: [String: UNUserNotificationCenterDelegate] = [:]
+    private var nestedDelegates: [String: PushEventHandler] = [:]
 
-    func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?) {
-        guard let delegate = newDelegate else {
-            return
-        }
-
-        let doesDelegateBelongToCio = delegate is NotificationCenterDelegateProxy
+    func addPushEventHandler(_ newHandler: PushClickHandler) {
+        // TODO: this line below seems fragile. If we change the class name, this could break.
+        // could digraph inject instance of the SDK's intance before setting singleton?
+        let doesDelegateBelongToCio = newHandler is iOSPushEventListener
 
         guard !doesDelegateBelongToCio else {
             return
         }
 
-        let nestedDelegateKey = String(describing: delegate)
-        nestedDelegates[nestedDelegateKey] = delegate
+        nestedDelegates[String(describing: newHandler)] = newHandler
     }
 
-    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void) {
         nestedDelegates.forEach { _, delegate in
-            delegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
+            delegate.onPushAction(push, completionHandler: completionHandler)
         }
     }
 
-    public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         nestedDelegates.forEach { _, delegate in
-            delegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
+            delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
     }
 }

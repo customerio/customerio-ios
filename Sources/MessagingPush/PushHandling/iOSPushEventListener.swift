@@ -46,6 +46,10 @@ class iOSPushEventListener: PushEventListener {
         overrideJsonAdapter ?? diGraph?.jsonAdapter
     }
 
+    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
+        NotificationCenterDelegateProxyImpl.shared
+    }
+
     private var moduleConfig: MessagingPushConfigOptions? {
         overrideModuleConfig ?? diGraph?.messagingPushConfigOptions
     }
@@ -97,7 +101,7 @@ class iOSPushEventListener: PushEventListener {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            notificationCenterDelegateProxy.pushClicked(push, completionHandler: completionHandler)
+            notificationCenterDelegateProxy.onPushAction(push, completionHandler: completionHandler)
 
             return false
         }
@@ -132,8 +136,7 @@ class iOSPushEventListener: PushEventListener {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            // TODO: move proxy call to NotificationCenterFrameworkAdapterImpl since it's what has knowledge about parameters required to call proxy.
-//             notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
+            notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
 
             return nil
         }

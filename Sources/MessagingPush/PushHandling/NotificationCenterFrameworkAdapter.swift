@@ -26,14 +26,15 @@ protocol NotificationCenterFrameworkAdapter {
  */
 // sourcery: InjectRegister = "NotificationCenterFrameworkAdapter"
 class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, NotificationCenterFrameworkAdapter {
-    private let pushEventListener: PushEventListener
+    private let pushEventHandler: PushEventHandler
     private var userNotificationCenter: UserNotificationCenter
 
-    // Make sure that this proxy is held in-memory while the SDK is in memory.
-    private let notificationCenterDelegateProxy = NotificationCenterDelegateProxy()
-
-    init(pushEventListener: PushEventListener, userNotificationCenter: UserNotificationCenter) {
-        self.pushEventListener = pushEventListener
+    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
+        NotificationCenterDelegateProxyImpl.shared
+    }
+    
+    init(pushEventHandler: PushEventHandler, userNotificationCenter: UserNotificationCenter) {
+        self.pushEventHandler = pushEventHandler
         self.userNotificationCenter = userNotificationCenter
     }
 
@@ -54,12 +55,19 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     }
 
     func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?) {
-        notificationCenterDelegateProxy.newNotificationCenterDelegateSet(newDelegate)
+        guard let newDelegate = newDelegate else {
+            return
+        }
+        
+        notificationCenterDelegateProxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: newDelegate))
     }
 
     // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        pushEventHandler.onPushAction(UNNotificationWrapper(notification: response.notification)), completionHandler: completionHandler)
+        
+        // TODO: move this completionhandler logic into pusheventhandler
         let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.didClickOnPush)
 
         if wasClickEventHandled {
@@ -69,6 +77,10 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification), completionHandler: completionHandler)
+        
+        
+        // TODO: move this completionhandler logic into pusheventhandler
         let response = pushEventListener.shouldDisplayPushAppInForeground(PushNotification(notification: notification))
         guard let shouldShowPush = response else {
             // push not handled by CIO SDK. Exit early. Another click handler will call the completion handler.
@@ -173,7 +185,7 @@ class UNNotificationWrapper: PushNotification {
 
 // Represents `UNUserNotificationCenterDelegate` in the iOS framework, `UserNotifications`.
 // We do this because classes in `UserNotifications` framework is not testable.
-protocol PushEventHandler {
+internal protocol PushEventHandler {
     // Called when a push notification was acted upon. Either clicked or swiped away.
     // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`
     func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)
