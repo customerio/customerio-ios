@@ -1,7 +1,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import UserNotifications
 
 protocol PushEventListener: AutoMockable {
     // Called when a push notification was acted upon. Either clicked or swiped away.
