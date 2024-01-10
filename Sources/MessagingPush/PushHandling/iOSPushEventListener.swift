@@ -1,7 +1,6 @@
 import CioInternalCommon
 import CioTracking
 import Foundation
-import UserNotifications
 
 @available(iOSApplicationExtension, unavailable)
 /**
