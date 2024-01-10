@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -55,23 +56,6 @@ class DeviceAttributesProviderTest: UnitTest {
 
         waitForExpectations()
     }
-
-    func test_getSdkVersionAttribute_givenNotUsingSdkWrapper_expectGetSDKVersion() {
-        setupTest(sdkWrapper: nil)
-        let givenSdkVersion = String.random
-        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
-
-        XCTAssertEqual(provider.getSdkVersionAttribute(), givenSdkVersion)
-    }
-
-    func test_getSdkVersionAttribute_expectSDKWrapperVersionOverridesSDKVersion() {
-        let givenWrapperSdkVersion = String.random
-        let givenSdkVersion = String.random
-        setupTest(sdkWrapper: SdkWrapperConfig(source: .reactNative, version: givenWrapperSdkVersion))
-        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
-
-        XCTAssertEqual(provider.getSdkVersionAttribute(), givenWrapperSdkVersion)
-    }
 }
 
 extension DeviceAttributesProviderTest {
@@ -81,6 +65,6 @@ extension DeviceAttributesProviderTest {
             config._sdkWrapperConfig = sdkWrapper
         })
 
-        provider = SdkDeviceAttributesProvider(sdkConfig: sdkConfig, deviceInfo: deviceInfoMock)
+        provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
     }
 }
