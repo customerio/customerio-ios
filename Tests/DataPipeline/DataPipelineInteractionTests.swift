@@ -246,23 +246,16 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNil(analytics.userId)
     }
 
-    func test_clearIdentify_expectAbleToGetIdentifierFromStorageInHooks() {
-        XCTSkip("Needs to be fixed")
-//        let givenIdentifier = String.random
-//        profileStoreMock.identifier = givenIdentifier
-//        let expect = expectation(description: "Expect to call hook")
-//        profileIdentifyHookMock.beforeProfileStoppedBeingIdentifiedClosure = { actualOldIdentifier in
-//            XCTAssertNotNil(self.profileStoreMock.identifier)
-//            XCTAssertEqual(self.profileStoreMock.identifier, actualOldIdentifier)
-//
-//            expect.fulfill()
-//        }
-//
-//        customerIO.clearIdentify()
-//
-//        waitForExpectations()
-//
-//        XCTAssertNil(profileStoreMock.identifier)
+    func test_clearIdentify_expectEventBusReceivesCorrectEvent() {
+        let givenIdentifier = String.random
+
+        customerIO.identify(identifier: givenIdentifier)
+        eventBusHandlerMock.resetMock()
+
+        customerIO.clearIdentify()
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        XCTAssertTrue(eventBusHandlerMock.postEventArguments is ResetEvent)
     }
 
     // MARK: anonymous user
