@@ -110,7 +110,7 @@ extension UNUserNotificationCenter {
         guard let diGraph = SdkInitializedUtilImpl().postInitializedData?.diGraph else {
             // SDK not initialized yet. We hope that this function never gets called because auto push click handling will not work if this function called.
 
-            // Forward request to the original implementation implementation that we swizzled. So that the app finishes setting UNUserNotificationCenter.delegate.
+            // Forward request to the original implementation that we swizzled. So that the app finishes setting UNUserNotificationCenter.delegate.
             // We have to provide the original delegate object because the SDK has not yet been initialized.
             cio_swizzled_setDelegate(delegate: delegate)
 
