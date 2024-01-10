@@ -14,15 +14,34 @@ protocol NotificationCenterDelegateProxy: AutoMockable {
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
 class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
-    public static let shared = NotificationCenterDelegateProxy()
+    private static var shared: NotificationCenterDelegateProxyImpl?
+
+    static func getInstance(sdkPushEventHandler: PushEventHandler) -> NotificationCenterDelegateProxy {
+        if let existingSingletonInstance = shared {
+            return existingSingletonInstance
+        }
+
+        let newSingletonInstance = NotificationCenterDelegateProxyImpl(sdkPushEventHandler: sdkPushEventHandler)
+
+        shared = newSingletonInstance
+
+        return newSingletonInstance
+    }
+
+    private let sdkPushEventHandler: PushEventHandler
+
+    private init(sdkPushEventHandler: PushEventHandler) {
+        self.sdkPushEventHandler = sdkPushEventHandler
+    }
 
     // Use a map so that we only save 1 instance of a given Delegate.
     private var nestedDelegates: [String: PushEventHandler] = [:]
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
-        // TODO: this line below seems fragile. If we change the class name, this could break.
-        // could digraph inject instance of the SDK's intance before setting singleton?
-        let doesDelegateBelongToCio = newHandler is iOSPushEventListener
+        let nameOfNewDelegate = String(describing: newHandler)
+        let nameOfCioSdkPushEventHandler = String(describing: sdkPushEventHandler)
+
+        let doesDelegateBelongToCio = nameOfNewDelegate == nameOfCioSdkPushEventHandler
 
         guard !doesDelegateBelongToCio else {
             return
@@ -41,5 +60,11 @@ class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
         nestedDelegates.forEach { _, delegate in
             delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
+    }
+}
+
+extension DIGraph {
+    var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
+        NotificationCenterDelegateProxyImpl.getInstance(sdkPushEventHandler: pushEventHandler)
     }
 }

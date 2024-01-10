@@ -36,6 +36,7 @@ class iOSPushEventListener: PushEventHandler {
     private var overrideModuleConfig: MessagingPushConfigOptions?
     private var overridePushClickHandler: PushClickHandler?
     private var overridePushHistory: PushHistory?
+    private var overrideNotificationCenterDelegateProxy: NotificationCenterDelegateProxy?
 
     // Below is a set of getters for all dependencies of this class.
     // Each getter will first check if a test override exists. If so, return that. Otherwise, return an instance from the digraph.
@@ -45,8 +46,8 @@ class iOSPushEventListener: PushEventHandler {
         overrideJsonAdapter ?? diGraph?.jsonAdapter
     }
 
-    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
-        NotificationCenterDelegateProxyImpl.shared
+    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy? {
+        overrideNotificationCenterDelegateProxy ?? diGraph?.notificationCenterDelegateProxy
     }
 
     private var moduleConfig: MessagingPushConfigOptions? {
@@ -71,11 +72,12 @@ class iOSPushEventListener: PushEventHandler {
     }
 
     // Init for testing. Injecting mocks.
-    init(jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory) {
+    init(jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, notificationCenterDelegateProxy: NotificationCenterDelegateProxy) {
         self.overrideJsonAdapter = jsonAdapter
         self.overrideModuleConfig = moduleConfig
         self.overridePushClickHandler = pushClickHandler
         self.overridePushHistory = pushHistory
+        self.overrideNotificationCenterDelegateProxy = notificationCenterDelegateProxy
     }
 
     // singleton constructor
@@ -84,7 +86,8 @@ class iOSPushEventListener: PushEventHandler {
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
-              let jsonAdapter = jsonAdapter
+              let jsonAdapter = jsonAdapter,
+              let notificationCenterDelegateProxy = notificationCenterDelegateProxy
         else {
             return
         }
@@ -101,7 +104,7 @@ class iOSPushEventListener: PushEventHandler {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            notificationCenterDelegateProxy.onPushAction(push, completionHandler: completionHandler)
+            notificationCenterDelegateProxy.onPushAction(pushAction, completionHandler: completionHandler)
 
             return
         }
@@ -119,7 +122,8 @@ class iOSPushEventListener: PushEventHandler {
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
-              let moduleConfig = moduleConfig
+              let moduleConfig = moduleConfig,
+              let notificationCenterDelegateProxy = notificationCenterDelegateProxy
         else {
             return
         }
