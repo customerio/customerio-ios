@@ -58,6 +58,8 @@ extension MessagingPushImplementation {
             return false
         }
 
+        // TODO: this is to try and break lint
+
         logger.info("push was sent from Customer.io. Processing the request...")
 
         if sdkConfig.autoTrackPushEvents {
