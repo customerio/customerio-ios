@@ -1384,6 +1384,11 @@ public class EventStorageMock: EventStorage, Mock {
         storeReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        retrieveCallsCount = 0
+        retrieveReceivedArguments = nil
+        retrieveReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         loadEventsCallsCount = 0
         loadEventsReceivedArguments = nil
         loadEventsReceivedInvocations = []
@@ -1425,6 +1430,41 @@ public class EventStorageMock: EventStorage, Mock {
         storeReceivedArguments = event
         storeReceivedInvocations.append(event)
         try storeClosure?(event)
+    }
+
+    // MARK: - retrieve
+
+    var retrieveThrowableError: Error?
+    /// Number of times the function was called.
+    public private(set) var retrieveCallsCount = 0
+    /// `true` if the function was ever called.
+    public var retrieveCalled: Bool {
+        retrieveCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var retrieveReceivedArguments: (eventType: String, storageId: String)?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var retrieveReceivedInvocations: [(eventType: String, storageId: String)] = []
+    /// Value to return from the mocked function.
+    public var retrieveReturnValue: AnyEventRepresentable?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `retrieveReturnValue`
+     */
+    public var retrieveClosure: ((String, String) throws -> AnyEventRepresentable?)?
+
+    /// Mocked function for `retrieve(eventType: String, storageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func retrieve(eventType: String, storageId: String) throws -> AnyEventRepresentable? {
+        if let error = retrieveThrowableError {
+            throw error
+        }
+        mockCalled = true
+        retrieveCallsCount += 1
+        retrieveReceivedArguments = (eventType: eventType, storageId: storageId)
+        retrieveReceivedInvocations.append((eventType: eventType, storageId: storageId))
+        return try retrieveClosure.map { try $0(eventType, storageId) } ?? retrieveReturnValue
     }
 
     // MARK: - loadEvents

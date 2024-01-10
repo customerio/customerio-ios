@@ -8,6 +8,12 @@ public protocol EventStorage: AutoMockable {
     /// Stores an event asynchronously.
     /// - Parameter event: The event to be stored.
     func store(event: AnyEventRepresentable) async throws
+    /// Retrieves a specific event asynchronously using its type and unique identifier.
+    /// - Parameters:
+    ///   - eventType: The type of the event to retrieve.
+    ///   - identifier: The unique identifier of the event.
+    /// - Returns: The event of the specified type if found otherwise nil
+    func retrieve(eventType: String, storageId: String) async throws -> AnyEventRepresentable?
     /// Loads all events of a specific type asynchronously.
     /// - Parameter type: The type of events to load.
     /// - Returns: An array of events of the specified type.
@@ -60,6 +66,25 @@ actor EventStorageManager: EventStorage {
         let eventFileURL = eventTypeDirectory.appendingPathComponent("\(event.storageId).json")
         let eventData = try jsonAdapter.encoder.encode(event)
         try eventData.write(to: eventFileURL)
+    }
+
+    func retrieve(eventType: String, storageId: String) async throws -> AnyEventRepresentable? {
+        // Construct the file path based on the event type and storageId
+        let fileURL = baseDirectory
+            .appendingPathComponent(eventType)
+            .appendingPathComponent("\(storageId).json")
+
+        // Check if the file exists
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+
+        // Read the data from the file
+        let data = try Data(contentsOf: fileURL)
+        let eventTypeClass = try EventTypesRegistry.getEventType(for: eventType)
+        let event = try jsonAdapter.decoder.decode(eventTypeClass, from: data)
+
+        return event
     }
 
     func loadEvents(ofType eventType: String) throws -> [AnyEventRepresentable] {
