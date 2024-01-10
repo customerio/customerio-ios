@@ -433,7 +433,7 @@ class DataPipelineInteractionTests: UnitTest {
             case "foo":
                 XCTAssertEqual((expected[key] as! String), actual[key] as? String)
             case "last_used":
-                    // analytics SDK wraps date in double quotes
+                // analytics SDK wraps date in double quotes
                 let actualValue = ((actual[key] as? Encodable)?.toString())?.trimmingCharacters(in: CharacterSet.punctuationCharacters)
                 XCTAssertEqual((expected[key] as! Date).iso8601(), actualValue)
             default:
