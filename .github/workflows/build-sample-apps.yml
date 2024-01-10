@@ -1,146 +1,146 @@
-name: Build sample apps 
+# name: Build sample apps 
 
-on: 
-  pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
-  push: 
-    branches: [main]
-  workflow_dispatch: # allow manual run     
+# on: 
+#   pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
+#   push: 
+#     branches: [main]
+#   workflow_dispatch: # allow manual run     
 
-concurrency: # cancel previous workflow run if one exists. 
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# concurrency: # cancel previous workflow run if one exists. 
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
 
-jobs:
-  update-pr-comment:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write # to be able to comment on PR
-    outputs:
-      comment-id: ${{ steps.create-comment.outputs.comment-id }}
-    steps:
-    - name: Find Comment
-      uses: peter-evans/find-comment@v2
-      id: existing-comment
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: <!-- sample app builds --> 
+# jobs:
+#   update-pr-comment:
+#     if: ${{ github.event_name == 'pull_request' }}
+#     runs-on: ubuntu-latest
+#     permissions:
+#       pull-requests: write # to be able to comment on PR
+#     outputs:
+#       comment-id: ${{ steps.create-comment.outputs.comment-id }}
+#     steps:
+#     - name: Find Comment
+#       uses: peter-evans/find-comment@v2
+#       id: existing-comment
+#       with:
+#         issue-number: ${{ github.event.pull_request.number }}
+#         comment-author: 'github-actions[bot]'
+#         body-includes: <!-- sample app builds --> 
     
-    - name: Create or update comment
-      uses: peter-evans/create-or-update-comment@v3
-      id: create-comment
-      with:
-        comment-id: ${{ steps.existing-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          <!-- sample app builds --> 
-          # Sample app builds 📱
+#     - name: Create or update comment
+#       uses: peter-evans/create-or-update-comment@v3
+#       id: create-comment
+#       with:
+#         comment-id: ${{ steps.existing-comment.outputs.comment-id }}
+#         issue-number: ${{ github.event.pull_request.number }}
+#         body: |
+#           <!-- sample app builds --> 
+#           # Sample app builds 📱
           
-          Below you will find the list of the latest versions of the sample apps. It's recommended to always download the latest builds of the sample apps to accurately test the pull request. 
+#           Below you will find the list of the latest versions of the sample apps. It's recommended to always download the latest builds of the sample apps to accurately test the pull request. 
 
-          ---
-          ${{ steps.build.outputs.build-log }}
-        edit-mode: replace # replace the existing comment with new content since we are creating new builds 
+#           ---
+#           ${{ steps.build.outputs.build-log }}
+#         edit-mode: replace # replace the existing comment with new content since we are creating new builds 
 
-  build-sample-apps:
-    if: ${{ always() }} # do not skip running this step if update-pr-comment does not run 
-    needs: [update-pr-comment] # wait for PR comment to be created saying new builds are being made. 
-    permissions:
-      pull-requests: write # comment on pull request with build information 
-    strategy:
-      fail-fast: false # if one sample app fails to build, let the other sample apps continue to build and not cancel them. 
-      matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build!
-        sample-app: 
-        # List all sample apps you want to have compiled. 
-        # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
-        - "CocoaPods-FCM"
-        - "APN-UIKit"
-        include: # Add additional variables to each sample app build: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
-          - sample-app: "APN-UIKit"
-            apn-or-fcm: APN
-          - sample-app: "CocoaPods-FCM"
-            apn-or-fcm: FCM
+#   build-sample-apps:
+#     if: ${{ always() }} # do not skip running this step if update-pr-comment does not run 
+#     needs: [update-pr-comment] # wait for PR comment to be created saying new builds are being made. 
+#     permissions:
+#       pull-requests: write # comment on pull request with build information 
+#     strategy:
+#       fail-fast: false # if one sample app fails to build, let the other sample apps continue to build and not cancel them. 
+#       matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build!
+#         sample-app: 
+#         # List all sample apps you want to have compiled. 
+#         # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
+#         - "CocoaPods-FCM"
+#         - "APN-UIKit"
+#         include: # Add additional variables to each sample app build: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
+#           - sample-app: "APN-UIKit"
+#             apn-or-fcm: APN
+#           - sample-app: "CocoaPods-FCM"
+#             apn-or-fcm: FCM
 
-    runs-on: macos-13
-    name: Building app...${{ matrix.sample-app }}
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-ios
+#     runs-on: macos-13
+#     name: Building app...${{ matrix.sample-app }}
+#     steps:
+#     - uses: actions/checkout@v4
+#     - uses: ./.github/actions/setup-ios
 
-    - name: Install CLI tools used in CI script 
-      run: |
-        brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
-        brew install xcbeautify # used by fastlane for output 
+#     - name: Install CLI tools used in CI script 
+#       run: |
+#         brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
+#         brew install xcbeautify # used by fastlane for output 
     
-    - name: Install tools from Gemfile (ruby language) used for building our apps with 
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true # cache tools to make builds faster in future 
+#     - name: Install tools from Gemfile (ruby language) used for building our apps with 
+#       uses: ruby/setup-ruby@v1
+#       with:
+#         ruby-version: '3.0'
+#         bundler-cache: true # cache tools to make builds faster in future 
     
-    - name: Setup APN build environment to prepare for building
-      if: ${{ matrix.apn-or-fcm == 'APN' }}
-      run: |
-        make setup_sample_app app=${{ matrix.sample-app }}
-        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_APN_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+#     - name: Setup APN build environment to prepare for building
+#       if: ${{ matrix.apn-or-fcm == 'APN' }}
+#       run: |
+#         make setup_sample_app app=${{ matrix.sample-app }}
+#         sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+#         sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_APN_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
-    - name: Setup FCM build environment to prepare for building
-      if: ${{ matrix.apn-or-fcm == 'FCM' }}
-      run: |
-        make setup_sample_app app=${{ matrix.sample-app }}
-        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+#     - name: Setup FCM build environment to prepare for building
+#       if: ${{ matrix.apn-or-fcm == 'FCM' }}
+#       run: |
+#         make setup_sample_app app=${{ matrix.sample-app }}
+#         sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+#         sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
-    - name: Does ${{ matrix.sample-app }} use CocoaPods? 
-      id: check_podfile_exists
-      uses: andstor/file-existence-action@v2
-      with:
-        files: "Apps/${{ matrix.sample-app }}/Podfile"
+#     - name: Does ${{ matrix.sample-app }} use CocoaPods? 
+#       id: check_podfile_exists
+#       uses: andstor/file-existence-action@v2
+#       with:
+#         files: "Apps/${{ matrix.sample-app }}/Podfile"
 
-    - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
-      if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      uses: actions/cache@v3
-      with:
-        path: "Apps/${{ matrix.sample-app }}/Pods"
-        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.sample-app}}-Pods
+#     - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
+#       if: steps.check_podfile_exists.outputs.files_exists == 'true'
+#       uses: actions/cache@v3
+#       with:
+#         path: "Apps/${{ matrix.sample-app }}/Pods"
+#         key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
+#         restore-keys: |
+#           ${{ runner.os }}-${{ matrix.sample-app}}-Pods
 
-    - name: Run pod install if using CocoaPods 
-      if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      run: make install_cocoapods_dependencies app=CocoaPods-FCM
+#     - name: Run pod install if using CocoaPods 
+#       if: steps.check_podfile_exists.outputs.files_exists == 'true'
+#       run: make install_cocoapods_dependencies app=CocoaPods-FCM
 
-    - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
-      run: cat $GITHUB_EVENT_PATH
+#     - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
+#       run: cat $GITHUB_EVENT_PATH
 
-    - name: Build app via Fastlane 
-      uses: maierj/fastlane-action@v3.0.0
-      with:
-        lane: "ios build"
-        subdirectory: "Apps/${{ matrix.sample-app }}"
-      env: 
-        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+#     - name: Build app via Fastlane 
+#       uses: maierj/fastlane-action@v3.0.0
+#       with:
+#         lane: "ios build"
+#         subdirectory: "Apps/${{ matrix.sample-app }}"
+#       env: 
+#         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+#         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
     
-    - name: Update sample builds PR comment with build information 
-      if: ${{ github.event_name == 'pull_request' }}
-      uses: peter-evans/create-or-update-comment@v3
-      with:
-        comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        # the variables APP_BUILD_NUMBER, APP_VERSION_STRING are created when fastlane runs "build". 
-        body: |
-          * ${{ matrix.sample-app }}: `${{ env.APP_VERSION_STRING }} (${{ env.APP_BUILD_NUMBER }})`
-        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
+#     - name: Update sample builds PR comment with build information 
+#       if: ${{ github.event_name == 'pull_request' }}
+#       uses: peter-evans/create-or-update-comment@v3
+#       with:
+#         comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
+#         issue-number: ${{ github.event.pull_request.number }}
+#         # the variables APP_BUILD_NUMBER, APP_VERSION_STRING are created when fastlane runs "build". 
+#         body: |
+#           * ${{ matrix.sample-app }}: `${{ env.APP_VERSION_STRING }} (${{ env.APP_BUILD_NUMBER }})`
+#         edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
 
-    - name: Update sample builds PR comment with build failure message 
-      if: ${{ failure() }}
-      uses: peter-evans/create-or-update-comment@v3
-      with:
-        comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
-        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
+#     - name: Update sample builds PR comment with build failure message 
+#       if: ${{ failure() }}
+#       uses: peter-evans/create-or-update-comment@v3
+#       with:
+#         comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
+#         issue-number: ${{ github.event.pull_request.number }}
+#         body: |
+#           * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
+#         edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 

@@ -5,13 +5,25 @@ on: [pull_request]
 jobs:
   assert-formatted:
     name: Assert that code has been linted and formatted before merging
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install binny to run lint tools 
-        run: |
-          curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-linux-x86_64
-          chmod +x binny 
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # clone https://github.com/customerio/binny repo 
+      - run: git clone https://github.com/customerio/binny.git binny-src
+
+      - run: |
+          deno compile --allow-all binny-src/binny.ts
+          chmod +x binny          
+
+      # - name: Install binny to run lint tools 
+      #   run: |
+      #     curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-linux-x86_64
+      #     chmod +x binny 
       - name: Run swiftformat. Fail if any errors. 
         run: make format && git diff --exit-code
       - name: Run swiftlint. Fail if any errors. 
