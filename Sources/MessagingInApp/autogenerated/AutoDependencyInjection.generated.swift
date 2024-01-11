@@ -57,9 +57,6 @@ extension DIGraph {
         _ = inAppProvider
         countDependenciesResolved += 1
 
-        _ = moduleHookProvider
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
     }
 
@@ -71,16 +68,6 @@ extension DIGraph {
 
     private var newInAppProvider: InAppProvider {
         GistInAppProvider()
-    }
-
-    // ModuleHookProvider
-    var moduleHookProvider: ModuleHookProvider {
-        getOverriddenInstance() ??
-            newModuleHookProvider
-    }
-
-    private var newModuleHookProvider: ModuleHookProvider {
-        MessagingInAppModuleHookProvider()
     }
 }
 

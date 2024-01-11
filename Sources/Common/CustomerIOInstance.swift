@@ -102,9 +102,6 @@ public class CustomerIO: CustomerIOInstance {
     // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
     public var diGraph: DIGraph?
 
-    // strong reference to repository to prevent garbage collection as it runs tasks in async.
-    @Atomic public var cleanupRepository: CleanupRepository?
-
     // private constructor to force use of singleton API
     private init() {}
 
@@ -115,20 +112,15 @@ public class CustomerIO: CustomerIOInstance {
         self.diGraph = diGraph
     }
 
-    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph, module: ModuleHookProvider, cleanupRepositoryImp: CleanupRepository) {
+    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph) {
         shared.implementation = implementation
         shared.diGraph = diGraph
-        shared.postInitialize(diGraph: diGraph, module: module, cleanupRepositoryImp: cleanupRepositoryImp)
+        shared.postInitialize(diGraph: diGraph)
     }
 
-    func postInitialize(diGraph: DIGraph, module: ModuleHookProvider, cleanupRepositoryImp: CleanupRepository) {
-        let hooks = diGraph.hooksManager
-        let threadUtil = diGraph.threadUtil
+    func postInitialize(diGraph: DIGraph) {
         let logger = diGraph.logger
         let siteId = diGraph.sdkConfig.siteId
-
-        // Register Tracking module hooks now that the module is being initialized.
-        hooks.add(key: .tracking, provider: module)
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
@@ -137,21 +129,6 @@ public class CustomerIO: CustomerIOInstance {
             registerDeviceToken(token)
         }
 
-        // Only run async operations 1 time, no matter how many times the SDK initializes.
-        // Exceptions can occur when:
-        // - Instance of CleanupRepository created in thread A. Schedules async operation to occur on background thread.
-        // - New instance of CleanupRepository created by thread B.
-        // - Async operation in background thread begins. Tries to reference repository instance that was created by thread A, where it got scheduled.
-        // - Memory exception thrown because old repository instance from thread A is gone.
-        if cleanupRepository == nil { // Using cleanupRepository instance to determine if this has been run before.
-            cleanupRepository = cleanupRepositoryImp
-
-            // run cleanup in background to prevent locking the UI thread
-            threadUtil.runBackground { [weak self] in
-                // Crash occurs on line below if repository gets re-assigned
-                self?.cleanupRepository?.cleanup()
-            }
-        }
         logger
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
@@ -316,7 +293,7 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: [String: Any]
     ) {
-        guard let logger = diGraph?.logger else {
+        guard (diGraph?.logger) != nil else {
             return
         }
         implementation?.screen(name: name, data: data)

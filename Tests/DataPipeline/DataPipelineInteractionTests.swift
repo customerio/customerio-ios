@@ -4,7 +4,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class CustomerIOImplementationTest: UnitTest {
+class DataPipelineInteractionTests: UnitTest {
     private var implementation: CustomerIOImplementation!
     // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
     // This is a workaround until this code base contains implementation tests. There have been bugs
@@ -13,9 +13,6 @@ class CustomerIOImplementationTest: UnitTest {
 
     private let backgroundQueueMock = QueueMock()
     private let profileStoreMock = ProfileStoreMock()
-    private let hooksMock = HooksManagerMock()
-    private let profileIdentifyHookMock = ProfileIdentifyHookMock()
-    private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let deviceInfoMock = DeviceInfoMock()
     var queueStorage: QueueStorage {
@@ -27,12 +24,10 @@ class CustomerIOImplementationTest: UnitTest {
 
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(value: hooksMock, forType: HooksManager.self)
 //        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
         diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
 
-        hooksMock.underlyingProfileIdentifyHooks = [profileIdentifyHookMock]
         implementation = CustomerIOImplementation(diGraph: diGraph)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
@@ -94,9 +89,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(profileIdentifyHookMock.beforeIdentifiedProfileChangeCallsCount, 1)
-        XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
-
         XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted.count, 1)
         XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted, [givenDeviceToken])
     }
@@ -112,8 +104,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertFalse(hooksMock.mockCalled)
-
         XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
     }
 
@@ -126,9 +116,6 @@ class CustomerIOImplementationTest: UnitTest {
         )
 
         customerIO.identify(identifier: givenIdentifier)
-
-        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
-        XCTAssertEqual(profileIdentifyHookMock.profileIdentifiedCallsCount, 1)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
@@ -137,7 +124,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertFalse(hooksMock.mockCalled)
         XCTAssertNil(profileStoreMock.identifier)
     }
 
@@ -153,7 +139,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertFalse(hooksMock.mockCalled)
         XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
         XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
     }
@@ -165,7 +150,6 @@ class CustomerIOImplementationTest: UnitTest {
 
         customerIO.clearIdentify()
 
-        XCTAssertFalse(hooksMock.mockCalled)
         XCTAssertNil(profileStoreMock.identifier)
     }
 
@@ -174,9 +158,6 @@ class CustomerIOImplementationTest: UnitTest {
         profileStoreMock.identifier = givenIdentifier
 
         customerIO.clearIdentify()
-
-        XCTAssertEqual(hooksMock.profileIdentifyHooksGetCallsCount, 1)
-        XCTAssertEqual(profileIdentifyHookMock.beforeProfileStoppedBeingIdentifiedCallsCount, 1)
 
         XCTAssertNil(profileStoreMock.identifier)
     }
@@ -471,7 +452,7 @@ class CustomerIOImplementationTest: UnitTest {
     }
 }
 
-extension CustomerIOImplementationTest {
+extension DataPipelineInteractionTests {
     private func createMetaDataTask(forType type: QueueTaskType) -> QueueTaskMetadata {
         let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
         let encoder = JSONEncoder()
