@@ -94,8 +94,7 @@ public class Gist: GistDelegate {
         let queueId = message.queueId
 
         // Skip shown messages
-        if queueId != nil &&
-            shownMessageQueueIds.contains(queueId!) {
+        if queueId != nil && shownMessageQueueIds.contains(queueId!) {
             Logger.instance.info(message: "Message \(queueId!) already shown, skipping.")
             return
         }
