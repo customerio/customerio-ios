@@ -77,6 +77,12 @@ public class Gist: GistDelegate {
         if let id = instanceId, let messageManager = messageManager(instanceId: id) {
             messageManager.removePersistentMessage()
             messageManager.dismissMessage(completionHandler: completionHandler)
+            
+            // Mark persistent message shown
+            let queueId = messageManager.currentMessage.queueId
+            if queueId != nil && messageManager.currentMessage.gistProperties.persistent == true {
+                shownMessageQueueIds.insert(queueId!)
+            }
         } else {
             getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
         }
@@ -87,7 +93,9 @@ public class Gist: GistDelegate {
     public func messageShown(message: Message) {
         let queueId = message.queueId
         
-        if queueId != nil && shownMessageQueueIds.contains(queueId!) {
+        // Skip shown messages
+        if queueId != nil &&
+            shownMessageQueueIds.contains(queueId!) {
             Logger.instance.info(message: "Message \(queueId!) already shown, skipping.")
             return
         }
@@ -100,7 +108,8 @@ public class Gist: GistDelegate {
         }
         delegate?.messageShown(message: message)
         
-        if queueId != nil {
+        // Mark message shown, unless it is persistent. Those only get marked upon dismissal
+        if queueId != nil && message.gistProperties.persistent != true {
             shownMessageQueueIds.insert(queueId!)
         }
     }
