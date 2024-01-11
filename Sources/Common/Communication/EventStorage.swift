@@ -104,13 +104,8 @@ actor EventStorageManager: EventStorage {
                 logger.error("Warning: Could not decode event at \(url). Error: \(error)")
             }
         }
-<<<<<<< HEAD
-        // Sort events based on their storageId (which includes a timestamp).
-        return events.sorted(by: { $0.storageId < $1.storageId })
-=======
         // Sort events based on their timestamp.
         return events.sorted(by: { $0.timestamp < $1.timestamp })
->>>>>>> main-replica-for-cdp
     }
 
     // Removes a specific event file

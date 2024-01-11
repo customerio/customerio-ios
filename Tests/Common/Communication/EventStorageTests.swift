@@ -35,27 +35,6 @@ class EventStorageTest: UnitTest {
     }
 
     // MARK: - Event Storage Tests
-<<<<<<< HEAD
-
-    func test_storeEvent_givenValidEvent_expectFileExists() async throws {
-        let event = ProfileIdentifiedEvent(identifier: "testID")
-        try await eventStorageManager.store(event: event)
-
-        let eventFileURL = await eventStorageManager.baseDirectory
-            .appendingPathComponent(ProfileIdentifiedEvent.key)
-            .appendingPathComponent("\(event.storageId).json")
-        let fileExists = FileManager.default.fileExists(atPath: eventFileURL.path)
-        XCTAssertTrue(fileExists, "Event file should exist after storing")
-    }
-
-    func test_storeEvent_givenNewEventType_expectDirectoryCreated() async throws {
-        let event = ResetEvent() // Assume this is a new event type
-        try await eventStorageManager.store(event: event)
-
-        let eventTypeDirectory = await eventStorageManager.baseDirectory.appendingPathComponent(ResetEvent.key)
-        let directoryExists = FileManager.default.fileExists(atPath: eventTypeDirectory.path)
-        XCTAssertTrue(directoryExists, "Event storage should create the directory if it does not exist")
-=======
     func test_storeEvent_givenValidEvent_expectEventPersisted() async throws {
         // Storing the event using the first instance of EventStorageManager
         let event = ProfileIdentifiedEvent(identifier: "testID")
@@ -81,7 +60,6 @@ class EventStorageTest: UnitTest {
            // Assert that the retrieved event matches the stored event
         XCTAssertEqual(retrievedEvent?.name, event.name, "Retrieved event should match the stored event for the new event type")
        }
->>>>>>> main-replica-for-cdp
     }
 
     // MARK: - Event Retrieval Tests
@@ -170,9 +148,6 @@ class EventStorageTest: UnitTest {
 
     func test_eventOrdering_givenSequentiallyStoredEvents_expectEventsRetrievedInStoredOrder() async throws {
         // Store events in a specific order
-<<<<<<< HEAD
-        let events = (1 ... 5).map { ProfileIdentifiedEvent(identifier: "Event\($0)") }
-=======
         var events = [ProfileIdentifiedEvent]()
 
         for i in 1 ... 5 {
@@ -184,7 +159,6 @@ class EventStorageTest: UnitTest {
             try await Task.sleep(nanoseconds: 1000000000)
         }
 
->>>>>>> main-replica-for-cdp
         for event in events {
             try await eventStorageManager.store(event: event)
         }
