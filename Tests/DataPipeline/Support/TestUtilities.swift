@@ -38,6 +38,42 @@ class OutputReaderPlugin: Plugin {
     }
 }
 
+extension OutputReaderPlugin {
+    var trackEvents: [RawEvent] { events.compactMap { $0 as? TrackEvent } }
+
+    var identifyEvents: [IdentifyEvent] { events.compactMap { $0 as? IdentifyEvent } }
+
+    var deviceDeleteEvents: [TrackEvent] {
+        events
+            .compactMap { $0 as? TrackEvent }
+            .filter { $0.event == "Device Deleted" }
+    }
+
+    var deviceUpdateEvents: [TrackEvent] {
+        events
+            .compactMap { $0 as? TrackEvent }
+            .filter { $0.event == "Device Created or Updated" }
+    }
+}
+
+extension RawEvent {
+    var deviceToken: String? {
+        if let context = context?.dictionaryValue {
+            return context[keyPath: "device.token"] as? String
+        }
+        return nil
+    }
+
+    var properties: [String: Any]? {
+        if let event = self as? TrackEvent {
+            return event.properties?.dictionaryValue
+        } else if let event = self as? ScreenEvent {
+            return event.properties?.dictionaryValue
+        }
+        return nil
+    }
+}
+
 // MARK: - Helper Methods
 
 func waitUntilStarted(analytics: Analytics?) {

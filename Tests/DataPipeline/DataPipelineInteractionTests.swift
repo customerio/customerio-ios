@@ -62,9 +62,9 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(analytics.userId, givenIdentifier)
         XCTAssertEqual(analytics.traits()?.count, 0)
 
-        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
 
-        let identifyEvent = filterIdentify(outputReader.events).first
+        let identifyEvent = outputReader.identifyEvents.first
         XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
         XCTAssertEqual(identifyEvent?.traits?.dictionaryValue?.count, 0)
     }
@@ -89,7 +89,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(analytics.userId, givenIdentifier)
         assertDictionariesEqual(givenBody, analytics.traits(), compare: traitsComparer)
 
-        let identifyEvent = filterIdentify(outputReader.events).first
+        let identifyEvent = outputReader.identifyEvents.first
         XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
         assertDictionariesEqual(givenBody, identifyEvent?.traits?.dictionaryValue, compare: traitsComparer)
     }
@@ -108,15 +108,15 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 3)
-        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
 
-        let deletedEvents = filterDeviceDeleted(outputReader.events)
+        let deletedEvents = outputReader.deviceDeleteEvents
         XCTAssertEqual(deletedEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(deletedEvents.first), givenDeviceToken)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenDeviceToken)
 
-        let createdEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(createdEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     func test_identify_givenProfileReidentified_expectNoDeviceEvents() {
@@ -131,7 +131,7 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 1)
-        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
     }
 
     func test_identify_givenProfileNotIdentified_expectNoDeviceEvents() {
@@ -191,13 +191,13 @@ class DataPipelineInteractionTests: UnitTest {
 
         XCTAssertEqual(outputReader.events.count, 2)
 
-        let deletedEvents = filterDeviceDeleted(outputReader.events)
+        let deletedEvents = outputReader.deviceDeleteEvents
         XCTAssertEqual(deletedEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(deletedEvents.first), givenPreviousDeviceToken)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenPreviousDeviceToken)
 
-        let createdEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(createdEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
@@ -212,9 +212,9 @@ class DataPipelineInteractionTests: UnitTest {
 
         XCTAssertEqual(outputReader.events.count, 1)
 
-        let createdEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(createdEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     func test_registerToken_givenProfileIdentifiedAfter_expectRegisterDeviceToken() {
@@ -228,11 +228,11 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.identify(identifier: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 2)
-        XCTAssertEqual(filterIdentify(outputReader.events).count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
 
-        let createdEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(createdEvents.count, 1)
-        XCTAssertEqual(getDeviceToken(createdEvents.first), givenDeviceToken)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     // MARK: clearIdentify
@@ -290,14 +290,13 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.track(name: String.random, data: givenData)
 
-        let events = outputReader.events
-        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(outputReader.events.count, 1)
 
         let event = outputReader.lastEvent
         XCTAssertTrue(event is TrackEvent)
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        assertDictionariesEqual(givenData, getProperties(event)) { key, expected, actual in
+        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
             switch key {
             case "first_name":
                 XCTAssertEqual((expected[key] as! String), actual[key] as? String)
@@ -320,15 +319,13 @@ class DataPipelineInteractionTests: UnitTest {
         let data: EmptyRequestBody? = nil
         customerIO.track(name: String.random, data: data)
 
-        let events = outputReader.events
-        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(outputReader.events.count, 1)
 
         let event = outputReader.lastEvent
         XCTAssertTrue(event is TrackEvent)
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        let properties = getProperties(event)
-        XCTAssertNil(properties)
+        XCTAssertNil(event?.properties)
     }
 
     // MARK: screen
@@ -357,14 +354,13 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.screen(name: givenScreen, data: givenData)
 
-        let events = outputReader.events
-        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(outputReader.events.count, 1)
 
         let event = outputReader.lastEvent
         XCTAssertTrue(event is ScreenEvent)
         XCTAssertEqual(event?.userId, givenIdentifier)
 
-        assertDictionariesEqual(givenData, getProperties(event)) { key, expected, actual in
+        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
             switch key {
             case "first_name":
                 XCTAssertEqual((expected[key] as! String), actual[key] as? String)
@@ -421,14 +417,14 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        let deviceCreatedEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(deviceCreatedEvents.count, 1)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
 
-        let deviceCreatedEvent = outputReader.lastEvent
-        XCTAssertEqual(getDeviceToken(deviceCreatedEvent), givenDeviceToken)
+        let deviceUpdatedEvent = updatedEvents.first
+        XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        assertDictionariesEqual(expectedAttributes, getProperties(deviceCreatedEvent)) { key, expected, actual in
+        assertDictionariesEqual(expectedAttributes, deviceUpdatedEvent?.properties) { key, expected, actual in
             switch key {
             case "foo":
                 XCTAssertEqual((expected[key] as! String), actual[key] as? String)
@@ -452,8 +448,8 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        let deviceCreatedEvents = filterDeviceCreated(outputReader.events)
-        XCTAssertEqual(deviceCreatedEvents.count, 1)
+        let deviceUpdatedEvent = outputReader.deviceUpdateEvents
+        XCTAssertEqual(deviceUpdatedEvent.count, 1)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
@@ -466,8 +462,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.deleteDeviceToken()
 
-        let events = outputReader.events
-        XCTAssertEqual(events.count, 0)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
@@ -480,8 +475,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.deleteDeviceToken()
 
-        let events = outputReader.events
-        XCTAssertEqual(events.count, 0)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
@@ -492,8 +486,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.deleteDeviceToken()
 
-        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
-        XCTAssertEqual(deviceDeletedEvents.count, 1)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
@@ -507,10 +500,11 @@ class DataPipelineInteractionTests: UnitTest {
 
         customerIO.deleteDeviceToken()
 
-        let deviceDeletedEvents = filterDeviceDeleted(outputReader.events)
-        let deviceDeletedEvent = getDeviceToken(outputReader.lastEvent)
+        let deviceDeletedEvents = outputReader.deviceDeleteEvents
         XCTAssertEqual(deviceDeletedEvents.count, 1)
-        XCTAssertEqual(deviceDeletedEvent, givenDeviceToken)
+
+        let deviceDeletedEventToken = deviceDeletedEvents.first?.deviceToken
+        XCTAssertEqual(deviceDeletedEventToken, givenDeviceToken)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
@@ -581,33 +575,5 @@ extension DataPipelineInteractionTests {
         for key in expected.keys {
             compare(key, expected, actual)
         }
-    }
-
-    func getDeviceToken(_ event: RawEvent?) -> String? {
-        if let context = event?.context?.dictionaryValue {
-            return context[keyPath: "device.token"] as? String
-        }
-        return nil
-    }
-
-    func getProperties(_ event: RawEvent?) -> [String: Any]? {
-        if let event = event as? TrackEvent {
-            return event.properties?.dictionaryValue
-        } else if let event = event as? ScreenEvent {
-            return event.properties?.dictionaryValue
-        }
-        return nil
-    }
-
-    func filterIdentify(_ events: [RawEvent]) -> [IdentifyEvent] {
-        events.compactMap { $0 as? IdentifyEvent }
-    }
-
-    func filterDeviceDeleted(_ events: [RawEvent]) -> [RawEvent] {
-        events.filter { ($0 as? TrackEvent)?.event == "Device Deleted" }
-    }
-
-    func filterDeviceCreated(_ events: [RawEvent]) -> [RawEvent] {
-        events.filter { ($0 as? TrackEvent)?.event == "Device Created or Updated" }
     }
 }
