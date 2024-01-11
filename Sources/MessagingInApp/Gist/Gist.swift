@@ -57,7 +57,6 @@ public class Gist: GistDelegate {
     // MARK: Message Actions
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-
         if let messageManager = getModalMessageManager() {
             Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
@@ -80,7 +79,7 @@ public class Gist: GistDelegate {
 
             // Mark persistent message shown
             let queueId = messageManager.currentMessage.queueId
-            if queueId != nil && messageManager.currentMessage.gistProperties.persistent == true {
+            if queueId != nil, messageManager.currentMessage.gistProperties.persistent == true {
                 shownMessageQueueIds.insert(queueId!)
             }
         } else {
@@ -94,7 +93,7 @@ public class Gist: GistDelegate {
         let queueId = message.queueId
 
         // Skip shown messages
-        if queueId != nil && shownMessageQueueIds.contains(queueId!) {
+        if queueId != nil, shownMessageQueueIds.contains(queueId!) {
             Logger.instance.info(message: "Message \(queueId!) already shown, skipping.")
             return
         }
@@ -108,7 +107,7 @@ public class Gist: GistDelegate {
         delegate?.messageShown(message: message)
 
         // Mark message shown, unless it is persistent. Those only get marked upon dismissal
-        if queueId != nil && message.gistProperties.persistent != true {
+        if queueId != nil, message.gistProperties.persistent != true {
             shownMessageQueueIds.insert(queueId!)
         }
     }
