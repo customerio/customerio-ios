@@ -1,5 +1,7 @@
 import CioInternalCommon
 
+/// Mock of the EventBusHandler class, designed to mimic AutoMockable
+/// Once the class is generated using AutoMockable, it should seamlessly replace the current implementation without any issues
 public class EventBusHandlerMock: EventBusHandler, Mock {
     public var mockCalled: Bool = false
 
