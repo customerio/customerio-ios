@@ -14,7 +14,11 @@ class EventBusHandlerTest: UnitTest {
     }
 
     private func initializeEventBusHandler() -> EventBusHandler {
+<<<<<<< HEAD
         CioEventBusHandler(
+=======
+        EventBusHandler(
+>>>>>>> main-replica-for-cdp
             eventBus: mockEventBus,
             eventCache: mockEventCache,
             eventStorage: mockEventStorage,
@@ -165,7 +169,11 @@ class EventBusHandlerTest: UnitTest {
 
         // Register second observer
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { _ in
+<<<<<<< HEAD
             // Second observer action, reply is supposed to happen
+=======
+            // Second observer action, replay is supposed to happen
+>>>>>>> main-replica-for-cdp
             secondObserverReceivedExpectation.fulfill()
         }
 

@@ -35,6 +35,7 @@ class EventStorageTest: UnitTest {
     }
 
     // MARK: - Event Storage Tests
+<<<<<<< HEAD
 
     func test_storeEvent_givenValidEvent_expectFileExists() async throws {
         let event = ProfileIdentifiedEvent(identifier: "testID")
@@ -54,6 +55,33 @@ class EventStorageTest: UnitTest {
         let eventTypeDirectory = await eventStorageManager.baseDirectory.appendingPathComponent(ResetEvent.key)
         let directoryExists = FileManager.default.fileExists(atPath: eventTypeDirectory.path)
         XCTAssertTrue(directoryExists, "Event storage should create the directory if it does not exist")
+=======
+    func test_storeEvent_givenValidEvent_expectEventPersisted() async throws {
+        // Storing the event using the first instance of EventStorageManager
+        let event = ProfileIdentifiedEvent(identifier: "testID")
+        try await eventStorageManager.store(event: event)
+
+        // Creating a new instance of EventStorageManager for retrieving the event
+        let newEventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
+        await newEventStorageManager.updateBaseDirectory(baseDirectory: eventStorageManager.baseDirectory)
+        
+        let retrievedEvent = try await newEventStorageManager.retrieve(eventType: event.key, storageId: event.storageId)
+
+        XCTAssertEqual(retrievedEvent?.storageId, event.storageId, "Retrieved event should match the stored event")
+    }
+
+    func test_storeEvent_givenNewEventType_expectDirectoryCreated() async throws {
+        // Store an event of a new type
+        let event = ScreenViewedEvent(name: String.random ) // Assume this is a new event type
+           try await eventStorageManager.store(event: event)
+
+           // Retrieve the stored event
+        let retrievedEvent = try await eventStorageManager.retrieve(eventType: event.key, storageId: event.storageId) as? ScreenViewedEvent
+
+           // Assert that the retrieved event matches the stored event
+        XCTAssertEqual(retrievedEvent?.name, event.name, "Retrieved event should match the stored event for the new event type")
+       }
+>>>>>>> main-replica-for-cdp
     }
 
     // MARK: - Event Retrieval Tests
@@ -142,7 +170,21 @@ class EventStorageTest: UnitTest {
 
     func test_eventOrdering_givenSequentiallyStoredEvents_expectEventsRetrievedInStoredOrder() async throws {
         // Store events in a specific order
+<<<<<<< HEAD
         let events = (1 ... 5).map { ProfileIdentifiedEvent(identifier: "Event\($0)") }
+=======
+        var events = [ProfileIdentifiedEvent]()
+
+        for i in 1 ... 5 {
+            let event = ProfileIdentifiedEvent(identifier: "Event\(i)")
+            events.append(event)
+            // Adding a delay of 1 second. This is necessary because each event includes a timestamp
+            // created with Date(), which has a precision up to the second. The delay ensures that
+            // each event has a distinct timestamp.
+            try await Task.sleep(nanoseconds: 1000000000)
+        }
+
+>>>>>>> main-replica-for-cdp
         for event in events {
             try await eventStorageManager.store(event: event)
         }
