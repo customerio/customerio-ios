@@ -165,7 +165,7 @@ class EventBusHandlerTest: UnitTest {
 
         // Register second observer
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { _ in
-            // Second observer action, reply is supposed to happen
+            // Second observer action, replay is supposed to happen
             secondObserverReceivedExpectation.fulfill()
         }
 
