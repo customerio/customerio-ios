@@ -35,6 +35,7 @@ class EventStorageTest: UnitTest {
     }
 
     // MARK: - Event Storage Tests
+
     func test_storeEvent_givenValidEvent_expectEventPersisted() async throws {
         // Storing the event using the first instance of EventStorageManager
         let event = ProfileIdentifiedEvent(identifier: "testID")
@@ -43,7 +44,7 @@ class EventStorageTest: UnitTest {
         // Creating a new instance of EventStorageManager for retrieving the event
         let newEventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
         await newEventStorageManager.updateBaseDirectory(baseDirectory: eventStorageManager.baseDirectory)
-        
+
         let retrievedEvent = try await newEventStorageManager.retrieve(eventType: event.key, storageId: event.storageId)
 
         XCTAssertEqual(retrievedEvent?.storageId, event.storageId, "Retrieved event should match the stored event")
@@ -51,15 +52,14 @@ class EventStorageTest: UnitTest {
 
     func test_storeEvent_givenNewEventType_expectDirectoryCreated() async throws {
         // Store an event of a new type
-        let event = ScreenViewedEvent(name: String.random ) // Assume this is a new event type
-           try await eventStorageManager.store(event: event)
+        let event = ScreenViewedEvent(name: String.random) // Assume this is a new event type
+        try await eventStorageManager.store(event: event)
 
-           // Retrieve the stored event
+        // Retrieve the stored event
         let retrievedEvent = try await eventStorageManager.retrieve(eventType: event.key, storageId: event.storageId) as? ScreenViewedEvent
 
-           // Assert that the retrieved event matches the stored event
+        // Assert that the retrieved event matches the stored event
         XCTAssertEqual(retrievedEvent?.name, event.name, "Retrieved event should match the stored event for the new event type")
-       }
     }
 
     // MARK: - Event Retrieval Tests
