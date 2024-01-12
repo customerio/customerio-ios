@@ -56,7 +56,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         }
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
+        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
@@ -70,7 +70,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         inventory.append(givenCreatedTask)
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType)
+        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
