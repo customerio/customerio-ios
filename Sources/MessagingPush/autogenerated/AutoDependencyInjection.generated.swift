@@ -101,11 +101,13 @@ extension DIGraph {
     }
 
     // NotificationCenterFrameworkAdapter
+    @available(iOSApplicationExtension, unavailable)
     var notificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
         getOverriddenInstance() ??
             newNotificationCenterFrameworkAdapter
     }
 
+    @available(iOSApplicationExtension, unavailable)
     private var newNotificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
         NotificationCenterFrameworkAdapterImpl(pushEventListener: pushEventListener)
     }

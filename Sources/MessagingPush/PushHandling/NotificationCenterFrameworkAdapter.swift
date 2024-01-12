@@ -8,6 +8,7 @@ import UserNotifications
  This file is part of that by being the adapter between our SDK and the iOS framework.
  */
 
+@available(iOSApplicationExtension, unavailable)
 protocol NotificationCenterFrameworkAdapter {
     // A strongly typed reference to an instance of UNUserNotificationCenterDelegate that we can provide to iOS in producdtion.
     var delegate: UNUserNotificationCenterDelegate { get }
@@ -21,6 +22,7 @@ protocol NotificationCenterFrameworkAdapter {
  Keep this class simple because it is only able to be tested in QA testing. It's meant to be an adapter, not contain logic.
  */
 // sourcery: InjectRegister = "NotificationCenterFrameworkAdapter"
+@available(iOSApplicationExtension, unavailable)
 class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, NotificationCenterFrameworkAdapter {
     private let pushEventListener: PushEventListener
 
