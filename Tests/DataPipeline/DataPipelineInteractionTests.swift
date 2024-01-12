@@ -134,13 +134,19 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
     }
 
-    func test_identify_givenProfileNotIdentified_expectNoDeviceEvents() {
-        let givenDeviceToken = String.random
-        mockDeviceTokenDependencies(token: givenDeviceToken)
+    func test_identify_givenNoProfilePreviouslyIdentified_expectPostProfileEventToEventBus() {
+        let givenIdentifier = String.random
 
-        customerIO.registerDeviceToken(givenDeviceToken)
+        customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(outputReader.events.count, 0)
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
+        let postEventArgument = eventBusHandlerMock.postEventArguments as? ProfileIdentifiedEvent
+        XCTAssertNotNil(postEventArgument)
+        XCTAssertEqual(postEventArgument?.identifier, givenIdentifier)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
@@ -165,16 +171,25 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
     }
 
-    func test_tokenChanged_givenProfileNotIdentified_expectNoDeviceEvent() {
+    func test_tokenChanged_givenProfileNotIdentified_expectDeleteAndRegisterDeviceToken() {
         let givenPreviousDeviceToken = String.random
         let givenDeviceToken = String.random
 
         mockDeviceTokenDependencies(token: givenPreviousDeviceToken)
+        customerIO.registerDeviceToken(givenPreviousDeviceToken)
         outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertEqual(outputReader.events.count, 0)
+        XCTAssertEqual(outputReader.events.count, 2)
+
+        let deletedEvents = outputReader.deviceDeleteEvents
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenPreviousDeviceToken)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     func test_tokenChanged_givenProfileAlreadyIdentified_expectDeleteAndRegisterDeviceToken() {
@@ -338,6 +353,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(outputReader.events.count, 1)
 
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
         let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
         XCTAssertNotNil(postEventArgument)
         XCTAssertEqual(postEventArgument?.name, givenScreen)
@@ -372,6 +388,7 @@ class DataPipelineInteractionTests: UnitTest {
         }
 
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
         let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
         XCTAssertNotNil(postEventArgument)
         XCTAssertEqual(postEventArgument?.name, givenScreen)
@@ -380,13 +397,17 @@ class DataPipelineInteractionTests: UnitTest {
     // MARK: registerDeviceToken
 
     // TODO: [CDP] Confirm if this is still desired behavior
-    func test_registerDeviceToken_givenNoProfileIdentified_expectNoDeviceEvent() {
+    func test_registerDeviceToken_givenNoProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
         mockDeviceTokenDependencies()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertEqual(outputReader.events.count, 0)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+
+        let deviceUpdatedEvent = updatedEvents.first
+        XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
