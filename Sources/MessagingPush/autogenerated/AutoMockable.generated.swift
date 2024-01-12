@@ -499,45 +499,17 @@ class PushEventListenerMock: PushEventListener, Mock {
         Mocks.shared.add(mock: self)
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    var underlyingDelegate: UNUserNotificationCenterDelegate!
-    /// `true` if the getter or setter of property is called at least once.
-    var delegateCalled: Bool {
-        delegateGetCalled || delegateSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    var delegateGetCalled: Bool {
-        delegateGetCallsCount > 0
-    }
-
-    var delegateGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    var delegateSetCalled: Bool {
-        delegateSetCallsCount > 0
-    }
-
-    var delegateSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    var delegate: UNUserNotificationCenterDelegate {
-        get {
-            mockCalled = true
-            delegateGetCallsCount += 1
-            return underlyingDelegate
-        }
-        set(value) {
-            mockCalled = true
-            delegateSetCallsCount += 1
-            underlyingDelegate = value
-        }
-    }
-
     public func resetMock() {
-        delegateGetCallsCount = 0
-        delegateSetCallsCount = 0
+        onPushActionCallsCount = 0
+        onPushActionReceivedArguments = nil
+        onPushActionReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        shouldDisplayPushAppInForegroundCallsCount = 0
+        shouldDisplayPushAppInForegroundReceivedArguments = nil
+        shouldDisplayPushAppInForegroundReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         newNotificationCenterDelegateSetCallsCount = 0
         newNotificationCenterDelegateSetReceivedArguments = nil
         newNotificationCenterDelegateSetReceivedInvocations = []
@@ -546,6 +518,68 @@ class PushEventListenerMock: PushEventListener, Mock {
         beginListeningCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - onPushAction
+
+    /// Number of times the function was called.
+    private(set) var onPushActionCallsCount = 0
+    /// `true` if the function was ever called.
+    var onPushActionCalled: Bool {
+        onPushActionCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var onPushActionReceivedArguments: (push: PushNotification, didClickOnPush: Bool)?
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var onPushActionReceivedInvocations: [(push: PushNotification, didClickOnPush: Bool)] = []
+    /// Value to return from the mocked function.
+    var onPushActionReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `onPushActionReturnValue`
+     */
+    var onPushActionClosure: ((PushNotification, Bool) -> Bool)?
+
+    /// Mocked function for `onPushAction(_ push: PushNotification, didClickOnPush: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func onPushAction(_ push: PushNotification, didClickOnPush: Bool) -> Bool {
+        mockCalled = true
+        onPushActionCallsCount += 1
+        onPushActionReceivedArguments = (push: push, didClickOnPush: didClickOnPush)
+        onPushActionReceivedInvocations.append((push: push, didClickOnPush: didClickOnPush))
+        return onPushActionClosure.map { $0(push, didClickOnPush) } ?? onPushActionReturnValue
+    }
+
+    // MARK: - shouldDisplayPushAppInForeground
+
+    /// Number of times the function was called.
+    private(set) var shouldDisplayPushAppInForegroundCallsCount = 0
+    /// `true` if the function was ever called.
+    var shouldDisplayPushAppInForegroundCalled: Bool {
+        shouldDisplayPushAppInForegroundCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private(set) var shouldDisplayPushAppInForegroundReceivedArguments: PushNotification?
+    /// Arguments from *all* of the times that the function was called.
+    private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [PushNotification] = []
+    /// Value to return from the mocked function.
+    var shouldDisplayPushAppInForegroundReturnValue: Bool?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `shouldDisplayPushAppInForegroundReturnValue`
+     */
+    var shouldDisplayPushAppInForegroundClosure: ((PushNotification) -> Bool?)?
+
+    /// Mocked function for `shouldDisplayPushAppInForeground(_ push: PushNotification)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func shouldDisplayPushAppInForeground(_ push: PushNotification) -> Bool? {
+        mockCalled = true
+        shouldDisplayPushAppInForegroundCallsCount += 1
+        shouldDisplayPushAppInForegroundReceivedArguments = push
+        shouldDisplayPushAppInForegroundReceivedInvocations.append(push)
+        return shouldDisplayPushAppInForegroundClosure.map { $0(push) } ?? shouldDisplayPushAppInForegroundReturnValue
     }
 
     // MARK: - newNotificationCenterDelegateSet

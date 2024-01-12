@@ -61,6 +61,9 @@ extension DIGraph {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = notificationCenterFrameworkAdapter
+        countDependenciesResolved += 1
+
         _ = pushClickHandler
         countDependenciesResolved += 1
 
@@ -95,6 +98,18 @@ extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // NotificationCenterFrameworkAdapter
+    @available(iOSApplicationExtension, unavailable)
+    var notificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
+        getOverriddenInstance() ??
+            newNotificationCenterFrameworkAdapter
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newNotificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
+        NotificationCenterFrameworkAdapterImpl(pushEventListener: pushEventListener)
     }
 
     // PushClickHandler
