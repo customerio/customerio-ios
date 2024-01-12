@@ -190,9 +190,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes: [String: Any] = defaultDeviceAttributes
-                .mergeWith([
-                    "last_used": self.dateUtil.now
-                ])
                 .mergeWith(customAttributes)
             self.deviceAttributesPlugin.attributes = deviceAttributes
 
@@ -205,7 +202,6 @@ class DataPipelineImplementation: DataPipelineInstance {
                 return
             }
 
-            // TODO: [CDP] Reverify event name before going live
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
     }
