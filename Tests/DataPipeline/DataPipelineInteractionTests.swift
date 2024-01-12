@@ -427,10 +427,10 @@ class DataPipelineInteractionTests: UnitTest {
     func test_registerDeviceToken_givenProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
-        let givenDefaultAttributes: [String: Any] = ["foo": "bar"]
-        let expectedAttributes = givenDefaultAttributes.mergeWith([
-            "last_used": dateUtilStub.givenNow
-        ])
+        let givenDefaultAttributes: [String: Any] = [
+            "cio_sdk_version": "3.0.0",
+            "push_enabled": true
+        ]
 
         mockDeviceTokenDependencies(defaultAttributes: givenDefaultAttributes)
         customerIO.identify(identifier: givenIdentifier)
@@ -445,14 +445,12 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        assertDictionariesEqual(expectedAttributes, deviceUpdatedEvent?.properties) { key, expected, actual in
+        assertDictionariesEqual(givenDefaultAttributes, deviceUpdatedEvent?.properties) { key, expected, actual in
             switch key {
-            case "foo":
+            case "cio_sdk_version":
                 XCTAssertEqual((expected[key] as! String), actual[key] as? String)
-            case "last_used":
-                // analytics SDK wraps date in double quotes
-                let actualValue = ((actual[key] as? Encodable)?.toString())?.trimmingCharacters(in: CharacterSet.punctuationCharacters)
-                XCTAssertEqual((expected[key] as! Date).iso8601(), actualValue)
+            case "push_enabled":
+                XCTAssertEqual((expected[key] as! Bool), actual[key] as? Bool)
             default:
                 XCTFail("unexpected key received: '\(key)'")
             }

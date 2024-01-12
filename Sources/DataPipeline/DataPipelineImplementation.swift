@@ -201,8 +201,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            let deviceAttributes: [String: Any] = defaultDeviceAttributes
-                .mergeWith(customAttributes)
+            let deviceAttributes: [String: Any] = defaultDeviceAttributes.mergeWith(customAttributes)
             self.deviceAttributesPlugin.attributes = deviceAttributes
 
             guard self.deviceAttributesPlugin.token != nil else {
