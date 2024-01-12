@@ -452,6 +452,28 @@ extension DIGraphShared {
         CIODeviceInfo()
     }
 
+    // EventBusHandler (singleton)
+    public var eventBusHandler: EventBusHandler {
+        getOverriddenInstance() ??
+            sharedEventBusHandler
+    }
+
+    public var sharedEventBusHandler: EventBusHandler {
+        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
+            if let overridenDep: EventBusHandler = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: EventBusHandler.self)] as? EventBusHandler
+            let instance = existingSingletonInstance ?? _get_eventBusHandler()
+            self.singletons[String(describing: EventBusHandler.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_eventBusHandler() -> EventBusHandler {
+        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
+    }
+
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
         getOverriddenInstance() ??
@@ -480,28 +502,6 @@ extension DIGraphShared {
 
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
         DeviceMetricsGrabberImpl()
-    }
-
-    // EventBusHandler (singleton)
-    public var eventBusHandler: EventBusHandler {
-        getOverriddenInstance() ??
-            sharedEventBusHandler
-    }
-
-    public var sharedEventBusHandler: EventBusHandler {
-        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
-            if let overridenDep: EventBusHandler = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventBusHandler.self)] as? EventBusHandler
-            let instance = existingSingletonInstance ?? _get_eventBusHandler()
-            self.singletons[String(describing: EventBusHandler.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_eventBusHandler() -> EventBusHandler {
-        EventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
 
     // EventCache (singleton)

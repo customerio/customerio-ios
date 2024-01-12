@@ -1,213 +1,326 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
-@testable import CioTracking
 import Foundation
+@testable import Segment
 import SharedTests
 import XCTest
 
 class DataPipelineInteractionTests: UnitTest {
-    private var implementation: CustomerIOImplementation!
     // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
     // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `CustomerIOImplementation`.
+    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
     private var customerIO: CustomerIO!
+    private var analytics: Analytics!
+    private var outputReader: OutputReaderPlugin!
 
-    private let backgroundQueueMock = QueueMock()
-    private let profileStoreMock = ProfileStoreMock()
-    private let globalDataStoreMock = GlobalDataStoreMock()
+    private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let deviceInfoMock = DeviceInfoMock()
-    var queueStorage: QueueStorage {
-        diGraph.queueStorage
-    }
+    private let eventBusHandlerMock = EventBusHandlerMock()
+    private let globalDataStoreMock = GlobalDataStoreMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-//        diGraph.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
-        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
+        diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
+        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
+        diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
-        implementation = CustomerIOImplementation(diGraph: diGraph)
+        let moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
+        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
+
+        DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
+
+        // setting up analytics for testing
+        analytics = implementation.analytics
+        // OutputReaderPlugin helps validating interactions with analytics
+        outputReader = OutputReaderPlugin()
+        analytics.add(plugin: outputReader)
+        // wait for analytics queue to start emitting events
+        waitUntilStarted(analytics: analytics)
+    }
+
+    override func tearDown() {
+        customerIO.clearIdentify()
+        super.tearDown()
     }
 
     // MARK: identify
 
     // testing `identify()` with request body. Will make an integration test for all `identify()` functions
     // but copy/paste identify unit tests not needed since only 1 function has logic in it.
-    //
-    // NOTE: At this time, the `CustomerIOHttpTest` is that integration test. After refactoring the code
-    // to make the DI graph work as intended and the http request runner is in the graph we can make
-    // integration tests with a mocked request runner.
 
-    func test_identify_expectSetNewProfileInDeviceStorage() {
+    func test_identify_expectSetNewProfileWithoutAttributes() {
         let givenIdentifier = String.random
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(analytics.userId)
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(profileStoreMock.identifier, givenIdentifier)
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        XCTAssertEqual(analytics.traits()?.count, 0)
+
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+
+        let identifyEvent = outputReader.identifyEvents.first
+        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
+        XCTAssertEqual(identifyEvent?.traits?.dictionaryValue?.count, 0)
     }
 
-    func test_identify_expectAddTaskBackgroundQueue() {
+    func test_identify_expectSetNewProfileWithAttributes() {
         let givenIdentifier = String.random
-        let givenBody = ["first_name": "Dana"]
-
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.identifyProfile.rawValue)
+        let traitsComparer: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void = { key, expected, actual in
+            switch key {
+            case "first_name":
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
+            case "age":
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
+            default:
+                XCTFail("unexpected key received: '\(key)'")
+            }
+        }
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data
-            .value as? IdentifyProfileQueueTaskData
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        assertDictionariesEqual(givenBody, analytics.traits(), compare: traitsComparer)
 
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, jsonAdapter.toJsonString(givenBody))
+        let identifyEvent = outputReader.identifyEvents.first
+        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
+        assertDictionariesEqual(givenBody, identifyEvent?.traits?.dictionaryValue, compare: traitsComparer)
     }
 
-    func test_identify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectDeleteDeviceToken() {
+    // MARK: device token
+
+    func test_identify_givenProfileChanged_expectDeleteDeviceTokenForOldProfile() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = String.random
         let givenDeviceToken = String.random
-        globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+
+        mockDeviceTokenDependencies(token: givenDeviceToken)
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted.count, 1)
-        XCTAssertEqual(backgroundQueueMock.deviceTokensDeleted, [givenDeviceToken])
+        XCTAssertEqual(outputReader.events.count, 3)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+
+        let deletedEvents = outputReader.deviceDeleteEvents
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenDeviceToken)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
-    func test_identify_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+    func test_identify_givenProfileReidentified_expectNoDeviceEvents() {
         let givenIdentifier = String.random
         let givenPreviouslyIdentifiedProfile = givenIdentifier
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenDeviceToken = String.random
+
+        mockDeviceTokenDependencies(token: givenDeviceToken)
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
     }
 
-    func test_identify_givenNoProfilePreviouslyIdentified_expectRunHooks() {
+    func test_identify_givenNoProfilePreviouslyIdentified_expectPostProfileEventToEventBus() {
         let givenIdentifier = String.random
-        profileStoreMock.identifier = nil
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
 
         customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
+        let postEventArgument = eventBusHandlerMock.postEventArguments as? ProfileIdentifiedEvent
+        XCTAssertNotNil(postEventArgument)
+        XCTAssertEqual(postEventArgument?.identifier, givenIdentifier)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
-        profileStoreMock.identifier = nil
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertEqual(outputReader.events.count, 0)
+        XCTAssertNil(analytics.userId)
     }
 
-    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectDoNotRunHooks_expectDoNotDeleteDeviceToken() {
+    func test_identify_givenEmptyIdentifier_givenProfileAlreadyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
         let givenPreviouslyIdentifiedProfile = String.random
-        profileStoreMock.identifier = givenPreviouslyIdentifiedProfile
 
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        outputReader.resetPlugin()
 
         customerIO.identify(identifier: givenIdentifier)
 
-        XCTAssertTrue(backgroundQueueMock.deviceTokensDeleted.isEmpty)
-        XCTAssertEqual(profileStoreMock.identifier, givenPreviouslyIdentifiedProfile)
+        XCTAssertEqual(outputReader.events.count, 0)
+        XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
+    }
+
+    func test_tokenChanged_givenProfileNotIdentified_expectDeleteAndRegisterDeviceToken() {
+        let givenPreviousDeviceToken = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceTokenDependencies(token: givenPreviousDeviceToken)
+        customerIO.registerDeviceToken(givenPreviousDeviceToken)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+
+        let deletedEvents = outputReader.deviceDeleteEvents
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenPreviousDeviceToken)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
+    }
+
+    func test_tokenChanged_givenProfileAlreadyIdentified_expectDeleteAndRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenPreviousDeviceToken = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceTokenDependencies()
+        customerIO.identify(identifier: givenIdentifier)
+        customerIO.registerDeviceToken(givenPreviousDeviceToken)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+
+        let deletedEvents = outputReader.deviceDeleteEvents
+        XCTAssertEqual(deletedEvents.count, 1)
+        XCTAssertEqual(deletedEvents.first?.deviceToken, givenPreviousDeviceToken)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
+    }
+
+    func test_registerToken_givenProfileIdentifiedBefore_expectRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceTokenDependencies()
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
+    }
+
+    func test_registerToken_givenProfileIdentifiedAfter_expectRegisterDeviceToken() {
+        let givenIdentifier = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceTokenDependencies()
+        customerIO.registerDeviceToken(givenDeviceToken)
+        outputReader.resetPlugin()
+
+        customerIO.identify(identifier: givenIdentifier)
+
+        XCTAssertEqual(outputReader.events.count, 2)
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+        XCTAssertEqual(updatedEvents.first?.deviceToken, givenDeviceToken)
     }
 
     // MARK: clearIdentify
 
-    func test_clearIdentify_givenNoPreviouslyIdentifiedCustomer_expectDoNotRunHooks_expectStorageSetNil() {
-        profileStoreMock.identifier = nil
+    func test_clearIdentify_givenPreviouslyIdentifiedProfile_expectUserSetNil() {
+        let givenIdentifier = String.random
+        customerIO.identify(identifier: givenIdentifier)
 
         customerIO.clearIdentify()
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(analytics.userId)
     }
 
-    func test_clearIdentify_givenPreviouslyIdentifiedCustomer_expectRunHooks_expectStorageSetNil() {
+    func test_clearIdentify_expectPostResetEventToEventBus() {
         let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
+
+        customerIO.identify(identifier: givenIdentifier)
+        eventBusHandlerMock.resetMock()
 
         customerIO.clearIdentify()
 
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        XCTAssertTrue(eventBusHandlerMock.postEventArguments is ResetEvent)
     }
 
-    func test_clearIdentify_expectAbleToGetIdentifierFromStorageInHooks() {
-        let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
-        let expect = expectation(description: "Expect to call hook")
-        profileIdentifyHookMock.beforeProfileStoppedBeingIdentifiedClosure = { actualOldIdentifier in
-            XCTAssertNotNil(self.profileStoreMock.identifier)
-            XCTAssertEqual(self.profileStoreMock.identifier, actualOldIdentifier)
+    // MARK: anonymous user
 
-            expect.fulfill()
+    // MARK: track events
+
+    func test_event_expectAttributesAttachedCorrectly() {
+        let givenIdentifier = String.random
+        let givenEvent = String.random
+
+        customerIO.identify(identifier: givenIdentifier)
+        customerIO.track(name: givenEvent)
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("Recorded event is not an instance of TrackEvent")
+            return
         }
 
-        customerIO.clearIdentify()
-
-        waitForExpectations()
-
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.userId, givenIdentifier)
+        XCTAssertEqual(trackEvent.event, givenEvent)
     }
 
     // MARK: track
 
-    func test_track_givenNoProfileIdentified_expectIgnoreRequest() {
-        profileStoreMock.identifier = nil
-
-        customerIO.track(name: String.random)
-
-        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
-    }
-
-    func test_track_expectAddTaskToQueue_expectAssociateEventWithCurrentlyIdentifiedProfile() {
+    func test_track_expectCorrectEventDispatched_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
-        let givenData = ["first_name": "Dana"]
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
+
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.track(name: String.random, data: givenData)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertEqual(outputReader.events.count, 1)
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+        let event = outputReader.lastEvent
+        XCTAssertTrue(event is TrackEvent)
+        XCTAssertEqual(event?.userId, givenIdentifier)
 
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
+        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
+            switch key {
+            case "first_name":
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
+            case "age":
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
+            default:
+                XCTFail("unexpected key received: '\(key)'")
+            }
+        }
     }
 
     // Tests bug found in: https://github.com/customerio/customerio-ios/issues/134#issuecomment-1028090193
@@ -215,72 +328,93 @@ class DataPipelineInteractionTests: UnitTest {
     // We want instead: `{"data": {}, ...}`
     func test_track_givenDataNil_expectSaveEmptyRequestData() {
         let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         let data: EmptyRequestBody? = nil
         customerIO.track(name: String.random, data: data)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        XCTAssertEqual(outputReader.events.count, 1)
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+        let event = outputReader.lastEvent
+        XCTAssertTrue(event is TrackEvent)
+        XCTAssertEqual(event?.userId, givenIdentifier)
 
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(#"{"data":{}"#))
-        XCTAssertFalse(actualQueueTaskData!.attributesJsonString.contains("null"))
+        XCTAssertNil(event?.properties)
     }
 
     // MARK: screen
 
-    func test_screen_givenNoProfileIdentified_expectIgnoreRequest_expectDoNotCallHooks() {
-        profileStoreMock.identifier = nil
+    func test_screen_givenNoProfileIdentified_expectDoNotIgnoreRequest_expectPostGivenEventToEventBus() {
+        let givenScreen = String.random
 
-        customerIO.screen(name: String.random)
+        customerIO.screen(name: givenScreen)
 
-        XCTAssertFalse(backgroundQueueMock.addTaskCalled)
-        XCTAssertFalse(hooksMock.mockCalled)
+        XCTAssertEqual(outputReader.events.count, 1)
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
+        let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
+        XCTAssertNotNil(postEventArgument)
+        XCTAssertEqual(postEventArgument?.name, givenScreen)
     }
 
-    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue_expectCallHooks() {
+    func test_screen_expectCorrectEventDispatched_expectCorrectData_expectPostGivenEventToEventBus() {
         let givenIdentifier = String.random
-        let givenData = ["first_name": "Dana"]
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (
-            success: true,
-            queueStatus: QueueStatus.successAddingSingleTask
-        )
+        let givenScreen = String.random
+        let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.screen(name: String.random, data: givenData)
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
+        eventBusHandlerMock.resetMock()
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackEvent.rawValue)
+        customerIO.screen(name: givenScreen, data: givenData)
 
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments?.data.value as? TrackEventQueueTaskData
+        XCTAssertEqual(outputReader.events.count, 1)
 
-        XCTAssertEqual(actualQueueTaskData?.identifier, givenIdentifier)
-        XCTAssertTrue(actualQueueTaskData!.attributesJsonString.contains(jsonAdapter.toJsonString(givenData)!))
-        XCTAssertTrue(hooksMock.screenViewHooksCalled)
-        XCTAssertEqual(hooksMock.screenViewHooksGetCallsCount, 1)
+        let event = outputReader.lastEvent
+        XCTAssertTrue(event is ScreenEvent)
+        XCTAssertEqual(event?.userId, givenIdentifier)
+
+        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
+            switch key {
+            case "first_name":
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
+            case "age":
+                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
+            default:
+                XCTFail("unexpected key received: '\(key)'")
+            }
+        }
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
+        let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
+        XCTAssertNotNil(postEventArgument)
+        XCTAssertEqual(postEventArgument?.name, givenScreen)
     }
 
     // MARK: registerDeviceToken
 
-    func test_registerDeviceToken_givenNoCustomerIdentified_expectNoAddingToQueue_expectStoreDeviceToken() {
+    // TODO: [CDP] Confirm if this is still desired behavior
+    func test_registerDeviceToken_givenNoProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
-        profileStoreMock.identifier = nil
+        mockDeviceTokenDependencies()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
+
+        let deviceUpdatedEvent = updatedEvents.first
+        XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
-    func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectToken() {
+    func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectGivenToken() {
         let givenDeviceToken = String.random
+        mockDeviceTokenDependencies()
+
         customerIO.registerDeviceToken(givenDeviceToken)
 
         XCTAssertEqual(customerIO.registeredDeviceToken, givenDeviceToken)
@@ -290,175 +424,177 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNil(customerIO.registeredDeviceToken)
     }
 
-    func test_registerDeviceToken_givenCustomerIdentified_expectAddTaskToQueue_expectStoreDeviceToken() {
+    func test_registerDeviceToken_givenProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
-        let givenDefaultAttributes = ["foo": "bar"]
-        profileStoreMock.identifier = givenIdentifier
-        deviceInfoMock.underlyingOsName = "iOS"
-        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
-//        deviceAttributesMock.getDefaultDeviceAttributesClosure = { onComplete in
-//            onComplete(givenDefaultAttributes)
-//        }
+        let givenDefaultAttributes: [String: Any] = ["foo": "bar"]
+        let expectedAttributes = givenDefaultAttributes.mergeWith([
+            "last_used": dateUtilStub.givenNow
+        ])
+
+        mockDeviceTokenDependencies(defaultAttributes: givenDefaultAttributes)
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.registerPushToken.rawValue)
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data
-            .value as? RegisterPushNotificationQueueTaskData
+        let updatedEvents = outputReader.deviceUpdateEvents
+        XCTAssertEqual(updatedEvents.count, 1)
 
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
-        let expectedJsonString = jsonAdapter.toJsonString(RegisterDeviceRequest(
-            device:
-            Device(
-                token: givenDeviceToken,
-                platform: "iOS",
-                lastUsed: dateUtilStub
-                    .givenNow,
-                attributes: StringAnyEncodable(logger: log, givenDefaultAttributes)
-            )
-        ))
-        XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)
-
+        let deviceUpdatedEvent = updatedEvents.first
+        XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
+
+        assertDictionariesEqual(expectedAttributes, deviceUpdatedEvent?.properties) { key, expected, actual in
+            switch key {
+            case "foo":
+                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
+            case "last_used":
+                // analytics SDK wraps date in double quotes
+                let actualValue = ((actual[key] as? Encodable)?.toString())?.trimmingCharacters(in: CharacterSet.punctuationCharacters)
+                XCTAssertEqual((expected[key] as! Date).iso8601(), actualValue)
+            default:
+                XCTFail("unexpected key received: '\(key)'")
+            }
+        }
     }
 
-    func test_registerDeviceToken_givenNoOsNameAvailable_expectNoAddingToQueue() {
+    func test_registerDeviceToken_givenNoOsNameAvailable_expectDeviceCreateEvent() {
         let givenDeviceToken = String.random
-        deviceInfoMock.underlyingOsName = nil
-        profileStoreMock.identifier = String.random
+        globalDataStoreMock.pushDeviceToken = givenDeviceToken
+
+        mockDeviceTokenDependencies(underlyingOsName: nil)
+        customerIO.identify(identifier: String.random)
+        outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        let deviceUpdatedEvent = outputReader.deviceUpdateEvents
+        XCTAssertEqual(deviceUpdatedEvent.count, 1)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
     // MARK: deleteDeviceToken
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenNoExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = nil
-        profileStoreMock.identifier = nil
+        customerIO.clearIdentify()
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenNoExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = nil
-        profileStoreMock.identifier = String.random
+        let givenIdentifier = String.random
+
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenNoCustomerIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = String.random
-        profileStoreMock.identifier = nil
+        customerIO.clearIdentify()
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertFalse(backgroundQueueMock.mockCalled)
+        XCTAssertEqual(outputReader.deviceDeleteEvents.count, 1)
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenCustomerIdentified_givenExistingPushToken_expectAddTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectDeleteDeviceEvent() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
 
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
-        profileStoreMock.identifier = givenIdentifier
-        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+        customerIO.identify(identifier: givenIdentifier)
+        outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.deletePushToken.rawValue)
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data
-            .value as? DeletePushNotificationQueueTaskData
+        let deviceDeletedEvents = outputReader.deviceDeleteEvents
+        XCTAssertEqual(deviceDeletedEvents.count, 1)
 
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.profileIdentifier, givenIdentifier)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
+        let deviceDeletedEventToken = deviceDeletedEvents.first?.deviceToken
+        XCTAssertEqual(deviceDeletedEventToken, givenDeviceToken)
 
-        XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
     }
 
     // MARK: trackMetric
 
-    func test_trackMetric_expectAddTaskToQueue() {
+    func test_trackMetric_expectCorrectEventDispatched() {
         let givenDeliveryId = String.random
         let givenEvent = Metric.delivered
         let givenDeviceToken = String.random
-        backgroundQueueMock.addTaskReturnValue = (success: true, queueStatus: QueueStatus.successAddingSingleTask)
+
+        customerIO.identify(identifier: String.random)
+        outputReader.resetPlugin()
 
         customerIO.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
 
-        XCTAssertEqual(backgroundQueueMock.addTaskCallsCount, 1)
-        XCTAssertEqual(backgroundQueueMock.addTaskReceivedArguments?.type, QueueTaskType.trackPushMetric.rawValue)
-        let actualQueueTaskData = backgroundQueueMock.addTaskReceivedArguments!.data.value as? MetricRequest
+        XCTAssertEqual(outputReader.events.count, 1)
 
-        XCTAssertNotNil(actualQueueTaskData)
-        XCTAssertEqual(actualQueueTaskData?.deliveryId, givenDeliveryId)
-        XCTAssertEqual(actualQueueTaskData?.event, givenEvent)
-        XCTAssertEqual(actualQueueTaskData?.deviceToken, givenDeviceToken)
-    }
-
-    // MARK: handleQueueBacklog/getAndProcessTask
-
-    func test_givenEmptyBacklog_expectNoTasksProcessed() {
-        backgroundQueueMock.getAllStoredTasksReturnValue = []
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.getAllStoredTasksCallsCount, 1)
-    }
-
-    func test_givenBacklog_expectTaskProcessed() {
-        var inventory: [QueueTaskMetadata] = []
-        let givenType = QueueTaskType.identifyProfile
-        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
-        let counter = 3000
-        for _ in 1 ... counter {
-            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
-                .createdTask!
-            inventory.append(givenCreatedTask)
+        guard let metricEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("Recorded event is not an instance of TrackEvent")
+            return
         }
+        XCTAssertEqual(metricEvent.event, "Report Delivery Event")
 
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType)
-
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
-    }
-
-    func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
-        var inventory: [QueueTaskMetadata] = []
-        let givenType = QueueTaskType.identifyProfile
-        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
-            .createdTask!
-        inventory.append(givenCreatedTask)
-
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType)
-
-        XCTAssertNotNil(implementation.handleQueueBacklog())
-        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+        let properties = metricEvent.properties
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("deliveryId")), givenDeliveryId)
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("metric")), givenEvent.rawValue)
+        XCTAssertEqual(properties?.value(forKeyPath: KeyPath("recipient")), givenDeviceToken)
     }
 }
 
 extension DataPipelineInteractionTests {
-    private func createMetaDataTask(forType type: QueueTaskType) -> QueueTaskMetadata {
-        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let encoder = JSONEncoder()
-        let givenData = try? encoder.encode(givenTask)
-        let givenCreatedTask = queueStorage.create(type: type.rawValue, data: givenData ?? Data(), groupStart: nil, blockingGroups: nil)
-            .createdTask!
-        return givenCreatedTask
+    private func mockDeviceTokenDependencies(
+        token: String? = nil,
+        underlyingOsName: String? = "iOS",
+        defaultAttributes: [String: Any] = [:]
+    ) {
+        globalDataStoreMock.underlyingPushDeviceToken = token
+
+        deviceInfoMock.underlyingOsName = underlyingOsName
+        deviceInfoMock.underlyingSdkVersion = "3.0.0"
+        deviceInfoMock.underlyingCustomerAppVersion = "1.2.3"
+        deviceInfoMock.underlyingDeviceLocale = String.random
+        deviceInfoMock.underlyingDeviceManufacturer = String.random
+        deviceInfoMock.isPushSubscribedClosure = { $0(true) }
+
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
+    }
+
+    func assertDictionariesEqual(
+        _ expected: [String: Any],
+        _ actual: [String: Any]?,
+        compare: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        guard let actual = actual else {
+            XCTFail("actual dictionary is nil", file: file, line: line)
+            return
+        }
+
+        guard expected.keys == actual.keys else {
+            XCTFail("actual dictionary has different keys from expected value", file: file, line: line)
+            return
+        }
+
+        for key in expected.keys {
+            compare(key, expected, actual)
+        }
     }
 }
