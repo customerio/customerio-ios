@@ -246,7 +246,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNil(analytics.userId)
     }
 
-    func test_clearIdentify_expectEventBusReceivesCorrectEvent() {
+    func test_clearIdentify_expectPostResetEventToEventBus() {
         let givenIdentifier = String.random
 
         customerIO.identify(identifier: givenIdentifier)
@@ -281,7 +281,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: track
 
-    func test_track_expectAddTaskToQueue_expectAssociateEventWithCurrentlyIdentifiedProfile() {
+    func test_track_expectCorrectEventDispatched_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
@@ -330,7 +330,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: screen
 
-    func test_screen_givenNoProfileIdentified_expectDoNotIgnoreRequest_expectCallEventBus() {
+    func test_screen_givenNoProfileIdentified_expectDoNotIgnoreRequest_expectPostGivenEventToEventBus() {
         let givenScreen = String.random
 
         customerIO.screen(name: givenScreen)
@@ -343,7 +343,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(postEventArgument?.name, givenScreen)
     }
 
-    func test_screen_expectAddTaskToQueue_expectCorrectDataAddedToQueue_expectCallHooks() {
+    func test_screen_expectCorrectEventDispatched_expectCorrectData_expectPostGivenEventToEventBus() {
         let givenIdentifier = String.random
         let givenScreen = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
@@ -438,7 +438,7 @@ class DataPipelineInteractionTests: UnitTest {
         }
     }
 
-    func test_registerDeviceToken_givenNoOsNameAvailable_expectNoAddingToQueue() {
+    func test_registerDeviceToken_givenNoOsNameAvailable_expectDeviceCreateEvent() {
         let givenDeviceToken = String.random
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
 
@@ -455,7 +455,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: deleteDeviceToken
 
-    func test_deleteDeviceToken_givenNoProfileIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenNoExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = nil
         customerIO.clearIdentify()
         outputReader.resetPlugin()
@@ -466,7 +466,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenProfileIdentified_givenNoExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenNoExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = nil
         let givenIdentifier = String.random
 
@@ -479,7 +479,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenNoProfileIdentified_givenExistingPushToken_expectNoAddingTaskToQueue() {
+    func test_deleteDeviceToken_givenNoProfileIdentified_givenExistingPushToken_expectNoEventDispatched() {
         globalDataStoreMock.pushDeviceToken = String.random
         customerIO.clearIdentify()
         outputReader.resetPlugin()
@@ -490,7 +490,7 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertNotNil(globalDataStoreMock.pushDeviceToken)
     }
 
-    func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectAddTaskToQueue() {
+    func test_deleteDeviceToken_givenProfileIdentified_givenExistingPushToken_expectDeleteDeviceEvent() {
         let givenDeviceToken = String.random
         let givenIdentifier = String.random
 
@@ -512,7 +512,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     // MARK: trackMetric
 
-    func test_trackMetric_expectAddTaskToQueue() {
+    func test_trackMetric_expectCorrectEventDispatched() {
         let givenDeliveryId = String.random
         let givenEvent = Metric.delivered
         let givenDeviceToken = String.random
