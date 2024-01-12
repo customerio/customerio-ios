@@ -212,10 +212,6 @@ class DataPipelineImplementation: DataPipelineInstance {
                 self.logger.debug("no device token found, ignoring device attributes request")
                 return
             }
-            guard self.registeredUserId != nil else {
-                self.logger.info("no profile identified, so not registering device token to a profile")
-                return
-            }
 
             // TODO: [CDP] Reverify event name before going live
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
