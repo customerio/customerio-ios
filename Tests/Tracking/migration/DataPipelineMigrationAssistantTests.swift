@@ -1,6 +1,7 @@
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
+@testable import DataPipelineTests
 import Foundation
 @testable import Segment
 import SharedTests
@@ -23,10 +24,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
 
-        let moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
-        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
-
-        DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
+        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
     }
 

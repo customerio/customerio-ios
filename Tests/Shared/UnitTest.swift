@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -16,12 +17,16 @@ open class UnitTest: XCTestCase {
     // Prefer to use real instance of key value storage because (1) mocking it is annoying and (2) tests react closely
     // to real app.
     public let testSiteId = "testing"
+    public let testWriteKey = "test"
+
     public var diGraphShared: DIGraphShared!
     public var diGraph: DIGraph!
 
     public var sdkConfig: SdkConfig {
         diGraph!.sdkConfig
     }
+
+    public var dataPipelineModuleConfig: DataPipelineConfigOptions!
 
     public var keyValueStorage: KeyValueStorage {
         diGraph.keyValueStorage
@@ -67,16 +72,25 @@ open class UnitTest: XCTestCase {
         setUp(enableLogs: false)
     }
 
-    public func setUp(siteId: String? = nil, enableLogs: Bool = false, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
+    public func setUp(
+        siteId: String? = nil,
+        writeKey: String? = nil,
+        enableLogs: Bool = false,
+        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
+        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil
+    ) {
+        diGraphShared = DIGraphShared()
+
         var newSdkConfig = SdkConfig.Factory.create(siteId: siteId ?? testSiteId, apiKey: "", region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
-
         modifySdkConfig?(&newSdkConfig)
-
-        diGraphShared = DIGraphShared()
         diGraph = DIGraph(sdkConfig: newSdkConfig)
+
+        var newModuleConfig = DataPipelineConfigOptions.Factory.create(writeKey: writeKey ?? testWriteKey)
+        modifyModuleConfig?(&newModuleConfig)
+        dataPipelineModuleConfig = newModuleConfig
 
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
