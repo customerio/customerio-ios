@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 import Foundation
 @testable import Segment
 import XCTest
@@ -39,9 +40,9 @@ class OutputReaderPlugin: Plugin {
 }
 
 extension OutputReaderPlugin {
-    var trackEvents: [RawEvent] { events.compactMap { $0 as? TrackEvent } }
-
     var identifyEvents: [IdentifyEvent] { events.compactMap { $0 as? IdentifyEvent } }
+    var trackEvents: [RawEvent] { events.compactMap { $0 as? TrackEvent } }
+    var screenEvents: [RawEvent] { events.compactMap { $0 as? ScreenEvent } }
 
     var deviceDeleteEvents: [TrackEvent] {
         events
@@ -76,12 +77,24 @@ extension RawEvent {
 
 // MARK: - Helper Methods
 
-func waitUntilStarted(analytics: Analytics?) {
+func waitUntilStarted(analytics: Analytics? = DataPipeline.shared.analytics) {
     guard let analytics = analytics else { return }
+
     // wait until the startup queue has emptied it's events.
     if let startupQueue = analytics.find(pluginType: StartupQueue.self) {
         while startupQueue.running != true {
             RunLoop.main.run(until: Date.distantPast)
         }
     }
+}
+
+/// Attaches and returns plugin only if it wasn't attached previously
+func attachPlugin<P: Plugin>(analytics: Analytics? = DataPipeline.shared.analytics, plugin: P) -> P {
+    guard let analytics = analytics else { return plugin }
+
+    if analytics.find(pluginType: P.self) != nil {
+        fatalError("Plugin \(P.self) is already attached")
+    }
+    analytics.add(plugin: plugin)
+    return plugin
 }

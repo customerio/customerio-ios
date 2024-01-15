@@ -33,8 +33,7 @@ class DataPipelineInteractionTests: UnitTest {
         // setting up analytics for testing
         analytics = implementation.analytics
         // OutputReaderPlugin helps validating interactions with analytics
-        outputReader = OutputReaderPlugin()
-        analytics.add(plugin: outputReader)
+        outputReader = attachPlugin(analytics: analytics, plugin: OutputReaderPlugin())
         // wait for analytics queue to start emitting events
         waitUntilStarted(analytics: analytics)
     }
