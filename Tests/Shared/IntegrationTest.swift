@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -19,8 +20,11 @@ open class IntegrationTest: UnitTest {
         setUp(modifySdkConfig: nil)
     }
 
-    open func setUp(modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        super.setUp(modifySdkConfig: modifySdkConfig)
+    open func setUp(
+        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
+        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil
+    ) {
+        super.setUp(modifySdkConfig: modifySdkConfig, modifyModuleConfig: modifyModuleConfig)
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
@@ -40,7 +44,7 @@ open class IntegrationTest: UnitTest {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
 
-        CustomerIO.initializeIntegrationTests(diGraph: diGraph)
+        CustomerIO.initializeIntegrationTestsInstance(diGraph: diGraph)
     }
 
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
