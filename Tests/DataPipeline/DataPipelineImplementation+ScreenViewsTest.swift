@@ -6,7 +6,7 @@ import SwiftUI
 import UIKit
 import XCTest
 
-class CustomerIOImplementationScreenViewsTest: IntegrationTest {
+class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
@@ -81,7 +81,7 @@ class CustomerIOImplementationScreenViewsTest: IntegrationTest {
     }
 }
 
-extension CustomerIOImplementationScreenViewsTest {
+extension DataPipelineImplementationScreenViewsTest {
     private func assertNoEventTracked() {
         XCTAssertTrue(diGraph.queueStorage.filterTrackEvents(.trackEvent).isEmpty)
     }
