@@ -17,14 +17,11 @@ open class IntegrationTest: UnitTest {
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUp() {
-        setUp(modifySdkConfig: nil)
+        setUp(modifyModuleConfig: nil)
     }
 
-    open func setUp(
-        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
-        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil
-    ) {
-        super.setUp(modifySdkConfig: modifySdkConfig, modifyModuleConfig: modifyModuleConfig)
+    open func setUp(modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil) {
+        super.setUp(modifyModuleConfig: modifyModuleConfig)
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
