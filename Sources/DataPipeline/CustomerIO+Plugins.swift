@@ -3,7 +3,7 @@ import Foundation
 import Segment
 
 // TODO: Add APITest for it?
-extension CustomerIO {
+public extension CustomerIO {
     /**
      Applies the supplied closure to the currently loaded set of plugins.
      NOTE: This does not apply to plugins contained within DestinationPlugins.
@@ -59,7 +59,7 @@ extension CustomerIO {
         DataPipeline.shared.analytics.find(key: key)
     }
 
-    public func setDebugLogsEnabled(_ enabled: Bool = true) {
+    func setDebugLogsEnabled(_ enabled: Bool = true) {
         // enable debug logs in analytics
         Analytics.debugLogsEnabled = enabled
 
