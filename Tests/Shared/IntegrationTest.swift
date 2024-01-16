@@ -47,6 +47,7 @@ open class IntegrationTest: UnitTest {
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
     // For the test functions that need to test SDK initialization, this function exists to be called by test function.
     public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
+        DataPipeline.resetSharedTestInstance()
         CustomerIO.resetSharedInstance()
 
         // confirm that the SDK did get uninitialized

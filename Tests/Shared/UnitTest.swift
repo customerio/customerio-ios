@@ -112,6 +112,7 @@ open class UnitTest: XCTestCase {
 
         diGraph.reset()
 
+        DataPipeline.resetSharedTestInstance()
         CustomerIO.resetSharedInstance()
 
         super.tearDown()
