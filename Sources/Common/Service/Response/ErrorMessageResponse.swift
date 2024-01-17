@@ -7,10 +7,10 @@ import Foundation
  ```
  */
 public class ErrorMessageResponse: Codable {
-    let meta: Meta
+    public let meta: Meta
 
     public class Meta: Codable {
-        let error: String
+        public let error: String
 
         enum CodingKeys: String, CodingKey {
             case error
@@ -29,10 +29,10 @@ public class ErrorMessageResponse: Codable {
  ```
  */
 public class ErrorsMessageResponse: Codable {
-    let meta: Meta
+    public let meta: Meta
 
     public class Meta: Codable {
-        let errors: [String]
+        public let errors: [String]
 
         enum CodingKeys: String, CodingKey {
             case errors
