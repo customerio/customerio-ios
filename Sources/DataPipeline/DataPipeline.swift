@@ -31,9 +31,17 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     #if DEBUG
     /// Updates the implementation instance. To be used for testing purposes only.
-    static func setupSharedTestInstance(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) {
+    static func createAndSetSharedTestInstance(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineImplementation {
+        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: config)
         shared.setImplementationInstance(implementation: implementation)
         moduleConfig = config
+        return implementation
+    }
+
+    /// Make testing the singleton `instance` possible.
+    /// Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
+    static func resetSharedTestInstance() {
+        shared = DataPipeline()
     }
     #endif
 

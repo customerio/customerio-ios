@@ -78,11 +78,4 @@ public extension CustomerIO {
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
-
-    // Initialize for Integration Tests
-    static func initializeIntegrationTests(diGraph: DIGraph) {
-        // FIXME: [CDP] Fix tests using DataPipeline
-        // let implementation = CustomerIOImplementation(diGraph: diGraph)
-        // initializeSharedInstance(with: implementation, diGraph: diGraph)
-    }
 }
