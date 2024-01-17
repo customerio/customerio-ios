@@ -85,7 +85,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(pushEventListener: pushEventListener, logger: logger)
+        AutomaticPushClickHandlingImpl(notificationCenterFrameworkAdapter: notificationCenterFrameworkAdapter, logger: logger)
     }
 
     // DeepLinkUtil
@@ -109,7 +109,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newNotificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
-        NotificationCenterFrameworkAdapterImpl(pushEventListener: pushEventListener)
+        NotificationCenterFrameworkAdapterImpl(pushEventListener: pushEventListener, userNotificationCenter: userNotificationCenter)
     }
 
     // PushClickHandler

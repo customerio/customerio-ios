@@ -510,14 +510,6 @@ class PushEventListenerMock: PushEventListener, Mock {
         shouldDisplayPushAppInForegroundReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        newNotificationCenterDelegateSetCallsCount = 0
-        newNotificationCenterDelegateSetReceivedArguments = nil
-        newNotificationCenterDelegateSetReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
-        beginListeningCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - onPushAction
@@ -580,54 +572,6 @@ class PushEventListenerMock: PushEventListener, Mock {
         shouldDisplayPushAppInForegroundReceivedArguments = push
         shouldDisplayPushAppInForegroundReceivedInvocations.append(push)
         return shouldDisplayPushAppInForegroundClosure.map { $0(push) } ?? shouldDisplayPushAppInForegroundReturnValue
-    }
-
-    // MARK: - newNotificationCenterDelegateSet
-
-    /// Number of times the function was called.
-    private(set) var newNotificationCenterDelegateSetCallsCount = 0
-    /// `true` if the function was ever called.
-    var newNotificationCenterDelegateSetCalled: Bool {
-        newNotificationCenterDelegateSetCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    private(set) var newNotificationCenterDelegateSetReceivedArguments: UNUserNotificationCenterDelegate??
-    /// Arguments from *all* of the times that the function was called.
-    private(set) var newNotificationCenterDelegateSetReceivedInvocations: [UNUserNotificationCenterDelegate?] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    var newNotificationCenterDelegateSetClosure: ((UNUserNotificationCenterDelegate?) -> Void)?
-
-    /// Mocked function for `newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?) {
-        mockCalled = true
-        newNotificationCenterDelegateSetCallsCount += 1
-        newNotificationCenterDelegateSetReceivedArguments = newDelegate
-        newNotificationCenterDelegateSetReceivedInvocations.append(newDelegate)
-        newNotificationCenterDelegateSetClosure?(newDelegate)
-    }
-
-    // MARK: - beginListening
-
-    /// Number of times the function was called.
-    private(set) var beginListeningCallsCount = 0
-    /// `true` if the function was ever called.
-    var beginListeningCalled: Bool {
-        beginListeningCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    var beginListeningClosure: (() -> Void)?
-
-    /// Mocked function for `beginListening()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func beginListening() {
-        mockCalled = true
-        beginListeningCallsCount += 1
-        beginListeningClosure?()
     }
 }
 
