@@ -76,12 +76,6 @@ public class Gist: GistDelegate {
         if let id = instanceId, let messageManager = messageManager(instanceId: id) {
             messageManager.removePersistentMessage()
             messageManager.dismissMessage(completionHandler: completionHandler)
-
-            // Mark persistent message shown
-            let queueId = messageManager.currentMessage.queueId
-            if queueId != nil, messageManager.currentMessage.gistProperties.persistent == true {
-                shownMessageQueueIds.insert(queueId!)
-            }
         } else {
             getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
         }
@@ -93,8 +87,8 @@ public class Gist: GistDelegate {
         let queueId = message.queueId
 
         // Skip shown messages
-        if queueId != nil, shownMessageQueueIds.contains(queueId!) {
-            Logger.instance.info(message: "Message \(queueId!) already shown, skipping.")
+        if let queueId = queueId, shownMessageQueueIds.contains(queueId) {
+            Logger.instance.info(message: "Message \(queueId) already shown, skipping.")
             return
         }
 
@@ -105,11 +99,6 @@ public class Gist: GistDelegate {
             Logger.instance.debug(message: "Persistent message shown, skipping logging view")
         }
         delegate?.messageShown(message: message)
-
-        // Mark message shown, unless it is persistent. Those only get marked upon dismissal
-        if queueId != nil, message.gistProperties.persistent != true {
-            shownMessageQueueIds.insert(queueId!)
-        }
     }
 
     public func messageDismissed(message: Message) {
@@ -133,6 +122,9 @@ public class Gist: GistDelegate {
 
     func logMessageView(message: Message) {
         messageQueueManager.removeMessageFromLocalStore(message: message)
+        if let queueId = message.queueId {
+            shownMessageQueueIds.insert(queueId)
+        }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
             .logView(message: message, userToken: userToken) { response in
