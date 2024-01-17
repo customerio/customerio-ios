@@ -63,7 +63,7 @@ extension MessagingPushImplementation {
             logger.info("automatically tracking push metric: delivered")
             logger.debug("parsed deliveryId \(deliveryID), deviceToken: \(deviceToken)")
 
-            trackMetric(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
+            trackMetricFromNSE(deliveryID: deliveryID, event: .delivered, deviceToken: deviceToken)
         }
 
         if let richPushContent = CustomerIOParsedPushPayload.parse(
