@@ -50,6 +50,6 @@ class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
     func start() {
         logger.debug("Starting automatic push click handling.")
 
-        notificationCenterFrameworkAdapter.beginListening()
+        notificationCenterFrameworkAdapter.beginListeningNewNotificationCenterDelegateSet()
     }
 }
