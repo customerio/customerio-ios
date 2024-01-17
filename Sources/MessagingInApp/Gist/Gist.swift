@@ -84,10 +84,8 @@ public class Gist: GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        let queueId = message.queueId
-
         // Skip shown messages
-        if let queueId = queueId, shownMessageQueueIds.contains(queueId) {
+        if let queueId = message.queueId, shownMessageQueueIds.contains(queueId) {
             Logger.instance.info(message: "Message \(queueId) already shown, skipping.")
             return
         }
