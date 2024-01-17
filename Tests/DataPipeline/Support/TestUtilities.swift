@@ -77,7 +77,7 @@ extension RawEvent {
 
 // MARK: - Helper Methods
 
-func waitUntilStarted(analytics: Analytics? = DataPipeline.shared.analytics) {
+func waitUntilStarted(analytics: Analytics?) {
     guard let analytics = analytics else { return }
 
     // wait until the startup queue has emptied it's events.
@@ -89,12 +89,13 @@ func waitUntilStarted(analytics: Analytics? = DataPipeline.shared.analytics) {
 }
 
 /// Attaches and returns plugin only if it wasn't attached previously
-func attachPlugin<P: Plugin>(analytics: Analytics? = DataPipeline.shared.analytics, plugin: P) -> P {
-    guard let analytics = analytics else { return plugin }
+func attachPlugin<P: Plugin>(analytics: Analytics?, plugin: P) -> P {
+    guard let analytics = analytics else { fatalError("Analytics instance is nil") }
 
     if analytics.find(pluginType: P.self) != nil {
         fatalError("Plugin \(P.self) is already attached")
     }
+
     analytics.add(plugin: plugin)
     return plugin
 }

@@ -182,4 +182,9 @@ public extension UnitTest {
 
         waitForExpectations(for: [queueExpectation], file: file, line: line)
     }
+
+    func createCustomerIOInstance() -> CustomerIO {
+        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
+        return CustomerIO(implementation: implementation, diGraph: diGraph)
+    }
 }

@@ -27,11 +27,10 @@ class DataPipelineInteractionTests: UnitTest {
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
-        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
-        customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
+        customerIO = createCustomerIOInstance()
 
         // setting up analytics for testing
-        analytics = implementation.analytics
+        analytics = customerIO.analytics
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = attachPlugin(analytics: analytics, plugin: OutputReaderPlugin())
         // wait for analytics queue to start emitting events
