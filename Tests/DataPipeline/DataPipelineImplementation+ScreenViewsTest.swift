@@ -14,11 +14,12 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
+        let analytics = CustomerIO.shared.analytics
         // setting up required plugins
-        outputReader = attachPlugin(plugin: OutputReaderPlugin())
-        autoTrackingScreenViews = attachPlugin(plugin: AutoTrackingScreenViews())
+        outputReader = attachPlugin(analytics: analytics, plugin: OutputReaderPlugin())
+        autoTrackingScreenViews = attachPlugin(analytics: analytics, plugin: AutoTrackingScreenViews())
         // wait for analytics queue to start emitting events
-        waitUntilStarted()
+        waitUntilStarted(analytics: analytics)
 
         // Screenview events are ignored if no profile identified
         CustomerIO.shared.identify(identifier: String.random)
