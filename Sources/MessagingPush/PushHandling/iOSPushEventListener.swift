@@ -86,7 +86,7 @@ class iOSPushEventListener: PushEventHandler {
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
-            return false
+            return
         }
         let push = pushAction.push
         logger?.debug("On push action event. push action: \(pushAction))")
@@ -101,9 +101,9 @@ class iOSPushEventListener: PushEventHandler {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            notificationCenterDelegateProxy.onPushAction(push, completionHandler: completionHandler)
+            notificationCenterDelegateProxy.onPushAction(pushAction, completionHandler: completionHandler)
 
-            return false
+            return
         }
 
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
@@ -116,12 +116,12 @@ class iOSPushEventListener: PushEventHandler {
         completionHandler()
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
               let moduleConfig = moduleConfig
         else {
-            return nil
+            return
         }
         logger?.debug("Push event: willPresent. push: \(push)")
 
@@ -129,7 +129,7 @@ class iOSPushEventListener: PushEventHandler {
             // push has already been handled. exit early
 
             // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
-            return nil
+            return
         }
 
         guard let _ = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
@@ -139,23 +139,15 @@ class iOSPushEventListener: PushEventHandler {
 
             notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
 
-            return nil
+            return
         }
 
         logger?.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
 
         let shouldShowPush = moduleConfig.showPushAppInForeground
 
-        // Call the completionHandler so customer does not need to.
-        if shouldShowPush {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
-            } else {
-                completionHandler([.badge, .sound])
-            }
-        } else {
-            completionHandler([])
-        }
+        // Call the completionHandler so customer does not need to. The push came from CIO, so it gets handled by the CIO SDK.
+        completionHandler(shouldShowPush)
     }
 }
 

@@ -529,16 +529,16 @@ class NotificationCenterDelegateProxyMock: NotificationCenterDelegateProxy, Mock
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (UNNotificationPresentationOptions) -> Void)?
+    private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (Bool) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (UNNotificationPresentationOptions) -> Void)] = []
+    private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (Bool) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var shouldDisplayPushAppInForegroundClosure: ((PushNotification, @escaping (UNNotificationPresentationOptions) -> Void) -> Void)?
+    var shouldDisplayPushAppInForegroundClosure: ((PushNotification, @escaping (Bool) -> Void) -> Void)?
 
-    /// Mocked function for `shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    /// Mocked function for `shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
         mockCalled = true
         shouldDisplayPushAppInForegroundCallsCount += 1
         shouldDisplayPushAppInForegroundReceivedArguments = (push: push, completionHandler: completionHandler)

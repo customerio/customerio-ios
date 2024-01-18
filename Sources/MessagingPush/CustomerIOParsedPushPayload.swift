@@ -103,11 +103,17 @@ public class CustomerIOParsedPushPayload {
     public let mutableNotificationContent: UNMutableNotificationContent
     public let notificationContent: UNNotificationContent
 
+    // We are trying to isolate the SDK from the UserNotifications framework entirely. So, it could be good to decouple this class, too.
+    // Until then, this parse() function is added to take the abstract PushNotification data type and call one of the UserNotification parse() functions.
     public static func parse(
         pushNotification: PushNotification,
         jsonAdapter: JsonAdapter
     ) -> CustomerIOParsedPushPayload? {
-        parse(notificationContent: pushNotification.rawNotification.request.content, jsonAdapter: jsonAdapter)
+        guard let pushNotification = pushNotification as? UNNotificationWrapper else {
+            return nil
+        }
+
+        return parse(notificationContent: pushNotification.notification.request.content, jsonAdapter: jsonAdapter)
     }
 
     public static func parse(

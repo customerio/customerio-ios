@@ -1,11 +1,10 @@
 import CioInternalCommon
 import Foundation
-import UserNotifications
 
 protocol NotificationCenterDelegateProxy: AutoMockable {
     func addPushEventHandler(_ newHandler: PushEventHandler)
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void)
 }
 
 /*
@@ -14,7 +13,7 @@ protocol NotificationCenterDelegateProxy: AutoMockable {
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
 class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
-    public static let shared = NotificationCenterDelegateProxy()
+    public static let shared = NotificationCenterDelegateProxyImpl()
 
     // Use a map so that we only save 1 instance of a given Delegate.
     private var nestedDelegates: [String: PushEventHandler] = [:]
@@ -37,7 +36,7 @@ class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
         }
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
         nestedDelegates.forEach { _, delegate in
             delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
