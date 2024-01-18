@@ -1,8 +1,11 @@
 import CioInternalCommon
 import Foundation
 
-protocol NotificationCenterDelegateProxy: AutoMockable {
+// Forwards requests from our SDK to other push event handlers in the host iOS app, if our SDK does not handle the push event.
+protocol PushEventHandlerProxy: AutoMockable {
     func addPushEventHandler(_ newHandler: PushEventHandler)
+
+    // When these push event handler functions are called, the request is forwarded to other push handlers.
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void)
 }
@@ -12,10 +15,10 @@ protocol NotificationCenterDelegateProxy: AutoMockable {
 
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
-class NotificationCenterDelegateProxyImpl: NotificationCenterDelegateProxy {
-    public static let shared = NotificationCenterDelegateProxyImpl()
+class PushEventHandlerProxyImpl: PushEventHandlerProxy {
+    public static let shared = PushEventHandlerProxyImpl()
 
-    // Use a map so that we only save 1 instance of a given Delegate.
+    // Use a map so that we only save 1 instance of a given handler.
     private var nestedDelegates: [String: PushEventHandler] = [:]
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
