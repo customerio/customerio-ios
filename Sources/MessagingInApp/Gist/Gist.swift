@@ -4,7 +4,7 @@ import UIKit
 public class Gist: GistDelegate {
     private var messageQueueManager = MessageQueueManager()
     private var messageManagers: [MessageManager] = []
-    private var shownMessageQueueIds: Set<String> = []
+    internal var shownMessageQueueIds: Set<String> = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
@@ -84,12 +84,6 @@ public class Gist: GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        // Skip shown messages
-        if let queueId = message.queueId, shownMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message \(queueId) already shown, skipping.")
-            return
-        }
-
         Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
