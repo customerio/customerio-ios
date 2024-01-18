@@ -502,21 +502,21 @@ class NotificationCenterDelegateProxyMock: NotificationCenterDelegateProxy, Mock
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var onPushActionReceivedArguments: (push: PushNotification, completionHandler: () -> Void)?
+    private(set) var onPushActionReceivedArguments: (pushAction: PushNotificationAction, completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var onPushActionReceivedInvocations: [(push: PushNotification, completionHandler: () -> Void)] = []
+    private(set) var onPushActionReceivedInvocations: [(pushAction: PushNotificationAction, completionHandler: () -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var onPushActionClosure: ((PushNotification, @escaping () -> Void) -> Void)?
+    var onPushActionClosure: ((PushNotificationAction, @escaping () -> Void) -> Void)?
 
-    /// Mocked function for `onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func onPushAction(_ push: PushNotification, completionHandler: @escaping () -> Void) {
+    /// Mocked function for `onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         mockCalled = true
         onPushActionCallsCount += 1
-        onPushActionReceivedArguments = (push: push, completionHandler: completionHandler)
-        onPushActionReceivedInvocations.append((push: push, completionHandler: completionHandler))
-        onPushActionClosure?(push, completionHandler)
+        onPushActionReceivedArguments = (pushAction: pushAction, completionHandler: completionHandler)
+        onPushActionReceivedInvocations.append((pushAction: pushAction, completionHandler: completionHandler))
+        onPushActionClosure?(pushAction, completionHandler)
     }
 
     // MARK: - shouldDisplayPushAppInForeground

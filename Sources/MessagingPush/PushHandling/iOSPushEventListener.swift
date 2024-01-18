@@ -86,7 +86,7 @@ class iOSPushEventListener: PushEventHandler {
               let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter
         else {
-            return
+            return false
         }
         let push = pushAction.push
         logger?.debug("On push action event. push action: \(pushAction))")
@@ -103,7 +103,7 @@ class iOSPushEventListener: PushEventHandler {
 
             notificationCenterDelegateProxy.onPushAction(push, completionHandler: completionHandler)
 
-            return
+            return false
         }
 
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
@@ -121,7 +121,7 @@ class iOSPushEventListener: PushEventHandler {
               let jsonAdapter = jsonAdapter,
               let moduleConfig = moduleConfig
         else {
-            return
+            return nil
         }
         logger?.debug("Push event: willPresent. push: \(push)")
 
@@ -129,7 +129,7 @@ class iOSPushEventListener: PushEventHandler {
             // push has already been handled. exit early
 
             // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
-            return
+            return nil
         }
 
         guard let _ = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
@@ -139,7 +139,7 @@ class iOSPushEventListener: PushEventHandler {
 
             notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
 
-            return
+            return nil
         }
 
         logger?.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
