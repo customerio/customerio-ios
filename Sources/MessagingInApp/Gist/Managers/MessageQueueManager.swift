@@ -94,7 +94,7 @@ class MessageQueueManager {
             Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
             return
         }
-        
+
         let position = message.gistProperties.position
 
         if let routeRule = message.gistProperties.routeRule {

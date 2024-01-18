@@ -4,7 +4,7 @@ import UIKit
 public class Gist: GistDelegate {
     private var messageQueueManager = MessageQueueManager()
     private var messageManagers: [MessageManager] = []
-    internal var shownMessageQueueIds: Set<String> = []
+    var shownMessageQueueIds: Set<String> = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
