@@ -2322,21 +2322,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         getInventoryCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        saveInventoryCallsCount = 0
-        saveInventoryReceivedArguments = nil
-        saveInventoryReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
-        createCallsCount = 0
-        createReceivedArguments = nil
-        createReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
-        updateCallsCount = 0
-        updateReceivedArguments = nil
-        updateReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         getCallsCount = 0
         getReceivedArguments = nil
         getReceivedInvocations = []
@@ -2375,99 +2360,6 @@ public class QueueStorageMock: QueueStorage, Mock {
         mockCalled = true
         getInventoryCallsCount += 1
         return getInventoryClosure.map { $0() } ?? getInventoryReturnValue
-    }
-
-    // MARK: - saveInventory
-
-    /// Number of times the function was called.
-    public private(set) var saveInventoryCallsCount = 0
-    /// `true` if the function was ever called.
-    public var saveInventoryCalled: Bool {
-        saveInventoryCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var saveInventoryReceivedArguments: [QueueTaskMetadata]?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var saveInventoryReceivedInvocations: [[QueueTaskMetadata]] = []
-    /// Value to return from the mocked function.
-    public var saveInventoryReturnValue: Bool!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `saveInventoryReturnValue`
-     */
-    public var saveInventoryClosure: (([QueueTaskMetadata]) -> Bool)?
-
-    /// Mocked function for `saveInventory(_ inventory: [QueueTaskMetadata])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
-        mockCalled = true
-        saveInventoryCallsCount += 1
-        saveInventoryReceivedArguments = inventory
-        saveInventoryReceivedInvocations.append(inventory)
-        return saveInventoryClosure.map { $0(inventory) } ?? saveInventoryReturnValue
-    }
-
-    // MARK: - create
-
-    /// Number of times the function was called.
-    public private(set) var createCallsCount = 0
-    /// `true` if the function was ever called.
-    public var createCalled: Bool {
-        createCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var createReceivedArguments: (type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var createReceivedInvocations: [(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)] = []
-    /// Value to return from the mocked function.
-    public var createReturnValue: CreateQueueStorageTaskResult!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `createReturnValue`
-     */
-    public var createClosure: ((String, Data, QueueTaskGroup?, [QueueTaskGroup]?) -> CreateQueueStorageTaskResult)?
-
-    /// Mocked function for `create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func create(type: String, data: Data, groupStart: QueueTaskGroup?, blockingGroups: [QueueTaskGroup]?) -> CreateQueueStorageTaskResult {
-        mockCalled = true
-        createCallsCount += 1
-        createReceivedArguments = (type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups)
-        createReceivedInvocations.append((type: type, data: data, groupStart: groupStart, blockingGroups: blockingGroups))
-        return createClosure.map { $0(type, data, groupStart, blockingGroups) } ?? createReturnValue
-    }
-
-    // MARK: - update
-
-    /// Number of times the function was called.
-    public private(set) var updateCallsCount = 0
-    /// `true` if the function was ever called.
-    public var updateCalled: Bool {
-        updateCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var updateReceivedArguments: (storageId: String, runResults: QueueTaskRunResults)?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var updateReceivedInvocations: [(storageId: String, runResults: QueueTaskRunResults)] = []
-    /// Value to return from the mocked function.
-    public var updateReturnValue: Bool!
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `updateReturnValue`
-     */
-    public var updateClosure: ((String, QueueTaskRunResults) -> Bool)?
-
-    /// Mocked function for `update(storageId: String, runResults: QueueTaskRunResults)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func update(storageId: String, runResults: QueueTaskRunResults) -> Bool {
-        mockCalled = true
-        updateCallsCount += 1
-        updateReceivedArguments = (storageId: storageId, runResults: runResults)
-        updateReceivedInvocations.append((storageId: storageId, runResults: runResults))
-        return updateClosure.map { $0(storageId, runResults) } ?? updateReturnValue
     }
 
     // MARK: - get
