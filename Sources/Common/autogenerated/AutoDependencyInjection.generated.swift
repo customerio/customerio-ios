@@ -68,18 +68,6 @@ extension DIGraph {
         _ = queue
         countDependenciesResolved += 1
 
-        _ = queueQueryRunner
-        countDependenciesResolved += 1
-
-        _ = queueRequestManager
-        countDependenciesResolved += 1
-
-        _ = queueRunRequest
-        countDependenciesResolved += 1
-
-        _ = queueRunner
-        countDependenciesResolved += 1
-
         _ = simpleTimer
         countDependenciesResolved += 1
 
@@ -178,61 +166,7 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(storage: queueStorage, runRequest: queueRunRequest, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
-    }
-
-    // QueueQueryRunner
-    var queueQueryRunner: QueueQueryRunner {
-        getOverriddenInstance() ??
-            newQueueQueryRunner
-    }
-
-    private var newQueueQueryRunner: QueueQueryRunner {
-        CioQueueQueryRunner(logger: logger)
-    }
-
-    // QueueRequestManager (singleton)
-    public var queueRequestManager: QueueRequestManager {
-        getOverriddenInstance() ??
-            sharedQueueRequestManager
-    }
-
-    public var sharedQueueRequestManager: QueueRequestManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_QueueRequestManager_singleton_access").sync {
-            if let overridenDep: QueueRequestManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: QueueRequestManager.self)] as? QueueRequestManager
-            let instance = existingSingletonInstance ?? _get_queueRequestManager()
-            self.singletons[String(describing: QueueRequestManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_queueRequestManager() -> QueueRequestManager {
-        CioQueueRequestManager()
-    }
-
-    // QueueRunRequest
-    public var queueRunRequest: QueueRunRequest {
-        getOverriddenInstance() ??
-            newQueueRunRequest
-    }
-
-    private var newQueueRunRequest: QueueRunRequest {
-        CioQueueRunRequest(runner: queueRunner, storage: queueStorage, requestManager: queueRequestManager, logger: logger, queryRunner: queueQueryRunner, threadUtil: threadUtil)
-    }
-
-    // QueueRunner
-    public var queueRunner: QueueRunner {
-        getOverriddenInstance() ??
-            newQueueRunner
-    }
-
-    private var newQueueRunner: QueueRunner {
-        CioQueueRunner(jsonAdapter: jsonAdapter, logger: logger, httpClient: httpClient, sdkConfig: sdkConfig)
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer
