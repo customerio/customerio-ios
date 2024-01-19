@@ -8,6 +8,7 @@ public enum CIOApiEndpoint {
     case trackCustomerEvent(identifier: String)
     case pushMetrics
     case trackDeliveryMetrics
+    case trackPushMetricsCdp
 
     var path: String {
         switch self {
@@ -21,6 +22,7 @@ public enum CIOApiEndpoint {
         case .trackCustomerEvent(let identifier): return "/api/v1/customers/\(identifier)/events"
         case .pushMetrics: return "/push/events"
         case .trackDeliveryMetrics: return "/api/v1/cio_deliveries/events"
+        case .trackPushMetricsCdp: return "/track"
         }
     }
 
@@ -33,19 +35,23 @@ public enum CIOApiEndpoint {
         case .trackCustomerEvent: return "POST"
         case .pushMetrics: return "POST"
         case .trackDeliveryMetrics: return "POST"
+        case .trackPushMetricsCdp: return "POST"
         }
     }
 }
 
 public extension CIOApiEndpoint {
-    func getUrl(baseUrls: HttpBaseUrls) -> URL? {
-        URL(string: getUrlString(baseUrls: baseUrls))
+    func getUrl(baseUrl: String) -> URL? {
+        URL(string: getUrlString(baseUrl: baseUrl))
     }
 
-    func getUrlString(baseUrls: HttpBaseUrls) -> String {
+    func getUrl(baseUrls: HttpBaseUrls) -> URL? {
         // At this time, all endpoints use tracking endpoint so we only use only 1 base URL here.
-        var baseUrl = baseUrls.trackingApi
+        URL(string: getUrlString(baseUrl: baseUrls.trackingApi))
+    }
 
+    func getUrlString(baseUrl: String) -> String {
+        var baseUrl = baseUrl
         guard !baseUrl.isEmpty else {
             return ""
         }

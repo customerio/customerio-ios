@@ -410,7 +410,7 @@ extension DIGraph {
     }
 
     // HttpRequestRunner
-    var httpRequestRunner: HttpRequestRunner {
+    public var httpRequestRunner: HttpRequestRunner {
         getOverriddenInstance() ??
             newHttpRequestRunner
     }
@@ -610,6 +610,16 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private var newUIKitWrapper: UIKitWrapper {
         UIKitWrapperImpl()
+    }
+
+    // HttpRequestRunner
+    public var httpRequestRunner: HttpRequestRunner {
+        getOverriddenInstance() ??
+            newHttpRequestRunner
+    }
+
+    private var newHttpRequestRunner: HttpRequestRunner {
+        UrlRequestHttpRequestRunner()
     }
 
     // SharedKeyValueStorage
