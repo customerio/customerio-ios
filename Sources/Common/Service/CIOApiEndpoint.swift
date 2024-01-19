@@ -8,7 +8,7 @@ public enum CIOApiEndpoint {
     case trackCustomerEvent(identifier: String)
     case pushMetrics
     case trackDeliveryMetrics
-    case trackNSEPushDeliveryMetrics
+    case trackPushMetricsCdp
 
     var path: String {
         switch self {
@@ -22,7 +22,7 @@ public enum CIOApiEndpoint {
         case .trackCustomerEvent(let identifier): return "/api/v1/customers/\(identifier)/events"
         case .pushMetrics: return "/push/events"
         case .trackDeliveryMetrics: return "/api/v1/cio_deliveries/events"
-        case .trackNSEPushDeliveryMetrics: return "/track"
+        case .trackPushMetricsCdp: return "/track"
         }
     }
 
@@ -35,7 +35,7 @@ public enum CIOApiEndpoint {
         case .trackCustomerEvent: return "POST"
         case .pushMetrics: return "POST"
         case .trackDeliveryMetrics: return "POST"
-        case .trackNSEPushDeliveryMetrics: return "POST"
+        case .trackPushMetricsCdp: return "POST"
         }
     }
 }
