@@ -22,7 +22,7 @@ class RichPushDeliveryTracker {
             "event": "Report Delivery Event"
         ]
 
-        let endpoint: CIOApiEndpoint = .trackNSEPushDeliveryMetrics
+        let endpoint: CIOApiEndpoint = .trackPushMetricsCdp
         guard let httpParams = HttpRequestParams(
             endpoint: endpoint,
             baseUrl: RichPushHttpClient.defaultAPIHost,
