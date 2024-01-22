@@ -1,3 +1,10 @@
+## [2.10.2](https://github.com/customerio/customerio-ios/compare/2.10.1...2.10.2) (2024-01-18)
+
+
+### Bug Fixes
+
+* ensure messages are only shown once ([#468](https://github.com/customerio/customerio-ios/issues/468)) ([5cc6625](https://github.com/customerio/customerio-ios/commit/5cc66250347a2202297287b989cf1993a8c4248f))
+
 ## [2.10.1](https://github.com/customerio/customerio-ios/compare/2.10.0...2.10.1) (2023-11-22)
 
 
