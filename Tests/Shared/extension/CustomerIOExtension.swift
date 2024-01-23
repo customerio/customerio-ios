@@ -4,7 +4,6 @@ import Foundation
 import Segment
 
 public extension CustomerIO {
-    var analytics: Analytics? {
-        (implementation as? DataPipelineImplementation)?.analytics
-    }
+    var dataPipelineImplementation: DataPipelineImplementation? { implementation as? DataPipelineImplementation }
+    var analytics: Analytics? { dataPipelineImplementation?.analytics }
 }

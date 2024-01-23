@@ -31,10 +31,13 @@ class DataPipelineInteractionTests: UnitTest {
 
         // setting up analytics for testing
         analytics = customerIO.analytics
+        guard let analytics = customerIO.analytics else {
+            fatalError("Analytics instance is nil. The SDK has been set up incorrectly.")
+        }
         // OutputReaderPlugin helps validating interactions with analytics
-        outputReader = attachPlugin(analytics: analytics, plugin: OutputReaderPlugin())
+        outputReader = analytics.addPluginOnce(plugin: OutputReaderPlugin())
         // wait for analytics queue to start emitting events
-        waitUntilStarted(analytics: analytics)
+        analytics.waitUntilStarted()
     }
 
     override func tearDown() {
@@ -58,35 +61,33 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(analytics.traits()?.count, 0)
 
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
+        guard let identifyEvent = outputReader.identifyEvents.last else {
+            XCTFail("captured event must not be nil")
+            return
+        }
 
-        let identifyEvent = outputReader.identifyEvents.first
-        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
-        XCTAssertEqual(identifyEvent?.traits?.dictionaryValue?.count, 0)
+        XCTAssertEqual(identifyEvent.userId, givenIdentifier)
+        XCTAssertEqual(identifyEvent.traits?.dictionaryValue?.count, 0)
     }
 
     func test_identify_expectSetNewProfileWithAttributes() {
         let givenIdentifier = String.random
         let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
+        let traitsTypeMap: [[String]: Any.Type] = [["age"]: Int.self]
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
-        let traitsComparer: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void = { key, expected, actual in
-            switch key {
-            case "first_name":
-                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
-            case "age":
-                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
-            default:
-                XCTFail("unexpected key received: '\(key)'")
-            }
+        XCTAssertEqual(analytics.userId, givenIdentifier)
+        XCTAssertMatches(analytics.traits(), givenBody, withTypeMap: traitsTypeMap)
+
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+        guard let identifyEvent = outputReader.identifyEvents.last else {
+            XCTFail("captured event must not be nil")
+            return
         }
 
-        XCTAssertEqual(analytics.userId, givenIdentifier)
-        assertDictionariesEqual(givenBody, analytics.traits(), compare: traitsComparer)
-
-        let identifyEvent = outputReader.identifyEvents.first
-        XCTAssertEqual(identifyEvent?.userId, givenIdentifier)
-        assertDictionariesEqual(givenBody, identifyEvent?.traits?.dictionaryValue, compare: traitsComparer)
+        XCTAssertEqual(identifyEvent.userId, givenIdentifier)
+        XCTAssertMatches(identifyEvent.traits?.dictionaryValue, givenBody, withTypeMap: traitsTypeMap)
     }
 
     // MARK: device token
@@ -96,7 +97,10 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviouslyIdentifiedProfile = String.random
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies(token: givenDeviceToken)
+        globalDataStoreMock.configureWithMockData(token: givenDeviceToken)
+        deviceInfoMock.configureWithMockData()
+        deviceAttributesMock.configureWithMockData()
+
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
@@ -119,7 +123,10 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviouslyIdentifiedProfile = givenIdentifier
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies(token: givenDeviceToken)
+        globalDataStoreMock.configureWithMockData(token: givenDeviceToken)
+        deviceInfoMock.configureWithMockData()
+        deviceAttributesMock.configureWithMockData()
+
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
@@ -138,10 +145,11 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
 
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-
-        let postEventArgument = eventBusHandlerMock.postEventArguments as? ProfileIdentifiedEvent
-        XCTAssertNotNil(postEventArgument)
-        XCTAssertEqual(postEventArgument?.identifier, givenIdentifier)
+        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? ProfileIdentifiedEvent else {
+            XCTFail("captured arguments must not be nil")
+            return
+        }
+        XCTAssertEqual(postEventArgument.identifier, givenIdentifier)
     }
 
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
@@ -170,7 +178,10 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviousDeviceToken = String.random
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies(token: givenPreviousDeviceToken)
+        globalDataStoreMock.configureWithMockData(token: givenPreviousDeviceToken)
+        deviceInfoMock.configureWithMockData()
+        deviceAttributesMock.configureWithMockData()
+
         customerIO.registerDeviceToken(givenPreviousDeviceToken)
         outputReader.resetPlugin()
 
@@ -280,7 +291,7 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.track(name: givenEvent)
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
-            XCTFail("Recorded event is not an instance of TrackEvent")
+            XCTFail("recorded event is not an instance of TrackEvent")
             return
         }
 
@@ -301,21 +312,17 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.track(name: String.random, data: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
-
-        let event = outputReader.lastEvent
-        XCTAssertTrue(event is TrackEvent)
-        XCTAssertEqual(event?.userId, givenIdentifier)
-
-        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
-            switch key {
-            case "first_name":
-                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
-            case "age":
-                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
-            default:
-                XCTFail("unexpected key received: '\(key)'")
-            }
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
         }
+
+        XCTAssertEqual(trackEvent.userId, givenIdentifier)
+        XCTAssertMatches(
+            trackEvent.properties,
+            givenData,
+            withTypeMap: [["age"]: Int.self]
+        )
     }
 
     // Tests bug found in: https://github.com/customerio/customerio-ios/issues/134#issuecomment-1028090193
@@ -330,12 +337,13 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.track(name: String.random, data: data)
 
         XCTAssertEqual(outputReader.events.count, 1)
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
 
-        let event = outputReader.lastEvent
-        XCTAssertTrue(event is TrackEvent)
-        XCTAssertEqual(event?.userId, givenIdentifier)
-
-        XCTAssertNil(event?.properties)
+        XCTAssertEqual(trackEvent.userId, givenIdentifier)
+        XCTAssertNil(trackEvent.properties)
     }
 
     // MARK: screen
@@ -348,10 +356,11 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(outputReader.events.count, 1)
 
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-
-        let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
-        XCTAssertNotNil(postEventArgument)
-        XCTAssertEqual(postEventArgument?.name, givenScreen)
+        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent else {
+            XCTFail("captured arguments must not be nil")
+            return
+        }
+        XCTAssertEqual(postEventArgument.name, givenScreen)
     }
 
     func test_screen_expectCorrectEventDispatched_expectCorrectData_expectPostGivenEventToEventBus() {
@@ -366,27 +375,24 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.screen(name: givenScreen, data: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
-
-        let event = outputReader.lastEvent
-        XCTAssertTrue(event is ScreenEvent)
-        XCTAssertEqual(event?.userId, givenIdentifier)
-
-        assertDictionariesEqual(givenData, event?.properties) { key, expected, actual in
-            switch key {
-            case "first_name":
-                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
-            case "age":
-                XCTAssertEqual((expected[key] as! Int), actual[key] as? Int)
-            default:
-                XCTFail("unexpected key received: '\(key)'")
-            }
+        guard let screenEvent = outputReader.lastEvent as? ScreenEvent else {
+            XCTFail("recorded event is not an instance of ScreenEvent")
+            return
         }
 
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        XCTAssertEqual(screenEvent.userId, givenIdentifier)
+        XCTAssertMatches(
+            screenEvent.properties,
+            givenData,
+            withTypeMap: [["age"]: Int.self]
+        )
 
-        let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent
-        XCTAssertNotNil(postEventArgument)
-        XCTAssertEqual(postEventArgument?.name, givenScreen)
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent else {
+            XCTFail("captured arguments must not be nil")
+            return
+        }
+        XCTAssertEqual(postEventArgument.name, givenScreen)
     }
 
     // MARK: registerDeviceToken
@@ -427,7 +433,10 @@ class DataPipelineInteractionTests: UnitTest {
             "push_enabled": true
         ]
 
-        mockDeviceTokenDependencies(defaultAttributes: givenDefaultAttributes)
+        globalDataStoreMock.configureWithMockData()
+        deviceInfoMock.configureWithMockData()
+        deviceAttributesMock.configureWithMockData(defaultAttributes: givenDefaultAttributes)
+
         customerIO.identify(identifier: givenIdentifier)
         outputReader.resetPlugin()
 
@@ -440,23 +449,21 @@ class DataPipelineInteractionTests: UnitTest {
         XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        assertDictionariesEqual(givenDefaultAttributes, deviceUpdatedEvent?.properties) { key, expected, actual in
-            switch key {
-            case "cio_sdk_version":
-                XCTAssertEqual((expected[key] as! String), actual[key] as? String)
-            case "push_enabled":
-                XCTAssertEqual((expected[key] as! Bool), actual[key] as? Bool)
-            default:
-                XCTFail("unexpected key received: '\(key)'")
-            }
-        }
+        XCTAssertMatches(
+            deviceUpdatedEvent?.properties,
+            givenDefaultAttributes,
+            withTypeMap: [["push_enabled"]: Bool.self]
+        )
     }
 
     func test_registerDeviceToken_givenNoOsNameAvailable_expectDeviceCreateEvent() {
         let givenDeviceToken = String.random
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
 
-        mockDeviceTokenDependencies(underlyingOsName: nil)
+        globalDataStoreMock.configureWithMockData()
+        deviceInfoMock.configureWithMockData(osName: nil)
+        deviceAttributesMock.configureWithMockData()
+
         customerIO.identify(identifier: String.random)
         outputReader.resetPlugin()
 
@@ -537,9 +544,8 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)
 
         XCTAssertEqual(outputReader.events.count, 1)
-
         guard let metricEvent = outputReader.lastEvent as? TrackEvent else {
-            XCTFail("Recorded event is not an instance of TrackEvent")
+            XCTFail("recorded event is not an instance of TrackEvent")
             return
         }
         XCTAssertEqual(metricEvent.event, "Report Delivery Event")
@@ -552,42 +558,9 @@ class DataPipelineInteractionTests: UnitTest {
 }
 
 extension DataPipelineInteractionTests {
-    private func mockDeviceTokenDependencies(
-        token: String? = nil,
-        underlyingOsName: String? = "iOS",
-        defaultAttributes: [String: Any] = [:]
-    ) {
-        globalDataStoreMock.underlyingPushDeviceToken = token
-
-        deviceInfoMock.underlyingOsName = underlyingOsName
-        deviceInfoMock.underlyingSdkVersion = "3.0.0"
-        deviceInfoMock.underlyingCustomerAppVersion = "1.2.3"
-        deviceInfoMock.underlyingDeviceLocale = String.random
-        deviceInfoMock.underlyingDeviceManufacturer = String.random
-        deviceInfoMock.isPushSubscribedClosure = { $0(true) }
-
-        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
-    }
-
-    func assertDictionariesEqual(
-        _ expected: [String: Any],
-        _ actual: [String: Any]?,
-        compare: (_ key: String, _ expected: [String: Any], _ actual: [String: Any]) -> Void,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) {
-        guard let actual = actual else {
-            XCTFail("actual dictionary is nil", file: file, line: line)
-            return
-        }
-
-        guard expected.keys == actual.keys else {
-            XCTFail("actual dictionary has different keys from expected value", file: file, line: line)
-            return
-        }
-
-        for key in expected.keys {
-            compare(key, expected, actual)
-        }
+    private func mockDeviceTokenDependencies() {
+        globalDataStoreMock.configureWithMockData()
+        deviceInfoMock.configureWithMockData()
+        deviceAttributesMock.configureWithMockData()
     }
 }
