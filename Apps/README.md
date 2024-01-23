@@ -4,7 +4,7 @@
 
 1. Run this command with `app` having the name of the directory in `Apps/` that you want to compile.  
 ```
-make setup app=CocoaPods-FCM
+make setup_sample_app app=CocoaPods-FCM
 ```
 
 2. Open project in Xcode and compile. 
