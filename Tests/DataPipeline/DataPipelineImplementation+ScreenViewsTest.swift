@@ -28,6 +28,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
         CustomerIO.shared.identify(identifier: String.random)
     }
 
+    override func tearDown() {
+        CustomerIO.shared.clearIdentify()
+        super.tearDown()
+    }
+
     // MARK: performScreenTracking
 
     func test_performScreenTracking_givenCustomerProvidesFilter_expectSdkDefaultFilterNotUsed() {
