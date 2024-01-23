@@ -3,45 +3,47 @@ import Foundation
 import UserNotifications
 
 /**
- The push features in the SDK interact with the iOS framework, `UserNotifications`.
- In order for us to write automated tests around our code that interacts with this framework, we treat `UserNotifications` as a dependency and mock it.
+ The iOS framework, `UserNotifications`, is abstracted away from the SDK codebase.
 
- This file is part of that by being the adapter between our SDK and the iOS framework.
+ This file is the connection between our SDK and `UserNotifications`.
+ In production, iOS will call functions in this file. Those requests are then forwarded onto the abstracted code in the SDK to perform all of the logic.
  */
-
 @available(iOSApplicationExtension, unavailable)
-protocol NotificationCenterFrameworkAdapter {
-    // A strongly typed reference to an instance of UNUserNotificationCenterDelegate that we can provide to iOS in producdtion.
+protocol UserNotificationsFrameworkAdapter {
+    // A reference to an instance of UNUserNotificationCenterDelegate that we can provide to iOS in production.
     var delegate: UNUserNotificationCenterDelegate { get }
 
     func beginListeningNewNotificationCenterDelegateSet()
+
+    // Called when a new `UNUserNotificationCenterDelegate` is set on the host app. Our Swizzling is what calls this function.
     func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?)
 }
 
 /**
- This class is an adapter that makes our SDK communicate with the iOS framework, `UserNotifications` in production.
-
- This allows our SDK to not have knowledge of the `UserNotifications` framework, which makes it easier to write automated tests around our SDK.
-
- Keep this class simple because it is only able to be tested in QA testing. It's meant to be an adapter, not contain logic.
+ Keep this class small and simple because it is only able to be tested in QA testing. All logic for handling push events should be in the rest of the code base that has automated tests around it.
  */
 // sourcery: InjectRegister = "NotificationCenterFrameworkAdapter"
 @available(iOSApplicationExtension, unavailable)
-class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, NotificationCenterFrameworkAdapter {
-    private let pushEventListener: PushEventListener
+class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, UserNotificationsFrameworkAdapter {
+    private let pushEventHandler: PushEventHandler
     private var userNotificationCenter: UserNotificationCenter
 
-    // Make sure that this proxy is held in-memory while the SDK is in memory.
-    private let notificationCenterDelegateProxy = NotificationCenterDelegateProxy()
+    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
+        NotificationCenterDelegateProxyImpl.shared
+    }
 
-    init(pushEventListener: PushEventListener, userNotificationCenter: UserNotificationCenter) {
-        self.pushEventListener = pushEventListener
+    init(pushEventHandler: PushEventHandler, userNotificationCenter: UserNotificationCenter) {
+        self.pushEventHandler = pushEventHandler
         self.userNotificationCenter = userNotificationCenter
     }
 
     var delegate: UNUserNotificationCenterDelegate {
         self
     }
+
+    // MARK: Swizzling to get notified when a new delegate is set on host app.
+
+    // The swizzling is tightly coupled to the UserNotitications framework. So, the swizzling is housed in this file.
 
     func beginListeningNewNotificationCenterDelegateSet() {
         // Sets up swizzling of `UNUserNotificationCenter.current().delegate` setter to get notified when a new delegate is set on host app.
@@ -56,36 +58,33 @@ class NotificationCenterFrameworkAdapterImpl: NSObject, UNUserNotificationCenter
     }
 
     func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?) {
-        notificationCenterDelegateProxy.newNotificationCenterDelegateSet(newDelegate)
-    }
-
-    // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let wasClickEventHandled = pushEventListener.onPushAction(PushNotification(notification: response.notification), didClickOnPush: response.didClickOnPush)
-
-        if wasClickEventHandled {
-            // call the completion handler so the customer does not need to.
-            completionHandler()
-        }
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let response = pushEventListener.shouldDisplayPushAppInForeground(PushNotification(notification: notification))
-        guard let shouldShowPush = response else {
-            // push not handled by CIO SDK. Exit early. Another click handler will call the completion handler.
-
+        guard let newDelegate = newDelegate else {
             return
         }
 
-        if shouldShowPush {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
+        notificationCenterDelegateProxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: newDelegate))
+    }
+
+    // MARK: UNUserNotificationCenterDelegate functions.
+
+    // Functions called by iOS framework, `UserNotifications`. This adapter class simply passes these requests to other code in our SDK where the logic exists.
+    // Convert UserNotifications files into abstracted data types that our SDK understands.
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification)) { shouldShowPush in
+            if shouldShowPush {
+                if #available(iOS 14.0, *) {
+                    completionHandler([.list, .banner, .badge, .sound])
+                } else {
+                    completionHandler([.badge, .sound])
+                }
             } else {
-                completionHandler([.badge, .sound])
+                completionHandler([])
             }
-        } else {
-            completionHandler([])
         }
     }
 
@@ -128,28 +127,5 @@ extension UNUserNotificationCenter {
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
         cio_swizzled_setDelegate(delegate: diGraph.notificationCenterFrameworkAdapter.delegate)
-    }
-}
-
-// A class that represents a push notification received by the iOS framework, `UserNotifications`.
-// When our SDK receives a push notification from the `UserNotification` framework, the push is converted into
-// an instance of this class, first.
-//
-// This allows us to write automated tests around our SDK's push handling logic because classes inside of `UserUnotifications` internal and not mockable.
-public struct PushNotification {
-    let pushId: String
-    let deliveryDate: Date
-    let title: String
-    let message: String
-    let data: [AnyHashable: Any]
-    let rawNotification: UNNotification
-
-    init(notification: UNNotification) { // Parses a `UserNotification` framework class
-        self.pushId = notification.request.identifier
-        self.deliveryDate = notification.date
-        self.title = notification.request.content.title
-        self.message = notification.request.content.body
-        self.data = notification.request.content.userInfo
-        self.rawNotification = notification
     }
 }
