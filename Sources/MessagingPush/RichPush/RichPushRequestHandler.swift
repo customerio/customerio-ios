@@ -20,19 +20,18 @@ class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        // FIXME: [CDP] Evaluate and fix
-        // let diGraph = DIGraphShared.shared
-        // let httpClient = diGraph.httpClient
+        let diGraph = DIGraphShared.shared
+        let httpClient = diGraph.httpClient
 
-        // let newRequest = RichPushRequest(
-        //     pushContent: content,
-        //     request: request,
-        //     httpClient: httpClient,
-        //     completionHandler: completionHandler
-        // )
-        // requests[requestId] = newRequest
+        let newRequest = RichPushRequest(
+            pushContent: content,
+            request: request,
+            httpClient: httpClient,
+            completionHandler: completionHandler
+        )
+        requests[requestId] = newRequest
 
-        // newRequest.start()
+        newRequest.start()
     }
 
     func stopAll() {

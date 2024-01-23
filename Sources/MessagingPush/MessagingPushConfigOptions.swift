@@ -16,6 +16,7 @@ public struct MessagingPushConfigOptions {
     public enum Factory {
         public static func create() -> MessagingPushConfigOptions {
             MessagingPushConfigOptions(
+                writeKey: "",
                 autoFetchDeviceToken: true,
                 autoTrackPushEvents: true,
                 autoTrackDeviceAttributes: true
@@ -27,6 +28,7 @@ public struct MessagingPushConfigOptions {
             // If one isn't provided, use current value instead.
 
             // Construct object with all required parameters. Each config option should be updated from `dictionary` only if available.
+            let writeKey = dictionary[Keys.writeKey.rawValue] as? String
             let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool
             let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool
             let autoTrackDeviceAttributes = dictionary[Keys.autoTrackDeviceAttributes.rawValue] as? Bool
@@ -34,6 +36,7 @@ public struct MessagingPushConfigOptions {
             // Use default config options as fallback
             let presetConfig = create()
             return MessagingPushConfigOptions(
+                writeKey: writeKey ?? presetConfig.writeKey,
                 autoFetchDeviceToken: autoFetchDeviceToken ?? presetConfig.autoFetchDeviceToken,
                 autoTrackPushEvents: autoTrackPushEvents ?? presetConfig.autoTrackPushEvents,
                 autoTrackDeviceAttributes: autoTrackDeviceAttributes ?? presetConfig.autoTrackDeviceAttributes
@@ -42,11 +45,14 @@ public struct MessagingPushConfigOptions {
     }
 
     public enum Keys: String { // Constants used to map each of the options in MessagingPushConfigOptions
+        case writeKey
         case autoFetchDeviceToken
         case autoTrackPushEvents
         case autoTrackDeviceAttributes
     }
 
+    /// internal write key required for NotificationServiceExtension only to track metrics
+    var writeKey: String
     /**
      Enable automatic fetching of device token by the SDK without the need to write custom code by the customer.
      On fetching the token, SDK will auto-register the device. This value is `true` by default.

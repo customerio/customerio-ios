@@ -23,4 +23,20 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
+
+    #if DEBUG
+    /// Initializer for Integration Tests to update the DataPipeline instances.
+    /// To be used for testing purposes only.
+    static func initializeIntegrationTestsInstance(diGraph: DIGraph) {
+        let moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: diGraph.sdkConfig)
+        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: DIGraphShared.shared, config: moduleConfig)
+        initializeSharedInstance(with: implementation, diGraph: diGraph)
+    }
+
+    /// Make testing the singleton `instance` possible.
+    /// Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
+    static func resetSharedTestInstance() {
+        DataPipeline.resetSharedTestInstance()
+    }
+    #endif
 }

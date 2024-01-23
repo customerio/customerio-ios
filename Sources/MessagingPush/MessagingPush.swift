@@ -36,14 +36,29 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     public static func initialize(
         configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
     ) -> MessagingPushInstance {
-        var configOptions = moduleConfig
-
         if let configureHandler = configureHandler {
-            configureHandler(&configOptions)
+            // pass current config reference to update it without needing to recreate
+            configureHandler(&moduleConfig)
         }
 
         shared.initializeModule()
         return shared
+    }
+
+    /// MessagingPush initializer for Notification Service Extension
+    @available(iOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @discardableResult
+    public static func initialize(
+        writeKey: String,
+        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
+    ) -> MessagingPushInstance {
+        initialize { config in
+            config.writeKey = writeKey
+            if let configureHandler = configureHandler {
+                configureHandler(&config)
+            }
+        }
     }
 
     private func initializeModule() {

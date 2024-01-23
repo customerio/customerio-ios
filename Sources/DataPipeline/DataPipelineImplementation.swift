@@ -83,7 +83,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     var registeredDeviceToken: String? {
-        deviceAttributesPlugin.token
+        globalDataStore.pushDeviceToken
     }
 
     func clearIdentify() {
@@ -120,9 +120,19 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
+        if userId.isBlankOrEmpty() {
+            logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
+            return
+        }
+
         let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
+
+        if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
+            logger.debug("deleting registered device token from existing profile: \(currentlyIdentifiedProfile ?? "nil")")
+            deleteDeviceToken()
+        }
 
         if let attributes = attributesCodable {
             analytics.identify(userId: userId, traits: attributes)
@@ -167,8 +177,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         // Do not delete push token from device storage. The token is valid
         // once given to SDK. We need it for future profile identifications.
 
-        // send delete device event to remove it from current profile
-        analytics.track(name: "Device Deleted")
+        if let _ = registeredDeviceToken {
+            // send delete device event to remove it from current profile only if the token was registered before
+            analytics.track(name: "Device Deleted")
+        }
     }
 
     var deviceAttributes: [String: Any] {
@@ -189,23 +201,14 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
-            let deviceAttributes: [String: Any] = defaultDeviceAttributes
-                .mergeWith([
-                    "last_used": self.dateUtil.now
-                ])
-                .mergeWith(customAttributes)
+            let deviceAttributes: [String: Any] = defaultDeviceAttributes.mergeWith(customAttributes)
             self.deviceAttributesPlugin.attributes = deviceAttributes
 
             guard self.deviceAttributesPlugin.token != nil else {
                 self.logger.debug("no device token found, ignoring device attributes request")
                 return
             }
-            guard self.registeredUserId != nil else {
-                self.logger.info("no profile identified, so not registering device token to a profile")
-                return
-            }
 
-            // TODO: [CDP] Reverify event name before going live
             self.analytics.track(name: "Device Created or Updated", properties: deviceAttributes)
         }
     }

@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -16,11 +17,11 @@ open class IntegrationTest: UnitTest {
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUp() {
-        setUp(modifySdkConfig: nil)
+        setUp(modifyModuleConfig: nil)
     }
 
-    open func setUp(modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        super.setUp(modifySdkConfig: modifySdkConfig)
+    open func setUp(modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil) {
+        super.setUp(modifyModuleConfig: modifyModuleConfig)
 
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
@@ -40,12 +41,13 @@ open class IntegrationTest: UnitTest {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
 
-        CustomerIO.initializeIntegrationTests(diGraph: diGraph)
+        CustomerIO.initializeIntegrationTestsInstance(diGraph: diGraph)
     }
 
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
     // For the test functions that need to test SDK initialization, this function exists to be called by test function.
     public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
+        DataPipeline.resetSharedTestInstance()
         CustomerIO.resetSharedInstance()
 
         // confirm that the SDK did get uninitialized

@@ -75,6 +75,25 @@ extension DIGraph {
 
 extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
+    // RichPushDeliveryTracker
+    var richPushDeliveryTracker: RichPushDeliveryTracker {
+        getOverriddenInstance() ??
+            newRichPushDeliveryTracker
+    }
+
+    private var newRichPushDeliveryTracker: RichPushDeliveryTracker {
+        RichPushDeliveryTracker(httpClient: httpClient, logger: logger)
+    }
+
+    // HttpClient
+    public var httpClient: HttpClient {
+        getOverriddenInstance() ??
+            newHttpClient
+    }
+
+    private var newHttpClient: HttpClient {
+        RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, deviceInfo: deviceInfo)
+    }
 }
 
 // swiftlint:enable all
