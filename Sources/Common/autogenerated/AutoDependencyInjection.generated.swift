@@ -56,9 +56,6 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = httpClient
-        countDependenciesResolved += 1
-
         _ = globalDataStore
         countDependenciesResolved += 1
 
@@ -78,9 +75,6 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = logger
-        countDependenciesResolved += 1
-
-        _ = httpRetryPolicy
         countDependenciesResolved += 1
 
         _ = deviceMetricsGrabber
@@ -127,16 +121,6 @@ extension DIGraph {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
-    }
-
-    // HttpClient
-    public var httpClient: HttpClient {
-        getOverriddenInstance() ??
-            newHttpClient
-    }
-
-    private var newHttpClient: HttpClient {
-        CIOHttpClient(sdkConfig: sdkConfig, jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, globalDataStore: globalDataStore, logger: logger, timer: simpleTimer, retryPolicy: httpRetryPolicy, userAgentUtil: userAgentUtil)
     }
 
     // GlobalDataStore
@@ -221,16 +205,6 @@ extension DIGraph {
 
     private var newLogger: Logger {
         ConsoleLogger(sdkConfig: sdkConfig)
-    }
-
-    // HttpRetryPolicy
-    var httpRetryPolicy: HttpRetryPolicy {
-        getOverriddenInstance() ??
-            newHttpRetryPolicy
-    }
-
-    private var newHttpRetryPolicy: HttpRetryPolicy {
-        CustomerIOAPIHttpRetryPolicy()
     }
 
     // DeviceMetricsGrabber
