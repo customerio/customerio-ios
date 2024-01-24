@@ -87,6 +87,7 @@ class DataPipelineCompatibilityTests: UnitTest {
         }
 
         XCTAssertNil(savedEvent[keyPath: "userId"] as? String)
+        XCTAssertNotNil(savedEvent[keyPath: "anonymousId"] as? String)
     }
 
     func test_eventAfterIdentify_expectFinalJSONHasCorrectUserId() {
@@ -130,6 +131,8 @@ class DataPipelineCompatibilityTests: UnitTest {
         XCTAssertEqual(savedEvent[keyPath: "event"] as? String, "Device Created or Updated")
         XCTAssertEqual(savedEvent[keyPath: "userId"] as? String, givenIdentifier)
         XCTAssertEqual(savedEvent[keyPath: "context.device.token"] as? String, givenToken)
+        XCTAssertEqual(savedEvent[keyPath: "context.device.type"] as? String, "ios")
+        // server does not require 'last_used' and 'platform' and may fail if included
         XCTAssertFalse(savedEvent.containsKey("last_used"))
         XCTAssertFalse(savedEvent.containsKey("platform"))
 
