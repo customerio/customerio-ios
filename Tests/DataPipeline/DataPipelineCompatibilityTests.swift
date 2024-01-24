@@ -2,45 +2,31 @@
 @testable import CioInternalCommon
 import Foundation
 @testable import Segment
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 private typealias SavedEvent = [String: Any]
 
 class DataPipelineCompatibilityTests: UnitTest {
-    private var customerIO: CustomerIO!
-    private var analytics: Analytics!
     private var storage: Storage!
 
-    private let deviceInfoMock = DeviceInfoMock()
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
 
-    override func setUp() {
-        super.setUp()
+    private let deviceInfoStub = DeviceInfoStub()
 
+    override func overrideDependencies() {
         diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
-        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+    }
 
-        customerIO = createCustomerIOInstance()
-
-        // setting up analytics for testing
-        analytics = customerIO.analytics
-        guard let analytics = analytics else {
-            fatalError("Analytics instance is nil. The SDK has been set up incorrectly.")
-        }
-        // wait for analytics queue to start emitting events
-        analytics.waitUntilStarted()
+    override func setUp() {
+        super.setUp()
         // get storage instance so we can read final events
         storage = analytics.storage
         storage.hardReset(doYouKnowHowToUseThis: true)
-    }
-
-    override func tearDown() {
-        customerIO.clearIdentify()
-        super.tearDown()
     }
 
     // MARK: profile
@@ -127,7 +113,7 @@ class DataPipelineCompatibilityTests: UnitTest {
     func test_registerDeviceToken_expectFinalJSONHasCorrectKeysAndValues() {
         let givenIdentifier = String.random
         let givenToken = String.random
-        let expectedData = deviceInfoMock.configureWithMockData()
+        let expectedData = deviceInfoStub.getDefaultAttributes()
 
         customerIO.identify(identifier: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
@@ -157,7 +143,7 @@ class DataPipelineCompatibilityTests: UnitTest {
             "source": "test",
             "debugMode": true
         ]
-        let expectedData = deviceInfoMock.configureWithMockData().mergeWith(customAttributes)
+        let expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
 
         customerIO.identify(identifier: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
@@ -187,7 +173,6 @@ class DataPipelineCompatibilityTests: UnitTest {
         let givenIdentifier = String.random
         let givenToken = String.random
 
-        deviceInfoMock.configureWithMockData()
         customerIO.identify(identifier: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
 
