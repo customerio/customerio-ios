@@ -5,9 +5,8 @@ import Foundation
 import SharedTests
 
 class UnitTest: SharedTests.UnitTest {
-    // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
-    // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
+    // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in test cases.
+    // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.
     open var customerIO: CustomerIO!
     open var analytics: Analytics!
 
