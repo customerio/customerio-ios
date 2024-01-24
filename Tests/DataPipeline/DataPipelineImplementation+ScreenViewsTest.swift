@@ -19,11 +19,6 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
         autoTrackingScreenViews = (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
     }
 
-    override func tearDown() {
-        CustomerIO.shared.clearIdentify()
-        super.tearDown()
-    }
-
     // MARK: performScreenTracking
 
     func test_performScreenTracking_givenCustomerProvidesFilter_expectSdkDefaultFilterNotUsed() {
