@@ -7,18 +7,6 @@ public struct HttpRequestParams {
     public let body: Data?
 
     /// Used to create params conveniently for the CIO API.
-    public init?(endpoint: CIOApiEndpoint, baseUrls: HttpBaseUrls, headers: HttpHeaders?, body: Data?) {
-        guard let url = endpoint.getUrl(baseUrls: baseUrls) else {
-            return nil
-        }
-
-        self.method = endpoint.method
-        self.url = url
-        self.headers = headers
-        self.body = body
-    }
-
-    /// Used to create params conveniently for the CIO API.
     public init?(endpoint: CIOApiEndpoint, baseUrl: String, headers: HttpHeaders?, body: Data?) {
         guard let url = endpoint.getUrl(baseUrl: baseUrl) else {
             return nil
