@@ -44,8 +44,6 @@ open class UnitTest: XCTestCase {
         JsonAdapter(log: log)
     }
 
-    public var retryPolicyMock: HttpRetryPolicyMock!
-
     public var dateUtilStub: DateUtilStub!
 
     public var threadUtilStub: ThreadUtilStub!
@@ -96,11 +94,6 @@ open class UnitTest: XCTestCase {
         threadUtilStub = ThreadUtilStub()
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
-
-        // Set the default sleep time for retry policy to a small amount to make tests run fast while also testing the
-        // HTTP retry policy's real code.
-        retryPolicyMock = HttpRetryPolicyMock()
-        retryPolicyMock.underlyingNextSleepTime = 0.01
 
         super.setUp()
     }
@@ -170,19 +163,6 @@ open class UnitTest: XCTestCase {
 }
 
 public extension UnitTest {
-    func waitForQueueToFinishRunningTasks(
-        _ queue: Queue,
-        file: StaticString = #file,
-        line: UInt = #line
-    ) {
-        let queueExpectation = expectation(description: "Expect queue to run all tasks.")
-        queue.run {
-            queueExpectation.fulfill()
-        }
-
-        waitForExpectations(for: [queueExpectation], file: file, line: line)
-    }
-
     func createCustomerIOInstance() -> CustomerIO {
         let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
         return CustomerIO(implementation: implementation, diGraph: diGraph)

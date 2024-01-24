@@ -34,13 +34,13 @@ public protocol QueueStorage: AutoMockable {
 public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
-    private let siteId: String
+    let siteId: String
     private let sdkConfig: SdkConfig
-    private let logger: Logger
-    private let dateUtil: DateUtil
+    let logger: Logger
+    let dateUtil: DateUtil
     private var inventoryStore: QueueInventoryMemoryStore
 
-    private let lock: Lock
+    let lock: Lock
 
     private var inventory: [QueueTaskMetadata]? {
         get {
@@ -187,7 +187,7 @@ public class FileManagerQueueStorage: QueueStorage {
 }
 
 public extension FileManagerQueueStorage {
-    private func update(queueTask: QueueTask) -> Bool {
+    func update(queueTask: QueueTask) -> Bool {
         guard let data = jsonAdapter.toJson(queueTask) else {
             return false
         }

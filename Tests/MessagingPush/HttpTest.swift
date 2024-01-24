@@ -1,6 +1,7 @@
 @testable import CioInternalCommon
-@testable import CioTracking
+@testable import CioMessagingPush
 import Foundation
+@testable import SharedTests
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -18,24 +19,23 @@ import XCTest
  */
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner?
-    public var userAgentUtil: UserAgentUtil!
+    public var deviceInfo: DeviceInfo!
     public var session: URLSession?
 
     override open func setUp() {
         super.setUp()
 
-        userAgentUtil = diGraph.userAgentUtil
+        deviceInfo = diGraph.deviceInfo
 
         /*
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
          we see environment variables set in XCode.
          */
-        if let siteId = getEnvironmentVariable("SITE_ID"), let apiKey = getEnvironmentVariable("API_KEY") {
+        if let writeKey = getEnvironmentVariable("WRITE_KEY") {
             runner = UrlRequestHttpRequestRunner()
-            session = CIOHttpClient.getCIOApiSession(
-                siteId: siteId,
-                apiKey: apiKey,
-                userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
+            session = RichPushHttpClient.getCIOApiSession(
+                key: writeKey,
+                userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
             )
         }
     }

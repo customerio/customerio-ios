@@ -46,7 +46,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
         let counter = 3000
         for _ in 1 ... counter {
-            let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
+            let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
                 .createdTask!
             inventory.append(givenCreatedTask)
         }
@@ -61,7 +61,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
         var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
-        let givenCreatedTask = queueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
+        let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
             .createdTask!
         inventory.append(givenCreatedTask)
 
