@@ -2,47 +2,30 @@
 @testable import CioInternalCommon
 import Foundation
 @testable import Segment
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class DataPipelineInteractionTests: UnitTest {
-    // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
-    // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
-    private var customerIO: CustomerIO!
-    private var analytics: Analytics!
     private var outputReader: OutputReaderPlugin!
 
     private let deviceAttributesMock = DeviceAttributesProviderMock()
-    private let deviceInfoMock = DeviceInfoMock()
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
 
-    override func setUp() {
-        super.setUp()
+    private let deviceInfoStub = DeviceInfoStub()
 
+    override func overrideDependencies() {
         diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
-
-        customerIO = createCustomerIOInstance()
-
-        // setting up analytics for testing
-        analytics = customerIO.analytics
-        guard let analytics = customerIO.analytics else {
-            fatalError("Analytics instance is nil. The SDK has been set up incorrectly.")
-        }
-        // OutputReaderPlugin helps validating interactions with analytics
-        outputReader = analytics.addPluginOnce(plugin: OutputReaderPlugin())
-        // wait for analytics queue to start emitting events
-        analytics.waitUntilStarted()
     }
 
-    override func tearDown() {
-        customerIO.clearIdentify()
-        super.tearDown()
+    override func setUp() {
+        super.setUp()
+        // OutputReaderPlugin helps validating interactions with analytics
+        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
     }
 
     // MARK: identify
@@ -73,12 +56,12 @@ class DataPipelineInteractionTests: UnitTest {
     func test_identify_expectSetNewProfileWithAttributes() {
         let givenIdentifier = String.random
         let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
-        let traitsTypeMap: [[String]: Any.Type] = [["age"]: Int.self]
+        let givenBodyTypeMap: [[String]: Any.Type] = [["age"]: Int.self]
 
         customerIO.identify(identifier: givenIdentifier, body: givenBody)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
-        XCTAssertMatches(analytics.traits(), givenBody, withTypeMap: traitsTypeMap)
+        XCTAssertMatches(analytics.traits(), givenBody, withTypeMap: givenBodyTypeMap)
 
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
         guard let identifyEvent = outputReader.identifyEvents.last else {
@@ -87,7 +70,7 @@ class DataPipelineInteractionTests: UnitTest {
         }
 
         XCTAssertEqual(identifyEvent.userId, givenIdentifier)
-        XCTAssertMatches(identifyEvent.traits?.dictionaryValue, givenBody, withTypeMap: traitsTypeMap)
+        XCTAssertMatches(identifyEvent.traits?.dictionaryValue, givenBody, withTypeMap: givenBodyTypeMap)
     }
 
     // MARK: device token
@@ -97,9 +80,8 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviouslyIdentifiedProfile = String.random
         let givenDeviceToken = String.random
 
-        globalDataStoreMock.configureWithMockData(token: givenDeviceToken)
-        deviceInfoMock.configureWithMockData()
-        deviceAttributesMock.configureWithMockData()
+        globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
+        mockDeviceAttributes()
 
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
@@ -123,9 +105,8 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviouslyIdentifiedProfile = givenIdentifier
         let givenDeviceToken = String.random
 
-        globalDataStoreMock.configureWithMockData(token: givenDeviceToken)
-        deviceInfoMock.configureWithMockData()
-        deviceAttributesMock.configureWithMockData()
+        globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
+        mockDeviceAttributes()
 
         customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
@@ -178,9 +159,8 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviousDeviceToken = String.random
         let givenDeviceToken = String.random
 
-        globalDataStoreMock.configureWithMockData(token: givenPreviousDeviceToken)
-        deviceInfoMock.configureWithMockData()
-        deviceAttributesMock.configureWithMockData()
+        globalDataStoreMock.underlyingPushDeviceToken = givenPreviousDeviceToken
+        mockDeviceAttributes()
 
         customerIO.registerDeviceToken(givenPreviousDeviceToken)
         outputReader.resetPlugin()
@@ -203,7 +183,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenPreviousDeviceToken = String.random
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies()
+        mockDeviceAttributes()
         customerIO.identify(identifier: givenIdentifier)
         customerIO.registerDeviceToken(givenPreviousDeviceToken)
         outputReader.resetPlugin()
@@ -225,7 +205,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = String.random
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies()
+        mockDeviceAttributes()
         customerIO.identify(identifier: givenIdentifier)
         outputReader.resetPlugin()
 
@@ -242,7 +222,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = String.random
         let givenDeviceToken = String.random
 
-        mockDeviceTokenDependencies()
+        mockDeviceAttributes()
         customerIO.registerDeviceToken(givenDeviceToken)
         outputReader.resetPlugin()
 
@@ -400,7 +380,7 @@ class DataPipelineInteractionTests: UnitTest {
     // TODO: [CDP] Confirm if this is still desired behavior
     func test_registerDeviceToken_givenNoProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
-        mockDeviceTokenDependencies()
+        mockDeviceAttributes()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
@@ -414,7 +394,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     func test_registeredDeviceToken_givenDeviceTokenAlreadySaved_expectGivenToken() {
         let givenDeviceToken = String.random
-        mockDeviceTokenDependencies()
+        mockDeviceAttributes()
 
         customerIO.registerDeviceToken(givenDeviceToken)
 
@@ -433,9 +413,7 @@ class DataPipelineInteractionTests: UnitTest {
             "push_enabled": true
         ]
 
-        globalDataStoreMock.configureWithMockData()
-        deviceInfoMock.configureWithMockData()
-        deviceAttributesMock.configureWithMockData(defaultAttributes: givenDefaultAttributes)
+        mockDeviceAttributes(defaultAttributes: givenDefaultAttributes)
 
         customerIO.identify(identifier: givenIdentifier)
         outputReader.resetPlugin()
@@ -460,9 +438,8 @@ class DataPipelineInteractionTests: UnitTest {
         let givenDeviceToken = String.random
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
 
-        globalDataStoreMock.configureWithMockData()
-        deviceInfoMock.configureWithMockData(osName: nil)
-        deviceAttributesMock.configureWithMockData()
+        deviceInfoStub.osName = nil
+        mockDeviceAttributes()
 
         customerIO.identify(identifier: String.random)
         outputReader.resetPlugin()
@@ -558,9 +535,7 @@ class DataPipelineInteractionTests: UnitTest {
 }
 
 extension DataPipelineInteractionTests {
-    private func mockDeviceTokenDependencies() {
-        globalDataStoreMock.configureWithMockData()
-        deviceInfoMock.configureWithMockData()
-        deviceAttributesMock.configureWithMockData()
+    func mockDeviceAttributes(defaultAttributes: [String: Any] = [:]) {
+        deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
     }
 }

@@ -76,15 +76,3 @@ extension RawEvent {
         return nil
     }
 }
-
-extension Analytics {
-    /// Attaches and returns plugin only if it wasn't attached previously
-    func addPluginOnce<P: Plugin>(plugin: P) -> P {
-        if find(pluginType: P.self) != nil {
-            fatalError("Plugin \(P.self) is already attached")
-        }
-
-        add(plugin: plugin)
-        return plugin
-    }
-}

@@ -14,18 +14,9 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        guard let analytics = CustomerIO.shared.analytics else {
-            fatalError("Analytics instance is nil. The SDK has been set up incorrectly.")
-        }
-
         // setting up required plugins
-        outputReader = analytics.addPluginOnce(plugin: OutputReaderPlugin())
-        autoTrackingScreenViews = analytics.addPluginOnce(plugin: AutoTrackingScreenViews())
-        // wait for analytics queue to start emitting events
-        analytics.waitUntilStarted()
-
-        // Screenview events are ignored if no profile identified
-        CustomerIO.shared.identify(identifier: String.random)
+        outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
+        autoTrackingScreenViews = (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
     }
 
     override func tearDown() {
