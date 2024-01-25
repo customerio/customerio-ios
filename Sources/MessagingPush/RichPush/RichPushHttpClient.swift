@@ -50,6 +50,8 @@ public class RichPushHttpClient: HttpClient {
                             )
                         onComplete(.failure(unsuccessfulStatusCodeError))
                     }
+                } else {
+                    onComplete(.failure(.noRequestMade(nil)))
                 }
             }
     }

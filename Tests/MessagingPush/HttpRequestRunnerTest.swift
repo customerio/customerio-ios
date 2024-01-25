@@ -16,12 +16,12 @@ class HttpRequestRunnerTest: HttpTest {
     func test_getAccountRegion() throws {
         guard let runner = runner, let session = session else { return try XCTSkipIf(true) }
 
-        let endpoint = CIOApiEndpoint.findAccountRegion
+        let endpoint = CIOApiEndpoint.trackPushMetricsCdp
 
         let expectComplete = expectation(description: "Expect to complete")
         let requestParams = HttpRequestParams(
             endpoint: endpoint,
-            baseUrls: HttpBaseUrls.getProduction(region: Region.US),
+            baseUrl: "https://cdp.customer.io/v1/",
             headers: nil,
             body: nil
         )!
