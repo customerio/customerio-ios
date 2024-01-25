@@ -60,10 +60,10 @@ class DeviceAttributesProviderTest: UnitTest {
 
 extension DeviceAttributesProviderTest {
     func setupTest(autoTrackDeviceAttributes: Bool = false, sdkWrapper: SdkWrapperConfig? = nil) {
-        super.setUp(modifySdkConfig: { config in
-            config.autoTrackDeviceAttributes = autoTrackDeviceAttributes
-            config._sdkWrapperConfig = sdkWrapper
-        })
+        var moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
+        moduleConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
+        DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
 
         provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
     }

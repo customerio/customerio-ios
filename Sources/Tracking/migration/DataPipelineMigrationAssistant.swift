@@ -54,7 +54,7 @@ class DataPipelineMigrationAssistant {
         // Remove the task from the queue if the task has been processed successfully
         defer {
             if isProcessed {
-//                backgroundQueue.deleteProcessedTask(task)
+                backgroundQueue.deleteProcessedTask(task)
             }
         }
         switch taskDetail.taskType {
