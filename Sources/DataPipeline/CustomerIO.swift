@@ -27,8 +27,7 @@ public extension CustomerIO {
     #if DEBUG
     /// Initializer for Integration Tests to update the DataPipeline instances.
     /// To be used for testing purposes only.
-    static func initializeIntegrationTestsInstance(diGraph: DIGraph) {
-        let moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: diGraph.sdkConfig)
+    static func initializeIntegrationTestsInstance(diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) {
         let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: DIGraphShared.shared, config: moduleConfig)
         initializeSharedInstance(with: implementation, diGraph: diGraph)
     }

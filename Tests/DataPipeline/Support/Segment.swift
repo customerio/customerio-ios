@@ -9,7 +9,7 @@ class OutputReaderPlugin: Plugin {
     let type: PluginType
     var analytics: Analytics?
 
-    var events = [RawEvent]()
+    var events: [RawEvent] = []
     var lastEvent: RawEvent?
 
     init() {
@@ -38,6 +38,8 @@ class OutputReaderPlugin: Plugin {
         lastEvent = nil
     }
 }
+
+// MARK: - Helper Extensions
 
 extension OutputReaderPlugin {
     var identifyEvents: [IdentifyEvent] { events.compactMap { $0 as? IdentifyEvent } }
@@ -73,29 +75,4 @@ extension RawEvent {
         }
         return nil
     }
-}
-
-// MARK: - Helper Methods
-
-func waitUntilStarted(analytics: Analytics?) {
-    guard let analytics = analytics else { return }
-
-    // wait until the startup queue has emptied it's events.
-    if let startupQueue = analytics.find(pluginType: StartupQueue.self) {
-        while startupQueue.running != true {
-            RunLoop.main.run(until: Date.distantPast)
-        }
-    }
-}
-
-/// Attaches and returns plugin only if it wasn't attached previously
-func attachPlugin<P: Plugin>(analytics: Analytics?, plugin: P) -> P {
-    guard let analytics = analytics else { fatalError("Analytics instance is nil") }
-
-    if analytics.find(pluginType: P.self) != nil {
-        fatalError("Plugin \(P.self) is already attached")
-    }
-
-    analytics.add(plugin: plugin)
-    return plugin
 }

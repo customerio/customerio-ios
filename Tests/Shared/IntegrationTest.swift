@@ -41,7 +41,7 @@ open class IntegrationTest: UnitTest {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
 
-        CustomerIO.initializeIntegrationTestsInstance(diGraph: diGraph)
+        CustomerIO.initializeIntegrationTestsInstance(diGraph: diGraph, moduleConfig: dataPipelineModuleConfig)
     }
 
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
