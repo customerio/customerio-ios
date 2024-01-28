@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushFCM
 import CioTracking
