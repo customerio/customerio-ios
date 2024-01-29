@@ -61,9 +61,6 @@ extension DIGraph {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
-        _ = notificationCenterFrameworkAdapter
-        countDependenciesResolved += 1
-
         _ = pushClickHandler
         countDependenciesResolved += 1
 
@@ -71,6 +68,9 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = userNotificationCenter
+        countDependenciesResolved += 1
+
+        _ = userNotificationsFrameworkAdapter
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -85,7 +85,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(notificationCenterFrameworkAdapter: notificationCenterFrameworkAdapter, logger: logger)
+        AutomaticPushClickHandlingImpl(notificationCenterAdapter: userNotificationsFrameworkAdapter, logger: logger)
     }
 
     // DeepLinkUtil
@@ -98,18 +98,6 @@ extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
-    }
-
-    // NotificationCenterFrameworkAdapter
-    @available(iOSApplicationExtension, unavailable)
-    var notificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
-        getOverriddenInstance() ??
-            newNotificationCenterFrameworkAdapter
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newNotificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter {
-        NotificationCenterFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter)
     }
 
     // PushClickHandler
@@ -156,6 +144,18 @@ extension DIGraph {
 
     private var newUserNotificationCenter: UserNotificationCenter {
         UserNotificationCenterImpl()
+    }
+
+    // UserNotificationsFrameworkAdapter
+    @available(iOSApplicationExtension, unavailable)
+    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+        getOverriddenInstance() ??
+            newUserNotificationsFrameworkAdapter
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newUserNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter)
     }
 }
 

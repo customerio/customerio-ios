@@ -59,8 +59,10 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let _: CustomerIOParsedPushPayload = userNotificationCenter(center, didReceive: response) else {
-            // push not sent from CIO. Exit early without calling completionHandler so that customer calls it instead.
+        let push = UNNotificationWrapper(notification: response.notification)
+
+        guard push.isPushSentFromCio else {
+            // Exit early without calling completionHandler so that customer calls it instead.
 
             return false
         }
@@ -74,17 +76,17 @@ extension MessagingPushImplementation {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
-            // push not sent from CIO.
+        let push = UNNotificationWrapper(notification: response.notification)
 
+        guard push.isPushSentFromCio else {
             return nil
         }
 
         if response.didClickOnPush {
-            manualPushClickHandling(cioPush: parsedPush)
+            manualPushClickHandling(cioPush: push)
         }
 
-        return parsedPush
+        return push
     }
 
     // Function that contains the logic for when a customer is wanting to manual handle a push click event.
