@@ -20,7 +20,7 @@ jobs:
       comment-id: ${{ steps.create-comment.outputs.comment-id }}
     steps:
     - name: Find Comment
-      uses: peter-evans/find-comment@v2
+      uses: peter-evans/find-comment@v3
       id: existing-comment
       with:
         issue-number: ${{ github.event.pull_request.number }}
@@ -28,7 +28,7 @@ jobs:
         body-includes: <!-- sample app builds --> 
     
     - name: Create or update comment
-      uses: peter-evans/create-or-update-comment@v3
+      uses: peter-evans/create-or-update-comment@v4
       id: create-comment
       with:
         comment-id: ${{ steps.existing-comment.outputs.comment-id }}
@@ -95,13 +95,13 @@ jobs:
 
     - name: Does ${{ matrix.sample-app }} use CocoaPods? 
       id: check_podfile_exists
-      uses: andstor/file-existence-action@v2
+      uses: andstor/file-existence-action@v3
       with:
         files: "Apps/${{ matrix.sample-app }}/Podfile"
 
     - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: "Apps/${{ matrix.sample-app }}/Pods"
         key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
@@ -126,7 +126,7 @@ jobs:
     
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
-      uses: peter-evans/create-or-update-comment@v3
+      uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
@@ -137,7 +137,7 @@ jobs:
 
     - name: Update sample builds PR comment with build failure message 
       if: ${{ failure() }}
-      uses: peter-evans/create-or-update-comment@v3
+      uses: peter-evans/create-or-update-comment@v4
       with:
         comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
