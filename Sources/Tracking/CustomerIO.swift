@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
@@ -53,7 +54,7 @@ public extension CustomerIO {
         }
         if sdkConfig.autoTrackScreenViews {
             // automatically add the AutoTrackingScreenViews plugin
-            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
+//            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
         }
     }
 

@@ -22,5 +22,5 @@ Pod::Spec.new do |spec|
   
   # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  spec.dependency 'AnalyticsSwiftCIO'
+  spec.dependency 'AnalyticsSwiftCIO', '~> 1.0.1'
 end
