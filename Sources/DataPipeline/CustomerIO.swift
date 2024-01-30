@@ -21,7 +21,7 @@ public extension CustomerIO {
 
         let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph)
+        initialize(implementation: implementation, diGraph: newDiGraph)
     }
 
     /**
