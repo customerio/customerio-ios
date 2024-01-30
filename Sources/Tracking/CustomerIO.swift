@@ -65,7 +65,7 @@ public extension CustomerIO {
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
-    
+
     /// Common method to initialize SDK instance
     private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)

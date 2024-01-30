@@ -23,8 +23,8 @@ public extension CustomerIO {
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
-    
-    static private func initialize(implementation: DataPipelineInstance, diGraph: DIGraph) {
+
+    private static func initialize(implementation: DataPipelineInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
     }
 
