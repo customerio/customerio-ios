@@ -5,18 +5,18 @@ import Foundation
 @testable import Segment
 import SharedTests
 
-class UnitTest: SharedTests.UnitTest {
+open class UnitTest: SharedTests.UnitTest {
     // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in unit tests.
     // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.
     open var customerIO: CustomerIO!
 
-    override func setUpDependencies() {
+    override open func setUpDependencies() {
         super.setUpDependencies()
 
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
     }
 
-    override func initializeSDKComponents() -> CustomerIO? {
+    override open func initializeSDKComponents() -> CustomerIO? {
         // creates CustomerIO instance and set necessary values for testing
         let implementation = DataPipeline.createAndSetSharedTestInstance(
             diGraphShared: diGraphShared,
@@ -31,7 +31,7 @@ class UnitTest: SharedTests.UnitTest {
 
     // function meant to only be in tests as deleting all files from a search path (where app files can be stored!) is
     // not a good idea.
-    override func deleteAllFiles() {
+    override open func deleteAllFiles() {
         super.deleteAllFiles()
 
         let fileManager = FileManager.default

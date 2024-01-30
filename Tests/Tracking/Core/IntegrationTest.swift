@@ -1,7 +1,7 @@
-@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
+@testable import SharedTests
 import XCTest
 
 /**
@@ -16,13 +16,7 @@ open class IntegrationTest: UnitTest {
     // Date util stub is available in UnitTest
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
-    override open func setUp() {
-        setUp(modifyModuleConfig: nil)
-    }
-
-    open func setUp(modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)? = nil) {
-        super.setUp(modifyModuleConfig: modifyModuleConfig)
-
+    override open func setUpDependencies() {
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
         // To prevent any real HTTP requests from being sent, override http request runner for all tests.
@@ -37,17 +31,19 @@ open class IntegrationTest: UnitTest {
         // execute the code in the real device into implementation.
         deviceInfoStub = DeviceInfoStub()
         diGraph.override(value: deviceInfoStub, forType: DeviceInfo.self)
+    }
 
+    override open func initializeSDKComponents() -> CustomerIO? {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
+        CustomerIO.initializeAndSetSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph)
 
-        CustomerIO.initializeIntegrationTestsInstance(diGraph: diGraph, moduleConfig: dataPipelineModuleConfig)
+        return CustomerIO.shared
     }
 
     // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
     // For the test functions that need to test SDK initialization, this function exists to be called by test function.
     public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
-        DataPipeline.resetSharedTestInstance()
         CustomerIO.resetSharedInstance()
 
         // confirm that the SDK did get uninitialized

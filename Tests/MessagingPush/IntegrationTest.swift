@@ -2,7 +2,7 @@
 import Foundation
 import SharedTests
 
-class IntegrationTest: SharedTests.IntegrationTest {
+class IntegrationTest: UnitTest {
     override func setUp() {
         MessagingPush.resetSharedInstance()
 

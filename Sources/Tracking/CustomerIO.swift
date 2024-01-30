@@ -41,21 +41,8 @@ public extension CustomerIO {
         }
 
         let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
-
-        // Check if any unprocessed tasks are pending in the background queue.
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-        let migrationAssistant = newDiGraph.dataPipelineMigrationAssistant
-        migrationAssistant.handleQueueBacklog()
-
-        initializeSharedInstance(with: implementation, diGraph: newDiGraph)
-
-        if sdkConfig.logLevel == .debug {
-            CustomerIO.shared.setDebugLogsEnabled(true)
-        }
-        if sdkConfig.autoTrackScreenViews {
-            // automatically add the AutoTrackingScreenViews plugin
-            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
-        }
+        initialize(implementation: implementation, diGraph: newDiGraph)
     }
 
     // Initialize for Notification Service Extension
@@ -78,4 +65,33 @@ public extension CustomerIO {
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
+    
+    /// Common method to initialize SDK instance
+    private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
+        initializeSharedInstance(with: implementation, diGraph: diGraph)
+
+        // Check if any unprocessed tasks are pending in the background queue.
+        let migrationAssistant = diGraph.dataPipelineMigrationAssistant
+        migrationAssistant.handleQueueBacklog()
+
+        let sdkConfig = diGraph.sdkConfig
+        if sdkConfig.logLevel == .debug {
+            CustomerIO.shared.setDebugLogsEnabled(true)
+        }
+        if sdkConfig.autoTrackScreenViews {
+            // automatically add the AutoTrackingScreenViews plugin
+            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
+        }
+    }
+
+    #if DEBUG
+    /// Initializer for Integration Tests to update the DataPipeline instances.
+    /// To be used for testing purposes only.
+    static func initializeAndSetSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph) {
+        let sdkConfig = diGraph.sdkConfig
+        let moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
+        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
+        initialize(implementation: implementation, diGraph: diGraph)
+    }
+    #endif
 }

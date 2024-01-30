@@ -90,7 +90,9 @@ open class UnitTest: XCTestCase {
     }
 
     @discardableResult
-    open func initializeSDKComponents() -> CustomerIO? { nil }
+    open func initializeSDKComponents() -> CustomerIO? {
+        CustomerIO.shared
+    }
 
     override open func tearDown() {
         Mocks.shared.resetAll()

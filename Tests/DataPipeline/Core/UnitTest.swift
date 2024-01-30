@@ -4,7 +4,7 @@ import Foundation
 @testable import Segment
 import SharedTests
 
-class UnitTest: SharedTests.UnitTest {
+open class UnitTest: SharedTests.UnitTest {
     public var dataPipelineModuleConfig: DataPipelineConfigOptions!
     public var enableLogs: Bool = false
 
@@ -13,11 +13,11 @@ class UnitTest: SharedTests.UnitTest {
     open var customerIO: CustomerIO!
     open var analytics: Analytics!
 
-    override func setUp() {
+    override open func setUp() {
         setUp(modifyModuleConfig: nil)
     }
 
-    override func setUp(enableLogs: Bool = false, siteId: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)?) {
+    override open func setUp(enableLogs: Bool = false, siteId: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)?) {
         setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig, modifyModuleConfig: nil)
     }
 
@@ -38,13 +38,13 @@ class UnitTest: SharedTests.UnitTest {
         super.setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig)
     }
 
-    override func setUpDependencies() {
+    override open func setUpDependencies() {
         super.setUpDependencies()
 
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
     }
 
-    override func initializeSDKComponents() -> CustomerIO? {
+    override open func initializeSDKComponents() -> CustomerIO? {
         // creates CustomerIO instance and set necessary values for testing
         let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
 
@@ -59,12 +59,12 @@ class UnitTest: SharedTests.UnitTest {
         return customerIO
     }
 
-    override func deleteAllFiles() {
+    override open func deleteAllFiles() {
         analytics.storage.hardReset(doYouKnowHowToUseThis: true)
         super.deleteAllFiles()
     }
 
-    override func resetTestInstances() {
+    override open func resetTestInstances() {
         DataPipeline.resetSharedTestInstance()
         super.resetTestInstances()
     }
