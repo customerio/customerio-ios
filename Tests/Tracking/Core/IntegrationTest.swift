@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -39,15 +40,5 @@ open class IntegrationTest: UnitTest {
         CustomerIO.initializeAndSetSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph)
 
         return CustomerIO.shared
-    }
-
-    // This class initializes the SDK by default in setUp() for test function convenience because most test functions will need the SDK initialized.
-    // For the test functions that need to test SDK initialization, this function exists to be called by test function.
-    public func uninitializeSDK(file: StaticString = #file, line: UInt = #line) {
-        CustomerIO.resetSharedInstance()
-
-        // confirm that the SDK did get uninitialized
-        XCTAssertNil(CustomerIO.shared.siteId, file: file, line: line)
-        XCTAssertNil(CustomerIO.shared.diGraph, file: file, line: line)
     }
 }

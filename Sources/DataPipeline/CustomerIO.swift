@@ -34,7 +34,7 @@ public extension CustomerIO {
 
     #if DEBUG
     /**
-     Initializes and configures `DataPipeline` shared instance, for testing purpose only.
+     Initializes and configures `CustomerIO` shared and implementation instance, for testing purpose only.
      */
     static func initializeAndSetSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) {
         let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
@@ -42,9 +42,10 @@ public extension CustomerIO {
     }
 
     /**
-     Resets the shared `DataPipeline` instance to its initial state, only for testing purpose.
+     Resets the shared  `CustomerIO` and `DataPipeline` instance to their initial state, only for testing purpose.
      */
-    static func resetSharedTestInstance() {
+    static func resetSharedTestInstances() {
+        CustomerIO.resetSharedTestInstance()
         DataPipeline.resetSharedTestInstance()
     }
     #endif

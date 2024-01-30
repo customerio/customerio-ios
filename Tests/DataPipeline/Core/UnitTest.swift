@@ -59,13 +59,13 @@ open class UnitTest: SharedTests.UnitTest {
         return customerIO
     }
 
-    override open func deleteAllFiles() {
+    override open func deleteAllPersistantData() {
         analytics.storage.hardReset(doYouKnowHowToUseThis: true)
-        super.deleteAllFiles()
+        super.deleteAllPersistantData()
     }
 
-    override open func resetTestInstances() {
-        DataPipeline.resetSharedTestInstance()
-        super.resetTestInstances()
+    override open func cleanupTestEnvironment() {
+        super.cleanupTestEnvironment()
+        CustomerIO.resetSharedTestInstances()
     }
 }

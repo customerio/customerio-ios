@@ -95,25 +95,21 @@ open class UnitTest: XCTestCase {
     }
 
     override open func tearDown() {
-        Mocks.shared.resetAll()
+        cleanupTestEnvironment()
+        super.tearDown()
+    }
 
+    // Clean up the test environment by releasing resources, clearing mocks, and resetting states during teardown.
+    open func cleanupTestEnvironment() {
+        Mocks.shared.resetAll()
+        // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistantData()
 
         diGraphShared.reset()
         diGraph.reset()
-
-        resetTestInstances()
-
-        super.tearDown()
     }
 
     open func deleteAllPersistantData() {
-        deleteKeyValueStorage()
-        deleteAllFiles()
-    }
-
-    /// delete
-    open func deleteKeyValueStorage() {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
@@ -126,14 +122,6 @@ open class UnitTest: XCTestCase {
 
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()
-    }
-
-    /// delete
-    open func deleteAllFiles() {}
-
-    /// reset
-    open func resetTestInstances() {
-        CustomerIO.resetSharedInstance()
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

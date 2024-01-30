@@ -29,11 +29,19 @@ open class UnitTest: SharedTests.UnitTest {
         return customerIO
     }
 
+    override open func cleanupTestEnvironment() {
+        super.cleanupTestEnvironment()
+        CustomerIO.resetSharedTestInstances()
+    }
+
+    override open func deleteAllPersistantData() {
+        super.deleteAllPersistantData()
+        deleteAllFiles()
+    }
+
     // function meant to only be in tests as deleting all files from a search path (where app files can be stored!) is
     // not a good idea.
-    override open func deleteAllFiles() {
-        super.deleteAllFiles()
-
+    private func deleteAllFiles() {
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in

@@ -75,7 +75,7 @@ public extension CustomerIO {
     private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
 
-        // Check if any unprocessed tasks are pending in the background queue.
+        // Handle any unprocessed tasks pending in the background queue.
         let migrationAssistant = diGraph.dataPipelineMigrationAssistant
         migrationAssistant.handleQueueBacklog()
 
@@ -91,8 +91,9 @@ public extension CustomerIO {
     }
 
     #if DEBUG
-    /// Initializer for Integration Tests to update the DataPipeline instances.
-    /// To be used for testing purposes only.
+    /**
+     Initializes and configures `CustomerIO` shared and implementation instance, for testing purpose only.
+     */
     static func initializeAndSetSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph) {
         let sdkConfig = diGraph.sdkConfig
         let moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)

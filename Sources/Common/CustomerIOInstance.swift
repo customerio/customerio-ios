@@ -105,12 +105,14 @@ public class CustomerIO: CustomerIOInstance {
     // private constructor to force use of singleton API
     private init() {}
 
+    #if DEBUG
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
-    // See CustomerIO.shared.initializeIntegrationTests for integration testing
+    // See CustomerIO.initializeAndSetSharedTestInstance for integration testing
     init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
         self.diGraph = diGraph
     }
+    #endif
 
     public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph) {
         shared.implementation = implementation
@@ -135,13 +137,14 @@ public class CustomerIO: CustomerIOInstance {
             )
     }
 
+    #if DEBUG
     /**
-     Make testing the singleton `instance` possible.
-     Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
+     Resets the shared `CustomerIO` instance to its initial state, only for testing purpose.
      */
-    static func resetSharedInstance() {
+    public static func resetSharedTestInstance() {
         shared = CustomerIO()
     }
+    #endif
 
     /**
      Use `registeredDeviceToken` to fetch the current FCM/APN device token.
