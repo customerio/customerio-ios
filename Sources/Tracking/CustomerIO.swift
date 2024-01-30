@@ -25,7 +25,7 @@ public extension CustomerIOInstance {
 public extension CustomerIO {
     /**
      Initialize the shared `instance` of `CustomerIO`.
-     Call this function when your app launches, before using `CustomerIO.instance`.
+     Call this function when the app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
     static func initialize(
@@ -45,7 +45,9 @@ public extension CustomerIO {
         initialize(implementation: implementation, diGraph: newDiGraph)
     }
 
-    // Initialize for Notification Service Extension
+    /**
+     Initialize the shared `instance` of `CustomerIO` for Notification Service Extension.
+     */
     @available(iOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     static func initialize(
@@ -66,7 +68,10 @@ public extension CustomerIO {
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
 
-    /// Common method to initialize SDK instance
+    /**
+     Common initialization method for setting up the shared `CustomerIO` instance.
+     This method is intended to be used by both actual implementations and in tests, ensuring that tests closely mimic the real-world implementation.
+     */
     private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
 
@@ -75,11 +80,12 @@ public extension CustomerIO {
         migrationAssistant.handleQueueBacklog()
 
         let sdkConfig = diGraph.sdkConfig
+        // automatically add the Logger plugin if logLevel is debug
         if sdkConfig.logLevel == .debug {
             CustomerIO.shared.setDebugLogsEnabled(true)
         }
+        // automatically add the AutoTrackingScreenViews plugin if autoTrackScreenViews is enabled
         if sdkConfig.autoTrackScreenViews {
-            // automatically add the AutoTrackingScreenViews plugin
             DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
         }
     }

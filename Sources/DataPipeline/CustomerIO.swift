@@ -24,20 +24,26 @@ public extension CustomerIO {
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
     }
 
+    /**
+     Common initialization method for setting up the shared `CustomerIO` instance.
+     This method is intended to be used by both actual implementations and in tests, ensuring that tests closely mimic the real-world implementation.
+     */
     private static func initialize(implementation: DataPipelineInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
     }
 
     #if DEBUG
-    /// Initializer for Integration Tests to update the DataPipeline instances.
-    /// To be used for testing purposes only.
+    /**
+     Initializes and configures `DataPipeline` shared instance, for testing purpose only.
+     */
     static func initializeAndSetSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) {
         let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
         initialize(implementation: implementation, diGraph: diGraph)
     }
 
-    /// Make testing the singleton `instance` possible.
-    /// Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
+    /**
+     Resets the shared `DataPipeline` instance to its initial state, only for testing purpose.
+     */
     static func resetSharedTestInstance() {
         DataPipeline.resetSharedTestInstance()
     }
