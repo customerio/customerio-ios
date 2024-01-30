@@ -11,15 +11,25 @@ open class IntegrationTest: UnitTest {
     // We want to mock/stub as little as possible in our integration tests.
     // This class contains a default set of mocks/stubs that *all* integration tests
     // in the code use.
-    public private(set) var httpRequestRunnerStub: HttpRequestRunnerStub!
     public private(set) var deviceInfoStub: DeviceInfoStub!
     // Date util stub is available in UnitTest
 
-    override open func setUpDependencies() {
-        // To prevent any real HTTP requests from being sent, override http request runner for all tests.
-        httpRequestRunnerStub = HttpRequestRunnerStub()
-        diGraph.override(value: httpRequestRunnerStub, forType: HttpRequestRunner.self)
+    override open func setUp(
+        enableLogs: Bool = false,
+        siteId: String? = nil,
+        writeKey: String? = nil,
+        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
+        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?
+    ) {
+        super.setUp(enableLogs: enableLogs, siteId: siteId, writeKey: writeKey, modifySdkConfig: modifySdkConfig, modifyModuleConfig: { config in
+            config.autoAddCustomerIODestination = false
+            if let handler = modifyModuleConfig {
+                handler(&config)
+            }
+        })
+    }
 
+    override open func setUpDependencies() {
         // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in
         // test functions is possible.
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)

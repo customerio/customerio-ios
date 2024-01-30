@@ -94,9 +94,12 @@ public extension CustomerIO {
     /**
      Initializes and configures `CustomerIO` shared and implementation instance, for testing purpose only.
      */
-    static func setUpSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph) {
+    static func setUpSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph, autoAddCustomerIODestination: Bool) {
         let sdkConfig = diGraph.sdkConfig
-        let moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
+        var moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
+        // allow overriding autoAddCustomerIODestination so http requests can be ignored during tests
+        moduleConfig.autoAddCustomerIODestination = autoAddCustomerIODestination
+
         let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
         initialize(implementation: implementation, diGraph: diGraph)
     }
