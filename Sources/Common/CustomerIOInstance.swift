@@ -107,7 +107,7 @@ public class CustomerIO: CustomerIOInstance {
 
     #if DEBUG
     // Constructor for unit testing. Just for overriding dependencies and not running logic.
-    // See CustomerIO.initializeAndSetSharedTestInstance for integration testing
+    // See CustomerIO.setUpSharedTestInstance for integration testing
     init(implementation: CustomerIOInstance, diGraph: DIGraph) {
         self.implementation = implementation
         self.diGraph = diGraph

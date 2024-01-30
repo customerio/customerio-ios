@@ -33,7 +33,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     /**
      Creates and configures shared instance of `DataPipeline`, initializing it with default implementation and the provided config, only for testing purposes.
      */
-    public static func createAndSetSharedTestInstance(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance {
+    public static func setUpSharedTestInstance(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance {
         // initialize moduleConfig before creating the implementation instance, as classes using this instance may directly rely on it
         moduleConfig = config
         let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: config)

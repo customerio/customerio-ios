@@ -33,7 +33,7 @@ open class IntegrationTest: UnitTest {
     override open func initializeSDKComponents() -> CustomerIO? {
         // Because integration tests try to test in an environment that is as to production as possible, we need to
         // initialize the SDK. This is especially important to have the Tracking module setup.
-        CustomerIO.initializeAndSetSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph, moduleConfig: dataPipelineModuleConfig)
+        CustomerIO.setUpSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph, moduleConfig: dataPipelineModuleConfig)
 
         return CustomerIO.shared
     }

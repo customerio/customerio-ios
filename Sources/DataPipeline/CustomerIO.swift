@@ -36,8 +36,8 @@ public extension CustomerIO {
     /**
      Initializes and configures `CustomerIO` shared and implementation instance, for testing purpose only.
      */
-    static func initializeAndSetSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) {
-        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
+    static func setUpSharedTestInstance(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) {
+        let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: moduleConfig)
         initialize(implementation: implementation, diGraph: diGraph)
     }
 

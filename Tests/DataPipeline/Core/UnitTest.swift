@@ -46,7 +46,7 @@ open class UnitTest: SharedTests.UnitTest {
 
     override open func initializeSDKComponents() -> CustomerIO? {
         // creates CustomerIO instance and set necessary values for testing
-        let implementation = DataPipeline.createAndSetSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
+        let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
 
         // creates CustomerIO instance and set necessary values for testing
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
