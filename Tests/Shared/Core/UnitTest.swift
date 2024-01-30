@@ -10,34 +10,22 @@ import XCTest
  We use a base class instead of simply a utility class because we can't access `setup` and `teardown` functions with a util class.
  */
 open class UnitTest: XCTestCase {
-    public let testSiteId = "testing"
     public let testWriteKey = "test"
-
     public var diGraphShared: DIGraphShared!
+    public var log: Logger { diGraphShared.logger }
+    public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
+
+    public let testSiteId = "testing"
     public var diGraph: DIGraph!
+    public var sdkConfig: SdkConfig { diGraph.sdkConfig }
 
-    open var log: Logger {
-        diGraphShared.logger
-    }
-
-    open var globalDataStore: GlobalDataStore {
-        diGraphShared.globalDataStore
-    }
-
-    public var sdkConfig: SdkConfig {
-        diGraph.sdkConfig
-    }
-
-    public var jsonAdapter: JsonAdapter {
-        JsonAdapter(log: log)
-    }
-
+    public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
+    public var lockManager: LockManager { LockManager() }
     public var dateUtilStub: DateUtilStub!
-
     public var threadUtilStub: ThreadUtilStub!
 
-    public var lockManager: LockManager {
-        LockManager()
+    override open func setUp() {
+        setUp(enableLogs: false, modifySdkConfig: nil)
     }
 
     /**
@@ -54,10 +42,6 @@ open class UnitTest: XCTestCase {
      @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
      @param modifySdkConfig Allows you to change configuration options before the SDKConfig instnace is created for you.
      */
-    override open func setUp() {
-        setUp(enableLogs: false, modifySdkConfig: nil)
-    }
-
     open func setUp(
         enableLogs: Bool = false,
         siteId: String? = nil,
