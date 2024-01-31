@@ -70,7 +70,7 @@ extension DIGraph {
         _ = userNotificationCenter
         countDependenciesResolved += 1
 
-        _ = userNotificationsFrameworkAdapter
+        _ = pushEventHandler
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -146,16 +146,16 @@ extension DIGraph {
         UserNotificationCenterImpl()
     }
 
-    // UserNotificationsFrameworkAdapter
+    // PushEventHandler
     @available(iOSApplicationExtension, unavailable)
-    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+    var pushEventHandler: PushEventHandler {
         getOverriddenInstance() ??
-            newUserNotificationsFrameworkAdapter
+            newPushEventHandler
     }
 
     @available(iOSApplicationExtension, unavailable)
-    private var newUserNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter)
+    private var newPushEventHandler: PushEventHandler {
+        iOSPushEventListener(jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
     }
 }
 
