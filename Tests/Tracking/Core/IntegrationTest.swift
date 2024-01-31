@@ -14,20 +14,14 @@ open class IntegrationTest: UnitTest {
     // in the code use.
     public private(set) var deviceInfoStub: DeviceInfoStub!
     // Date util stub is available in UnitTest
-    public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUpDependencies() {
         super.setUpDependencies()
 
-        sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
-
-        // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in
-        // test functions is possible.
-        diGraph.override(value: dateUtilStub, forType: DateUtil.self)
-
         // Mock device info since we are running tests, not running the app on a device. Tests crash when trying to
         // execute the code in the real device into implementation.
         deviceInfoStub = DeviceInfoStub()
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraph.override(value: deviceInfoStub, forType: DeviceInfo.self)
     }
 
