@@ -35,7 +35,13 @@ public extension CustomerIO {
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
         var sdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
-
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+        let pi = newDiGraph.profileStore
+        if DataPipeline.shared.analytics.userId == nil {
+            if let identifier = pi.identifier {
+                DataPipeline.shared.identify(identifier: identifier, body: [:])
+            }
+        }
         if let configureHandler = configureHandler {
             configureHandler(&sdkConfig)
         }
@@ -43,7 +49,6 @@ public extension CustomerIO {
         let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
 
         // Check if any unprocessed tasks are pending in the background queue.
-        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let migrationAssistant = newDiGraph.dataPipelineMigrationAssistant
         migrationAssistant.handleQueueBacklog()
 
