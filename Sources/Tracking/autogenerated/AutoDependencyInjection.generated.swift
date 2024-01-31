@@ -81,7 +81,7 @@ extension DIGraph {
     }
 
     private func _get_dataPipelineMigrationAssistant() -> DataPipelineMigrationAssistant {
-        DataPipelineMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil)
+        DataPipelineMigrationAssistant(logger: logger, queue: queue, jsonAdapter: jsonAdapter, threadUtil: threadUtil, profileStore: profileStore)
     }
 }
 
