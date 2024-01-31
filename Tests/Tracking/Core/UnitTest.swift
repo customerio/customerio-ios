@@ -5,7 +5,7 @@ import Foundation
 @testable import Segment
 import SharedTests
 
-open class UnitTest: SharedTests.UnitTest {
+open class UnitTest: SharedTests.UnitTest<CustomerIO> {
     // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in unit tests.
     // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.
     open var customerIO: CustomerIO!

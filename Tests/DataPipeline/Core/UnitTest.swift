@@ -4,7 +4,7 @@ import Foundation
 @testable import Segment
 import SharedTests
 
-open class UnitTest: SharedTests.UnitTest {
+open class UnitTest: SharedTests.UnitTest<CustomerIO> {
     public var dataPipelineConfigOptions: DataPipelineConfigOptions!
     public var enableLogs: Bool = false
 
