@@ -26,9 +26,9 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
         let givenDeliveryId = String.random
         let givenDeviceToken = String.random
 
-        let cioPush = getPush(content: [:], deliveryId: givenDeliveryId, deviceToken: givenDeviceToken)
+        let cioPush = PushNotificationStub.getPushSentFromCIO(deliveryId: givenDeliveryId, deviceToken: givenDeviceToken)
 
-        messagingPush.manualPushClickHandling(cioPush: cioPush)
+        messagingPush.manualPushClickHandling(push: cioPush)
 
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
         XCTAssertEqual(customerIOMock.trackMetricReceivedArguments?.deliveryID, givenDeliveryId)

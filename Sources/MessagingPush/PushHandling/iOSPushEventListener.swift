@@ -97,8 +97,7 @@ class iOSPushEventListener: PushEventHandler {
             return
         }
 
-        guard let parsedPush = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
-            // push did not come from CIO
+        guard push.isPushSentFromCio else {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
@@ -110,7 +109,7 @@ class iOSPushEventListener: PushEventHandler {
         logger?.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
 
         if pushAction.didClickOnPush {
-            pushClickHandler.pushClicked(parsedPush)
+            pushClickHandler.pushClicked(push)
         }
 
         // call the completion handler so the customer does not need to.
@@ -134,8 +133,7 @@ class iOSPushEventListener: PushEventHandler {
             return
         }
 
-        guard let _ = CustomerIOParsedPushPayload.parse(pushNotification: push, jsonAdapter: jsonAdapter) else {
-            // push did not come from CIO
+        guard push.isPushSentFromCio else {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 

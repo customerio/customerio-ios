@@ -51,10 +51,9 @@ extension MessagingPushImplementation {
         logger.info("did receive notification request. Checking if message was a push sent from Customer.io...")
         logger.debug("notification request: \(request.content.userInfo)")
 
-        guard let parsedPush = CustomerIOParsedPushPayload.parse(
-            notificationContent: request.content,
-            jsonAdapter: jsonAdapter
-        ) else {
+        let push = UNNotificationWrapper(notificationRequest: request)
+
+        guard let pushCioDeliveryInfo = push.cioDelivery else {
             logger.info("the notification was not sent by Customer.io. Ignoring notification request.")
             return false
         }
@@ -63,18 +62,20 @@ extension MessagingPushImplementation {
 
         if sdkConfig.autoTrackPushEvents {
             logger.info("automatically tracking push metric: delivered")
-            logger.debug("parsed deliveryId \(parsedPush.deliveryId), deviceToken: \(parsedPush.deviceToken)")
+            logger.debug("parsed deliveryId \(pushCioDeliveryInfo.id), deviceToken: \(pushCioDeliveryInfo.token)")
 
-            trackMetric(deliveryID: parsedPush.deliveryId, event: .delivered, deviceToken: parsedPush.deviceToken)
+            trackMetric(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
         }
 
         RichPushRequestHandler.shared.startRequest(
-            request,
-            content: parsedPush
-        ) { notificationContent in
-            self.logger.debug("rich push was composed \(notificationContent).")
+            push: push
+        ) { composedRichPush in
+            self.logger.debug("rich push was composed \(composedRichPush).")
 
-            self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: notificationContent)
+            // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
+            if let composedRichPush = composedRichPush as? UNNotificationWrapper {
+                self.finishTasksThenReturn(contentHandler: contentHandler, notificationContent: composedRichPush.notificationContent)
+            }
         }
 
         return true
