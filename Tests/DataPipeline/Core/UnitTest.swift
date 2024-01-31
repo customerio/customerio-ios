@@ -5,13 +5,13 @@ import Foundation
 import SharedTests
 
 open class UnitTest: SharedTests.UnitTest {
-    public var dataPipelineModuleConfig: DataPipelineConfigOptions!
+    public var dataPipelineConfigOptions: DataPipelineConfigOptions!
     public var enableLogs: Bool = false
 
     // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in unit tests.
     // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.
-    open var customerIO: CustomerIO!
-    open var analytics: Analytics!
+    var customerIO: CustomerIO!
+    var analytics: Analytics!
 
     override open func setUp() {
         setUp(modifyModuleConfig: nil)
@@ -35,7 +35,7 @@ open class UnitTest: SharedTests.UnitTest {
         // disable auto add destination to prevent tests from sending data to server
         newModuleConfig.autoAddCustomerIODestination = false
         modifyModuleConfig?(&newModuleConfig)
-        dataPipelineModuleConfig = newModuleConfig
+        dataPipelineConfigOptions = newModuleConfig
 
         super.setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig)
     }
@@ -51,7 +51,7 @@ open class UnitTest: SharedTests.UnitTest {
 
     override open func initializeSDKComponents() -> CustomerIO? {
         // creates CustomerIO instance and set necessary values for testing
-        let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineModuleConfig)
+        let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineConfigOptions)
 
         // creates CustomerIO instance and set necessary values for testing
         customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
