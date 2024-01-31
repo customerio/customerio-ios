@@ -39,17 +39,17 @@ protocol AutomaticPushClickHandling: AutoMockable {
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "AutomaticPushClickHandling"
 class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
-    private let notificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter
+    private let notificationCenterAdapter: UserNotificationsFrameworkAdapter
     private let logger: Logger
 
-    init(notificationCenterFrameworkAdapter: NotificationCenterFrameworkAdapter, logger: Logger) {
-        self.notificationCenterFrameworkAdapter = notificationCenterFrameworkAdapter
+    init(notificationCenterAdapter: UserNotificationsFrameworkAdapter, logger: Logger) {
+        self.notificationCenterAdapter = notificationCenterAdapter
         self.logger = logger
     }
 
     func start() {
         logger.debug("Starting automatic push click handling.")
 
-        notificationCenterFrameworkAdapter.beginListeningNewNotificationCenterDelegateSet()
+        notificationCenterAdapter.beginListeningNewNotificationCenterDelegateSet()
     }
 }

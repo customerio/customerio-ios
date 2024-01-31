@@ -45,8 +45,8 @@ class iOSPushEventListener: PushEventHandler {
         overrideJsonAdapter ?? diGraph?.jsonAdapter
     }
 
-    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
-        NotificationCenterDelegateProxyImpl.shared
+    private var notificationCenterDelegateProxy: PushEventHandlerProxy {
+        PushEventHandlerProxyImpl.shared
     }
 
     private var moduleConfig: MessagingPushConfigOptions? {
