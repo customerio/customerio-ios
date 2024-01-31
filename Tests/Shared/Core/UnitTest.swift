@@ -8,7 +8,7 @@ import XCTest
 
  We use a base class instead of simply a utility class because we can't access `setup` and `teardown` functions with a util class.
  */
-open class UnitTest: XCTestCase {
+open class UnitTest<Component>: XCTestCase {
     public let testWriteKey = "test"
     public var diGraphShared: DIGraphShared!
     public var log: Logger { diGraphShared.logger }
@@ -73,9 +73,7 @@ open class UnitTest: XCTestCase {
     }
 
     @discardableResult
-    open func initializeSDKComponents() -> CustomerIO? {
-        CustomerIO.shared
-    }
+    open func initializeSDKComponents() -> Component? { nil }
 
     override open func tearDown() {
         cleanupTestEnvironment()
