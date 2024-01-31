@@ -32,6 +32,8 @@ open class UnitTest: SharedTests.UnitTest {
         self.enableLogs = enableLogs
 
         var newModuleConfig = DataPipelineConfigOptions.Factory.create(writeKey: writeKey ?? testWriteKey)
+        // disable auto add destination to prevent tests from sending data to server
+        newModuleConfig.autoAddCustomerIODestination = false
         modifyModuleConfig?(&newModuleConfig)
         dataPipelineModuleConfig = newModuleConfig
 
@@ -41,6 +43,9 @@ open class UnitTest: SharedTests.UnitTest {
     override open func setUpDependencies() {
         super.setUpDependencies()
 
+        // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in
+        // test functions is possible.
+        diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
     }
 

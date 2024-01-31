@@ -17,6 +17,8 @@ open class IntegrationTest: UnitTest {
     public private(set) var sampleDataFilesUtil: SampleDataFilesUtil!
 
     override open func setUpDependencies() {
+        super.setUpDependencies()
+
         sampleDataFilesUtil = SampleDataFilesUtil(fileStore: diGraph.fileStorage)
 
         // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in

@@ -14,29 +14,13 @@ open class IntegrationTest: UnitTest {
     public private(set) var deviceInfoStub: DeviceInfoStub!
     // Date util stub is available in UnitTest
 
-    override open func setUp(
-        enableLogs: Bool = false,
-        siteId: String? = nil,
-        writeKey: String? = nil,
-        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
-        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?
-    ) {
-        super.setUp(enableLogs: enableLogs, siteId: siteId, writeKey: writeKey, modifySdkConfig: modifySdkConfig, modifyModuleConfig: { config in
-            config.autoAddCustomerIODestination = false
-            if let handler = modifyModuleConfig {
-                handler(&config)
-            }
-        })
-    }
-
     override open func setUpDependencies() {
-        // Mock date util so the "Date now" is a the same between our tests and the app so comparing Date objects in
-        // test functions is possible.
-        diGraph.override(value: dateUtilStub, forType: DateUtil.self)
+        super.setUpDependencies()
 
         // Mock device info since we are running tests, not running the app on a device. Tests crash when trying to
         // execute the code in the real device into implementation.
         deviceInfoStub = DeviceInfoStub()
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraph.override(value: deviceInfoStub, forType: DeviceInfo.self)
     }
 
@@ -45,6 +29,13 @@ open class IntegrationTest: UnitTest {
         // initialize the SDK. This is especially important to have the Tracking module setup.
         CustomerIO.setUpSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph, moduleConfig: dataPipelineModuleConfig)
 
-        return CustomerIO.shared
+        // get shared CustomerIO instance for convenience
+        customerIO = CustomerIO.shared
+
+        // wait for analytics queue to start emitting events
+        analytics = customerIO.analytics
+        analytics.waitUntilStarted()
+
+        return customerIO
     }
 }
