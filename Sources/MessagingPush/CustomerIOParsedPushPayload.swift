@@ -109,11 +109,11 @@ public class CustomerIOParsedPushPayload {
         pushNotification: PushNotification,
         jsonAdapter: JsonAdapter
     ) -> CustomerIOParsedPushPayload? {
-        guard let pushNotification = pushNotification as? UNNotificationWrapper else {
+        guard let pushNotification = pushNotification as? UNNotificationWrapper, let notification = pushNotification.notification else {
             return nil
         }
 
-        return parse(notificationContent: pushNotification.notification.request.content, jsonAdapter: jsonAdapter)
+        return parse(notificationContent: notification.request.content, jsonAdapter: jsonAdapter)
     }
 
     public static func parse(
