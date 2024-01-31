@@ -11,22 +11,41 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
-    // testing constructor
-    init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore) {
-        self.globalDataStore = globalDataStore
-        super.init(moduleName: Self.moduleName, implementation: implementation)
-    }
 
     // singleton constructor
-    private init() {
-        self.globalDataStore = CioGlobalDataStore.getInstance()
+    private init(globalDataStore: GlobalDataStore = CioGlobalDataStore.getInstance()) {
+        self.globalDataStore = globalDataStore
         super.init(moduleName: Self.moduleName)
     }
 
-    // for testing
-    static func resetSharedInstance() {
+    #if DEBUG
+    // Utility methods to help setting up test environment, only for testing purposes.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        // initialize static properties before implementation creation, as they may be directly used by other classes
+        moduleConfig = config
+
+        shared.setImplementationInstance(implementation: implementation)
+        return implementation
+    }
+
+    @discardableResult
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        // initialize static properties before implementation creation, as they may be directly used by other classes
+        shared = MessagingPush(globalDataStore: diGraphShared.globalDataStore)
+        moduleConfig = config
+
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
+        shared.setImplementationInstance(implementation: implementation)
+        return implementation
+    }
+
+    static func resetTestEnvironment() {
+        moduleConfig = .Factory.create()
         shared = MessagingPush()
     }
+    #endif
 
     /**
      Initialize the shared `instance` of `MessagingPush`.
