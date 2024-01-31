@@ -37,27 +37,15 @@ public extension CustomerIO {
         var sdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
-        var profileStore = newDiGraph.profileStore
-
-        // This code handles the scenario where a user migrates
-        // from the Journeys module to the CDP module while already logged in.
-        // This ensures the CDP module is informed about the
-        // currently logged-in user for seamless processing of events.
-        if DataPipeline.shared.analytics.userId == nil {
-            if let identifier = profileStore.identifier {
-                DataPipeline.shared.identify(identifier: identifier, body: [:])
-                // Remove identifier from storage
-                // so same profile can not be re-identifed
-                profileStore.identifier = nil
-            }
-        }
+        let migrationAssistant = newDiGraph.dataPipelineMigrationAssistant
 
         if let configureHandler = configureHandler {
             configureHandler(&sdkConfig)
         }
 
+        // Handle logged-in user from Journeys to CDP
+        migrationAssistant.handleAlreadyIdentifiedMigratedUser()
         // Check if any unprocessed tasks are pending in the background queue.
-        let migrationAssistant = newDiGraph.dataPipelineMigrationAssistant
         migrationAssistant.handleQueueBacklog()
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
