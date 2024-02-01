@@ -2,6 +2,16 @@
 import Foundation
 import XCTest
 
+/// Serves as the base class for all tests within the SDK, offering common setup, teardown, and
+/// utility methods shared across test cases. This class simplifies the initialization of the SDK/modules,
+/// mock objects, test data, and other shared resources, ensuring a consistent testing environment and
+/// minimizing boilerplate in individual test cases.
+///
+/// The generic `Component` parameter represents the module interface, providing convenient and direct access
+/// to the module's public APIs being tested. `Component` can be specified as the SDK (e.g., `CustomerIO`)
+/// or a specific module (e.g., `MessagingPush`).
+///
+/// For SDK-wide tests, child classes can conveniently inherit from `UnitTest`, designed specifically for testing only SDK APIs.
 open class UnitTestBase<Component>: XCTestCase {
     public let testWriteKey = "test"
     public var diGraphShared: DIGraphShared!
