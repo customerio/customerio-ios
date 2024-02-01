@@ -59,4 +59,18 @@ class DateExtensionTest: UnitTest {
     func test_isOlderThan_givenDateThatIsNewer_expectFalse() {
         XCTAssertFalse(Date().subtract(10, .minute).isOlderThan(Date().subtract(60, .minute)))
     }
+
+    // MARK: formatToIso8601WithMilliseconds
+
+    func test_givenDate_formatToIso8601WithMilliseconds_expectString() {
+        let date = dateUtilStub.now
+        let formattedDate = date.string(format: .iso8601WithMilliseconds)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        let expectedDate = formatter.string(from: date)
+
+        XCTAssertEqual(formattedDate, expectedDate)
+    }
 }
