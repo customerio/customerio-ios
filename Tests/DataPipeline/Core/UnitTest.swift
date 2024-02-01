@@ -63,7 +63,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         customerIO.setDebugLogsEnabled(enableLogs)
 
         // wait for analytics queue to start emitting events
-        analytics = customerIO.analytics
+        analytics = implementation.analytics
         analytics.waitUntilStarted()
 
         return customerIO
