@@ -6,17 +6,15 @@ import Foundation
 // sourcery: InjectRegister = "PushEventHandler"
 class iOSPushEventListener: PushEventHandler {
     private let jsonAdapter: JsonAdapter
-    private var notificationCenterDelegateProxy: PushEventHandlerProxy {
-        PushEventHandlerProxyImpl.shared
-    }
-
+    private var pushEventHandlerProxy: PushEventHandlerProxy
     private let moduleConfig: MessagingPushConfigOptions
     private let pushClickHandler: PushClickHandler
     private let pushHistory: PushHistory
     private let logger: Logger
 
-    init(jsonAdapter: JsonAdapter, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, logger: Logger) {
+    init(jsonAdapter: JsonAdapter, pushEventHandlerProxy: PushEventHandlerProxy, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, logger: Logger) {
         self.jsonAdapter = jsonAdapter
+        self.pushEventHandlerProxy = pushEventHandlerProxy
         self.moduleConfig = moduleConfig
         self.pushClickHandler = pushClickHandler
         self.pushHistory = pushHistory
@@ -39,7 +37,7 @@ class iOSPushEventListener: PushEventHandler {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            notificationCenterDelegateProxy.onPushAction(pushAction, completionHandler: completionHandler)
+            pushEventHandlerProxy.onPushAction(pushAction, completionHandler: completionHandler)
 
             return
         }
@@ -71,7 +69,7 @@ class iOSPushEventListener: PushEventHandler {
             // Do not call completionHandler() because push did not come from CIO.
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
-            notificationCenterDelegateProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
+            pushEventHandlerProxy.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
 
             return
         }
