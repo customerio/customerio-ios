@@ -9,11 +9,8 @@ import XCTest
  Extension of `UnitTest` but performs some tasks that sets the environment for integration tests. Unit test classes should have a predictable environment for easier debugging. Integration tests have more SDK code involved and may require some modification to the test environment before tests run.
  */
 open class IntegrationTest: UnitTest {
-    // We want to mock/stub as little as possible in our integration tests.
-    // This class contains a default set of mocks/stubs that *all* integration tests
-    // in the code use.
+    // Use minimal mocks/stubs in integration tests to closely match production behavior.
     public private(set) var deviceInfoStub: DeviceInfoStub!
-    // Date util stub is available in UnitTest
 
     override open func setUpDependencies() {
         super.setUpDependencies()
@@ -26,10 +23,14 @@ open class IntegrationTest: UnitTest {
     }
 
     override open func initializeSDKComponents() -> CustomerIO? {
-        // Because integration tests try to test in an environment that is as to production as possible, we need to
-        // initialize the SDK. This is especially important to have the Tracking module setup.
-        CustomerIO.setUpSharedTestInstance(diGraphShared: diGraphShared, diGraph: diGraph, autoAddCustomerIODestination: false)
+        // setup shared instance with actual implementation for integration tests
+        let implementation = CustomerIO.setUpSharedInstanceForIntegrationTest(
+            diGraphShared: diGraphShared, diGraph: diGraph, autoAddCustomerIODestination: false
+        )
 
-        return CustomerIO.shared
+        // store shared CustomerIO instance for convenience
+        customerIO = CustomerIO.shared
+
+        return customerIO
     }
 }

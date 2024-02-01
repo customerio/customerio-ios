@@ -106,11 +106,18 @@ public class CustomerIO: CustomerIOInstance {
     private init() {}
 
     #if DEBUG
-    // Constructor for unit testing. Just for overriding dependencies and not running logic.
-    // See CustomerIO.setUpSharedTestInstance for integration testing
-    init(implementation: CustomerIOInstance, diGraph: DIGraph) {
-        self.implementation = implementation
-        self.diGraph = diGraph
+    // Methods to set up the test environment.
+    // Any implementation of the interface works for unit tests.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance, diGraph: DIGraph) -> CustomerIO {
+        shared.implementation = implementation
+        shared.diGraph = diGraph
+        return shared
+    }
+
+    public static func resetSharedTestEnvironment() {
+        shared = CustomerIO()
     }
     #endif
 
@@ -136,15 +143,6 @@ public class CustomerIO: CustomerIOInstance {
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
     }
-
-    #if DEBUG
-    /**
-     Resets the shared `CustomerIO` instance to its initial state, only for testing purpose.
-     */
-    public static func resetSharedTestInstance() {
-        shared = CustomerIO()
-    }
-    #endif
 
     /**
      Use `registeredDeviceToken` to fetch the current FCM/APN device token.

@@ -2,7 +2,7 @@
 @testable import CioMessagingPush
 import SharedTests
 
-open class UnitTest: SharedTests.UnitTest<MessagingPushInstance> {
+open class UnitTest: SharedTests.TestBase<MessagingPushInstance> {
     public private(set) var messagingPushConfigOptions: MessagingPushConfigOptions!
 
     override open func setUp() {
@@ -33,7 +33,7 @@ open class UnitTest: SharedTests.UnitTest<MessagingPushInstance> {
     override open func initializeSDKComponents() -> MessagingPushInstance? {
         // Initialize and configure MessagingPush implementation for unit testing
         let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: messagingPushConfigOptions)
-        MessagingPush.setUpSharedInstanceForUnitTest(implementation: implementation, config: messagingPushConfigOptions)
+        MessagingPush.setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: messagingPushConfigOptions)
         return implementation
     }
 

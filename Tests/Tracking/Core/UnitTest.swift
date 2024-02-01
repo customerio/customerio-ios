@@ -24,21 +24,22 @@ open class UnitTest: SharedTests.UnitTest<CustomerIO> {
         // disable auto add destination to prevent tests from sending data to server
         dataPipelineConfig.autoAddCustomerIODestination = false
 
-        // creates CustomerIO instance and set necessary values for testing
-        let implementation = DataPipeline.setUpSharedTestInstance(
-            diGraphShared: diGraphShared,
+        // setup implementation instance for unit tests
+        let implementation = DataPipeline.setUpSharedInstanceForUnitTest(
+            implementation: DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: dataPipelineConfig),
             config: dataPipelineConfig
         )
 
-        // creates CustomerIO instance and set necessary values for testing
-        customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
+        // setup shared instance with desired implementation for unit tests
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation, diGraph: diGraph)
+        customerIO.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
 
         return customerIO
     }
 
     override open func cleanupTestEnvironment() {
         super.cleanupTestEnvironment()
-        CustomerIO.resetSharedTestInstances()
+        CustomerIO.resetTestEnvironment()
     }
 
     override open func deleteAllPersistantData() {

@@ -50,11 +50,14 @@ open class UnitTest: SharedTests.UnitTest<CustomerIO> {
     }
 
     override open func initializeSDKComponents() -> CustomerIO? {
-        // creates CustomerIO instance and set necessary values for testing
-        let implementation = DataPipeline.setUpSharedTestInstance(diGraphShared: diGraphShared, config: dataPipelineConfigOptions)
+        // setup implementation instance for unit tests
+        let implementation = DataPipeline.setUpSharedInstanceForUnitTest(
+            implementation: DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: dataPipelineConfigOptions),
+            config: dataPipelineConfigOptions
+        )
 
-        // creates CustomerIO instance and set necessary values for testing
-        customerIO = CustomerIO(implementation: implementation, diGraph: diGraph)
+        // setup shared instance with desired implementation for unit tests
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation, diGraph: diGraph)
         customerIO.setDebugLogsEnabled(enableLogs)
 
         // wait for analytics queue to start emitting events
@@ -71,6 +74,6 @@ open class UnitTest: SharedTests.UnitTest<CustomerIO> {
 
     override open func cleanupTestEnvironment() {
         super.cleanupTestEnvironment()
-        CustomerIO.resetSharedTestInstances()
+        CustomerIO.resetTestEnvironment()
     }
 }

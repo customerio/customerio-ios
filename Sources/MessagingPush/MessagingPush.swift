@@ -13,17 +13,19 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     private var globalDataStore: GlobalDataStore
 
     // singleton constructor
-    private init(globalDataStore: GlobalDataStore = CioGlobalDataStore.getInstance()) {
-        self.globalDataStore = globalDataStore
+    private init() {
+        self.globalDataStore = CioGlobalDataStore.getInstance()
         super.init(moduleName: Self.moduleName)
     }
 
     #if DEBUG
-    // Utility methods to help setting up test environment, only for testing purposes.
+    // Methods to set up the test environment.
+    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
 
     @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
+        shared.globalDataStore = diGraphShared.globalDataStore
         moduleConfig = config
 
         shared.setImplementationInstance(implementation: implementation)
@@ -32,13 +34,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        // initialize static properties before implementation creation, as they may be directly used by other classes
-        shared = MessagingPush(globalDataStore: diGraphShared.globalDataStore)
-        moduleConfig = config
-
         let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
-        shared.setImplementationInstance(implementation: implementation)
-        return implementation
+        return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
