@@ -22,14 +22,14 @@ protocol UserNotificationsFrameworkAdapter {
 /**
  Keep this class small and simple because it is only able to be tested in QA testing. All logic for handling push events should be in the rest of the code base that has automated tests around it.
  */
-// sourcery: InjectRegister = "NotificationCenterFrameworkAdapter"
+// sourcery: InjectRegister = "UserNotificationsFrameworkAdapter"
 @available(iOSApplicationExtension, unavailable)
 class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, UserNotificationsFrameworkAdapter {
     private let pushEventHandler: PushEventHandler
     private var userNotificationCenter: UserNotificationCenter
 
-    private var notificationCenterDelegateProxy: NotificationCenterDelegateProxy {
-        NotificationCenterDelegateProxyImpl.shared
+    private var notificationCenterDelegateProxy: PushEventHandlerProxy {
+        PushEventHandlerProxyImpl.shared
     }
 
     init(pushEventHandler: PushEventHandler, userNotificationCenter: UserNotificationCenter) {
@@ -120,12 +120,12 @@ extension UNUserNotificationCenter {
 
         diGraph.logger.debug("New UNUserNotificationCenter.delegate set. Delegate class: \(String(describing: delegate))")
 
-        diGraph.notificationCenterFrameworkAdapter.newNotificationCenterDelegateSet(delegate)
+        diGraph.userNotificationsFrameworkAdapter.newNotificationCenterDelegateSet(delegate)
 
         // Forward request to the original implementation that we swizzled. So that the app finishes setting UNUserNotificationCenter.delegate.
         //
         // Instead of providing the given 'delegate', provide CIO SDK's click handler.
         // This will force our SDK to be the 1 push click handler of the app instead of the given 'delegate'.
-        cio_swizzled_setDelegate(delegate: diGraph.notificationCenterFrameworkAdapter.delegate)
+        cio_swizzled_setDelegate(delegate: diGraph.userNotificationsFrameworkAdapter.delegate)
     }
 }
