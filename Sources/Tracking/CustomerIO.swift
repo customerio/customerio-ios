@@ -42,11 +42,9 @@ public extension CustomerIO {
         if let configureHandler = configureHandler {
             configureHandler(&sdkConfig)
         }
-
-        // Handle logged-in user from Journeys to CDP
-        migrationAssistant.handleAlreadyIdentifiedMigratedUser()
-        // Check if any unprocessed tasks are pending in the background queue.
-        migrationAssistant.handleQueueBacklog()
+        // Handle logged-in user from Journeys to CDP and check
+        // if any unprocessed tasks are pending in the background queue.
+        migrationAssistant.handleMigration()
 
         initializeSharedInstance(with: implementation, diGraph: newDiGraph)
 

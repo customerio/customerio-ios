@@ -37,6 +37,11 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
         self.profileStore = profileStore
     }
 
+    func handleMigration() {
+        handleAlreadyIdentifiedMigratedUser()
+        handleQueueBacklog()
+    }
+
     func handleAlreadyIdentifiedMigratedUser() {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
