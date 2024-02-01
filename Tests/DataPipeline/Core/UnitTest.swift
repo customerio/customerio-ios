@@ -4,6 +4,8 @@ import Foundation
 @testable import Segment
 import SharedTests
 
+/// Base class for unit testing within the module, extending `UnitTestBase` with setup and utilities
+/// specific to module components. Ideal for isolated tests of individual functions and classes.
 open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     public var dataPipelineConfigOptions: DataPipelineConfigOptions!
     public var enableLogs: Bool = false

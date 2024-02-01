@@ -5,6 +5,8 @@ import Foundation
 @testable import Segment
 import SharedTests
 
+/// Base class for unit testing within the module, extending `UnitTestBase` with setup and utilities
+/// specific to module components. Ideal for isolated tests of individual functions and classes.
 open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in unit tests.
     // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.

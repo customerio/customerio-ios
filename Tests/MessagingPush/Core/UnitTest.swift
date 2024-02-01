@@ -2,6 +2,8 @@
 @testable import CioMessagingPush
 import SharedTests
 
+/// Base class for unit testing within the module, extending `UnitTestBase` with setup and utilities
+/// specific to module components. Ideal for isolated tests of individual functions and classes.
 open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
     public private(set) var messagingPushConfigOptions: MessagingPushConfigOptions!
 
