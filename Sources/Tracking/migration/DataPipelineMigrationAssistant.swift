@@ -77,7 +77,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
-        let timestamp = taskDetail.timestamp.string(format: .iso8601noMilliseconds).toString()
+        let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
         var isProcessed = true
 
         // Remove the task from the queue if the task has been processed successfully
@@ -123,8 +123,9 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
             if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
                 properties = attributes
             }
-            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
-                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
+            let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
+            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
 
         // Processes register device token and device attributes
         case .registerPushToken:
@@ -157,7 +158,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 isProcessed = false
                 return
             }
-            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.toString())
+            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds))
         }
     }
 }
