@@ -21,7 +21,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     override func setUp() {
         super.setUp()
 
-        diGraphShared.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: migrationAssistantMock, forType: DataPipelineMigration.self)
@@ -43,22 +43,22 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     }
 
     func test_givenBacklog_expectTaskProcessed() {
-//        var inventory: [QueueTaskMetadata] = []
-//        let givenType = QueueTaskType.identifyProfile
-//        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-//        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
-//        let counter = 3000
-//        for _ in 1 ... counter {
-//            let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
-//                .createdTask!
-//            inventory.append(givenCreatedTask)
-//        }
-//
-//        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-//        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
-//
-//        XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
-//        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
+        var inventory: [QueueTaskMetadata] = []
+        let givenType = QueueTaskType.identifyProfile
+        let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
+        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
+        let counter = 3000
+        for _ in 1 ... counter {
+            let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
+                .createdTask!
+            inventory.append(givenCreatedTask)
+        }
+
+        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
+        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
     }
 
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
@@ -79,6 +79,20 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         let givenProfileIdentifiedInJourneys = String.random
         profileStoreMock.identifier = givenProfileIdentifiedInJourneys
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
-        XCTAssertEqual(migrationAssistantMock.handleAlreadyIdentifiedMigratedUserCallsCount, 1)
+        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenProfileIdentifiedInJourneys)
+        XCTAssertNil(profileStoreMock.identifier)
+    }
+
+    func test_givenNoIdentifiedProfile_expectNoUpdateInUserId() {
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
+        XCTAssertNil(DataPipeline.shared.analytics.userId)
+    }
+
+    func test_givenUserOnCDPIdentified_expectNoUpdate() {
+        let givenIdentifier = String.random
+        DataPipeline.shared.identify(identifier: givenIdentifier)
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
+        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
+        XCTAssertNil(profileStoreMock.identifier)
     }
 }
