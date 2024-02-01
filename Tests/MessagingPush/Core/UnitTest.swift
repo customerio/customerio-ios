@@ -2,7 +2,7 @@
 @testable import CioMessagingPush
 import SharedTests
 
-open class UnitTest: SharedTests.TestBase<MessagingPushInstance> {
+open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
     public private(set) var messagingPushConfigOptions: MessagingPushConfigOptions!
 
     override open func setUp() {
