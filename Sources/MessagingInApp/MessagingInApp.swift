@@ -25,10 +25,26 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         super.init(moduleName: Self.moduleName)
     }
 
-    // for testing
-    static func resetSharedInstance() {
+    #if DEBUG
+    // Methods to set up the test environment.
+    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: MessagingInAppInstance) -> MessagingInAppInstance {
+        shared.setImplementationInstance(implementation: implementation)
+        return implementation
+    }
+
+    @discardableResult
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
+        let implementation = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: config)
+        return setUpSharedInstanceForUnitTest(implementation: implementation)
+    }
+
+    static func resetTestEnvironment() {
         shared = MessagingInApp()
     }
+    #endif
 
     // MARK: static initialized functions for customers.
 
