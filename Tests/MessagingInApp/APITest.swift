@@ -1,5 +1,5 @@
+import CioInternalCommon // do not use `@testable` so we can test functions are made public and not `internal`.
 import CioMessagingInApp // do not use `@testable` so we can test functions are made public and not `internal`.
-import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
