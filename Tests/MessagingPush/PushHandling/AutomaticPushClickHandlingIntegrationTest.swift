@@ -33,10 +33,7 @@ class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
         assertHandledClick(for: givenPush)
     }
 
-    // TODO: Handle handle scenario where a push gets clicked that is not a CIO push, and there are no push click handlers installed in an app to handle that push.
     func test_givenCioSdkOnlyPushHandler_givenClickedOnPushNotSentFromCio_expectEventHandled() {
-        XCTSkip("Test failing because SDK does not currently handle use case. Skipping test until use case handled.")
-
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
 
         performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
@@ -123,10 +120,7 @@ class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
 
     // MARK: local push notification support
 
-    // TODO: Handle handle scenario where a push gets clicked that is not a CIO push, and there are no push click handlers installed in an app to handle that push.
     func test_givenClickOnLocalPush_expectEventHandled() {
-        XCTSkip("Test failing because SDK does not currently handle use case. Skipping test until use case handled.")
-
         let givenLocalPush = PushNotificationStub.getLocalPush(pushId: .random)
 
         performPushAction(PushNotificationActionStub(push: givenLocalPush, didClickOnPush: true))
