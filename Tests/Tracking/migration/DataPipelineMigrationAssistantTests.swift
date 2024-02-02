@@ -77,8 +77,11 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenAlreadyIdentifiedProfile_expectUpdateUserId() {
         let givenProfileIdentifiedInJourneys = String.random
-        profileStoreMock.identifier = givenProfileIdentifiedInJourneys
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
+        profileStoreMock.identifier = givenProfileIdentifiedInJourneys        
+        XCTAssertNil(DataPipeline.shared.analytics.userId)
+        
+        migrationAssistant.handleAlreadyIdentifiedMigratedUser()
+        
         XCTAssertEqual(DataPipeline.shared.analytics.userId, givenProfileIdentifiedInJourneys)
         XCTAssertNil(profileStoreMock.identifier)
     }
