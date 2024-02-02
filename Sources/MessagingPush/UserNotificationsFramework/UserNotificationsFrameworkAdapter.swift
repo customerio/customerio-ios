@@ -52,8 +52,8 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
         SdkInitializedUtilImpl().postInitializedData?.diGraph
     }
 
-    private var notificationCenterDelegateProxy: PushEventHandlerProxy? {
-        diGraph?.pushEventHandlerProxy
+    private var notificationCenterDelegateProxy: PushEventHandlerProxy {
+        PushEventHandlerProxyImpl.shared
     }
 
     var delegate: UNUserNotificationCenterDelegate {
@@ -81,7 +81,7 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
     }
 
     func newNotificationCenterDelegateSet(_ newDelegate: UNUserNotificationCenterDelegate?) {
-        guard let newDelegate = newDelegate, let notificationCenterDelegateProxy = notificationCenterDelegateProxy else {
+        guard let newDelegate = newDelegate else {
             return
         }
 
