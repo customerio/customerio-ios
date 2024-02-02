@@ -13,7 +13,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     private var customerIO: CustomerIO!
     private let profileStoreMock = ProfileStoreMock()
     private let backgroundQueueMock = QueueMock()
-    private let migrationAssistantMock = DataPipelineMigrationMock()
 
     private var migrationAssistant: DataPipelineMigrationAssistant { diGraph.dataPipelineMigrationAssistant }
     private var queueStorage: QueueStorage { diGraph.queueStorage }
@@ -24,7 +23,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-        diGraph.override(value: migrationAssistantMock, forType: DataPipelineMigration.self)
 
         customerIO = createCustomerIOInstance()
     }

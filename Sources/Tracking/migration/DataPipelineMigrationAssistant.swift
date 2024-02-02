@@ -5,7 +5,6 @@ import Foundation
 public protocol DataPipelineMigration: AutoMockable {
     func handleAlreadyIdentifiedMigratedUser()
     func handleQueueBacklog()
-    func getAndProcessTask(for task: QueueTaskMetadata)
 }
 
 // sourcery: InjectRegister = "DataPipelineMigrationAssistant"
