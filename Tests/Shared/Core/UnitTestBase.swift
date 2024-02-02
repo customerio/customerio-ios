@@ -32,18 +32,42 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     /**
-     Perform setup before each test function runs in your test class.
-     Example:
+     Performs initial setup before the execution of each test method in the test class.
+
+     This method should be overridden to include any setup logic required before each test.
+     Call the base implementation in `UnitTestBase` with `super.setUp()` to ensure proper setup, as shown below:
+
      ```
      override func setUp() {
-       super.setUp() // <-- this line calls this function in UnitTest file.
+       super.setUp()    // <-- calls the base class setup
 
-       // do some setup logic, here.
+       // insert setup logic here.
      }
      ```
 
-     @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default it's too noisey and unhelpful when logs are enabled for all tests.
-     @param modifySdkConfig Allows you to change configuration options before the SDKConfig instnace is created for you.
+     To skip the default setup in order to modify SDK/module settings directly within the test function,
+     `setUp` can be overridden as empty, without calling `super.setUp()`, like this:
+
+     ```
+     override func setUp() {
+         // intentionally empty to skip default setup
+     }
+     ```
+
+     Then, customize the SDK/module configuration in test function as follows:
+
+     ```
+     override func setUp() {
+         super.setUp(modifySdkConfig: { config in    // <-- calls the base class setup and modifies config
+             config.autoTrackDeviceAttributes = false
+         })
+
+         // additional setup logic here.
+     }
+     ```
+
+     @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default as it's too noisey and unhelpful when logs are enabled for all tests.
+     @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(
         enableLogs: Bool = false,
