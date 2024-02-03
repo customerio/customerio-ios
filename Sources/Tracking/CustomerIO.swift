@@ -53,7 +53,7 @@ public extension CustomerIO {
             CustomerIO.shared.setDebugLogsEnabled(true)
         }
         if sdkConfig.autoTrackScreenViews {
-//             automatically add the AutoTrackingScreenViews plugin
+            // automatically add the AutoTrackingScreenViews plugin
             DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
         }
     }
