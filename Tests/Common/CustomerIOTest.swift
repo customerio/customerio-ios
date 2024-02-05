@@ -14,7 +14,7 @@ class CustomerIOTest: UnitTest {
 
         diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
 
-        customerIO = CustomerIO(implementation: implmentationMock, diGraph: diGraph)
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implmentationMock, diGraph: diGraph)
     }
 
     func test_initialize_givenPushDeviceTokenNotSet_expectRegisterDeviceTokenNotCalled() {
