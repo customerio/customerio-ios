@@ -5,14 +5,33 @@ import Foundation
 import SharedTests
 import XCTest
 
-class DeviceAttributesProviderTest: UnitTest {
+class DeviceAttributesProviderTest: IntegrationTest {
     private let deviceInfoMock = DeviceInfoMock()
 
     private var provider: SdkDeviceAttributesProvider!
 
+    override func setUpDependencies() {
+        super.setUpDependencies()
+
+        provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
+
+        diGraphShared.override(value: provider, forType: DeviceAttributesProvider.self)
+        diGraph.override(value: provider, forType: DeviceAttributesProvider.self)
+        diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
+    }
+
+    override func setUp() {
+        // do not call super.setUp() because we want to override SDK config and every test should
+        // call setUp(modifySdkConfig:) to modify the SDK config before calling super.setUp()
+    }
+
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
+        super.setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes = false
+        })
+
         let expected: [String: String] = [:]
-        setupTest(autoTrackDeviceAttributes: false)
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
@@ -27,6 +46,10 @@ class DeviceAttributesProviderTest: UnitTest {
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesEnabled_expectGetSomeAttributes() {
+        super.setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes = true
+        })
+
         let givenSdkVersion = String.random
         let givenAppVersion = String.random
         let givenDeviceLocale = String.random
@@ -45,7 +68,6 @@ class DeviceAttributesProviderTest: UnitTest {
         deviceInfoMock.isPushSubscribedClosure = { onComplete in
             onComplete(true)
         }
-        setupTest(autoTrackDeviceAttributes: true)
 
         let expect = expectation(description: "Expect to complete")
         provider.getDefaultDeviceAttributes { actual in
@@ -55,16 +77,5 @@ class DeviceAttributesProviderTest: UnitTest {
         }
 
         waitForExpectations()
-    }
-}
-
-extension DeviceAttributesProviderTest {
-    func setupTest(autoTrackDeviceAttributes: Bool = false, sdkWrapper: SdkWrapperConfig? = nil) {
-        var moduleConfig = DataPipelineConfigOptions.Factory.create(writeKey: "test")
-        moduleConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
-        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: moduleConfig)
-        DataPipeline.setupSharedTestInstance(implementation: implementation, config: moduleConfig)
-
-        provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
     }
 }
