@@ -18,7 +18,7 @@ import XCTest
  }
  ```
  */
-open class BaseDIGraphTest: IntegrationTest {
+open class BaseDIGraphTest: UnitTest {
     public func runTest_expectDiGraphResolvesAllDependenciesWithoutError() {
         // Test will try to get an instance of every dependency in the graph.
         // If an exception is thrown, then there is a bug in the graph.
