@@ -466,16 +466,16 @@ class PushClickHandlerMock: PushClickHandler, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var pushClickedReceivedArguments: CustomerIOParsedPushPayload?
+    private(set) var pushClickedReceivedArguments: PushNotification?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var pushClickedReceivedInvocations: [CustomerIOParsedPushPayload] = []
+    private(set) var pushClickedReceivedInvocations: [PushNotification] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var pushClickedClosure: ((CustomerIOParsedPushPayload) -> Void)?
+    var pushClickedClosure: ((PushNotification) -> Void)?
 
-    /// Mocked function for `pushClicked(_ push: CustomerIOParsedPushPayload)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func pushClicked(_ push: CustomerIOParsedPushPayload) {
+    /// Mocked function for `pushClicked(_ push: PushNotification)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func pushClicked(_ push: PushNotification) {
         mockCalled = true
         pushClickedCallsCount += 1
         pushClickedReceivedArguments = push

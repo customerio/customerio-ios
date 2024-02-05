@@ -21,13 +21,7 @@ class PushClickHandlerTest: IntegrationTest {
     // MARK: pushClicked
 
     func test_pushClicked_givenNoDeepLinkAttached_expectDoNotHandleDeepLink() {
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
+        let givenPush = PushNotificationStub.getPushSentFromCIO(imageUrl: "https://example.com/image.png")
 
         pushClickHandler.pushClicked(givenPush)
 
@@ -36,15 +30,7 @@ class PushClickHandlerTest: IntegrationTest {
 
     func test_pushClicked_givenDeepLinkAttached_expectHandleDeepLink() {
         let givenDeepLink = "https://example.com/\(String.random)"
-
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "link": givenDeepLink,
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
+        let givenPush = PushNotificationStub.getPushSentFromCIO(deepLink: givenDeepLink, imageUrl: "https://example.com/image.png")
 
         pushClickHandler.pushClicked(givenPush)
 
@@ -53,13 +39,7 @@ class PushClickHandlerTest: IntegrationTest {
     }
 
     func test_pushClicked_expectTrackOpenedEvent() {
-        let givenPush = getPush(content: [
-            "CIO": [
-                "push": [
-                    "image": "https://example.com/image.png"
-                ]
-            ]
-        ])
+        let givenPush = PushNotificationStub.getPushSentFromCIO(imageUrl: "https://example.com/image.png")
 
         pushClickHandler.pushClicked(givenPush)
 

@@ -59,8 +59,10 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let _: CustomerIOParsedPushPayload = userNotificationCenter(center, didReceive: response) else {
-            // push not sent from CIO. Exit early without calling completionHandler so that customer calls it instead.
+        let push = UNNotificationWrapper(notification: response.notification)
+
+        guard push.isPushSentFromCio else {
+            // Exit early without calling completionHandler so that customer calls it instead.
 
             return false
         }
@@ -74,26 +76,26 @@ extension MessagingPushImplementation {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        guard let parsedPush = CustomerIOParsedPushPayload.parse(response: response, jsonAdapter: jsonAdapter) else {
-            // push not sent from CIO.
+        let push = UNNotificationWrapper(notification: response.notification)
 
+        guard push.isPushSentFromCio else {
             return nil
         }
 
         if response.didClickOnPush {
-            manualPushClickHandling(cioPush: parsedPush)
+            manualPushClickHandling(push: push)
         }
 
-        return parsedPush
+        return push
     }
 
     // Function that contains the logic for when a customer is wanting to manual handle a push click event.
     // Function created for logic to be testable since automated test suite crashes when trying to access some UserNotification framework classes such as UNUserNotificationCenter.
-    func manualPushClickHandling(cioPush: CustomerIOParsedPushPayload) {
+    func manualPushClickHandling(push: PushNotification) {
         // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
         // We get around this by getting a instance in this function, only.
         if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
-            pushClickHandler.pushClicked(cioPush)
+            pushClickHandler.pushClicked(push)
         }
     }
 }
