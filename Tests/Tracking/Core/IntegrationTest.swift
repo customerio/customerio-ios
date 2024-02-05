@@ -1,4 +1,3 @@
-@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -24,9 +23,7 @@ open class IntegrationTest: UnitTest {
 
     override open func initializeSDKComponents() -> CustomerIO? {
         // setup shared instance with actual implementation for integration tests
-        let implementation = CustomerIO.setUpSharedInstanceForIntegrationTest(
-            diGraphShared: diGraphShared, diGraph: diGraph, autoAddCustomerIODestination: false
-        )
+        CustomerIO.setUpSharedInstanceForIntegrationTest(diGraphShared: diGraphShared, diGraph: diGraph, autoAddCustomerIODestination: false)
 
         // store shared CustomerIO instance for convenience
         customerIO = CustomerIO.shared
