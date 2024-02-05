@@ -30,10 +30,9 @@ class MessagingPushFCMAPITest: UnitTest {
 
         MessagingPush.shared.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                .notInitialized
+            didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed
         )
-        mock.application("", didFailToRegisterForRemoteNotificationsWithError: CustomerIOError.notInitialized)
+        mock.application("", didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed)
 
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
