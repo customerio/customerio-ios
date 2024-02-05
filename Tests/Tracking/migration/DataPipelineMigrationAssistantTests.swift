@@ -7,28 +7,16 @@ import SharedTests
 import XCTest
 
 class DataPipelineMigrationAssistantTests: UnitTest {
-    // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
-    // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
-    private var customerIO: CustomerIO!
-
     private let backgroundQueueMock = QueueMock()
 
     private var migrationAssistant: DataPipelineMigrationAssistant { diGraph.dataPipelineMigrationAssistant }
     private var queueStorage: QueueStorage { diGraph.queueStorage }
 
-    override func setUp() {
-        super.setUp()
+    override func setUpDependencies() {
+        super.setUpDependencies()
 
-        diGraph.override(value: dateUtilStub, forType: DateUtil.self)
+        diGraphShared.override(value: backgroundQueueMock, forType: Queue.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-
-        customerIO = createCustomerIOInstance()
-    }
-
-    override func tearDown() {
-        customerIO.clearIdentify()
-        super.tearDown()
     }
 
     // MARK: handleQueueBacklog/getAndProcessTask
