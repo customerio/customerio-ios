@@ -5,7 +5,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class DeviceAttributesProviderTest: IntegrationTest {
+class DeviceAttributesProviderTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
 
     private var provider: SdkDeviceAttributesProvider!

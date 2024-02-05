@@ -1,4 +1,3 @@
-import CioInternalCommon // do not use `@testable` so we can test functions are made public and not `internal`.
 // import CioMessagingPush // do not import. We want to test that customers only need to import 'CioMessagingPushFCM'
 import CioMessagingPushFCM // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
@@ -37,8 +36,8 @@ class MessagingPushFCMAPITest: UnitTest {
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
 
-        MessagingPush.shared.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
+        MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
     }
 
     func test_richPushPublicFunctions() throws {

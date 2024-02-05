@@ -1,5 +1,5 @@
 @testable import CioDataPipelines
-@testable import CioInternalCommon
+import CioInternalCommon
 import Foundation
 import SharedTests
 import SwiftUI
