@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 import Segment
 
@@ -26,3 +27,6 @@ public typealias IdentifyEvent = Segment.IdentifyEvent
 public typealias Settings = Segment.Settings
 public typealias FlushPolicy = Segment.FlushPolicy
 public typealias OperatingMode = Segment.OperatingMode
+
+public typealias Metric = CioInternalCommon.Metric
+public typealias CustomerIO = CioInternalCommon.CustomerIO
