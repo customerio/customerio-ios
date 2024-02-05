@@ -266,7 +266,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         }
 
         XCTAssertEqual(savedEvent[keyPath: "name"] as? String, givenScreen)
-        XCTAssertTrue(savedEvent[mapKeyPath: "properties"]?.isEmpty ?? false)
+        XCTAssertNil(savedEvent[keyPath: "properties"])
     }
 
     func test_screenWithAttributes_expectFinalJSONHasCorrectKeysAndValues() {
