@@ -95,10 +95,12 @@ public extension CustomerIO {
     // Integration tests use the actual implementation.
 
     @discardableResult
-    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, diGraph: DIGraph, autoAddCustomerIODestination: Bool) -> CustomerIOInstance {
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, diGraph: DIGraph, autoAddCustomerIODestination: Bool = false) -> CustomerIOInstance {
         let sdkConfig = diGraph.sdkConfig
         var moduleConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
         // allow overriding autoAddCustomerIODestination so http requests can be ignored during tests
+        // autoAddCustomerIODestination cannot be provided directly in any graph as it DataPipelineConfigOptions property,
+        // and DataPipelineConfigOptions is not a part of any graph yet, so added it as a parameter to this method for convenience
         moduleConfig.autoAddCustomerIODestination = autoAddCustomerIODestination
 
         let implementation = DataPipeline.setUpSharedInstanceForIntegrationTest(diGraphShared: diGraphShared, config: moduleConfig)
