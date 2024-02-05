@@ -84,14 +84,15 @@ class iOSPushEventListener: PushEventHandler {
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         guard let pushClickHandler = pushClickHandler,
               let pushHistory = pushHistory,
-              let jsonAdapter = jsonAdapter
+              let jsonAdapter = jsonAdapter,
+              let dateWhenPushDelivered = pushAction.push.deliveryDate
         else {
             return
         }
         let push = pushAction.push
         logger?.debug("On push action event. push action: \(pushAction))")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
             return
         }
@@ -119,13 +120,14 @@ class iOSPushEventListener: PushEventHandler {
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
         guard let pushHistory = pushHistory,
               let jsonAdapter = jsonAdapter,
-              let moduleConfig = moduleConfig
+              let moduleConfig = moduleConfig,
+              let dateWhenPushDelivered = push.deliveryDate
         else {
             return
         }
         logger?.debug("Push event: willPresent. push: \(push)")
 
-        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: push.pushId, pushDeliveryDate: push.deliveryDate) else {
+        guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
 
             // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
