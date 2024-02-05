@@ -26,7 +26,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
             // enable auto add destination so we can test the final JSON being sent to the server
             config.autoAddCustomerIODestination = true
         })
-        
+
         // get DataPipelineImplementation instance so we can call its methods directly
         dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation)
 
