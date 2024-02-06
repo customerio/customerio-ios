@@ -40,8 +40,9 @@ jobs:
   
     - name: Upload code coverage report 
       uses: codecov/codecov-action@v4
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }} 
       with: 
-        token: ${{ secrets.CODECOV_UPLOAD_TOKEN }} # not required for public repos, but sometimes uploads fail without it so include it anyway
         files: .build/coverage.xml
         fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
         verbose: true 
