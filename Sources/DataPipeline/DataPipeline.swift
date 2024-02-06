@@ -30,18 +30,26 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     #if DEBUG
-    /// Updates the implementation instance. To be used for testing purposes only.
-    static func createAndSetSharedTestInstance(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineImplementation {
-        // initialize moduleConfig before creating the implementation instance, as classes using this instance may directly rely on it
+    // Methods to set up the test environment.
+    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
+
+    @discardableResult
+    public static func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance {
+        // initialize static properties before implementation creation, as they may be directly used by other classes
         moduleConfig = config
-        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: config)
+
         shared.setImplementationInstance(implementation: implementation)
         return implementation
     }
 
-    /// Make testing the singleton `instance` possible.
-    /// Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
-    static func resetSharedTestInstance() {
+    @discardableResult
+    public static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance {
+        let implementation = DataPipelineImplementation(diGraph: diGraphShared, moduleConfig: config)
+        return setUpSharedInstanceForUnitTest(implementation: implementation, config: config)
+    }
+
+    static func resetTestEnvironment() {
+        moduleConfig = nil
         shared = DataPipeline()
     }
     #endif
@@ -52,7 +60,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
      before using any `DataPipeline` features.
      */
     @discardableResult
-    public static func initialize(moduleConfig: DataPipelineConfigOptions) -> CustomerIOInstance {
+    public static func initialize(moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
         Self.moduleConfig = moduleConfig
         shared.initializeModule()
         return shared
