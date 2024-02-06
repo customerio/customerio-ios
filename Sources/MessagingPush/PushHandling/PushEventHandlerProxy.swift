@@ -2,6 +2,7 @@ import CioInternalCommon
 import Foundation
 
 // Forwards requests from our SDK to other push event handlers in the host iOS app, if our SDK does not handle the push event.
+@available(iOSApplicationExtension, unavailable)
 protocol PushEventHandlerProxy: AutoMockable {
     func addPushEventHandler(_ newHandler: PushEventHandler)
 
@@ -15,6 +16,7 @@ protocol PushEventHandlerProxy: AutoMockable {
 
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
+@available(iOSApplicationExtension, unavailable)
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     /*
      # Why is this class not stored in the digraph?
