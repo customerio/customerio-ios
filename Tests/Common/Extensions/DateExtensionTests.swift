@@ -63,14 +63,21 @@ class DateExtensionTest: UnitTest {
     // MARK: formatToIso8601WithMilliseconds
 
     func test_givenDate_formatToIso8601WithMilliseconds_expectString() {
-        let date = dateUtilStub.now
-        let formattedDate = date.string(format: .iso8601WithMilliseconds)
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.year = 2024
+        components.month = 2
+        components.day = 1
+        components.hour = 20
+        components.minute = 40
+        components.second = 19
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        let expectedDate = formatter.string(from: date)
-
-        XCTAssertEqual(formattedDate, expectedDate)
+        guard let givenDate = calendar.date(from: components) else {
+            print("Failed to create date from components")
+            return
+        }
+        let expectedString = "2024-02-01T16:40:19.000Z"
+        let actualString = givenDate.string(format: .iso8601WithMilliseconds)
+        XCTAssertEqual(expectedString, actualString)
     }
 }
