@@ -46,7 +46,7 @@ public extension PushNotification {
         cioDelivery != nil
     }
 
-    var cioPayload: [AnyHashable: Any]? {
+    private var cioPayload: [AnyHashable: Any]? {
         get {
             data["CIO"] as? [AnyHashable: Any]
         }
@@ -55,7 +55,7 @@ public extension PushNotification {
         }
     }
 
-    var cioPushPayload: [AnyHashable: Any]? {
+    private var cioPushPayload: [AnyHashable: Any]? {
         get {
             cioPayload?["push"] as? [AnyHashable: Any]
         }
