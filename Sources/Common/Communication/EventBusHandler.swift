@@ -9,10 +9,12 @@ public protocol EventBusHandler {
     func removeFromStorage<E: EventRepresentable>(_ event: E) async
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// `EventBusHandler` acts as a central hub for managing events in the application.
 /// It interfaces with both an event bus for real-time event handling and an event storage system for persisting events.
 // sourcery: InjectRegisterShared = "EventBusHandler"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 public class CioEventBusHandler: EventBusHandler {
     private let eventBus: EventBus
     private let eventCache: EventCache

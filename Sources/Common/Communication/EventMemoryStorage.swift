@@ -7,10 +7,12 @@ public protocol EventCache: AutoMockable {
     func removeAllEventsForKey(_ key: String) async
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// `EventMemoryStorage` is an actor that encapsulates thread-safe access to in-memory storage
 /// of events. It allows storing, appending, retrieving, and removing events associated with specific keys.
 // sourcery: InjectRegisterShared = "EventCache"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 actor EventCacheManager: EventCache {
     /// Storage dictionary to hold arrays of `AnyEventRepresentable` events, keyed by their unique keys.
     private var storage: [String: RingBuffer<AnyEventRepresentable>] = [:]
