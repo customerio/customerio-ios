@@ -78,12 +78,8 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
-        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
-        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-             success: true,
-             queueStatus: QueueStatus.successAddingSingleTask
-         ) */
-        // Message opened
+        messagingInApp.setEventListener(eventListenerMock)
+
         XCTAssertFalse(eventListenerMock.messageShownCalled)
         messagingInApp.messageShown(message: givenGistMessage)
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
@@ -121,12 +117,8 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_eventListeners_expectCallListenerForEachEvent() {
         let givenGistMessage = Message.random
 
-        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
-        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-             success: true,
-             queueStatus: QueueStatus.successAddingSingleTask
-         ) */
-        // Message opened
+        messagingInApp.setEventListener(eventListenerMock)
+
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 0)
         messagingInApp.messageShown(message: givenGistMessage)
         XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
@@ -161,11 +153,9 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenCurrentRoute = String.random
         let givenAction = "gist://close"
         let givenName = String.random
-        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
-        /* backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-             success: true,
-             queueStatus: QueueStatus.successAddingSingleTask
-         ) */
+
+        messagingInApp.setEventListener(eventListenerMock)
+
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
 
         messagingInApp.action(
