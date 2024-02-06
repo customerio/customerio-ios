@@ -1,3 +1,4 @@
+import CioInternalCommon
 import CioTracking
 import Foundation
 import UserNotifications
@@ -22,19 +23,37 @@ protocol UserNotificationsFrameworkAdapter {
 /**
  Keep this class small and simple because it is only able to be tested in QA testing. All logic for handling push events should be in the rest of the code base that has automated tests around it.
  */
-// sourcery: InjectRegister = "UserNotificationsFrameworkAdapter"
 @available(iOSApplicationExtension, unavailable)
 class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, UserNotificationsFrameworkAdapter {
-    private let pushEventHandler: PushEventHandler
-    private var userNotificationCenter: UserNotificationCenter
+    /*
+     # Why is this class not stored in the digraph?
+
+     This class is the SDK's `UNUserNotificationCenterDelegate` instance.  Meaning, the CIO SDK registers this class with the OS in order to
+     receive callbacks when push notifications are interacted with.
+
+     It's important that the instance of this class provided to the OS stays in memory so our SDK can receive those OS callbacks.
+
+     In order to promise this class's singleton instance stays in memory, the singleton instance is *not* stored inside of the digraph (like all other singletons in our SDK is).
+     */
+    static let shared = UserNotificationsFrameworkAdapterImpl()
+
+    // It's important that we use do not keep a strong reference to any dependencies or to the digraph. Otherwise, the SDK would crash if the SDK's digraph gets re-initialized and
+    // this class tries to access old instances of dependencies.
+    private var pushEventHandler: PushEventHandler? {
+        diGraph?.pushEventHandler
+    }
+
+    private var userNotificationCenter: UserNotificationCenter? {
+        diGraph?.userNotificationCenter
+    }
+
+    // Convenient getter of the digraph for dependency getters above.
+    private var diGraph: DIGraph? {
+        SdkInitializedUtilImpl().postInitializedData?.diGraph
+    }
 
     private var notificationCenterDelegateProxy: PushEventHandlerProxy {
         PushEventHandlerProxyImpl.shared
-    }
-
-    init(pushEventHandler: PushEventHandler, userNotificationCenter: UserNotificationCenter) {
-        self.pushEventHandler = pushEventHandler
-        self.userNotificationCenter = userNotificationCenter
     }
 
     var delegate: UNUserNotificationCenterDelegate {
@@ -46,6 +65,10 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
     // The swizzling is tightly coupled to the UserNotitications framework. So, the swizzling is housed in this file.
 
     func beginListeningNewNotificationCenterDelegateSet() {
+        guard var userNotificationCenter = userNotificationCenter else {
+            return
+        }
+
         // Sets up swizzling of `UNUserNotificationCenter.current().delegate` setter to get notified when a new delegate is set on host app.
         swizzle(
             forClass: UNUserNotificationCenter.self,
@@ -71,10 +94,18 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
     // Convert UserNotifications files into abstracted data types that our SDK understands.
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        guard let pushEventHandler = pushEventHandler else {
+            return
+        }
+
         pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        guard let pushEventHandler = pushEventHandler else {
+            return
+        }
+
         pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification)) { shouldShowPush in
             if shouldShowPush {
                 if #available(iOS 14.0, *) {
@@ -100,6 +131,16 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
         } else {
             method_exchangeImplementations(originalMethod, swizzledMethod)
         }
+    }
+}
+
+// Manually add a getter in the digraph.
+// We must use this manual approach instead of auto generated code because the class maintains its own singleton instance outside of the digraph.
+// This getter allows convenient access to this dependency via the digraph.
+extension DIGraph {
+    @available(iOSApplicationExtension, unavailable)
+    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+        UserNotificationsFrameworkAdapterImpl.shared
     }
 }
 
