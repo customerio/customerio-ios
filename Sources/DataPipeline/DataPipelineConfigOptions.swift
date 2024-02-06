@@ -26,6 +26,7 @@ public struct DataPipelineConfigOptions {
         public static func create(sdkConfig: SdkConfig) -> DataPipelineConfigOptions {
             let writeKey = "\(sdkConfig.siteId):\(sdkConfig.apiKey)"
             var result = DataPipelineConfigOptions(writeKey: writeKey)
+            result.autoTrackDeviceAttributes = sdkConfig.autoTrackDeviceAttributes
             result.flushAt = sdkConfig.backgroundQueueMinNumberOfTasks
             result.flushInterval = sdkConfig.backgroundQueueSecondsDelay
             return result

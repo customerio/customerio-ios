@@ -1,6 +1,5 @@
 // import CioMessagingPush // do not import. We want to test that customers only need to import 'CioMessagingPushAPN'
 import CioMessagingPushAPN // do not use `@testable` so we can test functions are made public and not `internal`.
-import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -27,13 +26,11 @@ class MessagingPushAPNAPITest: UnitTest {
 
         MessagingPush.shared.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                .notInitialized
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
         mock.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                .notInitialized
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
 
         MessagingPush.shared.deleteDeviceToken()
