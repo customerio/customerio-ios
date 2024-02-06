@@ -31,16 +31,28 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
         let givenTask = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "null")
-        let givenQueueTaskData = jsonAdapter.toJson(givenTask)!
+
+        guard let givenQueueTaskData = jsonAdapter.toJson(givenTask) else {
+            XCTFail("Failed to convert givenTask to JSON")
+            return
+        }
+
+        guard let fileManagerQueueStorage = queueStorage as? FileManagerQueueStorage else {
+            XCTFail("queueStorage could not be cast to FileManagerQueueStorage")
+            return
+        }
+
         let counter = 3000
         for _ in 1 ... counter {
-            let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil)
-                .createdTask!
+            guard let givenCreatedTask = fileManagerQueueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil).createdTask else {
+                XCTFail("Failed to create task")
+                return
+            }
             inventory.append(givenCreatedTask)
         }
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
@@ -49,12 +61,21 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
         var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
-        let givenCreatedTask = (queueStorage as! FileManagerQueueStorage).create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil)
-            .createdTask!
+
+        guard let fileManagerQueueStorage = queueStorage as? FileManagerQueueStorage else {
+            XCTFail("queueStorage could not be cast to FileManagerQueueStorage")
+            return
+        }
+
+        guard let givenCreatedTask = fileManagerQueueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil).createdTask else {
+            XCTFail("Failed to create task")
+            return
+        }
+
         inventory.append(givenCreatedTask)
 
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-        backgroundQueueMock.getTaskDetailReturnValue = (data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
