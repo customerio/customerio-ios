@@ -349,6 +349,57 @@ extension DIGraph {
 }
 
 extension DIGraphShared {
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
+    // internal scope so each module can provide their own version of the function with the same name.
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    func testDependenciesAbleToResolve() -> Int {
+        var countDependenciesResolved = 0
+
+        _ = deviceInfo
+        countDependenciesResolved += 1
+
+        _ = eventBusHandler
+        countDependenciesResolved += 1
+
+        _ = globalDataStore
+        countDependenciesResolved += 1
+
+        _ = threadUtil
+        countDependenciesResolved += 1
+
+        _ = deviceMetricsGrabber
+        countDependenciesResolved += 1
+
+        _ = eventCache
+        countDependenciesResolved += 1
+
+        _ = eventStorage
+        countDependenciesResolved += 1
+
+        _ = jsonAdapter
+        countDependenciesResolved += 1
+
+        _ = dateUtil
+        countDependenciesResolved += 1
+
+        _ = logger
+        countDependenciesResolved += 1
+
+        _ = eventBus
+        countDependenciesResolved += 1
+
+        _ = uIKitWrapper
+        countDependenciesResolved += 1
+
+        _ = httpRequestRunner
+        countDependenciesResolved += 1
+
+        _ = sharedKeyValueStorage
+        countDependenciesResolved += 1
+
+        return countDependenciesResolved
+    }
+
     // Handle classes annotated with InjectRegisterShared
     // DeviceInfo
     public var deviceInfo: DeviceInfo {

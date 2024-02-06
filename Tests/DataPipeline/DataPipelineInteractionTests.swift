@@ -5,19 +5,17 @@ import Foundation
 @testable import SharedTests
 import XCTest
 
-class DataPipelineInteractionTests: UnitTest {
+class DataPipelineInteractionTests: IntegrationTest {
     private var outputReader: OutputReaderPlugin!
 
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
 
-    private let deviceInfoStub = DeviceInfoStub()
+    override func setUpDependencies() {
+        super.setUpDependencies()
 
-    override func overrideDependencies() {
-        diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
-        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
     }
@@ -38,7 +36,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         XCTAssertNil(analytics.userId)
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
         XCTAssertEqual(analytics.traits()?.count, 0)
@@ -58,7 +56,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
         let givenBodyTypeMap: [[String]: Any.Type] = [["age"]: Int.self]
 
-        customerIO.identify(identifier: givenIdentifier, body: givenBody)
+        customerIO.identify(userId: givenIdentifier, traits: givenBody)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
         XCTAssertMatches(analytics.traits(), givenBody, withTypeMap: givenBodyTypeMap)
@@ -83,10 +81,10 @@ class DataPipelineInteractionTests: UnitTest {
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         mockDeviceAttributes()
 
-        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        customerIO.identify(userId: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 3)
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
@@ -108,10 +106,10 @@ class DataPipelineInteractionTests: UnitTest {
         globalDataStoreMock.underlyingPushDeviceToken = givenDeviceToken
         mockDeviceAttributes()
 
-        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        customerIO.identify(userId: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 1)
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
@@ -120,7 +118,7 @@ class DataPipelineInteractionTests: UnitTest {
     func test_identify_givenNoProfilePreviouslyIdentified_expectPostProfileEventToEventBus() {
         let givenIdentifier = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 1)
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
@@ -136,7 +134,7 @@ class DataPipelineInteractionTests: UnitTest {
     func test_identify_givenEmptyIdentifier_givenNoProfilePreviouslyIdentified_expectRequestIgnored() {
         let givenIdentifier = ""
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertNil(analytics.userId)
@@ -146,10 +144,10 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = ""
         let givenPreviouslyIdentifiedProfile = String.random
 
-        customerIO.identify(identifier: givenPreviouslyIdentifiedProfile)
+        customerIO.identify(userId: givenPreviouslyIdentifiedProfile)
         outputReader.resetPlugin()
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 0)
         XCTAssertEqual(analytics.userId, givenPreviouslyIdentifiedProfile)
@@ -184,7 +182,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenDeviceToken = String.random
 
         mockDeviceAttributes()
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenPreviousDeviceToken)
         outputReader.resetPlugin()
 
@@ -206,7 +204,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenDeviceToken = String.random
 
         mockDeviceAttributes()
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
@@ -226,7 +224,7 @@ class DataPipelineInteractionTests: UnitTest {
         customerIO.registerDeviceToken(givenDeviceToken)
         outputReader.resetPlugin()
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(outputReader.events.count, 2)
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
@@ -240,7 +238,7 @@ class DataPipelineInteractionTests: UnitTest {
 
     func test_clearIdentify_givenPreviouslyIdentifiedProfile_expectUserSetNil() {
         let givenIdentifier = String.random
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         customerIO.clearIdentify()
 
@@ -250,7 +248,7 @@ class DataPipelineInteractionTests: UnitTest {
     func test_clearIdentify_expectPostResetEventToEventBus() {
         let givenIdentifier = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         eventBusHandlerMock.resetMock()
 
         customerIO.clearIdentify()
@@ -267,7 +265,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = String.random
         let givenEvent = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         customerIO.track(name: givenEvent)
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -286,7 +284,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         customerIO.track(name: String.random, data: givenData)
@@ -310,7 +308,7 @@ class DataPipelineInteractionTests: UnitTest {
     // We want instead: `{"data": {}, ...}`
     func test_track_givenDataNil_expectSaveEmptyRequestData() {
         let givenIdentifier = String.random
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         let data: EmptyRequestBody? = nil
@@ -331,7 +329,7 @@ class DataPipelineInteractionTests: UnitTest {
     func test_screen_givenNoProfileIdentified_expectDoNotIgnoreRequest_expectPostGivenEventToEventBus() {
         let givenScreen = String.random
 
-        customerIO.screen(name: givenScreen)
+        customerIO.screen(title: givenScreen)
 
         XCTAssertEqual(outputReader.events.count, 1)
 
@@ -348,7 +346,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenScreen = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
         eventBusHandlerMock.resetMock()
 
@@ -415,7 +413,7 @@ class DataPipelineInteractionTests: UnitTest {
 
         mockDeviceAttributes(defaultAttributes: givenDefaultAttributes)
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
@@ -441,7 +439,7 @@ class DataPipelineInteractionTests: UnitTest {
         deviceInfoStub.osName = nil
         mockDeviceAttributes()
 
-        customerIO.identify(identifier: String.random)
+        customerIO.identify(userId: String.random)
         outputReader.resetPlugin()
 
         customerIO.registerDeviceToken(givenDeviceToken)
@@ -468,7 +466,7 @@ class DataPipelineInteractionTests: UnitTest {
         globalDataStoreMock.pushDeviceToken = nil
         let givenIdentifier = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
@@ -493,7 +491,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenIdentifier = String.random
 
         globalDataStoreMock.pushDeviceToken = givenDeviceToken
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
         customerIO.deleteDeviceToken()
@@ -515,7 +513,7 @@ class DataPipelineInteractionTests: UnitTest {
         let givenEvent = Metric.delivered
         let givenDeviceToken = String.random
 
-        customerIO.identify(identifier: String.random)
+        customerIO.identify(userId: String.random)
         outputReader.resetPlugin()
 
         customerIO.trackMetric(deliveryID: givenDeliveryId, event: givenEvent, deviceToken: givenDeviceToken)

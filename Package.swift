@@ -51,7 +51,7 @@ let package = Package(
         .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
-                    dependencies: ["SharedTests"],
+                    dependencies: ["CioInternalCommon", "SharedTests"],
                     path: "Tests/Common"),
         // Tracking
         .target(name: "CioTracking",
@@ -63,7 +63,7 @@ let package = Package(
 
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Tests/Shared",
                 resources: [
                     .copy("SampleDataFiles") // static files that are used in test functions.
@@ -82,7 +82,7 @@ let package = Package(
                 dependencies: ["CioInternalCommon", .product(name: "Segment", package: "Segment")],
                 path: "Sources/DataPipeline"),
         .testTarget(name: "DataPipelineTests",
-                    dependencies: ["SharedTests"],
+                    dependencies: ["CioDataPipelines", "SharedTests"],
                     path: "Tests/DataPipeline"),
 
         // APN

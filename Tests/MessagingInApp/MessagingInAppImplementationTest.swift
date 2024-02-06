@@ -1,6 +1,5 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
-@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest

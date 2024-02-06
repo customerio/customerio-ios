@@ -105,12 +105,21 @@ public class CustomerIO: CustomerIOInstance {
     // private constructor to force use of singleton API
     private init() {}
 
-    // Constructor for unit testing. Just for overriding dependencies and not running logic.
-    // See CustomerIO.shared.initializeIntegrationTests for integration testing
-    init(implementation: CustomerIOInstance, diGraph: DIGraph) {
-        self.implementation = implementation
-        self.diGraph = diGraph
+    #if DEBUG
+    // Methods to set up the test environment.
+    // Any implementation of the interface works for unit tests.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance, diGraph: DIGraph) -> CustomerIO {
+        shared.implementation = implementation
+        shared.diGraph = diGraph
+        return shared
     }
+
+    public static func resetSharedTestEnvironment() {
+        shared = CustomerIO()
+    }
+    #endif
 
     public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph) {
         shared.implementation = implementation
@@ -133,14 +142,6 @@ public class CustomerIO: CustomerIOInstance {
             .info(
                 "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
             )
-    }
-
-    /**
-     Make testing the singleton `instance` possible.
-     Note: It's recommended to delete app data before doing this to prevent loading persisted credentials
-     */
-    static func resetSharedInstance() {
-        shared = CustomerIO()
     }
 
     /**

@@ -11,11 +11,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
-    // testing constructor
-    init(implementation: MessagingPushInstance?, globalDataStore: GlobalDataStore) {
-        self.globalDataStore = globalDataStore
-        super.init(moduleName: Self.moduleName, implementation: implementation)
-    }
 
     // singleton constructor
     private init() {
@@ -23,10 +18,31 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         super.init(moduleName: Self.moduleName)
     }
 
-    // for testing
-    static func resetSharedInstance() {
+    #if DEBUG
+    // Methods to set up the test environment.
+    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        // initialize static properties before implementation creation, as they may be directly used by other classes
+        shared.globalDataStore = diGraphShared.globalDataStore
+        moduleConfig = config
+
+        shared.setImplementationInstance(implementation: implementation)
+        return implementation
+    }
+
+    @discardableResult
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
+        return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
+    }
+
+    static func resetTestEnvironment() {
+        moduleConfig = .Factory.create()
         shared = MessagingPush()
     }
+    #endif
 
     /**
      Initialize the shared `instance` of `MessagingPush`.
