@@ -6,28 +6,27 @@ import XCTest
 
 class MessagingInAppImplementationTest: UnitTest {
     private var messagingInApp: MessagingInAppImplementation!
-    private let moduleConfigDefault = MessagingInAppConfigOptions.Factory.create(siteId: .random, region: .US)
+    private var eventBusHandler: EventBusHandler { diGraphShared.eventBusHandler }
 
     private let inAppProviderMock = InAppProviderMock()
     private let eventListenerMock = InAppEventListenerMock()
-    private let profileStoreMock = ProfileStoreMock()
-    private let backgroundQueueMock = QueueMock()
 
-    override func setUp() {
-        super.setUp()
+    override func setUpDependencies() {
+        super.setUpDependencies()
 
         diGraphShared.override(value: inAppProviderMock, forType: InAppProvider.self)
-        diGraphShared.override(value: profileStoreMock, forType: ProfileStore.self)
-        diGraphShared.override(value: backgroundQueueMock, forType: Queue.self)
-
-        messagingInApp = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
-        messagingInApp.setEventListener(eventListenerMock)
+    }
+    
+    override func initializeSDKComponents() -> MessagingInAppInstance? {
+        // get MessagingInAppImplementation instance so we can call its methods directly
+        messagingInApp = (super.initializeSDKComponents() as! MessagingInAppImplementation)
+        return messagingInApp
     }
 
     // MARK: initialize
 
     func test_initialize_expectInitializeGistSDK() {
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: messagingInAppConfigOptions)
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
@@ -38,12 +37,11 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
         let givenProfileIdentifiedInSdk = String.random
 
-        profileStoreMock.identifier = givenProfileIdentifiedInSdk
+        postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
 
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: moduleConfigDefault)
-//        FIXME: [CDP] Fetch from Journey and update the test case
-//        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
-//        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
+        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: messagingInAppConfigOptions)
+        XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
+        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
     }
 
     // MARK: profile hooks
@@ -51,14 +49,14 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_givenProfileIdentified_expectSetupWithInApp() {
         let given = String.random
 
-        messagingInApp.profileIdentified(identifier: given)
+        postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
 
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
     }
 
     func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
-        messagingInApp.beforeProfileStoppedBeingIdentified(oldIdentifier: String.random)
+        postEventAndWait(event: ResetEvent())
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
@@ -68,12 +66,7 @@ class MessagingInAppImplementationTest: UnitTest {
     func test_givenScreenViewed_expectSetRouteOnInApp() {
         let given = String.random
 
-        messagingInApp.screenViewed(name: given)
-        let expectation = XCTestExpectation(description: "Wait for 1 second")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 1.0)
+        postEventAndWait(event: ScreenViewedEvent(name: given))
 
         XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
@@ -235,5 +228,16 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
         messagingInApp.dismissMessage()
         XCTAssertEqual(inAppProviderMock.dismissMessageCallsCount, 1)
+    }
+}
+
+extension MessagingInAppImplementationTest {
+    func postEventAndWait<E: EventRepresentable>(event: E, timeoutInSeconds: Double = 1.0) {
+        eventBusHandler.postEvent(event)
+        let expectation = XCTestExpectation(description: "wait for \(timeoutInSeconds) second")
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: timeoutInSeconds)
     }
 }
