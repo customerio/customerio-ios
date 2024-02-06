@@ -26,11 +26,11 @@ class MessagingPushAPNAPITest: UnitTest {
 
         MessagingPush.shared.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
         mock.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
 
         MessagingPush.shared.deleteDeviceToken()

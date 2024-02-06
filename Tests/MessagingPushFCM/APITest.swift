@@ -29,9 +29,9 @@ class MessagingPushFCMAPITest: UnitTest {
 
         MessagingPush.shared.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
-        mock.application("", didFailToRegisterForRemoteNotificationsWithError: MessagingPushError.registrationFailed)
+        mock.application("", didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed)
 
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
