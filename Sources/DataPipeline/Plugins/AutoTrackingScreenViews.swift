@@ -64,6 +64,7 @@ public class AutoTrackingScreenViews: UtilityPlugin {
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 extension AutoTrackingScreenViews {
     func performScreenTracking(onViewController viewController: UIViewController) {
         guard let name = viewController.getNameForAutomaticScreenViewTracking() else {
