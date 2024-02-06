@@ -7,23 +7,29 @@ import XCTest
 
 private typealias SavedEvent = [String: Any]
 
-class DataPipelineCompatibilityTests: UnitTest {
+class DataPipelineCompatibilityTests: IntegrationTest {
     private var storage: Storage!
+    private var dataPipelineImplementation: DataPipelineImplementation!
 
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
 
-    private let deviceInfoStub = DeviceInfoStub()
+    override func setUpDependencies() {
+        super.setUpDependencies()
 
-    override func overrideDependencies() {
-        diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
-        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
     }
 
     override func setUp() {
-        super.setUp()
+        super.setUp(modifyModuleConfig: { config in
+            // enable auto add destination so we can test the final JSON being sent to the server
+            config.autoAddCustomerIODestination = true
+        })
+
+        // get DataPipelineImplementation instance so we can call its methods directly
+        dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation)
+
         // get storage instance so we can read final events
         storage = analytics.storage
         storage.hardReset(doYouKnowHowToUseThis: true)
@@ -34,7 +40,7 @@ class DataPipelineCompatibilityTests: UnitTest {
     func test_identifyWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenIdentifier = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "identify" }
@@ -116,7 +122,7 @@ class DataPipelineCompatibilityTests: UnitTest {
         let givenToken = String.random
         let expectedData = deviceInfoStub.getDefaultAttributes()
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -148,7 +154,7 @@ class DataPipelineCompatibilityTests: UnitTest {
         ]
         let expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
         customerIO.deviceAttributes = customAttributes
 
@@ -176,7 +182,7 @@ class DataPipelineCompatibilityTests: UnitTest {
         let givenIdentifier = String.random
         let givenToken = String.random
 
-        customerIO.identify(identifier: givenIdentifier)
+        customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
 
         // clearIdentify calls deleteDeviceToken internally
@@ -202,7 +208,7 @@ class DataPipelineCompatibilityTests: UnitTest {
     func test_eventWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenEvent = String.random
 
-        customerIO.identify(identifier: String.random)
+        customerIO.identify(userId: String.random)
         customerIO.track(name: givenEvent)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -222,7 +228,7 @@ class DataPipelineCompatibilityTests: UnitTest {
         let givenEvent = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.identify(identifier: String.random)
+        customerIO.identify(userId: String.random)
         customerIO.track(name: givenEvent, data: givenData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -247,8 +253,8 @@ class DataPipelineCompatibilityTests: UnitTest {
     func test_screenWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenScreen = String.random
 
-        customerIO.identify(identifier: String.random)
-        customerIO.screen(name: givenScreen)
+        customerIO.identify(userId: String.random)
+        customerIO.screen(title: givenScreen)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "screen" }
@@ -260,14 +266,14 @@ class DataPipelineCompatibilityTests: UnitTest {
         }
 
         XCTAssertEqual(savedEvent[keyPath: "name"] as? String, givenScreen)
-        XCTAssertTrue(savedEvent[mapKeyPath: "properties"]?.isEmpty ?? false)
+        XCTAssertNil(savedEvent[keyPath: "properties"])
     }
 
     func test_screenWithAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenScreen = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.identify(identifier: String.random)
+        customerIO.identify(userId: String.random)
         customerIO.screen(name: givenScreen, data: givenData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -300,12 +306,7 @@ class DataPipelineCompatibilityTests: UnitTest {
             "recipient": givenDeviceToken
         ]
 
-        customerIO.identify(identifier: String.random)
-        guard let dataPipelineImplementation = customerIO.dataPipelineImplementation else {
-            XCTFail("DataPipeline not setup correctly")
-            return
-        }
-
+        customerIO.identify(userId: String.random)
         dataPipelineImplementation.trackPushMetric(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -334,12 +335,7 @@ class DataPipelineCompatibilityTests: UnitTest {
             "deliveryId": givenDeliveryID
         ].mergeWith(givenMetaData)
 
-        customerIO.identify(identifier: String.random)
-        guard let dataPipelineImplementation = customerIO.dataPipelineImplementation else {
-            XCTFail("DataPipeline not setup correctly")
-            return
-        }
-
+        customerIO.identify(userId: String.random)
         dataPipelineImplementation.trackInAppMetric(deliveryID: givenDeliveryID, event: givenMetric, metaData: givenMetaData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
