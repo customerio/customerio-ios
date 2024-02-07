@@ -102,11 +102,6 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
         handleQueueBacklogCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        getAndProcessTaskCallsCount = 0
-        getAndProcessTaskReceivedArguments = nil
-        getAndProcessTaskReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - handleAlreadyIdentifiedMigratedUser
@@ -149,33 +144,6 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
         mockCalled = true
         handleQueueBacklogCallsCount += 1
         handleQueueBacklogClosure?()
-    }
-
-    // MARK: - getAndProcessTask
-
-    /// Number of times the function was called.
-    public private(set) var getAndProcessTaskCallsCount = 0
-    /// `true` if the function was ever called.
-    public var getAndProcessTaskCalled: Bool {
-        getAndProcessTaskCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var getAndProcessTaskReceivedArguments: QueueTaskMetadata?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var getAndProcessTaskReceivedInvocations: [QueueTaskMetadata] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var getAndProcessTaskClosure: ((QueueTaskMetadata) -> Void)?
-
-    /// Mocked function for `getAndProcessTask(for task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getAndProcessTask(for task: QueueTaskMetadata) {
-        mockCalled = true
-        getAndProcessTaskCallsCount += 1
-        getAndProcessTaskReceivedArguments = task
-        getAndProcessTaskReceivedInvocations.append(task)
-        getAndProcessTaskClosure?(task)
     }
 }
 
