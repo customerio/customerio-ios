@@ -4,29 +4,35 @@ import Foundation
 import SharedTests
 import XCTest
 
-class MessagingInAppImplementationTest: UnitTest {
-    private var messagingInApp: MessagingInAppImplementation!
-    private var eventBusHandler: EventBusHandler { diGraphShared.eventBusHandler }
+class MessagingInAppImplementationTest: IntegrationTest {
+    private var messagingInApp: MessagingInAppImplementation {
+        // get MessagingInAppImplementation instance so we can call its methods directly
+        (MessagingInApp.shared.implementation as! MessagingInAppImplementation)
+    }
+
+    private var eventBusHandler: EventBusHandler {
+        diGraphShared.eventBusHandler
+    }
 
     private let inAppProviderMock = InAppProviderMock()
     private let eventListenerMock = InAppEventListenerMock()
+    private let eventBusHandlerMock = EventBusHandlerMock()
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
         diGraphShared.override(value: inAppProviderMock, forType: InAppProvider.self)
     }
-    
-    override func initializeSDKComponents() -> MessagingInAppInstance? {
-        // get MessagingInAppImplementation instance so we can call its methods directly
-        messagingInApp = (super.initializeSDKComponents() as! MessagingInAppImplementation)
-        return messagingInApp
+
+    override func setUp() {
+        // do not call super.setUp() because we want to initialize the module late for some
+        // tests and verify without module being initialized
     }
 
     // MARK: initialize
 
     func test_initialize_expectInitializeGistSDK() {
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: messagingInAppConfigOptions)
+        super.setUp()
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
@@ -38,8 +44,11 @@ class MessagingInAppImplementationTest: UnitTest {
         let givenProfileIdentifiedInSdk = String.random
 
         postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
+        // call super.setUp() now to initialize the module after the profile is identified
+        super.setUp()
+        // wait for event bus to post any events
+        waitForEventBus()
 
-        _ = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: messagingInAppConfigOptions)
         XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
     }
@@ -47,6 +56,8 @@ class MessagingInAppImplementationTest: UnitTest {
     // MARK: profile hooks
 
     func test_givenProfileIdentified_expectSetupWithInApp() {
+        super.setUp()
+
         let given = String.random
 
         postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
@@ -56,6 +67,8 @@ class MessagingInAppImplementationTest: UnitTest {
     }
 
     func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
+        super.setUp()
+
         postEventAndWait(event: ResetEvent())
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
@@ -64,6 +77,8 @@ class MessagingInAppImplementationTest: UnitTest {
     // MARK: screen view hooks
 
     func test_givenScreenViewed_expectSetRouteOnInApp() {
+        super.setUp()
+
         let given = String.random
 
         postEventAndWait(event: ScreenViewedEvent(name: given))
@@ -75,6 +90,8 @@ class MessagingInAppImplementationTest: UnitTest {
     // MARK: event listeners
 
     func test_eventListeners_expectCallListenerWithData() {
+        super.setUp()
+
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
@@ -115,6 +132,8 @@ class MessagingInAppImplementationTest: UnitTest {
     }
 
     func test_eventListeners_expectCallListenerForEachEvent() {
+        super.setUp()
+
         let givenGistMessage = Message.random
 
         messagingInApp.setEventListener(eventListenerMock)
@@ -148,6 +167,11 @@ class MessagingInAppImplementationTest: UnitTest {
     }
 
     func test_eventListeners_givenCloseAction_expectListenerEvent() {
+        // override event bus handler to mock it so we can capture events
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
+
+        super.setUp()
+
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
         let givenCurrentRoute = String.random
@@ -170,40 +194,44 @@ class MessagingInAppImplementationTest: UnitTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, givenAction)
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
 
-        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
         // make sure there is no click tracking for "close" action
-        // XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskCallsCount, 0)
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 0)
     }
 
     func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() {
-        // FIXME: [CDP] Test if the task is being forwarded to EventBus (use Mocks to test)
-        /*
-         let givenGistMessage = Message.random
-         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
-         let givenCurrentRoute = String.random
-         let givenAction = String.random
-         let givenName = String.random
-         let givenMetaData = ["action_name": givenName, "action_value": givenAction]
+        // override event bus handler to mock it so we can capture events
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
-         backgroundQueueMock.addTrackInAppDeliveryTaskReturnValue = (
-             success: true,
-             queueStatus: QueueStatus.successAddingSingleTask
-         )
+        super.setUp()
 
-         messagingInApp.action(
-             message: givenGistMessage,
-             currentRoute: givenCurrentRoute,
-             action: givenAction,
-             name: givenName
-         )
+        let givenGistMessage = Message.random
+        let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
+        let givenCurrentRoute = String.random
+        let givenAction = String.random
+        let givenName = String.random
+        let givenMetaData = ["action_name": givenName, "action_value": givenAction]
 
-         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.deliveryId, expectedInAppMessage.deliveryId)
-         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.event, .clicked)
-         XCTAssertEqual(backgroundQueueMock.addTrackInAppDeliveryTaskReceivedArguments?.metaData, givenMetaData)
-          */
+        messagingInApp.action(
+            message: givenGistMessage,
+            currentRoute: givenCurrentRoute,
+            action: givenAction,
+            name: givenName
+        )
+
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? TrackInAppMetricEvent else {
+            XCTFail("captured arguments must not be nil")
+            return
+        }
+
+        XCTAssertEqual(postEventArgument.deliveryID, expectedInAppMessage.deliveryId)
+        XCTAssertEqual(postEventArgument.event, InAppMetric.clicked.rawValue)
+        XCTAssertEqual(postEventArgument.params, givenMetaData)
     }
 
     func test_dismissMessage_givenNoInAppMessage_expectNoError() {
+        super.setUp()
+
         // Dismiss in-app message
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
         messagingInApp.dismissMessage()
@@ -211,6 +239,8 @@ class MessagingInAppImplementationTest: UnitTest {
     }
 
     func test_dismissMessage_givenInAppMessage_expectNoError() {
+        super.setUp()
+
         let givenGistMessage = Message.random
         _ = InAppMessage(gistMessage: givenGistMessage)
 
@@ -224,7 +254,11 @@ class MessagingInAppImplementationTest: UnitTest {
 extension MessagingInAppImplementationTest {
     func postEventAndWait<E: EventRepresentable>(event: E, timeoutInSeconds: Double = 1.0) {
         eventBusHandler.postEvent(event)
-        let expectation = XCTestExpectation(description: "wait for \(timeoutInSeconds) second")
+        waitForEventBus(timeoutInSeconds: timeoutInSeconds)
+    }
+
+    func waitForEventBus(timeoutInSeconds: Double = 1.0) {
+        let expectation = XCTestExpectation(description: "wait for \(timeoutInSeconds) seconds")
         DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
             expectation.fulfill()
         }
