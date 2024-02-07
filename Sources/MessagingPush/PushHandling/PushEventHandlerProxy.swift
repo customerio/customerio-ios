@@ -41,12 +41,24 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+        // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
+        guard !nestedDelegates.isEmpty else {
+            completionHandler()
+            return
+        }
+
         nestedDelegates.forEach { _, delegate in
             delegate.onPushAction(pushAction, completionHandler: completionHandler)
         }
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+        // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
+        guard !nestedDelegates.isEmpty else {
+            completionHandler(true)
+            return
+        }
+
         nestedDelegates.forEach { _, delegate in
             delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
