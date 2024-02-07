@@ -7,7 +7,7 @@ class EventStorageTest: UnitTest {
 
     override func setUpDependencies() {
         super.setUpDependencies()
-        
+
         eventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
         diGraphShared.override(value: eventStorageManager, forType: EventStorage.self)
     }
