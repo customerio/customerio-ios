@@ -69,6 +69,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
         super.setUp()
 
+        postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
         postEventAndWait(event: ResetEvent())
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
