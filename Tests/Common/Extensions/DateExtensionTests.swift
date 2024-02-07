@@ -59,4 +59,25 @@ class DateExtensionTest: UnitTest {
     func test_isOlderThan_givenDateThatIsNewer_expectFalse() {
         XCTAssertFalse(Date().subtract(10, .minute).isOlderThan(Date().subtract(60, .minute)))
     }
+
+    // MARK: formatToIso8601WithMilliseconds
+
+    func test_givenDate_formatToIso8601WithMilliseconds_expectString() {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.year = 2024
+        components.month = 2
+        components.day = 1
+        components.hour = 20
+        components.minute = 40
+        components.second = 19
+
+        guard let givenDate = calendar.date(from: components) else {
+            print("Failed to create date from components")
+            return
+        }
+        let expectedString = "2024-02-01T16:40:19.000Z"
+        let actualString = givenDate.string(format: .iso8601WithMilliseconds)
+        XCTAssertEqual(expectedString, actualString)
+    }
 }
