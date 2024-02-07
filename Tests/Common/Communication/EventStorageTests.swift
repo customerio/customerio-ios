@@ -5,14 +5,18 @@ import XCTest
 class EventStorageTest: UnitTest {
     var eventStorageManager: EventStorageManager!
 
+    override func setUpDependencies() {
+        super.setUpDependencies()
+        
+        eventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
+        diGraphShared.override(value: eventStorageManager, forType: EventStorage.self)
+    }
+
     override func setUp() {
         super.setUp()
-        if let tempDirectory = createTemporaryDirectory() {
-            eventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
-            Task {
-                await eventStorageManager.updateBaseDirectory(baseDirectory: tempDirectory)
-            }
-        }
+
+        // setup temporary event storage for each test so we can test unique events
+        configureTemporaryEventStorage()
     }
 
     override func tearDown() {
