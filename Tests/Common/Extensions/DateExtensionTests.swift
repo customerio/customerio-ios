@@ -63,16 +63,17 @@ class DateExtensionTest: UnitTest {
     // MARK: formatToIso8601WithMilliseconds
 
     func test_givenDate_formatToIso8601WithMilliseconds_expectString() {
-        let calendar = Calendar.current
+        let calendar = TimeZone(identifier: "UTC")
         var components = DateComponents()
         components.year = 2024
         components.month = 2
         components.day = 1
-        components.hour = 20
+        components.hour = 16
         components.minute = 40
         components.second = 19
+        components.timeZone = TimeZone.current
 
-        guard let givenDate = calendar.date(from: components) else {
+        guard let givenDate = components.date else {
             print("Failed to create date from components")
             return
         }

@@ -18,8 +18,7 @@ public struct MessagingPushConfigOptions {
             MessagingPushConfigOptions(
                 writeKey: "",
                 autoFetchDeviceToken: true,
-                autoTrackPushEvents: true,
-                autoTrackDeviceAttributes: true
+                autoTrackPushEvents: true
             )
         }
 
@@ -31,15 +30,13 @@ public struct MessagingPushConfigOptions {
             let writeKey = dictionary[Keys.writeKey.rawValue] as? String
             let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool
             let autoTrackPushEvents = dictionary[Keys.autoTrackPushEvents.rawValue] as? Bool
-            let autoTrackDeviceAttributes = dictionary[Keys.autoTrackDeviceAttributes.rawValue] as? Bool
 
             // Use default config options as fallback
             let presetConfig = create()
             return MessagingPushConfigOptions(
                 writeKey: writeKey ?? presetConfig.writeKey,
                 autoFetchDeviceToken: autoFetchDeviceToken ?? presetConfig.autoFetchDeviceToken,
-                autoTrackPushEvents: autoTrackPushEvents ?? presetConfig.autoTrackPushEvents,
-                autoTrackDeviceAttributes: autoTrackDeviceAttributes ?? presetConfig.autoTrackDeviceAttributes
+                autoTrackPushEvents: autoTrackPushEvents ?? presetConfig.autoTrackPushEvents
             )
         }
     }
@@ -48,7 +45,6 @@ public struct MessagingPushConfigOptions {
         case writeKey
         case autoFetchDeviceToken
         case autoTrackPushEvents
-        case autoTrackDeviceAttributes
     }
 
     /// internal write key required for NotificationServiceExtension only to track metrics
@@ -63,9 +59,4 @@ public struct MessagingPushConfigOptions {
      for push notifications sent by Customer.io
      */
     public var autoTrackPushEvents: Bool
-    /**
-     Enable this property if you want SDK to automatic tracking of device attributes such as
-     operating system, device locale, device model, app version etc
-     */
-    public var autoTrackDeviceAttributes: Bool
 }
