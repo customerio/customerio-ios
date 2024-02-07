@@ -55,7 +55,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushAPN.initialize { config in
             config.autoFetchDeviceToken = true
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
         }
     }
 
