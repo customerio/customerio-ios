@@ -68,6 +68,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenAlreadyIdentifiedProfile_expectUpdateUserId() {
         let givenProfileIdentifiedInJourneys = String.random
         profileStoreMock.identifier = givenProfileIdentifiedInJourneys
+        DataPipeline.shared.analytics.reset()
         XCTAssertNil(DataPipeline.shared.analytics.userId)
 
         migrationAssistant.handleAlreadyIdentifiedMigratedUser()
@@ -77,6 +78,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     }
 
     func test_givenNoIdentifiedProfile_expectNoUpdateInUserId() {
+        DataPipeline.shared.analytics.reset()
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
         XCTAssertNil(DataPipeline.shared.analytics.userId)
     }
@@ -104,5 +106,28 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser())
         XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
         XCTAssertEqual(profileStoreMock.identifier, updatedIdentifier)
+    }
+
+    func test_migrateProfileId_expectMigrationCodeRunOnce() {
+        DataPipeline.shared.analytics.reset()
+        // profile previously identified in SDK, before CDP migration
+        let givenIdentifier = String.random
+        profileStoreMock.identifier = givenIdentifier
+        XCTAssertNil(DataPipeline.shared.analytics.userId)
+
+        // CDP migration is performed for the first time in the SDK.
+        migrationAssistant.handleAlreadyIdentifiedMigratedUser()
+        // Check that the migration was successful:
+        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
+        // Update the user identifier and re-call handleAlreadyIdentifiedMigratedUser
+        // to ensure the user does not undergo the migration process again
+        // after being identified on the CDP
+        let updatedIdentifier = String.random
+        profileStoreMock.identifier = updatedIdentifier
+
+        migrationAssistant.handleAlreadyIdentifiedMigratedUser()
+
+        // We expect the CDP profile ID is the same value from the 1st migration done.
+        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
     }
 }
