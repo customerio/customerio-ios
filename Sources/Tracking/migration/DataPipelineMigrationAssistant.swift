@@ -2,14 +2,20 @@ import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
+public protocol DataPipelineMigration: AutoMockable {
+    func handleAlreadyIdentifiedMigratedUser()
+    func handleQueueBacklog()
+}
+
 // sourcery: InjectRegister = "DataPipelineMigrationAssistant"
 // sourcery: InjectSingleton
 /// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
-class DataPipelineMigrationAssistant {
+class DataPipelineMigrationAssistant: DataPipelineMigration {
     private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private let threadUtil: ThreadUtil
+    private var profileStore: ProfileStore
 
     /**
      Constructor for singleton, only.
@@ -20,12 +26,34 @@ class DataPipelineMigrationAssistant {
         logger: Logger,
         queue: Queue,
         jsonAdapter: JsonAdapter,
-        threadUtil: ThreadUtil
+        threadUtil: ThreadUtil,
+        profileStore: ProfileStore
     ) {
         self.logger = logger
         self.backgroundQueue = queue
         self.jsonAdapter = jsonAdapter
         self.threadUtil = threadUtil
+        self.profileStore = profileStore
+    }
+
+    func handleMigration() {
+        handleAlreadyIdentifiedMigratedUser()
+        handleQueueBacklog()
+    }
+
+    func handleAlreadyIdentifiedMigratedUser() {
+        // This code handles the scenario where a user migrates
+        // from the Journeys module to the CDP module while already logged in.
+        // This ensures the CDP module is informed about the
+        // currently logged-in user for seamless processing of events.
+        if DataPipeline.shared.analytics.userId == nil {
+            if let identifier = profileStore.identifier {
+                DataPipeline.shared.identify(identifier: identifier)
+                // Remove identifier from storage
+                // so same profile can not be re-identifed
+                profileStore.identifier = nil
+            }
+        }
     }
 
     func handleQueueBacklog() {
@@ -48,7 +76,7 @@ class DataPipelineMigrationAssistant {
     func getAndProcessTask(for task: QueueTaskMetadata) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
         let taskData = taskDetail.data
-        let timestamp = taskDetail.timestamp.string(format: .iso8601noMilliseconds).toString()
+        let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
         var isProcessed = true
 
         // Remove the task from the queue if the task has been processed successfully
@@ -94,8 +122,9 @@ class DataPipelineMigrationAssistant {
             if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
                 properties = attributes
             }
-            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
-                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: trackType.timestamp?.toString(), properties: properties)
+            let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
+            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
 
         // Processes register device token and device attributes
         case .registerPushToken:
@@ -128,7 +157,7 @@ class DataPipelineMigrationAssistant {
                 isProcessed = false
                 return
             }
-            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.toString())
+            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds))
         }
     }
 }

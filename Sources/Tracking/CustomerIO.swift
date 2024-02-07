@@ -35,13 +35,13 @@ public extension CustomerIO {
         configure configureHandler: ((inout SdkConfig) -> Void)?
     ) {
         var sdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
 
         if let configureHandler = configureHandler {
             configureHandler(&sdkConfig)
         }
 
         let implementation = DataPipeline.initialize(moduleConfig: DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig))
-        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         initialize(implementation: implementation, diGraph: newDiGraph)
     }
 
@@ -75,9 +75,10 @@ public extension CustomerIO {
     private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
 
-        // Handle any unprocessed tasks pending in the background queue.
+        // Handle logged-in user from Journeys to CDP and check
+        // if any unprocessed tasks are pending in the background queue.
         let migrationAssistant = diGraph.dataPipelineMigrationAssistant
-        migrationAssistant.handleQueueBacklog()
+        migrationAssistant.handleMigration()
 
         let sdkConfig = diGraph.sdkConfig
         // automatically add the Logger plugin if logLevel is debug

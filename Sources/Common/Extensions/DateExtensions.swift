@@ -3,6 +3,7 @@ import Foundation
 public enum DateFormat: String {
     case hourMinuteSecond = "HH:mm:ss"
     case iso8601noMilliseconds = "yyyy-MM-dd'T'HH:mm:ssZ"
+    case iso8601WithMilliseconds
 }
 
 extension Date {
@@ -13,8 +14,18 @@ extension Date {
     }
 
     public func string(format: DateFormat) -> String {
+        if format == .iso8601WithMilliseconds {
+            return formatToIso8601WithMilliseconds()
+        }
         let formatter = DateFormatter()
         formatter.dateFormat = format.rawValue
+        return formatter.string(from: self)
+    }
+
+    func formatToIso8601WithMilliseconds() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter.string(from: self)
     }
 
