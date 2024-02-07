@@ -27,6 +27,9 @@ class MessagingInAppImplementationTest: IntegrationTest {
     override func setUp() {
         // do not call super.setUp() because we want to initialize the module late for some
         // tests and verify without module being initialized
+
+        // setup temporary event storage for each test so we can test unique events
+        configureTemporaryEventStorage()
     }
 
     // MARK: initialize
