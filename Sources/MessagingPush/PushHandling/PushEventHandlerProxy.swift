@@ -18,6 +18,11 @@ protocol PushEventHandlerProxy: AutoMockable {
  */
 @available(iOSApplicationExtension, unavailable)
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
+    /*
+     # Why is this class not stored in the digraph?
+
+     Similar to why the SDK's `UNUserNotificationCenterDelegate` instance is also not in the digraph. See those comments to learn more.
+     */
     public static let shared = PushEventHandlerProxyImpl()
 
     // Use a map so that we only save 1 instance of a given handler.
@@ -36,14 +41,36 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+        // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
+        guard !nestedDelegates.isEmpty else {
+            completionHandler()
+            return
+        }
+
         nestedDelegates.forEach { _, delegate in
             delegate.onPushAction(pushAction, completionHandler: completionHandler)
         }
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+        // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
+        guard !nestedDelegates.isEmpty else {
+            completionHandler(true)
+            return
+        }
+
         nestedDelegates.forEach { _, delegate in
             delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
+    }
+}
+
+// Manually add a getter in the digraph.
+// We must use this manual approach instead of auto generated code because the class maintains its own singleton instance outside of the digraph.
+// This getter allows convenient access to this dependency via the digraph.
+extension DIGraph {
+    @available(iOSApplicationExtension, unavailable)
+    var pushEventHandlerProxy: PushEventHandlerProxy {
+        PushEventHandlerProxyImpl.shared
     }
 }

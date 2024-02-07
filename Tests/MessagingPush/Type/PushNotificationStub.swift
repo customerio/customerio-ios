@@ -32,4 +32,12 @@ public struct PushNotificationStub: PushNotification {
 
         return PushNotificationStub(pushId: pushId, deliveryDate: Date(), title: title, body: body, data: payload)
     }
+
+    public static func getLocalPush(pushId: String, title: String = .random, body: String = .random, payload: [AnyHashable: Any] = [:]) -> PushNotificationStub {
+        // A local push will always have it's ID defined by the developer who constructs the push. So, the pushId could be hard-coded and not unique.
+        // The OS populates the delivery date for local pushes.
+        let deliveryDate = Date()
+
+        return PushNotificationStub(pushId: pushId, deliveryDate: deliveryDate, title: title, body: body, data: payload)
+    }
 }

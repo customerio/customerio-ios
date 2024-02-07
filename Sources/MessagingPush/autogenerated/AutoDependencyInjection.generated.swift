@@ -155,7 +155,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushEventHandler: PushEventHandler {
-        iOSPushEventListener(jsonAdapter: jsonAdapter, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
+        iOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
     }
 }
 
