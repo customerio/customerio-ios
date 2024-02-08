@@ -32,13 +32,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         var writeKey = BuildEnvironment.CustomerIO.cdpWriteKey
         var siteId = BuildEnvironment.CustomerIO.siteId
-        // TODO: Store Write key instead of api/site keys
-//        if let storedSiteId = storage.siteId {
-//            siteId = storedSiteId
-//        }
-//        if let storedApiKey = storage.apiKey {
-//            apiKey = storedApiKey
-//        }
+        if let storedSiteId = storage.siteId {
+            siteId = storedSiteId
+        }
+        if let storedApiKey = storage.cdpWriteKey {
+            writeKey = storedApiKey
+        }
 
         // TODO: Confirm LogLevel, autoTrackScreenViews and trackURL
         CustomerIO.initialize(writeKey: writeKey) { config in

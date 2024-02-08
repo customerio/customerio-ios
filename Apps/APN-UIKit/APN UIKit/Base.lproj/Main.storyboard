@@ -537,16 +537,16 @@
                                                 <rect key="frame" x="10" y="182.66666666666666" width="340.66666666666669" height="87.999999999999972"/>
                                                 <subviews>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="auO-5w-BJh">
-                                                        <rect key="frame" x="0.0" y="0.0" width="65.666666666666671" height="88"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="61.666666666666664" height="88"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" text="Site Id" textAlignment="justified" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="PWx-Yh-q4k">
-                                                                <rect key="frame" x="0.0" y="0.0" width="65.666666666666671" height="62"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="61.666666666666664" height="62"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
-                                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Write Key" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Wjf-7e-xqw">
-                                                                <rect key="frame" x="0.0" y="70.000000000000028" width="65.666666666666671" height="18"/>
+                                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="WriteKey" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Wjf-7e-xqw">
+                                                                <rect key="frame" x="0.0" y="70.000000000000028" width="61.666666666666664" height="18"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
@@ -554,10 +554,10 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="jEP-Nb-fe6">
-                                                        <rect key="frame" x="81.666666666666657" y="0.0" width="259" height="88"/>
+                                                        <rect key="frame" x="77.666666666666657" y="0.0" width="263" height="88"/>
                                                         <subviews>
                                                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="k3o-ac-Zim" customClass="ThemeTextField" customModule="APN_UIKit" customModuleProvider="target">
-                                                                <rect key="frame" x="0.0" y="0.0" width="259" height="40"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="263" height="40"/>
                                                                 <constraints>
                                                                     <constraint firstAttribute="height" constant="40" id="yOs-RS-HtM"/>
                                                                 </constraints>
@@ -565,7 +565,7 @@
                                                                 <textInputTraits key="textInputTraits"/>
                                                             </textField>
                                                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="Svx-V1-ygO" customClass="ThemeTextField" customModule="APN_UIKit" customModuleProvider="target">
-                                                                <rect key="frame" x="0.0" y="48.000000000000028" width="259" height="40"/>
+                                                                <rect key="frame" x="0.0" y="48.000000000000028" width="263" height="40"/>
                                                                 <constraints>
                                                                     <constraint firstAttribute="height" constant="40" id="Rhs-TZ-iC2"/>
                                                                 </constraints>
