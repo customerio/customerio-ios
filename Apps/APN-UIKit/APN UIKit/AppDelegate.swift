@@ -119,7 +119,7 @@ extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -127,7 +127,7 @@ extension AppDelegate: InAppEventListener {
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -135,7 +135,7 @@ extension AppDelegate: InAppEventListener {
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -144,7 +144,7 @@ extension AppDelegate: InAppEventListener {
         if actionName == "remove" || actionName == "test" {
             MessagingInApp.shared.dismissMessage()
         }
-        CustomerIO.shared.track(name: "inapp action", data: [
+        CustomerIO.shared.track(name: "inapp action", properties: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,
             "action-value": actionValue,

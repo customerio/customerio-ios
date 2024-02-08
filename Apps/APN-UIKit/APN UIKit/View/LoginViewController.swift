@@ -94,7 +94,7 @@ class LoginViewController: BaseViewController {
         }
         storage.userEmailId = emailId
         loginRouter?.routeToDashboard()
-        CustomerIO.shared.identify(identifier: emailId, body: body)
+        CustomerIO.shared.identify(userId: emailId, traits: body)
     }
 
     @objc func settingsTapped() {
