@@ -35,8 +35,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedApiKey = storage.cdpWriteKey {
-            writeKey = storedApiKey
+        if let storedCdpWriteKey = storage.cdpWriteKey {
+            writeKey = storedCdpWriteKey
         }
 
         // TODO: Confirm LogLevel, autoTrackScreenViews and trackURL
