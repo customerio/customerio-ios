@@ -3,7 +3,7 @@ import Foundation
 protocol StorageManager {
     var trackUrl: String? { get set }
     var siteId: String? { get set }
-    var apiKey: String? { get set }
+    var cdpWriteKey: String? { get set }
     var bgQDelay: String? { get set }
     var bgNumOfTasks: String? { get set }
     var isTrackScreenEnabled: Bool? { get set }
@@ -59,12 +59,12 @@ class Storage: StorageManager {
         }
     }
 
-    var apiKey: String? {
+    var cdpWriteKey: String? {
         get {
-            userDefaults.string(forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.string(forKey: UserDefaultKeys.cdpWriteKey.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdpWriteKey.rawValue)
         }
     }
 

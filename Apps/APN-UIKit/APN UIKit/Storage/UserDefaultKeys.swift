@@ -3,7 +3,7 @@ import Foundation
 enum UserDefaultKeys: String {
     case trackUrl
     case siteId
-    case apiKey
+    case cdpWriteKey
     case bgQDelay
     case bgNumOfTasks
     case isTrackScreenEnabled

@@ -4,7 +4,7 @@ struct Settings {
     var deviceToken: String
     var trackUrl: String
     var siteId: String
-    var apiKey: String
+    var cdpWriteKey: String
     var bgQDelay: String
     var bgQMinTasks: String
     var isTrackScreenEnabled: Bool

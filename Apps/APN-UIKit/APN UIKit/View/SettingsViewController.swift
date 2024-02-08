@@ -12,7 +12,7 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var restoreDefaultButton: UIButton!
     @IBOutlet var saveButton: ThemeButton!
     @IBOutlet var deviceTokenTextField: ThemeTextField!
-    @IBOutlet var apiKeyTextField: ThemeTextField!
+    @IBOutlet var cdpWriteKeyTextField: ThemeTextField!
     @IBOutlet var siteIdTextField: ThemeTextField!
     @IBOutlet var trackUrlTextField: ThemeTextField!
     @IBOutlet var trackDeviceToggle: UISwitch!
@@ -28,7 +28,7 @@ class SettingsViewController: BaseViewController {
     var storage = DIGraph.shared.storage
     var currentSettings: Settings!
     var deepLinkSiteId: String?
-    var deepLinkApiKey: String?
+    var deeplinkWriteKey: String?
     var trackScreenState: Bool {
         trackScreenToggle.isOn
     }
@@ -67,16 +67,16 @@ class SettingsViewController: BaseViewController {
 
     func getAndSetDefaultValues() {
         var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
-        var apiKey = storage.apiKey ?? BuildEnvironment.CustomerIO.apiKey
-        if let deepLinkSiteId = deepLinkSiteId, let deepLinkApiKey = deepLinkApiKey {
+        var writeKey = storage.cdpWriteKey ?? BuildEnvironment.CustomerIO.cdpWriteKey
+        if let deepLinkSiteId = deepLinkSiteId, let deeplinkWriteKey = deeplinkWriteKey {
             siteId = deepLinkSiteId
-            apiKey = deepLinkApiKey
+            writeKey = deeplinkWriteKey
         }
         currentSettings = Settings(
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
             trackUrl: storage.trackUrl ?? "https://track-sdk.customer.io/",
             siteId: siteId,
-            apiKey: apiKey,
+            cdpWriteKey: writeKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
@@ -91,7 +91,7 @@ class SettingsViewController: BaseViewController {
         trackUrlTextField.text = currentSettings.trackUrl
 
         siteIdTextField.text = currentSettings.siteId
-        apiKeyTextField.text = currentSettings.apiKey
+        cdpWriteKeyTextField.text = currentSettings.cdpWriteKey
 
         bgQTakDelayTextField.text = currentSettings.bgQDelay
         bgQMinTasksTextField.text = currentSettings.bgQMinTasks
@@ -114,7 +114,7 @@ class SettingsViewController: BaseViewController {
     func addAccessibilityIdentifiersForAppium() {
         setAppiumAccessibilityIdTo(trackUrlTextField, value: "Track URL Input")
         setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
-        setAppiumAccessibilityIdTo(apiKeyTextField, value: "API Key Input")
+        setAppiumAccessibilityIdTo(cdpWriteKeyTextField, value: "CDP Write Key Input")
         setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
         setAppiumAccessibilityIdTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
         setAppiumAccessibilityIdTo(debugModeToggle, value: "Debug Mode Toggle")
@@ -147,18 +147,18 @@ class SettingsViewController: BaseViewController {
         storage.isDebugModeEnabled = debugModeState
         // SiteId
         storage.siteId = siteIdTextField.text
-        // Api Key
-        storage.apiKey = apiKeyTextField.text
+        // CDP Write Key
+        storage.cdpWriteKey = cdpWriteKeyTextField.text
     }
 
     func isValid() -> Bool {
-        // Site id and Api Key
+        // Site id and Write Key
         if siteIdTextField.isTextTrimEmpty {
             showToast(withMessage: "Enter a valid value for Site Id.")
             return false
         }
-        if apiKeyTextField.isTextTrimEmpty {
-            showToast(withMessage: "Enter a valid value for Api Key.")
+        if cdpWriteKeyTextField.isTextTrimEmpty {
+            showToast(withMessage: "Enter a valid value for Write Key.")
             return false
         }
         // BGQ
@@ -201,7 +201,7 @@ class SettingsViewController: BaseViewController {
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
             trackUrl: "https://track-sdk.customer.io/",
             siteId: BuildEnvironment.CustomerIO.siteId,
-            apiKey: BuildEnvironment.CustomerIO.apiKey,
+            cdpWriteKey: BuildEnvironment.CustomerIO.cdpWriteKey,
             bgQDelay: "30",
             bgQMinTasks: "10",
             isTrackScreenEnabled: true,

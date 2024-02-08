@@ -30,7 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
-        var writeKey = BuildEnvironment.CustomerIO.writeKey
+        var writeKey = BuildEnvironment.CustomerIO.cdpWriteKey
         var siteId = BuildEnvironment.CustomerIO.siteId
         // TODO: Store Write key instead of api/site keys
 //        if let storedSiteId = storage.siteId {
