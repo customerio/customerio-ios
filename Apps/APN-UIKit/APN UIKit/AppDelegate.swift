@@ -30,23 +30,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
+        var writeKey = BuildEnvironment.CustomerIO.writeKey
         var siteId = BuildEnvironment.CustomerIO.siteId
-        var apiKey = BuildEnvironment.CustomerIO.apiKey
-        if let storedSiteId = storage.siteId {
-            siteId = storedSiteId
-        }
-        if let storedApiKey = storage.apiKey {
-            apiKey = storedApiKey
-        }
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+        // TODO: Store Write key instead of api/site keys
+//        if let storedSiteId = storage.siteId {
+//            siteId = storedSiteId
+//        }
+//        if let storedApiKey = storage.apiKey {
+//            apiKey = storedApiKey
+//        }
+
+        // TODO: Confirm LogLevel, autoTrackScreenViews and trackURL
+        CustomerIO.initialize(writeKey: writeKey) { config in
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
-            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
-                config.trackingApiUrl = trackUrl
-            }
+            config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
+            config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
         }
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
