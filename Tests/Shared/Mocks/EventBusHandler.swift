@@ -27,7 +27,7 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     }
 
     public private(set) var addObserverCallsCount = 0
-    public var addObserverCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public var addObserverCalled: Bool { addObserverCallsCount > 0 }
 
     public func addObserver<E>(_ eventType: E.Type, action: @escaping (E) -> Void) where E: CioInternalCommon.EventRepresentable {
         mockCalled = true
@@ -35,7 +35,7 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     }
 
     public private(set) var removeObserverCallsCount = 0
-    public var removeObserverCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
 
     public func removeObserver<E>(for eventType: E.Type) where E: CioInternalCommon.EventRepresentable {
         mockCalled = true
@@ -43,7 +43,7 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     }
 
     public private(set) var postEventCallsCount = 0
-    public var postEventCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public var postEventCalled: Bool { postEventCallsCount > 0 }
     public private(set) var postEventArguments: (any EventRepresentable)?
 
     public func postEvent<E: EventRepresentable>(_ event: E) {
@@ -53,10 +53,18 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     }
 
     public private(set) var removeFromStorageCallsCount = 0
-    public var removeFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
 
     public func removeFromStorage<E>(_ event: E) async where E: CioInternalCommon.EventRepresentable {
         mockCalled = true
         removeFromStorageCallsCount += 1
+    }
+
+    public private(set) var resetCallsCount = 0
+    public var resetCalled: Bool { resetCallsCount > 0 }
+
+    public func reset() async {
+        mockCalled = true
+        resetCallsCount += 1
     }
 }

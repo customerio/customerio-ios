@@ -7,6 +7,7 @@ public protocol EventBusHandler {
     func removeObserver<E: EventRepresentable>(for eventType: E.Type)
     func postEvent<E: EventRepresentable>(_ event: E)
     func removeFromStorage<E: EventRepresentable>(_ event: E) async
+    func reset() async
 }
 
 /// `EventBusHandler` acts as a central hub for managing events in the application.
@@ -123,5 +124,10 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameter event: The event to remove.
     public func removeFromStorage<E: EventRepresentable>(_ event: E) async {
         await eventStorage.remove(ofType: event.key, withStorageId: event.storageId)
+    }
+
+    public func reset() async {
+        await eventStorage.removeAll()
+        await eventBus.removeAllObservers()
     }
 }

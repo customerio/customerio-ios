@@ -12,32 +12,6 @@ class EventStorageTest: UnitTest {
         diGraphShared.override(value: eventStorageManager, forType: EventStorage.self)
     }
 
-    override func setUp() {
-        super.setUp()
-
-        // setup temporary event storage for each test so we can test unique events
-        configureTemporaryEventStorage()
-    }
-
-    override func tearDown() {
-        eventStorageManager = nil
-        super.tearDown()
-    }
-
-    // MARK: - Helper Methods
-
-    func createTemporaryDirectory() -> URL? {
-        let temporaryDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let uniqueDirectoryURL = temporaryDirectoryURL.appendingPathComponent(UUID().uuidString)
-        do {
-            try FileManager.default.createDirectory(at: uniqueDirectoryURL, withIntermediateDirectories: true)
-            return uniqueDirectoryURL
-        } catch {
-            print("Failed to create temporary directory: \(error)")
-            return nil
-        }
-    }
-
     // MARK: - Event Storage Tests
 
     func test_storeEvent_givenValidEvent_expectEventPersisted() async throws {

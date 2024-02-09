@@ -31,10 +31,6 @@ open class UnitTestBase<Component>: XCTestCase {
     public var dateUtilStub: DateUtilStub!
     public var threadUtilStub: ThreadUtilStub!
 
-    // optional path to the directory where event storage files are stored temporarily for testing
-    // and then deleted after the test is complete.
-    open var eventStorageDirectory: URL?
-
     override open func setUp() {
         setUp(enableLogs: false, modifySdkConfig: nil)
     }
@@ -125,6 +121,15 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     open func deleteAllPersistantData() {
+        var expectations: [XCTestExpectation] = []
+
+        let setupExpectation = XCTestExpectation(description: "remove observers from EventStorage")
+        expectations.append(setupExpectation)
+        Task {
+            await diGraphShared.eventBusHandler.reset()
+            setupExpectation.fulfill()
+        }
+
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
@@ -138,16 +143,8 @@ open class UnitTestBase<Component>: XCTestCase {
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()
 
-        // delete all storage event files if temporary storage was used.
-        if let eventStorageDirectory = eventStorageDirectory {
-            eventStorage.deleteEventStorageFiles(baseDirectory: eventStorageDirectory)
-        }
-    }
-
-    /// Configures the event storage to use temporary directory for storing event files during testing.
-    /// The temporary directory is then deleted after the test is complete.
-    open func configureTemporaryEventStorage() {
-        eventStorageDirectory = eventStorage.configureTemporaryEventStorage()
+        // cleaning up data should already have completed by now
+        wait(for: expectations, timeout: 5.0)
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

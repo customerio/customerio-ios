@@ -27,9 +27,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
     override func setUp() {
         // do not call super.setUp() because we want to initialize the module late for some
         // tests and verify without module being initialized
-
-        // setup temporary event storage for each test so we can test unique events
-        configureTemporaryEventStorage()
     }
 
     // MARK: initialize
@@ -266,6 +263,7 @@ extension MessagingInAppImplementationTest {
         DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
             expectation.fulfill()
         }
-        wait(for: [expectation], timeout: timeoutInSeconds)
+        // Wait for the expectations to be fulfilled, with a timeout slightly longer than given timeout
+        wait(for: [expectation], timeout: timeoutInSeconds + 0.1)
     }
 }
