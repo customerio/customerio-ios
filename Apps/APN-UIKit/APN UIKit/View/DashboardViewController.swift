@@ -106,7 +106,7 @@ class DashboardViewController: BaseViewController {
         }
         showToast(withMessage: "Random event  tracked successfully")
         if let data = randomEventInfo["data"] as? [String: Any] {
-            CustomerIO.shared.track(name: name, properties: data)
+            CustomerIO.shared.track(name: name, data: data)
             return
         }
         CustomerIO.shared.track(name: name)
