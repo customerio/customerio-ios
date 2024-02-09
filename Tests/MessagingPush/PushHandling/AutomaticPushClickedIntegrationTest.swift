@@ -4,7 +4,9 @@ import Foundation
 import SharedTests
 import XCTest
 
-class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
+// Integration tests that simulate a push being clicked on a device and
+// how our SDK handles that event.
+class AutomaticPushClickedIntegrationTest: IntegrationTest {
     private var pushEventHandler: PushEventHandler!
 
     private let pushClickHandler = PushClickHandlerMock()
@@ -13,7 +15,7 @@ class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        pushEventHandler = iOSPushEventListener(
+        pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraph.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
             moduleConfig: MessagingPushConfigOptions(),
@@ -167,7 +169,7 @@ class AutomaticPushClickHandlingIntegrationTest: IntegrationTest {
     }
 }
 
-extension AutomaticPushClickHandlingIntegrationTest {
+extension AutomaticPushClickedIntegrationTest {
     func performPushAction(_ pushAction: PushNotificationAction) {
         // Note: It's important that we test that the `withContentHandler` callback function gets called either by our SDK (when we handle it), or the 3rd party handler.
         //       We add an expectation to verify that 1 push click handler calls it.

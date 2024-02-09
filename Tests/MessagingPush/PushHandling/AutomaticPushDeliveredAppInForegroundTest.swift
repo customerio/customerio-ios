@@ -68,7 +68,7 @@ extension AutomaticPushDeliveredAppInForegrondTest {
         var pushModuleConfig = MessagingPushConfigOptions()
         pushModuleConfig.showPushAppInForeground = shouldDisplayPushAppInForeground
 
-        pushEventHandler = iOSPushEventListener(
+        pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraph.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
             moduleConfig: pushModuleConfig,

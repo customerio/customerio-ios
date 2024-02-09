@@ -8,8 +8,8 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
     private let customerIOMock = CustomerIOInstanceMock()
 
     // The manual push click handling functions are currently housed in `MessagingPushImplementation`. Get instance for integration test.
-    private var messagingPush: MessagingPushImplementation {
-        MessagingPush.shared.implementation as! MessagingPushImplementation
+    private var messagingPush: MessagingPushImplementation? {
+        notNilOrFail(MessagingPush.shared.implementation as? MessagingPushImplementation)
     }
 
     override func setUp() {
@@ -28,7 +28,7 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
 
         let cioPush = PushNotificationStub.getPushSentFromCIO(deliveryId: givenDeliveryId, deviceToken: givenDeviceToken)
 
-        messagingPush.manualPushClickHandling(push: cioPush)
+        messagingPush?.manualPushClickHandling(push: cioPush)
 
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
         XCTAssertEqual(customerIOMock.trackMetricReceivedArguments?.deliveryID, givenDeliveryId)

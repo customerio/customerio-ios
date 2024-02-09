@@ -4,7 +4,7 @@ import Foundation
 
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "PushEventHandler"
-class iOSPushEventListener: PushEventHandler {
+class IOSPushEventListener: PushEventHandler {
     private let jsonAdapter: JsonAdapter
     private var pushEventHandlerProxy: PushEventHandlerProxy
     private let moduleConfig: MessagingPushConfigOptions
