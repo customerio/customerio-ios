@@ -113,13 +113,16 @@ open class UnitTestBase<Component>: XCTestCase {
     open func cleanupTestEnvironment() {
         Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
-        deleteAllPersistantData()
+        deleteAllPersistentData()
 
+        // reset DI graphs to their initial state.
         diGraphShared.reset()
+        diGraphShared = .init()
         diGraph.reset()
+        diGraph = nil
     }
 
-    open func deleteAllPersistantData() {
+    open func deleteAllPersistentData() {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()

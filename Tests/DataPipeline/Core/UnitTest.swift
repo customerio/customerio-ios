@@ -69,9 +69,9 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         return customerIO
     }
 
-    override open func deleteAllPersistantData() {
+    override open func deleteAllPersistentData() {
         analytics.storage.hardReset(doYouKnowHowToUseThis: true)
-        super.deleteAllPersistantData()
+        super.deleteAllPersistentData()
     }
 
     override open func cleanupTestEnvironment() {
