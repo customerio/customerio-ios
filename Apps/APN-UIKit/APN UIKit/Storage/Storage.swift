@@ -1,7 +1,8 @@
 import Foundation
 
 protocol StorageManager {
-    var trackUrl: String? { get set }
+    var cdnHost: String? { get set }
+    var apiHost: String? { get set }
     var siteId: String? { get set }
     var cdpWriteKey: String? { get set }
     var bgQDelay: String? { get set }
@@ -21,15 +22,6 @@ class Storage: StorageManager {
     // Initialization
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
-    }
-
-    var trackUrl: String? {
-        get {
-            userDefaults.string(forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
-        set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
     }
 
     var deviceToken: String? {
@@ -119,6 +111,24 @@ class Storage: StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
+        }
+    }
+
+    var apiHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+    }
+
+    var cdnHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.cdnHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdnHost.rawValue)
         }
     }
 }

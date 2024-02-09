@@ -39,12 +39,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let storedCdpWriteKey = storage.cdpWriteKey {
             writeKey = storedCdpWriteKey
         }
-        // TODO: Confirm trackURL
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
         CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
+            if let apiHost = self.storage.apiHost, !apiHost.isEmpty {
+                config.apiHost = apiHost
+            }
+            if let cdnHost = self.storage.cdnHost, !cdnHost.isEmpty {
+                config.cdnHost = cdnHost
+            }
         }
 
         let autoScreenTrack = storage.isTrackScreenEnabled ?? true

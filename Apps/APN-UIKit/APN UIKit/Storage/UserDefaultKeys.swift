@@ -1,7 +1,8 @@
 import Foundation
 
 enum UserDefaultKeys: String {
-    case trackUrl
+    case cdnHost
+    case apiHost
     case siteId
     case cdpWriteKey
     case bgQDelay
