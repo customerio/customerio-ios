@@ -112,9 +112,10 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // Clean up the test environment by releasing resources, clearing mocks, and resetting states during teardown.
     open func cleanupTestEnvironment() {
-        Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistentData()
+        // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
+        Mocks.shared.resetAll()
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()
