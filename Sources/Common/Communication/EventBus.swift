@@ -57,12 +57,14 @@ class EventBusObserversHolder {
     }
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// A shared implementation of `EventBus` using an actor model for thread-safe operations.
 /// This actor manages the distribution of events to registered observers and uses
 /// `NotificationCenter` for event delivery. It ensures that event handling is thread-safe
 /// and observers are managed efficiently.
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 actor SharedEventBus: EventBus {
     private let holder = EventBusObserversHolder()
 

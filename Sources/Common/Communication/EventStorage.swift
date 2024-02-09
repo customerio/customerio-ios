@@ -31,11 +31,13 @@ enum EventBusError: Error {
     case decodingError
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// An actor that manages event storage, providing thread-safe operations for storing, loading, and removing events.
 ///
 /// This class handles the persistence of events using the file system, ensuring data integrity and consistency.
 // sourcery: InjectRegisterShared = "EventStorage"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 actor EventStorageManager: EventStorage {
     private let fileManager = FileManager.default
     public var baseDirectory: URL

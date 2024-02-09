@@ -325,4 +325,4 @@ public class CustomerIO: CustomerIOInstance {
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-} // swiftlint:disable:this file_length
+}
