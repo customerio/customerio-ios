@@ -20,7 +20,6 @@ open class UnitTestBase<Component>: XCTestCase {
     public var diGraphShared: DIGraphShared = .init()
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
-    public var eventStorage: EventStorage { diGraphShared.eventStorage }
 
     public let testSiteId = "testing"
     public var diGraph: DIGraph!
