@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushAPN
 import CioTracking
@@ -38,13 +39,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let storedCdpWriteKey = storage.cdpWriteKey {
             writeKey = storedCdpWriteKey
         }
-        // TODO: Confirm autoTrackScreenViews and trackURL
+        // TODO: Confirm trackURL
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
         CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
         }
+
+        let autoScreenTrack = storage.isTrackScreenEnabled ?? true
+        if autoScreenTrack {
+            CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))
+        }
+
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
         MessagingInApp
             .initialize(siteId: siteId, region: .US)
