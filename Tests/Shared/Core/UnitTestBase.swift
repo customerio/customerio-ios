@@ -111,9 +111,10 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // Clean up the test environment by releasing resources, clearing mocks, and resetting states during teardown.
     open func cleanupTestEnvironment() {
-        Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistentData()
+        // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
+        Mocks.shared.resetAll()
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()
@@ -123,6 +124,15 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     open func deleteAllPersistentData() {
+        var expectations: [XCTestExpectation] = []
+
+        let resetEventBusExpectation = XCTestExpectation(description: "reset EventBus to initial state")
+        expectations.append(resetEventBusExpectation)
+        Task {
+            await diGraphShared.eventBusHandler.reset()
+            resetEventBusExpectation.fulfill()
+        }
+
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
@@ -135,6 +145,10 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()
+
+        // cleaning up data should already have completed by now.
+        // but we'll wait for a bit to ensure it's done and not cause any issues for the next test.
+        wait(for: expectations, timeout: 5.0)
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

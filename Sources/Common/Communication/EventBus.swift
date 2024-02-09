@@ -23,6 +23,10 @@ public protocol EventBus: AutoMockable {
     ///
     /// - Parameter eventType: The event type for which to remove observers.
     func removeObserver(for eventType: String) async
+    /// Removes all observers from the EventBus.
+    ///
+    /// The function can be used for cleaning up or resetting the event handling system.
+    func removeAllObservers() async
 }
 
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
@@ -115,5 +119,9 @@ actor SharedEventBus: EventBus {
             }
             holder.observers[eventType] = nil
         }
+    }
+
+    func removeAllObservers() async {
+        holder.removeAllObservers()
     }
 }

@@ -263,6 +263,7 @@ extension MessagingInAppImplementationTest {
         DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
             expectation.fulfill()
         }
-        wait(for: [expectation], timeout: timeoutInSeconds)
+        // Wait for the expectations to be fulfilled, with a timeout slightly longer than given timeout
+        wait(for: [expectation], timeout: timeoutInSeconds + 0.1)
     }
 }
