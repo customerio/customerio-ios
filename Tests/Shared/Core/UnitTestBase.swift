@@ -14,7 +14,10 @@ import XCTest
 /// For SDK-wide tests, child classes can conveniently inherit from `UnitTest`, designed specifically for testing only SDK APIs.
 open class UnitTestBase<Component>: XCTestCase {
     public let testWriteKey = "test"
-    public var diGraphShared: DIGraphShared!
+    // Initialize DIGraphShared instantly to closely copy production behavior.
+    // The graph in production is initialized statically and can be accessed using .shared.
+    // This also allows us to override any dependency without waiting for SDK/modules to initialize and setup.
+    public var diGraphShared: DIGraphShared = .init()
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
@@ -80,9 +83,7 @@ open class UnitTestBase<Component>: XCTestCase {
         }
         modifySdkConfig?(&newSdkConfig)
 
-        diGraphShared = DIGraphShared()
         diGraph = DIGraph(sdkConfig: newSdkConfig)
-
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
         // setup SDK instance and set necessary components for testing
@@ -112,13 +113,16 @@ open class UnitTestBase<Component>: XCTestCase {
     open func cleanupTestEnvironment() {
         Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
-        deleteAllPersistantData()
+        deleteAllPersistentData()
 
+        // reset DI graphs to their initial state.
         diGraphShared.reset()
+        diGraphShared = .init()
         diGraph.reset()
+        diGraph = nil
     }
 
-    open func deleteAllPersistantData() {
+    open func deleteAllPersistentData() {
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()

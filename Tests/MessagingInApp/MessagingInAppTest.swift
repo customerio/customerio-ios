@@ -5,42 +5,25 @@ import SharedTests
 import XCTest
 
 class MessagingInAppTest: UnitTest {
-    private let hooksMock = HooksManagerMock()
     private let implementationMock = MessagingInAppInstanceMock()
-    private let sdkInitializedUtilMock = SdkInitializedUtilMock()
 
-    override func setUp() {
-        super.setUp()
-
-        // This is where we inject the DI graph into our tests
-        sdkInitializedUtilMock.isInitlaized = true
-        sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
-
-        // This is where we inject the DI graph into our tests
-        sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
-
-        diGraph.override(value: hooksMock, forType: HooksManager.self)
-    }
-
-    override func tearDown() {
-        super.tearDown()
-
-        MessagingInApp.resetSharedInstance()
+    override func initializeSDKComponents() -> MessagingInAppInstance? {
+        // Don't initialize the SDK components because we may want to test the initialize function differently in each test.
+        nil
     }
 
     // MARK: initialize functions with Module initialized
 
     func test_initialize_givenModuleInitialized_expectModuleIsInitialized() {
-        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
-        MessagingInApp.initialize(siteId: .random, region: .US)
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
 
         assertModuleInitialized(isInitialized: true, givenEventListener: nil)
     }
 
     func test_setEventListener_givenModuleInitialized_expectListenerIsSet() {
         let givenListener = InAppEventListenerMock()
-        MessagingInApp.shared = MessagingInApp(implementation: implementationMock)
-        MessagingInApp.initialize(siteId: .random, region: .US)
+
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
         MessagingInApp.shared.setEventListener(givenListener)
 
         assertModuleInitialized(isInitialized: true, givenEventListener: givenListener)
@@ -49,12 +32,12 @@ class MessagingInAppTest: UnitTest {
     func test_clearEventListener_givenModuleInitialized_expectListenerIsCleared() {
         let givenListener = InAppEventListenerMock()
 
-        MessagingInApp.initialize(siteId: .random, region: .US)
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
         MessagingInApp.shared.setEventListener(givenListener)
         // clear event listener
         MessagingInApp.shared.setEventListener(nil)
 
-        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
+        assertModuleInitialized(isInitialized: true, givenEventListener: nil, setEventListenerCallsCount: 2)
     }
 
     // MARK: initialize functions with Module not initialized
@@ -66,36 +49,18 @@ class MessagingInAppTest: UnitTest {
 
         assertModuleInitialized(isInitialized: false, givenEventListener: nil)
     }
-
-    // MARK: initialize functions with SDK initialized
-
-    func test_initialize_givenSdkInitialized_expectModuleIsInitialized() {
-        MessagingInApp.initialize(siteId: .random, region: .US)
-
-        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
-    }
-
-    // MARK: initialize functions with SDK not initialized
-
-    func test_initialize_givenSdkNotInitialized_expectModuleIsInitialized() {
-        sdkInitializedUtilMock.underlyingIsInitlaized = false
-
-        MessagingInApp.initialize(siteId: .random, region: .US)
-
-        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
-    }
 }
 
 extension MessagingInAppTest {
-    private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, file: StaticString = #file, line: UInt = #line) {
+    private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, setEventListenerCallsCount: Int? = nil, file: StaticString = #file, line: UInt = #line) {
         if isInitialized {
-            if givenEventListener != nil {
-                XCTAssertEqual(implementationMock.setEventListenerCallsCount, 1)
-            } else {
-                XCTAssertEqual(implementationMock.setEventListenerCallsCount, 0)
-            }
+            XCTAssertNotNil(MessagingInApp.shared.implementation, file: file, line: line)
+
+            let eventListenerCallsCount = setEventListenerCallsCount ?? (givenEventListener != nil ? 1 : 0)
+            XCTAssertEqual(implementationMock.setEventListenerCallsCount, eventListenerCallsCount, file: file, line: line)
         } else {
-            XCTAssertFalse(implementationMock.setEventListenerCalled)
+            XCTAssertNil(MessagingInApp.shared.implementation, file: file, line: line)
+            XCTAssertFalse(implementationMock.mockCalled, file: file, line: line)
         }
     }
 }
