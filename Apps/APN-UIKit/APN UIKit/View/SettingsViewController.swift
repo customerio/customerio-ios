@@ -74,8 +74,8 @@ class SettingsViewController: BaseViewController {
         }
         currentSettings = Settings(
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
-            cdnHost: storage.cdnHost ?? "",
-            apiHost: storage.apiHost ?? "",
+            cdnHost: storage.cdnHost ?? "cdp.customer.io/v1",
+            apiHost: storage.apiHost ?? "cdp.customer.io/v1",
             siteId: siteId,
             cdpWriteKey: writeKey,
             bgQDelay: storage.bgQDelay ?? "30",
