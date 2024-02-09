@@ -44,8 +44,8 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         CustomerIO.resetTestEnvironment()
     }
 
-    override open func deleteAllPersistantData() {
-        super.deleteAllPersistantData()
+    override open func deleteAllPersistentData() {
+        super.deleteAllPersistentData()
         deleteAllFiles()
     }
 

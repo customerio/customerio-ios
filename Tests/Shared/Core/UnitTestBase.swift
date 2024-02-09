@@ -114,13 +114,16 @@ open class UnitTestBase<Component>: XCTestCase {
     open func cleanupTestEnvironment() {
         Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
-        deleteAllPersistantData()
+        deleteAllPersistentData()
 
+        // reset DI graphs to their initial state.
         diGraphShared.reset()
+        diGraphShared = .init()
         diGraph.reset()
+        diGraph = nil
     }
 
-    open func deleteAllPersistantData() {
+    open func deleteAllPersistentData() {
         var expectations: [XCTestExpectation] = []
 
         let setupExpectation = XCTestExpectation(description: "remove observers from EventStorage")
