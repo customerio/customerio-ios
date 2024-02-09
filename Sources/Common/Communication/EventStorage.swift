@@ -23,6 +23,10 @@ public protocol EventStorage: AutoMockable {
     ///   - eventType: The type of the event.
     ///   - storageId: The unique identifier of the event to remove.
     func remove(ofType eventType: String, withStorageId storageId: String) async
+    /// Removes all event asynchronously from current storage.
+    ///
+    /// The function can be used for cleaning up or resetting the event handling system.
+    func removeAll() async
 }
 
 /// Errors related to event bus operations.
@@ -31,11 +35,13 @@ enum EventBusError: Error {
     case decodingError
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// An actor that manages event storage, providing thread-safe operations for storing, loading, and removing events.
 ///
 /// This class handles the persistence of events using the file system, ensuring data integrity and consistency.
 // sourcery: InjectRegisterShared = "EventStorage"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 actor EventStorageManager: EventStorage {
     private let fileManager = FileManager.default
     public var baseDirectory: URL
@@ -123,5 +129,9 @@ actor EventStorageManager: EventStorage {
     private func createDirectoryIfNeeded(_ directory: URL) throws {
         guard !fileManager.fileExists(atPath: directory.path) else { return }
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    func removeAll() async {
+        try? fileManager.removeItem(at: baseDirectory)
     }
 }

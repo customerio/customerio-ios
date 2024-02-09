@@ -1080,6 +1080,9 @@ public class EventBusMock: EventBus, Mock {
         removeObserverReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        removeAllObserversCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - post
@@ -1166,6 +1169,27 @@ public class EventBusMock: EventBus, Mock {
         removeObserverReceivedArguments = eventType
         removeObserverReceivedInvocations.append(eventType)
         removeObserverClosure?(eventType)
+    }
+
+    // MARK: - removeAllObservers
+
+    /// Number of times the function was called.
+    public private(set) var removeAllObserversCallsCount = 0
+    /// `true` if the function was ever called.
+    public var removeAllObserversCalled: Bool {
+        removeAllObserversCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var removeAllObserversClosure: (() -> Void)?
+
+    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func removeAllObservers() {
+        mockCalled = true
+        removeAllObserversCallsCount += 1
+        removeAllObserversClosure?()
     }
 }
 
@@ -1356,6 +1380,9 @@ public class EventStorageMock: EventStorage, Mock {
         removeReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        removeAllCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - store
@@ -1484,6 +1511,27 @@ public class EventStorageMock: EventStorage, Mock {
         removeReceivedArguments = (eventType: eventType, storageId: storageId)
         removeReceivedInvocations.append((eventType: eventType, storageId: storageId))
         removeClosure?(eventType, storageId)
+    }
+
+    // MARK: - removeAll
+
+    /// Number of times the function was called.
+    public private(set) var removeAllCallsCount = 0
+    /// `true` if the function was ever called.
+    public var removeAllCalled: Bool {
+        removeAllCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var removeAllClosure: (() -> Void)?
+
+    /// Mocked function for `removeAll()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func removeAll() {
+        mockCalled = true
+        removeAllCallsCount += 1
+        removeAllClosure?()
     }
 }
 
@@ -2200,16 +2248,16 @@ public class QueueMock: Queue, Mock {
     /// Arguments from *all* of the times that the function was called.
     public private(set) var getTaskDetailReceivedInvocations: [QueueTaskMetadata] = []
     /// Value to return from the mocked function.
-    public var getTaskDetailReturnValue: (data: Data, taskType: QueueTaskType, timestamp: Date)?
+    public var getTaskDetailReturnValue: TaskDetail?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getTaskDetailReturnValue`
      */
-    public var getTaskDetailClosure: ((QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)?)?
+    public var getTaskDetailClosure: ((QueueTaskMetadata) -> TaskDetail?)?
 
     /// Mocked function for `getTaskDetail(_ task: QueueTaskMetadata)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getTaskDetail(_ task: QueueTaskMetadata) -> (data: Data, taskType: QueueTaskType, timestamp: Date)? {
+    public func getTaskDetail(_ task: QueueTaskMetadata) -> TaskDetail? {
         mockCalled = true
         getTaskDetailCallsCount += 1
         getTaskDetailReceivedArguments = task

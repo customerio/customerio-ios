@@ -23,7 +23,7 @@ class DataPipelineInteractionTests: IntegrationTest {
     override func setUp() {
         super.setUp()
         // OutputReaderPlugin helps validating interactions with analytics
-        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
+        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
 
     // MARK: identify

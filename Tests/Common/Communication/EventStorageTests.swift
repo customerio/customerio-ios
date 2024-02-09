@@ -5,33 +5,11 @@ import XCTest
 class EventStorageTest: UnitTest {
     var eventStorageManager: EventStorageManager!
 
-    override func setUp() {
-        super.setUp()
-        if let tempDirectory = createTemporaryDirectory() {
-            eventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
-            Task {
-                await eventStorageManager.updateBaseDirectory(baseDirectory: tempDirectory)
-            }
-        }
-    }
+    override func setUpDependencies() {
+        super.setUpDependencies()
 
-    override func tearDown() {
-        eventStorageManager = nil
-        super.tearDown()
-    }
-
-    // MARK: - Helper Methods
-
-    func createTemporaryDirectory() -> URL? {
-        let temporaryDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let uniqueDirectoryURL = temporaryDirectoryURL.appendingPathComponent(UUID().uuidString)
-        do {
-            try FileManager.default.createDirectory(at: uniqueDirectoryURL, withIntermediateDirectories: true)
-            return uniqueDirectoryURL
-        } catch {
-            print("Failed to create temporary directory: \(error)")
-            return nil
-        }
+        eventStorageManager = EventStorageManager(logger: log, jsonAdapter: jsonAdapter)
+        diGraphShared.override(value: eventStorageManager, forType: EventStorage.self)
     }
 
     // MARK: - Event Storage Tests

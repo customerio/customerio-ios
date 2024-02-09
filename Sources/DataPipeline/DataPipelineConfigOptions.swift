@@ -14,7 +14,6 @@ import Segment
  dataPipelineConfig.autoTrackScreenViews = false
  ```
  */
-// TODO: [CDP] Update docs to after module initialization changes for clarity on its usage
 public struct DataPipelineConfigOptions {
     // Used to create new instance of DataPipelineConfigOptions when the DataPipeline module is configured.
     // Each property of the DataPipelineConfigOptions object can be modified by the user.

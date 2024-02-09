@@ -14,7 +14,10 @@ import XCTest
 /// For SDK-wide tests, child classes can conveniently inherit from `UnitTest`, designed specifically for testing only SDK APIs.
 open class UnitTestBase<Component>: XCTestCase {
     public let testWriteKey = "test"
-    public var diGraphShared: DIGraphShared!
+    // Initialize DIGraphShared instantly to closely copy production behavior.
+    // The graph in production is initialized statically and can be accessed using .shared.
+    // This also allows us to override any dependency without waiting for SDK/modules to initialize and setup.
+    public var diGraphShared: DIGraphShared = .init()
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
@@ -80,9 +83,7 @@ open class UnitTestBase<Component>: XCTestCase {
         }
         modifySdkConfig?(&newSdkConfig)
 
-        diGraphShared = DIGraphShared()
         diGraph = DIGraph(sdkConfig: newSdkConfig)
-
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
         // setup SDK instance and set necessary components for testing
@@ -110,15 +111,28 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // Clean up the test environment by releasing resources, clearing mocks, and resetting states during teardown.
     open func cleanupTestEnvironment() {
-        Mocks.shared.resetAll()
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
-        deleteAllPersistantData()
+        deleteAllPersistentData()
+        // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
+        Mocks.shared.resetAll()
 
+        // reset DI graphs to their initial state.
         diGraphShared.reset()
+        diGraphShared = .init()
         diGraph.reset()
+        diGraph = nil
     }
 
-    open func deleteAllPersistantData() {
+    open func deleteAllPersistentData() {
+        var expectations: [XCTestExpectation] = []
+
+        let resetEventBusExpectation = XCTestExpectation(description: "reset EventBus to initial state")
+        expectations.append(resetEventBusExpectation)
+        Task {
+            await diGraphShared.eventBusHandler.reset()
+            resetEventBusExpectation.fulfill()
+        }
+
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
         // let's delete the data for each test.
         UserDefaults.standard.deleteAll()
@@ -131,6 +145,10 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()
+
+        // cleaning up data should already have completed by now.
+        // but we'll wait for a bit to ensure it's done and not cause any issues for the next test.
+        wait(for: expectations, timeout: 5.0)
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {

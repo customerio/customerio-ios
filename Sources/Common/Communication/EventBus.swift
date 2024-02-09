@@ -23,6 +23,10 @@ public protocol EventBus: AutoMockable {
     ///
     /// - Parameter eventType: The event type for which to remove observers.
     func removeObserver(for eventType: String) async
+    /// Removes all observers from the EventBus.
+    ///
+    /// The function can be used for cleaning up or resetting the event handling system.
+    func removeAllObservers() async
 }
 
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
@@ -57,12 +61,14 @@ class EventBusObserversHolder {
     }
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// A shared implementation of `EventBus` using an actor model for thread-safe operations.
 /// This actor manages the distribution of events to registered observers and uses
 /// `NotificationCenter` for event delivery. It ensures that event handling is thread-safe
 /// and observers are managed efficiently.
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 actor SharedEventBus: EventBus {
     private let holder = EventBusObserversHolder()
 
@@ -113,5 +119,9 @@ actor SharedEventBus: EventBus {
             }
             holder.observers[eventType] = nil
         }
+    }
+
+    func removeAllObservers() async {
+        holder.removeAllObservers()
     }
 }

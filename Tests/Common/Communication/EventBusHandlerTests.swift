@@ -11,6 +11,7 @@ class EventBusHandlerTest: UnitTest {
     override func setUp() {
         super.setUp()
         mockEventStorage.loadEventsReturnValue = []
+        mockEventCache.getEventReturnValue = []
     }
 
     private func initializeEventBusHandler() -> EventBusHandler {
