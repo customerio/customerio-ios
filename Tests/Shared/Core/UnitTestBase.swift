@@ -127,11 +127,11 @@ open class UnitTestBase<Component>: XCTestCase {
     open func deleteAllPersistentData() {
         var expectations: [XCTestExpectation] = []
 
-        let setupExpectation = XCTestExpectation(description: "remove observers from EventStorage")
-        expectations.append(setupExpectation)
+        let resetEventBusExpectation = XCTestExpectation(description: "reset EventBus to initial state")
+        expectations.append(resetEventBusExpectation)
         Task {
             await diGraphShared.eventBusHandler.reset()
-            setupExpectation.fulfill()
+            resetEventBusExpectation.fulfill()
         }
 
         // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
@@ -147,7 +147,8 @@ open class UnitTestBase<Component>: XCTestCase {
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()
 
-        // cleaning up data should already have completed by now
+        // cleaning up data should already have completed by now.
+        // but we'll wait for a bit to ensure it's done and not cause any issues for the next test.
         wait(for: expectations, timeout: 5.0)
     }
 
