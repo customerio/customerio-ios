@@ -126,6 +126,7 @@ public class CioEventBusHandler: EventBusHandler {
         await eventStorage.remove(ofType: event.key, withStorageId: event.storageId)
     }
 
+    /// Resets the EventBus to initial state by removing all observers and stored events.
     public func reset() async {
         await eventStorage.removeAll()
         await eventBus.removeAllObservers()
