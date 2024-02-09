@@ -14,13 +14,13 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var deviceTokenTextField: ThemeTextField!
     @IBOutlet var cdpWriteKeyTextField: ThemeTextField!
     @IBOutlet var siteIdTextField: ThemeTextField!
-    @IBOutlet var trackUrlTextField: ThemeTextField!
     @IBOutlet var trackDeviceToggle: UISwitch!
     @IBOutlet var debugModeToggle: UISwitch!
     @IBOutlet var trackScreenToggle: UISwitch!
     @IBOutlet var bgQMinTasksTextField: ThemeTextField!
     @IBOutlet var bgQTakDelayTextField: ThemeTextField!
-
+    @IBOutlet var apiHostTextField: ThemeTextField!
+    @IBOutlet var cdnHostTextField: ThemeTextField!
     @IBOutlet var copyToClipboardImageView: UIImageView!
     @IBOutlet var clipboardView: UIView!
     var notificationUtil = DIGraph.shared.notificationUtil
@@ -74,7 +74,8 @@ class SettingsViewController: BaseViewController {
         }
         currentSettings = Settings(
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
-            trackUrl: storage.trackUrl ?? "https://track-sdk.customer.io/",
+            cdnHost: storage.cdnHost ?? "",
+            apiHost: storage.apiHost ?? "",
             siteId: siteId,
             cdpWriteKey: writeKey,
             bgQDelay: storage.bgQDelay ?? "30",
@@ -88,7 +89,8 @@ class SettingsViewController: BaseViewController {
 
     func setDefaultValues() {
         deviceTokenTextField.text = currentSettings.deviceToken
-        trackUrlTextField.text = currentSettings.trackUrl
+        cdnHostTextField.text = currentSettings.cdnHost
+        apiHostTextField.text = currentSettings.apiHost
 
         siteIdTextField.text = currentSettings.siteId
         cdpWriteKeyTextField.text = currentSettings.cdpWriteKey
@@ -112,7 +114,8 @@ class SettingsViewController: BaseViewController {
     }
 
     func addAccessibilityIdentifiersForAppium() {
-        setAppiumAccessibilityIdTo(trackUrlTextField, value: "Track URL Input")
+        setAppiumAccessibilityIdTo(cdnHostTextField, value: "CDN Host Input")
+        setAppiumAccessibilityIdTo(apiHostTextField, value: "API Host Input")
         setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
         setAppiumAccessibilityIdTo(cdpWriteKeyTextField, value: "CDP Write Key Input")
         setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
@@ -133,8 +136,10 @@ class SettingsViewController: BaseViewController {
     }
 
     func save() {
-        // Track Url
-        storage.trackUrl = trackUrlTextField.text
+        // CDN Host
+        storage.cdnHost = cdnHostTextField.text
+        // API Host
+        storage.apiHost = apiHostTextField.text
         // Background Queue Seconds Delay
         storage.bgQDelay = bgQTakDelayTextField.text
         // Min number of tasks
@@ -170,10 +175,17 @@ class SettingsViewController: BaseViewController {
             showToast(withMessage: "Enter a valid value for Background Queue Delay in seconds.")
             return false
         }
-        // Tracking Url
-        if let trackingUrl = trackUrlTextField.text {
-            if trackUrlTextField.isTextTrimEmpty || trackingUrl.isValidUrl {
-                showToast(withMessage: "Enter a valid value for CIO Track Url.")
+        // CDN Host
+        if let cdnHost = cdnHostTextField.text {
+            if cdnHostTextField.isTextTrimEmpty || cdnHost.isValidUrl {
+                showToast(withMessage: "Enter a valid value for CDN Host.")
+                return false
+            }
+        }
+        // API Host
+        if let apiHost = apiHostTextField.text {
+            if apiHostTextField.isTextTrimEmpty || apiHost.isValidUrl {
+                showToast(withMessage: "Enter a valid value for API Host.")
                 return false
             }
         }
@@ -199,7 +211,8 @@ class SettingsViewController: BaseViewController {
     @IBAction func restoreDefaultSettings(_ sender: UIButton) {
         currentSettings = Settings(
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
-            trackUrl: "https://track-sdk.customer.io/",
+            cdnHost: "",
+            apiHost: "",
             siteId: BuildEnvironment.CustomerIO.siteId,
             cdpWriteKey: BuildEnvironment.CustomerIO.cdpWriteKey,
             bgQDelay: "30",
