@@ -31,13 +31,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
-        var writeKey = BuildEnvironment.CustomerIO.cdpWriteKey
+        var writeKey = BuildEnvironment.CustomerIO.writeKey
         var siteId = BuildEnvironment.CustomerIO.siteId
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedCdpWriteKey = storage.cdpWriteKey {
-            writeKey = storedCdpWriteKey
+        if let storedWriteKey = storage.writeKey {
+            writeKey = storedWriteKey
         }
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
         CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in

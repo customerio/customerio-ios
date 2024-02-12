@@ -5,7 +5,7 @@ struct Settings {
     var cdnHost: String
     var apiHost: String
     var siteId: String
-    var cdpWriteKey: String
+    var writeKey: String
     var bgQDelay: String
     var bgQMinTasks: String
     var isTrackScreenEnabled: Bool
