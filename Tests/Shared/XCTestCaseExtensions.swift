@@ -49,6 +49,18 @@ public extension XCTestCase {
         }
     }
 
+    // A convenient function to fail a test function, if an object is nil.
+    // Using this function is a good alternative to using force_cast because
+    // failing the test function will not exit the test suite early. We let all the tests
+    // in the test suite run.
+    func notNilOrFail<T>(_ object: T?, file: StaticString = #file, line: UInt = #line) -> T? {
+        if object == nil {
+            XCTFail("expected \(String(describing: object)) to not be nil, but it is.", file: file, line: line)
+        }
+
+        return object
+    }
+
     func skipRunningTest(
         file: StaticString = #file,
         line: UInt = #line

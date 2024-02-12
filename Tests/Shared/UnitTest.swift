@@ -165,4 +165,18 @@ public extension UnitTest {
 
         waitForExpectations(for: [queueExpectation], file: file, line: line)
     }
+
+    func runTest(numberOfTimes: Int, test: () -> Void) {
+        for _ in 0 ..< numberOfTimes {
+            setUp()
+            test()
+            tearDown()
+        }
+    }
+
+    func runOnBackground(_ block: @escaping () -> Void) {
+        CioThreadUtil().runBackground {
+            block()
+        }
+    }
 }

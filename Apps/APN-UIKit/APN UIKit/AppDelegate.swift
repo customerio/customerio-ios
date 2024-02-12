@@ -11,11 +11,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
-        // Register for remote notifications using APN. On successful registration,
-        // didRegisterForRemoteNotifications delegate method will be called and it
-        // provides a device token. In case, registration fails then
-        // didFailToRegisterForRemoteNotifications will be called.
         initializeCioAndInAppListeners()
+
+        /**
+         Registers the `AppDelegate` class to handle when a push notification gets clicked.
+         This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
+         Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature. Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
+
+         We register a click handler in this app for testing purposes, only. To test that the Customer.io SDK is compatible with other SDKs that want to process push notifications not sent by Customer.io.
+         */
         UNUserNotificationCenter.current().delegate = self
 
         return true
@@ -44,12 +48,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
             config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
+
+            config.autoTrackPushEvents = true
+
             if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
                 config.trackingApiUrl = trackUrl
             }
         }
 
-        // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
+        // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp.initialize(eventListener: self)
         MessagingPushAPN.initialize { config in
             config.autoFetchDeviceToken = true
@@ -85,31 +92,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
-    // Delegate called when user responds to a notification. Set delegate in
-    // application:didFinishLaunchingWithOptions: method.
+    // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let handled = MessagingPush.shared.userNotificationCenter(
-            center,
-            didReceive: response,
-            withCompletionHandler: completionHandler
+        // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        CustomerIO.shared.track(
+            name: "push clicked",
+            data: ["push": response.notification.request.content.userInfo]
         )
 
-        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
-        // completion handler. If the SDK did handle it, it called the completion handler for you.
-        if !handled {
-            completionHandler()
-        }
+        completionHandler()
     }
 
-    // OPTIONAL: Delegate method only runs when app is active(foreground). If not implemented or delayed, notification won't show in foreground. App can show notification as sound, badge, or alert..
-    @available(iOS 10.0, *)
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
-            -> Void
-    ) {
-        completionHandler([.list, .banner, .badge, .sound])
+    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .badge, .sound])
     }
 }
 
