@@ -23,7 +23,7 @@ extension AppDeepLinksHandlerUtil {
             var userInfo: [String: String] = [:]
 
             urlComponents.queryItems?.forEach { queryItem in
-                if queryItem.name == "site_id" || queryItem.name == "api_key" {
+                if queryItem.name == "site_id" || queryItem.name == "write_key" {
                     userInfo[queryItem.name] = queryItem.value
                 }
             }
