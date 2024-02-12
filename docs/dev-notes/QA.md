@@ -4,7 +4,7 @@
 
 1. Make sure that the mobile app that you are testing with has SDK logging enabled. This is done with the following code:
 ```swift
-CustomerIO.initialize(writeKey: Env.cdpWriteKey) { config in
+CustomerIO.initialize(writeKey: Env.writeKey) { config in
     config.autoTrackDeviceAttributes = true
 }
 ```
