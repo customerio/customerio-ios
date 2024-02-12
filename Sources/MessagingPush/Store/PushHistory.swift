@@ -25,7 +25,7 @@ enum PushHistoryEvent {
     case willPresent
 }
 
-/**
+/*
  Thread-safe store of push notifications that have been handled by the SDK. Used to prevent possible duplication of handling of events.
 
  Singleton because this is an in-memory store.

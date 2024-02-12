@@ -61,6 +61,9 @@ extension DIGraph {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = pushEventHandler
+        countDependenciesResolved += 1
+
         _ = pushClickHandler
         countDependenciesResolved += 1
 
@@ -68,9 +71,6 @@ extension DIGraph {
         countDependenciesResolved += 1
 
         _ = userNotificationCenter
-        countDependenciesResolved += 1
-
-        _ = pushEventHandler
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -98,6 +98,18 @@ extension DIGraph {
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // PushEventHandler
+    @available(iOSApplicationExtension, unavailable)
+    var pushEventHandler: PushEventHandler {
+        getOverriddenInstance() ??
+            newPushEventHandler
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newPushEventHandler: PushEventHandler {
+        IOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
     }
 
     // PushClickHandler
@@ -144,18 +156,6 @@ extension DIGraph {
 
     private var newUserNotificationCenter: UserNotificationCenter {
         UserNotificationCenterImpl()
-    }
-
-    // PushEventHandler
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventHandler: PushEventHandler {
-        getOverriddenInstance() ??
-            newPushEventHandler
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newPushEventHandler: PushEventHandler {
-        iOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
     }
 }
 
