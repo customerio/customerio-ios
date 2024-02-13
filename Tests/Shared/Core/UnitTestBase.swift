@@ -25,7 +25,7 @@ open class UnitTestBase<Component>: XCTestCase {
     public var diGraph: DIGraph!
     public var sdkConfig: SdkConfig { diGraph.sdkConfig }
 
-    public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
+    public var jsonAdapter: JsonAdapter { JsonAdapter() }
     public var lockManager: LockManager { LockManager() }
     public var dateUtilStub: DateUtilStub!
     public var threadUtilStub: ThreadUtilStub!

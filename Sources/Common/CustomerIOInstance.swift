@@ -128,7 +128,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     func postInitialize(diGraph: DIGraph) {
-        let logger = diGraph.logger
+        let logger = DIGraphShared.shared.logger
         let siteId = diGraph.sdkConfig.siteId
 
         // Register the device token during SDK initialization to address device registration issues
@@ -294,9 +294,6 @@ public class CustomerIO: CustomerIOInstance {
         name: String,
         data: [String: Any]
     ) {
-        guard (diGraph?.logger) != nil else {
-            return
-        }
         implementation?.screen(name: name, data: data)
     }
 

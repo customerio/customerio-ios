@@ -74,9 +74,6 @@ extension DIGraph {
         _ = threadUtil
         countDependenciesResolved += 1
 
-        _ = logger
-        countDependenciesResolved += 1
-
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -150,7 +147,7 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer
@@ -160,7 +157,7 @@ extension DIGraph {
     }
 
     private var newSimpleTimer: SimpleTimer {
-        CioSimpleTimer(logger: logger)
+        CioSimpleTimer()
     }
 
     // SingleScheduleTimer (singleton)
@@ -197,16 +194,6 @@ extension DIGraph {
         CioThreadUtil()
     }
 
-    // Logger
-    public var logger: Logger {
-        getOverriddenInstance() ??
-            newLogger
-    }
-
-    private var newLogger: Logger {
-        ConsoleLogger(sdkConfig: sdkConfig)
-    }
-
     // DeviceMetricsGrabber
     var deviceMetricsGrabber: DeviceMetricsGrabber {
         getOverriddenInstance() ??
@@ -224,7 +211,7 @@ extension DIGraph {
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
+        FileManagerFileStorage(sdkConfig: sdkConfig)
     }
 
     // QueueStorage
@@ -234,7 +221,7 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
 
     // JsonAdapter
@@ -244,7 +231,7 @@ extension DIGraph {
     }
 
     private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
+        JsonAdapter()
     }
 
     // LockManager (singleton)
@@ -367,6 +354,9 @@ extension DIGraphShared {
         _ = threadUtil
         countDependenciesResolved += 1
 
+        _ = logger
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -380,9 +370,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = dateUtil
-        countDependenciesResolved += 1
-
-        _ = logger
         countDependenciesResolved += 1
 
         _ = eventBus
@@ -453,6 +440,16 @@ extension DIGraphShared {
         CioThreadUtil()
     }
 
+    // Logger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
+    }
+
+    private var newLogger: Logger {
+        ConsoleLogger()
+    }
+
     // DeviceMetricsGrabber
     var deviceMetricsGrabber: DeviceMetricsGrabber {
         getOverriddenInstance() ??
@@ -514,7 +511,7 @@ extension DIGraphShared {
     }
 
     private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
+        JsonAdapter()
     }
 
     // DateUtil
@@ -525,16 +522,6 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
-    }
-
-    // Logger
-    public var logger: Logger {
-        getOverriddenInstance() ??
-            newLogger
-    }
-
-    private var newLogger: Logger {
-        SharedConsoleLogger()
     }
 
     // EventBus (singleton)

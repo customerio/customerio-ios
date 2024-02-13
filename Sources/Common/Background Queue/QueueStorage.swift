@@ -36,7 +36,8 @@ public class FileManagerQueueStorage: QueueStorage {
     private let jsonAdapter: JsonAdapter
     let siteId: String
     private let sdkConfig: SdkConfig
-    let logger: Logger
+    var logger: Logger { DIGraphShared.shared.logger }
+
     let dateUtil: DateUtil
     private var inventoryStore: QueueInventoryMemoryStore
 
@@ -81,7 +82,6 @@ public class FileManagerQueueStorage: QueueStorage {
         jsonAdapter: JsonAdapter,
         lockManager: LockManager,
         sdkConfig: SdkConfig,
-        logger: Logger,
         dateUtil: DateUtil,
         inventoryStore: QueueInventoryMemoryStore
     ) {
@@ -89,7 +89,6 @@ public class FileManagerQueueStorage: QueueStorage {
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
         self.sdkConfig = sdkConfig
-        self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
         self.inventoryStore = inventoryStore

@@ -1997,6 +1997,11 @@ public class LoggerMock: Logger, Mock {
     }
 
     public func resetMock() {
+        setLogLevelCallsCount = 0
+        setLogLevelReceivedArguments = nil
+        setLogLevelReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         debugCallsCount = 0
         debugReceivedArguments = nil
         debugReceivedInvocations = []
@@ -2012,6 +2017,33 @@ public class LoggerMock: Logger, Mock {
         errorReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - setLogLevel
+
+    /// Number of times the function was called.
+    public private(set) var setLogLevelCallsCount = 0
+    /// `true` if the function was ever called.
+    public var setLogLevelCalled: Bool {
+        setLogLevelCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var setLogLevelReceivedArguments: CioLogLevel?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var setLogLevelReceivedInvocations: [CioLogLevel] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var setLogLevelClosure: ((CioLogLevel) -> Void)?
+
+    /// Mocked function for `setLogLevel(_ level: CioLogLevel)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setLogLevel(_ level: CioLogLevel) {
+        mockCalled = true
+        setLogLevelCallsCount += 1
+        setLogLevelReceivedArguments = level
+        setLogLevelReceivedInvocations.append(level)
+        setLogLevelClosure?(level)
     }
 
     // MARK: - debug
