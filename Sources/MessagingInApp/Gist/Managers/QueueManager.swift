@@ -51,7 +51,7 @@ class QueueManager {
             completionHandler(.failure(error))
         }
     }
-    
+
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
         if let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
            let newPollingInterval = Double(newPollingIntervalString),
