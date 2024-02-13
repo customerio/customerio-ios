@@ -87,6 +87,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: pushImplementation)
 
+        if moduleConfig.autoTrackPushEvents {
+            diGraph.automaticPushClickHandling.start()
+        }
+
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
