@@ -7,10 +7,7 @@ class NotificationService: UNNotificationServiceExtension {
     var bestAttemptContent: UNMutableNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: Region.US) { config in
-            config.autoTrackPushEvents = true
-        }
-
+        MessagingPush.initialize(writeKey: BuildEnvironment.CustomerIO.writeKey)
         MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
     }
 

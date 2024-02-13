@@ -1,6 +1,7 @@
+import CioDataPipelines
+import CioInternalCommon
 import CioMessagingInApp
 import CioMessagingPushAPN
-import CioTracking
 import UIKit
 
 @main
@@ -30,23 +31,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
+        var writeKey = BuildEnvironment.CustomerIO.writeKey
         var siteId = BuildEnvironment.CustomerIO.siteId
-        var apiKey = BuildEnvironment.CustomerIO.apiKey
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedApiKey = storage.apiKey {
-            apiKey = storedApiKey
+        if let storedWriteKey = storage.writeKey {
+            writeKey = storedWriteKey
         }
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
+        let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
+        CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
-            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
-                config.trackingApiUrl = trackUrl
+            config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
+            config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
+            if let apiHost = self.storage.apiHost, !apiHost.isEmpty {
+                config.apiHost = apiHost
             }
+            if let cdnHost = self.storage.cdnHost, !cdnHost.isEmpty {
+                config.cdnHost = cdnHost
+            }
+        }
+
+        let autoScreenTrack = storage.isTrackScreenEnabled ?? true
+        if autoScreenTrack {
+            CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))
         }
 
         // Add event listeners for in-app. This is not to initialise in-app but event listeners for in-app.
@@ -122,7 +130,7 @@ extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -130,7 +138,7 @@ extension AppDelegate: InAppEventListener {
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -138,7 +146,7 @@ extension AppDelegate: InAppEventListener {
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -147,7 +155,7 @@ extension AppDelegate: InAppEventListener {
         if actionName == "remove" || actionName == "test" {
             MessagingInApp.shared.dismissMessage()
         }
-        CustomerIO.shared.track(name: "inapp action", data: [
+        CustomerIO.shared.track(name: "inapp action", properties: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,
             "action-value": actionValue,

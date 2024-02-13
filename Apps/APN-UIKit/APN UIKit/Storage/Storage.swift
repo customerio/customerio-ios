@@ -1,9 +1,10 @@
 import Foundation
 
 protocol StorageManager {
-    var trackUrl: String? { get set }
+    var cdnHost: String? { get set }
+    var apiHost: String? { get set }
     var siteId: String? { get set }
-    var apiKey: String? { get set }
+    var writeKey: String? { get set }
     var bgQDelay: String? { get set }
     var bgNumOfTasks: String? { get set }
     var isTrackScreenEnabled: Bool? { get set }
@@ -21,15 +22,6 @@ class Storage: StorageManager {
     // Initialization
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
-    }
-
-    var trackUrl: String? {
-        get {
-            userDefaults.string(forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
-        set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
     }
 
     var deviceToken: String? {
@@ -59,12 +51,12 @@ class Storage: StorageManager {
         }
     }
 
-    var apiKey: String? {
+    var writeKey: String? {
         get {
-            userDefaults.string(forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.string(forKey: UserDefaultKeys.writeKey.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.writeKey.rawValue)
         }
     }
 
@@ -119,6 +111,24 @@ class Storage: StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
+        }
+    }
+
+    var apiHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+    }
+
+    var cdnHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.cdnHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdnHost.rawValue)
         }
     }
 }
