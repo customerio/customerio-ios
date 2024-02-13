@@ -1996,7 +1996,45 @@ public class LoggerMock: Logger, Mock {
         Mocks.shared.add(mock: self)
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingLogLevel: CioLogLevel!
+    /// `true` if the getter or setter of property is called at least once.
+    public var logLevelCalled: Bool {
+        logLevelGetCalled || logLevelSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var logLevelGetCalled: Bool {
+        logLevelGetCallsCount > 0
+    }
+
+    public var logLevelGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var logLevelSetCalled: Bool {
+        logLevelSetCallsCount > 0
+    }
+
+    public var logLevelSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var logLevel: CioLogLevel {
+        get {
+            mockCalled = true
+            logLevelGetCallsCount += 1
+            return underlyingLogLevel
+        }
+        set(value) {
+            mockCalled = true
+            logLevelSetCallsCount += 1
+            underlyingLogLevel = value
+        }
+    }
+
     public func resetMock() {
+        logLevelGetCallsCount = 0
+        logLevelSetCallsCount = 0
         setLogLevelCallsCount = 0
         setLogLevelReceivedArguments = nil
         setLogLevelReceivedInvocations = []

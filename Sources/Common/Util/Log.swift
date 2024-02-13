@@ -5,6 +5,13 @@ import os.log
 
 /// mockable logger + abstract that allows you to log to multiple places if you wish
 public protocol Logger: AutoMockable {
+    /// Represents the current log level of the logger. The log level
+    /// controls the verbosity of the logs that are output. Only messages
+    /// at this level or higher will be logged.
+    var logLevel: CioLogLevel { get }
+    /// Sets the logger's verbosity level to control which messages are logged.
+    /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
+    /// - Parameter level: The `CioLogLevel` for logging output verbosity.
     func setLogLevel(_ level: CioLogLevel)
     /// the noisey log level. Feel free to spam this log level with any
     /// information about the SDK that would be useful for debugging the SDK.
@@ -55,18 +62,18 @@ public enum CioLogLevel: String, CaseIterable {
 // log messages to console.
 // sourcery: InjectRegisterShared = "Logger"
 public class ConsoleLogger: Logger {
-    private var minLogLevel: CioLogLevel = .error
+    public var logLevel: CioLogLevel = .error
+
+    public func setLogLevel(_ level: CioLogLevel) {
+        logLevel = level
+    }
 
     // allows filtering in Console mac app
     public static let logSubsystem = "io.customer.sdk"
     public static let logCategory = "CIO"
 
-    public func setLogLevel(_ level: CioLogLevel) {
-        minLogLevel = level
-    }
-
     private func printMessage(_ message: String, _ level: CioLogLevel) {
-        if !minLogLevel.shouldLog(level) { return }
+        if !logLevel.shouldLog(level) { return }
 
         ConsoleLogger.logMessageToConsole(message, level: level)
     }
