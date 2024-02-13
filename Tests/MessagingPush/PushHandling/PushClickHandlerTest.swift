@@ -10,12 +10,12 @@ class PushClickHandlerTest: IntegrationTest {
     private var pushClickHandler: PushClickHandler!
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
-    private let customerIOMock = CustomerIOInstanceMock()
+    private let messagingPushMock = MessagingPushInstanceMock()
 
     override func setUp() {
         super.setUp()
 
-        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock)
     }
 
     // MARK: pushClicked
@@ -43,6 +43,6 @@ class PushClickHandlerTest: IntegrationTest {
 
         pushClickHandler.pushClicked(givenPush)
 
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
+        XCTAssertEqual(messagingPushMock.trackMetricCallsCount, 1)
     }
 }

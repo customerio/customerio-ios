@@ -87,7 +87,8 @@ public extension CustomerIO {
         }
         // automatically add the AutoTrackingScreenViews plugin if autoTrackScreenViews is enabled
         if sdkConfig.autoTrackScreenViews {
-            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
+            // FIXME: [CDP] cocoapods sample app not able to compile because of this line
+//            DataPipeline.shared.analytics.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: sdkConfig.filterAutoScreenViewEvents, autoScreenViewBody: sdkConfig.autoScreenViewBody))
         }
     }
 

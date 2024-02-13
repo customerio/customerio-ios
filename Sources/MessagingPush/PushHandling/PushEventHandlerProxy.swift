@@ -17,14 +17,9 @@ protocol PushEventHandlerProxy: AutoMockable {
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
 @available(iOSApplicationExtension, unavailable)
+// sourcery: InjectRegisterShared = "PushEventHandlerProxy"
+// sourcery: InjectSingleton
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
-    /*
-     # Why is this class not stored in the digraph?
-
-     Similar to why the SDK's `UNUserNotificationCenterDelegate` instance is also not in the digraph. See those comments to learn more.
-     */
-    public static let shared = PushEventHandlerProxyImpl()
-
     // Use a map so that we only save 1 instance of a given handler.
     private var nestedDelegates: [String: PushEventHandler] = [:]
 
@@ -62,15 +57,5 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
         nestedDelegates.forEach { _, delegate in
             delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
         }
-    }
-}
-
-// Manually add a getter in the digraph.
-// We must use this manual approach instead of auto generated code because the class maintains its own singleton instance outside of the digraph.
-// This getter allows convenient access to this dependency via the digraph.
-extension DIGraph {
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventHandlerProxy: PushEventHandlerProxy {
-        PushEventHandlerProxyImpl.shared
     }
 }

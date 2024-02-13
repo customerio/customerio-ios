@@ -1,3 +1,4 @@
+@testable import CioInternalCommon
 @testable import CioMessagingPush
 @testable import CioTracking
 import Foundation
@@ -5,19 +6,19 @@ import SharedTests
 import XCTest
 
 class ManualPushHandlingIntegrationTests: IntegrationTest {
-    private let customerIOMock = CustomerIOInstanceMock()
-
     // The manual push click handling functions are currently housed in `MessagingPushImplementation`. Get instance for integration test.
     private var messagingPush: MessagingPushImplementation? {
         notNilOrFail(MessagingPush.shared.implementation as? MessagingPushImplementation)
     }
+
+    private let pushClickHandlerMock = PushClickHandlerMock()
 
     override func setUp() {
         super.setUp { config in
             config.autoTrackPushEvents = false // we are testing manual push tracking. Disable automatic push tracking feature.
         }
 
-        diGraph.override(value: customerIOMock, forType: CustomerIOInstance.self)
+        DIGraphShared.shared.override(value: pushClickHandlerMock, forType: PushClickHandler.self)
     }
 
     // MARK: opened push metrics
@@ -30,8 +31,8 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
 
         messagingPush?.manualPushClickHandling(push: cioPush)
 
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
-        XCTAssertEqual(customerIOMock.trackMetricReceivedArguments?.deliveryID, givenDeliveryId)
-        XCTAssertEqual(customerIOMock.trackMetricReceivedArguments?.deviceToken, givenDeviceToken)
+        XCTAssertEqual(pushClickHandlerMock.pushClickedCallsCount, 1)
+        XCTAssertEqual(pushClickHandlerMock.pushClickedReceivedArguments?.cioDelivery?.id, givenDeliveryId)
+        XCTAssertEqual(pushClickHandlerMock.pushClickedReceivedArguments?.cioDelivery?.token, givenDeviceToken)
     }
 }

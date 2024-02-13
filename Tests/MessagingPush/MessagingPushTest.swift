@@ -5,12 +5,10 @@ import Foundation
 import SharedTests
 import XCTest
 
-class MessagignPushTest: IntegrationTest {
+class MessagingPushTest: IntegrationTest {
     private let automaticPushClickHandlingMock = AutomaticPushClickHandlingMock()
 
     override func setUp() {
-        super.setUp(shouldInitializeModule: false) // we manually initialize module in test functions.
-
         setupTest()
     }
 
@@ -58,10 +56,10 @@ class MessagignPushTest: IntegrationTest {
     }
 }
 
-extension MessagignPushTest {
-    func setupTest(modifySdkConfig: ((inout SdkConfig) -> Void)? = nil) {
-        super.setUp(shouldInitializeModule: false, modifySdkConfig: modifySdkConfig)
+extension MessagingPushTest {
+    func setupTest(modifyModuleConfig: ((inout MessagingPushConfigOptions) -> Void)? = nil) {
+        super.setUp(modifyModuleConfig: modifyModuleConfig)
 
-        diGraph.override(value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self)
+        DIGraphShared.shared.override(value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self)
     }
 }

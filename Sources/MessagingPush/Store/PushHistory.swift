@@ -30,7 +30,7 @@ enum PushHistoryEvent {
 
  Singleton because this is an in-memory store.
  */
-// sourcery: InjectRegister = "PushHistory"
+// sourcery: InjectRegisterShared = "PushHistory"
 // sourcery: InjectSingleton
 class PushHistoryImpl: PushHistory {
     private let lock: Lock

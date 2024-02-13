@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 import UserNotifications
 
@@ -9,14 +8,14 @@ protocol PushClickHandler: AutoMockable {
 }
 
 @available(iOSApplicationExtension, unavailable)
-// sourcery: InjectRegister = "PushClickHandler"
+// sourcery: InjectRegisterShared = "PushClickHandler"
 class PushClickHandlerImpl: PushClickHandler {
     private let deepLinkUtil: DeepLinkUtil
-    private let customerIO: CustomerIOInstance
+    private let messagingPush: MessagingPushInstance
 
-    init(deepLinkUtil: DeepLinkUtil, customerIO: CustomerIOInstance) {
+    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance) {
         self.deepLinkUtil = deepLinkUtil
-        self.customerIO = customerIO
+        self.messagingPush = messagingPush
     }
 
     // Note: This function is called from automatic and manual push click handlers.
@@ -25,7 +24,7 @@ class PushClickHandlerImpl: PushClickHandler {
             return
         }
 
-        customerIO.trackMetric(deliveryID: cioDelivery.id, event: .opened, deviceToken: cioDelivery.token)
+        messagingPush.trackMetric(deliveryID: cioDelivery.id, event: .opened, deviceToken: cioDelivery.token)
 
         // Cleanup files on device that were used when the push was displayed. Files are no longer
         // needed now that the push is no longer shown.

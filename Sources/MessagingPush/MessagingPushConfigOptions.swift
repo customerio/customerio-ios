@@ -1,3 +1,5 @@
+import CioInternalCommon
+
 /**
  Configuration options for push messaging module
 
@@ -71,13 +73,8 @@ public struct MessagingPushConfigOptions {
 // Add MessagingPush config options to the DIGraph like we do for SdkConfig.
 // Allows dependencies to easily access module configuration via dependency injection
 // in constructor.
-extension DIGraph {
+extension DIGraphShared {
     var messagingPushConfigOptions: MessagingPushConfigOptions {
-        get {
-            MessagingPush.shared.moduleConfig
-        }
-        set {
-            MessagingPush.shared.moduleConfig = newValue
-        }
+        MessagingPush.moduleConfig
     }
 }

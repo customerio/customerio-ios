@@ -121,19 +121,19 @@ extension DIGraph {
 }
 
 extension DIGraphShared {
-    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
-    // internal scope so each module can provide their own version of the function with the same name.
-    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
+    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions. 
+    // internal scope so each module can provide their own version of the function with the same name. 
+    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also. 
     internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
     {% for dep in types.all where dep|annotated:"InjectRegisterShared" %}
-    {% set class %}{{ dep.annotations["InjectRegisterShared"] }}{% endset %}
+    {% set class %}{{ dep.annotations["InjectRegisterShared"] }}{% endset %}    
         _ = self.{{ class|lowerFirstLetter }}
         countDependenciesResolved += 1
 
     {% endfor %}
-        return countDependenciesResolved
+        return countDependenciesResolved    
     }
 
     // Handle classes annotated with InjectRegisterShared
@@ -146,7 +146,10 @@ extension DIGraphShared {
     {% elif dep|annotated:"InjectSingleton" %}
     // {{ class }} (singleton)
     {% call overrideGetterProperty class dep false true %}
+    {% call addPropertyWrappers dep %}
     {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying 
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call. 
         return DispatchQueue(label: "DIGraphShared_{{class}}_singleton_access").sync {
             if let overridenDep: {{ class }} = getOverriddenInstance() {
                 return overridenDep
@@ -154,9 +157,10 @@ extension DIGraphShared {
             let existingSingletonInstance = self.singletons[String(describing: {{ class }}.self)] as? {{ class }}
             let instance = existingSingletonInstance ?? _get_{{ class|lowerFirstLetter }}()
             self.singletons[String(describing: {{ class }}.self)] = instance
-            return instance
+            return instance    
         }
     }
+    {% call addPropertyWrappers dep %}
     private func _get_{{ class|lowerFirstLetter }}() -> {{ class }} {
         return {{ dep.name }}({% for initializer in dep.initializers %}{% if not initializer.isConvenienceInitializer %}{% for param in initializer.parameters %}{{ param.name }}: self.{{ param.typeName|lowerFirstLetter }}{% if not forloop.last%}, {% endif %}{% endfor %}{% endif %}{% endfor %})
     }
@@ -164,11 +168,11 @@ extension DIGraphShared {
     // {{ class }}
     {% call overrideGetterProperty class dep false false %}
     {% call addPropertyWrappers dep %}
-    private var new{{ class }}: {{ class }} {
+    private var new{{ class }}: {{ class }} {    
         return {{ dep.name}}({% for initializer in dep.initializers %}{% if not initializer.isConvenienceInitializer %}{% for param in initializer.parameters %}{{ param.name }}: self.{{ param.typeName|lowerFirstLetter }}{% if not forloop.last%}, {% endif %}{% endfor %}{% endif %}{% endfor %})
     }
     {% endif %}
-    {% endfor %}
+    {% endfor %} 
 }
 
 // swiftlint:enable all

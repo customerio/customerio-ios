@@ -18,9 +18,9 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
         pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraph.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
-            moduleConfig: MessagingPushConfigOptions(),
+            moduleConfig: diGraphShared.messagingPushConfigOptions,
             pushClickHandler: pushClickHandler,
-            pushHistory: diGraph.pushHistory,
+            pushHistory: diGraphShared.pushHistory,
             logger: diGraph.logger
         )
     }

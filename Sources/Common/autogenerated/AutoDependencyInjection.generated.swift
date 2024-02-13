@@ -89,9 +89,6 @@ extension DIGraph {
         _ = jsonAdapter
         countDependenciesResolved += 1
 
-        _ = lockManager
-        countDependenciesResolved += 1
-
         _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
@@ -247,30 +244,6 @@ extension DIGraph {
         JsonAdapter(log: logger)
     }
 
-    // LockManager (singleton)
-    public var lockManager: LockManager {
-        getOverriddenInstance() ??
-            sharedLockManager
-    }
-
-    public var sharedLockManager: LockManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
-            if let overridenDep: LockManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
-            let instance = existingSingletonInstance ?? _get_lockManager()
-            self.singletons[String(describing: LockManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_lockManager() -> LockManager {
-        LockManager()
-    }
-
     // QueueInventoryMemoryStore (singleton)
     var queueInventoryMemoryStore: QueueInventoryMemoryStore {
         getOverriddenInstance() ??
@@ -379,6 +352,9 @@ extension DIGraphShared {
         _ = jsonAdapter
         countDependenciesResolved += 1
 
+        _ = lockManager
+        countDependenciesResolved += 1
+
         _ = dateUtil
         countDependenciesResolved += 1
 
@@ -418,6 +394,8 @@ extension DIGraphShared {
     }
 
     public var sharedEventBusHandler: EventBusHandler {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
             if let overridenDep: EventBusHandler = getOverriddenInstance() {
                 return overridenDep
@@ -470,6 +448,8 @@ extension DIGraphShared {
     }
 
     var sharedEventCache: EventCache {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventCache_singleton_access").sync {
             if let overridenDep: EventCache = getOverriddenInstance() {
                 return overridenDep
@@ -492,6 +472,8 @@ extension DIGraphShared {
     }
 
     var sharedEventStorage: EventStorage {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
             if let overridenDep: EventStorage = getOverriddenInstance() {
                 return overridenDep
@@ -515,6 +497,30 @@ extension DIGraphShared {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
+    }
+
+    // LockManager (singleton)
+    public var lockManager: LockManager {
+        getOverriddenInstance() ??
+            sharedLockManager
+    }
+
+    public var sharedLockManager: LockManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
+            if let overridenDep: LockManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
+            let instance = existingSingletonInstance ?? _get_lockManager()
+            self.singletons[String(describing: LockManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_lockManager() -> LockManager {
+        LockManager()
     }
 
     // DateUtil
@@ -544,6 +550,8 @@ extension DIGraphShared {
     }
 
     var sharedEventBus: EventBus {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
             if let overridenDep: EventBus = getOverriddenInstance() {
                 return overridenDep

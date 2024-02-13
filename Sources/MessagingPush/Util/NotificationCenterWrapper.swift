@@ -9,7 +9,7 @@ protocol UserNotificationCenter: AutoMockable {
     var currentDelegate: UNUserNotificationCenterDelegate? { get set }
 }
 
-// sourcery: InjectRegister = "UserNotificationCenter"
+// sourcery: InjectRegisterShared = "UserNotificationCenter"
 class UserNotificationCenterImpl: UserNotificationCenter {
     var currentDelegate: UNUserNotificationCenterDelegate? {
         get {
