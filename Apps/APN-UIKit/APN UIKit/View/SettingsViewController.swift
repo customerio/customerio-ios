@@ -67,7 +67,7 @@ class SettingsViewController: BaseViewController {
 
     func getAndSetDefaultValues() {
         var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
-        var writeKey = storage.cdpWriteKey ?? BuildEnvironment.CustomerIO.cdpWriteKey
+        var writeKey = storage.writeKey ?? BuildEnvironment.CustomerIO.writeKey
         if let deepLinkSiteId = deepLinkSiteId, let deeplinkWriteKey = deeplinkWriteKey {
             siteId = deepLinkSiteId
             writeKey = deeplinkWriteKey
@@ -77,7 +77,7 @@ class SettingsViewController: BaseViewController {
             cdnHost: storage.cdnHost ?? "cdp.customer.io/v1",
             apiHost: storage.apiHost ?? "cdp.customer.io/v1",
             siteId: siteId,
-            cdpWriteKey: writeKey,
+            writeKey: writeKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
@@ -93,7 +93,7 @@ class SettingsViewController: BaseViewController {
         apiHostTextField.text = currentSettings.apiHost
 
         siteIdTextField.text = currentSettings.siteId
-        cdpWriteKeyTextField.text = currentSettings.cdpWriteKey
+        cdpWriteKeyTextField.text = currentSettings.writeKey
 
         bgQTakDelayTextField.text = currentSettings.bgQDelay
         bgQMinTasksTextField.text = currentSettings.bgQMinTasks
@@ -153,7 +153,7 @@ class SettingsViewController: BaseViewController {
         // SiteId
         storage.siteId = siteIdTextField.text
         // CDP Write Key
-        storage.cdpWriteKey = cdpWriteKeyTextField.text
+        storage.writeKey = cdpWriteKeyTextField.text
     }
 
     func isValid() -> Bool {
@@ -214,7 +214,7 @@ class SettingsViewController: BaseViewController {
             cdnHost: "",
             apiHost: "",
             siteId: BuildEnvironment.CustomerIO.siteId,
-            cdpWriteKey: BuildEnvironment.CustomerIO.cdpWriteKey,
+            writeKey: BuildEnvironment.CustomerIO.writeKey,
             bgQDelay: "30",
             bgQMinTasks: "10",
             isTrackScreenEnabled: true,
