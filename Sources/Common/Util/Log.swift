@@ -5,6 +5,14 @@ import os.log
 
 /// mockable logger + abstract that allows you to log to multiple places if you wish
 public protocol Logger: AutoMockable {
+    /// Represents the current log level of the logger. The log level
+    /// controls the verbosity of the logs that are output. Only messages
+    /// at this level or higher will be logged.
+    var logLevel: CioLogLevel { get }
+    /// Sets the logger's verbosity level to control which messages are logged.
+    /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
+    /// - Parameter level: The `CioLogLevel` for logging output verbosity.
+    func setLogLevel(_ level: CioLogLevel)
     /// the noisey log level. Feel free to spam this log level with any
     /// information about the SDK that would be useful for debugging the SDK.
     func debug(_ message: String)
@@ -53,7 +61,7 @@ public enum CioLogLevel: String, CaseIterable {
 
 public extension DIGraph {
     var logger: Logger {
-        DIGraphShared.shared.logger
+        getOverriddenInstance() ?? DIGraphShared.shared.logger
     }
 }
 
