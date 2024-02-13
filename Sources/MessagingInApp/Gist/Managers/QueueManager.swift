@@ -15,6 +15,7 @@ class QueueManager {
                 .request(QueueEndpoint.getUserQueue, completionHandler: { response in
                     switch response {
                     case .success(let (data, response)):
+                        self.updatePollingInterval(headers: response.allHeaderFields)
                         switch response.statusCode {
                         case 204:
                             completionHandler(.success([]))
@@ -48,6 +49,18 @@ class QueueManager {
                 })
         } catch {
             completionHandler(.failure(error))
+        }
+    }
+    
+    private func updatePollingInterval(headers: [AnyHashable: Any]) {
+        if let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
+           let newPollingInterval = Double(newPollingIntervalString),
+           newPollingInterval != Gist.shared.messageQueueManager.interval {
+            DispatchQueue.main.async {
+                Gist.shared.messageQueueManager.interval = newPollingInterval
+                Gist.shared.messageQueueManager.setup(skipQueueCheck: true)
+                Logger.instance.info(message: "Polling interval changed to: \(newPollingInterval) seconds")
+            }
         }
     }
 }
