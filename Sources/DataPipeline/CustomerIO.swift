@@ -19,7 +19,8 @@ public extension CustomerIO {
 
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
 
-        let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        var sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        sdkConfig.logLevel = logLevel
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
         initialize(implementation: implementation, diGraph: newDiGraph)
     }
@@ -30,6 +31,11 @@ public extension CustomerIO {
      */
     private static func initialize(implementation: DataPipelineInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
+        let logLevel = diGraph.sdkConfig.logLevel
+        DIGraphShared.shared.logger
+        if logLevel == .debug {
+            CustomerIO.shared.setDebugLogsEnabled(true)
+        }
     }
 
     #if DEBUG
