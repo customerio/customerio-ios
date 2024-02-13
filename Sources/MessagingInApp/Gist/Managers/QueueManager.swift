@@ -9,15 +9,19 @@ class QueueManager {
         self.dataCenter = dataCenter
     }
 
-    func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse], Error>) -> Void) {
+    func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
             try GistQueueNetwork(siteId: siteId, dataCenter: dataCenter, userToken: userToken)
                 .request(QueueEndpoint.getUserQueue, completionHandler: { response in
                     switch response {
                     case .success(let (data, response)):
-                        if response.statusCode == 204 {
+                        switch response.statusCode {
+                        case 204:
                             completionHandler(.success([]))
-                        } else {
+                        case 304:
+                            // No changes to the remote queue, returning nil so we don't clear local store.
+                            completionHandler(.success(nil))
+                        default:
                             do {
                                 var userQueue = [UserQueueResponse]()
                                 if let userQueueResponse =

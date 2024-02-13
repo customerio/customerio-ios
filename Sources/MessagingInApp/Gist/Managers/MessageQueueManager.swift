@@ -68,7 +68,12 @@ class MessageQueueManager {
                 QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter)
                     .fetchUserQueue(userToken: userToken, completionHandler: { response in
                         switch response {
+                        case .success(nil):
+                            Logger.instance.info(message: "No changes to remote queue")
                         case .success(let responses):
+                            guard let responses = responses else {                                
+                                return
+                            }
                             // To prevent us from showing expired / revoked messages, clear user messages from local queue.
                             self.clearUserMessagesFromLocalStore()
                             Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
