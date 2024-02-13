@@ -1,3 +1,10 @@
+## [2.11.0](https://github.com/customerio/customerio-ios/compare/2.10.2...2.11.0) (2024-02-12)
+
+
+### Features
+
+* automatic push click handling ([#403](https://github.com/customerio/customerio-ios/issues/403)) ([47e94c4](https://github.com/customerio/customerio-ios/commit/47e94c47b562380afbe1e727c90c9a51cdb9e02b))
+
 ## [2.10.2](https://github.com/customerio/customerio-ios/compare/2.10.1...2.10.2) (2024-01-18)
 
 
