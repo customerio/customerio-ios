@@ -21,6 +21,12 @@ public extension CustomerIO {
 
         let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+
+        // set the logLevel for ConsoleLogger
+        DIGraphShared.shared.logger.setLogLevel(logLevel)
+        // enable Analytics logs accordingly to logLevel
+        CustomerIO.shared.setDebugLogsEnabled(logLevel == .debug)
+
         initialize(implementation: implementation, diGraph: newDiGraph)
     }
 
