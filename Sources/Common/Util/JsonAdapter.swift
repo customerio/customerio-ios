@@ -54,7 +54,11 @@ public class JsonAdapter {
         return encoder
     }
 
-    private var log: Logger { DIGraphShared.shared.logger }
+    private let log: Logger
+
+    init(log: Logger) {
+        self.log = log
+    }
 
     public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any]) -> T? {
         do {

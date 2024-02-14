@@ -11,11 +11,11 @@ protocol DeepLinkUtil: AutoMockable {
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegister = "DeepLinkUtil"
 class DeepLinkUtilImpl: DeepLinkUtil {
-    private var logger: Logger { DIGraphShared.shared.logger }
-
+    private let logger: Logger
     private let uiKit: UIKitWrapper
 
-    init(uiKitWrapper: UIKitWrapper) {
+    init(logger: Logger, uiKitWrapper: UIKitWrapper) {
+        self.logger = logger
         self.uiKit = uiKitWrapper
     }
 

@@ -15,9 +15,12 @@ class CioSimpleTimer: SimpleTimer {
     @Atomic private var timerAlreadyScheduled = false
     private let lock = Lock.unsafeInit() // each SimpleTimer instance should have it's own Lock.
     private var timer: Timer?
-    private var logger: Logger { DIGraphShared.shared.logger }
-
+    private let logger: Logger
     private let instanceIdentifier = String.random
+
+    init(logger: Logger) {
+        self.logger = logger
+    }
 
     deinit {
         unsafeCancel()

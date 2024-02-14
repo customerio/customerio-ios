@@ -11,7 +11,7 @@ public protocol DataPipelineMigration: AutoMockable {
 // sourcery: InjectSingleton
 /// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
 class DataPipelineMigrationAssistant: DataPipelineMigration {
-    private var logger: Logger { DIGraphShared.shared.logger }
+    private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private let threadUtil: ThreadUtil
@@ -23,11 +23,13 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
      Try loading the credentials previously saved for the singleton instance.
      */
     init(
+        logger: Logger,
         queue: Queue,
         jsonAdapter: JsonAdapter,
         threadUtil: ThreadUtil,
         profileStore: ProfileStore
     ) {
+        self.logger = logger
         self.backgroundQueue = queue
         self.jsonAdapter = jsonAdapter
         self.threadUtil = threadUtil

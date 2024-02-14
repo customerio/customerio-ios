@@ -3,7 +3,7 @@ import Foundation
 
 // wrapper around Gist SDK to make it mockable
 protocol InAppProvider: AutoMockable {
-    func initialize(siteId: String, region: Region, delegate: GistDelegate, logging: Bool)
+    func initialize(siteId: String, region: Region, delegate: GistDelegate)
     func setProfileIdentifier(_ id: String)
     func clearIdentify()
     func setRoute(_ route: String)
@@ -13,8 +13,8 @@ protocol InAppProvider: AutoMockable {
 // sourcery: InjectRegister = "InAppProvider"
 // sourcery: InjectRegisterShared = "InAppProvider"
 class GistInAppProvider: InAppProvider {
-    func initialize(siteId: String, region: Region, delegate: GistDelegate, logging: Bool = false) {
-        Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue, logging: logging)
+    func initialize(siteId: String, region: Region, delegate: GistDelegate) {
+        Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue)
         Gist.shared.delegate = delegate
     }
 

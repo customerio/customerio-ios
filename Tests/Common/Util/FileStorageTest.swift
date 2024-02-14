@@ -37,7 +37,7 @@ class FileStorageTest: UnitTest {
 
         super.setUp(siteId: siteId, modifySdkConfig: nil)
 
-        fileStorage = FileManagerFileStorage(sdkConfig: sdkConfig)
+        fileStorage = FileManagerFileStorage(sdkConfig: sdkConfig, logger: LoggerMock())
     }
 
     func test_get_givenNotSave_expectNil() {

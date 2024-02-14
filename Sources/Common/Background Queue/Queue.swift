@@ -54,7 +54,7 @@ public class CioQueue: Queue {
     private let storage: QueueStorage
     private let siteId: String
     private let jsonAdapter: JsonAdapter
-    private var logger: Logger { DIGraphShared.shared.logger }
+    private let logger: Logger
     private let sdkConfig: SdkConfig
     private let queueTimer: SingleScheduleTimer
     private let dateUtil: DateUtil
@@ -66,6 +66,7 @@ public class CioQueue: Queue {
     init(
         storage: QueueStorage,
         jsonAdapter: JsonAdapter,
+        logger: Logger,
         sdkConfig: SdkConfig,
         queueTimer: SingleScheduleTimer,
         dateUtil: DateUtil
@@ -73,6 +74,7 @@ public class CioQueue: Queue {
         self.siteId = sdkConfig.siteId
         self.storage = storage
         self.jsonAdapter = jsonAdapter
+        self.logger = logger
         self.sdkConfig = sdkConfig
         self.queueTimer = queueTimer
         self.dateUtil = dateUtil

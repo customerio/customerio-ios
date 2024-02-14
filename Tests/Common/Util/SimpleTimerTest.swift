@@ -9,7 +9,7 @@ class SimpleTimerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        timer = CioSimpleTimer()
+        timer = CioSimpleTimer(logger: log)
     }
 
     // MARK: scheduleIfNotAlready
