@@ -174,7 +174,7 @@ import Foundation
 #else
   extension CustomerIOImplementation {
     func setupAutoScreenviewTracking() {
-      // XXX: log warning that tracking is not available
+        // XXX: log warning that tracking is not available
     }
   }
 #endif
