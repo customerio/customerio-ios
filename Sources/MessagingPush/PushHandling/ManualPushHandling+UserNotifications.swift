@@ -60,7 +60,7 @@ extension MessagingPushImplementation {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
         // to keep this code DRY, forward the request to another function to perform all the logic:
-        guard let pushContent = userNotificationCenter(center, didReceive: response) else {
+        guard let _ = userNotificationCenter(center, didReceive: response) else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so
             // allow another SDK
