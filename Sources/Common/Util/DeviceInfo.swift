@@ -77,9 +77,17 @@ public class CIODeviceInfo: DeviceInfo {
     public var deviceLocale: String {
         if let osSetLanguage = Locale.preferredLanguages.first {
             let locale = Locale(identifier: osSetLanguage)
-
-            if let languageCode = locale.languageCode,
-               let regionCode = locale.regionCode {
+          let getLangCodeAndRegion: () -> (String?, String?) = {
+            if #available(iOS 16, *), #available(visionOS 1.0, *) {
+              return (locale.language.languageCode?.identifier, locale.region?.identifier)
+            } else {
+              return (locale.languageCode, locale.regionCode)
+            }
+          }
+          
+          let (languageCode, regionCode) = getLangCodeAndRegion()
+          
+            if let languageCode = languageCode, let regionCode = regionCode {
                 return "\(languageCode)-\(regionCode)"
             }
         }

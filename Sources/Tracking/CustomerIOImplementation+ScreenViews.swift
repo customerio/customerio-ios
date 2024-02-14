@@ -151,7 +151,9 @@ extension UIViewController {
                 }
             }
         } else { // keyWindow is deprecated in iOS 13.0*
+          #if os(iOS)
             return UIApplication.shared.keyWindow?.rootViewController
+          #endif
         }
 
         return nil
