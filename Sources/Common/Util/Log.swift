@@ -61,7 +61,7 @@ public enum CioLogLevel: String, CaseIterable {
 
 public extension DIGraph {
     var logger: Logger {
-        DIGraphShared.shared.logger
+        getOverriddenInstance() ?? DIGraphShared.shared.logger
     }
 }
 
