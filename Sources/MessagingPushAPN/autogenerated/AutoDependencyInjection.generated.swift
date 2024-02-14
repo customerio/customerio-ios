@@ -54,7 +54,9 @@ extension DIGraph {
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
     func testDependenciesAbleToResolve() -> Int {
-        return 0
+        var countDependenciesResolved = 0
+
+        return countDependenciesResolved
     }
 }
 
