@@ -37,6 +37,7 @@ public struct AnyEncodable: Encodable {
 }
 #endif
 
+// swiftlint:disable type_name
 #if swift(>=4.2)
 @usableFromInline
 protocol _AnyEncodable {
@@ -49,6 +50,7 @@ protocol _AnyEncodable {
     init<T>(_ value: T?)
 }
 #endif
+// swiftlint:enable type_name
 
 extension AnyEncodable: _AnyEncodable {}
 
