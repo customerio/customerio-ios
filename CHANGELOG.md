@@ -1,3 +1,10 @@
+## [2.11.1](https://github.com/customerio/customerio-ios/compare/2.11.0...2.11.1) (2024-02-14)
+
+
+### Bug Fixes
+
+* enable logging for gist ([#524](https://github.com/customerio/customerio-ios/issues/524)) ([c786897](https://github.com/customerio/customerio-ios/commit/c786897bf9ce1ba15b0c2a1c23730346f9b1e70d))
+
 ## [2.11.0](https://github.com/customerio/customerio-ios/compare/2.10.2...2.11.0) (2024-02-12)
 
 
