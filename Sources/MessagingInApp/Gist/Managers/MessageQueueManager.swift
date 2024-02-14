@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 
 class MessageQueueManager {
-    internal var interval: Double = 600
+    var interval: Double = 600
     private var queueTimer: Timer!
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
     private var localMessageStore: [String: Message] = [:]
