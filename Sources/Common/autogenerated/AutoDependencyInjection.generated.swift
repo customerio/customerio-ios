@@ -147,7 +147,7 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer
@@ -157,7 +157,7 @@ extension DIGraph {
     }
 
     private var newSimpleTimer: SimpleTimer {
-        CioSimpleTimer(logger: logger)
+        CioSimpleTimer()
     }
 
     // SingleScheduleTimer (singleton)
@@ -211,7 +211,7 @@ extension DIGraph {
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
+        FileManagerFileStorage(sdkConfig: sdkConfig)
     }
 
     // QueueStorage
@@ -221,7 +221,7 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
 
     // JsonAdapter
@@ -231,7 +231,7 @@ extension DIGraph {
     }
 
     private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
+        JsonAdapter()
     }
 
     // LockManager (singleton)
@@ -511,7 +511,7 @@ extension DIGraphShared {
     }
 
     private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
+        JsonAdapter()
     }
 
     // DateUtil

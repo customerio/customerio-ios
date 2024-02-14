@@ -69,7 +69,7 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newDeepLinkUtil: DeepLinkUtil {
-        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+        DeepLinkUtilImpl(uiKitWrapper: uIKitWrapper)
     }
 }
 

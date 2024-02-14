@@ -70,11 +70,12 @@ public enum FileType {
 public class FileManagerFileStorage: FileStorage {
     private let fileManager = FileManager.default
     private let siteId: String
-    private let logger: Logger
+    private var logger: Logger {
+        DIGraphShared.shared.logger
+    }
 
-    init(sdkConfig: SdkConfig, logger: Logger) {
+    init(sdkConfig: SdkConfig) {
         self.siteId = sdkConfig.siteId
-        self.logger = logger
     }
 
     public func save(type: FileType, contents: Data, fileId: String?) -> Bool {
