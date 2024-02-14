@@ -60,7 +60,13 @@ let package = Package(
         .testTarget(name: "TrackingTests",
                     dependencies: ["CioTracking", "SharedTests"],
                     path: "Tests/Tracking"),
-
+        // Migration
+        // this module handles Journeys migration to Datapipeline and is used internally by the SDK.
+        .target(name: "CioMigration",
+                path: "Sources/Migration"),
+        .testTarget(name: "MigrationTests",
+                    dependencies: ["CioMigration", "SharedTests"],
+                    path: "Tests/Migration"),
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
                 dependencies: ["CioInternalCommon"],
@@ -79,7 +85,7 @@ let package = Package(
         
         // Data Pipeline
         .target(name: "CioDataPipelines",
-                dependencies: ["CioInternalCommon", .product(name: "Segment", package: "Segment")],
+                dependencies: ["CioInternalCommon", "CioMigration", .product(name: "Segment", package: "Segment")],
                 path: "Sources/DataPipeline"),
         .testTarget(name: "DataPipelineTests",
                     dependencies: ["CioDataPipelines", "SharedTests"],
