@@ -1,3 +1,10 @@
+## [2.12.0](https://github.com/customerio/customerio-ios/compare/2.11.1...2.12.0) (2024-02-15)
+
+
+### Features
+
+* use new header to set polling interval ([#519](https://github.com/customerio/customerio-ios/issues/519)) ([05a1ebd](https://github.com/customerio/customerio-ios/commit/05a1ebd475b965974b9aae60895cdaf8ac11e113))
+
 ## [2.11.1](https://github.com/customerio/customerio-ios/compare/2.11.0...2.11.1) (2024-02-14)
 
 
