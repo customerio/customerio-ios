@@ -41,7 +41,6 @@ public class DataPipelineTrackingMigrationAssistant {
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
         // currently logged-in user for seamless processing of events.
-        profileStore.identifier = "something@something.com"
         if userId == nil {
             if let identifier = profileStore.identifier {
                 migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
