@@ -10,7 +10,7 @@ import UserNotifications
  All of these wrappers should be small and simple. Their only job is to convert data types between SDK's abstracted data types and `UserNotifications` data types.
  */
 
-class UNNotificationResponseWrapper: PushNotificationAction {
+struct UNNotificationResponseWrapper: PushNotificationAction {
     public let response: UNNotificationResponse
 
     var push: PushNotification {
@@ -26,7 +26,7 @@ class UNNotificationResponseWrapper: PushNotificationAction {
     }
 }
 
-public class UNNotificationWrapper: PushNotification {
+public struct UNNotificationWrapper: PushNotification {
     // Important: This class can be used to modify a push or read-only access on a push.
     // Return the modified content, first. If that is nil, then return the original content.
     public var notificationContent: UNNotificationContent {
