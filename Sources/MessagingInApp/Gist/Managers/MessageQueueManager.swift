@@ -9,7 +9,7 @@ class MessageQueueManager {
 
     func setup(skipQueueCheck: Bool = false) {
         queueTimer?.invalidate()
-        self.queueTimer = nil
+        queueTimer = nil
 
         queueTimer = Timer.scheduledTimer(
             timeInterval: interval,
