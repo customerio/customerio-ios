@@ -11,9 +11,6 @@ public protocol DataPipelineTrackingMigrationAction {
     func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
-// sourcery: InjectRegister = "DataPipelineTrackingMigrationAssistant"
-// sourcery: InjectSingleton
-/// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
 public class DataPipelineTrackingMigrationAssistant {
     public var migrationHandler: DataPipelineTrackingMigrationAction
     private let logger: Logger
