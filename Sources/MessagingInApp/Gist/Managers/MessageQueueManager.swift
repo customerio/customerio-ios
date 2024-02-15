@@ -8,10 +8,8 @@ class MessageQueueManager {
     private var localMessageStore: [String: Message] = [:]
 
     func setup(skipQueueCheck: Bool = false) {
-        if let queueTimer {
-            queueTimer.invalidate()
-            self.queueTimer = nil
-        }
+        queueTimer?.invalidate()
+        self.queueTimer = nil
 
         queueTimer = Timer.scheduledTimer(
             timeInterval: interval,
