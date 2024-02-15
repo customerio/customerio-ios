@@ -3,11 +3,14 @@ import UIKit
 
 class MessageQueueManager {
     var interval: Double = 600
-    private var queueTimer: Timer!
+    private var queueTimer: Timer?
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
     private var localMessageStore: [String: Message] = [:]
 
     func setup(skipQueueCheck: Bool = false) {
+        queueTimer?.invalidate()
+        queueTimer = nil
+
         queueTimer = Timer.scheduledTimer(
             timeInterval: interval,
             target: self,
