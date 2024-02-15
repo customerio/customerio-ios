@@ -2,32 +2,37 @@ import CioInternalCommon
 import CioMigration
 
 class DataPipelineMigrationHandler: DataPipelineTrackingMigrationAction {
-    func processAlreadyIdentifiedUser(identifier: String) {
-        print("identifier is \(identifier)")
+    var implementation: DataPipelineInstance
+    init(implementation: DataPipelineInstance) {
+        self.implementation = implementation
     }
 
-    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
-        // something
+    func processAlreadyIdentifiedUser(identifier: String) {
+        DataPipeline.shared.identify(identifier: identifier, body: [:])
+    }
+
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {
+        implementation.processIdentifyFromBGQ(identifier: identifier, timestamp: timestamp, body: body)
     }
 
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
-        // something
+        implementation.processScreenEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
     }
 
     func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
-        // something
+        implementation.processEventFromBGQ(identifier: identifier, name: name, timestamp: timestamp, properties: properties)
     }
 
     func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
-        // something
+        implementation.processDeleteTokenFromBGQ(identifier: identifier, token: token, timestamp: timestamp)
     }
 
     func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?) {
-        // something
+        implementation.processRegisterDeviceFromBGQ(identifier: identifier, token: token, timestamp: timestamp, attributes: attributes)
     }
 
     func processPushMetricsFromBGQ(token: String, event: CioInternalCommon.Metric, deliveryId: String, timestamp: String, metaData: [String: Any]) {
-        // something
+        implementation.processPushMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData)
     }
 }
 
@@ -57,7 +62,7 @@ public extension CustomerIO {
 
         // Handle logged-in user from Journeys to CDP and check
         // if any unprocessed tasks are pending in the background queue.
-        let migrationHandler = DataPipelineMigrationHandler()
+        let migrationHandler = DataPipelineMigrationHandler(implementation: implementation)
         let migrationAssistant = DataPipelineTrackingMigrationAssistant(handler: migrationHandler, diGraph: newDiGraph)
         migrationAssistant.performMigration(for: DataPipeline.shared.analytics.userId)
     }
