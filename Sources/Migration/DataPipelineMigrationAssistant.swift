@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-public protocol DataPipelineTrackingMigrationAction {
+public protocol DataPipelineMigrationAction {
     func processAlreadyIdentifiedUser(identifier: String)
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
@@ -11,15 +11,15 @@ public protocol DataPipelineTrackingMigrationAction {
     func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
-public class DataPipelineTrackingMigrationAssistant {
-    public var migrationHandler: DataPipelineTrackingMigrationAction
+public class DataPipelineMigrationAssistant {
+    public var migrationHandler: DataPipelineMigrationAction
     private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private let threadUtil: ThreadUtil
     private var profileStore: ProfileStore
 
-    public init(handler: DataPipelineTrackingMigrationAction, diGraph: DIGraph) {
+    public init(handler: DataPipelineMigrationAction, diGraph: DIGraph) {
         self.migrationHandler = handler
         self.logger = diGraph.logger
         self.backgroundQueue = diGraph.queue

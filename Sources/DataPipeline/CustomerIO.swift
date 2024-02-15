@@ -33,7 +33,7 @@ public extension CustomerIO {
         // Handle logged-in user from Journeys to CDP and check
         // if any unprocessed tasks are pending in the background queue.
         let migrationHandler = DataPipelineMigrationHandler(implementation: implementation)
-        let migrationAssistant = DataPipelineTrackingMigrationAssistant(handler: migrationHandler, diGraph: newDiGraph)
+        let migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: newDiGraph)
         migrationAssistant.performMigration(for: DataPipeline.shared.analytics.userId)
     }
 

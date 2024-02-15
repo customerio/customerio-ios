@@ -2,7 +2,7 @@ import CioInternalCommon
 import CioMigration
 import Foundation
 
-class DataPipelineMigrationHandler: DataPipelineTrackingMigrationAction {
+class DataPipelineMigrationHandler: DataPipelineMigrationAction {
     var implementation: DataPipelineInstance
     init(implementation: DataPipelineInstance) {
         self.implementation = implementation
