@@ -22,7 +22,6 @@ public extension CustomerIO {
 
         let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-
         initialize(implementation: implementation, diGraph: newDiGraph)
 
         // Handle logged-in user from Journeys to CDP and check
