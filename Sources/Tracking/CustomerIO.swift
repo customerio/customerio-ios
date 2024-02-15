@@ -75,11 +75,6 @@ public extension CustomerIO {
     private static func initialize(implementation: CustomerIOInstance, diGraph: DIGraph) {
         initializeSharedInstance(with: implementation, diGraph: diGraph)
 
-        // Handle logged-in user from Journeys to CDP and check
-        // if any unprocessed tasks are pending in the background queue.
-        let migrationAssistant = diGraph.dataPipelineMigrationAssistant
-        migrationAssistant.handleMigration()
-
         let sdkConfig = diGraph.sdkConfig
         // automatically add the Logger plugin if logLevel is debug
         if sdkConfig.logLevel == .debug {
