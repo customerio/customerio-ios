@@ -33,16 +33,6 @@ class TrackingAPITest: UnitTest {
     func test_allPublicTrackingFunctions() throws {
         try skipRunningTest()
 
-        // Initialize
-        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioSdkConfig) in
-            config.autoTrackPushEvents = false
-        }
-        // There is another `initialize()` function that's available to Notification Service Extension and not available
-        // to other targets (such as iOS).
-        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
-        // function is not available to iOS.
-        // CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioNotificationServiceExtensionSdkConfig) in }
-
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
         let _: CioLogLevel = .debug
@@ -103,25 +93,6 @@ class TrackingAPITest: UnitTest {
         // device attributes
         CustomerIO.shared.deviceAttributes = dictionaryData
         mock.deviceAttributes = dictionaryData
-    }
-
-    func test_allPublicSdkConfigOptions() throws {
-        try skipRunningTest()
-
-        CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
-            config.trackingApiUrl = ""
-            config.autoTrackPushEvents = true
-            config.backgroundQueueMinNumberOfTasks = 10
-            config.backgroundQueueSecondsDelay = 10
-            config.logLevel = .error
-            config.autoTrackPushEvents = false
-            config.autoScreenViewBody = { [:] }
-            config.filterAutoScreenViewEvents = { viewController in
-                class MyViewController: UIViewController {}
-
-                return viewController is MyViewController
-            }
-        }
     }
 
     // SDK wrappers can configure the SDK from a Map.

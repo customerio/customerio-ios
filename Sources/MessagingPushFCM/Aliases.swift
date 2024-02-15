@@ -6,6 +6,7 @@ import Foundation
 // implementation that thier app uses (example: CioMessagingPushAPN).
 
 public typealias MessagingPush = CioMessagingPush.MessagingPush
+public typealias MessagingPushConfigOptions = CioMessagingPush.MessagingPushConfigOptions
 #if canImport(UserNotifications)
 public typealias CustomerIOParsedPushPayload = CioMessagingPush.CustomerIOParsedPushPayload
 #endif
