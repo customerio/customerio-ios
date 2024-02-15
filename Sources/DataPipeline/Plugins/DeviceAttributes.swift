@@ -9,7 +9,11 @@ class DeviceAttributes: Plugin {
     public var token: String?
     public var attributes: [String: Any]?
 
-    public required init() {}
+    public var autoTrackDeviceAttributes: Bool
+
+    public required init(autoTrackDeviceAttributes: Bool) {
+        self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+    }
 
     public func execute<T: RawEvent>(event: T?) -> T? {
         guard var workingEvent = event,
@@ -30,7 +34,7 @@ class DeviceAttributes: Plugin {
                 workingEvent.context = try JSON(context)
             }
             if let attributes = attributes {
-                if let device = context[keyPath: "device"] as? [String: Any] {
+                if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
                     context["device"] = device.mergeWith(attributes)
                 } else {
                     context["device"] = attributes

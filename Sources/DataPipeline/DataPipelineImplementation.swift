@@ -273,7 +273,7 @@ extension DataPipelineImplementation {
         if let plugin = analytics.find(pluginType: DeviceAttributes.self) {
             attributesPlugin = plugin
         } else {
-            attributesPlugin = DeviceAttributes()
+            attributesPlugin = DeviceAttributes(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
             analytics.add(plugin: attributesPlugin)
         }
         return attributesPlugin
