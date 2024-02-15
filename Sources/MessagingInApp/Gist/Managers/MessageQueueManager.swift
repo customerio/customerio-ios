@@ -12,7 +12,7 @@ class MessageQueueManager {
             queueTimer.invalidate()
             self.queueTimer = nil
         }
-        
+
         queueTimer = Timer.scheduledTimer(
             timeInterval: interval,
             target: self,
