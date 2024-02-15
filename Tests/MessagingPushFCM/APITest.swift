@@ -18,6 +18,12 @@ class MessagingPushFCMAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
+        // This is the `initialize()` function that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // MessagingPush.initialize(writeKey: "") { (config: inout MessagingPushConfigOptions) in }
+
         MessagingPush.shared.registerDeviceToken(fcmToken: "")
         mock.registerDeviceToken(fcmToken: "")
 

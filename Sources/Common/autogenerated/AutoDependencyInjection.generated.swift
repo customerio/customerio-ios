@@ -74,9 +74,6 @@ extension DIGraph {
         _ = threadUtil
         countDependenciesResolved += 1
 
-        _ = logger
-        countDependenciesResolved += 1
-
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -192,16 +189,6 @@ extension DIGraph {
 
     private var newThreadUtil: ThreadUtil {
         CioThreadUtil()
-    }
-
-    // Logger
-    public var logger: Logger {
-        getOverriddenInstance() ??
-            newLogger
-    }
-
-    private var newLogger: Logger {
-        ConsoleLogger(sdkConfig: sdkConfig)
     }
 
     // DeviceMetricsGrabber
@@ -340,6 +327,9 @@ extension DIGraphShared {
         _ = threadUtil
         countDependenciesResolved += 1
 
+        _ = logger
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -356,9 +346,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = dateUtil
-        countDependenciesResolved += 1
-
-        _ = logger
         countDependenciesResolved += 1
 
         _ = eventBus
@@ -429,6 +416,16 @@ extension DIGraphShared {
 
     private var newThreadUtil: ThreadUtil {
         CioThreadUtil()
+    }
+
+    // Logger
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            newLogger
+    }
+
+    private var newLogger: Logger {
+        ConsoleLogger()
     }
 
     // DeviceMetricsGrabber
@@ -531,16 +528,6 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
-    }
-
-    // Logger
-    public var logger: Logger {
-        getOverriddenInstance() ??
-            newLogger
-    }
-
-    private var newLogger: Logger {
-        SharedConsoleLogger()
     }
 
     // EventBus (singleton)
