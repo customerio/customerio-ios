@@ -1,4 +1,35 @@
 import CioInternalCommon
+import CioMigration
+
+class DataPipelineMigrationHandler: DataPipelineTrackingMigrationAction {
+    func processAlreadyIdentifiedUser(identifier: String) {
+        print("identifier is \(identifier)")
+    }
+
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
+        // something
+    }
+
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        // something
+    }
+
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        // something
+    }
+
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String) {
+        // something
+    }
+
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?) {
+        // something
+    }
+
+    func processPushMetricsFromBGQ(token: String, event: CioInternalCommon.Metric, deliveryId: String, timestamp: String, metaData: [String: Any]) {
+        // something
+    }
+}
 
 public extension CustomerIO {
     /**
@@ -21,7 +52,14 @@ public extension CustomerIO {
 
         let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         let newDiGraph = DIGraph(sdkConfig: sdkConfig)
+
         initialize(implementation: implementation, diGraph: newDiGraph)
+
+        // Handle logged-in user from Journeys to CDP and check
+        // if any unprocessed tasks are pending in the background queue.
+        let migrationHandler = DataPipelineMigrationHandler()
+        let migrationAssistant = DataPipelineTrackingMigrationAssistant(handler: migrationHandler, diGraph: newDiGraph)
+        migrationAssistant.performMigration(for: DataPipeline.shared.analytics.userId)
     }
 
     /**

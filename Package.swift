@@ -63,6 +63,7 @@ let package = Package(
         // Migration
         // this module handles Journeys migration to Datapipeline and is used internally by the SDK.
         .target(name: "CioMigration",
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/Migration"),
         .testTarget(name: "MigrationTests",
                     dependencies: ["CioMigration", "SharedTests"],

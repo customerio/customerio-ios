@@ -1,60 +1,53 @@
-// import CioDataPipelines
 import CioInternalCommon
 import Foundation
-import Segment
 
-public protocol DataPipelineTrackingMigration: AutoMockable {
-    func handleAlreadyIdentifiedMigratedUser()
-    func handleQueueBacklog()
+public protocol DataPipelineTrackingMigrationAction {
+    func processAlreadyIdentifiedUser(identifier: String)
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
+    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
 // sourcery: InjectRegister = "DataPipelineTrackingMigrationAssistant"
 // sourcery: InjectSingleton
 /// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
-class DataPipelineTrackingMigrationAssistant: DataPipelineTrackingMigration {
+public class DataPipelineTrackingMigrationAssistant {
+    public var migrationHandler: DataPipelineTrackingMigrationAction
     private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private let threadUtil: ThreadUtil
     private var profileStore: ProfileStore
 
-    private var analytics: Analytics
-
-    /**
-     Constructor for singleton, only.
-
-     Try loading the credentials previously saved for the singleton instance.
-     */
-    init(
-        logger: Logger,
-        queue: Queue,
-        jsonAdapter: JsonAdapter,
-        threadUtil: ThreadUtil,
-        profileStore: ProfileStore,
-        analytics: Analytics
-    ) {
-        self.logger = logger
-        self.backgroundQueue = queue
-        self.jsonAdapter = jsonAdapter
-        self.threadUtil = threadUtil
-        self.profileStore = profileStore
-        self.analytics = analytics
+    public init(handler: DataPipelineTrackingMigrationAction, diGraph: DIGraph) {
+        self.migrationHandler = handler
+        self.logger = diGraph.logger
+        self.backgroundQueue = diGraph.queue
+        self.jsonAdapter = diGraph.jsonAdapter
+        self.threadUtil = diGraph.threadUtil
+        self.profileStore = diGraph.profileStore
     }
 
-    func handleMigration() {
-//        self.analytics = analytics
-        handleAlreadyIdentifiedMigratedUser()
+    // Only public method in this class that is accessible to other modules.
+    // This method handles all the migration tasks present in the
+    // Journeys background queue.
+    public func performMigration(for userId: String?) {
+        handleAlreadyIdentifiedMigratedUser(for: userId)
         handleQueueBacklog()
     }
 
-    func handleAlreadyIdentifiedMigratedUser() {
+    func handleAlreadyIdentifiedMigratedUser(for userId: String?) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
         // currently logged-in user for seamless processing of events.
-        if analytics.userId == nil {
+        profileStore.identifier = "something@something.com"
+        if userId == nil {
             if let identifier = profileStore.identifier {
-//                DataPipeline.shared.identify(identifier: identifier)
+                migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
                 // Remove identifier from storage
                 // so same profile can not be re-identifed
                 profileStore.identifier = nil
@@ -105,7 +98,7 @@ class DataPipelineTrackingMigrationAssistant: DataPipelineTrackingMigration {
                 return
             }
 //            if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-//                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
+//                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
 //                return
 //            }
 //            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
