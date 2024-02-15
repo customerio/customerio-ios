@@ -1,3 +1,10 @@
+## [2.12.1](https://github.com/customerio/customerio-ios/compare/2.12.0...2.12.1) (2024-02-15)
+
+
+### Bug Fixes
+
+* fixes an issue with multiple timers being scheduled ([#529](https://github.com/customerio/customerio-ios/issues/529)) ([ec383f1](https://github.com/customerio/customerio-ios/commit/ec383f1f92d0ecf819e90a87879c9ca870e0017d))
+
 ## [2.12.0](https://github.com/customerio/customerio-ios/compare/2.11.1...2.12.0) (2024-02-15)
 
 
