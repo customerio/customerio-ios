@@ -97,15 +97,15 @@ public class DataPipelineTrackingMigrationAssistant {
                 isProcessed = false
                 return
             }
-//            if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-//                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
-//                return
-//            }
-//            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-//                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
-//                return
-//            }
-//            DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
+            if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
+                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
+                return
+            }
+            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
+                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
+                return
+            }
+            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
 
         // Process `screen` and `event` types
         case .trackEvent:
@@ -113,17 +113,17 @@ public class DataPipelineTrackingMigrationAssistant {
                 isProcessed = false
                 return
             }
-//            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else {
-//                isProcessed = false
-//                return
-//            }
+            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else {
+                isProcessed = false
+                return
+            }
             var properties = [String: Any]()
             if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
                 properties = attributes
             }
-//            let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
-//            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
-//                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+            let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
+            trackType.type == .screen ? migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+                : migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
 
         // Processes register device token and device attributes
         case .registerPushToken:
@@ -140,7 +140,7 @@ public class DataPipelineTrackingMigrationAssistant {
                 return
             }
             if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
-//                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
+                migrationHandler.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
             }
         // Processes delete device token
         case .deletePushToken:
@@ -148,7 +148,7 @@ public class DataPipelineTrackingMigrationAssistant {
                 isProcessed = false
                 return
             }
-//            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
+            migrationHandler.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
 
         // Processes push metrics
         case .trackPushMetric:
@@ -156,7 +156,7 @@ public class DataPipelineTrackingMigrationAssistant {
                 isProcessed = false
                 return
             }
-//            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds))
+            migrationHandler.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
         }
     }
 }
