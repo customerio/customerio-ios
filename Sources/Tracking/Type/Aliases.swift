@@ -11,6 +11,5 @@ import Foundation
 public typealias Region = CioInternalCommon.Region
 public typealias CioLogLevel = CioInternalCommon.CioLogLevel
 public typealias CioSdkConfig = CioInternalCommon.SdkConfig
-public typealias CioNotificationServiceExtensionSdkConfig = CioInternalCommon.NotificationServiceExtensionSdkConfig
 public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO
