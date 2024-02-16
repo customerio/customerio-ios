@@ -39,6 +39,9 @@ public struct DataPipelineConfigOptions {
         self.writeKey = writeKey
     }
 
+    /// Site Id that will be used for tracking data migration
+    public let siteId: String = ""
+
     /// Server key
     public let writeKey: String
 
