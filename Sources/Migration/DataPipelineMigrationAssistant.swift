@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-public protocol DataPipelineMigrationAction {
+public protocol DataPipelineMigrationAction: AutoMockable {
     func processAlreadyIdentifiedUser(identifier: String)
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
