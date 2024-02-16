@@ -22,25 +22,9 @@ public typealias ModifyQueueResult = (success: Bool, queueStatus: QueueStatus)
  before the task runs.
  */
 public protocol Queue: AutoMockable {
-    func deleteExpiredTasks()
-
-    func getAllStoredTasks() -> [QueueTaskMetadata]
-
-    func getTaskDetail(_ task: QueueTaskMetadata) -> TaskDetail?
-
-    func deleteProcessedTask(_ task: QueueTaskMetadata)
-}
-
-public extension Queue {
-    // Get list of all unprocessed tasks in background queue
-    func getAllStoredTasks() -> [QueueTaskMetadata] {
-        getAllStoredTasks()
-    }
-
-    // Delete already processed task from the background queue
-    func deleteProcessedTask(_ task: QueueTaskMetadata) {
-        deleteProcessedTask(task)
-    }
+    func getAllStoredTasks(siteId: String) -> [QueueTaskMetadata]
+    func getTaskDetail(_ task: QueueTaskMetadata, siteId: String) -> TaskDetail?
+    func deleteProcessedTask(_ task: QueueTaskMetadata, siteId: String)
 }
 
 public struct TaskDetail {
@@ -52,57 +36,44 @@ public struct TaskDetail {
 // sourcery: InjectRegister = "Queue"
 public class CioQueue: Queue {
     private let storage: QueueStorage
-    private let siteId: String
     private let jsonAdapter: JsonAdapter
     private let logger: Logger
-    private let sdkConfig: SdkConfig
     private let queueTimer: SingleScheduleTimer
     private let dateUtil: DateUtil
-
-    private var numberSecondsToScheduleTimer: Seconds {
-        sdkConfig.backgroundQueueSecondsDelay
-    }
 
     init(
         storage: QueueStorage,
         jsonAdapter: JsonAdapter,
         logger: Logger,
-        sdkConfig: SdkConfig,
         queueTimer: SingleScheduleTimer,
         dateUtil: DateUtil
     ) {
-        self.siteId = sdkConfig.siteId
         self.storage = storage
         self.jsonAdapter = jsonAdapter
         self.logger = logger
-        self.sdkConfig = sdkConfig
         self.queueTimer = queueTimer
         self.dateUtil = dateUtil
     }
 
-    public func getAllStoredTasks() -> [QueueTaskMetadata] {
-        storage.getInventory()
+    public func getAllStoredTasks(siteId: String) -> [QueueTaskMetadata] {
+        storage.getInventory(siteId: siteId)
     }
 
-    public func getTaskDetail(_ task: QueueTaskMetadata) -> TaskDetail? {
+    public func getTaskDetail(_ task: QueueTaskMetadata, siteId: String) -> TaskDetail? {
         let persistedId = task.taskPersistedId
         let timestamp = task.createdAt
         guard let queueTaskType = QueueTaskType(rawValue: task.taskType) else { return nil }
-        guard let task = storage.get(storageId: persistedId) else {
+        guard let task = storage.get(storageId: persistedId, siteId: siteId) else {
             logger.error("Fetching task with storage id: \(persistedId) failed.")
             return nil
         }
         return TaskDetail(data: task.data, taskType: queueTaskType, timestamp: timestamp)
     }
 
-    public func deleteProcessedTask(_ task: QueueTaskMetadata) {
+    public func deleteProcessedTask(_ task: QueueTaskMetadata, siteId: String) {
         let storageId = task.taskPersistedId
-        if !storage.delete(storageId: storageId) {
+        if !storage.delete(storageId: storageId, siteId: siteId) {
             logger.error("Failed to delete task with storage id: \(storageId).")
         }
-    }
-
-    public func deleteExpiredTasks() {
-        _ = storage.deleteExpired()
     }
 }
