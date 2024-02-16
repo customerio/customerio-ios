@@ -25,7 +25,6 @@ public struct SdkConfig {
                 siteId: siteId,
                 apiKey: apiKey,
                 region: region,
-                trackingApiUrl: region.productionTrackingUrl,
                 autoTrackPushEvents: true,
                 logLevel: CioLogLevel.error
             )
@@ -49,9 +48,6 @@ public struct SdkConfig {
         if let autoTrackPushEvents = params[Keys.autoTrackPushEvents.rawValue] as? Bool {
             self.autoTrackPushEvents = autoTrackPushEvents
         }
-        if let trackingApiUrl = params[Keys.trackingApiUrl.rawValue] as? String, !trackingApiUrl.isEmpty {
-            self.trackingApiUrl = trackingApiUrl
-        }
 
         if let sdkSource = params[Keys.source.rawValue] as? String, let pversion = params[Keys.sourceVersion.rawValue] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
             _sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
@@ -66,7 +62,6 @@ public struct SdkConfig {
         case apiKey
         case region
         // config features
-        case trackingApiUrl
         case logLevel
         case autoTrackPushEvents
         // SDK wrapper config
@@ -84,13 +79,6 @@ public struct SdkConfig {
     public let region: Region
 
     /**
-     Base URL to use for the Customer.io track API. You will more then likely not modify this value.
-
-     If you override this value, `Region` set when initializing the SDK will be ignored.
-     */
-    public var trackingApiUrl: String
-
-    /**
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
      for push notifications sent by Customer.io
      */
@@ -99,10 +87,6 @@ public struct SdkConfig {
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
     public var logLevel: CioLogLevel
-
-    var httpBaseUrls: HttpBaseUrls {
-        HttpBaseUrls(trackingApi: trackingApiUrl)
-    }
 
     // property is used internally so disable swiftlint rule
     /**
