@@ -18,8 +18,8 @@ public protocol DataPipelinePublicAPI: AutoMockable {
 
     // MARK: - Device
 
-    var registeredDeviceToken: String? { get }
     var deviceAttributes: [String: Any] { get set }
+    var registeredDeviceToken: String? { get }
     func registerDeviceToken(_ deviceToken: String)
     func deleteDeviceToken()
 
@@ -115,18 +115,6 @@ extension CustomerIO: DataPipelinePublicAPI {
     // MARK: - Device
 
     /**
-     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
-     This returns an optional string value.
-     Example use:
-     ```
-     CustomerIO.shared.registeredDeviceToken
-     ```
-     */
-    public var registeredDeviceToken: String? {
-        DataPipeline.shared.registeredDeviceToken
-    }
-
-    /**
      Use `deviceAttributes` to provide additional and custom device attributes
      apart from the ones the SDK is programmed to send to customer workspace.
      Example use:
@@ -137,6 +125,18 @@ extension CustomerIO: DataPipelinePublicAPI {
     public var deviceAttributes: [String: Any] {
         get { DataPipeline.shared.deviceAttributes }
         set { DataPipeline.shared.deviceAttributes = newValue }
+    }
+
+    /**
+     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
+     This returns an optional string value.
+     Example use:
+     ```
+     CustomerIO.shared.registeredDeviceToken
+     ```
+     */
+    public var registeredDeviceToken: String? {
+        DataPipeline.shared.registeredDeviceToken
     }
 
     /**

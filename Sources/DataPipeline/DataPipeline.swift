@@ -97,11 +97,11 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         }
     }
 
-    public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
+    public func identify(userId: String, traits: [String: Any]?) {
         implementation?.identify(userId: userId, traits: traits)
     }
 
-    public func identify(userId: String, traits: [String: Any]?) {
+    public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
         implementation?.identify(userId: userId, traits: traits)
     }
 
@@ -118,7 +118,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         }
     }
 
-    public var registeredDeviceToken: String? { implementation?.registeredDeviceToken }
+    public var registeredDeviceToken: String? {
+        implementation?.registeredDeviceToken
+    }
+
     public func registerDeviceToken(_ deviceToken: String) {
         implementation?.registerDeviceToken(deviceToken)
     }
