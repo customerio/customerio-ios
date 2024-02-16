@@ -67,6 +67,13 @@ extension RawEvent {
         return nil
     }
 
+    var deviceAttributes: [String: Any]? {
+        if let context = context?.dictionaryValue {
+            return context[keyPath: "device"] as? [String: Any]
+        }
+        return nil
+    }
+
     var properties: [String: Any]? {
         if let event = self as? TrackEvent {
             return event.properties?.dictionaryValue
