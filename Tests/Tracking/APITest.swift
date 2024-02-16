@@ -35,13 +35,11 @@ class TrackingAPITest: UnitTest {
     // SDK wrappers can configure the SDK from a Map.
     // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
     func test_createSdkConfigFromMap() {
-        let autoTrackPushEvents = false
         let logLevel = "info"
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "autoTrackPushEvents": autoTrackPushEvents,
             "logLevel": logLevel,
             "source": sdkWrapperSource,
             "version": sdkWrapperVersion
@@ -50,19 +48,16 @@ class TrackingAPITest: UnitTest {
         var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
-        XCTAssertEqual(actual.autoTrackPushEvents, autoTrackPushEvents)
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
         XCTAssertNotNil(actual._sdkWrapperConfig)
     }
 
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
-        let autoTrackPushEvents = false
         let logLevel = "info"
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "autoTrackPushEventsWrong": autoTrackPushEvents,
             "logLevelWrong": logLevel,
             "sourceWrong": sdkWrapperSource,
             "versionWrong": sdkWrapperVersion
@@ -71,7 +66,6 @@ class TrackingAPITest: UnitTest {
         var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
-        XCTAssertEqual(actual.autoTrackPushEvents, true)
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
@@ -79,7 +73,6 @@ class TrackingAPITest: UnitTest {
     func test_SdkConfig_givenNoModification_expectDefaults() {
         let actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
 
-        XCTAssertEqual(actual.autoTrackPushEvents, true)
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
