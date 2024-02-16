@@ -42,7 +42,6 @@ class TrackingAPITest: UnitTest {
         let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
         let autoTrackScreenViews = true
-        let autoTrackDeviceAttributes = false
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
@@ -54,7 +53,6 @@ class TrackingAPITest: UnitTest {
             "backgroundQueueExpiredSeconds": backgroundQueueExpiredSeconds,
             "logLevel": logLevel,
             "autoTrackScreenViews": autoTrackScreenViews,
-            "autoTrackDeviceAttributes": autoTrackDeviceAttributes,
             "source": sdkWrapperSource,
             "version": sdkWrapperVersion
         ]
@@ -69,7 +67,6 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.backgroundQueueExpiredSeconds, backgroundQueueExpiredSeconds)
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
         XCTAssertEqual(actual.autoTrackScreenViews, autoTrackScreenViews)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, autoTrackDeviceAttributes)
         XCTAssertNotNil(actual._sdkWrapperConfig)
     }
 
@@ -81,7 +78,6 @@ class TrackingAPITest: UnitTest {
         let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
         let autoTrackScreenViews = true
-        let autoTrackDeviceAttributes = false
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
@@ -93,7 +89,6 @@ class TrackingAPITest: UnitTest {
             "backgroundQueueExpiredSecondsWrong": backgroundQueueExpiredSeconds,
             "logLevelWrong": logLevel,
             "autoTrackScreenViewsWrong": autoTrackScreenViews,
-            "autoTrackDeviceAttributesWrong": autoTrackDeviceAttributes,
             "sourceWrong": sdkWrapperSource,
             "versionWrong": sdkWrapperVersion
         ]
@@ -108,7 +103,6 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertEqual(actual.autoTrackScreenViews, false)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
 
@@ -122,7 +116,6 @@ class TrackingAPITest: UnitTest {
         XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertEqual(actual.autoTrackScreenViews, false)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
 }
