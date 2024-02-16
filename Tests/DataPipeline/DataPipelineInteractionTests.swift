@@ -45,7 +45,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
-        XCTAssertEqual(analytics.traits()?.count, 0)
+        XCTAssertNil(analytics.traits())
 
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
         guard let identifyEvent = outputReader.identifyEvents.last else {
