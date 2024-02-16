@@ -52,7 +52,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         }
 
         XCTAssertEqual(savedEvent[keyPath: "userId"] as? String, givenIdentifier)
-        XCTAssertTrue(savedEvent[mapKeyPath: "traits"]?.isEmpty ?? false)
+        XCTAssertNil(savedEvent[mapKeyPath: "traits"])
     }
 
     func test_identifyWithAttributes_expectFinalJSONHasCorrectKeysAndValues() {
