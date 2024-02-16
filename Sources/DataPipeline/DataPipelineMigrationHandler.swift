@@ -1,7 +1,10 @@
 import CioInternalCommon
-import CioMigration
+import CioTrackingMigration
 import Foundation
 
+// This class handles all the migration methods to process
+// the unprocessed tasks from background queue coming from
+// tracking module.
 class DataPipelineMigrationHandler: DataPipelineMigrationAction {
     var implementation: DataPipelineInstance
     init(implementation: DataPipelineInstance) {

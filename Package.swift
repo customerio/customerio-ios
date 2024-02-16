@@ -29,6 +29,7 @@ var products: [PackageDescription.Product] = [
 if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a CI machine. Important this is false for a customer trying to install our SDK on their machine. 
     // append all internal modules to the products array.
     products.append(.library(name: "InternalCommon", targets: ["CioInternalCommon"]))
+    products.append(.library(name: "Migration", targets: ["CioTrackingMigration"]))
 }
 
 let package = Package(
@@ -62,11 +63,11 @@ let package = Package(
                     path: "Tests/Tracking"),
         // Migration
         // this module handles Journeys tasks migration to Datapipeline.
-        .target(name: "CioMigration",
+        .target(name: "CioTrackingMigration",
                 dependencies: ["CioInternalCommon"],
                 path: "Sources/Migration"),
         .testTarget(name: "MigrationTests",
-                    dependencies: ["CioMigration", "SharedTests"],
+                    dependencies: ["CioTrackingMigration", "SharedTests"],
                     path: "Tests/Migration"),
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
@@ -86,7 +87,7 @@ let package = Package(
         
         // Data Pipeline
         .target(name: "CioDataPipelines",
-                dependencies: ["CioInternalCommon", "CioMigration", .product(name: "Segment", package: "Segment")],
+                dependencies: ["CioInternalCommon", "CioTrackingMigration", .product(name: "Segment", package: "Segment")],
                 path: "Sources/DataPipeline"),
         .testTarget(name: "DataPipelineTests",
                     dependencies: ["CioDataPipelines", "SharedTests"],
