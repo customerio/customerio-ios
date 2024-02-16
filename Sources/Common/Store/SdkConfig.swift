@@ -30,9 +30,7 @@ public struct SdkConfig {
                 backgroundQueueMinNumberOfTasks: 10,
                 backgroundQueueSecondsDelay: 30,
                 backgroundQueueExpiredSeconds: Seconds.secondsFromDays(3),
-                logLevel: CioLogLevel.error,
-                autoTrackScreenViews: false,
-                filterAutoScreenViewEvents: nil
+                logLevel: CioLogLevel.error
             )
         }
     }
@@ -53,9 +51,6 @@ public struct SdkConfig {
         // add a way for `params` to override the SDK config option.
         if let autoTrackPushEvents = params[Keys.autoTrackPushEvents.rawValue] as? Bool {
             self.autoTrackPushEvents = autoTrackPushEvents
-        }
-        if let autoTrackScreenViews = params[Keys.autoTrackScreenViews.rawValue] as? Bool {
-            self.autoTrackScreenViews = autoTrackScreenViews
         }
         if let backgroundQueueMinNumberOfTasks = params[Keys.backgroundQueueMinNumberOfTasks.rawValue] as? Int {
             self.backgroundQueueMinNumberOfTasks = backgroundQueueMinNumberOfTasks
@@ -84,7 +79,6 @@ public struct SdkConfig {
         case region
         // config features
         case trackingApiUrl
-        case autoTrackScreenViews
         case logLevel
         case autoTrackPushEvents
         case backgroundQueueMinNumberOfTasks
@@ -136,29 +130,6 @@ public struct SdkConfig {
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
     public var logLevel: CioLogLevel
-
-    /**
-     Automatic tracking of screen views will generate `screen`-type events on every screen transition within
-     your application.
-     */
-    public var autoTrackScreenViews: Bool
-
-    #if canImport(UIKit)
-    /**
-     Filter automatic screenview events to remove events that are irrelevant to your app.
-
-     Return `true` from function if you would like the screenview event to be tracked.
-
-     Default: `nil`, which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
-     */
-    public var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
-    #endif
-
-    /**
-     Handler to be called by our automatic screen tracker to generate `screen` event body variables. You can use
-     this to override our defaults and pass custom values in the body of the `screen` event
-     */
-    public var autoScreenViewBody: (() -> [String: Any])?
 
     var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)
