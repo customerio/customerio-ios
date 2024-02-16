@@ -25,7 +25,6 @@ public struct SdkConfig {
                 siteId: siteId,
                 apiKey: apiKey,
                 region: region,
-                autoTrackPushEvents: true,
                 logLevel: CioLogLevel.error
             )
         }
@@ -45,9 +44,6 @@ public struct SdkConfig {
         // Define default values here in constructor instead of in struct properties. This is by design so in the future if we add
         // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
         // add a way for `params` to override the SDK config option.
-        if let autoTrackPushEvents = params[Keys.autoTrackPushEvents.rawValue] as? Bool {
-            self.autoTrackPushEvents = autoTrackPushEvents
-        }
 
         if let sdkSource = params[Keys.source.rawValue] as? String, let pversion = params[Keys.sourceVersion.rawValue] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
             _sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
@@ -63,7 +59,6 @@ public struct SdkConfig {
         case region
         // config features
         case logLevel
-        case autoTrackPushEvents
         // SDK wrapper config
         case source
         case sourceVersion = "version"
@@ -77,12 +72,6 @@ public struct SdkConfig {
 
     /// Immutable property to store the workspace Region set during SDK initialization.
     public let region: Region
-
-    /**
-     Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
-     for push notifications sent by Customer.io
-     */
-    public var autoTrackPushEvents: Bool
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
