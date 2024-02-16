@@ -32,8 +32,7 @@ public struct SdkConfig {
                 backgroundQueueExpiredSeconds: Seconds.secondsFromDays(3),
                 logLevel: CioLogLevel.error,
                 autoTrackScreenViews: false,
-                filterAutoScreenViewEvents: nil,
-                autoTrackDeviceAttributes: true
+                filterAutoScreenViewEvents: nil
             )
         }
     }
@@ -52,9 +51,6 @@ public struct SdkConfig {
         // Define default values here in constructor instead of in struct properties. This is by design so in the future if we add
         // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
         // add a way for `params` to override the SDK config option.
-        if let autoTrackDeviceAttributes = params[Keys.autoTrackDeviceAttributes.rawValue] as? Bool {
-            self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
-        }
         if let autoTrackPushEvents = params[Keys.autoTrackPushEvents.rawValue] as? Bool {
             self.autoTrackPushEvents = autoTrackPushEvents
         }
@@ -88,7 +84,6 @@ public struct SdkConfig {
         case region
         // config features
         case trackingApiUrl
-        case autoTrackDeviceAttributes
         case autoTrackScreenViews
         case logLevel
         case autoTrackPushEvents
@@ -164,12 +159,6 @@ public struct SdkConfig {
      this to override our defaults and pass custom values in the body of the `screen` event
      */
     public var autoScreenViewBody: (() -> [String: Any])?
-
-    /**
-     Enable this property if you want SDK to automatic tracking of device attributes such as
-     operating system, device locale, device model, app version etc
-     */
-    public var autoTrackDeviceAttributes: Bool
 
     var httpBaseUrls: HttpBaseUrls {
         HttpBaseUrls(trackingApi: trackingApiUrl)

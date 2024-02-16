@@ -1,6 +1,5 @@
 @testable import CioDataPipelines
 @testable import CioInternalCommon
-@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest
@@ -27,7 +26,7 @@ class DeviceAttributesProviderTest: UnitTest {
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
-        super.setUp(modifySdkConfig: { config in
+        super.setUp(modifyModuleConfig: { config in
             config.autoTrackDeviceAttributes = false
         })
 
@@ -46,7 +45,7 @@ class DeviceAttributesProviderTest: UnitTest {
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesEnabled_expectGetSomeAttributes() {
-        super.setUp(modifySdkConfig: { config in
+        super.setUp(modifyModuleConfig: { config in
             config.autoTrackDeviceAttributes = true
         })
 
