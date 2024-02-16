@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Segment
 
-public protocol DataPipelineInstance: CustomerIOInstance, DataPipelinePublicAPI {
+public protocol DataPipelineInstance: CustomerIOInstance {
     var analytics: Analytics { get }
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
