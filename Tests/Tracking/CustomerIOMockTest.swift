@@ -1,3 +1,4 @@
+@testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTracking
 import Foundation
@@ -37,7 +38,7 @@ class CustomerIOMockTest: UnitTest {
 
         // You can receive the generic `body` that was sent to the Customer.io `identify()` call.
         // Because of Swift generics, you must get the `.value` and cast it:
-        let actualBody: ExampleIdentifyRequestBody? = cioMock.identifyEncodableReceivedArguments?.body
+        let actualBody: ExampleIdentifyRequestBody? = cioMock.identifyEncodableReceivedArguments?.traits
             .value as? ExampleIdentifyRequestBody
         // Now, you can run checks against the `body` that was actually passed to `identify()`.
         XCTAssertNotNil(actualBody)
@@ -60,7 +61,7 @@ class ExampleRepository {
     ) {
         // call your code for your app to login the user with email and password.
         // then, identify the customer in Customer.io
-        cio.identify(identifier: email, body: ExampleIdentifyRequestBody(firstName: firstName))
+        cio.identify(userId: email, traits: ExampleIdentifyRequestBody(firstName: firstName))
 
         onComplete(.success(()))
     }

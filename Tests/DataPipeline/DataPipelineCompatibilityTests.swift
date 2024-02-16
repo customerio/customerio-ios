@@ -59,7 +59,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         let givenIdentifier = String.random
         let givenBody: [String: Any] = ["first_name": "Dana", "age": 30]
 
-        customerIO.identify(identifier: givenIdentifier, body: givenBody)
+        customerIO.identify(userId: givenIdentifier, traits: givenBody)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "identify" }
@@ -229,7 +229,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
         customerIO.identify(userId: String.random)
-        customerIO.track(name: givenEvent, data: givenData)
+        customerIO.track(name: givenEvent, properties: givenData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "track" }
@@ -274,7 +274,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
 
         customerIO.identify(userId: String.random)
-        customerIO.screen(name: givenScreen, data: givenData)
+        customerIO.screen(title: givenScreen, properties: givenData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "screen" }

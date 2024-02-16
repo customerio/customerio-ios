@@ -349,7 +349,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
-        customerIO.track(name: String.random, data: givenData)
+        customerIO.track(name: String.random, properties: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -374,7 +374,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader.resetPlugin()
 
         let data: EmptyRequestBody? = nil
-        customerIO.track(name: String.random, data: data)
+        customerIO.track(name: String.random, properties: data)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -412,7 +412,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader.resetPlugin()
         eventBusHandlerMock.resetMock()
 
-        customerIO.screen(name: givenScreen, data: givenData)
+        customerIO.screen(title: givenScreen, properties: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let screenEvent = outputReader.lastEvent as? ScreenEvent else {
