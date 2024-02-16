@@ -11,7 +11,7 @@ public protocol DataPipelinePublicAPI: AutoMockable {
     func identify<RequestBody: Codable>(
         userId: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(body)"
+        // sourcery:TypeCast="AnyEncodable(traits)"
         traits: RequestBody?
     )
     func clearIdentify()
@@ -31,7 +31,7 @@ public protocol DataPipelinePublicAPI: AutoMockable {
     func track<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
+        // sourcery:TypeCast="AnyEncodable(properties)"
         properties: RequestBody?
     )
 
@@ -43,7 +43,7 @@ public protocol DataPipelinePublicAPI: AutoMockable {
     func screen<RequestBody: Codable>(
         title: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
+        // sourcery:TypeCast="AnyEncodable(properties)"
         properties: RequestBody?
     )
 
