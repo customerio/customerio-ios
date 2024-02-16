@@ -93,13 +93,15 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
     }
 
-    func test_migrateProfileIdED_expectMigrationCodeRunOnce() {
+    func test_migrateUserId_expectMigrationCodeRunOnce() {
         // profile previously identified in SDK, before CDP migration
         let givenIdentifier = String.random
         profileStoreMock.identifier = givenIdentifier
 
         // CDP migration is performed for the first time in the SDK.
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil))
+        XCTAssertNil(profileStoreMock.identifier)
+
         // Check that the migration was successful:
         // Update the user identifier and re-call handleAlreadyIdentifiedMigratedUser
         // to ensure the user does not undergo the migration process again
@@ -108,41 +110,28 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         profileStoreMock.identifier = updatedIdentifier
 
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
+        XCTAssertNotNil(profileStoreMock.identifier)
     }
 
     func test_givenAlreadyIdentifiedProfile_expectUpdateUserId() {
         let givenProfileIdentifiedInJourneys = String.random
         profileStoreMock.identifier = givenProfileIdentifiedInJourneys
-//        DataPipeline.shared.analytics.reset()
-//        XCTAssertNil(DataPipeline.shared.analytics.userId)
-
         migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil)
 
-//        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenProfileIdentifiedInJourneys)
         XCTAssertNil(profileStoreMock.identifier)
     }
 
-    func test_givenNoIdentifiedProfile_expectNoUpdateInUserId() {
-//        DataPipeline.shared.analytics.reset()
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil))
-//        XCTAssertNil(DataPipeline.shared.analytics.userId)
-    }
-
-//
     func test_givenUserOnCDPIdentified_expectNoUpdate() {
         let givenIdentifier = String.random
-//        DataPipeline.shared.identify(identifier: givenIdentifier, body: [:])
+        migrationHandler.processAlreadyIdentifiedUser(identifier: givenIdentifier)
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-//        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
-//        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNil(profileStoreMock.identifier)
     }
 
-//
     func test_givenUserOnCDPIdentified_expectMigrationCodeRunOnce() {
         let givenIdentifier = String.random
-//        DataPipeline.shared.identify(identifier: givenIdentifier, body: [:])
+        migrationHandler.processAlreadyIdentifiedUser(identifier: givenIdentifier)
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-//        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
         XCTAssertNil(profileStoreMock.identifier)
 
         // Update the user identifier and re-call handleAlreadyIdentifiedMigratedUser
@@ -151,7 +140,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         let updatedIdentifier = String.random
         profileStoreMock.identifier = updatedIdentifier
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-//        XCTAssertEqual(DataPipeline.shared.analytics.userId, givenIdentifier)
         XCTAssertEqual(profileStoreMock.identifier, updatedIdentifier)
     }
 //
