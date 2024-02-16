@@ -54,7 +54,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         }
 
         XCTAssertEqual(identifyEvent.userId, givenIdentifier)
-        XCTAssertMatches(identifyEvent.traits?.dictionaryValue, [:])
+        XCTAssertNil(identifyEvent.traits)
     }
 
     func test_identify_expectSetNewProfileWithAttributes() {
