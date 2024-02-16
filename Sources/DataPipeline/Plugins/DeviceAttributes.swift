@@ -7,7 +7,7 @@ class DeviceAttributes: Plugin {
     public weak var analytics: Analytics?
 
     public var token: String?
-    public var attributes: [String: Any]?
+    public var attributes: [String: Any] = [:]
 
     public var autoTrackDeviceAttributes: Bool
 
@@ -33,14 +33,13 @@ class DeviceAttributes: Plugin {
                 context[keyPath: "device.token"] = token
                 workingEvent.context = try JSON(context)
             }
-            if let attributes = attributes {
-                if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
-                    context["device"] = device.mergeWith(attributes)
-                } else {
-                    context["device"] = attributes
-                }
-                workingEvent.context = try JSON(context)
+
+            if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
+                context["device"] = device.mergeWith(attributes)
+            } else {
+                context["device"] = attributes
             }
+            workingEvent.context = try JSON(context)
         } catch {
             analytics?.reportInternalError(error)
         }

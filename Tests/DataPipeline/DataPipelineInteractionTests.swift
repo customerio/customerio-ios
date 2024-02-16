@@ -321,9 +321,6 @@ class DataPipelineInteractionTests: IntegrationTest {
             config.autoTrackDeviceAttributes = false
         })
 
-        mockDeviceAttributes()
-
-        customerIO.deviceAttributes = [:]
         customerIO.track(name: String.random)
 
         XCTAssertEqual(outputReader.events.count, 1)
