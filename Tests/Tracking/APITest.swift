@@ -37,9 +37,6 @@ class TrackingAPITest: UnitTest {
     func test_createSdkConfigFromMap() {
         let trackingApiUrl = String.random
         let autoTrackPushEvents = false
-        let backgroundQueueMinNumberOfTasks = 10000
-        let backgroundQueueSecondsDelay: TimeInterval = 100000
-        let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
@@ -47,9 +44,6 @@ class TrackingAPITest: UnitTest {
         let givenParamsFromSdkWrapper: [String: Any] = [
             "trackingApiUrl": trackingApiUrl,
             "autoTrackPushEvents": autoTrackPushEvents,
-            "backgroundQueueMinNumberOfTasks": backgroundQueueMinNumberOfTasks,
-            "backgroundQueueSecondsDelay": backgroundQueueSecondsDelay,
-            "backgroundQueueExpiredSeconds": backgroundQueueExpiredSeconds,
             "logLevel": logLevel,
             "source": sdkWrapperSource,
             "version": sdkWrapperVersion
@@ -60,9 +54,6 @@ class TrackingAPITest: UnitTest {
 
         XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, autoTrackPushEvents)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, backgroundQueueMinNumberOfTasks)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, backgroundQueueSecondsDelay)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, backgroundQueueExpiredSeconds)
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
         XCTAssertNotNil(actual._sdkWrapperConfig)
     }
@@ -70,9 +61,6 @@ class TrackingAPITest: UnitTest {
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
         let trackingApiUrl = String.random
         let autoTrackPushEvents = false
-        let backgroundQueueMinNumberOfTasks = 10000
-        let backgroundQueueSecondsDelay: TimeInterval = 100000
-        let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
@@ -80,9 +68,6 @@ class TrackingAPITest: UnitTest {
         let givenParamsFromSdkWrapper: [String: Any] = [
             "trackingApiUrlWrong": trackingApiUrl,
             "autoTrackPushEventsWrong": autoTrackPushEvents,
-            "backgroundQueueMinNumberOfTasksWrong": backgroundQueueMinNumberOfTasks,
-            "backgroundQueueSecondsDelayWrong": backgroundQueueSecondsDelay,
-            "backgroundQueueExpiredSecondsWrong": backgroundQueueExpiredSeconds,
             "logLevelWrong": logLevel,
             "sourceWrong": sdkWrapperSource,
             "versionWrong": sdkWrapperVersion
@@ -93,9 +78,6 @@ class TrackingAPITest: UnitTest {
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, true)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, 10)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, 30)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
@@ -105,9 +87,6 @@ class TrackingAPITest: UnitTest {
 
         XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
         XCTAssertEqual(actual.autoTrackPushEvents, true)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, 10)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, 30)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertNil(actual._sdkWrapperConfig)
     }

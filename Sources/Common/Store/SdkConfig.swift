@@ -27,9 +27,6 @@ public struct SdkConfig {
                 region: region,
                 trackingApiUrl: region.productionTrackingUrl,
                 autoTrackPushEvents: true,
-                backgroundQueueMinNumberOfTasks: 10,
-                backgroundQueueSecondsDelay: 30,
-                backgroundQueueExpiredSeconds: Seconds.secondsFromDays(3),
                 logLevel: CioLogLevel.error
             )
         }
@@ -52,15 +49,6 @@ public struct SdkConfig {
         if let autoTrackPushEvents = params[Keys.autoTrackPushEvents.rawValue] as? Bool {
             self.autoTrackPushEvents = autoTrackPushEvents
         }
-        if let backgroundQueueMinNumberOfTasks = params[Keys.backgroundQueueMinNumberOfTasks.rawValue] as? Int {
-            self.backgroundQueueMinNumberOfTasks = backgroundQueueMinNumberOfTasks
-        }
-        if let backgroundQueueSecondsDelay = params[Keys.backgroundQueueSecondsDelay.rawValue] as? Seconds {
-            self.backgroundQueueSecondsDelay = backgroundQueueSecondsDelay
-        }
-        if let backgroundQueueExpiredSeconds = params[Keys.backgroundQueueExpiredSeconds.rawValue] as? Seconds {
-            self.backgroundQueueExpiredSeconds = backgroundQueueExpiredSeconds
-        }
         if let trackingApiUrl = params[Keys.trackingApiUrl.rawValue] as? String, !trackingApiUrl.isEmpty {
             self.trackingApiUrl = trackingApiUrl
         }
@@ -81,9 +69,6 @@ public struct SdkConfig {
         case trackingApiUrl
         case logLevel
         case autoTrackPushEvents
-        case backgroundQueueMinNumberOfTasks
-        case backgroundQueueSecondsDelay
-        case backgroundQueueExpiredSeconds
         // SDK wrapper config
         case source
         case sourceVersion = "version"
@@ -110,22 +95,6 @@ public struct SdkConfig {
      for push notifications sent by Customer.io
      */
     public var autoTrackPushEvents: Bool
-
-    /**
-     Number of tasks in the background queue before the queue begins operating.
-     This is mostly used during development to test configuration is setup. We do not recommend
-     modifying this value because it impacts battery life of mobile device.
-     */
-    public var backgroundQueueMinNumberOfTasks: Int
-
-    /// The number of seconds to delay running queue after a task has been added to it.
-    public var backgroundQueueSecondsDelay: Seconds
-    /**
-     * The number of seconds old a queue task is when it is "expired" and should be deleted.
-     * We do not recommend modifying this value because it risks losing data or taking up too much
-     * space on the user's device.
-     */
-    public var backgroundQueueExpiredSeconds: Seconds
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
