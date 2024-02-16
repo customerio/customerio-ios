@@ -11,6 +11,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
+    private let deviceAttributesPlugin: DeviceAttributes
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -23,6 +24,8 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
+        self.deviceAttributesPlugin = DeviceAttributes(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
+
         initialize(diGraph: diGraph)
     }
 
@@ -33,6 +36,9 @@ class DataPipelineImplementation: DataPipelineInstance {
             customerIODestination.analytics = analytics
             analytics.add(plugin: customerIODestination)
         }
+
+        // add/override device attributes in context for each request
+        analytics.add(plugin: deviceAttributesPlugin)
 
         if let existingDeviceToken = globalDataStore.pushDeviceToken {
             // if the device token exists, pass it to the plugin and ensure device attributes are updated
@@ -265,18 +271,6 @@ extension DataPipelineImplementation {
     /// returns user id for currently identifier profile
     var registeredUserId: String? {
         analytics.userId
-    }
-
-    /// returns DeviceAttributes if attached; if not, attaches them and then returns the instance
-    private var deviceAttributesPlugin: DeviceAttributes {
-        let attributesPlugin: DeviceAttributes
-        if let plugin = analytics.find(pluginType: DeviceAttributes.self) {
-            attributesPlugin = plugin
-        } else {
-            attributesPlugin = DeviceAttributes()
-            analytics.add(plugin: attributesPlugin)
-        }
-        return attributesPlugin
     }
 }
 
