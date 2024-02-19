@@ -1,4 +1,3 @@
-// @testable import CioDataPipelines
 @testable import CioInternalCommon
 @testable import CioTrackingMigration
 import Foundation
@@ -13,14 +12,17 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     private let backgroundQueueMock = QueueMock()
     private let migrationHandler = DataPipelineMigrationActionMock()
     private var queueStorage: QueueStorage { diGraph.queueStorage }
-    public var migrationAssistant: DataPipelineMigrationAssistant!
+    public var migrationAssistant: DataPipelineMigrationAssistant {
+        DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: diGraph)
+    }
+
     override func setUpDependencies() {
         super.setUpDependencies()
 
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-        migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: diGraph)
+//        migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: diGraph)
     }
 
     // MARK: performMigration
