@@ -86,56 +86,40 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     public var config: CioInternalCommon.SdkConfig? { implementation?.config }
 
-    public func identify(identifier: String, body: [String: Any]) {
-        implementation?.identify(identifier: identifier, body: body)
+    // MARK: - DataPipelineInstance implementation
+
+    public var profileAttributes: [String: Any] {
+        get { implementation?.profileAttributes ?? [:] }
+        set {
+            guard var implementation = implementation else { return }
+
+            implementation.profileAttributes = newValue
+        }
     }
 
-    public func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        implementation?.identify(identifier: identifier, body: body)
+    public func identify(userId: String, traits: [String: Any]?) {
+        implementation?.identify(userId: userId, traits: traits)
     }
 
-    public func identify(body: Codable) {
-        implementation?.identify(body: body)
+    public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
+        implementation?.identify(userId: userId, traits: traits)
     }
-
-    public var registeredDeviceToken: String? { implementation?.registeredDeviceToken }
 
     public func clearIdentify() {
         implementation?.clearIdentify()
     }
 
-    public func track(name: String, data: [String: Any]) {
-        implementation?.track(name: name, data: data)
-    }
-
-    public func track<RequestBody: Codable>(name: String, data: RequestBody?) {
-        implementation?.track(name: name, data: data)
-    }
-
-    public func screen(name: String, data: [String: Any]) {
-        implementation?.screen(name: name, data: data)
-    }
-
-    public func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
-        implementation?.screen(name: name, data: data)
-    }
-
-    public var profileAttributes: [String: Any] {
-        get {
-            implementation?.profileAttributes ?? [:]
-        }
-        set {
-            alreadyCreatedImplementation?.profileAttributes = newValue
-        }
-    }
-
     public var deviceAttributes: [String: Any] {
-        get {
-            implementation?.deviceAttributes ?? [:]
-        }
+        get { implementation?.deviceAttributes ?? [:] }
         set {
-            alreadyCreatedImplementation?.deviceAttributes = newValue
+            guard var implementation = implementation else { return }
+
+            implementation.deviceAttributes = newValue
         }
+    }
+
+    public var registeredDeviceToken: String? {
+        implementation?.registeredDeviceToken
     }
 
     public func registerDeviceToken(_ deviceToken: String) {
@@ -146,7 +130,23 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.deleteDeviceToken()
     }
 
-    public func trackMetric(deliveryID: String, event: CioInternalCommon.Metric, deviceToken: String) {
+    public func track(name: String, properties: [String: Any]?) {
+        implementation?.track(name: name, properties: properties)
+    }
+
+    public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
+        implementation?.track(name: name, properties: properties)
+    }
+
+    public func screen(title: String, properties: [String: Any]?) {
+        implementation?.screen(title: title, properties: properties)
+    }
+
+    public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
+        implementation?.screen(title: title, properties: properties)
+    }
+
+    public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 }
