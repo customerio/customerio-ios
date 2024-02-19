@@ -22,11 +22,12 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraph.override(value: dateUtilStub, forType: DateUtil.self)
         diGraph.override(value: backgroundQueueMock, forType: Queue.self)
-//        migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: diGraph)
     }
 
     // MARK: performMigration
 
+    // Tests that the methods are not nil and do not crash for cases
+    // such as when the user id is nil or takes expected parameter
     func test_performMigration_WithAndWithoutUserId() {
         backgroundQueueMock.getAllStoredTasksReturnValue = []
         XCTAssertNotNil(migrationAssistant.performMigration(for: nil))
@@ -115,7 +116,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertNotNil(profileStoreMock.identifier)
     }
 
-    func test_givenAlreadyIdentifiedProfile_expectUpdateUserId() {
+    func test_givenAlreadyIdentifiedProfile_expectNilProfileIdentifier() {
         let givenProfileIdentifiedInJourneys = String.random
         profileStoreMock.identifier = givenProfileIdentifiedInJourneys
         migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil)
@@ -144,5 +145,4 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
         XCTAssertEqual(profileStoreMock.identifier, updatedIdentifier)
     }
-//
 }
