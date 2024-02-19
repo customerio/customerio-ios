@@ -215,7 +215,7 @@ public class CustomerIO: CustomerIOInstance {
         // arising from lifecycle differences between wrapper SDKs and native SDK.
         let globalDataStore = diGraph.globalDataStore
         if let token = globalDataStore.pushDeviceToken {
-            // registerDeviceToken(token)
+            registerDeviceToken(token)
         }
 
         logger
