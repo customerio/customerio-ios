@@ -29,12 +29,7 @@ class DataPipelineAPITest: UnitTest {
         try skipRunningTest()
 
         // Initialize
-        CustomerIO.initialize(writeKey: "") { (config: inout DataPipelineConfigOptions) in
-            config.autoAddCustomerIODestination = false
-        }
-        CustomerIO.initialize(writeKey: "", logLevel: .debug) { (config: inout DataPipelineConfigOptions) in
-            config.autoAddCustomerIODestination = false
-        }
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(writeKey: "").build())
 
         // Identify
         CustomerIO.shared.identify(userId: "")
@@ -93,19 +88,19 @@ class DataPipelineAPITest: UnitTest {
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
 
-        CustomerIO.initialize(writeKey: "", logLevel: .error) { config in
-            config.apiHost = ""
-            config.cdnHost = ""
-            config.flushAt = 10
-            config.flushInterval = 10.0
-            config.autoAddCustomerIODestination = false
-            config.defaultSettings = Settings(writeKey: "")
-            config.flushPolicies = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
-            config.flushQueue = DispatchQueue(label: "")
-            config.operatingMode = OperatingMode.asynchronous
-            config.trackApplicationLifecycleEvents = true
-            config.autoTrackDeviceAttributes = true
-        }
+        SDKConfigBuilder(writeKey: "")
+            .apiHost("")
+            .cdnHost("")
+            .flushAt(10)
+            .flushInterval(10.0)
+            .autoAddCustomerIODestination(false)
+            .defaultSettings(Settings(writeKey: ""))
+            .flushPolicies([])
+            .addFlushPolicies([CountBasedFlushPolicy(), IntervalBasedFlushPolicy()])
+            .flushQueue(DispatchQueue(label: ""))
+            .operatingMode(OperatingMode.asynchronous)
+            .trackApplicationLifecycleEvents(true)
+            .autoTrackDeviceAttributes(true)
     }
 
     func test_autoTrackingScreenViewsPluginOptions() throws {
