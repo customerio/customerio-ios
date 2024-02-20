@@ -104,7 +104,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
             name: "push clicked",
-            data: ["push": response.notification.request.content.userInfo]
+            properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
