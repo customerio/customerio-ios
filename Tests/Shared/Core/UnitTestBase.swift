@@ -76,7 +76,7 @@ open class UnitTestBase<Component>: XCTestCase {
         siteId: String? = nil,
         modifySdkConfig: ((inout SdkConfig) -> Void)?
     ) {
-        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId ?? testSiteId, apiKey: "", region: Region.US)
+        var newSdkConfig = SdkConfig.Factory.create()
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }

@@ -12,48 +12,6 @@ public protocol GlobalDataStore: AutoMockable {
     func deleteAll()
 }
 
-// sourcery: InjectRegister = "GlobalDataStore"
-public class CioGlobalDataStore: GlobalDataStore {
-    private let keyValueStorage: KeyValueStorage
-
-    public var pushDeviceToken: String? {
-        get {
-            keyValueStorage.string(.pushDeviceToken)
-        }
-        set {
-            keyValueStorage.setString(newValue, forKey: .pushDeviceToken)
-        }
-    }
-
-    public var httpRequestsPauseEnds: Date? {
-        get {
-            keyValueStorage.date(.httpRequestsPauseEnds)
-        }
-        set {
-            keyValueStorage.setDate(newValue, forKey: .httpRequestsPauseEnds)
-        }
-    }
-
-    public init(keyValueStorage: KeyValueStorage) {
-        self.keyValueStorage = keyValueStorage
-
-        self.keyValueStorage.switchToGlobalDataStore()
-    }
-
-    // How to get instance before DI graph is constructed
-    public static func getInstance() -> GlobalDataStore {
-        let newInstance = UserDefaultsKeyValueStorage(
-            sdkConfig: SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US),
-            deviceMetricsGrabber: DeviceMetricsGrabberImpl()
-        )
-        return CioGlobalDataStore(keyValueStorage: newInstance)
-    }
-
-    public func deleteAll() {
-        keyValueStorage.deleteAll()
-    }
-}
-
 // sourcery: InjectRegisterShared = "GlobalDataStore"
 public class CioSharedDataStore: GlobalDataStore {
     private let keyValueStorage: SharedKeyValueStorage
@@ -78,14 +36,6 @@ public class CioSharedDataStore: GlobalDataStore {
 
     public init(keyValueStorage: SharedKeyValueStorage) {
         self.keyValueStorage = keyValueStorage
-    }
-
-    // How to get instance before DI graph is constructed
-    public static func getInstance() -> GlobalDataStore {
-        let newInstance = UserDefaultsSharedKeyValueStorage(
-            deviceMetricsGrabber: DeviceMetricsGrabberImpl()
-        )
-        return CioSharedDataStore(keyValueStorage: newInstance)
     }
 
     public func deleteAll() {
