@@ -66,7 +66,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             configureHandler(&moduleConfig)
         }
 
-        shared.initializeModuleIfNotAlready()
+        let moduleInitializedFirstTime = shared.initializeModuleIfNotAlready()
+
+        guard moduleInitializedFirstTime else {
+            return shared
+        }
 
         // Some part of the initialize is specific only to non-NSE targets.
         // Put those parts in this non-NSE initialize method.
@@ -95,7 +99,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         return shared
     }
 
-    private func initializeModuleIfNotAlready() {
+    @discardableResult
+    private func initializeModuleIfNotAlready() -> Bool {
         // Make this function thread-safe by immediately locking it.
         lock.lock()
         defer {
@@ -105,7 +110,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // Make sure this function is only called 1 time.
         if hasSetupModule {
             logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return
+            return false
         }
         hasSetupModule = true
 
@@ -114,6 +119,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         setImplementationInstance(implementation: pushImplementation)
 
         logger.info("\(moduleName) module successfully set up with SDK")
+
+        return true
     }
 
     /**
