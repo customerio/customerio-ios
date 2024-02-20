@@ -28,63 +28,60 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
             appSetSettings?.configureCioSdk(config: &config)
         }
+        // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
             .initialize(siteId: siteId, region: .US)
             .setEventListener(self)
+        MessagingPushFCM.initialize { config in
+            // Because this is a SwiftUI app, auto fetch device token feature will not work.
+            // Therefore, we will forward the device token to the Customer.io SDK.
+            config.autoFetchDeviceToken = false
+        }
 
-        // Now that the Firebase and Customer.io SDK's are initialized, follow the rest of the required steps for the FCM push setup.
+        // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
+        Messaging.messaging().delegate = self
+
+        /**
+         Registers the `AppDelegate` class to handle when a push notification gets clicked.
+         This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
+         Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature. Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
+
+         We register a click handler in this app for testing purposes, only. To test that the Customer.io SDK is compatible with other SDKs that want to process push notifications not sent by Customer.io.
+         */
         UNUserNotificationCenter.current().delegate = self
 
-        // Initialize Customer.io push messaging allows
-        // the SDK to automatically send FCM push tokens to
-        // Customer.io!
-        MessagingPushFCM.initialize { config in
-            config.autoFetchDeviceToken = true
-        }
         return true
     }
 
-    // Because this is a SwiftUI app, we need to add this function to inform FCM about an APN token being registered.
-    // Without this function, the FCM delegate will not be called with a FCM token registered.
-    // Docs: https://firebase.google.com/docs/cloud-messaging/ios/client#token-swizzle-disabled
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
     }
 }
 
-extension AppDelegate: UNUserNotificationCenterDelegate {
-    // OPTIONAL: If you want your push UI to show even with the app in the foreground, override this function and call
-    // the completion handler.
-    @available(iOS 10.0, *)
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
-            -> Void
-    ) {
-        completionHandler([.list, .banner, .badge, .sound])
+extension AppDelegate: MessagingDelegate {
+    // Function that is called when a new FCM device token is assigned to device.
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        // Forward the device token to the Customer.io SDK:
+        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
+}
 
-    // Function that gets called when push notification clicked
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        // Send Customer.io SDK click event to process. This enables features such as
-        // push metrics and deep links.
-        let handled = MessagingPush.shared.userNotificationCenter(
-            center,
-            didReceive: response,
-            withCompletionHandler: completionHandler
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Function called when a push notification is clicked or swiped away.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        CustomerIO.shared.track(
+            name: "push clicked",
+            data: ["push": response.notification.request.content.userInfo]
         )
 
-        // If the Customer.io SDK does not handle the push, it's up to you to handle it and call the
-        // completion handler. If the SDK did handle it, it called the completion handler for you.
-        if !handled {
-            completionHandler()
-        }
+        completionHandler()
     }
+
+    // For testing purposes, it's suggested to not include the willPresent function in the AppDelegate.
+    // The automatic push click handling feature uses swizzling. A good edge case to test with swizzling is when
+    // there is an optional function of UNUserNotificationCenterDelegate not implemented. By not including willPresent, we are able to test this case.
+//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
 }
 
 extension AppDelegate: InAppEventListener {
