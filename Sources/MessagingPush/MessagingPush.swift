@@ -163,7 +163,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 }
 
-// Convenient way for other modules to access CustomerIOInstance as well as being able to mock CustomerIOInstance.
+// Convenient way for other modules to access instance as well as being able to mock instance in tests.
 public extension DIGraphShared {
     var messagingPushInstance: MessagingPushInstance {
         if let override: MessagingPushInstance = getOverriddenInstance() {
