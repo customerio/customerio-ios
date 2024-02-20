@@ -24,7 +24,7 @@ open class IntegrationTest: UnitTest {
     override open func initializeSDKComponents() -> CustomerIO? {
         // setup shared instance with actual implementation for integration tests
         let implementation = CustomerIO.setUpSharedInstanceForIntegrationTest(
-            diGraphShared: diGraphShared, diGraph: diGraph, moduleConfig: dataPipelineConfigOptions
+            diGraphShared: diGraphShared, moduleConfig: dataPipelineConfigOptions
         )
 
         // store shared CustomerIO instance for convenience
