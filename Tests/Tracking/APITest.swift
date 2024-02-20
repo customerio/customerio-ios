@@ -30,10 +30,6 @@ class TrackingAPITest: UnitTest {
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
         let _: CioLogLevel = .debug
-
-        // Public properties exposed to customers
-        _ = CustomerIO.shared.siteId
-        _ = CustomerIO.shared.config
     }
 
     // SDK wrappers can configure the SDK from a Map.

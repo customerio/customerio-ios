@@ -18,24 +18,20 @@ public extension CustomerIO {
         }
 
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
-
-        let sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
-        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
-
         // set the logLevel for ConsoleLogger
         DIGraphShared.shared.logger.setLogLevel(logLevel)
         // enable Analytics logs accordingly to logLevel
         CustomerIO.shared.setDebugLogsEnabled(logLevel == .debug)
 
-        initialize(implementation: implementation, diGraph: newDiGraph)
+        initialize(implementation: implementation)
     }
 
     /**
      Common initialization method for setting up the shared `CustomerIO` instance.
      This method is intended to be used by both actual implementations and in tests, ensuring that tests closely mimic the real-world implementation.
      */
-    private static func initialize(implementation: DataPipelineInstance, diGraph: DIGraph) {
-        initializeSharedInstance(with: implementation, diGraph: diGraph)
+    private static func initialize(implementation: DataPipelineInstance) {
+        initializeSharedInstance(with: implementation)
     }
 
     #if DEBUG
@@ -45,7 +41,7 @@ public extension CustomerIO {
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
         let implementation = DataPipeline.setUpSharedInstanceForIntegrationTest(diGraphShared: diGraphShared, config: moduleConfig)
-        initialize(implementation: implementation, diGraph: diGraph)
+        initialize(implementation: implementation)
         return implementation
     }
 
