@@ -11,14 +11,8 @@ import XCTest
  that is a reminder to either fix the compilation and introduce the breaking change or
  fix the mistake and not introduce the breaking change in the code base.
  */
+
 class TrackingAPITest: UnitTest {
-    let dictionaryData: [String: Any] = ["foo": true, "bar": ""]
-    struct CodableExample: Codable {
-        let foo: String
-    }
-
-    let codedData = CodableExample(foo: "")
-
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
@@ -36,63 +30,6 @@ class TrackingAPITest: UnitTest {
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
         let _: CioLogLevel = .debug
-
-        // Public properties exposed to customers
-        _ = CustomerIO.shared.siteId
-        _ = CustomerIO.shared.config
-
-        // Identify
-        CustomerIO.shared.identify(identifier: "")
-        mock.identify(identifier: "")
-        CustomerIO.shared.identify(identifier: "", body: dictionaryData)
-        mock.identify(identifier: "", body: dictionaryData)
-        CustomerIO.shared.identify(identifier: "", body: codedData)
-        mock.identify(identifier: "", body: codedData)
-
-        // clear identify
-        CustomerIO.shared.clearIdentify()
-        mock.clearIdentify()
-
-        // event tracking
-        CustomerIO.shared.track(name: "")
-        mock.track(name: "")
-        CustomerIO.shared.track(name: "", data: dictionaryData)
-        mock.track(name: "", data: dictionaryData)
-        CustomerIO.shared.track(name: "", data: codedData)
-        mock.track(name: "", data: codedData)
-
-        // screen tracking
-        CustomerIO.shared.screen(name: "")
-        mock.screen(name: "")
-        CustomerIO.shared.screen(name: "", data: dictionaryData)
-        mock.screen(name: "", data: dictionaryData)
-        CustomerIO.shared.screen(name: "", data: codedData)
-        mock.screen(name: "", data: codedData)
-
-        // register push token
-        CustomerIO.shared.registerDeviceToken("")
-        mock.registerDeviceToken("")
-
-        // delete push token
-        CustomerIO.shared.deleteDeviceToken()
-        mock.deleteDeviceToken()
-
-        // track push metric
-        let metric = Metric.delivered
-        CustomerIO.shared.trackMetric(deliveryID: "", event: metric, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
-
-        checkDeviceProfileAttributes()
-    }
-
-    func checkDeviceProfileAttributes() {
-        // profile attributes
-        CustomerIO.shared.profileAttributes = dictionaryData
-        mock.profileAttributes = dictionaryData
-
-        // device attributes
-        CustomerIO.shared.deviceAttributes = dictionaryData
-        mock.deviceAttributes = dictionaryData
     }
 
     // SDK wrappers can configure the SDK from a Map.

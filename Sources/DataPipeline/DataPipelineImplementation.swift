@@ -40,11 +40,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         // add/override device attributes in context for each request
         analytics.add(plugin: deviceAttributesPlugin)
 
-        if let existingDeviceToken = globalDataStore.pushDeviceToken {
-            // if the device token exists, pass it to the plugin and ensure device attributes are updated
-            addDeviceAttributes(token: existingDeviceToken)
-        }
-
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
@@ -73,19 +68,19 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     var config: CioInternalCommon.SdkConfig?
 
-    func identify(identifier: String, body: [String: Any]) {
-        commonIdentifyProfile(userId: identifier, attributesDict: body)
+    func identify(userId: String, traits: [String: Any]?) {
+        commonIdentifyProfile(userId: userId, attributesDict: traits)
     }
 
-    func identify<RequestBody: Codable>(identifier: String, body: RequestBody) {
-        commonIdentifyProfile(userId: identifier, attributesCodable: body)
+    func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
+        commonIdentifyProfile(userId: userId, attributesCodable: traits)
     }
 
     /// Associate a user with their unique ID and record traits about them.
     /// - Parameters:
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
-    func identify(body: Codable) {
-        analytics.identify(traits: body)
+    func identify(traits: Codable) {
+        analytics.identify(traits: traits)
     }
 
     var registeredDeviceToken: String? {
@@ -97,20 +92,20 @@ class DataPipelineImplementation: DataPipelineInstance {
         commonClearIdentify()
     }
 
-    func track(name: String, data: [String: Any]) {
-        analytics.track(name: name, properties: data)
+    func track(name: String, properties: [String: Any]?) {
+        analytics.track(name: name, properties: properties)
     }
 
-    func track<RequestBody: Codable>(name: String, data: RequestBody?) {
-        analytics.track(name: name, properties: data)
+    func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
+        analytics.track(name: name, properties: properties)
     }
 
-    func screen(name: String, data: [String: Any]) {
-        analytics.screen(title: name, properties: data)
+    func screen(title: String, properties: [String: Any]?) {
+        analytics.screen(title: title, properties: properties)
     }
 
-    func screen<RequestBody: Codable>(name: String, data: RequestBody?) {
-        analytics.screen(title: name, properties: data)
+    func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
+        analytics.screen(title: title, properties: properties)
     }
 
     var profileAttributes: [String: Any] {

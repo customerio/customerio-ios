@@ -48,7 +48,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
         // currently logged-in user for seamless processing of events.
         if DataPipeline.shared.analytics.userId == nil {
             if let identifier = profileStore.identifier {
-                DataPipeline.shared.identify(identifier: identifier)
+                CustomerIO.shared.identify(userId: identifier)
                 // Remove identifier from storage
                 // so same profile can not be re-identifed
                 profileStore.identifier = nil
