@@ -15,6 +15,7 @@ public enum QueueTaskGroup {
 
 public extension FileManagerQueueStorage {
     func create(
+        siteId: String,
         type: String,
         data: Data,
         groupStart: QueueTaskGroup?,
@@ -23,7 +24,7 @@ public extension FileManagerQueueStorage {
         lock.lock()
         defer { lock.unlock() }
 
-        var existingInventory = getInventory()
+        var existingInventory = getInventory(siteId: siteId)
         let beforeCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: existingInventory.count)
 
         let newTaskStorageId = UUID().uuidString
@@ -34,7 +35,7 @@ public extension FileManagerQueueStorage {
             runResults: QueueTaskRunResults(totalRuns: 0)
         )
 
-        if !update(queueTask: newQueueTask) {
+        if !update(queueTask: newQueueTask, siteId: siteId) {
             return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
@@ -50,7 +51,7 @@ public extension FileManagerQueueStorage {
         let updatedInventoryCount = existingInventory.count
         let afterCreateQueueStatus = QueueStatus(queueId: siteId, numTasksInQueue: updatedInventoryCount)
 
-        if !saveInventory(existingInventory) {
+        if !saveInventory(existingInventory, siteId: siteId) {
             return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)
         }
 
@@ -58,7 +59,7 @@ public extension FileManagerQueueStorage {
         // newQueueItem. This is because queue storage when saving to storage might modify the metadata object
         // such as removing milliseconds from Date. By getting the inventory item directly from device storage,
         // we return the most accurate data on the inventory item.
-        guard let createdTask = getInventory().first(where: { $0.taskPersistedId == newQueueItem.taskPersistedId })
+        guard let createdTask = getInventory(siteId: siteId).first(where: { $0.taskPersistedId == newQueueItem.taskPersistedId })
         else {
             logger.error("expected to find task \(newQueueItem) to be in the inventory but it wasn't")
             return CreateQueueStorageTaskResult(success: false, queueStatus: beforeCreateQueueStatus, createdTask: nil)

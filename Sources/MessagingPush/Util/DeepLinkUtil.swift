@@ -1,15 +1,12 @@
 import CioInternalCommon
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 protocol DeepLinkUtil: AutoMockable {
     func handleDeepLink(_ deepLinkUrl: URL)
 }
 
 @available(iOSApplicationExtension, unavailable)
-// sourcery: InjectRegister = "DeepLinkUtil"
+// sourcery: InjectRegisterShared = "DeepLinkUtil"
 class DeepLinkUtilImpl: DeepLinkUtil {
     private let logger: Logger
     private let uiKit: UIKitWrapper
