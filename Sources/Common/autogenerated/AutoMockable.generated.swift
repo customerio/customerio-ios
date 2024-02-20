@@ -1611,49 +1611,10 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         }
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    public var underlyingHttpRequestsPauseEnds: Date? = nil
-    /// `true` if the getter or setter of property is called at least once.
-    public var httpRequestsPauseEndsCalled: Bool {
-        httpRequestsPauseEndsGetCalled || httpRequestsPauseEndsSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var httpRequestsPauseEndsGetCalled: Bool {
-        httpRequestsPauseEndsGetCallsCount > 0
-    }
-
-    public var httpRequestsPauseEndsGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var httpRequestsPauseEndsSetCalled: Bool {
-        httpRequestsPauseEndsSetCallsCount > 0
-    }
-
-    public var httpRequestsPauseEndsSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var httpRequestsPauseEnds: Date? {
-        get {
-            mockCalled = true
-            httpRequestsPauseEndsGetCallsCount += 1
-            return underlyingHttpRequestsPauseEnds
-        }
-        set(value) {
-            mockCalled = true
-            httpRequestsPauseEndsSetCallsCount += 1
-            underlyingHttpRequestsPauseEnds = value
-        }
-    }
-
     public func resetMock() {
         pushDeviceToken = nil
         pushDeviceTokenGetCallsCount = 0
         pushDeviceTokenSetCallsCount = 0
-        httpRequestsPauseEnds = nil
-        httpRequestsPauseEndsGetCallsCount = 0
-        httpRequestsPauseEndsSetCallsCount = 0
         deleteAllCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -2079,46 +2040,75 @@ public class ProfileStoreMock: ProfileStore, Mock {
         Mocks.shared.add(mock: self)
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    public var underlyingIdentifier: String? = nil
-    /// `true` if the getter or setter of property is called at least once.
-    public var identifierCalled: Bool {
-        identifierGetCalled || identifierSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var identifierGetCalled: Bool {
-        identifierGetCallsCount > 0
-    }
-
-    public var identifierGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var identifierSetCalled: Bool {
-        identifierSetCallsCount > 0
-    }
-
-    public var identifierSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var identifier: String? {
-        get {
-            mockCalled = true
-            identifierGetCallsCount += 1
-            return underlyingIdentifier
-        }
-        set(value) {
-            mockCalled = true
-            identifierSetCallsCount += 1
-            underlyingIdentifier = value
-        }
-    }
-
     public func resetMock() {
-        identifier = nil
-        identifierGetCallsCount = 0
-        identifierSetCallsCount = 0
+        getProfileIdCallsCount = 0
+        getProfileIdReceivedArguments = nil
+        getProfileIdReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        deleteProfileIdCallsCount = 0
+        deleteProfileIdReceivedArguments = nil
+        deleteProfileIdReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - getProfileId
+
+    /// Number of times the function was called.
+    public private(set) var getProfileIdCallsCount = 0
+    /// `true` if the function was ever called.
+    public var getProfileIdCalled: Bool {
+        getProfileIdCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var getProfileIdReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var getProfileIdReceivedInvocations: [String] = []
+    /// Value to return from the mocked function.
+    public var getProfileIdReturnValue: String?
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getProfileIdReturnValue`
+     */
+    public var getProfileIdClosure: ((String) -> String?)?
+
+    /// Mocked function for `getProfileId(siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getProfileId(siteId: String) -> String? {
+        mockCalled = true
+        getProfileIdCallsCount += 1
+        getProfileIdReceivedArguments = siteId
+        getProfileIdReceivedInvocations.append(siteId)
+        return getProfileIdClosure.map { $0(siteId) } ?? getProfileIdReturnValue
+    }
+
+    // MARK: - deleteProfileId
+
+    /// Number of times the function was called.
+    public private(set) var deleteProfileIdCallsCount = 0
+    /// `true` if the function was ever called.
+    public var deleteProfileIdCalled: Bool {
+        deleteProfileIdCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    public private(set) var deleteProfileIdReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var deleteProfileIdReceivedInvocations: [String] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var deleteProfileIdClosure: ((String) -> Void)?
+
+    /// Mocked function for `deleteProfileId(siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func deleteProfileId(siteId: String) {
+        mockCalled = true
+        deleteProfileIdCallsCount += 1
+        deleteProfileIdReceivedArguments = siteId
+        deleteProfileIdReceivedInvocations.append(siteId)
+        deleteProfileIdClosure?(siteId)
     }
 }
 
