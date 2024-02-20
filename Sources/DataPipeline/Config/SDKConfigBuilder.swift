@@ -17,11 +17,14 @@ import Segment
 /// // Use `config` for initializing the SDK...
 /// ```
 public class SDKConfigBuilder {
+    // default static values for configuration options
     private static let defaultAPIHost = "cdp.customer.io/v1"
     private static let defaultCDNHost = "cdp.customer.io/v1"
 
+    // configuration options for SdkConfig
     private var logLevel: CioLogLevel = .error
 
+    // configuration options for DataPipelineConfigOptions
     private let writeKey: String
     private var apiHost: String = SDKConfigBuilder.defaultAPIHost
     private var cdnHost: String = SDKConfigBuilder.defaultCDNHost
@@ -35,6 +38,7 @@ public class SDKConfigBuilder {
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
 
+    // allow construction of builder with required configurations only
     public init(writeKey: String) {
         self.writeKey = writeKey
     }
@@ -117,14 +121,12 @@ public class SDKConfigBuilder {
         return self
     }
 
-    /// Builds and returns both `SdkConfig` and `DataPipelineConfigOptions` objects.
-    /// - Returns: A tuple containing `SdkConfig` and `DataPipelineConfigOptions` instances.
     public func build() -> SDKConfigBuilderResult {
-        // Create SdkConfig object, assuming it requires some of the same configurations or more.
-        // This is an example, adjust according to your actual `SdkConfig` class.
+        // create `SdkConfig`` from given configurations
         var sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         sdkConfig.logLevel = logLevel
 
+        // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
             writeKey: writeKey,
             apiHost: apiHost,
