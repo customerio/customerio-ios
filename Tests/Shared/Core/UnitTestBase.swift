@@ -30,7 +30,7 @@ open class UnitTestBase<Component>: XCTestCase {
     public var threadUtilStub: ThreadUtilStub!
 
     override open func setUp() {
-        setUp(enableLogs: false, modifySdkConfig: nil)
+        setUp(sdkConfig: nil)
     }
 
     /**
@@ -71,16 +71,11 @@ open class UnitTestBase<Component>: XCTestCase {
      @param enableLogs Enables logging for the test class. Can be useful for debugging. Disabled by default as it's too noisey and unhelpful when logs are enabled for all tests.
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
-    open func setUp(
-        enableLogs: Bool = false,
-        siteId: String? = nil,
-        modifySdkConfig: ((inout SdkConfig) -> Void)?
-    ) {
-        var newSdkConfig = SdkConfig.Factory.create(siteId: siteId ?? testSiteId, apiKey: "", region: Region.US)
+    open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
+        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create(siteId: testSiteId, apiKey: "", region: Region.US)
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
-        modifySdkConfig?(&newSdkConfig)
 
         diGraph = DIGraph(sdkConfig: newSdkConfig)
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
