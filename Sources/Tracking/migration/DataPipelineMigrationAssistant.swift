@@ -3,7 +3,7 @@ import CioInternalCommon
 import Foundation
 
 public protocol DataPipelineMigration: AutoMockable {
-    func handleAlreadyIdentifiedMigratedUser()
+    func handleAlreadyIdentifiedMigratedUser(siteId: String)
     func handleQueueBacklog(siteId: String)
 }
 
@@ -37,21 +37,21 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
     }
 
     func handleMigration(siteId: String) {
-        handleAlreadyIdentifiedMigratedUser()
+        handleAlreadyIdentifiedMigratedUser(siteId: siteId)
         handleQueueBacklog(siteId: siteId)
     }
 
-    func handleAlreadyIdentifiedMigratedUser() {
+    func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
         // currently logged-in user for seamless processing of events.
         if DataPipeline.shared.analytics.userId == nil {
-            if let identifier = profileStore.identifier {
+            if let identifier = profileStore.getProfileId(siteId: siteId) {
                 CustomerIO.shared.identify(userId: identifier)
                 // Remove identifier from storage
                 // so same profile can not be re-identifed
-                profileStore.identifier = nil
+                profileStore.deleteProfileId(siteId: siteId)
             }
         }
     }
