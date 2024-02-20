@@ -97,6 +97,8 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
 
     public func resetMock() {
         handleAlreadyIdentifiedMigratedUserCallsCount = 0
+        handleAlreadyIdentifiedMigratedUserReceivedArguments = nil
+        handleAlreadyIdentifiedMigratedUserReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         handleQueueBacklogCallsCount = 0
@@ -115,16 +117,22 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
         handleAlreadyIdentifiedMigratedUserCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    public private(set) var handleAlreadyIdentifiedMigratedUserReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var handleAlreadyIdentifiedMigratedUserReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var handleAlreadyIdentifiedMigratedUserClosure: (() -> Void)?
+    public var handleAlreadyIdentifiedMigratedUserClosure: ((String) -> Void)?
 
-    /// Mocked function for `handleAlreadyIdentifiedMigratedUser()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func handleAlreadyIdentifiedMigratedUser() {
+    /// Mocked function for `handleAlreadyIdentifiedMigratedUser(siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         mockCalled = true
         handleAlreadyIdentifiedMigratedUserCallsCount += 1
-        handleAlreadyIdentifiedMigratedUserClosure?()
+        handleAlreadyIdentifiedMigratedUserReceivedArguments = siteId
+        handleAlreadyIdentifiedMigratedUserReceivedInvocations.append(siteId)
+        handleAlreadyIdentifiedMigratedUserClosure?(siteId)
     }
 
     // MARK: - handleQueueBacklog

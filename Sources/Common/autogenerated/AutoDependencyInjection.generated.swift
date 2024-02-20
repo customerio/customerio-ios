@@ -98,7 +98,7 @@ extension DIGraph {
         _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = keyValueStorage
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -121,7 +121,7 @@ extension DIGraph {
     }
 
     private var newProfileStore: ProfileStore {
-        CioProfileStore(keyValueStorage: keyValueStorage)
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
     }
 
     // Queue
@@ -284,14 +284,14 @@ extension DIGraph {
         UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
 
-    // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
+    // SandboxedSiteIdKeyValueStorage
+    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
         getOverriddenInstance() ??
-            newKeyValueStorage
+            newSandboxedSiteIdKeyValueStorage
     }
 
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
+    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
