@@ -79,13 +79,6 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 
-    // Code below this line will be updated in later PRs
-    // TODO: [CDP] Review CustomerIOInstance here after finalizing DataPipelineImplementation
-
-    public var siteId: String? { implementation?.siteId }
-
-    public var config: CioInternalCommon.SdkConfig? { implementation?.config }
-
     // MARK: - DataPipelineInstance implementation
 
     public var profileAttributes: [String: Any] {

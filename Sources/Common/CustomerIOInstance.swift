@@ -1,10 +1,6 @@
 import Foundation
 
 public protocol CustomerIOInstance: AutoMockable {
-    var siteId: String? { get }
-    /// Get the current configuration options set for the SDK.
-    var config: SdkConfig? { get }
-
     // MARK: - Profile
 
     /**
@@ -162,8 +158,8 @@ public class CustomerIO: CustomerIOInstance {
         SdkVersion.version
     }
 
-    public var siteId: String? {
-        diGraph?.sdkConfig.siteId
+    private var diGraph: DIGraphShared {
+        DIGraphShared.shared
     }
 
     /**
@@ -178,10 +174,6 @@ public class CustomerIO: CustomerIOInstance {
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
     public var implementation: CustomerIOInstance?
 
-    // The 1 place that DiGraph is strongly stored in memory for the SDK.
-    // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    public var diGraph: DIGraph?
-
     // private constructor to force use of singleton API
     private init() {}
 
@@ -190,9 +182,8 @@ public class CustomerIO: CustomerIOInstance {
     // Any implementation of the interface works for unit tests.
 
     @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance, diGraph: DIGraph) -> CustomerIO {
+    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO {
         shared.implementation = implementation
-        shared.diGraph = diGraph
         return shared
     }
 
@@ -201,15 +192,13 @@ public class CustomerIO: CustomerIOInstance {
     }
     #endif
 
-    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph) {
+    public static func initializeSharedInstance(with implementation: CustomerIOInstance) {
         shared.implementation = implementation
-        shared.diGraph = diGraph
-        shared.postInitialize(diGraph: diGraph)
+        shared.postInitialize()
     }
 
-    func postInitialize(diGraph: DIGraph) {
+    func postInitialize() {
         let logger = diGraph.logger
-        let siteId = diGraph.sdkConfig.siteId
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
@@ -220,12 +209,8 @@ public class CustomerIO: CustomerIOInstance {
 
         logger
             .info(
-                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
+                "Customer.io SDK \(SdkVersion.version) initialized and ready to use"
             )
-    }
-
-    public var config: SdkConfig? {
-        implementation?.config
     }
 
     // MARK: - CustomerIOInstance implementation

@@ -33,7 +33,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         )
 
         // setup shared instance with desired implementation for unit tests
-        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation, diGraph: diGraph)
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation)
         customerIO.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
 
         return customerIO

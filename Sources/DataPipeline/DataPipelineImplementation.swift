@@ -40,11 +40,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         // add/override device attributes in context for each request
         analytics.add(plugin: deviceAttributesPlugin)
 
-        if let existingDeviceToken = globalDataStore.pushDeviceToken {
-            // if the device token exists, pass it to the plugin and ensure device attributes are updated
-            addDeviceAttributes(token: existingDeviceToken)
-        }
-
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
