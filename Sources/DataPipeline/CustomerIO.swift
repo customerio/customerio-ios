@@ -39,7 +39,7 @@ public extension CustomerIO {
     // Integration tests use the actual implementation.
 
     @discardableResult
-    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, diGraph: DIGraph, moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
         let implementation = DataPipeline.setUpSharedInstanceForIntegrationTest(diGraphShared: diGraphShared, config: moduleConfig)
         initialize(implementation: implementation)
         return implementation
