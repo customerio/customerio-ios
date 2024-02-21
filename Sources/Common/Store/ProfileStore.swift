@@ -5,7 +5,7 @@ public protocol ProfileStore: AutoMockable {
     func deleteProfileId(siteId: String)
 }
 
-// sourcery: InjectRegister = "ProfileStore"
+// sourcery: InjectRegisterShared = "ProfileStore"
 public class CioProfileStore: ProfileStore {
     private let keyValueStorage: SandboxedSiteIdKeyValueStorage
 

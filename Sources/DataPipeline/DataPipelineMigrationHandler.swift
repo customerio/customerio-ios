@@ -12,7 +12,7 @@ class DataPipelineMigrationHandler: DataPipelineMigrationAction {
     }
 
     func processAlreadyIdentifiedUser(identifier: String) {
-        DataPipeline.shared.identify(identifier: identifier, body: [:])
+        implementation.identify(userId: identifier, traits: [:])
     }
 
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {
