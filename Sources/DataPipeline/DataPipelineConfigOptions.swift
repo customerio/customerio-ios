@@ -40,7 +40,7 @@ public struct DataPipelineConfigOptions {
     }
 
     /// Site Id that will be used for tracking data migration
-    public let siteId: String = ""
+    public var siteId: String = ""
 
     /// Server key
     public let writeKey: String
