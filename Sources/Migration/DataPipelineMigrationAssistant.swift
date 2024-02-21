@@ -51,15 +51,15 @@ public class DataPipelineMigrationAssistant {
         }
     }
 
-    func handleQueueBacklog() {
-        let allStoredTasks = backgroundQueue.getAllStoredTasks()
+    func handleQueueBacklog(siteId: String) {
+        let allStoredTasks = backgroundQueue.getAllStoredTasks(siteId: siteId)
         if allStoredTasks.count <= 0 {
             logger.info("CIO-CDP Migration: No tasks pending in the background queue to be executed.")
             return
         }
         threadUtil.runBackground { [weak self] in
             allStoredTasks.forEach { task in
-                self?.getAndProcessTask(for: task)
+                self?.getAndProcessTask(for: task, siteId: siteId)
             }
         }
     }
@@ -68,8 +68,8 @@ public class DataPipelineMigrationAssistant {
      Retrieves a task from the queue based on its metadata.
      Fetches `type` of the task and processes accordingly
      */
-    func getAndProcessTask(for task: QueueTaskMetadata) {
-        guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
+    func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
+        guard let taskDetail = backgroundQueue.getTaskDetail(task, siteId: siteId) else { return }
         let taskData = taskDetail.data
         let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
         var isProcessed = true
@@ -77,7 +77,7 @@ public class DataPipelineMigrationAssistant {
         // Remove the task from the queue if the task has been processed successfully
         defer {
             if isProcessed {
-                backgroundQueue.deleteProcessedTask(task)
+                backgroundQueue.deleteProcessedTask(task, siteId: siteId)
             }
         }
         switch taskDetail.taskType {

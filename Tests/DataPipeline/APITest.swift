@@ -14,6 +14,11 @@ import XCTest
  */
 class DataPipelineAPITest: UnitTest {
     let dictionaryData: [String: Any] = ["foo": true, "bar": ""]
+    struct CodableExample: Codable {
+        let foo: String
+    }
+
+    let codedData = CodableExample(foo: "")
 
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
@@ -30,6 +35,47 @@ class DataPipelineAPITest: UnitTest {
         CustomerIO.initialize(writeKey: "", logLevel: .debug) { (config: inout DataPipelineConfigOptions) in
             config.autoAddCustomerIODestination = false
         }
+
+        // Identify
+        CustomerIO.shared.identify(userId: "")
+        mock.identify(userId: "", traits: nil)
+        CustomerIO.shared.identify(userId: "", traits: dictionaryData)
+        mock.identify(userId: "", traits: dictionaryData)
+        CustomerIO.shared.identify(userId: "", traits: codedData)
+        mock.identify(userId: "", traits: codedData)
+
+        // clear identify
+        CustomerIO.shared.clearIdentify()
+        mock.clearIdentify()
+
+        // event tracking
+        CustomerIO.shared.track(name: "")
+        mock.track(name: "", properties: nil)
+        CustomerIO.shared.track(name: "", properties: dictionaryData)
+        mock.track(name: "", properties: dictionaryData)
+        CustomerIO.shared.track(name: "", properties: codedData)
+        mock.track(name: "", properties: codedData)
+
+        // screen tracking
+        CustomerIO.shared.screen(title: "")
+        mock.screen(title: "", properties: nil)
+        CustomerIO.shared.screen(title: "", properties: dictionaryData)
+        mock.screen(title: "", properties: dictionaryData)
+        CustomerIO.shared.screen(title: "", properties: codedData)
+        mock.screen(title: "", properties: codedData)
+
+        // register push token
+        CustomerIO.shared.registerDeviceToken("")
+        mock.registerDeviceToken("")
+
+        // delete push token
+        CustomerIO.shared.deleteDeviceToken()
+        mock.deleteDeviceToken()
+
+        // track push metric
+        let metric = Metric.delivered
+        CustomerIO.shared.trackMetric(deliveryID: "", event: metric, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
 
         checkDeviceProfileAttributes()
     }

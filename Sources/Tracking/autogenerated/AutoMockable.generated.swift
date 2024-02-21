@@ -79,5 +79,3 @@ import CioInternalCommon
  ```
 
  */
-
-// swiftlint:enable all

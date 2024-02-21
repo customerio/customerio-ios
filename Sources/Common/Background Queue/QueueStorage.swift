@@ -24,99 +24,76 @@ import Foundation
  if a customer app creates lots of tasks for an app that is in Airplane mode, for example.
  */
 public protocol QueueStorage: AutoMockable {
-    func getInventory() -> [QueueTaskMetadata]
-    func get(storageId: String) -> QueueTask?
-    func delete(storageId: String) -> Bool
-    func deleteExpired() -> [QueueTaskMetadata]
+    func getInventory(siteId: String) -> [QueueTaskMetadata]
+    func get(storageId: String, siteId: String) -> QueueTask?
+    func delete(storageId: String, siteId: String) -> Bool
 }
 
 // sourcery: InjectRegister = "QueueStorage"
 public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter
-    let siteId: String
-    private let sdkConfig: SdkConfig
     let logger: Logger
     let dateUtil: DateUtil
     private var inventoryStore: QueueInventoryMemoryStore
 
     let lock: Lock
 
-    private var inventory: [QueueTaskMetadata]? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-
-            if let inventoryCache = inventoryStore.inventory {
-                return inventoryCache
-            }
-
-            guard let data = fileStorage.get(type: .queueInventory, fileId: nil) else { return nil }
-            guard let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) else { return nil }
-            inventoryStore.inventory = readInventory // set in-memory cache for next time getter is called
-
-            return readInventory
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-
-            guard let data = jsonAdapter.toJson(newValue) else {
-                return
-            }
-
-            // the inventory is the BQ's single source of truth for what tasks are in the BQ. It's important that the inventory cache reflects what's in SDK storage so only update
-            // it after we successfully save the storage.
-            // If there is a failed save to file system, the item added to the BQ will get ignored to try and keep the SDK into an error-free state.
-            let successfullySavedInStorage = fileStorage.save(type: .queueInventory, contents: data, fileId: nil)
-
-            if successfullySavedInStorage {
-                inventoryStore.inventory = newValue // update cache
-            }
-        }
-    }
-
     init(
         fileStorage: FileStorage,
         jsonAdapter: JsonAdapter,
         lockManager: LockManager,
-        sdkConfig: SdkConfig,
         logger: Logger,
         dateUtil: DateUtil,
         inventoryStore: QueueInventoryMemoryStore
     ) {
-        self.siteId = sdkConfig.siteId
         self.fileStorage = fileStorage
         self.jsonAdapter = jsonAdapter
-        self.sdkConfig = sdkConfig
         self.logger = logger
         self.dateUtil = dateUtil
         self.lock = lockManager.getLock(id: .queueStorage)
         self.inventoryStore = inventoryStore
     }
 
-    public func getInventory() -> [QueueTaskMetadata] {
-        inventory ?? []
-    }
-
-    public func saveInventory(_ inventory: [QueueTaskMetadata]) -> Bool {
-        // Logic of saving inventory was moved into the `inventory` setter.
-        // However, to keep backwards compatibility with the API of this function (returning a Bool),
-        // we have this below logic to check if the inventory was successfully saved.
-        let inventoryBeforeSave = getInventory() // getInventory reads from the in-memory cache so they are performant to perform.
-        self.inventory = inventory
-        let inventoryAfterSave = getInventory()
-
-        let inventorySavedSuccessfully = inventoryBeforeSave != inventoryAfterSave
-
-        return inventorySavedSuccessfully
-    }
-
-    public func get(storageId: String) -> QueueTask? {
+    public func getInventory(siteId: String) -> [QueueTaskMetadata] {
         lock.lock()
         defer { lock.unlock() }
 
-        guard let data = fileStorage.get(type: .queueTask, fileId: storageId),
+        if let inventoryCache = inventoryStore.inventory {
+            return inventoryCache
+        }
+
+        guard let data = fileStorage.get(siteId: siteId, type: .queueInventory, fileId: nil) else { return [] }
+        guard let readInventory: [QueueTaskMetadata] = jsonAdapter.fromJson(data) else { return [] }
+        inventoryStore.inventory = readInventory // set in-memory cache for next time getter is called
+
+        return readInventory
+    }
+
+    public func saveInventory(_ newInventory: [QueueTaskMetadata], siteId: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let data = jsonAdapter.toJson(newInventory) else { return false }
+
+        let successfullySavedInStorage = fileStorage.save(siteId: siteId, type: .queueInventory, contents: data, fileId: nil)
+        guard successfullySavedInStorage else {
+            return false
+        }
+
+        // the inventory is the BQ's single source of truth for what tasks are in the BQ. It's important that the inventory cache reflects what's in SDK storage so only update
+        // it after we successfully save the storage.
+        // If there is a failed save to file system, the item added to the BQ will get ignored to try and keep the SDK into an error-free state.
+        inventoryStore.inventory = newInventory // update cache
+
+        return true
+    }
+
+    public func get(storageId: String, siteId: String) -> QueueTask? {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let data = fileStorage.get(siteId: siteId, type: .queueTask, fileId: storageId),
               let task: QueueTask = jsonAdapter.fromJson(data)
         else {
             return nil
@@ -125,74 +102,30 @@ public class FileManagerQueueStorage: QueueStorage {
         return task
     }
 
-    public func delete(storageId: String) -> Bool {
+    public func delete(storageId: String, siteId: String) -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
         // update inventory first so code that requests the inventory doesn't get the inventory item we are deleting
-        var existingInventory = getInventory()
+        var existingInventory = getInventory(siteId: siteId)
         existingInventory.removeAll { $0.taskPersistedId == storageId }
-        let updateInventoryResult = saveInventory(existingInventory)
+        let updateInventoryResult = saveInventory(existingInventory, siteId: siteId)
 
         if !updateInventoryResult { return false }
 
         // if this fails, we at least deleted the task from inventory so
         // it will not run again which is the most important thing
-        return fileStorage.delete(type: .queueTask, fileId: storageId)
-    }
-
-    public func deleteExpired() -> [QueueTaskMetadata] {
-        lock.lock()
-        defer { lock.unlock() }
-
-        logger.debug("deleting expired tasks from the queue")
-
-        var tasksToDelete: Set<QueueTaskMetadata> = Set()
-        let queueTaskExpiredThreshold = Date().subtract(sdkConfig.backgroundQueueExpiredSeconds, .second)
-        logger.debug("""
-        deleting tasks older then \(queueTaskExpiredThreshold.string(format: .iso8601noMilliseconds)),
-        current time is: \(Date().string(format: .iso8601noMilliseconds))
-        """)
-
-        getInventory().filter { inventoryItem in
-            // Do not delete tasks that are at the start of a group of tasks.
-            // Why? Take for example Identifying a profile. If we identify profile X in an app today,
-            // we expire the Identify queue task and delete the queue task, and then profile X stays logged
-            // into an app for 6 months, that means we run the risk of 6 months of data never successfully being sent
-            // to the API.
-            // Also, queue tasks such as Identifying a profile are more rare queue tasks compared to tracking of events
-            // (that are not the start of a group). So, it should rarely be a scenario when there are thousands
-            // of "expired" Identifying a profile tasks sitting in a queue. It's the queue tasks such as tracking
-            // that are taking up a large majority of the queue inventory. Those we should be deleting more of.
-            inventoryItem.groupStart == nil
-        }.forEach { taskInventoryItem in
-            let isItemTooOld = taskInventoryItem.createdAt.isOlderThan(queueTaskExpiredThreshold)
-
-            if isItemTooOld {
-                tasksToDelete.insert(taskInventoryItem)
-            }
-        }
-
-        logger.debug("deleting \(tasksToDelete.count) tasks. \n Tasks: \(tasksToDelete)")
-
-        tasksToDelete.forEach { taskToDelete in
-            // Because the queue tasks we are deleting are not the start of a group,
-            // if deleting a task is not successful, we can ignore that
-            // because it doesn't negatively effect the state of the SDK or the queue.
-            _ = self.delete(storageId: taskToDelete.taskPersistedId)
-        }
-
-        return Array(tasksToDelete)
+        return fileStorage.delete(siteId: siteId, type: .queueTask, fileId: storageId)
     }
 }
 
 public extension FileManagerQueueStorage {
-    func update(queueTask: QueueTask) -> Bool {
+    func update(queueTask: QueueTask, siteId: String) -> Bool {
         guard let data = jsonAdapter.toJson(queueTask) else {
             return false
         }
 
-        return fileStorage.save(type: .queueTask, contents: data, fileId: queueTask.storageId)
+        return fileStorage.save(siteId: siteId, type: .queueTask, contents: data, fileId: queueTask.storageId)
     }
 }
 

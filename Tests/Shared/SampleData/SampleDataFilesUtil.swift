@@ -26,49 +26,28 @@ public class SampleDataFilesUtil {
     }
 
     private let sampleDataFilesRootDirectoryName = "SampleDataFiles"
-
-    public func saveSdkV1QueueFiles() {
-        let queueSnapshotFilesDirectoryName = "V1QueueSnapshot"
-
-        saveFileAssertSuccess(
-            type: .queueInventory,
-            fileName: "inventory.json",
-            subdirectory: queueSnapshotFilesDirectoryName
-        )
-
-        saveFilesInDirectoryAssertSuccess(type: .queueTask, fileNames: [
-            "FD677E99-B774-4B12-A30A-B2315D497D36.json",
-            "DD1F8FE7-ADDB-4015-849F-4BBD0E537A2C.json",
-            "D687EAA8-396F-4DEE-B983-B8CFF723A1B2.json",
-            "BDE6D050-3A26-4A4D-B923-B1C52901090E.json",
-            "AA6418AC-40D0-4580-93B9-C6262257BAA3.json",
-            "A4E62708-F263-4562-8503-CB55B4AE8E39.json",
-            "3143DAD0-E28A-42E6-84B1-D9F6779DCF91.json",
-            "940DDFFB-BDC6-4452-8895-A43906E75FC2.json",
-            "8C686475-FDD4-44BE-B423-B974D4EDF83A.json",
-            "6C0BEF56-E407-4176-89D3-A498CBEA671F.json",
-            "0F3F3BBB-9C04-4CEE-9267-54FEE574CF4B.json"
-        ], subdirectory: "\(queueSnapshotFilesDirectoryName)/tasks")
-    }
 }
 
 private extension SampleDataFilesUtil {
     func saveFilesInDirectoryAssertSuccess(
+        siteId: String,
         type: FileType,
         fileNames: [String],
-        subdirectory: String
+        subdirectory: String?
     ) {
         fileNames.forEach { fileName in
-            saveFileAssertSuccess(type: type, fileName: fileName, subdirectory: subdirectory)
+            saveFileAssertSuccess(siteId: siteId, type: type, fileName: fileName, subdirectory: subdirectory)
         }
     }
 
     func saveFileAssertSuccess(
+        siteId: String,
         type: FileType,
         fileName: String,
-        subdirectory: String
+        subdirectory: String?
     ) {
         let successfullySavedFile = fileStore.save(
+            siteId: siteId,
             type: type,
             contents: readFileContents(
                 fileName: fileName,
@@ -86,18 +65,21 @@ private extension SampleDataFilesUtil {
 
     // Read file contents from a static file stored in the Tests/ source code.
     // Thanks, https://useyourloaf.com/blog/add-resources-to-swift-packages/
-    func readFileContents(fileName: String, subdirectory: String) -> String {
+    func readFileContents(fileName: String, subdirectory: String?) -> String {
         let filenameWithoutExtension = String(fileName.split(separator: ".")[0])
         let filenameExtension = String(fileName.split(separator: ".").last!)
-        let subdirectory = "\(sampleDataFilesRootDirectoryName)/\(subdirectory)"
+        var directoryToSaveFiles = sampleDataFilesRootDirectoryName
+        if let subdirectory = subdirectory {
+            directoryToSaveFiles += "/\(subdirectory)"
+        }
 
         guard let pathString = Bundle.module.url(
             forResource: filenameWithoutExtension,
             withExtension: filenameExtension,
-            subdirectory: subdirectory
+            subdirectory: directoryToSaveFiles
         ) else {
             fatalError(
-                "\(subdirectory)/\(filenameWithoutExtension).\(filenameExtension) not found in Tests/\(subdirectory)"
+                "\(directoryToSaveFiles)/\(filenameWithoutExtension).\(filenameExtension) not found in Tests/\(directoryToSaveFiles)"
             )
         }
 

@@ -14,10 +14,9 @@ import XCTest
 /// For SDK-wide tests, child classes can conveniently inherit from `UnitTest`, designed specifically for testing only SDK APIs.
 open class UnitTestBase<Component>: XCTestCase {
     public let testWriteKey = "test"
-    // Initialize DIGraphShared instantly to closely copy production behavior.
-    // The graph in production is initialized statically and can be accessed using .shared.
-    // This also allows us to override any dependency without waiting for SDK/modules to initialize and setup.
-    public var diGraphShared: DIGraphShared = .init()
+    // Using the .shared instance of the DIGraph to ensure that all tests share the same instance and data.
+    // Overriding it will work the same way as overriding the shared instance of the SDK.
+    public let diGraphShared: DIGraphShared = .shared
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
@@ -118,9 +117,7 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()
-        diGraphShared = .init()
         diGraph.reset()
-        diGraph = nil
     }
 
     open func deleteAllPersistentData() {
@@ -153,5 +150,19 @@ open class UnitTestBase<Component>: XCTestCase {
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(0.5)
+    }
+
+    public func runTest(numberOfTimes: Int, test: () -> Void) {
+        for _ in 0 ..< numberOfTimes {
+            setUp()
+            test()
+            tearDown()
+        }
+    }
+
+    public func runOnBackground(_ block: @escaping () -> Void) {
+        CioThreadUtil().runBackground {
+            block()
+        }
     }
 }

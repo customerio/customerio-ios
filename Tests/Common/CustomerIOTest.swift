@@ -9,23 +9,25 @@ class CustomerIOTest: UnitTest {
 
     private var customerIO: CustomerIO!
 
-    override func setUp() {
-        super.setUp()
+    override func setUpDependencies() {
+        super.setUpDependencies()
+        diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+    }
 
-        diGraph.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
-
-        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implmentationMock, diGraph: diGraph)
+    override func initializeSDKComponents() -> CustomerIO? {
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implmentationMock)
+        return customerIO
     }
 
     func test_initialize_givenPushDeviceTokenNotSet_expectRegisterDeviceTokenNotCalled() {
-        customerIO.postInitialize(diGraph: diGraph)
+        customerIO.postInitialize()
         XCTAssertFalse(implmentationMock.registerDeviceTokenCalled)
     }
 
     func test_initialize_givenPushDeviceTokenSet_expectRegisterDeviceTokenCalled() {
         let pushDeviceToken = String.random
         globalDataStoreMock.pushDeviceToken = pushDeviceToken
-        customerIO.postInitialize(diGraph: diGraph)
+        customerIO.postInitialize()
         XCTAssertTrue(implmentationMock.registerDeviceTokenCalled)
     }
 }
