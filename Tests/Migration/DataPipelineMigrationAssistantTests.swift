@@ -13,15 +13,15 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     private let migrationHandler = DataPipelineMigrationActionMock()
     private var queueStorage: QueueStorage { diGraph.queueStorage }
     public var migrationAssistant: DataPipelineMigrationAssistant {
-        DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: diGraph)
+        DataPipelineMigrationAssistant(handler: migrationHandler)
     }
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        diGraph.override(value: profileStoreMock, forType: ProfileStore.self)
-        diGraph.override(value: dateUtilStub, forType: DateUtil.self)
-        diGraph.override(value: backgroundQueueMock, forType: Queue.self)
+        DIGraphShared.shared.override(value: profileStoreMock, forType: ProfileStore.self)
+        DIGraphShared.shared.override(value: dateUtilStub, forType: DateUtil.self)
+        DIGraphShared.shared.override(value: backgroundQueueMock, forType: Queue.self)
     }
 
     // MARK: performMigration
@@ -30,15 +30,14 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     // such as when the user id is nil or takes expected parameter
     func test_performMigration_WithAndWithoutUserId() {
         backgroundQueueMock.getAllStoredTasksReturnValue = []
-        XCTAssertNotNil(migrationAssistant.performMigration(for: nil))
-        XCTAssertNotNil(migrationAssistant.performMigration(for: String.random))
+        XCTAssertNotNil(migrationAssistant.performMigration(siteId: testSiteId))
     }
 
     // MARK: handleQueueBacklog/getAndProcessTask
 
     func test_givenEmptyBacklog_expectNoTasksProcessed() {
         backgroundQueueMock.getAllStoredTasksReturnValue = []
-        XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: .random))
+        XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.getAllStoredTasksCallsCount, 1)
     }
 
@@ -99,50 +98,60 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_migrateUserId_expectMigrationCodeRunOnce() {
         // profile previously identified in SDK, before CDP migration
         let givenIdentifier = String.random
-        profileStoreMock.identifier = givenIdentifier
+        profileStoreMock.getProfileIdReturnValue = givenIdentifier
 
         // CDP migration is performed for the first time in the SDK.
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil))
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
+        // deleteProfileId method is called when migration happened then
+        XCTAssertEqual(profileStoreMock.deleteProfileIdCallsCount, 1)
 
         // Check that the migration was successful:
-        // Update the user identifier and re-call handleAlreadyIdentifiedMigratedUser
-        // to ensure the user does not undergo the migration process again
-        // after being identified on the CDP
-        let updatedIdentifier = String.random
-        profileStoreMock.identifier = updatedIdentifier
+        // To ensure the user does not undergo the migration process again
+        // after being identified on the CDP.
+        // Remove the return value of identifier so that
+        // the profile is not found on calling `profileStore.getProfileId(siteId: siteId)`
+        profileStoreMock.getProfileIdReturnValue = nil
 
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-        XCTAssertNotNil(profileStoreMock.identifier)
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
+        // Ensure that `deleteProfileIdCallsCount` is not called again
+        // If the count increases then it means migration was done again
+        XCTAssertEqual(profileStoreMock.deleteProfileIdCallsCount, 1)
     }
 
     func test_givenAlreadyIdentifiedProfile_expectNilProfileIdentifier() {
         let givenProfileIdentifiedInJourneys = String.random
-        profileStoreMock.identifier = givenProfileIdentifiedInJourneys
-        migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: nil)
 
-        XCTAssertNil(profileStoreMock.identifier)
+        profileStoreMock.getProfileIdReturnValue = givenProfileIdentifiedInJourneys
+        migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId)
+        profileStoreMock.getProfileIdReturnValue = nil
+
+        XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
     }
 
     func test_givenUserOnCDPIdentified_expectNoUpdate() {
         let givenIdentifier = String.random
         migrationHandler.processAlreadyIdentifiedUser(identifier: givenIdentifier)
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-        XCTAssertNil(profileStoreMock.identifier)
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
+        profileStoreMock.getProfileIdReturnValue = nil
+
+        XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
     }
 
     func test_givenUserOnCDPIdentified_expectMigrationCodeRunOnce() {
         let givenIdentifier = String.random
         migrationHandler.processAlreadyIdentifiedUser(identifier: givenIdentifier)
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-        XCTAssertNil(profileStoreMock.identifier)
+        profileStoreMock.getProfileIdReturnValue = givenIdentifier
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
+        profileStoreMock.getProfileIdReturnValue = nil
 
-        // Update the user identifier and re-call handleAlreadyIdentifiedMigratedUser
-        // to ensure the user does not undergo the migration process again
-        // after being identified on the CDP
-        let updatedIdentifier = String.random
-        profileStoreMock.identifier = updatedIdentifier
-        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(for: givenIdentifier))
-        XCTAssertEqual(profileStoreMock.identifier, updatedIdentifier)
+        XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
+        XCTAssertEqual(profileStoreMock.deleteProfileIdCallsCount, 1)
+
+        // Re-call handleAlreadyIdentifiedMigratedUser to ensure the user does not
+        // undergo the migration process again after being identified on the CDP
+        // mock property `deleteProfileIdCallsCount` is called only once
+        XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
+        XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
+        XCTAssertEqual(profileStoreMock.deleteProfileIdCallsCount, 1)
     }
 }
