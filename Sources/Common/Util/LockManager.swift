@@ -7,7 +7,7 @@ import Foundation
 // Instead of making every class that contains a `Lock` a singleton, let's make
 // all `Lock` instances singletons.
 //
-// sourcery: InjectRegister = "LockManager"
+// sourcery: InjectRegisterShared = "LockManager"
 // sourcery: InjectSingleton
 public class LockManager {
     private var locks: [String: Lock] = [:]
@@ -31,5 +31,12 @@ public class LockManager {
 
 public enum LockReference: String {
     case queueStorage
-    case singleScheduleTimer
+    case pushHistory
+}
+
+// Dependency needs to be accessed by multiple graphs.
+extension DIGraph {
+    var lockManager: LockManager {
+        DIGraphShared.shared.lockManager
+    }
 }

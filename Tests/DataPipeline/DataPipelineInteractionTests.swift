@@ -26,6 +26,12 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
 
+    override func setUp(enableLogs: Bool = false, siteId: String? = nil, writeKey: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil, modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?) {
+        super.setUp(enableLogs: enableLogs, siteId: siteId, writeKey: writeKey, modifySdkConfig: modifySdkConfig, modifyModuleConfig: modifyModuleConfig)
+        // OutputReaderPlugin helps validating interactions with analytics
+        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
+    }
+
     // MARK: identify
 
     // testing `identify()` with request body. Will make an integration test for all `identify()` functions
@@ -39,7 +45,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
-        XCTAssertEqual(analytics.traits()?.count, 0)
+        XCTAssertNil(analytics.traits())
 
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
         guard let identifyEvent = outputReader.identifyEvents.last else {
@@ -48,7 +54,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         }
 
         XCTAssertEqual(identifyEvent.userId, givenIdentifier)
-        XCTAssertMatches(identifyEvent.traits?.dictionaryValue, [:])
+        XCTAssertNil(identifyEvent.traits)
     }
 
     func test_identify_expectSetNewProfileWithAttributes() {
@@ -280,6 +286,62 @@ class DataPipelineInteractionTests: IntegrationTest {
 
     // MARK: track
 
+    func test_track_givenAutoTrackDeviceAttributesEnabled_expectCorrectDeviceAttributesInContext() {
+        let givenDefaultAttributes: [String: Any] = [
+            "cio_sdk_version": "3.0.0",
+            "push_enabled": true
+        ]
+        mockDeviceAttributes(defaultAttributes: givenDefaultAttributes)
+
+        customerIO.deviceAttributes = [:]
+
+        customerIO.track(name: String.random)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.trackEvents.count, 1)
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        let eventDeviceAttributes = trackEvent.deviceAttributes
+        // cio default attributes
+        XCTAssertNotNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNotNil(eventDeviceAttributes?["push_enabled"])
+        // segment events
+        XCTAssertNotNil(eventDeviceAttributes?["id"])
+        XCTAssertNotNil(eventDeviceAttributes?["model"])
+        XCTAssertNotNil(eventDeviceAttributes?["manufacturer"])
+        XCTAssertNotNil(eventDeviceAttributes?["type"])
+    }
+
+    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
+        setUp(modifyModuleConfig: { config in
+            config.autoTrackDeviceAttributes = false
+        })
+
+        customerIO.track(name: String.random)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.trackEvents.count, 1)
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        let eventDeviceAttributes = trackEvent.deviceAttributes
+        // cio default attributes
+        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
+        // segment events
+        XCTAssertNil(eventDeviceAttributes?["id"])
+        XCTAssertNil(eventDeviceAttributes?["model"])
+        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
+        XCTAssertNil(eventDeviceAttributes?["type"])
+    }
+
     func test_track_expectCorrectEventDispatched_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
@@ -287,7 +349,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         customerIO.identify(userId: givenIdentifier)
         outputReader.resetPlugin()
 
-        customerIO.track(name: String.random, data: givenData)
+        customerIO.track(name: String.random, properties: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -312,7 +374,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader.resetPlugin()
 
         let data: EmptyRequestBody? = nil
-        customerIO.track(name: String.random, data: data)
+        customerIO.track(name: String.random, properties: data)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -350,7 +412,7 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader.resetPlugin()
         eventBusHandlerMock.resetMock()
 
-        customerIO.screen(name: givenScreen, data: givenData)
+        customerIO.screen(title: givenScreen, properties: givenData)
 
         XCTAssertEqual(outputReader.events.count, 1)
         guard let screenEvent = outputReader.lastEvent as? ScreenEvent else {

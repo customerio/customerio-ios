@@ -56,9 +56,6 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = globalDataStore
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -86,9 +83,6 @@ extension DIGraph {
         _ = jsonAdapter
         countDependenciesResolved += 1
 
-        _ = lockManager
-        countDependenciesResolved += 1
-
         _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
@@ -104,7 +98,7 @@ extension DIGraph {
         _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = keyValueStorage
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -120,16 +114,6 @@ extension DIGraph {
         CIODeviceInfo()
     }
 
-    // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {
-        getOverriddenInstance() ??
-            newGlobalDataStore
-    }
-
-    private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: keyValueStorage)
-    }
-
     // ProfileStore
     public var profileStore: ProfileStore {
         getOverriddenInstance() ??
@@ -137,7 +121,7 @@ extension DIGraph {
     }
 
     private var newProfileStore: ProfileStore {
-        CioProfileStore(keyValueStorage: keyValueStorage)
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
     }
 
     // Queue
@@ -147,7 +131,7 @@ extension DIGraph {
     }
 
     private var newQueue: Queue {
-        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, sdkConfig: sdkConfig, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer
@@ -211,7 +195,7 @@ extension DIGraph {
     }
 
     private var newFileStorage: FileStorage {
-        FileManagerFileStorage(sdkConfig: sdkConfig, logger: logger)
+        FileManagerFileStorage(logger: logger)
     }
 
     // QueueStorage
@@ -221,7 +205,7 @@ extension DIGraph {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, sdkConfig: sdkConfig, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
 
     // JsonAdapter
@@ -232,30 +216,6 @@ extension DIGraph {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
-    }
-
-    // LockManager (singleton)
-    public var lockManager: LockManager {
-        getOverriddenInstance() ??
-            sharedLockManager
-    }
-
-    public var sharedLockManager: LockManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_LockManager_singleton_access").sync {
-            if let overridenDep: LockManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
-            let instance = existingSingletonInstance ?? _get_lockManager()
-            self.singletons[String(describing: LockManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_lockManager() -> LockManager {
-        LockManager()
     }
 
     // QueueInventoryMemoryStore (singleton)
@@ -324,14 +284,14 @@ extension DIGraph {
         UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
 
-    // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
+    // SandboxedSiteIdKeyValueStorage
+    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
         getOverriddenInstance() ??
-            newKeyValueStorage
+            newSandboxedSiteIdKeyValueStorage
     }
 
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
@@ -367,6 +327,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = jsonAdapter
+        countDependenciesResolved += 1
+
+        _ = lockManager
         countDependenciesResolved += 1
 
         _ = dateUtil
@@ -405,6 +368,8 @@ extension DIGraphShared {
     }
 
     public var sharedEventBusHandler: EventBusHandler {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
             if let overridenDep: EventBusHandler = getOverriddenInstance() {
                 return overridenDep
@@ -467,6 +432,8 @@ extension DIGraphShared {
     }
 
     var sharedEventCache: EventCache {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventCache_singleton_access").sync {
             if let overridenDep: EventCache = getOverriddenInstance() {
                 return overridenDep
@@ -489,6 +456,8 @@ extension DIGraphShared {
     }
 
     var sharedEventStorage: EventStorage {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
             if let overridenDep: EventStorage = getOverriddenInstance() {
                 return overridenDep
@@ -514,6 +483,30 @@ extension DIGraphShared {
         JsonAdapter(log: logger)
     }
 
+    // LockManager (singleton)
+    public var lockManager: LockManager {
+        getOverriddenInstance() ??
+            sharedLockManager
+    }
+
+    public var sharedLockManager: LockManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
+            if let overridenDep: LockManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
+            let instance = existingSingletonInstance ?? _get_lockManager()
+            self.singletons[String(describing: LockManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_lockManager() -> LockManager {
+        LockManager()
+    }
+
     // DateUtil
     public var dateUtil: DateUtil {
         getOverriddenInstance() ??
@@ -531,6 +524,8 @@ extension DIGraphShared {
     }
 
     var sharedEventBus: EventBus {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
         DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
             if let overridenDep: EventBus = getOverriddenInstance() {
                 return overridenDep

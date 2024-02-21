@@ -38,7 +38,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenEmptyBacklog_expectNoTasksProcessed() {
         backgroundQueueMock.getAllStoredTasksReturnValue = []
-        XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
+        XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: .random))
         XCTAssertEqual(backgroundQueueMock.getAllStoredTasksCallsCount, 1)
     }
 
@@ -59,7 +59,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
         let counter = 3000
         for _ in 1 ... counter {
-            guard let givenCreatedTask = fileManagerQueueStorage.create(type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil).createdTask else {
+            guard let givenCreatedTask = fileManagerQueueStorage.create(siteId: testSiteId, type: givenType.rawValue, data: givenQueueTaskData, groupStart: nil, blockingGroups: nil).createdTask else {
                 XCTFail("Failed to create task")
                 return
             }
@@ -69,7 +69,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: givenQueueTaskData, taskType: givenType, timestamp: dateUtilStub.now)
 
-        XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
+        XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
     }
 
@@ -82,7 +82,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
             return
         }
 
-        guard let givenCreatedTask = fileManagerQueueStorage.create(type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil).createdTask else {
+        guard let givenCreatedTask = fileManagerQueueStorage.create(siteId: testSiteId, type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil).createdTask else {
             XCTFail("Failed to create task")
             return
         }
@@ -92,7 +92,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         backgroundQueueMock.getAllStoredTasksReturnValue = inventory
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
-        XCTAssertNotNil(migrationAssistant.handleQueueBacklog())
+        XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
     }
 

@@ -12,9 +12,17 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private var globalDataStore: GlobalDataStore
 
+    /*
+     It's preferred to get a lock from lockmanager. Because this is a top-level class where the digraph may be nil, it's more difficult to get a lock from lockmanager.
+
+     Because this class is a singleton, we can create a lock instance that will be shared in all calls to this class.
+     */
+    private let lock = Lock.unsafeInit()
+    @Atomic private var hasSetupModule = false
+
     // singleton constructor
     private init() {
-        self.globalDataStore = CioGlobalDataStore.getInstance()
+        self.globalDataStore = DIGraphShared.shared.globalDataStore
         super.init(moduleName: Self.moduleName)
     }
 
@@ -49,6 +57,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      Call this function when your app launches, before using `MessagingPush.shared`.
      */
     @discardableResult
+    @available(iOSApplicationExtension, unavailable)
     public static func initialize(
         configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
     ) -> MessagingPushInstance {
@@ -57,7 +66,18 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             configureHandler(&moduleConfig)
         }
 
-        shared.initializeModule()
+        let moduleInitializedFirstTime = shared.initializeModuleIfNotAlready()
+
+        guard moduleInitializedFirstTime else {
+            return shared
+        }
+
+        // Some part of the initialize is specific only to non-NSE targets.
+        // Put those parts in this non-NSE initialize method.
+        if Self.moduleConfig.autoTrackPushEvents {
+            DIGraphShared.shared.automaticPushClickHandling.start()
+        }
+
         return shared
     }
 
@@ -69,25 +89,38 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         writeKey: String,
         configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
     ) -> MessagingPushInstance {
-        initialize { config in
-            config.writeKey = writeKey
-            if let configureHandler = configureHandler {
-                configureHandler(&config)
-            }
+        if let configureHandler = configureHandler {
+            configureHandler(&moduleConfig)
         }
+        moduleConfig.writeKey = writeKey
+
+        shared.initializeModuleIfNotAlready()
+
+        return shared
     }
 
-    private func initializeModule() {
-        guard getImplementationInstance() == nil else {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return
+    @discardableResult
+    private func initializeModuleIfNotAlready() -> Bool {
+        // Make this function thread-safe by immediately locking it.
+        lock.lock()
+        defer {
+            lock.unlock()
         }
+
+        // Make sure this function is only called 1 time.
+        if hasSetupModule {
+            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
+            return false
+        }
+        hasSetupModule = true
 
         logger.debug("Setting up \(moduleName) module...")
         let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: pushImplementation)
 
         logger.info("\(moduleName) module successfully set up with SDK")
+
+        return true
     }
 
     /**
@@ -127,5 +160,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         deviceToken: String
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+    }
+}
+
+// Convenient way for other modules to access instance as well as being able to mock instance in tests.
+public extension DIGraphShared {
+    var messagingPushInstance: MessagingPushInstance {
+        if let override: MessagingPushInstance = getOverriddenInstance() {
+            return override
+        }
+
+        return MessagingPush.shared
     }
 }

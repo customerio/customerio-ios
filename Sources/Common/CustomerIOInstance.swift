@@ -1,73 +1,149 @@
 import Foundation
+
 public protocol CustomerIOInstance: AutoMockable {
-    var siteId: String? { get }
+    // MARK: - Profile
 
-    /// Get the current configuration options set for the SDK.
-    var config: SdkConfig? { get }
+    /**
+     Modify attributes to an already identified profile.
+     Note: The getter of this field returns an empty dictionary. This is a setter only field.
+     */
+    var profileAttributes: [String: Any] { get set }
 
-    func identify(
-        identifier: String,
-        body: [String: Any]
-    )
+    /**
+     Identify a customer (aka: Add or update a profile).
+     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
+     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
+     the previously identified profile will be removed. Only the latest identified customer is persisted.
+     - Parameters:
+     - userId: ID you want to assign to the customer.
+     This value can be an internal ID that your system uses or an email address.
+     [Learn more](https://customer.io/docs/api/#operation/identify)
+     - traits: Dictionary traits of identifying profile. Use to define user attributes.
+     */
+    func identify(userId: String, traits: [String: Any]?)
 
+    /**
+     Identify a customer (aka: Add or update a profile).
+     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
+     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
+     the previously identified profile will be removed. Only the latest identified customer is persisted.
+     - userId:
+     - identifier: ID you want to assign to the customer.
+     This value can be an internal ID that your system uses or an email address.
+     [Learn more](https://customer.io/docs/api/#operation/identify)
+     - traits: Request body of identifying profile. Use to define user attributes.
+     */
     // sourcery:Name=identifyEncodable
     // sourcery:DuplicateMethod=identify
     func identify<RequestBody: Codable>(
-        identifier: String,
-        // TODO: update AnyEncodable to AnyCodable?
+        userId: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(body)"
-        body: RequestBody
+        // sourcery:TypeCast="AnyEncodable(traits)"
+        traits: RequestBody?
     )
 
-    // sourcery:Name=identifyAnonymousEncodable
-    // sourcery:DuplicateMethod=identify
-    func identify(body: Codable)
-
-    var registeredDeviceToken: String? { get }
-
+    /**
+     Stop identifying the currently persisted customer. All future calls to the SDK will no longer
+     be associated with the previously identified customer.
+     Note: If you simply want to identify a *new* customer, this function call is optional. Simply
+     call `identify()` again to identify the new customer profile over the existing.
+     If no profile has been identified yet, this function will ignore your request.
+     */
     func clearIdentify()
 
-    func track(
-        name: String,
-        data: [String: Any]
-    )
+    // MARK: - Device
 
+    /**
+     Use `deviceAttributes` to provide additional and custom device attributes
+     apart from the ones the SDK is programmed to send to customer workspace.
+     Example use:
+     ```
+     CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
+     ```
+     */
+    var deviceAttributes: [String: Any] { get set }
+
+    /**
+     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
+     This returns an optional string value.
+     Example use:
+     ```
+     CustomerIO.shared.registeredDeviceToken
+     ```
+     */
+    var registeredDeviceToken: String? { get }
+
+    /**
+     Register a new device token with Customer.io, associated with the current active customer. If there
+     is no active customer, this will register the device to anonymous profile.
+     */
+    func registerDeviceToken(_ deviceToken: String)
+
+    /**
+     Delete the currently registered device token
+     */
+    func deleteDeviceToken()
+
+    // MARK: - Events
+
+    /**
+     Track an event
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+     - Parameters:
+     - name: Name of the event you want to track.
+     - properties: Optional dictionary of properties about the event.
+     */
+    func track(name: String, properties: [String: Any]?)
+
+    /**
+     Track an event
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+     - Parameters:
+     - name: Name of the event you want to track.
+     - properties: Optional event body of properties about the event.
+     */
     // sourcery:Name=trackEncodable
     // sourcery:DuplicateMethod=track
     func track<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody?
+        // sourcery:TypeCast="AnyEncodable(properties)"
+        properties: RequestBody?
     )
 
-    func screen(
-        name: String,
-        data: [String: Any]
-    )
+    // MARK: - Screen
 
+    /**
+     Track a screen view
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+     - Parameters:
+     - title: Name of the currently active screen
+     - properties: Optional dictionary of properties about the screen.
+     */
+    func screen(title: String, properties: [String: Any]?)
+
+    /**
+     Track a screen view
+     [Learn more](https://customer.io/docs/events/) about events in Customer.io
+     - Parameters:
+     - title: Name of the currently active screen
+     - properties: Optional event body of properties about the screen.
+     */
     // sourcery:Name=screenEncodable
     // sourcery:DuplicateMethod=screen
     func screen<RequestBody: Codable>(
-        name: String,
+        title: String,
         // sourcery:Type=AnyEncodable
-        // sourcery:TypeCast="AnyEncodable(data)"
-        data: RequestBody?
+        // sourcery:TypeCast="AnyEncodable(properties)"
+        properties: RequestBody?
     )
 
-    var profileAttributes: [String: Any] { get set }
-    var deviceAttributes: [String: Any] { get set }
+    // MARK: - Custom Events
 
-    func registerDeviceToken(_ deviceToken: String)
-
-    func deleteDeviceToken()
-
-    func trackMetric(
-        deliveryID: String,
-        event: Metric,
-        deviceToken: String
-    )
+    /**
+     Track a push metric
+     */
+    func trackMetric(deliveryID: String, event: Metric, deviceToken: String)
 }
 
 /**
@@ -82,8 +158,8 @@ public class CustomerIO: CustomerIOInstance {
         SdkVersion.version
     }
 
-    public var siteId: String? {
-        diGraph?.sdkConfig.siteId
+    private var diGraph: DIGraphShared {
+        DIGraphShared.shared
     }
 
     /**
@@ -98,10 +174,6 @@ public class CustomerIO: CustomerIOInstance {
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
     public var implementation: CustomerIOInstance?
 
-    // The 1 place that DiGraph is strongly stored in memory for the SDK.
-    // Exposed for `SdkInitializedUtil`. Not recommended to use this property directly.
-    public var diGraph: DIGraph?
-
     // private constructor to force use of singleton API
     private init() {}
 
@@ -110,9 +182,8 @@ public class CustomerIO: CustomerIOInstance {
     // Any implementation of the interface works for unit tests.
 
     @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance, diGraph: DIGraph) -> CustomerIO {
+    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO {
         shared.implementation = implementation
-        shared.diGraph = diGraph
         return shared
     }
 
@@ -121,15 +192,13 @@ public class CustomerIO: CustomerIOInstance {
     }
     #endif
 
-    public static func initializeSharedInstance(with implementation: CustomerIOInstance, diGraph: DIGraph) {
+    public static func initializeSharedInstance(with implementation: CustomerIOInstance) {
         shared.implementation = implementation
-        shared.diGraph = diGraph
-        shared.postInitialize(diGraph: diGraph)
+        shared.postInitialize()
     }
 
-    func postInitialize(diGraph: DIGraph) {
+    func postInitialize() {
         let logger = diGraph.logger
-        let siteId = diGraph.sdkConfig.siteId
 
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
@@ -140,189 +209,63 @@ public class CustomerIO: CustomerIOInstance {
 
         logger
             .info(
-                "Customer.io SDK \(SdkVersion.version) initialized and ready to use for site id: \(siteId)"
+                "Customer.io SDK \(SdkVersion.version) initialized and ready to use"
             )
     }
 
-    /**
-     Use `registeredDeviceToken` to fetch the current FCM/APN device token.
-     This returns an optional string value.
-     Example use:
-     ```
-     CustomerIO.shared.registeredDeviceToken
-     ```
-     */
-    public var registeredDeviceToken: String? {
-        implementation?.registeredDeviceToken
-    }
+    // MARK: - CustomerIOInstance implementation
 
-    public var config: SdkConfig? {
-        implementation?.config
-    }
-
-    /**
-     Modify attributes to an already identified profile.
-
-     Note: The getter of this field returns an empty dictionary. This is a setter only field.
-     */
     public var profileAttributes: [String: Any] {
-        get {
-            implementation?.profileAttributes ?? [:]
-        }
-        set {
-            implementation?.profileAttributes = newValue
-        }
+        get { implementation?.profileAttributes ?? [:] }
+        set { implementation?.profileAttributes = newValue }
     }
 
-    /**
-     Use `deviceAttributes` to provide additional and custom device attributes
-     apart from the ones the SDK is programmed to send to customer workspace.
-
-     Example use:
-     ```
-     CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
-     ```
-     */
-    public var deviceAttributes: [String: Any] {
-        get {
-            implementation?.deviceAttributes ?? [:]
-        }
-        set {
-            implementation?.deviceAttributes = newValue
-        }
+    public func identify(userId: String, traits: [String: Any]? = nil) {
+        implementation?.identify(userId: userId, traits: traits)
     }
 
-    /**
-     Identify a customer (aka: Add or update a profile).
-
-     [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
-
-     Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
-     the previously identified profile will be removed. Only the latest identified customer is persisted.
-
-     - Parameters:
-     - identifier: ID you want to assign to the customer.
-     This value can be an internal ID that your system uses or an email address.
-     [Learn more](https://customer.io/docs/api/#operation/identify)
-     - body: Request body of identifying profile. Use to define user attributes.
-     */
-    public func identify<RequestBody: Codable>(
-        identifier: String,
-        body: RequestBody
-    ) {
-        // This code handles a specific scenario where a user
-        // unexpectedly provides a `nil` value for the RequestBody
-        // parameter, which the method isn't designed to handle directly.
-        // To prevent errors and ensure compatibility, this condition checks
-        // if the `body` is `nil`. If it is, it substitutes it with an
-        // EmptyRequestBody() object before passing it along to the
-        // identify(). This replacement safeguards against possible
-        // issues that could arise(eg. app crash). While the `identify`
-        // method itself provide polymorphic capabilities to handle `nil`,
-        // this specific check within this method offers an additional
-        // layer of protection and clarity for this case.
-        // (refer https://github.com/customerio/customerio-ios/blob/94cbf686c3c2a405534cfe908f7166558a3e0b5d/Sources/Tracking/CustomerIO.swift#L71-L75)
-        if let optionalValue = body as? Any?, optionalValue == nil {
-            implementation?.identify(identifier: identifier, body: EmptyRequestBody())
-            return
-        }
-        implementation?.identify(identifier: identifier, body: body)
+    public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
+        implementation?.identify(userId: userId, traits: traits)
     }
 
-    public func identify(body: Codable) {
-        implementation?.identify(body: body)
-    }
-
-    public func identify(identifier: String, body: [String: Any]) {
-        implementation?.identify(identifier: identifier, body: body)
-    }
-
-    /**
-     Stop identifying the currently persisted customer. All future calls to the SDK will no longer
-     be associated with the previously identified customer.
-
-     Note: If you simply want to identify a *new* customer, this function call is optional. Simply
-     call `identify()` again to identify the new customer profile over the existing.
-
-     If no profile has been identified yet, this function will ignore your request.
-     */
     public func clearIdentify() {
         implementation?.clearIdentify()
     }
 
-    /**
-     Track an event
-
-     [Learn more](https://customer.io/docs/events/) about events in Customer.io
-
-     - Parameters:
-     - name: Name of the event you want to track.
-     - data: Optional event body data
-     */
-    public func track<RequestBody: Codable>(
-        name: String,
-        data: RequestBody?
-    ) {
-        implementation?.track(name: name, data: data)
+    public var deviceAttributes: [String: Any] {
+        get { implementation?.deviceAttributes ?? [:] }
+        set { implementation?.deviceAttributes = newValue }
     }
 
-    public func track(name: String, data: [String: Any]) {
-        implementation?.track(name: name, data: data)
+    public var registeredDeviceToken: String? {
+        implementation?.registeredDeviceToken
     }
 
-    public func screen(name: String, data: [String: Any]) {
-        implementation?.screen(name: name, data: data)
-    }
-
-    /**
-     Track a a screen view
-
-     [Learn more](https://customer.io/docs/events/) about events in Customer.io
-
-     - Parameters:
-     - name: Name of the currently active screen
-     - data: Optional event body data
-     */
-    public func screen<RequestBody: Codable>(
-        name: String,
-        data: RequestBody
-    ) {
-        implementation?.screen(name: name, data: data)
-    }
-
-    func automaticScreenView(
-        name: String,
-        data: [String: Any]
-    ) {
-        guard (diGraph?.logger) != nil else {
-            return
-        }
-        implementation?.screen(name: name, data: data)
-    }
-
-    /**
-     Register a new device token with Customer.io, associated with the current active customer. If there
-     is no active customer, this will fail to register the device
-     */
     public func registerDeviceToken(_ deviceToken: String) {
         implementation?.registerDeviceToken(deviceToken)
     }
 
-    /**
-     Delete the currently registered device token
-     */
     public func deleteDeviceToken() {
         implementation?.deleteDeviceToken()
     }
 
-    /**
-     Track a push metric
-     */
-    public func trackMetric(
-        deliveryID: String,
-        event: Metric,
-        deviceToken: String
-    ) {
+    public func track(name: String, properties: [String: Any]? = nil) {
+        implementation?.track(name: name, properties: properties)
+    }
+
+    public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
+        implementation?.track(name: name, properties: properties)
+    }
+
+    public func screen(title: String, properties: [String: Any]? = nil) {
+        implementation?.screen(title: title, properties: properties)
+    }
+
+    public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
+        implementation?.screen(title: title, properties: properties)
+    }
+
+    public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
 }

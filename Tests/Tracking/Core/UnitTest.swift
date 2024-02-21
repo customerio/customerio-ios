@@ -22,7 +22,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     }
 
     override open func initializeSDKComponents() -> CustomerIO? {
-        var dataPipelineConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
+        var dataPipelineConfig = DataPipelineConfigOptions.Factory.create(writeKey: testWriteKey)
         // disable auto add destination to prevent tests from sending data to server
         dataPipelineConfig.autoAddCustomerIODestination = false
 
@@ -33,7 +33,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         )
 
         // setup shared instance with desired implementation for unit tests
-        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation, diGraph: diGraph)
+        customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation)
         customerIO.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
 
         return customerIO

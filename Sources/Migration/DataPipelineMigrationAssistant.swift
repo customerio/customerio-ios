@@ -36,7 +36,12 @@ public class DataPipelineMigrationAssistant {
         handleQueueBacklog()
     }
 
-    func handleAlreadyIdentifiedMigratedUser(for userId: String?) {
+    func handleMigration(siteId: String) {
+        handleAlreadyIdentifiedMigratedUser(siteId: siteId)
+        handleQueueBacklog(siteId: siteId)
+    }
+
+    func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
@@ -46,20 +51,20 @@ public class DataPipelineMigrationAssistant {
                 migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
                 // Remove identifier from storage
                 // so same profile can not be re-identifed
-                profileStore.identifier = nil
+                profileStore.deleteProfileId(siteId: siteId)
             }
         }
     }
 
-    func handleQueueBacklog() {
-        let allStoredTasks = backgroundQueue.getAllStoredTasks()
+    func handleQueueBacklog(siteId: String) {
+        let allStoredTasks = backgroundQueue.getAllStoredTasks(siteId: siteId)
         if allStoredTasks.count <= 0 {
             logger.info("CIO-CDP Migration: No tasks pending in the background queue to be executed.")
             return
         }
         threadUtil.runBackground { [weak self] in
             allStoredTasks.forEach { task in
-                self?.getAndProcessTask(for: task)
+                self?.getAndProcessTask(for: task, siteId: siteId)
             }
         }
     }
@@ -68,8 +73,8 @@ public class DataPipelineMigrationAssistant {
      Retrieves a task from the queue based on its metadata.
      Fetches `type` of the task and processes accordingly
      */
-    func getAndProcessTask(for task: QueueTaskMetadata) {
-        guard let taskDetail = backgroundQueue.getTaskDetail(task) else { return }
+    func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
+        guard let taskDetail = backgroundQueue.getTaskDetail(task, siteId: siteId) else { return }
         let taskData = taskDetail.data
         let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
         var isProcessed = true
@@ -77,7 +82,7 @@ public class DataPipelineMigrationAssistant {
         // Remove the task from the queue if the task has been processed successfully
         defer {
             if isProcessed {
-                backgroundQueue.deleteProcessedTask(task)
+                backgroundQueue.deleteProcessedTask(task, siteId: siteId)
             }
         }
         switch taskDetail.taskType {
