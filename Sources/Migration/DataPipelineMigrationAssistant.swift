@@ -36,7 +36,12 @@ public class DataPipelineMigrationAssistant {
         handleQueueBacklog()
     }
 
-    func handleAlreadyIdentifiedMigratedUser(for userId: String?) {
+    func handleMigration(siteId: String) {
+        handleAlreadyIdentifiedMigratedUser(siteId: siteId)
+        handleQueueBacklog(siteId: siteId)
+    }
+
+    func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
@@ -46,7 +51,7 @@ public class DataPipelineMigrationAssistant {
                 migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
                 // Remove identifier from storage
                 // so same profile can not be re-identifed
-                profileStore.identifier = nil
+                profileStore.deleteProfileId(siteId: siteId)
             }
         }
     }

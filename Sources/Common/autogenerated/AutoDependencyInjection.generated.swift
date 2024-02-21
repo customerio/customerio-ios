@@ -56,9 +56,6 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = globalDataStore
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -101,7 +98,7 @@ extension DIGraph {
         _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = keyValueStorage
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -117,16 +114,6 @@ extension DIGraph {
         CIODeviceInfo()
     }
 
-    // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {
-        getOverriddenInstance() ??
-            newGlobalDataStore
-    }
-
-    private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: keyValueStorage)
-    }
-
     // ProfileStore
     public var profileStore: ProfileStore {
         getOverriddenInstance() ??
@@ -134,7 +121,7 @@ extension DIGraph {
     }
 
     private var newProfileStore: ProfileStore {
-        CioProfileStore(keyValueStorage: keyValueStorage)
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
     }
 
     // Queue
@@ -297,14 +284,14 @@ extension DIGraph {
         UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
 
-    // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
+    // SandboxedSiteIdKeyValueStorage
+    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
         getOverriddenInstance() ??
-            newKeyValueStorage
+            newSandboxedSiteIdKeyValueStorage
     }
 
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 

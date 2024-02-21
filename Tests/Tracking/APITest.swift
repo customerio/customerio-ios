@@ -45,7 +45,7 @@ class TrackingAPITest: UnitTest {
             "version": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        var actual = CioSdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
@@ -63,7 +63,7 @@ class TrackingAPITest: UnitTest {
             "versionWrong": sdkWrapperVersion
         ]
 
-        var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        var actual = CioSdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
@@ -71,7 +71,7 @@ class TrackingAPITest: UnitTest {
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        let actual = CioSdkConfig.Factory.create()
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
         XCTAssertNil(actual._sdkWrapperConfig)
