@@ -35,16 +35,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
-        var writeKey = BuildEnvironment.CustomerIO.writeKey
-        var siteId = BuildEnvironment.CustomerIO.siteId
+        var cdpApiKey = BuildEnvironment.CustomerIO.cdpApiKey
+        var siteId = BuildEnvironment.CustomerIO.cdpApiKey
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedWriteKey = storage.writeKey {
-            writeKey = storedWriteKey
+        if let storedCdpApiKey = storage.cdpApiKey {
+            cdpApiKey = storedCdpApiKey
         }
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
-        CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
+        CustomerIO.initialize(cdpApiKey: cdpApiKey, logLevel: logLevel) { config in
             config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
             config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
             config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
