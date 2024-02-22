@@ -37,6 +37,7 @@ public class SDKConfigBuilder {
     private var operatingMode: OperatingMode = .asynchronous
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
+    private var siteId: String?
 
     // allow construction of builder with required configurations only
     public init(writeKey: String) {
@@ -92,12 +93,6 @@ public class SDKConfigBuilder {
     }
 
     @discardableResult
-    public func addFlushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
-        flushPolicies.append(contentsOf: policies)
-        return self
-    }
-
-    @discardableResult
     public func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
         flushQueue = queue
         return self
@@ -121,6 +116,12 @@ public class SDKConfigBuilder {
         return self
     }
 
+    @discardableResult
+    public func siteId(_ siteId: String) -> SDKConfigBuilder {
+        self.siteId = siteId
+        return self
+    }
+
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig`` from given configurations
         var sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
@@ -139,9 +140,14 @@ public class SDKConfigBuilder {
             flushQueue: flushQueue,
             operatingMode: operatingMode,
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
-            autoTrackDeviceAttributes: autoTrackDeviceAttributes
+            autoTrackDeviceAttributes: autoTrackDeviceAttributes,
+            siteId: siteId
         )
 
         return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)
     }
 }
+
+/// Tuple type for the result of the `SDKConfigBuilder`'s `build` method.
+/// Contains both `SdkConfig` and `DataPipelineConfigOptions` instances.
+public typealias SDKConfigBuilderResult = (sdkConfig: SdkConfig, dataPipelineConfig: DataPipelineConfigOptions)

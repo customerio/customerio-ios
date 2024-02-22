@@ -100,6 +100,8 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
 
         mockCalled = false // do last as resetting properties above can make this true
         handleQueueBacklogCallsCount = 0
+        handleQueueBacklogReceivedArguments = nil
+        handleQueueBacklogReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -134,16 +136,22 @@ public class DataPipelineMigrationMock: DataPipelineMigration, Mock {
         handleQueueBacklogCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    public private(set) var handleQueueBacklogReceivedArguments: String?
+    /// Arguments from *all* of the times that the function was called.
+    public private(set) var handleQueueBacklogReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var handleQueueBacklogClosure: (() -> Void)?
+    public var handleQueueBacklogClosure: ((String) -> Void)?
 
-    /// Mocked function for `handleQueueBacklog()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func handleQueueBacklog() {
+    /// Mocked function for `handleQueueBacklog(siteId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func handleQueueBacklog(siteId: String) {
         mockCalled = true
         handleQueueBacklogCallsCount += 1
-        handleQueueBacklogClosure?()
+        handleQueueBacklogReceivedArguments = siteId
+        handleQueueBacklogReceivedInvocations.append(siteId)
+        handleQueueBacklogClosure?(siteId)
     }
 }
 

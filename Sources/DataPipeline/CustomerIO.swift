@@ -7,7 +7,8 @@ public extension CustomerIO {
      */
     @available(iOSApplicationExtension, unavailable)
     static func initialize(withConfig config: SDKConfigBuilderResult) {
-        // SdkConfig is currently not stored anywhere, we'll later add option to store and access it.
+        // SdkConfig isn't currently stored anywhere since it wasn't required. If needed later, we
+        // can introduce an option to store and retrieve it.
         let (sdkConfig, cdpConfig) = config
 
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)

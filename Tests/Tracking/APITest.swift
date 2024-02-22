@@ -35,26 +35,12 @@ class TrackingAPITest: UnitTest {
     // SDK wrappers can configure the SDK from a Map.
     // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
     func test_createSdkConfigFromMap() {
-        let trackingApiUrl = String.random
-        let autoTrackPushEvents = false
-        let backgroundQueueMinNumberOfTasks = 10000
-        let backgroundQueueSecondsDelay: TimeInterval = 100000
-        let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
-        let autoTrackScreenViews = true
-        let autoTrackDeviceAttributes = false
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "trackingApiUrl": trackingApiUrl,
-            "autoTrackPushEvents": autoTrackPushEvents,
-            "backgroundQueueMinNumberOfTasks": backgroundQueueMinNumberOfTasks,
-            "backgroundQueueSecondsDelay": backgroundQueueSecondsDelay,
-            "backgroundQueueExpiredSeconds": backgroundQueueExpiredSeconds,
             "logLevel": logLevel,
-            "autoTrackScreenViews": autoTrackScreenViews,
-            "autoTrackDeviceAttributes": autoTrackDeviceAttributes,
             "source": sdkWrapperSource,
             "version": sdkWrapperVersion
         ]
@@ -62,38 +48,17 @@ class TrackingAPITest: UnitTest {
         var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
-        XCTAssertEqual(actual.trackingApiUrl, trackingApiUrl)
-        XCTAssertEqual(actual.autoTrackPushEvents, autoTrackPushEvents)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, backgroundQueueMinNumberOfTasks)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, backgroundQueueSecondsDelay)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, backgroundQueueExpiredSeconds)
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
-        XCTAssertEqual(actual.autoTrackScreenViews, autoTrackScreenViews)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, autoTrackDeviceAttributes)
         XCTAssertNotNil(actual._sdkWrapperConfig)
     }
 
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
-        let trackingApiUrl = String.random
-        let autoTrackPushEvents = false
-        let backgroundQueueMinNumberOfTasks = 10000
-        let backgroundQueueSecondsDelay: TimeInterval = 100000
-        let backgroundQueueExpiredSeconds: TimeInterval = 100000
         let logLevel = "info"
-        let autoTrackScreenViews = true
-        let autoTrackDeviceAttributes = false
         let sdkWrapperSource = "Flutter"
         let sdkWrapperVersion = "1000.33333.4444"
 
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "trackingApiUrlWrong": trackingApiUrl,
-            "autoTrackPushEventsWrong": autoTrackPushEvents,
-            "backgroundQueueMinNumberOfTasksWrong": backgroundQueueMinNumberOfTasks,
-            "backgroundQueueSecondsDelayWrong": backgroundQueueSecondsDelay,
-            "backgroundQueueExpiredSecondsWrong": backgroundQueueExpiredSeconds,
             "logLevelWrong": logLevel,
-            "autoTrackScreenViewsWrong": autoTrackScreenViews,
-            "autoTrackDeviceAttributesWrong": autoTrackDeviceAttributes,
             "sourceWrong": sdkWrapperSource,
             "versionWrong": sdkWrapperVersion
         ]
@@ -101,28 +66,14 @@ class TrackingAPITest: UnitTest {
         var actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
         actual.modify(params: givenParamsFromSdkWrapper)
 
-        XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
-        XCTAssertEqual(actual.autoTrackPushEvents, true)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, 10)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, 30)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertEqual(actual.autoTrackScreenViews, false)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
         let actual = CioSdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
 
-        XCTAssertEqual(actual.trackingApiUrl, Region.US.productionTrackingUrl)
-        XCTAssertEqual(actual.autoTrackPushEvents, true)
-        XCTAssertEqual(actual.backgroundQueueMinNumberOfTasks, 10)
-        XCTAssertEqual(actual.backgroundQueueSecondsDelay, 30)
-        XCTAssertEqual(actual.backgroundQueueExpiredSeconds, TimeInterval(3 * 86400))
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertEqual(actual.autoTrackScreenViews, false)
-        XCTAssertEqual(actual.autoTrackDeviceAttributes, true)
         XCTAssertNil(actual._sdkWrapperConfig)
     }
 }

@@ -113,7 +113,6 @@ open class UnitTestBase<Component>: XCTestCase {
         // reset DI graphs to their initial state.
         diGraphShared.reset()
         diGraph.reset()
-        diGraph = nil
     }
 
     open func deleteAllPersistentData() {
@@ -146,5 +145,19 @@ open class UnitTestBase<Component>: XCTestCase {
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(0.5)
+    }
+
+    public func runTest(numberOfTimes: Int, test: () -> Void) {
+        for _ in 0 ..< numberOfTimes {
+            setUp()
+            test()
+            tearDown()
+        }
+    }
+
+    public func runOnBackground(_ block: @escaping () -> Void) {
+        CioThreadUtil().runBackground {
+            block()
+        }
     }
 }
