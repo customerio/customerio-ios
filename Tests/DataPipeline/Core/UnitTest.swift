@@ -26,14 +26,14 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     open func setUp(
         enableLogs: Bool = false,
         siteId: String? = nil,
-        writeKey: String? = nil,
+        cdpApiKey: String? = nil,
         modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
         modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?
     ) {
         // store value so it can be reused later when SDK is initialized
         self.enableLogs = enableLogs
 
-        var newModuleConfig = DataPipelineConfigOptions.Factory.create(writeKey: writeKey ?? testWriteKey)
+        var newModuleConfig = DataPipelineConfigOptions.Factory.create(cdpApiKey: cdpApiKey ?? testCdpApiKey)
         // disable auto add destination to prevent tests from sending data to server
         newModuleConfig.autoAddCustomerIODestination = false
         modifyModuleConfig?(&newModuleConfig)

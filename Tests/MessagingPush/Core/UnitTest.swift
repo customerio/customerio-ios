@@ -18,13 +18,13 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
     open func setUp(
         enableLogs: Bool = false,
         siteId: String? = nil,
-        writeKey: String? = nil,
+        cdpApiKey: String? = nil,
         modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
         modifyModuleConfig: ((inout MessagingPushConfigOptions) -> Void)?
     ) {
         var newConfig = MessagingPushConfigOptions.Factory.create()
-        if let writeKey = writeKey {
-            newConfig.writeKey = writeKey
+        if let cdpApiKey = cdpApiKey {
+            newConfig.cdpApiKey = cdpApiKey
         }
         modifyModuleConfig?(&newConfig)
         messagingPushConfigOptions = newConfig

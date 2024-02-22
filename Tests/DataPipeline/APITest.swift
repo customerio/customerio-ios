@@ -29,10 +29,10 @@ class DataPipelineAPITest: UnitTest {
         try skipRunningTest()
 
         // Initialize
-        CustomerIO.initialize(writeKey: "") { (config: inout DataPipelineConfigOptions) in
+        CustomerIO.initialize(cdpApiKey: "") { (config: inout DataPipelineConfigOptions) in
             config.autoAddCustomerIODestination = false
         }
-        CustomerIO.initialize(writeKey: "", logLevel: .debug) { (config: inout DataPipelineConfigOptions) in
+        CustomerIO.initialize(cdpApiKey: "", logLevel: .debug) { (config: inout DataPipelineConfigOptions) in
             config.autoAddCustomerIODestination = false
         }
 
@@ -93,7 +93,7 @@ class DataPipelineAPITest: UnitTest {
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
 
-        CustomerIO.initialize(writeKey: "", logLevel: .error) { config in
+        CustomerIO.initialize(cdpApiKey: "", logLevel: .error) { config in
             config.apiHost = ""
             config.cdnHost = ""
             config.flushAt = 10
