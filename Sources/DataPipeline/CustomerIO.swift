@@ -7,11 +7,11 @@ public extension CustomerIO {
      */
     @available(iOSApplicationExtension, unavailable)
     static func initialize(
-        writeKey: String,
+        cdpApiKey: String,
         logLevel: CioLogLevel = .error,
         configure configureHandler: ((inout DataPipelineConfigOptions) -> Void)?
     ) {
-        var cdpConfig = DataPipelineConfigOptions.Factory.create(writeKey: writeKey)
+        var cdpConfig = DataPipelineConfigOptions.Factory.create(cdpApiKey: cdpApiKey)
 
         if let configureHandler = configureHandler {
             configureHandler(&cdpConfig)

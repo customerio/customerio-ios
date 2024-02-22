@@ -8,7 +8,7 @@ import Segment
  Example use case:
  ```
  // create a new instance
- let dataPipelineConfig = DataPipelineConfigOptions.Factory.create(writeKey: "WRITE_KEY")
+ let dataPipelineConfig = DataPipelineConfigOptions.Factory.create(cdpApiKey: "CDP_API_KEY")
  // now, you can modify it
  dataPipelineConfig.apiHost = "https..."
  dataPipelineConfig.autoTrackScreenViews = false
@@ -18,25 +18,25 @@ public struct DataPipelineConfigOptions {
     // Used to create new instance of DataPipelineConfigOptions when the DataPipeline module is configured.
     // Each property of the DataPipelineConfigOptions object can be modified by the user.
     public enum Factory {
-        public static func create(writeKey: String) -> DataPipelineConfigOptions {
-            DataPipelineConfigOptions(writeKey: writeKey)
+        public static func create(cdpApiKey: String) -> DataPipelineConfigOptions {
+            DataPipelineConfigOptions(cdpApiKey: cdpApiKey)
         }
 
         public static func create(sdkConfig: SdkConfig) -> DataPipelineConfigOptions {
-            let writeKey = "\(sdkConfig.siteId):\(sdkConfig.apiKey)"
-            return DataPipelineConfigOptions(writeKey: writeKey)
+            let cdpApiKey = "\(sdkConfig.siteId):\(sdkConfig.apiKey)"
+            return DataPipelineConfigOptions(cdpApiKey: cdpApiKey)
         }
     }
 
     private static let defaultAPIHost = "cdp.customer.io/v1"
     private static let defaultCDNHost = "cdp.customer.io/v1"
 
-    init(writeKey: String) {
-        self.writeKey = writeKey
+    init(cdpApiKey: String) {
+        self.cdpApiKey = cdpApiKey
     }
 
     /// Server key
-    public let writeKey: String
+    public let cdpApiKey: String
 
     /// Host settings
     public var apiHost: String = Self.defaultAPIHost
