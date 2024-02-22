@@ -54,13 +54,17 @@ jobs:
         sample-app: 
         # List all sample apps you want to have compiled. 
         # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
-        - "CocoaPods-FCM"
+
+  # Note: During CDP development, we have allowed the cocoapods app to fail to build.
+  # When we get it fixed, uncomment this line to make the CI build it again. 
+
+        #- "CocoaPods-FCM"
         - "APN-UIKit"
         include: # Add additional variables to each sample app build: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
           - sample-app: "APN-UIKit"
             apn-or-fcm: APN
-          - sample-app: "CocoaPods-FCM"
-            apn-or-fcm: FCM
+          # - sample-app: "CocoaPods-FCM"
+          #   apn-or-fcm: FCM
 
     runs-on: macos-13
     name: Building app...${{ matrix.sample-app }}

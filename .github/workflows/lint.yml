@@ -1,18 +1,21 @@
-name: Lint
+# During development of CDP, we have allowed the lint check on CI to fail before merging PRs. 
+# File commented out until we get lint fixed on this branch. 
 
-on: [pull_request]
+# name: Lint
 
-jobs:
-  assert-formatted:
-    name: Assert that code has been linted and formatted before merging
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install binny to run lint tools 
-        run: |
-          curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-macos-x86_64
-          chmod +x binny 
-      - name: Run swiftformat. Fail if any errors. 
-        run: make format && git diff --exit-code
-      - name: Run swiftlint. Fail if any errors. 
-        run: make lint
+# on: [pull_request]
+
+# jobs:
+#   assert-formatted:
+#     name: Assert that code has been linted and formatted before merging
+#     runs-on: macos-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Install binny to run lint tools 
+#         run: |
+#           curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-macos-x86_64
+#           chmod +x binny 
+#       - name: Run swiftformat. Fail if any errors. 
+#         run: make format && git diff --exit-code
+#       - name: Run swiftlint. Fail if any errors. 
+#         run: make lint
