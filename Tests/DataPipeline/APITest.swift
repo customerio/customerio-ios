@@ -96,11 +96,11 @@ class DataPipelineAPITest: UnitTest {
             .autoAddCustomerIODestination(false)
             .defaultSettings(Settings(writeKey: ""))
             .flushPolicies([])
-            .addFlushPolicies([CountBasedFlushPolicy(), IntervalBasedFlushPolicy()])
             .flushQueue(DispatchQueue(label: ""))
             .operatingMode(OperatingMode.asynchronous)
             .trackApplicationLifecycleEvents(true)
             .autoTrackDeviceAttributes(true)
+            .siteId("")
     }
 
     func test_autoTrackingScreenViewsPluginOptions() throws {

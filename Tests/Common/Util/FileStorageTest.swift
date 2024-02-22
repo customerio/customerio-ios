@@ -33,8 +33,6 @@ class FileStorageTest: UnitTest {
     private var siteId: String!
 
     override func setUp() {
-        super.setUp(siteId: siteId, modifySdkConfig: nil)
-
         siteId = String.random()
 
         fileStorage = FileManagerFileStorage(logger: LoggerMock())
