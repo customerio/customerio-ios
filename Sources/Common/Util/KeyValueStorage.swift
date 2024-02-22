@@ -19,8 +19,6 @@ public protocol SharedKeyValueStorage {
  Stores data in key/value pairs.
  */
 public protocol KeyValueStorage: SharedKeyValueStorage {
-    func switchToGlobalDataStore()
-
     func integer(_ key: KeyValueStorageKey) -> Int?
     func setInt(_ value: Int?, forKey key: KeyValueStorageKey)
     func double(_ key: KeyValueStorageKey) -> Double?
@@ -37,23 +35,19 @@ public protocol KeyValueStorage: SharedKeyValueStorage {
  */
 // sourcery: InjectRegister = "KeyValueStorage"
 public class UserDefaultsKeyValueStorage: KeyValueStorage {
-    private var siteId: String?
+    // Set this value before calling any other function in this class, to make sure you get/set values in a sandboxed key/value store.
+    // This solution is fragile because if you forget to set the siteid, you will get/set from the global data store.
+    // This temporary solution will be replaced with a better solution.
+    var siteId: String?
+
     private let deviceMetricsGrabber: DeviceMetricsGrabber
 
     private var userDefaults: UserDefaults? {
         UserDefaults(suiteName: getFileName())
     }
 
-    init(sdkConfig: SdkConfig, deviceMetricsGrabber: DeviceMetricsGrabber) {
-        self.siteId = sdkConfig.siteId
+    init(deviceMetricsGrabber: DeviceMetricsGrabber) {
         self.deviceMetricsGrabber = deviceMetricsGrabber
-    }
-
-    // Used for global data that's relevant to *all* of the site-ids (not sandboxed).
-    // Instead of the more common way the SDK stores data by sandboxing all of that data by site-id.
-    // See `GlobalDataStore` for data that is relevant for *all* site-ids in the SDK.
-    public func switchToGlobalDataStore() {
-        siteId = nil
     }
 
     /**
@@ -145,9 +139,7 @@ public class UserDefaultsSharedKeyValueStorage: SharedKeyValueStorage {
             appUniqueIdentifier = ".\(appBundleId)"
         }
 
-        var siteIdPart = ".shared" // used for storing global data used for all site-ids.
-
-        return "io.customer.sdk\(appUniqueIdentifier)\(siteIdPart)"
+        return "io.customer.sdk\(appUniqueIdentifier).shared"
     }
 
     public func integer(_ key: KeyValueStorageKey) -> Int? {

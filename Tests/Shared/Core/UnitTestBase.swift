@@ -72,7 +72,7 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create(siteId: testSiteId, apiKey: "", region: Region.US)
+        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create()
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }

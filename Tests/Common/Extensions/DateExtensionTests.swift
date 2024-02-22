@@ -63,7 +63,6 @@ class DateExtensionTest: UnitTest {
     // MARK: formatToIso8601WithMilliseconds
 
     func test_givenDate_formatToIso8601WithMilliseconds_expectString() {
-        let calendar = TimeZone(identifier: "UTC")
         var components = DateComponents()
         components.year = 2024
         components.month = 2

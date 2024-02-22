@@ -12,19 +12,23 @@ class KeyValueStorageTests: UnitTest {
     }
 
     private func getSiteStorageInstance(siteId: String, deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
+        let instance = UserDefaultsKeyValueStorage(
+            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
+        )
+        instance.siteId = siteId
+        return instance
+    }
+
+    private func getGlobalInstance(deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
         UserDefaultsKeyValueStorage(
-            sdkConfig: SdkConfig.Factory.create(siteId: siteId, apiKey: "", region: .US),
             deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
         )
     }
 
-    private func getGlobalInstance(deviceMetricsGrabber: DeviceMetricsGrabber? = nil) -> UserDefaultsKeyValueStorage {
-        let instance = UserDefaultsKeyValueStorage(
-            sdkConfig: SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US),
-            deviceMetricsGrabber: deviceMetricsGrabber ?? diGraph.deviceMetricsGrabber
-        )
-        instance.switchToGlobalDataStore()
-        return instance
+    override func setUp() {
+        super.setUp()
+
+        defaultStorage.deleteAll()
     }
 
     // MARK: integration tests
