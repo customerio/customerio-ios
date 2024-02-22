@@ -20,42 +20,71 @@ open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner?
     public var deviceInfo: DeviceInfo!
     public var cioSession: URLSession?
-    public var session: URLSession?
+    public var session: URLSession = RichPushHttpClient.getBasicSession()
 
     override open func setUp() {
         super.setUp()
 
         deviceInfo = diGraph.deviceInfo
+        session = RichPushHttpClient.getBasicSession()
+        runner = UrlRequestHttpRequestRunner()
 
         /*
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
          we see environment variables set in XCode.
          */
         if let writeKey = getEnvironmentVariable("WRITE_KEY") {
-            runner = UrlRequestHttpRequestRunner()
             cioSession = RichPushHttpClient.getCIOApiSession(
                 key: writeKey,
                 userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
             )
-            session = RichPushHttpClient.getBasicSession()
         }
     }
 
-    func testDownloadFileCreatesExpectedFile() {
-        if let session = session {
-            let expectation = self.expectation(description: "Download file")
+    func testParallelDownloadFileCreatesUniquePaths() {
+        let expectation1 = expectation(description: "Parallel download file 1")
+        let expectation2 = expectation(description: "Parallel download file 2")
 
-            runner?.downloadFile(
-                url: URL(string: "https://thumbs.dreamstime.com/b/bee-flower-27533578.jpg")!,
-                fileType: .richPushImage,
-                session: session,
-                onComplete: { path in
-                    XCTAssertNotNil(path)
-                    expectation.fulfill()
-                }
-            )
+        let url = URL(string: "https://thumbs.dreamstime.com/b/bee-flower-27533578.jpg")!
+        var path1: URL?
+        var path2: URL?
 
-            waitForExpectations()
+        XCTAssertNotNil(runner)
+
+        // Initiate the first download
+        runner?.downloadFile(
+            url: url,
+            fileType: .richPushImage,
+            session: session,
+            onComplete: { path in
+                XCTAssertNotNil(path)
+                path1 = path
+                expectation1.fulfill()
+            }
+        )
+
+        // Initiate the second download in parallel
+        runner?.downloadFile(
+            url: url,
+            fileType: .richPushImage,
+            session: session,
+            onComplete: { path in
+                XCTAssertNotNil(path)
+                path2 = path
+                expectation2.fulfill()
+            }
+        )
+
+        // Wait for both downloads to complete
+        waitForExpectations(timeout: 20.0) { error in
+            if let error = error {
+                XCTFail("Test failed with error: \(error)")
+            }
+
+            // Verify that both paths are not nil and unique
+            XCTAssertNotNil(path1, "First path should not be nil")
+            XCTAssertNotNil(path2, "Second path should not be nil")
+            XCTAssertNotEqual(path1, path2, "Expected unique path for each parallel download")
         }
     }
 
