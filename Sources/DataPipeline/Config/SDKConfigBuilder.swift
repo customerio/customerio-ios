@@ -16,7 +16,7 @@ import Segment
 ///   .build()
 /// // Use `config` for initializing the SDK...
 /// ```
-public struct SDKConfigBuilder {
+public class SDKConfigBuilder {
     // default static values for configuration options
     private static let defaultAPIHost = "cdp.customer.io/v1"
     private static let defaultCDNHost = "cdp.customer.io/v1"
@@ -37,6 +37,7 @@ public struct SDKConfigBuilder {
     private var operatingMode: OperatingMode = .asynchronous
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
+    private var siteId: String?
 
     // allow construction of builder with required configurations only
     public init(writeKey: String) {
@@ -44,74 +45,80 @@ public struct SDKConfigBuilder {
     }
 
     @discardableResult
-    public mutating func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
+    public func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
         self.logLevel = logLevel
         return self
     }
 
     @discardableResult
-    public mutating func apiHost(_ apiHost: String) -> SDKConfigBuilder {
+    public func apiHost(_ apiHost: String) -> SDKConfigBuilder {
         self.apiHost = apiHost
         return self
     }
 
     @discardableResult
-    public mutating func cdnHost(_ cdnHost: String) -> SDKConfigBuilder {
+    public func cdnHost(_ cdnHost: String) -> SDKConfigBuilder {
         self.cdnHost = cdnHost
         return self
     }
 
     @discardableResult
-    public mutating func flushAt(_ flushAt: Int) -> SDKConfigBuilder {
+    public func flushAt(_ flushAt: Int) -> SDKConfigBuilder {
         self.flushAt = flushAt
         return self
     }
 
     @discardableResult
-    public mutating func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder {
+    public func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder {
         self.flushInterval = flushInterval
         return self
     }
 
     @discardableResult
-    public mutating func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
+    public func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
         autoAddCustomerIODestination = autoAdd
         return self
     }
 
     @discardableResult
-    public mutating func defaultSettings(_ settings: Settings?) -> SDKConfigBuilder {
+    public func defaultSettings(_ settings: Settings?) -> SDKConfigBuilder {
         defaultSettings = settings
         return self
     }
 
     @discardableResult
-    public mutating func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
+    public func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
         flushPolicies = policies
         return self
     }
 
     @discardableResult
-    public mutating func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
+    public func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
         flushQueue = queue
         return self
     }
 
     @discardableResult
-    public mutating func operatingMode(_ mode: OperatingMode) -> SDKConfigBuilder {
+    public func operatingMode(_ mode: OperatingMode) -> SDKConfigBuilder {
         operatingMode = mode
         return self
     }
 
     @discardableResult
-    public mutating func trackApplicationLifecycleEvents(_ track: Bool) -> SDKConfigBuilder {
+    public func trackApplicationLifecycleEvents(_ track: Bool) -> SDKConfigBuilder {
         trackApplicationLifecycleEvents = track
         return self
     }
 
     @discardableResult
-    public mutating func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
+    public func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
         autoTrackDeviceAttributes = autoTrack
+        return self
+    }
+
+    @discardableResult
+    public func siteId(_ siteId: String) -> SDKConfigBuilder {
+        self.siteId = siteId
         return self
     }
 
@@ -133,7 +140,8 @@ public struct SDKConfigBuilder {
             flushQueue: flushQueue,
             operatingMode: operatingMode,
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
-            autoTrackDeviceAttributes: autoTrackDeviceAttributes
+            autoTrackDeviceAttributes: autoTrackDeviceAttributes,
+            siteId: siteId
         )
 
         return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)

@@ -25,4 +25,7 @@ public struct DataPipelineConfigOptions {
 
     /// Configuration options for users to easily add available plugins
     public let autoTrackDeviceAttributes: Bool
+
+    /// Configuration options required for migration from earlier versions
+    public let siteId: String?
 }
