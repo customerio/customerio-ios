@@ -154,13 +154,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gm6-Cg-tg6">
-                                <rect key="frame" x="10" y="190.66666666666666" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="157.66666666666666" width="394" height="27.333333333333343"/>
                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalCentering" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="AIH-WX-Xne">
-                                <rect key="frame" x="20" y="258" width="374" height="380"/>
+                                <rect key="frame" x="20" y="225" width="374" height="446"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="94.666666666666686" y="0.0" width="185" height="50"/>
@@ -228,8 +228,21 @@
                                             <action selector="showPushPrompt:" destination="0ax-47-4zI" eventType="touchUpInside" id="Snq-qE-ynP"/>
                                         </connections>
                                     </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="QCc-aF-w6r" userLabel="Send local push" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="94.666666666666686" y="338" width="185" height="34.333333333333314"/>
+                                        <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="nRx-fT-Ki2"/>
+                                        </constraints>
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <state key="normal" title="Button"/>
+                                        <buttonConfiguration key="configuration" style="plain" title="Send Local Push"/>
+                                        <connections>
+                                            <action selector="send3rdPartyPush:" destination="0ax-47-4zI" eventType="touchUpInside" id="DR5-oa-iJr"/>
+                                        </connections>
+                                    </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="94.666666666666686" y="330" width="185" height="50"/>
+                                        <rect key="frame" x="94.666666666666686" y="396" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="uv2-HN-pr3"/>
@@ -258,7 +271,7 @@
                                 </constraints>
                             </imageView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="mIk-22-9js">
-                                <rect key="frame" x="10" y="163.33333333333334" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="130.33333333333334" width="394" height="27.333333333333343"/>
                                 <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
