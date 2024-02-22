@@ -5,7 +5,7 @@ import Segment
 /// Configuration options for the Customer.io Data Pipeline module
 public struct DataPipelineConfigOptions {
     /// Server key
-    public let writeKey: String
+    public let cdpApiKey: String
 
     /// Host settings
     public let apiHost: String
