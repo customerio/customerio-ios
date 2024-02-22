@@ -73,11 +73,6 @@ extension MessagingPushImplementation {
 
             // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
             if let composedRichPush = composedRichPush as? UNNotificationWrapper {
-                self.logger
-                    .debug(
-                        "running all background queue tasks and waiting until complete to prevent OS from killing notification service extension before all HTTP requests have been performed"
-                    )
-
                 self.logger.info("Customer.io push processing is done!")
                 contentHandler(composedRichPush.notificationContent)
             }
