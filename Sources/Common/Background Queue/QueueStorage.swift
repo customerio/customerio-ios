@@ -30,6 +30,7 @@ public protocol QueueStorage: AutoMockable {
 }
 
 // sourcery: InjectRegister = "QueueStorage"
+// sourcery: InjectRegisterShared = "QueueStorage"
 public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
     private let jsonAdapter: JsonAdapter

@@ -6,13 +6,13 @@ import Foundation
 // the unprocessed tasks from background queue coming from
 // tracking module.
 class DataPipelineMigrationHandler: DataPipelineMigrationAction {
-    var implementation: DataPipelineInstance
+    let implementation: DataPipelineInstance
     init(implementation: DataPipelineInstance) {
         self.implementation = implementation
     }
 
     func processAlreadyIdentifiedUser(identifier: String) {
-        DataPipeline.shared.identify(identifier: identifier, body: [:])
+        implementation.identify(userId: identifier, traits: [:])
     }
 
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {

@@ -21,11 +21,6 @@ public struct DataPipelineConfigOptions {
         public static func create(writeKey: String) -> DataPipelineConfigOptions {
             DataPipelineConfigOptions(writeKey: writeKey)
         }
-
-        public static func create(sdkConfig: SdkConfig) -> DataPipelineConfigOptions {
-            let writeKey = "\(sdkConfig.siteId):\(sdkConfig.apiKey)"
-            return DataPipelineConfigOptions(writeKey: writeKey)
-        }
     }
 
     private static let defaultAPIHost = "cdp.customer.io/v1"
@@ -34,6 +29,9 @@ public struct DataPipelineConfigOptions {
     init(writeKey: String) {
         self.writeKey = writeKey
     }
+
+    /// Site Id that will be used for tracking data migration
+    public var siteId: String = ""
 
     /// Server key
     public let writeKey: String

@@ -1,23 +1,23 @@
 import Foundation
 
 public protocol ProfileStore: AutoMockable {
-    var identifier: String? { get set }
+    func getProfileId(siteId: String) -> String?
+    func deleteProfileId(siteId: String)
 }
 
-// sourcery: InjectRegister = "ProfileStore"
+// sourcery: InjectRegisterShared = "ProfileStore"
 public class CioProfileStore: ProfileStore {
-    private let keyValueStorage: KeyValueStorage
+    private let keyValueStorage: SandboxedSiteIdKeyValueStorage
 
-    init(keyValueStorage: KeyValueStorage) {
+    init(keyValueStorage: SandboxedSiteIdKeyValueStorage) {
         self.keyValueStorage = keyValueStorage
     }
 
-    public var identifier: String? {
-        get {
-            keyValueStorage.string(.identifiedProfileId)
-        }
-        set {
-            keyValueStorage.setString(newValue, forKey: .identifiedProfileId)
-        }
+    public func getProfileId(siteId: String) -> String? {
+        keyValueStorage.string(.identifiedProfileId, siteId: siteId)
+    }
+
+    public func deleteProfileId(siteId: String) {
+        keyValueStorage.setString(nil, forKey: .identifiedProfileId, siteId: siteId)
     }
 }

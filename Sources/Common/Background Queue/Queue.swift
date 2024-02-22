@@ -33,7 +33,7 @@ public struct TaskDetail {
     public let timestamp: Date
 }
 
-// sourcery: InjectRegister = "Queue"
+// sourcery: InjectRegisterShared = "Queue"
 public class CioQueue: Queue {
     private let storage: QueueStorage
     private let jsonAdapter: JsonAdapter

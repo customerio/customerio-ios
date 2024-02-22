@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-public protocol DataPipelineMigrationAction {
+public protocol DataPipelineMigrationAction: AutoMockable {
     func processAlreadyIdentifiedUser(identifier: String)
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
     func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
@@ -19,35 +19,33 @@ public class DataPipelineMigrationAssistant {
     private let threadUtil: ThreadUtil
     private var profileStore: ProfileStore
 
-    public init(handler: DataPipelineMigrationAction, diGraph: DIGraph) {
+    public init(handler: DataPipelineMigrationAction) {
         self.migrationHandler = handler
-        self.logger = diGraph.logger
-        self.backgroundQueue = diGraph.queue
-        self.jsonAdapter = diGraph.jsonAdapter
-        self.threadUtil = diGraph.threadUtil
-        self.profileStore = diGraph.profileStore
+        self.logger = DIGraphShared.shared.logger
+        self.backgroundQueue = DIGraphShared.shared.queue
+        self.jsonAdapter = DIGraphShared.shared.jsonAdapter
+        self.threadUtil = DIGraphShared.shared.threadUtil
+        self.profileStore = DIGraphShared.shared.profileStore
     }
 
     // Only public method in this class that is accessible to other modules.
     // This method handles all the migration tasks present in the
     // Journeys background queue.
-    public func performMigration(for userId: String?) {
-        handleAlreadyIdentifiedMigratedUser(for: userId)
-        handleQueueBacklog()
+    public func performMigration(siteId: String) {
+        handleAlreadyIdentifiedMigratedUser(siteId: siteId)
+        handleQueueBacklog(siteId: siteId)
     }
 
-    func handleAlreadyIdentifiedMigratedUser(for userId: String?) {
+    func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
         // currently logged-in user for seamless processing of events.
-        if userId == nil {
-            if let identifier = profileStore.identifier {
-                migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
-                // Remove identifier from storage
-                // so same profile can not be re-identifed
-                profileStore.identifier = nil
-            }
+        if let identifier = profileStore.getProfileId(siteId: siteId) {
+            migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
+            // Remove identifier from storage
+            // so same profile can not be re-identifed
+            profileStore.deleteProfileId(siteId: siteId)
         }
     }
 
