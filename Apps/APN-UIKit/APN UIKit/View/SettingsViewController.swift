@@ -12,7 +12,8 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var restoreDefaultButton: UIButton!
     @IBOutlet var saveButton: ThemeButton!
     @IBOutlet var deviceTokenTextField: ThemeTextField!
-    @IBOutlet var cdpWriteKeyTextField: ThemeTextField!
+
+    @IBOutlet var cdpApiKeyTextField: ThemeTextField!
     @IBOutlet var siteIdTextField: ThemeTextField!
     @IBOutlet var trackDeviceToggle: UISwitch!
     @IBOutlet var debugModeToggle: UISwitch!
@@ -93,7 +94,7 @@ class SettingsViewController: BaseViewController {
         apiHostTextField.text = currentSettings.apiHost
 
         siteIdTextField.text = currentSettings.siteId
-        cdpWriteKeyTextField.text = currentSettings.cdpApiKey
+        cdpApiKeyTextField.text = currentSettings.cdpApiKey
 
         bgQTakDelayTextField.text = currentSettings.bgQDelay
         bgQMinTasksTextField.text = currentSettings.bgQMinTasks
@@ -117,7 +118,7 @@ class SettingsViewController: BaseViewController {
         setAppiumAccessibilityIdTo(cdnHostTextField, value: "CDN Host Input")
         setAppiumAccessibilityIdTo(apiHostTextField, value: "API Host Input")
         setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
-        setAppiumAccessibilityIdTo(cdpWriteKeyTextField, value: "CDP API Key Input")
+        setAppiumAccessibilityIdTo(cdpApiKeyTextField, value: "CDP API Key Input")
         setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
         setAppiumAccessibilityIdTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
         setAppiumAccessibilityIdTo(debugModeToggle, value: "Debug Mode Toggle")
@@ -153,7 +154,7 @@ class SettingsViewController: BaseViewController {
         // SiteId
         storage.siteId = siteIdTextField.text
         // CDP API Key
-        storage.cdpApiKey = cdpWriteKeyTextField.text
+        storage.cdpApiKey = cdpApiKeyTextField.text
     }
 
     func isValid() -> Bool {
@@ -162,7 +163,7 @@ class SettingsViewController: BaseViewController {
             showToast(withMessage: "Enter a valid value for Site Id.")
             return false
         }
-        if cdpWriteKeyTextField.isTextTrimEmpty {
+        if cdpApiKeyTextField.isTextTrimEmpty {
             showToast(withMessage: "Enter a valid value for CDP API Key.")
             return false
         }
