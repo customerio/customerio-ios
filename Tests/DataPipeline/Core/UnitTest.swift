@@ -8,7 +8,6 @@ import SharedTests
 /// specific to module components. Ideal for isolated tests of individual functions and classes.
 open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     public var dataPipelineConfigOptions: DataPipelineConfigOptions!
-    public var enableLogs: Bool = false
 
     // Use this `CustomerIO` instance when invoking `CustomerIOInstance` functions in unit tests.
     // This ensures convenience and consistency across unit tests, and guarantees the correct instance is used for testing.
@@ -16,30 +15,31 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     var analytics: Analytics!
 
     override open func setUp() {
-        setUp(modifyModuleConfig: nil)
+        setUp(modifySdkConfig: nil)
     }
 
-    override open func setUp(enableLogs: Bool = false, siteId: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)?) {
-        setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig, modifyModuleConfig: nil)
+    override open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
+        setUp(enableLogs: enableLogs, modifySdkConfig: nil)
     }
 
     open func setUp(
         enableLogs: Bool = false,
-        siteId: String? = nil,
-        cdpApiKey: String? = nil,
-        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
-        modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?
+        writeKey: String? = nil,
+        modifySdkConfig: ((SDKConfigBuilder) -> Void)?
     ) {
-        // store value so it can be reused later when SDK is initialized
-        self.enableLogs = enableLogs
-
-        var newModuleConfig = DataPipelineConfigOptions.Factory.create(cdpApiKey: cdpApiKey ?? testCdpApiKey)
+        let sdkConfigBuilder = SDKConfigBuilder(writeKey: writeKey ?? testWriteKey)
+        // set sdk log level to debug if logs are enabled
+        if enableLogs {
+            sdkConfigBuilder.logLevel(.debug)
+        }
         // disable auto add destination to prevent tests from sending data to server
-        newModuleConfig.autoAddCustomerIODestination = false
-        modifyModuleConfig?(&newModuleConfig)
-        dataPipelineConfigOptions = newModuleConfig
+        sdkConfigBuilder.autoAddCustomerIODestination(false)
+        modifySdkConfig?(sdkConfigBuilder)
 
-        super.setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig)
+        let (sdkConfig, moduleConfig) = sdkConfigBuilder.build()
+        dataPipelineConfigOptions = moduleConfig
+
+        super.setUp(sdkConfig: sdkConfig)
     }
 
     override open func setUpDependencies() {
@@ -60,7 +60,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
 
         // setup shared instance with desired implementation for unit tests
         customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation)
-        customerIO.setDebugLogsEnabled(enableLogs)
+        customerIO.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
 
         // wait for analytics queue to start emitting events
         analytics = implementation.analytics

@@ -22,12 +22,13 @@ class DataPipelineInteractionTests: IntegrationTest {
 
     override func setUp() {
         super.setUp()
+
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
 
-    override func setUp(enableLogs: Bool = false, siteId: String? = nil, cdpApiKey: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)? = nil, modifyModuleConfig: ((inout DataPipelineConfigOptions) -> Void)?) {
-        super.setUp(enableLogs: enableLogs, siteId: siteId, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig, modifyModuleConfig: modifyModuleConfig)
+    override func setUp(enableLogs: Bool = false, writeKey: String? = nil, modifySdkConfig: ((SDKConfigBuilder) -> Void)?) {
+        super.setUp(enableLogs: enableLogs, writeKey: writeKey, modifySdkConfig: modifySdkConfig)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
@@ -317,8 +318,8 @@ class DataPipelineInteractionTests: IntegrationTest {
     }
 
     func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
-        setUp(modifyModuleConfig: { config in
-            config.autoTrackDeviceAttributes = false
+        setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(false)
         })
 
         customerIO.track(name: String.random)

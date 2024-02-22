@@ -6,22 +6,16 @@ public extension CustomerIO {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
-    static func initialize(
-        cdpApiKey: String,
-        logLevel: CioLogLevel = .error,
-        configure configureHandler: ((inout DataPipelineConfigOptions) -> Void)?
-    ) {
-        var cdpConfig = DataPipelineConfigOptions.Factory.create(cdpApiKey: cdpApiKey)
-
-        if let configureHandler = configureHandler {
-            configureHandler(&cdpConfig)
-        }
+    static func initialize(withConfig config: SDKConfigBuilderResult) {
+        // SdkConfig isn't currently stored anywhere since it wasn't required. If needed later, we
+        // can introduce an option to store and retrieve it.
+        let (sdkConfig, cdpConfig) = config
 
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
         // set the logLevel for ConsoleLogger
-        DIGraphShared.shared.logger.setLogLevel(logLevel)
+        DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
         // enable Analytics logs accordingly to logLevel
-        CustomerIO.shared.setDebugLogsEnabled(logLevel == .debug)
+        CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == CioLogLevel.debug)
 
         initialize(implementation: implementation)
     }

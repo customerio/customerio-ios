@@ -22,9 +22,9 @@ class DataPipelineCompatibilityTests: IntegrationTest {
     }
 
     override func setUp() {
-        super.setUp(modifyModuleConfig: { config in
+        super.setUp(modifySdkConfig: { config in
             // enable auto add destination so we can test the final JSON being sent to the server
-            config.autoAddCustomerIODestination = true
+            config.autoAddCustomerIODestination(true)
         })
 
         // get DataPipelineImplementation instance so we can call its methods directly

@@ -11,15 +11,13 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
         setUp(modifyModuleConfig: nil)
     }
 
-    override open func setUp(enableLogs: Bool = false, siteId: String? = nil, modifySdkConfig: ((inout SdkConfig) -> Void)?) {
-        setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig, modifyModuleConfig: nil)
+    override open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
+        setUp(enableLogs: enableLogs, modifyModuleConfig: nil)
     }
 
     open func setUp(
         enableLogs: Bool = false,
-        siteId: String? = nil,
         cdpApiKey: String? = nil,
-        modifySdkConfig: ((inout SdkConfig) -> Void)? = nil,
         modifyModuleConfig: ((inout MessagingPushConfigOptions) -> Void)?
     ) {
         var newConfig = MessagingPushConfigOptions.Factory.create()
@@ -29,7 +27,7 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
         modifyModuleConfig?(&newConfig)
         messagingPushConfigOptions = newConfig
 
-        super.setUp(enableLogs: enableLogs, siteId: siteId, modifySdkConfig: modifySdkConfig)
+        super.setUp(enableLogs: enableLogs, sdkConfig: nil)
     }
 
     override open func initializeSDKComponents() -> MessagingPushInstance? {
