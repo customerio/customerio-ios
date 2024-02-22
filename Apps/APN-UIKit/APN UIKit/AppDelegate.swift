@@ -44,17 +44,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             writeKey = storedWriteKey
         }
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
-        CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            if let apiHost = self.storage.apiHost, !apiHost.isEmpty {
-                config.apiHost = apiHost
-            }
-            if let cdnHost = self.storage.cdnHost, !cdnHost.isEmpty {
-                config.cdnHost = cdnHost
-            }
+
+        let configBuilder = SDKConfigBuilder(writeKey: writeKey)
+            .siteId(siteId)
+            .logLevel(logLevel)
+            .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
+            .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
+            .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
+
+        if let apiHost = storage.apiHost, !apiHost.isEmpty {
+            configBuilder.apiHost(apiHost)
         }
+        if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
+            configBuilder.cdnHost(cdnHost)
+        }
+
+        CustomerIO.initialize(withConfig: configBuilder.build())
 
         let autoScreenTrack = storage.isTrackScreenEnabled ?? true
         if autoScreenTrack {
