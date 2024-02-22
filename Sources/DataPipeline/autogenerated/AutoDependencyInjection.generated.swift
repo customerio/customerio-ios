@@ -78,6 +78,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = autoTrackingScreenViewStore
+        countDependenciesResolved += 1
+
         _ = deviceAttributesProvider
         countDependenciesResolved += 1
 
@@ -85,6 +88,30 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // AutoTrackingScreenViewStore (singleton)
+    var autoTrackingScreenViewStore: AutoTrackingScreenViewStore {
+        getOverriddenInstance() ??
+            sharedAutoTrackingScreenViewStore
+    }
+
+    var sharedAutoTrackingScreenViewStore: AutoTrackingScreenViewStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_AutoTrackingScreenViewStore_singleton_access").sync {
+            if let overridenDep: AutoTrackingScreenViewStore = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: AutoTrackingScreenViewStore.self)] as? AutoTrackingScreenViewStore
+            let instance = existingSingletonInstance ?? _get_autoTrackingScreenViewStore()
+            self.singletons[String(describing: AutoTrackingScreenViewStore.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_autoTrackingScreenViewStore() -> AutoTrackingScreenViewStore {
+        InMemoryAutoTrackingScreenViewStore(lockManager: lockManager)
+    }
+
     // DeviceAttributesProvider
     var deviceAttributesProvider: DeviceAttributesProvider {
         getOverriddenInstance() ??
