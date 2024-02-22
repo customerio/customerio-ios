@@ -15,7 +15,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     // singleton constructor
     private init() {
-        self.globalDataStore = CioGlobalDataStore.getInstance()
+        self.globalDataStore = DIGraphShared.shared.globalDataStore
         super.init(moduleName: Self.moduleName)
     }
 

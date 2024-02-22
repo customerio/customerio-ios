@@ -56,9 +56,6 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = globalDataStore
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -115,16 +112,6 @@ extension DIGraph {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
-    }
-
-    // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {
-        getOverriddenInstance() ??
-            newGlobalDataStore
-    }
-
-    private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: keyValueStorage)
     }
 
     // ProfileStore
@@ -304,7 +291,7 @@ extension DIGraph {
     }
 
     private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+        UserDefaultsKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
