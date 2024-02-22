@@ -15,9 +15,7 @@ class DeviceAttributesProviderTest: UnitTest {
         provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
 
         diGraphShared.override(value: provider, forType: DeviceAttributesProvider.self)
-        diGraph.override(value: provider, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
-        diGraph.override(value: deviceInfoMock, forType: DeviceInfo.self)
     }
 
     override func setUp() {
@@ -26,8 +24,8 @@ class DeviceAttributesProviderTest: UnitTest {
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
-        super.setUp(modifyModuleConfig: { config in
-            config.autoTrackDeviceAttributes = false
+        super.setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(false)
         })
 
         let expected: [String: String] = [:]
@@ -45,8 +43,8 @@ class DeviceAttributesProviderTest: UnitTest {
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesEnabled_expectGetSomeAttributes() {
-        super.setUp(modifyModuleConfig: { config in
-            config.autoTrackDeviceAttributes = true
+        super.setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(true)
         })
 
         let givenSdkVersion = String.random
