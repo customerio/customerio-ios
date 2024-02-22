@@ -137,7 +137,7 @@ class HttpClientTest: UnitTest {
     func test_getBasicAuthHeaderString_givenHardCodedCredentials_expectCorrectString() {
         let givenWriteKey = "oofjwo88283899c9jend"
 
-        let expected = "b29mandvODgyODM4OTljOWplbmQ="
+        let expected = "b29mandvODgyODM4OTljOWplbmQ6"
         let actual = RichPushHttpClient.authorizationHeaderForWriteKey(givenWriteKey)
 
         XCTAssertEqual(actual, expected)
