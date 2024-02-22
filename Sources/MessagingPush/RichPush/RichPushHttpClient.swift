@@ -140,8 +140,8 @@ extension RichPushHttpClient {
     public static let defaultAPIHost = "https://cdp.customer.io/v1"
 
     static func authorizationHeaderForWriteKey(_ key: String) -> String {
-        var returnHeader = ""
-        if let encodedRawHeader = key.data(using: .utf8) {
+        var returnHeader = "\(key):"
+        if let encodedRawHeader = returnHeader.data(using: .utf8) {
             returnHeader = encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
         }
         return returnHeader
@@ -160,8 +160,10 @@ extension RichPushHttpClient {
 
     static func getBasicSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.httpMaximumConnectionsPerHost = 2
         configuration.allowsCellularAccess = true
+        configuration.timeoutIntervalForResource = 30
+        configuration.timeoutIntervalForRequest = 60
+        configuration.httpAdditionalHeaders = [:]
         let session = URLSession(configuration: configuration, delegate: nil, delegateQueue: nil)
         return session
     }
