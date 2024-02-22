@@ -22,9 +22,10 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     }
 
     override open func initializeSDKComponents() -> CustomerIO? {
-        var dataPipelineConfig = DataPipelineConfigOptions.Factory.create(sdkConfig: sdkConfig)
-        // disable auto add destination to prevent tests from sending data to server
-        dataPipelineConfig.autoAddCustomerIODestination = false
+        let (_, dataPipelineConfig) = SDKConfigBuilder(writeKey: "")
+            // disable auto add destination to prevent tests from sending data to server
+            .autoAddCustomerIODestination(false)
+            .build()
 
         // setup implementation instance for unit tests
         let implementation = DataPipeline.setUpSharedInstanceForUnitTest(
