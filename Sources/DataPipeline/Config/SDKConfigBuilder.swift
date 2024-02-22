@@ -16,7 +16,7 @@ import Segment
 ///   .build()
 /// // Use `config` for initializing the SDK...
 /// ```
-public class SDKConfigBuilder {
+public struct SDKConfigBuilder {
     // default static values for configuration options
     private static let defaultAPIHost = "cdp.customer.io/v1"
     private static let defaultCDNHost = "cdp.customer.io/v1"
@@ -44,79 +44,73 @@ public class SDKConfigBuilder {
     }
 
     @discardableResult
-    public func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
+    public mutating func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
         self.logLevel = logLevel
         return self
     }
 
     @discardableResult
-    public func apiHost(_ apiHost: String) -> SDKConfigBuilder {
+    public mutating func apiHost(_ apiHost: String) -> SDKConfigBuilder {
         self.apiHost = apiHost
         return self
     }
 
     @discardableResult
-    public func cdnHost(_ cdnHost: String) -> SDKConfigBuilder {
+    public mutating func cdnHost(_ cdnHost: String) -> SDKConfigBuilder {
         self.cdnHost = cdnHost
         return self
     }
 
     @discardableResult
-    public func flushAt(_ flushAt: Int) -> SDKConfigBuilder {
+    public mutating func flushAt(_ flushAt: Int) -> SDKConfigBuilder {
         self.flushAt = flushAt
         return self
     }
 
     @discardableResult
-    public func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder {
+    public mutating func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder {
         self.flushInterval = flushInterval
         return self
     }
 
     @discardableResult
-    public func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
+    public mutating func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
         autoAddCustomerIODestination = autoAdd
         return self
     }
 
     @discardableResult
-    public func defaultSettings(_ settings: Settings?) -> SDKConfigBuilder {
+    public mutating func defaultSettings(_ settings: Settings?) -> SDKConfigBuilder {
         defaultSettings = settings
         return self
     }
 
     @discardableResult
-    public func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
+    public mutating func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
         flushPolicies = policies
         return self
     }
 
     @discardableResult
-    public func addFlushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
-        flushPolicies.append(contentsOf: policies)
-        return self
-    }
-
-    @discardableResult
-    public func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
+    public mutating func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
         flushQueue = queue
         return self
     }
 
     @discardableResult
-    public func operatingMode(_ mode: OperatingMode) -> SDKConfigBuilder {
+    public mutating func operatingMode(_ mode: OperatingMode) -> SDKConfigBuilder {
         operatingMode = mode
         return self
     }
 
     @discardableResult
-    public func trackApplicationLifecycleEvents(_ track: Bool) -> SDKConfigBuilder {
+    public mutating func trackApplicationLifecycleEvents(_ track: Bool) -> SDKConfigBuilder {
         trackApplicationLifecycleEvents = track
         return self
     }
 
     @discardableResult
-    public func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
+    public mutating func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
         autoTrackDeviceAttributes = autoTrack
         return self
     }
@@ -145,3 +139,7 @@ public class SDKConfigBuilder {
         return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)
     }
 }
+
+/// Tuple type for the result of the `SDKConfigBuilder`'s `build` method.
+/// Contains both `SdkConfig` and `DataPipelineConfigOptions` instances.
+public typealias SDKConfigBuilderResult = (sdkConfig: SdkConfig, dataPipelineConfig: DataPipelineConfigOptions)
