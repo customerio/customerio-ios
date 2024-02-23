@@ -84,7 +84,7 @@ jobs:
       run: |
         make setup_sample_app app=${{ matrix.sample-app }}
         sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_WRITE_KEY ${{ secrets.CUSTOMERIO_APN_WORKSPACE_WRITE_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
     - name: Setup FCM build environment to prepare for building
       if: ${{ matrix.apn-or-fcm == 'FCM' }}

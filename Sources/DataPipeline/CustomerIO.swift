@@ -15,7 +15,7 @@ public extension CustomerIO {
         // set the logLevel for ConsoleLogger
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
         // enable Analytics logs accordingly to logLevel
-        CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
+        CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == CioLogLevel.debug)
 
         initialize(implementation: implementation)
     }

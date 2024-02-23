@@ -9,7 +9,7 @@ import Segment
 ///
 /// Usage Example:
 /// ```
-/// let config = SDKConfigBuilder(writeKey: "your_write_key")
+/// let config = SDKConfigBuilder(cdpApiKey: "your_cdp_api_key")
 ///   .apiHost("your_api_host")
 ///   .flushAt(30)
 ///   // additional configuration as needed...
@@ -25,7 +25,7 @@ public class SDKConfigBuilder {
     private var logLevel: CioLogLevel = .error
 
     // configuration options for DataPipelineConfigOptions
-    private let writeKey: String
+    private let cdpApiKey: String
     private var apiHost: String = SDKConfigBuilder.defaultAPIHost
     private var cdnHost: String = SDKConfigBuilder.defaultCDNHost
     private var flushAt: Int = 20
@@ -40,8 +40,8 @@ public class SDKConfigBuilder {
     private var siteId: String?
 
     // allow construction of builder with required configurations only
-    public init(writeKey: String) {
-        self.writeKey = writeKey
+    public init(cdpApiKey: String) {
+        self.cdpApiKey = cdpApiKey
     }
 
     @discardableResult
@@ -129,7 +129,7 @@ public class SDKConfigBuilder {
 
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
-            writeKey: writeKey,
+            cdpApiKey: cdpApiKey,
             apiHost: apiHost,
             cdnHost: cdnHost,
             flushAt: flushAt,

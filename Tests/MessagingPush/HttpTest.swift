@@ -33,9 +33,9 @@ open class HttpTest: UnitTest {
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
          we see environment variables set in XCode.
          */
-        if let writeKey = getEnvironmentVariable("WRITE_KEY") {
+        if let writeKey = getEnvironmentVariable("CDP_API_KEY") {
             cioSession = RichPushHttpClient.getCIOApiSession(
-                key: writeKey,
+                key: cdpApiKey,
                 userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
             )
         }

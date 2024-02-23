@@ -13,7 +13,7 @@ import XCTest
 ///
 /// For SDK-wide tests, child classes can conveniently inherit from `UnitTest`, designed specifically for testing only SDK APIs.
 open class UnitTestBase<Component>: XCTestCase {
-    public let testWriteKey = "test"
+    public let testCdpApiKey = "test"
     // Using the .shared instance of the DIGraph to ensure that all tests share the same instance and data.
     // Overriding it will work the same way as overriding the shared instance of the SDK.
     public let diGraphShared: DIGraphShared = .shared

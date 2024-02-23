@@ -86,13 +86,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, introduced: 13.0)
     @discardableResult
     public static func initialize(
-        writeKey: String,
+        cdpApiKey: String,
         configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
     ) -> MessagingPushInstance {
         if let configureHandler = configureHandler {
             configureHandler(&moduleConfig)
         }
-        moduleConfig.writeKey = writeKey
+        moduleConfig.cdpApiKey = cdpApiKey
 
         shared.initializeModuleIfNotAlready()
 
