@@ -7,7 +7,7 @@ class PushEventHandlerTest: UnitTest {
     private var pushEventHandler: PushEventHandler!
 
     private var pushEventHandlerProxy: PushEventHandlerProxy {
-        diGraph.pushEventHandlerProxy
+        diGraphShared.pushEventHandlerProxy
     }
 
     private var pushClickHandler = PushClickHandlerMock()
@@ -15,7 +15,14 @@ class PushEventHandlerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        pushEventHandler = IOSPushEventListener(jsonAdapter: diGraph.jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: MessagingPushConfigOptions(), pushClickHandler: pushClickHandler, pushHistory: diGraph.pushHistory, logger: log)
+        pushEventHandler = IOSPushEventListener(
+            jsonAdapter: diGraph.jsonAdapter,
+            pushEventHandlerProxy: pushEventHandlerProxy,
+            moduleConfig: diGraphShared.messagingPushConfigOptions,
+            pushClickHandler: pushClickHandler,
+            pushHistory: diGraphShared.pushHistory,
+            logger: diGraph.logger
+        )
     }
 
     // MARK: onPushAction
