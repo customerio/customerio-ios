@@ -56,10 +56,12 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
         let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
 
         session.downloadTask(with: url) { tempLocation, response, _ in
-            guard let tempLocation = tempLocation, let uniqueFileName = response?.suggestedFilename else {
+            guard let tempLocation = tempLocation, let suggestedFileName = response?.suggestedFilename else {
                 return onComplete(nil)
             }
 
+            // create a unique file name so when trying to move temp file to destination it doesn't give an exception
+            let uniqueFileName = UUID().uuidString + "_" + suggestedFileName
             let destinationURL = directoryURL
                 .appendingPathComponent(uniqueFileName)
 
@@ -70,6 +72,8 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
                     withIntermediateDirectories: true,
                     attributes: nil
                 )
+
+                // Now attempt the move
                 try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
             } catch {
                 // XXX: log error when error handling for the customer enabled

@@ -276,21 +276,21 @@ class InAppProviderMock: InAppProvider, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var initializeReceivedArguments: (siteId: String, region: Region, delegate: GistDelegate, logging: Bool)?
+    private(set) var initializeReceivedArguments: (siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var initializeReceivedInvocations: [(siteId: String, region: Region, delegate: GistDelegate, logging: Bool)] = []
+    private(set) var initializeReceivedInvocations: [(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
     var initializeClosure: ((String, Region, GistDelegate, Bool) -> Void)?
 
-    /// Mocked function for `initialize(siteId: String, region: Region, delegate: GistDelegate, logging: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func initialize(siteId: String, region: Region, delegate: GistDelegate, logging: Bool) {
+    /// Mocked function for `initialize(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func initialize(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool) {
         mockCalled = true
         initializeCallsCount += 1
-        initializeReceivedArguments = (siteId: siteId, region: region, delegate: delegate, logging: logging)
-        initializeReceivedInvocations.append((siteId: siteId, region: region, delegate: delegate, logging: logging))
-        initializeClosure?(siteId, region, delegate, logging)
+        initializeReceivedArguments = (siteId: siteId, region: region, delegate: delegate, enableLogging: enableLogging)
+        initializeReceivedInvocations.append((siteId: siteId, region: region, delegate: delegate, enableLogging: enableLogging))
+        initializeClosure?(siteId, region, delegate, enableLogging)
     }
 
     // MARK: - setProfileIdentifier

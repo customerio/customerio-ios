@@ -58,7 +58,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        CustomerIO.initialize(writeKey: "YOUR_CDP_WRITE_KEY") { config in
+        CustomerIO.initialize(cdpApiKey: "YOUR_CDP_API_KEY") { config in
           // optionally, configure the SDK for your app's needs
         }
 

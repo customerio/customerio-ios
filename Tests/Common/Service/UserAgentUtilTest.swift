@@ -23,9 +23,7 @@ class UserAgentUtilTest: UnitTest {
     }
 
     override func setUp() {
-        super.setUp(modifySdkConfig: { config in
-            config._sdkWrapperConfig = self.sdkWrapperConfig
-        })
+        super.setUp()
 
         userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoMock, sdkConfig: sdkConfig)
     }

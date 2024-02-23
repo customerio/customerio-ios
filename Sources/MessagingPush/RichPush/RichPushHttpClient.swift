@@ -126,7 +126,7 @@ public class RichPushHttpClient: HttpClient {
 
         self.publicSession = Self.getBasicSession()
         self.cioApiSession = Self.getCIOApiSession(
-            key: MessagingPush.moduleConfig.writeKey,
+            key: MessagingPush.moduleConfig.cdpApiKey,
             userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
         )
     }
@@ -139,19 +139,19 @@ public class RichPushHttpClient: HttpClient {
 extension RichPushHttpClient {
     public static let defaultAPIHost = "https://cdp.customer.io/v1"
 
-    static func authorizationHeaderForWriteKey(_ key: String) -> String {
-        var returnHeader = ""
-        if let encodedRawHeader = key.data(using: .utf8) {
+    static func authorizationHeaderForCdpApiKey(_ key: String) -> String {
+        var returnHeader = "\(key):"
+        if let encodedRawHeader = returnHeader.data(using: .utf8) {
             returnHeader = encodedRawHeader.base64EncodedString(options: NSData.Base64EncodingOptions(rawValue: 0))
         }
         return returnHeader
     }
 
     static func getCIOsessionHeader(
-        writeKey: String,
+        cdpApiKey: String,
         userAgentHeaderValue: String
     ) -> [String: String] {
-        let basicAuthHeaderString = "Basic \(authorizationHeaderForWriteKey(writeKey))"
+        let basicAuthHeaderString = "Basic \(authorizationHeaderForCdpApiKey(cdpApiKey))"
 
         return ["Content-Type": "application/json; charset=utf-8",
                 "User-Agent": userAgentHeaderValue,
@@ -160,8 +160,10 @@ extension RichPushHttpClient {
 
     static func getBasicSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.httpMaximumConnectionsPerHost = 2
         configuration.allowsCellularAccess = true
+        configuration.timeoutIntervalForResource = 30
+        configuration.timeoutIntervalForRequest = 60
+        configuration.httpAdditionalHeaders = [:]
         let session = URLSession(configuration: configuration, delegate: nil, delegateQueue: nil)
         return session
     }
@@ -169,7 +171,7 @@ extension RichPushHttpClient {
     static func getCIOApiSession(key: String, userAgentHeaderValue: String) -> URLSession {
         let urlSessionConfig = getBasicSession().configuration
 
-        urlSessionConfig.httpAdditionalHeaders = getCIOsessionHeader(writeKey: key, userAgentHeaderValue: userAgentHeaderValue)
+        urlSessionConfig.httpAdditionalHeaders = getCIOsessionHeader(cdpApiKey: key, userAgentHeaderValue: userAgentHeaderValue)
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
     }

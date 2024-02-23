@@ -157,7 +157,7 @@ public extension CustomerIO {
 
 extension DataPipelineConfigOptions {
     func toSegmentConfiguration() -> Configuration {
-        let result = Configuration(writeKey: writeKey)
+        let result = Configuration(writeKey: cdpApiKey)
         result.trackApplicationLifecycleEvents(trackApplicationLifecycleEvents)
         result.flushAt(flushAt)
         result.flushInterval(flushInterval)

@@ -14,7 +14,7 @@ import XCTest
  */
 class HttpRequestRunnerTest: HttpTest {
     func test_getAccountRegion() throws {
-        guard let runner = runner, let session = session else { return try XCTSkipIf(true) }
+        guard let runner = runner, let session = cioSession else { return try XCTSkipIf(true) }
 
         let endpoint = CIOApiEndpoint.trackPushMetricsCdp
 

@@ -7,7 +7,7 @@ class NotificationService: UNNotificationServiceExtension {
     var bestAttemptContent: UNMutableNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        MessagingPush.initialize(writeKey: BuildEnvironment.CustomerIO.writeKey)
+        MessagingPush.initialize(cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey)
         MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
     }
 

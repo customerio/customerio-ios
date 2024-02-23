@@ -22,7 +22,7 @@ class MessagingPushAPNAPITest: UnitTest {
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
-        // MessagingPush.initialize(writeKey: "") { (config: inout MessagingPushConfigOptions) in }
+        // MessagingPush.initialize(cdpApiKey: "") { (config: inout MessagingPushConfigOptions) in }
 
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())
         mock.registerDeviceToken(apnDeviceToken: Data())

@@ -35,27 +35,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
-        var writeKey = BuildEnvironment.CustomerIO.writeKey
+        var cdpApiKey = BuildEnvironment.CustomerIO.cdpApiKey
         var siteId = BuildEnvironment.CustomerIO.siteId
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedWriteKey = storage.writeKey {
-            writeKey = storedWriteKey
+        if let storedCdpApiKey = storage.cdpApiKey {
+            cdpApiKey = storedCdpApiKey
         }
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
-        CustomerIO.initialize(writeKey: writeKey, logLevel: logLevel) { config in
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.flushInterval = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.flushAt = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            if let apiHost = self.storage.apiHost, !apiHost.isEmpty {
-                config.apiHost = apiHost
-            }
-            if let cdnHost = self.storage.cdnHost, !cdnHost.isEmpty {
-                config.cdnHost = cdnHost
-            }
-        }
+        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+            .logLevel(logLevel)
+            .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
+            .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
+            .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
+            .siteId(siteId)
 
+        if let apiHost = storage.apiHost, !apiHost.isEmpty {
+            config.apiHost(apiHost)
+        }
+        if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
+            config.cdnHost(cdnHost)
+        }
+        CustomerIO.initialize(withConfig: config.build())
         let autoScreenTrack = storage.isTrackScreenEnabled ?? true
         if autoScreenTrack {
             CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))

@@ -4,7 +4,7 @@ protocol StorageManager {
     var cdnHost: String? { get set }
     var apiHost: String? { get set }
     var siteId: String? { get set }
-    var writeKey: String? { get set }
+    var cdpApiKey: String? { get set }
     var bgQDelay: String? { get set }
     var bgNumOfTasks: String? { get set }
     var isTrackScreenEnabled: Bool? { get set }
@@ -51,12 +51,12 @@ class Storage: StorageManager {
         }
     }
 
-    var writeKey: String? {
+    var cdpApiKey: String? {
         get {
-            userDefaults.string(forKey: UserDefaultKeys.writeKey.rawValue)
+            userDefaults.string(forKey: UserDefaultKeys.cdpApiKey.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.writeKey.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdpApiKey.rawValue)
         }
     }
 

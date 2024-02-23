@@ -22,9 +22,9 @@ class DataPipelineCompatibilityTests: IntegrationTest {
     }
 
     override func setUp() {
-        super.setUp(modifyModuleConfig: { config in
+        super.setUp(modifySdkConfig: { config in
             // enable auto add destination so we can test the final JSON being sent to the server
-            config.autoAddCustomerIODestination = true
+            config.autoAddCustomerIODestination(true)
         })
 
         // get DataPipelineImplementation instance so we can call its methods directly
@@ -385,14 +385,14 @@ private extension DataPipelineCompatibilityTests {
         }
     }
 
-    func readTypeFromStorage(writeKey: String? = nil, key: Storage.Constants) -> [SavedEvent] {
+    func readTypeFromStorage(cdpApiKey: String? = nil, key: Storage.Constants) -> [SavedEvent] {
         guard let results = storage.read(key) else { return [] }
 
         return results.flatMap { result -> [SavedEvent] in
             guard let content = readFileFromURL(result),
                   let dict = convertJSONStringToSavedEvent(content),
                   let batch = dict["batch"] as? [SavedEvent],
-                  writeKey == nil || writeKey == dict["writeKey"] as? String
+                  cdpApiKey == nil || cdpApiKey == dict["writeKey"] as? String
             else {
                 return []
             }
