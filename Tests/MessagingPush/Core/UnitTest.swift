@@ -17,15 +17,11 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingPushInstance> {
 
     open func setUp(
         enableLogs: Bool = false,
-        cdpApiKey: String? = nil,
-        modifyModuleConfig: ((inout MessagingPushConfigOptions) -> Void)?
+        modifyModuleConfig: ((MessagingPushConfigBuilder) -> Void)?
     ) {
-        var newConfig = MessagingPushConfigOptions.Factory.create()
-        if let cdpApiKey = cdpApiKey {
-            newConfig.cdpApiKey = cdpApiKey
-        }
-        modifyModuleConfig?(&newConfig)
-        messagingPushConfigOptions = newConfig
+        let moduleConfigBuilder = MessagingPushConfigBuilder()
+        modifyModuleConfig?(moduleConfigBuilder)
+        messagingPushConfigOptions = moduleConfigBuilder.build()
 
         super.setUp(enableLogs: enableLogs, sdkConfig: nil)
     }

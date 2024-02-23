@@ -7,7 +7,7 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = .Factory.create()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
@@ -47,7 +47,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = .Factory.create()
+        moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
     }
     #endif
@@ -58,15 +58,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
-        if let configureHandler = configureHandler {
-            // pass current config reference to update it without needing to recreate
-            configureHandler(&moduleConfig)
-        }
-
-        let moduleInitializedFirstTime = shared.initializeModuleIfNotAlready()
+    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
+        let moduleInitializedFirstTime = shared.initializeModuleIfNotAlready(config: config)
 
         guard moduleInitializedFirstTime else {
             return shared
@@ -85,22 +78,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     @discardableResult
-    public static func initialize(
-        cdpApiKey: String,
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
-        if let configureHandler = configureHandler {
-            configureHandler(&moduleConfig)
-        }
-        moduleConfig.cdpApiKey = cdpApiKey
-
-        shared.initializeModuleIfNotAlready()
-
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        shared.initializeModuleIfNotAlready(config: config)
         return shared
     }
 
     @discardableResult
-    private func initializeModuleIfNotAlready() -> Bool {
+    private func initializeModuleIfNotAlready(config: MessagingPushConfigOptions) -> Bool {
         // Make this function thread-safe by immediately locking it.
         lock.lock()
         defer {
@@ -115,6 +99,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         hasSetupModule = true
 
         logger.debug("Setting up \(moduleName) module...")
+        // update static config
+        Self.moduleConfig = config
+        // create and set implementation using updated config
         let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
         setImplementationInstance(implementation: pushImplementation)
 

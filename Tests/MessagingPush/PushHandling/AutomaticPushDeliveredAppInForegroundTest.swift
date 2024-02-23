@@ -65,8 +65,9 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
 
 extension AutomaticPushDeliveredAppInForegrondTest {
     private func configureSdk(shouldDisplayPushAppInForeground: Bool) {
-        var pushModuleConfig = MessagingPushConfigOptions.Factory.create()
-        pushModuleConfig.showPushAppInForeground = shouldDisplayPushAppInForeground
+        let pushModuleConfig = MessagingPushConfigBuilder()
+            .showPushAppInForeground(shouldDisplayPushAppInForeground)
+            .build()
 
         pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraph.jsonAdapter,

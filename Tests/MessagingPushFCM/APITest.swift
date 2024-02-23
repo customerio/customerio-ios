@@ -46,6 +46,24 @@ class MessagingPushFCMAPITest: UnitTest {
         mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
     }
 
+    func test_allPublicModuleConfigOptions() throws {
+        try skipRunningTest()
+
+        _ = MessagingPushConfigBuilder()
+            .autoFetchDeviceToken(true)
+            .autoTrackPushEvents(true)
+            .showPushAppInForeground(true)
+            .build()
+
+        // This is a constructor for `MessagingPushConfigBuilder` that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // _ = MessagingPushConfigBuilder(cdpApiKey: "").build()
+
+        _ = MessagingPushConfigBuilder.build(from: [:])
+    }
+
     func test_richPushPublicFunctions() throws {
         try skipRunningTest()
 

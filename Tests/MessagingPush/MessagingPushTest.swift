@@ -46,7 +46,7 @@ class MessagingPushTest: IntegrationTest {
 
     func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
         setupTest { config in
-            config.autoTrackPushEvents = false
+            config.autoTrackPushEvents(false)
         }
 
         MessagingPush.initialize()
@@ -56,7 +56,7 @@ class MessagingPushTest: IntegrationTest {
 }
 
 extension MessagingPushTest {
-    func setupTest(modifyModuleConfig: ((inout MessagingPushConfigOptions) -> Void)? = nil) {
+    func setupTest(modifyModuleConfig: ((MessagingPushConfigBuilder) -> Void)? = nil) {
         super.setUp(modifyModuleConfig: modifyModuleConfig)
 
         DIGraphShared.shared.override(value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self)

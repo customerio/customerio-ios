@@ -82,16 +82,25 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
+        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
     ) -> MessagingPushInstance {
         // initialize parent module to initialize features shared by APN and FCM modules
-        let implementation = MessagingPush.initialize(configure: configureHandler)
+        let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken {
             shared.setupAutoFetchDeviceToken()
         }
 
+        return implementation
+    }
+
+    /// MessagingPushAPN initializer for Notification Service Extension
+    @available(iOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @discardableResult
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        let implementation = MessagingPush.initializeForExtension(withConfig: config)
         return implementation
     }
 
