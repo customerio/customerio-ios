@@ -24,10 +24,10 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
 
     open func setUp(
         enableLogs: Bool = false,
-        writeKey: String? = nil,
+        cdpApiKey: String? = nil,
         modifySdkConfig: ((SDKConfigBuilder) -> Void)?
     ) {
-        let sdkConfigBuilder = SDKConfigBuilder(writeKey: writeKey ?? testWriteKey)
+        let sdkConfigBuilder = SDKConfigBuilder(cdpApiKey: cdpApiKey ?? testCdpApiKey)
         // set sdk log level to debug if logs are enabled
         if enableLogs {
             sdkConfigBuilder.logLevel(.debug)

@@ -13,7 +13,7 @@ import XCTest
 
  In order to *run* tests on your local machine, follow these setup steps:
  1. In XCode, go to: Edit Scheme > Run
- 2. Create an environment variables: `WRITE_KEY`. Populate the values with  test credentials from a source that you control.
+ 2. Create an environment variables: `CDP_API_KEY`. Populate the values with  test credentials from a source that you control.
  3. Manually run the tests below. Use the XCode debug console to see the log output for debugging.
  */
 open class HttpTest: UnitTest {
@@ -33,7 +33,7 @@ open class HttpTest: UnitTest {
          We don't want to run these tests on a CI server (flaky!) so, only populate the runner if
          we see environment variables set in XCode.
          */
-        if let writeKey = getEnvironmentVariable("CDP_API_KEY") {
+        if let cdpApiKey = getEnvironmentVariable("CDP_API_KEY") {
             cioSession = RichPushHttpClient.getCIOApiSession(
                 key: cdpApiKey,
                 userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
