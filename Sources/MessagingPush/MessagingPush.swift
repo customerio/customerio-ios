@@ -7,10 +7,10 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
+    public var moduleConfig: MessagingPushConfigOptions { implementation?.moduleConfig ?? MessagingPushConfigBuilder().build() }
 
     /*
      It's preferred to get a lock from lockmanager. Because this is a top-level class where the digraph may be nil, it's more difficult to get a lock from lockmanager.
@@ -34,7 +34,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         shared.globalDataStore = diGraphShared.globalDataStore
-        moduleConfig = config
 
         shared.setImplementationInstance(implementation: implementation)
         return implementation
@@ -42,12 +41,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
         return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
     }
     #endif
@@ -67,7 +65,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
         // Some part of the initialize is specific only to non-NSE targets.
         // Put those parts in this non-NSE initialize method.
-        if Self.moduleConfig.autoTrackPushEvents {
+        if config.autoTrackPushEvents {
             DIGraphShared.shared.automaticPushClickHandling.start()
         }
 
@@ -99,10 +97,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         hasSetupModule = true
 
         logger.debug("Setting up \(moduleName) module...")
-        // update static config
-        Self.moduleConfig = config
-        // create and set implementation using updated config
-        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
+        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         setImplementationInstance(implementation: pushImplementation)
 
         logger.info("\(moduleName) module successfully set up with SDK")

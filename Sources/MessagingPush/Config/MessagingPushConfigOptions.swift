@@ -15,6 +15,6 @@ public struct MessagingPushConfigOptions {
 // in constructor.
 extension DIGraphShared {
     var messagingPushConfigOptions: MessagingPushConfigOptions {
-        MessagingPush.moduleConfig
+        MessagingPush.shared.moduleConfig
     }
 }

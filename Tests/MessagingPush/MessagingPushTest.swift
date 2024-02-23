@@ -49,7 +49,7 @@ class MessagingPushTest: IntegrationTest {
             config.autoTrackPushEvents(false)
         }
 
-        MessagingPush.initialize()
+        MessagingPush.initialize(withConfig: messagingPushConfigOptions)
 
         XCTAssertFalse(automaticPushClickHandlingMock.startCalled)
     }
