@@ -36,7 +36,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackDeviceAttrEnabled = true
         }
         var cdpApiKey = BuildEnvironment.CustomerIO.cdpApiKey
-        var siteId = BuildEnvironment.CustomerIO.cdpApiKey
+        var siteId = BuildEnvironment.CustomerIO.siteId
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
@@ -44,23 +44,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             cdpApiKey = storedCdpApiKey
         }
         let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
-        var apiHost = ""
-        var cdnHost = ""
-        if let storedApiHost = storage.apiHost, !apiHost.isEmpty {
-            apiHost = storedApiHost
-        }
-        if let storedCdnHost = storage.cdnHost, !cdnHost.isEmpty {
-            cdnHost = storedCdnHost
-        }
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
             .logLevel(logLevel)
-            .apiHost(apiHost)
-            .cdnHost(cdnHost)
             .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
             .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
             .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
             .siteId(siteId)
 
+        if let apiHost = storage.apiHost, !apiHost.isEmpty {
+            config.apiHost(apiHost)
+        }
+        if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
+            config.cdnHost(cdnHost)
+        }
         CustomerIO.initialize(withConfig: config.build())
         let autoScreenTrack = storage.isTrackScreenEnabled ?? true
         if autoScreenTrack {
