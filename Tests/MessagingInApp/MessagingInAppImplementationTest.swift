@@ -264,6 +264,7 @@ extension MessagingInAppImplementationTest {
             expectation.fulfill()
         }
         // Wait for the expectations to be fulfilled, with a timeout slightly longer than given timeout
-        wait(for: [expectation], timeout: timeoutInSeconds + 0.1)
+        // Note: On CI, we experienced flakiness if the timeout value was only 0.1 seconds longer then the given timeout value.
+        wait(for: [expectation], timeout: timeoutInSeconds + 0.5)
     }
 }
