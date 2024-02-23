@@ -67,6 +67,7 @@ public enum FileType {
  The file tree remains the same for all site ids.
  */
 // sourcery: InjectRegister = "FileStorage"
+// sourcery: InjectRegisterShared = "FileStorage"
 public class FileManagerFileStorage: FileStorage {
     private let fileManager = FileManager.default
     private let logger: Logger

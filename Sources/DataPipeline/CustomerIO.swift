@@ -23,14 +23,13 @@ public extension CustomerIO {
         DIGraphShared.shared.logger.setLogLevel(logLevel)
         // enable Analytics logs accordingly to logLevel
         CustomerIO.shared.setDebugLogsEnabled(logLevel == .debug)
-
         initialize(implementation: implementation)
 
         // Handle logged-in user from Journeys to CDP and check
         // if any unprocessed tasks are pending in the background queue.
         let migrationHandler = DataPipelineMigrationHandler(implementation: implementation)
-        let migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler, diGraph: newDiGraph)
-        migrationAssistant.performMigration(for: DataPipeline.shared.analytics.userId)
+        let migrationAssistant = DataPipelineMigrationAssistant(handler: migrationHandler)
+        migrationAssistant.performMigration(siteId: cdpConfig.siteId)
     }
 
     /**

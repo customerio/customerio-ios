@@ -10,6 +10,7 @@ protocol QueueInventoryMemoryStore {
 //
 // sourcery: InjectRegister = "QueueInventoryMemoryStore"
 // sourcery: InjectSingleton
+// sourcery: InjectRegisterShared = "QueueInventoryMemoryStore"
 class QueueInventoryMemoryStoreImpl: QueueInventoryMemoryStore {
     @Atomic var inventory: [QueueTaskMetadata]?
 }
