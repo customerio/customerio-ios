@@ -12,7 +12,8 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var restoreDefaultButton: UIButton!
     @IBOutlet var saveButton: ThemeButton!
     @IBOutlet var deviceTokenTextField: ThemeTextField!
-    @IBOutlet var cdpWriteKeyTextField: ThemeTextField!
+
+    @IBOutlet var cdpApiKeyTextField: ThemeTextField!
     @IBOutlet var siteIdTextField: ThemeTextField!
     @IBOutlet var trackDeviceToggle: UISwitch!
     @IBOutlet var debugModeToggle: UISwitch!
@@ -28,7 +29,7 @@ class SettingsViewController: BaseViewController {
     var storage = DIGraph.shared.storage
     var currentSettings: Settings!
     var deepLinkSiteId: String?
-    var deeplinkWriteKey: String?
+    var deeplinkCdpApiKey: String?
     var trackScreenState: Bool {
         trackScreenToggle.isOn
     }
@@ -67,17 +68,17 @@ class SettingsViewController: BaseViewController {
 
     func getAndSetDefaultValues() {
         var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
-        var writeKey = storage.writeKey ?? BuildEnvironment.CustomerIO.writeKey
-        if let deepLinkSiteId = deepLinkSiteId, let deeplinkWriteKey = deeplinkWriteKey {
+        var cdpApiKey = storage.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
+        if let deepLinkSiteId = deepLinkSiteId, let deeplinkCdpApiKey = deeplinkCdpApiKey {
             siteId = deepLinkSiteId
-            writeKey = deeplinkWriteKey
+            cdpApiKey = deeplinkCdpApiKey
         }
         currentSettings = Settings(
             deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
             cdnHost: storage.cdnHost ?? "cdp.customer.io/v1",
             apiHost: storage.apiHost ?? "cdp.customer.io/v1",
             siteId: siteId,
-            writeKey: writeKey,
+            cdpApiKey: cdpApiKey,
             bgQDelay: storage.bgQDelay ?? "30",
             bgQMinTasks: storage.bgNumOfTasks ?? "10",
             isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
@@ -93,7 +94,7 @@ class SettingsViewController: BaseViewController {
         apiHostTextField.text = currentSettings.apiHost
 
         siteIdTextField.text = currentSettings.siteId
-        cdpWriteKeyTextField.text = currentSettings.writeKey
+        cdpApiKeyTextField.text = currentSettings.cdpApiKey
 
         bgQTakDelayTextField.text = currentSettings.bgQDelay
         bgQMinTasksTextField.text = currentSettings.bgQMinTasks
@@ -117,7 +118,7 @@ class SettingsViewController: BaseViewController {
         setAppiumAccessibilityIdTo(cdnHostTextField, value: "CDN Host Input")
         setAppiumAccessibilityIdTo(apiHostTextField, value: "API Host Input")
         setAppiumAccessibilityIdTo(siteIdTextField, value: "Site ID Input")
-        setAppiumAccessibilityIdTo(cdpWriteKeyTextField, value: "CDP Write Key Input")
+        setAppiumAccessibilityIdTo(cdpApiKeyTextField, value: "CDP API Key Input")
         setAppiumAccessibilityIdTo(trackScreenToggle, value: "Track Screens Toggle")
         setAppiumAccessibilityIdTo(trackDeviceToggle, value: "Track Device Attributes Toggle")
         setAppiumAccessibilityIdTo(debugModeToggle, value: "Debug Mode Toggle")
@@ -152,18 +153,18 @@ class SettingsViewController: BaseViewController {
         storage.isDebugModeEnabled = debugModeState
         // SiteId
         storage.siteId = siteIdTextField.text
-        // CDP Write Key
-        storage.writeKey = cdpWriteKeyTextField.text
+        // CDP API Key
+        storage.cdpApiKey = cdpApiKeyTextField.text
     }
 
     func isValid() -> Bool {
-        // Site id and Write Key
+        // Site id and CDP API Key
         if siteIdTextField.isTextTrimEmpty {
             showToast(withMessage: "Enter a valid value for Site Id.")
             return false
         }
-        if cdpWriteKeyTextField.isTextTrimEmpty {
-            showToast(withMessage: "Enter a valid value for Write Key.")
+        if cdpApiKeyTextField.isTextTrimEmpty {
+            showToast(withMessage: "Enter a valid value for CDP API Key.")
             return false
         }
         // BGQ
@@ -214,7 +215,7 @@ class SettingsViewController: BaseViewController {
             cdnHost: "",
             apiHost: "",
             siteId: BuildEnvironment.CustomerIO.siteId,
-            writeKey: BuildEnvironment.CustomerIO.writeKey,
+            cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey,
             bgQDelay: "30",
             bgQMinTasks: "10",
             isTrackScreenEnabled: true,

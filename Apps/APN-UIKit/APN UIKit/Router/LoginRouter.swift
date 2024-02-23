@@ -16,9 +16,9 @@ class LoginRouter: LoginRouting {
 
     func routeToSettings(_ withInfo: [String: String]? = nil) {
         let viewController = SettingsViewController.newInstance()
-        if let siteId = withInfo?["site_id"], let cdpWriteKey = withInfo?["write_key"] {
+        if let siteId = withInfo?["site_id"], let cdpApiKey = withInfo?["cdp_api_key"] {
             viewController.deepLinkSiteId = siteId
-            viewController.deeplinkWriteKey = cdpWriteKey
+            viewController.deeplinkCdpApiKey = cdpApiKey
         }
         loginViewController?.navigationController?.pushViewController(viewController, animated: true)
     }

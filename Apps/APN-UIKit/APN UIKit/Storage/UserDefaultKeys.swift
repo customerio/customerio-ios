@@ -4,7 +4,7 @@ enum UserDefaultKeys: String {
     case cdnHost
     case apiHost
     case siteId
-    case writeKey
+    case cdpApiKey
     case bgQDelay
     case bgNumOfTasks
     case isTrackScreenEnabled
