@@ -124,7 +124,7 @@ public class SDKConfigBuilder {
 
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig`` from given configurations
-        var sdkConfig = SdkConfig.Factory.create(siteId: "", apiKey: "", region: .US)
+        var sdkConfig = SdkConfig.Factory.create()
         sdkConfig.logLevel = logLevel
 
         // create `DataPipelineConfigOptions` from given configurations

@@ -25,7 +25,10 @@ class UserAgentUtilTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoMock, sdkConfig: sdkConfig)
+        var sdkConfigWithWrapperConfig = sdkConfig
+        sdkConfigWithWrapperConfig._sdkWrapperConfig = sdkWrapperConfig
+
+        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoMock, sdkConfig: sdkConfigWithWrapperConfig)
     }
 
     // MARK: getUserAgentHeaderValue

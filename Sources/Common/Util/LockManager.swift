@@ -32,6 +32,7 @@ public class LockManager {
 public enum LockReference: String {
     case queueStorage
     case pushHistory
+    case autoTrackScreenViewStore
 }
 
 // Dependency needs to be accessed by multiple graphs.

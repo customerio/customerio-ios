@@ -20,11 +20,8 @@ public struct SdkConfig {
     // Used to create new instance of SdkConfig when the SDK is initialized.
     // Then, each property of the SdkConfig object can be modified by the user.
     public enum Factory {
-        public static func create(siteId: String, apiKey: String, region: Region) -> SdkConfig {
+        public static func create() -> SdkConfig {
             SdkConfig(
-                siteId: siteId,
-                apiKey: apiKey,
-                region: region,
                 logLevel: CioLogLevel.error
             )
         }
@@ -53,25 +50,12 @@ public struct SdkConfig {
     // Constants that SDK wrappers can use with `modify` function for setting configuration options with strings.
     // It's important to keep these values backwards compatible to avoid breaking SDK wrappers.
     public enum Keys: String { // Constants used to map each of the options in SdkConfig
-        // configure workspace environment
-        case siteId
-        case apiKey
-        case region
         // config features
         case logLevel
         // SDK wrapper config
         case source
         case sourceVersion = "version"
     }
-
-    /// Immutable property to store the workspace site id set during SDK initialization.
-    public let siteId: String
-
-    /// Immutable property to store the workspace api key set during SDK initialization.
-    public let apiKey: String
-
-    /// Immutable property to store the workspace Region set during SDK initialization.
-    public let region: Region
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
