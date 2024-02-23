@@ -38,17 +38,14 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializationWithOnlySiteId_expectDefaultRegion() {
-        let givenSiteId = String.random
+    func test_initializationWithOnlySiteId_expectThrowError() {
         let givenDict: [String: Any] = [
-            "siteId": givenSiteId
+            "siteId": String.random
         ]
 
-        let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
-
-        XCTAssertNotNil(config)
-        XCTAssertEqual(config?.siteId, givenSiteId)
-        XCTAssertEqual(config?.region, Region.US)
+        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingRegion)
+        }
     }
 
     func test_mapInitializationWithIncorrectSiteIdType_expectThrowError() {
@@ -72,18 +69,16 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_mapInitializationWithIncorrectRegionType_expectDefaultValue() {
+    func test_mapInitializationWithIncorrectRegionType_expectThrowError() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
             "siteId": givenSiteId,
             "region": Region.US
         ]
 
-        let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
-
-        XCTAssertNotNil(config)
-        XCTAssertEqual(config?.siteId, givenSiteId)
-        XCTAssertEqual(config?.region, Region.US)
+        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingRegion)
+        }
     }
 
     func test_mapInitializationWithIncorrectRegionValue_expectDefaultValue() {

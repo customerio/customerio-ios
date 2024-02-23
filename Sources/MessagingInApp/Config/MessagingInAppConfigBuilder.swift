@@ -23,7 +23,7 @@ public class MessagingInAppConfigBuilder {
     /// - Parameters:
     ///   - siteId: Workspace Site ID
     ///   - region: Workspace Region
-    public init(siteId: String, region: Region = .US) {
+    public init(siteId: String, region: Region) {
         self.siteId = siteId
         self.region = region
     }
@@ -40,6 +40,7 @@ public class MessagingInAppConfigBuilder {
 /// Defines errors that can occur during the `MessagingInAppConfigBuilder` building process.
 public enum MessagingInAppConfigBuilderError: Error {
     case missingSiteId
+    case missingRegion
 }
 
 public extension MessagingInAppConfigBuilder {
@@ -55,11 +56,10 @@ public extension MessagingInAppConfigBuilder {
         guard let siteId = dictionary[Keys.siteId.rawValue] as? String else {
             throw MessagingInAppConfigBuilderError.missingSiteId
         }
-
-        if let region = (dictionary[Keys.region.rawValue] as? String).map(Region.getRegion) {
-            return MessagingInAppConfigBuilder(siteId: siteId, region: region).build()
-        } else {
-            return MessagingInAppConfigBuilder(siteId: siteId).build()
+        guard let region = (dictionary[Keys.region.rawValue] as? String).map(Region.getRegion) else {
+            throw MessagingInAppConfigBuilderError.missingRegion
         }
+
+        return MessagingInAppConfigBuilder(siteId: siteId, region: region).build()
     }
 }
