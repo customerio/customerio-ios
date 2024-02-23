@@ -58,8 +58,12 @@ public class AutoTrackingScreenViews: UtilityPlugin {
     }
 
     private func swizzle(forClass: AnyClass, original: Selector, new: Selector) {
-        guard let originalMethod = class_getInstanceMethod(forClass, original) else { return }
-        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else { return }
+        guard let originalMethod = class_getInstanceMethod(forClass, original) else {
+            return
+        }
+        guard let swizzledMethod = class_getInstanceMethod(forClass, new) else {
+            return
+        }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }
 }
@@ -68,7 +72,9 @@ public class AutoTrackingScreenViews: UtilityPlugin {
 extension AutoTrackingScreenViews {
     func performScreenTracking(onViewController viewController: UIViewController) {
         guard let name = viewController.getNameForAutomaticScreenViewTracking() else {
-            diGraph.logger.info("Automatic screenview tracking event ignored for \(viewController). Could not determine name to use for screen.")
+            diGraph.logger.info(
+                "Automatic screenview tracking event ignored for \(viewController). Could not determine name to use for screen."
+            )
             return
         }
 
@@ -90,7 +96,9 @@ extension AutoTrackingScreenViews {
 
         guard shouldTrackEvent else {
             let isUsingSdkDefaultFilter = customerOverridenFilter == nil
-            diGraph.logger.debug("automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)")
+            diGraph.logger.debug(
+                "automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)"
+            )
             return // event has been filtered out. Ignore it.
         }
 
@@ -123,7 +131,9 @@ extension UIViewController {
         if rootViewController == nil {
             rootViewController = getActiveRootViewController()
         }
-        guard let viewController = getVisibleViewController(fromRootViewController: rootViewController) else {
+        guard
+            let viewController = getVisibleViewController(fromRootViewController: rootViewController)
+        else {
             return
         }
 
@@ -155,10 +165,13 @@ extension UIViewController {
     /**
      Finds the top most view controller in the navigation controller/ tab bar controller stack or if it is presented
      */
-    private func getVisibleViewController(fromRootViewController rootViewController: UIViewController?)
+    private func getVisibleViewController(
+        fromRootViewController rootViewController: UIViewController?
+    )
         -> UIViewController? {
         if let navigationController = rootViewController as? UINavigationController {
-            return getVisibleViewController(fromRootViewController: navigationController.visibleViewController)
+            return getVisibleViewController(
+                fromRootViewController: navigationController.visibleViewController)
         }
         if let tabController = rootViewController as? UITabBarController {
             if let selected = tabController.selectedViewController {
@@ -190,7 +203,9 @@ extension UIViewController {
                 }
             }
         } else { // keyWindow is deprecated in iOS 13.0*
+            #if os(iOS)
             return UIApplication.shared.keyWindow?.rootViewController
+            #endif
         }
 
         return nil

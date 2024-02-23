@@ -24,7 +24,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
             siteId: moduleConfig.siteId,
             region: moduleConfig.region,
             delegate: self,
-            logging: logger.logLevel == .debug
+            enableLogging: logger.logLevel == .debug
         )
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and

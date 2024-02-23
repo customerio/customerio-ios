@@ -24,14 +24,6 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     private var nestedDelegates: [String: PushEventHandler] = [:]
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
-        // this line below seems fragile. If we change the class name, this could break.
-        // could digraph inject instance of the SDK's intance before setting singleton?
-        let doesDelegateBelongToCio = newHandler is IOSPushEventListener
-
-        guard !doesDelegateBelongToCio else {
-            return
-        }
-
         nestedDelegates[String(describing: newHandler)] = newHandler
     }
 
