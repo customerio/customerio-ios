@@ -22,7 +22,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
     }
 
     override open func initializeSDKComponents() -> CustomerIO? {
-        let (_, dataPipelineConfig) = SDKConfigBuilder(writeKey: "")
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: "")
             // disable auto add destination to prevent tests from sending data to server
             .autoAddCustomerIODestination(false)
             .build()

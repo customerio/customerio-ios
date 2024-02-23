@@ -27,8 +27,8 @@ class DataPipelineInteractionTests: IntegrationTest {
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
 
-    override func setUp(enableLogs: Bool = false, writeKey: String? = nil, modifySdkConfig: ((SDKConfigBuilder) -> Void)?) {
-        super.setUp(enableLogs: enableLogs, writeKey: writeKey, modifySdkConfig: modifySdkConfig)
+    override func setUp(enableLogs: Bool = false, cdpApiKey: String? = nil, modifySdkConfig: ((SDKConfigBuilder) -> Void)?) {
+        super.setUp(enableLogs: enableLogs, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
