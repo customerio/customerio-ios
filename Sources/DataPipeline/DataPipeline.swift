@@ -1,14 +1,9 @@
 import CioInternalCommon
+import CioTrackingMigration
 import Segment
 
-public protocol DataPipelineInstance: CustomerIOInstance {
+public protocol DataPipelineInstance: CustomerIOInstance, DataPipelineMigrationAction {
     var analytics: Analytics { get }
-    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
-    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
-    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
-    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
-    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
-    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -147,6 +142,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 // MARK: Background queue migration
 
 public extension DataPipeline {
+    func processAlreadyIdentifiedUser(identifier: String) {
+        implementation?.processAlreadyIdentifiedUser(identifier: identifier)
+    }
+
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {
         implementation?.processIdentifyFromBGQ(identifier: identifier, timestamp: timestamp, body: body)
     }
