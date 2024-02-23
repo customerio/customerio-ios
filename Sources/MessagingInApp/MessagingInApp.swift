@@ -58,18 +58,8 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
      */
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
-    public static func initialize(
-        siteId: String,
-        region: Region,
-        configure configureHandler: ((inout MessagingInAppConfigOptions) -> Void)? = nil
-    ) -> MessagingInAppInstance {
-        var moduleConfig = MessagingInAppConfigOptions.Factory.create(siteId: siteId, region: region)
-
-        if let configureHandler = configureHandler {
-            configureHandler(&moduleConfig)
-        }
-
-        shared.initializeModule(moduleConfig: moduleConfig)
+    public static func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
+        shared.initializeModule(moduleConfig: config)
         return shared
     }
 
