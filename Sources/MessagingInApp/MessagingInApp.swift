@@ -31,7 +31,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     @discardableResult
     static func setUpSharedInstanceForUnitTest(implementation: MessagingInAppInstance) -> MessagingInAppInstance {
-        shared.setImplementationInstance(implementation: implementation)
+        shared._implementation = implementation
         return implementation
     }
 
@@ -59,27 +59,17 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
     public static func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
-        shared.initializeModule(moduleConfig: config)
-        return shared
-    }
+        shared.initializeModuleIfNotAlready {
+            // FIXME: [CDP] Update hooks to work as expected
+            // Register MessagingPush module hooks now that the module is being initialized.
+            // let hooks = diGraph.hooksManager
+            // let moduleHookProvider = MessagingInAppModuleHookProvider()
+            // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
-    // Internal initializer for setting up the module with desired values
-    private func initializeModule(moduleConfig: MessagingInAppConfigOptions) {
-        guard getImplementationInstance() == nil else {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return
+            return MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         }
 
-        logger.debug("Setting up \(moduleName) module...")
-        let inAppImplementation = MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
-        setImplementationInstance(implementation: inAppImplementation)
-
-        // FIXME: [CDP] Update hooks to work as expected
-        // Register MessagingPush module hooks now that the module is being initialized.
-        // let hooks = diGraph.hooksManager
-        // let moduleHookProvider = MessagingInAppModuleHookProvider()
-        // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
-        logger.info("\(moduleName) module successfully set up with SDK")
+        return shared
     }
 
     public func setEventListener(_ eventListener: InAppEventListener?) {
