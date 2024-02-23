@@ -1,3 +1,10 @@
+## [2.12.2](https://github.com/customerio/customerio-ios/compare/2.12.1...2.12.2) (2024-02-23)
+
+
+### Bug Fixes
+
+* rich push image downloading path conflict when its already downloaded ([#561](https://github.com/customerio/customerio-ios/issues/561)) ([67cbfd6](https://github.com/customerio/customerio-ios/commit/67cbfd6b7aeb46dae8700f4bfb94817e06ad002e))
+
 ## [2.12.1](https://github.com/customerio/customerio-ios/compare/2.12.0...2.12.1) (2024-02-15)
 
 
