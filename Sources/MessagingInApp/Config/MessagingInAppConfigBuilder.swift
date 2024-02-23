@@ -38,7 +38,7 @@ public class MessagingInAppConfigBuilder {
 }
 
 /// Defines errors that can occur during the `MessagingInAppConfigBuilder` building process.
-enum MessagingInAppConfigBuilderError: Error {
+public enum MessagingInAppConfigBuilderError: Error {
     case missingSiteId
 }
 

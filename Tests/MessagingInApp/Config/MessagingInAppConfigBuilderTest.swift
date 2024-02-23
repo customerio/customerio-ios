@@ -51,7 +51,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region, Region.US)
     }
 
-    func test_mapInitializationWithIncorrectSiteId_expectThrowError() {
+    func test_mapInitializationWithIncorrectSiteIdType_expectThrowError() {
         let givenDict: [String: Any] = [
             "siteId": 100,
             "region": "US"
@@ -72,7 +72,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_mapInitializationWithIncorrectRegionType_expectThrowError() {
+    func test_mapInitializationWithIncorrectRegionType_expectDefaultValue() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
             "siteId": givenSiteId,
