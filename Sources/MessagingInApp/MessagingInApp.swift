@@ -84,11 +84,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         let inAppImplementation = MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
         setImplementationInstance(implementation: inAppImplementation)
 
-        // FIXME: [CDP] Update hooks to work as expected
-        // Register MessagingPush module hooks now that the module is being initialized.
-        // let hooks = diGraph.hooksManager
-        // let moduleHookProvider = MessagingInAppModuleHookProvider()
-        // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
         logger.info("\(moduleName) module successfully set up with SDK")
     }
 

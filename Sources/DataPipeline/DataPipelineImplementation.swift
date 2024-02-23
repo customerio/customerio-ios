@@ -61,9 +61,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         }
     }
 
-    // Code below this line will be updated in later PRs
-    // FIXME: [CDP] Implement CustomerIOInstance
-
     var siteId: String?
 
     var config: CioInternalCommon.SdkConfig?
@@ -161,6 +158,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
 
+        // Look in main, if no use then remove
         // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
         // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
         // hooks.profileIdentifyHooks.forEach { hook in
