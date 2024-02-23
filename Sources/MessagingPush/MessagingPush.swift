@@ -68,7 +68,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
-            return shared.getImplementation(config: config)
+            shared.getImplementation(config: config)
         }
 
         return shared
