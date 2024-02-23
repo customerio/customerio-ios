@@ -59,6 +59,7 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
             guard let tempLocation = tempLocation, let suggestedFileName = response?.suggestedFilename else {
                 return onComplete(nil)
             }
+
             // create a unique file name so when trying to move temp file to destination it doesn't give an exception
             let uniqueFileName = UUID().uuidString + "_" + suggestedFileName
             let destinationURL = directoryURL

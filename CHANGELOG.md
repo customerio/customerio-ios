@@ -1,3 +1,31 @@
+## [2.12.2](https://github.com/customerio/customerio-ios/compare/2.12.1...2.12.2) (2024-02-23)
+
+
+### Bug Fixes
+
+* rich push image downloading path conflict when its already downloaded ([#561](https://github.com/customerio/customerio-ios/issues/561)) ([67cbfd6](https://github.com/customerio/customerio-ios/commit/67cbfd6b7aeb46dae8700f4bfb94817e06ad002e))
+
+## [2.12.1](https://github.com/customerio/customerio-ios/compare/2.12.0...2.12.1) (2024-02-15)
+
+
+### Bug Fixes
+
+* fixes an issue with multiple timers being scheduled ([#529](https://github.com/customerio/customerio-ios/issues/529)) ([ec383f1](https://github.com/customerio/customerio-ios/commit/ec383f1f92d0ecf819e90a87879c9ca870e0017d))
+
+## [2.12.0](https://github.com/customerio/customerio-ios/compare/2.11.1...2.12.0) (2024-02-15)
+
+
+### Features
+
+* use new header to set polling interval ([#519](https://github.com/customerio/customerio-ios/issues/519)) ([05a1ebd](https://github.com/customerio/customerio-ios/commit/05a1ebd475b965974b9aae60895cdaf8ac11e113))
+
+## [2.11.1](https://github.com/customerio/customerio-ios/compare/2.11.0...2.11.1) (2024-02-14)
+
+
+### Bug Fixes
+
+* enable logging for gist ([#524](https://github.com/customerio/customerio-ios/issues/524)) ([c786897](https://github.com/customerio/customerio-ios/commit/c786897bf9ce1ba15b0c2a1c23730346f9b1e70d))
+
 ## [2.11.0](https://github.com/customerio/customerio-ios/compare/2.10.2...2.11.0) (2024-02-12)
 
 
