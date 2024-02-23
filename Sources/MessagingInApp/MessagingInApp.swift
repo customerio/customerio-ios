@@ -66,7 +66,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
             // let moduleHookProvider = MessagingInAppModuleHookProvider()
             // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
-            return MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
+            MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         }
 
         return shared
