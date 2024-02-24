@@ -1,0 +1,23 @@
+name: Setup semantic-release 
+description: Install all of the tools that the server needs to run semantic-release
+
+runs:
+  using: "composite"
+  steps:
+  # semantic-release requires newer versions of node then what is bundled in github action runner. 
+  # Install latest LTS to fix this problem. 
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 'lts/*'
+
+  - name: Install semantic-release plugins that we need for deployment of this project 
+    run: >
+      npm install 
+      conventional-changelog-conventionalcommits 
+      @semantic-release/github 
+      @semantic-release/exec
+      @semantic-release/changelog
+      @semantic-release/git
+    shell: bash
+
+  # Done! Now, you can run `npx semantic-release` in github actions workflow to perform a deployment. 

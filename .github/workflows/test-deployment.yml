@@ -1,0 +1,49 @@
+# Deployments only run when code is pushed to the main branch. This means that if we need to modify any of the configuration files for deployments, we cannot verify the configuration is correct until we merge into main. 
+# This workflow runs our deployment process in `dry-run` mode, which verifies that the configuration is correct without actually deploying anything.
+# Dry-run mode does not guarantee that the deployment will succeed, but it does guarantee that the configuration is correct.
+name: Check deployment tool is configured correctly
+
+# Can only run on push events, not pull requests.
+# PRs on github generate weird branch names that semantic-release does not support.
+on: 
+  workflow_dispatch: # Have not tested it, but manually running on a given branch should work. 
+  push:
+    paths:
+      - .releaserc.json
+      - .github/workflows/*deploy*.yml
+
+concurrency: # cancel previous workflow run if one exists. 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run-deployment:
+    name: Dry-run semantic-release deployment tool to verify tool configured correctly 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # permissions for dryrun need to be identical to permissions for actual deployment. semantic-release checks permissions during dry-run. 
+    steps:
+      - uses: actions/checkout@v4
+
+      # This is required to run semantic-release in a pull request.
+      # This is only needed in this configuration check. During a real deployment, this is not needed. 
+      - name: setup git user to run semantic-release
+        run: |
+          git config --global user.email "user@example.com"
+          git config --global user.name "Example User"
+
+      - uses: ./.github/actions/setup-semantic-release
+      
+      # Run semantic-release in dry-run mode to verify that the configuration is correct.
+      # If an error is thrown, we know the configuration is incorrect.
+      #
+      # semantic-release contains a lot of verification checks. Many of these checks do not allow us to run semantic-release during a pull request to verify configuration.
+      # So, we perform the following steps to allow semantic-release to run in this environment: 
+      # 1. Unset GITHUB_ACTIONS environment variable - semantic-release uses this to determine if we are running in a PR. semantic-release does not run in PRs by default. 
+      # 2. --no-ci - semantic-release performs less verification checks when this flag is set.
+      # 3. --branches - allows us to run semantic-release on branches other than `main``. We want to run on the current branch otherwise dry-run will not execute. 
+      - name: Run semantic-release in dry run mode
+        run: unset GITHUB_ACTIONS && npx semantic-release --dry-run --no-ci --branches "${{ github.ref_name }},main"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
