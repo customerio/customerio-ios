@@ -27,9 +27,11 @@ class MessagingPushTest: IntegrationTest {
     }
 
     func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
-        MessagingPush.initialize {
-            $0.autoTrackPushEvents = false
-        }
+        MessagingPush.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoTrackPushEvents(false)
+                .build()
+        )
 
         XCTAssertFalse(automaticPushClickHandlingMock.startCalled)
     }

@@ -7,11 +7,11 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = .Factory.create()
 
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
+    public var moduleConfig: MessagingPushConfigOptions { implementation?.moduleConfig ?? MessagingPushConfigBuilder().build() }
 
     // singleton constructor
     private init() {
@@ -27,20 +27,17 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         shared.globalDataStore = diGraphShared.globalDataStore
-        moduleConfig = config
         shared._implementation = implementation
-
         return implementation
     }
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
         return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = .Factory.create()
         shared = MessagingPush()
     }
     #endif
@@ -51,22 +48,15 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
+    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
-            if let configureHandler = configureHandler {
-                // pass current config reference to update it without needing to recreate
-                configureHandler(&moduleConfig)
-            }
-
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
-            if Self.moduleConfig.autoTrackPushEvents {
+            if config.autoTrackPushEvents {
                 DIGraphShared.shared.automaticPushClickHandling.start()
             }
 
-            return shared.getImplementation()
+            return shared.getImplementation(config: config)
         }
 
         return shared
@@ -76,24 +66,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     @discardableResult
-    public static func initialize(
-        cdpApiKey: String,
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
-            if let configureHandler = configureHandler {
-                configureHandler(&moduleConfig)
-            }
-            moduleConfig.cdpApiKey = cdpApiKey
-
-            return shared.getImplementation()
+            shared.getImplementation(config: config)
         }
 
         return shared
     }
 
-    private func getImplementation() -> MessagingPushInstance {
-        MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
+    private func getImplementation(config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
     }
 
     /**

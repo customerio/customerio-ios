@@ -14,7 +14,7 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
 
     override func setUp() {
         super.setUp { config in
-            config.autoTrackPushEvents = false // we are testing manual push tracking. Disable automatic push tracking feature.
+            config.autoTrackPushEvents(false) // we are testing manual push tracking. Disable automatic push tracking feature.
         }
 
         DIGraphShared.shared.override(value: pushClickHandlerMock, forType: PushClickHandler.self)
