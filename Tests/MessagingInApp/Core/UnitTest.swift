@@ -19,11 +19,11 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingInAppInstance> {
         enableLogs: Bool = false,
         siteId: String? = nil,
         region: Region = .US,
-        modifyModuleConfig: ((inout MessagingInAppConfigOptions) -> Void)?
+        modifyModuleConfig: ((MessagingInAppConfigBuilder) -> Void)?
     ) {
-        var newConfig = MessagingInAppConfigOptions.Factory.create(siteId: siteId ?? testSiteId, region: region)
-        modifyModuleConfig?(&newConfig)
-        messagingInAppConfigOptions = newConfig
+        let moduleConfigBuilder = MessagingInAppConfigBuilder(siteId: siteId ?? testSiteId, region: region)
+        modifyModuleConfig?(moduleConfigBuilder)
+        messagingInAppConfigOptions = moduleConfigBuilder.build()
 
         super.setUp(enableLogs: enableLogs, sdkConfig: nil)
     }
