@@ -23,11 +23,16 @@ class MessagingPushAPNAPITest: UnitTest {
         MessagingPush.initialize()
         MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
 
+        // MessagingPushAPN should be able to be initialized with the same initialize() function as MessagingPush.
+        MessagingPushAPN.initialize()
+        MessagingPushAPN.initialize(withConfig: MessagingPushConfigBuilder().build())
+
         // This is the `initialize()` function that's available to Notification Service Extension and not available
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
         // MessagingPush.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: "").build())
+        // MessagingPushAPN.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: "").build())
 
         // `moduleConfig` is not really meant to be accessed by customers, so it is okay to not have it in the mock.
         // However, it is public so we should make sure it does not change.
