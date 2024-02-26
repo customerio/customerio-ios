@@ -56,6 +56,12 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
+        _ = profileStore
+        countDependenciesResolved += 1
+
+        _ = queue
+        countDependenciesResolved += 1
+
         _ = simpleTimer
         countDependenciesResolved += 1
 
@@ -106,6 +112,26 @@ extension DIGraph {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
+    }
+
+    // ProfileStore
+    public var profileStore: ProfileStore {
+        getOverriddenInstance() ??
+            newProfileStore
+    }
+
+    private var newProfileStore: ProfileStore {
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
+    }
+
+    // Queue
+    public var queue: Queue {
+        getOverriddenInstance() ??
+            newQueue
+    }
+
+    private var newQueue: Queue {
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer

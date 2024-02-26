@@ -12,7 +12,13 @@ public class AutoTrackingScreenViews: UtilityPlugin {
     public let type = PluginType.utility
 
     public var analytics: Segment.Analytics?
-    public var diGraph = DIGraphShared.shared
+    public var diGraph: DIGraphShared {
+        DIGraphShared.shared
+    }
+
+    private var store: AutoTrackingScreenViewStore {
+        diGraph.autoTrackingScreenViewStore
+    }
 
     static let notificationName = Notification.Name(rawValue: "AutoTrackingScreenViewsNotification")
     static let screenNameKey = "name"
@@ -36,7 +42,6 @@ public class AutoTrackingScreenViews: UtilityPlugin {
 
     public init(
         filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil,
-
         autoScreenViewBody: (() -> [String: Any])? = nil
     ) {
         self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
@@ -92,14 +97,21 @@ extension AutoTrackingScreenViews {
         }
 
         let filter = customerOverridenFilter ?? defaultSdkFilter
-        let shouldTrackEvent = filter(viewController)
+        let screenPassesFilter = filter(viewController)
 
-        guard shouldTrackEvent else {
+        guard screenPassesFilter else {
             let isUsingSdkDefaultFilter = customerOverridenFilter == nil
             diGraph.logger.debug(
                 "automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was filtered out. Is using sdk default filter: \(isUsingSdkDefaultFilter)"
             )
             return // event has been filtered out. Ignore it.
+        }
+
+        // Because of the automatic screenview tracking implementation, it's possible to see 2+ screenview events get tracked for 1 screen when the screen is viewed. To prevent this duplication, we only track the event if the screen the user is looking at has changed.
+        let isLastScreenTracked = store.isScreenLastScreenTracked(screenName: name)
+        guard !isLastScreenTracked else {
+            diGraph.logger.debug("automatic screenview ignored for, \(name):\(viewController.bundleIdOfView ?? ""). It was already tracked.")
+            return
         }
 
         let addionalScreenViewData = autoScreenViewBody?() ?? [:]
@@ -209,5 +221,42 @@ extension UIViewController {
         }
 
         return nil
+    }
+}
+
+// Store for the automatic screenview feature.
+protocol AutoTrackingScreenViewStore {
+    /*
+     Returns true if `screenName` is equal to the `screenName` the last time this function was called.
+     Use this return value to determine if the screenview event has already been tracked or not.
+
+     This function will save `screenName` as the last screen tracked to be used the next time this function is called.
+     To make the store's thread-safety easier, all getting/setting in the store is encapsulated in 1 function call.
+     */
+    func isScreenLastScreenTracked(screenName: String) -> Bool
+}
+
+// in-memory store because the data stored is not relevant when the app is started. We purposely are not persisting the store's data.
+//
+// sourcery: InjectRegisterShared = "AutoTrackingScreenViewStore"
+// sourcery: InjectSingleton
+class InMemoryAutoTrackingScreenViewStore: AutoTrackingScreenViewStore {
+    let lock: Lock
+
+    private var lastScreenTracked: String?
+
+    init(lockManager: LockManager) {
+        self.lock = lockManager.getLock(id: .autoTrackScreenViewStore)
+    }
+
+    func isScreenLastScreenTracked(screenName: String) -> Bool {
+        lock.lock()
+        defer { self.lock.unlock() }
+
+        let isLastScreenTracked = lastScreenTracked == screenName
+
+        lastScreenTracked = screenName
+
+        return isLastScreenTracked
     }
 }

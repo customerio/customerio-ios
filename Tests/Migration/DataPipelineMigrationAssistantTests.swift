@@ -133,7 +133,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         migrationHandler.processAlreadyIdentifiedUser(identifier: givenIdentifier)
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
         profileStoreMock.getProfileIdReturnValue = nil
-
         XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
     }
 

@@ -32,8 +32,8 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public static func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         moduleConfig = config
+        shared._implementation = implementation
 
-        shared.setImplementationInstance(implementation: implementation)
         return implementation
     }
 
@@ -56,22 +56,13 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
      */
     @discardableResult
     public static func initialize(moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
-        Self.moduleConfig = moduleConfig
-        shared.initializeModule()
-        return shared
-    }
+        shared.initializeModuleIfNotAlready {
+            Self.moduleConfig = moduleConfig
 
-    private func initializeModule() {
-        guard getImplementationInstance() == nil else {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return
+            return DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
         }
 
-        logger.debug("Setting up \(moduleName) module...")
-        let cdpImplementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
-        setImplementationInstance(implementation: cdpImplementation)
-
-        logger.info("\(moduleName) module successfully set up with SDK")
+        return shared
     }
 
     // MARK: - DataPipelineInstance implementation

@@ -15,7 +15,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
         // setting up required plugins
         outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
-        autoTrackingScreenViews = (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
+        autoTrackingScreenViews = getTrackingScreenViewsPlugin()
+    }
+
+    private func getTrackingScreenViewsPlugin() -> AutoTrackingScreenViews {
+        (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
     }
 
     // MARK: performScreenTracking
@@ -54,6 +58,53 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
         autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
 
         assertEventTracked()
+    }
+
+    func test_performScreenTracking_givenViewSameScreenMultipleTimes_expectNoTrackingDuplicateEvents() {
+        class ViewInsideOfHostApp: UIViewController {}
+        class AnotherViewInsideOfHostApp: UIViewController {}
+
+        // The first time that the screen is tracked, an event should be added
+        autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 1)
+
+        // If the screen is tracked again, ignore the event.
+        autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 1)
+
+        // Check that an event is added, if the next screen is not equal to the last screen tracked.
+        autoTrackingScreenViews.performScreenTracking(onViewController: AnotherViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 2)
+    }
+
+    func test_performScreenTracking_givenChangeScreen_expectTrackNonDuplicateScreens() {
+        class ViewInsideOfHostApp: UIViewController {}
+        class AnotherViewInsideOfHostApp: UIViewController {}
+
+        // The first time that the screen is tracked, an event should be added
+        autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 1)
+
+        // Change to a different screen, expect to track it.
+        autoTrackingScreenViews.performScreenTracking(onViewController: AnotherViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 2)
+
+        // Re-visit the first screen again, expect to track it.
+        autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 3)
+    }
+
+    func test_performScreenTracking_givenMultiplePluginInstances_expectNoTrackingDuplicateEvents() {
+        class ViewInsideOfHostApp: UIViewController {}
+
+        let plugin1 = getTrackingScreenViewsPlugin()
+        let plugin2 = getTrackingScreenViewsPlugin()
+
+        plugin1.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 1)
+
+        plugin2.performScreenTracking(onViewController: ViewInsideOfHostApp())
+        assertEventTracked(numberOfEventsAdded: 1)
     }
 
     // MARK: getNameForAutomaticScreenViewTracking
