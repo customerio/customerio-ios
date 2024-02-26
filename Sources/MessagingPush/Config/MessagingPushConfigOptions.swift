@@ -4,7 +4,7 @@ import CioInternalCommon
 ///
 /// Use `MessagingPushConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct MessagingPushConfigOptions {
-    let cdpApiKey: String
+    public let cdpApiKey: String
     public let autoFetchDeviceToken: Bool
     public let autoTrackPushEvents: Bool
     public let showPushAppInForeground: Bool

@@ -18,11 +18,20 @@ class MessagingPushFCMAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
+        // Config is optional because MessagingPushConfigOptions does not have any required fields.
+        // Providing default value for config makes it easier for customers to initialize MessagingPush module.
+        MessagingPush.initialize()
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
+
         // This is the `initialize()` function that's available to Notification Service Extension and not available
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
-        // MessagingPush.initialize(cdpApiKey: "") { (config: inout MessagingPushConfigOptions) in }
+        // MessagingPush.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: "").build())
+
+        // `moduleConfig` is not really meant to be accessed by customers, so it is okay to not have it in the mock.
+        // However, it is public so we should make sure it does not change.
+        _ = MessagingPush.shared.moduleConfig
 
         MessagingPush.shared.registerDeviceToken(fcmToken: "")
         mock.registerDeviceToken(fcmToken: "")
