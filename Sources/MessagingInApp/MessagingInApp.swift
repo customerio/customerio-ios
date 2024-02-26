@@ -58,25 +58,15 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
      */
     @available(iOSApplicationExtension, unavailable)
     @discardableResult
-    public static func initialize(
-        siteId: String,
-        region: Region,
-        configure configureHandler: ((inout MessagingInAppConfigOptions) -> Void)? = nil
-    ) -> MessagingInAppInstance {
+    public static func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
         shared.initializeModuleIfNotAlready {
-            var moduleConfig = MessagingInAppConfigOptions.Factory.create(siteId: siteId, region: region)
-
-            if let configureHandler = configureHandler {
-                configureHandler(&moduleConfig)
-            }
-
             // FIXME: [CDP] Update hooks to work as expected
             // Register MessagingPush module hooks now that the module is being initialized.
             // let hooks = diGraph.hooksManager
             // let moduleHookProvider = MessagingInAppModuleHookProvider()
             // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
 
-            return MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
+            MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         }
 
         return shared

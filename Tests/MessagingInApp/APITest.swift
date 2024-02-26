@@ -17,10 +17,19 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.initialize(siteId: "", region: .US)
+        MessagingInApp.initialize(withConfig: MessagingInAppConfigBuilder(siteId: "", region: .US).build())
         MessagingInApp.shared.setEventListener(self)
 
         mock.setEventListener(self)
+    }
+
+    func test_allPublicModuleConfigOptions() throws {
+        try skipRunningTest()
+
+        _ = MessagingInAppConfigBuilder(siteId: "", region: .US)
+            .build()
+
+        _ = try? MessagingInAppConfigBuilder.build(from: [:])
     }
 }
 
