@@ -273,7 +273,7 @@ extension DataPipelineImplementation {
 // BGQ in each of the following methods refer to background queue
 extension DataPipelineImplementation {
     func processAlreadyIdentifiedUser(identifier: String) {
-        analytics.identify(userId: identifier, traits: [:])
+        commonIdentifyProfile(userId: identifier)
     }
 
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
