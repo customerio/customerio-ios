@@ -5,9 +5,6 @@ import SharedTests
 import XCTest
 
 class DataPipelineMigrationAssistantTests: UnitTest {
-    // When calling CustomerIOInstance functions in the test functions, use this `CustomerIO` instance.
-    // This is a workaround until this code base contains implementation tests. There have been bugs
-    // that have gone undiscovered in the code when `CustomerIO` passes a request to `DataPipelineImplementation`.
     private let profileStoreMock = ProfileStoreMock()
     private let backgroundQueueMock = QueueMock()
     private let migrationHandler = DataPipelineMigrationActionMock()
@@ -19,9 +16,9 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        DIGraphShared.shared.override(value: profileStoreMock, forType: ProfileStore.self)
-        DIGraphShared.shared.override(value: dateUtilStub, forType: DateUtil.self)
-        DIGraphShared.shared.override(value: backgroundQueueMock, forType: Queue.self)
+        diGraphShared.override(value: profileStoreMock, forType: ProfileStore.self)
+        diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
+        diGraphShared.override(value: backgroundQueueMock, forType: Queue.self)
     }
 
     // MARK: performMigration
