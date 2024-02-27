@@ -12,6 +12,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
     private let deviceAttributesPlugin: DeviceAttributes
+    private let profileStore: ProfileStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -23,6 +24,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+        self.profileStore = diGraph.profileStore
 
         self.deviceAttributesPlugin = DeviceAttributes(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
 
@@ -45,6 +47,15 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
+        postProfileAlreadyIdentified()
+    }
+
+    private func postProfileAlreadyIdentified() {
+        if let siteId = moduleConfig.siteId, let identifier = profileStore.getProfileId(siteId: siteId) {
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+        } else if let identifier = analytics.userId {
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+        }
     }
 
     private func subscribeToJourneyEvents() {
@@ -60,9 +71,6 @@ class DataPipelineImplementation: DataPipelineInstance {
             self.registerDeviceToken(event.token)
         }
     }
-
-    // Code below this line will be updated in later PRs
-    // FIXME: [CDP] Implement CustomerIOInstance
 
     var siteId: String?
 
@@ -147,12 +155,6 @@ class DataPipelineImplementation: DataPipelineInstance {
                 // register device to newly identified profile
                 addDeviceAttributes(token: existingDeviceToken)
             }
-
-            // logger.debug("running hooks profile identified \(userId)")
-            // FIXME: [CDP] Request Journeys to invoke profile identify hooks
-            // hooks.profileIdentifyHooks.forEach { hook in
-            //     hook.profileIdentified(identifier: userId)
-            // }
         }
     }
 
@@ -160,12 +162,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
-
-        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
-        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
-        // hooks.profileIdentifyHooks.forEach { hook in
-        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        // }
 
         // reset all to default state
         logger.debug("resetting user profile")
