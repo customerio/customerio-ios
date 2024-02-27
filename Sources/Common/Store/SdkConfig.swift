@@ -9,7 +9,7 @@ public struct SdkConfig {
         #if DEBUG
         // Only used for testing purposes.
         public static func create(logLevel: CioLogLevel? = nil) -> SdkConfig {
-            return SdkConfig(logLevel: logLevel)
+            SdkConfig(logLevel: logLevel)
         }
         #endif
 
