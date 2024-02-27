@@ -37,7 +37,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             analytics.add(plugin: customerIODestination)
         }
 
-        // plugin to update context attributes for each request
+        // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 
         // plugin to publish data pipeline events

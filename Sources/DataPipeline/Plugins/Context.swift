@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Segment
 
-/// Plugin class that updates the context in requests payload
+/// Plugin class that update the context properties in the request payload
 class Context: Plugin {
     public let type = PluginType.before
     public weak var analytics: Analytics?
