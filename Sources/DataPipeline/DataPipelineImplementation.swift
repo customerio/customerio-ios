@@ -12,6 +12,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
     private let deviceAttributesPlugin: DeviceAttributes
+    private let profileStore: ProfileStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -23,6 +24,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
+        self.profileStore = diGraph.profileStore
 
         self.deviceAttributesPlugin = DeviceAttributes(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
 
@@ -45,11 +47,13 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
-        postProfileAlreadyIdentifiedToInAppModule()
+        postProfileAlreadyIdentified()
     }
 
-    private func postProfileAlreadyIdentifiedToInAppModule() {
-        if let identifier = analytics.userId {
+    private func postProfileAlreadyIdentified() {
+        if let siteId = moduleConfig.siteId, let identifier = profileStore.getProfileId(siteId: siteId) {
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+        } else if let identifier = analytics.userId {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         }
     }
