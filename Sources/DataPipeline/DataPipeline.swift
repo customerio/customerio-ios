@@ -1,14 +1,9 @@
 import CioInternalCommon
+import CioTrackingMigration
 import Segment
 
-public protocol DataPipelineInstance: CustomerIOInstance {
+public protocol DataPipelineInstance: CustomerIOInstance, DataPipelineMigrationAction {
     var analytics: Analytics { get }
-    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
-    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
-    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
-    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
-    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
-    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
 public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipelineInstance {
@@ -37,8 +32,8 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public static func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         moduleConfig = config
+        shared._implementation = implementation
 
-        shared.setImplementationInstance(implementation: implementation)
         return implementation
     }
 
@@ -61,22 +56,13 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
      */
     @discardableResult
     public static func initialize(moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
-        Self.moduleConfig = moduleConfig
-        shared.initializeModule()
-        return shared
-    }
+        shared.initializeModuleIfNotAlready {
+            Self.moduleConfig = moduleConfig
 
-    private func initializeModule() {
-        guard getImplementationInstance() == nil else {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return
+            return DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
         }
 
-        logger.debug("Setting up \(moduleName) module...")
-        let cdpImplementation = DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
-        setImplementationInstance(implementation: cdpImplementation)
-
-        logger.info("\(moduleName) module successfully set up with SDK")
+        return shared
     }
 
     // MARK: - DataPipelineInstance implementation
@@ -147,6 +133,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 // MARK: Background queue migration
 
 public extension DataPipeline {
+    func processAlreadyIdentifiedUser(identifier: String) {
+        implementation?.processAlreadyIdentifiedUser(identifier: identifier)
+    }
+
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]? = nil) {
         implementation?.processIdentifyFromBGQ(identifier: identifier, timestamp: timestamp, body: body)
     }

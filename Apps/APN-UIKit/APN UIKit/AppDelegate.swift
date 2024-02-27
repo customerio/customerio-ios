@@ -65,11 +65,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
-            .initialize(siteId: siteId, region: .US)
+            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
             .setEventListener(self)
-        MessagingPushAPN.initialize { config in
-            config.autoFetchDeviceToken = true
-        }
+        MessagingPushAPN.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(true)
+                .build()
+        )
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

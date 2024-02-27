@@ -7,22 +7,15 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = .Factory.create()
+
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
-
-    /*
-     It's preferred to get a lock from lockmanager. Because this is a top-level class where the digraph may be nil, it's more difficult to get a lock from lockmanager.
-
-     Because this class is a singleton, we can create a lock instance that will be shared in all calls to this class.
-     */
-    private let lock = Lock.unsafeInit()
-    @Atomic private var hasSetupModule = false
+    public var moduleConfig: MessagingPushConfigOptions { implementation?.moduleConfig ?? MessagingPushConfigBuilder().build() }
 
     // singleton constructor
     private init() {
-        self.globalDataStore = CioGlobalDataStore.getInstance()
+        self.globalDataStore = DIGraphShared.shared.globalDataStore
         super.init(moduleName: Self.moduleName)
     }
 
@@ -34,20 +27,17 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         shared.globalDataStore = diGraphShared.globalDataStore
-        moduleConfig = config
-
-        shared.setImplementationInstance(implementation: implementation)
+        shared._implementation = implementation
         return implementation
     }
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: Self.moduleConfig)
+        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
         return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = .Factory.create()
         shared = MessagingPush()
     }
     #endif
@@ -58,24 +48,15 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
-        if let configureHandler = configureHandler {
-            // pass current config reference to update it without needing to recreate
-            configureHandler(&moduleConfig)
-        }
+    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
+        shared.initializeModuleIfNotAlready {
+            // Some part of the initialize is specific only to non-NSE targets.
+            // Put those parts in this non-NSE initialize method.
+            if config.autoTrackPushEvents {
+                DIGraphShared.shared.automaticPushClickHandling.start()
+            }
 
-        let moduleInitializedFirstTime = shared.initializeModuleIfNotAlready()
-
-        guard moduleInitializedFirstTime else {
-            return shared
-        }
-
-        // Some part of the initialize is specific only to non-NSE targets.
-        // Put those parts in this non-NSE initialize method.
-        if Self.moduleConfig.autoTrackPushEvents {
-            DIGraphShared.shared.automaticPushClickHandling.start()
+            return shared.getImplementation(config: config)
         }
 
         return shared
@@ -85,42 +66,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     @discardableResult
-    public static func initialize(
-        cdpApiKey: String,
-        configure configureHandler: ((inout MessagingPushConfigOptions) -> Void)? = nil
-    ) -> MessagingPushInstance {
-        if let configureHandler = configureHandler {
-            configureHandler(&moduleConfig)
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        shared.initializeModuleIfNotAlready {
+            shared.getImplementation(config: config)
         }
-        moduleConfig.cdpApiKey = cdpApiKey
-
-        shared.initializeModuleIfNotAlready()
 
         return shared
     }
 
-    @discardableResult
-    private func initializeModuleIfNotAlready() -> Bool {
-        // Make this function thread-safe by immediately locking it.
-        lock.lock()
-        defer {
-            lock.unlock()
-        }
-
-        // Make sure this function is only called 1 time.
-        if hasSetupModule {
-            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
-            return false
-        }
-        hasSetupModule = true
-
-        logger.debug("Setting up \(moduleName) module...")
-        let pushImplementation = MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: Self.moduleConfig)
-        setImplementationInstance(implementation: pushImplementation)
-
-        logger.info("\(moduleName) module successfully set up with SDK")
-
-        return true
+    private func getImplementation(config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
     }
 
     /**

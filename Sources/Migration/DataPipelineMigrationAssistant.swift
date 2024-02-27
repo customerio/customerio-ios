@@ -1,58 +1,51 @@
-import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
-public protocol DataPipelineMigration: AutoMockable {
-    func handleAlreadyIdentifiedMigratedUser()
-    func handleQueueBacklog(siteId: String)
+public protocol DataPipelineMigrationAction: AutoMockable {
+    func processAlreadyIdentifiedUser(identifier: String)
+    func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?)
+    func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
+    func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
+    func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
+    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
-// sourcery: InjectRegister = "DataPipelineMigrationAssistant"
-// sourcery: InjectSingleton
-/// Responsible for handling migration of pending tasks from `Tracking` module to `DataPipeline` module.
-class DataPipelineMigrationAssistant: DataPipelineMigration {
+public class DataPipelineMigrationAssistant {
+    public var migrationHandler: DataPipelineMigrationAction
     private let logger: Logger
     private let backgroundQueue: Queue
     private let jsonAdapter: JsonAdapter
     private let threadUtil: ThreadUtil
     private var profileStore: ProfileStore
 
-    /**
-     Constructor for singleton, only.
-
-     Try loading the credentials previously saved for the singleton instance.
-     */
-    init(
-        logger: Logger,
-        queue: Queue,
-        jsonAdapter: JsonAdapter,
-        threadUtil: ThreadUtil,
-        profileStore: ProfileStore
-    ) {
-        self.logger = logger
-        self.backgroundQueue = queue
-        self.jsonAdapter = jsonAdapter
-        self.threadUtil = threadUtil
-        self.profileStore = profileStore
+    public init(handler: DataPipelineMigrationAction) {
+        self.migrationHandler = handler
+        self.logger = DIGraphShared.shared.logger
+        self.backgroundQueue = DIGraphShared.shared.queue
+        self.jsonAdapter = DIGraphShared.shared.jsonAdapter
+        self.threadUtil = DIGraphShared.shared.threadUtil
+        self.profileStore = DIGraphShared.shared.profileStore
     }
 
-    func handleMigration(siteId: String) {
-        handleAlreadyIdentifiedMigratedUser()
+    // Only public method in this class that is accessible to other modules.
+    // This method handles all the migration tasks present in the
+    // Journeys background queue.
+    public func performMigration(siteId: String) {
+        handleAlreadyIdentifiedMigratedUser(siteId: siteId)
         handleQueueBacklog(siteId: siteId)
     }
 
-    func handleAlreadyIdentifiedMigratedUser() {
+    func handleAlreadyIdentifiedMigratedUser(siteId: String) {
         // This code handles the scenario where a user migrates
         // from the Journeys module to the CDP module while already logged in.
         // This ensures the CDP module is informed about the
         // currently logged-in user for seamless processing of events.
-        if DataPipeline.shared.analytics.userId == nil {
-            if let identifier = profileStore.identifier {
-                CustomerIO.shared.identify(userId: identifier)
-                // Remove identifier from storage
-                // so same profile can not be re-identifed
-                profileStore.identifier = nil
-            }
+        if let identifier = profileStore.getProfileId(siteId: siteId) {
+            migrationHandler.processAlreadyIdentifiedUser(identifier: identifier)
+            // Remove identifier from storage
+            // so same profile can not be re-identifed
+            profileStore.deleteProfileId(siteId: siteId)
         }
     }
 
@@ -99,14 +92,14 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 return
             }
             if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
+                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
                 return
             }
             guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-                DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp)
+                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
                 return
             }
-            DataPipeline.shared.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
+            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
 
         // Process `screen` and `event` types
         case .trackEvent:
@@ -123,8 +116,8 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 properties = attributes
             }
             let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
-            trackType.type == .screen ? DataPipeline.shared.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
-                : DataPipeline.shared.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+            trackType.type == .screen ? migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+                : migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
 
         // Processes register device token and device attributes
         case .registerPushToken:
@@ -141,7 +134,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 return
             }
             if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
-                DataPipeline.shared.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
+                migrationHandler.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
             }
         // Processes delete device token
         case .deletePushToken:
@@ -149,7 +142,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 isProcessed = false
                 return
             }
-            DataPipeline.shared.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
+            migrationHandler.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
 
         // Processes push metrics
         case .trackPushMetric:
@@ -157,7 +150,7 @@ class DataPipelineMigrationAssistant: DataPipelineMigration {
                 isProcessed = false
                 return
             }
-            DataPipeline.shared.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds))
+            migrationHandler.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
         }
     }
 }

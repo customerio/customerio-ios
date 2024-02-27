@@ -72,7 +72,7 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create(siteId: testSiteId, apiKey: "", region: Region.US)
+        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create()
         if enableLogs {
             newSdkConfig.logLevel = CioLogLevel.debug
         }
@@ -131,9 +131,6 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // delete key value data that belongs to shared storage.
         diGraphShared.sharedKeyValueStorage.deleteAll()
-        // delete key value data that belongs to the site-id.
-        // although key value storage is separated by siteId, we want to delete common siteId's that we know about.
-        diGraph.keyValueStorage.deleteAll()
 
         // delete key value data that is global to all api keys in the SDK.
         globalDataStore.deleteAll()

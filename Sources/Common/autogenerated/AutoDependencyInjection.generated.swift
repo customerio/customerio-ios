@@ -56,15 +56,6 @@ extension DIGraph {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = globalDataStore
-        countDependenciesResolved += 1
-
-        _ = profileStore
-        countDependenciesResolved += 1
-
-        _ = queue
-        countDependenciesResolved += 1
-
         _ = simpleTimer
         countDependenciesResolved += 1
 
@@ -101,7 +92,7 @@ extension DIGraph {
         _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = keyValueStorage
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -115,36 +106,6 @@ extension DIGraph {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
-    }
-
-    // GlobalDataStore
-    public var globalDataStore: GlobalDataStore {
-        getOverriddenInstance() ??
-            newGlobalDataStore
-    }
-
-    private var newGlobalDataStore: GlobalDataStore {
-        CioGlobalDataStore(keyValueStorage: keyValueStorage)
-    }
-
-    // ProfileStore
-    public var profileStore: ProfileStore {
-        getOverriddenInstance() ??
-            newProfileStore
-    }
-
-    private var newProfileStore: ProfileStore {
-        CioProfileStore(keyValueStorage: keyValueStorage)
-    }
-
-    // Queue
-    public var queue: Queue {
-        getOverriddenInstance() ??
-            newQueue
-    }
-
-    private var newQueue: Queue {
-        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
 
     // SimpleTimer
@@ -297,14 +258,14 @@ extension DIGraph {
         UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
     }
 
-    // KeyValueStorage
-    public var keyValueStorage: KeyValueStorage {
+    // SandboxedSiteIdKeyValueStorage
+    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
         getOverriddenInstance() ??
-            newKeyValueStorage
+            newSandboxedSiteIdKeyValueStorage
     }
 
-    private var newKeyValueStorage: KeyValueStorage {
-        UserDefaultsKeyValueStorage(sdkConfig: sdkConfig, deviceMetricsGrabber: deviceMetricsGrabber)
+    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 
@@ -321,7 +282,19 @@ extension DIGraphShared {
         _ = eventBusHandler
         countDependenciesResolved += 1
 
+        _ = profileStore
+        countDependenciesResolved += 1
+
+        _ = queue
+        countDependenciesResolved += 1
+
         _ = globalDataStore
+        countDependenciesResolved += 1
+
+        _ = simpleTimer
+        countDependenciesResolved += 1
+
+        _ = singleScheduleTimer
         countDependenciesResolved += 1
 
         _ = threadUtil
@@ -339,10 +312,19 @@ extension DIGraphShared {
         _ = eventStorage
         countDependenciesResolved += 1
 
+        _ = fileStorage
+        countDependenciesResolved += 1
+
+        _ = queueStorage
+        countDependenciesResolved += 1
+
         _ = jsonAdapter
         countDependenciesResolved += 1
 
         _ = lockManager
+        countDependenciesResolved += 1
+
+        _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
         _ = dateUtil
@@ -355,6 +337,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = httpRequestRunner
+        countDependenciesResolved += 1
+
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
         _ = sharedKeyValueStorage
@@ -398,6 +383,26 @@ extension DIGraphShared {
         CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
 
+    // ProfileStore
+    public var profileStore: ProfileStore {
+        getOverriddenInstance() ??
+            newProfileStore
+    }
+
+    private var newProfileStore: ProfileStore {
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
+    }
+
+    // Queue
+    public var queue: Queue {
+        getOverriddenInstance() ??
+            newQueue
+    }
+
+    private var newQueue: Queue {
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
+    }
+
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
         getOverriddenInstance() ??
@@ -406,6 +411,40 @@ extension DIGraphShared {
 
     private var newGlobalDataStore: GlobalDataStore {
         CioSharedDataStore(keyValueStorage: sharedKeyValueStorage)
+    }
+
+    // SimpleTimer
+    var simpleTimer: SimpleTimer {
+        getOverriddenInstance() ??
+            newSimpleTimer
+    }
+
+    private var newSimpleTimer: SimpleTimer {
+        CioSimpleTimer(logger: logger)
+    }
+
+    // SingleScheduleTimer (singleton)
+    var singleScheduleTimer: SingleScheduleTimer {
+        getOverriddenInstance() ??
+            sharedSingleScheduleTimer
+    }
+
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_SingleScheduleTimer_singleton_access").sync {
+            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
+            let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
+            self.singletons[String(describing: SingleScheduleTimer.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_singleScheduleTimer() -> SingleScheduleTimer {
+        CioSingleScheduleTimer(timer: simpleTimer)
     }
 
     // ThreadUtil
@@ -486,6 +525,26 @@ extension DIGraphShared {
         EventStorageManager(logger: logger, jsonAdapter: jsonAdapter)
     }
 
+    // FileStorage
+    public var fileStorage: FileStorage {
+        getOverriddenInstance() ??
+            newFileStorage
+    }
+
+    private var newFileStorage: FileStorage {
+        FileManagerFileStorage(logger: logger)
+    }
+
+    // QueueStorage
+    public var queueStorage: QueueStorage {
+        getOverriddenInstance() ??
+            newQueueStorage
+    }
+
+    private var newQueueStorage: QueueStorage {
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+    }
+
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
         getOverriddenInstance() ??
@@ -518,6 +577,30 @@ extension DIGraphShared {
 
     private func _get_lockManager() -> LockManager {
         LockManager()
+    }
+
+    // QueueInventoryMemoryStore (singleton)
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+        getOverriddenInstance() ??
+            sharedQueueInventoryMemoryStore
+    }
+
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_QueueInventoryMemoryStore_singleton_access").sync {
+            if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
+            let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
+            self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
+        QueueInventoryMemoryStoreImpl()
     }
 
     // DateUtil
@@ -574,6 +657,16 @@ extension DIGraphShared {
 
     private var newHttpRequestRunner: HttpRequestRunner {
         UrlRequestHttpRequestRunner()
+    }
+
+    // SandboxedSiteIdKeyValueStorage
+    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        getOverriddenInstance() ??
+            newSandboxedSiteIdKeyValueStorage
+    }
+
+    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 
     // SharedKeyValueStorage

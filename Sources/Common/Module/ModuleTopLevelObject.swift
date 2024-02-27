@@ -8,17 +8,28 @@ import Foundation
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
 open class ModuleTopLevelObject<ImplementationClass> {
-    open var alreadyCreatedImplementation: ImplementationClass?
+    /*
+     It's preferred to get a lock from lockmanager. Because subclasses will be a singleton, we can create a lock instance that will be shared in all calls to this class.
+     */
+    private let lock = Lock.unsafeInit()
+    public var hasBeenInitialized: Bool {
+        _implementation != nil
+    }
+
+    @Atomic public var _implementation: ImplementationClass?
+
     public var implementation: ImplementationClass? {
-        let instance = alreadyCreatedImplementation ?? createAndSetImplementationInstance()
-        if instance == nil {
+        guard let _implementation else {
             logger.info("Module \(moduleName) is not yet initialized. All requests made to module \(moduleName) will be ignored until it is initialized. See docs for help.")
+            return nil
         }
-        return instance
+
+        return _implementation
     }
 
     // To identify the module in top-level objects and within log messages
     public let moduleName: String
+
     open var logger: Logger {
         DIGraphShared.shared.logger
     }
@@ -28,28 +39,26 @@ open class ModuleTopLevelObject<ImplementationClass> {
     // of a mock or stub implementation.
     public init(moduleName: String, implementation: ImplementationClass? = nil) {
         self.moduleName = moduleName
-        self.alreadyCreatedImplementation = implementation
+        self._implementation = implementation
     }
 
-    private func createAndSetImplementationInstance() -> ImplementationClass? {
-        let newInstance = createImplementationInstance()
-        alreadyCreatedImplementation = newInstance
-        return newInstance
-    }
+    // Subclasses call this function when they want to initialize the module. Must return an implementation object because the instance
+    // is what determines that a module has been initialized.
+    public func initializeModuleIfNotAlready(_ blockToInitializeModule: () -> ImplementationClass) {
+        // Make this function thread-safe by immediately locking it.
+        lock.lock()
+        defer {
+            lock.unlock()
+        }
 
-    open func setImplementationInstance(implementation: ImplementationClass?) {
-        alreadyCreatedImplementation = implementation
-    }
+        // Make sure module is only initialized one time.
+        if hasBeenInitialized {
+            logger.info("\(moduleName) module is already initialized. Ignoring redundant initialization request.")
+            return
+        }
 
-    open func getImplementationInstance() -> ImplementationClass? {
-        alreadyCreatedImplementation
-    }
-
-    // Feature modules (e.g. push) which support auto-initialization without client configuration can
-    // provide its instance here to ensure early initialization upon the first call
-    // Feature modules (e.g. in-app) that require user input for initialization may not override this
-    // method or can return `nil`.
-    open func createImplementationInstance() -> ImplementationClass? {
-        nil
+        logger.debug("Setting up \(moduleName) module...")
+        _implementation = blockToInitializeModule()
+        logger.info("\(moduleName) module successfully set up with SDK")
     }
 }

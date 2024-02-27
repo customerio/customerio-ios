@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CioTrackingMigration
 
 public extension CustomerIO {
     /**
@@ -16,8 +17,14 @@ public extension CustomerIO {
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
         // enable Analytics logs accordingly to logLevel
         CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == CioLogLevel.debug)
-
         initialize(implementation: implementation)
+
+        // Handle logged-in user from Journeys to CDP and check
+        // if any unprocessed tasks are pending in the background queue.
+        if let siteId = cdpConfig.siteId {
+            let migrationAssistant = DataPipelineMigrationAssistant(handler: implementation)
+            migrationAssistant.performMigration(siteId: siteId)
+        }
     }
 
     /**
