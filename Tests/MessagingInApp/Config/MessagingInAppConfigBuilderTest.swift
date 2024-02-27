@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class MessagingInAppConfigBuilderTest: UnitTest {
-    func test_modifiedConfiguration_expectCustomValues() {
+    func test_initializeAndModify_expectCustomValues() {
         let givenSiteId = String.random
         let givenRegion = Region.EU
 
@@ -14,7 +14,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
-    func test_mapInitializationWithCustomValues_expectCustomValues() {
+    func test_initializeFromDictionaryWithCustomValues_expectCustomValues() {
         let givenSiteId = String.random
         let givenRegion = "EU"
 
@@ -30,7 +30,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region.rawValue, givenRegion)
     }
 
-    func test_initializationWithEmptyDict_expectThrowError() {
+    func test_initializeFromEmptyDictionary_expectThrowError() {
         let givenDict: [String: Any] = [:]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
@@ -38,7 +38,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializationWithOnlySiteId_expectThrowError() {
+    func test_initializeFromDictionaryWithOnlySiteId_expectThrowError() {
         let givenDict: [String: Any] = [
             "siteId": String.random
         ]
@@ -48,7 +48,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_mapInitializationWithIncorrectSiteIdType_expectThrowError() {
+    func test_initializeFromDictionaryWithIncorrectSiteIdType_expectThrowError() {
         let givenDict: [String: Any] = [
             "siteId": 100,
             "region": "US"
@@ -59,7 +59,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializationWithOnlyRegion_expectThrowError() {
+    func test_initializeFromDictionaryWithOnlyRegion_expectThrowError() {
         let givenDict: [String: Any] = [
             "region": String.random
         ]
@@ -69,7 +69,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_mapInitializationWithIncorrectRegionType_expectThrowError() {
+    func test_initializeFromDictionaryWithIncorrectRegionType_expectThrowError() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
             "siteId": givenSiteId,
@@ -81,7 +81,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_mapInitializationWithIncorrectRegionValue_expectDefaultValue() {
+    func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValue() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
             "siteId": givenSiteId,

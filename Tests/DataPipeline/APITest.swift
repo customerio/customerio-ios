@@ -87,7 +87,9 @@ class DataPipelineAPITest: UnitTest {
 
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
-        SDKConfigBuilder(cdpApiKey: "")
+
+        _ = SDKConfigBuilder(cdpApiKey: "")
+            .logLevel(.error)
             .apiHost("")
             .cdnHost("")
             .flushAt(10)
@@ -100,6 +102,7 @@ class DataPipelineAPITest: UnitTest {
             .trackApplicationLifecycleEvents(true)
             .autoTrackDeviceAttributes(true)
             .siteId("")
+            .build()
     }
 
     func test_autoTrackingScreenViewsPluginOptions() throws {
