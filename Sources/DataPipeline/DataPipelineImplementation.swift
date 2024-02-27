@@ -165,8 +165,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
 
-        // Look in main, if no use then remove
-        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        logger.debug("reset identifier in in-app module: profile stopped being identified \(currentlyIdentifiedProfile)")
         eventBusHandler.postEvent(ProfileAlreadyIdentifiedEvent(identifier: currentlyIdentifiedProfile))
 
         // reset all to default state
