@@ -24,7 +24,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
 
-        self.contextPlugin = Context(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
+        self.contextPlugin = Context(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes, diGraph: diGraph)
 
         initialize(diGraph: diGraph)
     }

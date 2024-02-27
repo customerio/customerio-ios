@@ -9,14 +9,13 @@ class Context: Plugin {
     public var deviceToken: String?
     public var attributes: [String: Any] = [:]
 
-    var userAgentUtil: UserAgentUtil {
-        DIGraphShared.shared.userAgentUtil
-    }
+    let userAgentUtil: UserAgentUtil
 
     public var autoTrackDeviceAttributes: Bool
 
-    public required init(autoTrackDeviceAttributes: Bool) {
+    public required init(autoTrackDeviceAttributes: Bool, diGraph: DIGraphShared) {
         self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+        self.userAgentUtil = diGraph.userAgentUtil
     }
 
     public func execute<T: RawEvent>(event: T?) -> T? {
