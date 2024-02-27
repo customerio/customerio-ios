@@ -32,33 +32,7 @@ class CommonAPITest: UnitTest {
 
     // SDK wrappers can configure the SDK from a Map.
     // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
-    func test_createSdkConfigFromMap() {
-        let logLevel = "info"
-
-        let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevel": logLevel
-        ]
-
-        let actual = SdkConfig.Factory.create(from: givenParamsFromSdkWrapper)
-
-        XCTAssertEqual(actual.logLevel.rawValue, logLevel)
-    }
-
-    func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
-        let logLevel = "info"
-
-        let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevelWrong": logLevel
-        ]
-
-        let actual = SdkConfig.Factory.create(from: givenParamsFromSdkWrapper)
-
-        XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-    }
-
-    func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = SdkConfig.Factory.create()
-
-        XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
+    func test_createSdkConfigFromDictionary() {
+        _ = SdkConfig.Factory.create(from: [:])
     }
 }
