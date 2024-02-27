@@ -1,13 +1,17 @@
 import CioInternalCommon
 import Segment
 
-/// Plugin class that adds device attributes to Segment requests
-class DeviceAttributes: Plugin {
+/// Plugin class that updates the context in requests payload
+class Context: Plugin {
     public let type = PluginType.before
     public weak var analytics: Analytics?
 
-    public var token: String?
+    public var deviceToken: String?
     public var attributes: [String: Any] = [:]
+
+    var userAgentUtil: UserAgentUtil {
+        DIGraphShared.shared.userAgentUtil
+    }
 
     public var autoTrackDeviceAttributes: Bool
 
@@ -29,11 +33,15 @@ class DeviceAttributes: Plugin {
             // Prevents unexpected token overwriting in this method
             // maintaining effective working during background queue migration.
             // This check does not affect non-background queue migration calls or direct CDP calls
-            if let token = token, bgToken == nil {
+            if let token = deviceToken, bgToken == nil {
                 context[keyPath: "device.token"] = token
                 workingEvent.context = try JSON(context)
             }
 
+            // set the user agent
+            context["userAgent"] = userAgentUtil.getUserAgentHeaderValue()
+
+            // set the device attributes
             if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
                 context["device"] = device.mergeWith(attributes)
             } else {

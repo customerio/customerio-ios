@@ -4,14 +4,12 @@ public protocol UserAgentUtil: AutoMockable {
     func getUserAgentHeaderValue() -> String
 }
 
-// sourcery: InjectRegister = "UserAgentUtil"
+// sourcery: InjectRegisterShared = "UserAgentUtil"
 public class UserAgentUtilImpl: UserAgentUtil {
     private let deviceInfo: DeviceInfo
-    private let sdkWrapperConfig: SdkWrapperConfig?
 
-    init(deviceInfo: DeviceInfo, sdkConfig: SdkConfig) {
+    init(deviceInfo: DeviceInfo) {
         self.deviceInfo = deviceInfo
-        self.sdkWrapperConfig = sdkConfig._sdkWrapperConfig
     }
 
     /**
@@ -26,10 +24,6 @@ public class UserAgentUtilImpl: UserAgentUtil {
      */
     public func getUserAgentHeaderValue() -> String {
         var userAgent = "Customer.io iOS Client/\(deviceInfo.sdkVersion)"
-
-        if let sdkWrapperConfig = sdkWrapperConfig {
-            userAgent = "Customer.io \(sdkWrapperConfig.source.rawValue) Client/\(sdkWrapperConfig.version)"
-        }
 
         if let deviceModel = deviceInfo.deviceModel,
            let deviceOsVersion = deviceInfo.osVersion,
