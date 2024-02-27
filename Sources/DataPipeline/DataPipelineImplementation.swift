@@ -166,11 +166,8 @@ class DataPipelineImplementation: DataPipelineInstance {
         deleteDeviceToken()
 
         // Look in main, if no use then remove
-        // logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
-        // FIXME: [CDP] Request Journeys to invoke profile clearing hooks
-        // hooks.profileIdentifyHooks.forEach { hook in
-        //     hook.beforeProfileStoppedBeingIdentified(oldIdentifier: currentlyIdentifiedProfileIdentifier)
-        // }
+        logger.debug("running hooks: profile stopped being identified \(currentlyIdentifiedProfile)")
+        eventBusHandler.postEvent(ProfileAlreadyIdentifiedEvent(identifier: currentlyIdentifiedProfile))
 
         // reset all to default state
         logger.debug("resetting user profile")
