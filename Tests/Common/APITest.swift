@@ -1,5 +1,4 @@
-import CioInternalCommon
-import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
+import CioInternalCommon // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -41,7 +40,7 @@ class TrackingAPITest: UnitTest {
             "logLevel": logLevel
         ]
 
-        var actual = CioSdkConfig.Factory.create()
+        var actual = SdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
@@ -53,14 +52,14 @@ class TrackingAPITest: UnitTest {
             "logLevelWrong": logLevel
         ]
 
-        var actual = CioSdkConfig.Factory.create()
+        var actual = SdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = CioSdkConfig.Factory.create()
+        let actual = SdkConfig.Factory.create()
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
     }

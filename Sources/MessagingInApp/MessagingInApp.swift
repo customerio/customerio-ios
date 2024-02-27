@@ -60,12 +60,6 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     @discardableResult
     public static func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
         shared.initializeModuleIfNotAlready {
-            // FIXME: [CDP] Update hooks to work as expected
-            // Register MessagingPush module hooks now that the module is being initialized.
-            // let hooks = diGraph.hooksManager
-            // let moduleHookProvider = MessagingInAppModuleHookProvider()
-            // hooks.add(key: .messagingInApp, provider: moduleHookProvider)
-
             MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         }
 

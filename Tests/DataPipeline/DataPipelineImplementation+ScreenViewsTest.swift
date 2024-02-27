@@ -136,14 +136,12 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
 extension DataPipelineImplementationScreenViewsTest {
     private func assertNoEventTracked() {
-        // FIXME: [CDP] the BQ is no longer being used in CDP code, so checking if the BQ storage is empty will always return false.
-        // Any test calling this function needs updated with a better way to determine no event was tracked.
-        // XCTAssertTrue(diGraph.queueStorage.filterTrackEvents(.trackEvent).isEmpty)
+        let screenviewEvents = outputReader.screenEvents
+        XCTAssertEqual(screenviewEvents.count, 0)
     }
 
     private func assertEventTracked(numberOfEventsAdded: Int = 1) {
         let screenviewEvents = outputReader.screenEvents
-
         XCTAssertEqual(screenviewEvents.count, numberOfEventsAdded)
     }
 }
