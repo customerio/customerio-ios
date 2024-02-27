@@ -45,6 +45,13 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
+        postProfileAlreadyIdentifiedToInAppModule()
+    }
+
+    private func postProfileAlreadyIdentifiedToInAppModule() {
+        if let identifier = analytics.userId {
+            eventBusHandler.postEvent(ProfileAlreadyIdentifiedEvent(identifier: identifier))
+        }
     }
 
     private func subscribeToJourneyEvents() {
