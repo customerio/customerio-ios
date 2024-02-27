@@ -36,15 +36,6 @@ public struct SdkConfig {
             CioLogLevel.getLogLevel(for: logLevelStringValue) {
             logLevel = paramLogLevel
         }
-
-        // Construct object with all required parameters. Each config option should be provided from `params` or a default value.
-        // Define default values here in constructor instead of in struct properties. This is by design so in the future if we add
-        // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
-        // add a way for `params` to override the SDK config option.
-
-        if let sdkSource = params[Keys.source.rawValue] as? String, let pversion = params[Keys.sourceVersion.rawValue] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
-            _sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
-        }
     }
 
     // Constants that SDK wrappers can use with `modify` function for setting configuration options with strings.
@@ -52,19 +43,9 @@ public struct SdkConfig {
     public enum Keys: String { // Constants used to map each of the options in SdkConfig
         // config features
         case logLevel
-        // SDK wrapper config
-        case source
-        case sourceVersion = "version"
     }
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you
     /// wish to view from the SDK.
     public var logLevel: CioLogLevel
-
-    // property is used internally so disable swiftlint rule
-    /**
-     Used internally at Customer.io to override some information in the SDK when the SDK is being used
-     as a wrapper/bridge such as with ReactNative.
-     */
-    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
 }

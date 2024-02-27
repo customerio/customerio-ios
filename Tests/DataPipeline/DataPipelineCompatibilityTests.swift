@@ -13,6 +13,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
+    private var userAgentUtil: UserAgentUtil?
 
     override func setUpDependencies() {
         super.setUpDependencies()
@@ -29,6 +30,8 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         // get DataPipelineImplementation instance so we can call its methods directly
         dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation)
+
+        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
 
         // get storage instance so we can read final events
         storage = analytics.storage
@@ -204,6 +207,29 @@ class DataPipelineCompatibilityTests: IntegrationTest {
     }
 
     // MARK: event
+
+    func test_anyEvent_expectFinalJsonHasCorrectUserAgent() {
+        let givenUserAgent = userAgentUtil?.getUserAgentHeaderValue()
+        let givenEvent = String.random
+        customerIO.track(name: givenEvent)
+
+        let allEvents = readTypeFromStorage(key: Storage.Constants.events)
+        let filteredEvents = allEvents.filter { $0.eventType == "track" }
+        XCTAssertEqual(filteredEvents.count, 1, "too many events received")
+
+        guard let savedEvent = filteredEvents.last else {
+            XCTFail("saved event must not be nil")
+            return
+        }
+
+        guard let userAgent = givenUserAgent else {
+            XCTFail("user agent must not be nil")
+            return
+        }
+
+        XCTAssertEqual(savedEvent[keyPath: "event"] as? String, givenEvent)
+        XCTAssertEqual(savedEvent[keyPath: "context.userAgent"] as? String, userAgent)
+    }
 
     func test_eventWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenEvent = String.random

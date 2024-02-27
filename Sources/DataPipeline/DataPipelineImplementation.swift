@@ -11,7 +11,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
-    private let deviceAttributesPlugin: DeviceAttributes
+    private let contextPlugin: Context
     private let profileStore: ProfileStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
@@ -26,7 +26,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
 
-        self.deviceAttributesPlugin = DeviceAttributes(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes)
+        self.contextPlugin = Context(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes, diGraph: diGraph)
 
         initialize(diGraph: diGraph)
     }
@@ -39,8 +39,8 @@ class DataPipelineImplementation: DataPipelineInstance {
             analytics.add(plugin: customerIODestination)
         }
 
-        // add/override device attributes in context for each request
-        analytics.add(plugin: deviceAttributesPlugin)
+        // plugin to update context properties for each request
+        analytics.add(plugin: contextPlugin)
 
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
@@ -184,24 +184,24 @@ class DataPipelineImplementation: DataPipelineInstance {
         get { [:] }
         set {
             logger.info("updating device attributes")
-            addDeviceAttributes(token: deviceAttributesPlugin.token, attributes: newValue)
+            addDeviceAttributes(token: contextPlugin.deviceToken, attributes: newValue)
         }
     }
 
     /// Internal method for passing device token to the plugin and updating device attributes
     private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
-        if let existingDeviceToken = deviceAttributesPlugin.token, existingDeviceToken != deviceToken {
+        if let existingDeviceToken = contextPlugin.deviceToken, existingDeviceToken != deviceToken {
             // token has been refreshed, delete old token to avoid registering same device multiple times
             deleteDeviceToken()
         }
-        deviceAttributesPlugin.token = deviceToken
+        contextPlugin.deviceToken = deviceToken
 
         // Consolidate all Apple platforms under iOS
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes: [String: Any] = defaultDeviceAttributes.mergeWith(customAttributes)
-            self.deviceAttributesPlugin.attributes = deviceAttributes
+            self.contextPlugin.attributes = deviceAttributes
 
-            guard self.deviceAttributesPlugin.token != nil else {
+            guard self.contextPlugin.deviceToken != nil else {
                 self.logger.debug("no device token found, ignoring device attributes request")
                 return
             }

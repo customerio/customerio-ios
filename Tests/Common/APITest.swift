@@ -35,44 +35,32 @@ class TrackingAPITest: UnitTest {
     // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
     func test_createSdkConfigFromMap() {
         let logLevel = "info"
-        let sdkWrapperSource = "Flutter"
-        let sdkWrapperVersion = "1000.33333.4444"
 
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevel": logLevel,
-            "source": sdkWrapperSource,
-            "version": sdkWrapperVersion
+            "logLevel": logLevel
         ]
 
         var actual = SdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
-        XCTAssertNotNil(actual._sdkWrapperConfig)
     }
 
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
         let logLevel = "info"
-        let sdkWrapperSource = "Flutter"
-        let sdkWrapperVersion = "1000.33333.4444"
-
         let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevelWrong": logLevel,
-            "sourceWrong": sdkWrapperSource,
-            "versionWrong": sdkWrapperVersion
+            "logLevelWrong": logLevel
         ]
 
         var actual = SdkConfig.Factory.create()
         actual.modify(params: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertNil(actual._sdkWrapperConfig)
     }
 
     func test_SdkConfig_givenNoModification_expectDefaults() {
         let actual = SdkConfig.Factory.create()
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertNil(actual._sdkWrapperConfig)
     }
 }

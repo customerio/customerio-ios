@@ -89,9 +89,6 @@ extension DIGraph {
         _ = httpRequestRunner
         countDependenciesResolved += 1
 
-        _ = userAgentUtil
-        countDependenciesResolved += 1
-
         _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
@@ -248,16 +245,6 @@ extension DIGraph {
         UrlRequestHttpRequestRunner()
     }
 
-    // UserAgentUtil
-    public var userAgentUtil: UserAgentUtil {
-        getOverriddenInstance() ??
-            newUserAgentUtil
-    }
-
-    private var newUserAgentUtil: UserAgentUtil {
-        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkConfig: sdkConfig)
-    }
-
     // SandboxedSiteIdKeyValueStorage
     public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
         getOverriddenInstance() ??
@@ -337,6 +324,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = httpRequestRunner
+        countDependenciesResolved += 1
+
+        _ = userAgentUtil
         countDependenciesResolved += 1
 
         _ = sandboxedSiteIdKeyValueStorage
@@ -657,6 +647,16 @@ extension DIGraphShared {
 
     private var newHttpRequestRunner: HttpRequestRunner {
         UrlRequestHttpRequestRunner()
+    }
+
+    // UserAgentUtil
+    public var userAgentUtil: UserAgentUtil {
+        getOverriddenInstance() ??
+            newUserAgentUtil
+    }
+
+    private var newUserAgentUtil: UserAgentUtil {
+        UserAgentUtilImpl(deviceInfo: deviceInfo)
     }
 
     // SandboxedSiteIdKeyValueStorage
