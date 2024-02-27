@@ -50,7 +50,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     private func postProfileAlreadyIdentifiedToInAppModule() {
         if let identifier = analytics.userId {
-            eventBusHandler.postEvent(ProfileAlreadyIdentifiedEvent(identifier: identifier))
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         }
     }
 

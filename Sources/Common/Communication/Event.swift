@@ -82,20 +82,6 @@ public enum EventTypesRegistry {
 // Each event struct should have properties relevant to its specific use case.
 // They must include `storageId`, `params`, and any other relevant information.
 
-public struct ProfileAlreadyIdentifiedEvent: EventRepresentable {
-    public let storageId: String
-    public let params: [String: String]
-    public let identifier: String
-    public let timestamp: Date
-
-    public init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
-        self.storageId = storageId
-        self.identifier = identifier
-        self.timestamp = timestamp
-        self.params = params
-    }
-}
-
 public struct ProfileIdentifiedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]

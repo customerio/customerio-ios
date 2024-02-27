@@ -55,17 +55,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: profile hooks
 
-    func test_givenProfileAlreadyIdentified_expectSetupWithInApp() {
-        super.setUp()
-
-        let given = String.random
-
-        postEventAndWait(event: ProfileAlreadyIdentifiedEvent(identifier: given))
-
-        XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
-        XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
-    }
-
     func test_givenProfileIdentified_expectSetupWithInApp() {
         super.setUp()
 

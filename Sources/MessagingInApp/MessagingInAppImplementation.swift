@@ -29,11 +29,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
-        eventBusHandler.addObserver(ProfileAlreadyIdentifiedEvent.self) { event in
-            self.logger.debug("registering already identified profile \(event.identifier) for in-app")
-            self.inAppProvider.setProfileIdentifier(event.identifier)
-        }
-
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { event in
             self.logger.debug("registering profile \(event.identifier) for in-app")
 
