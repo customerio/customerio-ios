@@ -37,8 +37,6 @@ public struct SdkConfig {
         case logLevel
     }
 
-    /// To help you get setup with the SDK or debug SDK, change the log level of logs you
-    /// wish to view from the SDK.
     public let logLevel: CioLogLevel
 
     // private init to ensure `SdkConfig` can either be created using `SDKConfigBuilder` or `SdkConfig.Factory` only.

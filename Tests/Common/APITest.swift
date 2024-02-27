@@ -10,8 +10,7 @@ import XCTest
  that is a reminder to either fix the compilation and introduce the breaking change or
  fix the mistake and not introduce the breaking change in the code base.
  */
-
-class TrackingAPITest: UnitTest {
+class CommonAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
@@ -40,20 +39,19 @@ class TrackingAPITest: UnitTest {
             "logLevel": logLevel
         ]
 
-        var actual = SdkConfig.Factory.create()
-        actual.modify(params: givenParamsFromSdkWrapper)
+        let actual = SdkConfig.Factory.create(from: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, logLevel)
     }
 
     func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
         let logLevel = "info"
+
         let givenParamsFromSdkWrapper: [String: Any] = [
             "logLevelWrong": logLevel
         ]
 
-        var actual = SdkConfig.Factory.create()
-        actual.modify(params: givenParamsFromSdkWrapper)
+        let actual = SdkConfig.Factory.create(from: givenParamsFromSdkWrapper)
 
         XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
     }

@@ -72,10 +72,7 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create()
-        if enableLogs {
-            newSdkConfig.logLevel = CioLogLevel.debug
-        }
+        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
 
         diGraph = DIGraph(sdkConfig: newSdkConfig)
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
