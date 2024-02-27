@@ -43,7 +43,7 @@ public class MessagingPushConfigBuilder {
     @available(iOSApplicationExtension, introduced: 13.0)
     /// Initializes new `MessagingPushConfigBuilder` with required configuration options.
     /// - Parameters:
-    ///   - cdpApiKey: CDP API Key required for NotificationServiceExtension only to track metrics
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
     }
