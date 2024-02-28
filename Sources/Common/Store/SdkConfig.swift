@@ -37,7 +37,7 @@ public struct SdkConfig {
 
     public let logLevel: CioLogLevel
 
-    // private init to ensure `SdkConfig` can either be created using `SdkConfig.Factory` only.
+    // private init to ensure `SdkConfig` can be created using `SdkConfig.Factory` only.
     private init(logLevel: CioLogLevel?) {
         self.logLevel = logLevel ?? CioLogLevel.error
     }
