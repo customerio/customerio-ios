@@ -993,9 +993,9 @@ public class EventBusMock: EventBus, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var postReceivedArguments: AnyEventRepresentable?
+    @Atomic public private(set) var postReceivedArguments: AnyEventRepresentable?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var postReceivedInvocations: [AnyEventRepresentable] = []
+    @Atomic public private(set) var postReceivedInvocations: [AnyEventRepresentable] = []
     /// Value to return from the mocked function.
     public var postReturnValue: Bool!
     /**
@@ -1141,7 +1141,7 @@ public class EventCacheMock: EventCache, Mock {
     /// The arguments from the *last* time the function was called.
     public private(set) var addEventReceivedArguments: AnyEventRepresentable?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addEventReceivedInvocations: [AnyEventRepresentable] = []
+    @Atomic public private(set) var addEventReceivedInvocations: [AnyEventRepresentable] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */

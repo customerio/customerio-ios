@@ -42,6 +42,12 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
         removeObserverCallsCount += 1
     }
 
+    public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
+        mockCalled = true
+        postEventCallsCount += 1
+        postEventArguments = event
+    }
+
     public private(set) var postEventCallsCount = 0
     public var postEventCalled: Bool { postEventCallsCount > 0 }
     public private(set) var postEventArguments: (any EventRepresentable)?

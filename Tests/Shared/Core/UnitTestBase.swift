@@ -33,6 +33,10 @@ open class UnitTestBase<Component>: XCTestCase {
         setUp(sdkConfig: nil)
     }
 
+    override open func setUp() async throws {
+        setUp(sdkConfig: nil)
+    }
+
     /**
      Performs initial setup before the execution of each test method in the test class.
 
@@ -117,12 +121,12 @@ open class UnitTestBase<Component>: XCTestCase {
         deleteAllFiles()
         deleteKeyValueStoredData()
     }
-    
+
     // Deletes all key/value storage pairs that the SDK could save
     private func deleteKeyValueStoredData() {
         diGraphShared.sharedKeyValueStorage.deleteAll()
     }
-    
+
     private func deleteAllFiles() {
         let fileManager = FileManager.default
 

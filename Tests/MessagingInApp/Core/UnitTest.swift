@@ -11,6 +11,10 @@ open class UnitTest: SharedTests.UnitTestBase<MessagingInAppInstance> {
         setUp(modifyModuleConfig: nil)
     }
 
+    override open func setUp() async throws {
+        setUp(modifyModuleConfig: nil)
+    }
+
     override open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
         setUp(enableLogs: enableLogs, modifyModuleConfig: nil)
     }

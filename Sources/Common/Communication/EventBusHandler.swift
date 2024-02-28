@@ -106,14 +106,14 @@ public class CioEventBusHandler: EventBusHandler {
             await postEventAndWait(event)
         }
     }
-    
+
     /// Version of `postEvent` that returns when the event has been posted.
     public func postEventAndWait<E: EventRepresentable>(_ event: E) async {
         logger.debug("EventBusHandler: Posting event - \(event)")
-        
+
         let hasObservers = await eventBus.post(event)
         await eventCache.addEvent(event: event)
-        
+
         if !hasObservers {
             logger.debug("EventBusHandler: Storing event in memory - \(event)")
             await storeEvent(event)
