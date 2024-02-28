@@ -16,7 +16,7 @@ public struct SdkConfig {
             // Build config using provided options.
             // Use each option from `dictionary` if present, otherwise use default value.
             // Ensure default values align with those in `SDKConfigBuilder`.
-            // We'll later work on adding option to centralize default values in one place, ideally within the `SDKConfig` struct.
+            // We'll later work on adding option to centralize default values in one place, ideally within this struct.
 
             var logLevel: CioLogLevel?
             if let logLevelStringValue = dictionary[Keys.logLevel.rawValue] as? String,
