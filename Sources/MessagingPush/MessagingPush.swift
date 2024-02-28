@@ -66,7 +66,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         let logger = diGraph.logger
         logger.debug("Setting up MessagingPush module...")
 
-        if diGraph.sdkConfig.autoTrackPushEvents {
+        if diGraph.sdkConfig.autoTrackPushMetricEvents.isOpenedEnabled {
             diGraph.automaticPushClickHandling.start()
         }
 

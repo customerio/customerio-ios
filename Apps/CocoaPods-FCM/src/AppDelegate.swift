@@ -23,7 +23,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Initialize the Customer.io SDK
         CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
             // Modify properties in the config object to configure the Customer.io SDK.
-            config.autoTrackPushEvents = true
+            config.autoTrackPushMetricEvents = [.delivered, .opened]
             // config.logLevel = .debug // Uncomment this line to enable debug logging.
 
             // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.

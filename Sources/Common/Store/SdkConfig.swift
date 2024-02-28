@@ -13,7 +13,7 @@ import UIKit
  let sdkConfigInstance = SdkConfig.Factory.create(region: .US)
  // now, you can modify it
  sdkConfigInstance.trackingApiUrl = "https..."
- sdkConfigInstance.autoTrackPushEvents = false
+ sdkConfigInstance.autoTrackPushMetricEvents = [.delivered,.opened]
  ```
  */
 public struct SdkConfig {
@@ -27,6 +27,7 @@ public struct SdkConfig {
                 region: region,
                 trackingApiUrl: region.productionTrackingUrl,
                 autoTrackPushEvents: true,
+                autoTrackPushMetricEvents: [.delivered, .opened],
                 backgroundQueueMinNumberOfTasks: 10,
                 backgroundQueueSecondsDelay: 30,
                 backgroundQueueExpiredSeconds: Seconds.secondsFromDays(3),
@@ -120,7 +121,16 @@ public struct SdkConfig {
      Automatic tracking of push events will automatically generate `opened` and `delivered` metrics
      for push notifications sent by Customer.io
      */
+    @available(*, deprecated, message: "Use autoTrackPushMetricEvents instead.")
     public var autoTrackPushEvents: Bool
+
+    /**
+       Enables automatic tracking of push events, allowing for fine-grained control over which push notification metrics are tracked by Customer.io. This feature replaces the deprecated `autoTrackPushEvents` Boolean flag, enabling the tracking of specific event types, such as `opened` and `delivered`.
+       By default, both `opened` and `delivered` events will be tracked.
+
+       - Note: Utilizing the `opened` metric for automatic tracking may interfere with callback functionalities provided by third-party SDKs for push notification clicks. When Customer.io push notifications are configured to automatically track `opened` events, callbacks in third-party tools might not be invoked for these specific notifications, although they will remain operational for notifications not originating from Customer.io.
+     */
+    public var autoTrackPushMetricEvents: PushMetricEvents
 
     /**
      Number of tasks in the background queue before the queue begins operating.
@@ -208,6 +218,8 @@ public struct NotificationServiceExtensionSdkConfig {
     public var trackingApiUrl: String
     /// See `SdkConfig.autoTrackPushEvents`
     public var autoTrackPushEvents: Bool
+    /// See `SdkConfig.autoTrackPushMetricEvents`
+    public var autoTrackPushMetricEvents: PushMetricEvents
     /// See `SdkConfig.logLevel`
     public var logLevel: CioLogLevel
     /// See `SdkConfig.autoTrackDeviceAttributes`
@@ -231,6 +243,7 @@ public struct NotificationServiceExtensionSdkConfig {
                 region: region,
                 trackingApiUrl: defaultSdkConfig.trackingApiUrl,
                 autoTrackPushEvents: defaultSdkConfig.autoTrackPushEvents,
+                autoTrackPushMetricEvents: defaultSdkConfig.autoTrackPushMetricEvents,
                 logLevel: defaultSdkConfig.logLevel,
                 autoTrackDeviceAttributes: defaultSdkConfig.autoTrackDeviceAttributes
             )
@@ -245,6 +258,7 @@ public struct NotificationServiceExtensionSdkConfig {
         var sdkConfig = SdkConfig.Factory.create(siteId: siteId, apiKey: apiKey, region: region)
 
         sdkConfig.autoTrackPushEvents = autoTrackPushEvents
+        sdkConfig.autoTrackPushMetricEvents = autoTrackPushMetricEvents
         sdkConfig.logLevel = logLevel
         sdkConfig.autoTrackDeviceAttributes = autoTrackDeviceAttributes
         sdkConfig._sdkWrapperConfig = _sdkWrapperConfig
@@ -260,5 +274,34 @@ public struct NotificationServiceExtensionSdkConfig {
         sdkConfig.backgroundQueueSecondsDelay = 0
 
         return sdkConfig
+    }
+}
+
+/**
+ Represents the set of push notification metrics that can be tracked by Customer.io. This option set allows for the configuration of granular tracking preferences, enabling the selection of specific events such as `delivered` and `opened`.
+
+ - `delivered`: Tracks when a push notification is successfully delivered to a device.
+ - `opened`: Tracks when a push notification is opened by the recipient.
+ */
+public struct PushMetricEvents: OptionSet {
+    public let rawValue: Int
+
+    public static let delivered = PushMetricEvents(rawValue: 1 << 0)
+    public static let opened = PushMetricEvents(rawValue: 1 << 1)
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+
+    public var isDeliveredEnabled: Bool {
+        contains(.delivered)
+    }
+
+    public var isOpenedEnabled: Bool {
+        contains(.opened)
+    }
+
+    public var isTrackingAllEvents: Bool {
+        contains([.delivered, .opened])
     }
 }

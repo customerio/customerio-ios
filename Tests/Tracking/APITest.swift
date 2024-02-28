@@ -35,6 +35,7 @@ class TrackingAPITest: UnitTest {
         // Initialize
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { (config: inout CioSdkConfig) in
             config.autoTrackPushEvents = false
+            config.autoTrackPushMetricEvents = []
         }
         // There is another `initialize()` function that's available to Notification Service Extension and not available
         // to other targets (such as iOS).
@@ -110,10 +111,10 @@ class TrackingAPITest: UnitTest {
         CustomerIO.initialize(siteId: "", apiKey: "", region: .EU) { config in
             config.trackingApiUrl = ""
             config.autoTrackPushEvents = true
+            config.autoTrackPushMetricEvents = [.delivered, .opened]
             config.backgroundQueueMinNumberOfTasks = 10
             config.backgroundQueueSecondsDelay = 10
             config.logLevel = .error
-            config.autoTrackPushEvents = false
             config.autoScreenViewBody = { [:] }
             config.filterAutoScreenViewEvents = { viewController in
                 class MyViewController: UIViewController {}

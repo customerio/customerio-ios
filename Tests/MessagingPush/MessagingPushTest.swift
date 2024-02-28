@@ -49,7 +49,7 @@ class MessagignPushTest: IntegrationTest {
 
     func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
         setupTest { config in
-            config.autoTrackPushEvents = false
+            config.autoTrackPushMetricEvents = .delivered // could be empty too
         }
 
         MessagingPush.initialize()

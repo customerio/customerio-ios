@@ -60,7 +60,7 @@ extension MessagingPushImplementation {
 
         logger.info("push was sent from Customer.io. Processing the request...")
 
-        if sdkConfig.autoTrackPushEvents {
+        if sdkConfig.autoTrackPushMetricEvents.isDeliveredEnabled {
             logger.info("automatically tracking push metric: delivered")
             logger.debug("parsed deliveryId \(pushCioDeliveryInfo.id), deviceToken: \(pushCioDeliveryInfo.token)")
 

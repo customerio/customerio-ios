@@ -8,7 +8,7 @@ class NotificationService: UNNotificationServiceExtension {
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: Region.US) { config in
-            config.autoTrackPushEvents = true
+            config.autoTrackPushMetricEvents = [.delivered, .opened]
         }
 
         MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)

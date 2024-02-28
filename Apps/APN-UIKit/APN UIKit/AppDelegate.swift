@@ -49,7 +49,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
             config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
 
-            config.autoTrackPushEvents = true
+            config.autoTrackPushMetricEvents = [.delivered, .opened]
 
             if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
                 config.trackingApiUrl = trackUrl

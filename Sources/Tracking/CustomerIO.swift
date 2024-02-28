@@ -202,7 +202,18 @@ public class CustomerIO: CustomerIOInstance {
     private static func initialize(
         config: SdkConfig
     ) {
-        let newDiGraph = DIGraph(sdkConfig: config)
+        var sdkConfig = config
+
+        // temporary handling for backward compatibility with `autoTrackPushEvents`.
+        // if `autoTrackPushEvents` is false (disabled) and `autoTrackPushMetricEvents` is set to track all events (default),
+        // we adjust to track only `delivered`. This approach aims to avoid missing `delivered` events for customers
+        // transitioning from the old setting/or who wanted to suppress opened, especially when explicit disabling of `delivered`
+        // tracking isn't distinguishable in the current setup. This is a conservative choice to ensure event tracking continuity.
+        if !sdkConfig.autoTrackPushEvents, sdkConfig.autoTrackPushMetricEvents.isTrackingAllEvents {
+            sdkConfig.autoTrackPushMetricEvents = [.delivered]
+        }
+
+        let newDiGraph = DIGraph(sdkConfig: sdkConfig)
 
         shared.diGraph = newDiGraph
         shared.implementation = CustomerIOImplementation(diGraph: newDiGraph)
