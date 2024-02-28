@@ -3,7 +3,6 @@ import Foundation
 
 // MARK: - Typed Event Signatures
 
-// TODO: Add APITest for it?
 public extension CustomerIO {
     func track(name: String) {
         DataPipeline.shared.analytics.track(name: name)
