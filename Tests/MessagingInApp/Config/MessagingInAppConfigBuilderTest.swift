@@ -81,7 +81,7 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValue() {
+    func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValues() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
             "siteId": givenSiteId,

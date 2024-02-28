@@ -30,9 +30,13 @@ class CommonAPITest: UnitTest {
         let _: CioLogLevel = .debug
     }
 
-    // SDK wrappers can configure the SDK from a Map.
-    // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
-    func test_createSdkConfigFromDictionary() {
+    // This function checks that SdkConfig is accessible and can be created using the factory.
+    func test_createSdkConfig() {
+        // Outside of the Common module, we should be able to create a `SdkConfig` using the factory.
+        _ = SdkConfig.Factory.create(logLevel: .debug)
+        // Factory method should allow nil values for `SdkConfig` to enable fallback to defaults.
+        _ = SdkConfig.Factory.create(logLevel: nil)
+        // Wrapper SDKs should be able to create a `SdkConfig` from a dictionary.
         _ = SdkConfig.Factory.create(from: [:])
     }
 }

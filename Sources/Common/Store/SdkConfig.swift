@@ -4,14 +4,12 @@ import Foundation
 ///
 /// Use `SDKConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct SdkConfig {
-    // Since wrapper SDKs cannot use `SDKConfigBuilder`, we need to provide a way to create `SdkConfig` using a dictionary.
+    // Since `SdkConfig` is normally created outside of Common module, we provide a factory to create `SdkConfig` instances.
     public enum Factory {
-        #if DEBUG
-        // Only used for testing purposes.
+        // Factory method to create `SdkConfig` with default values.
         public static func create(logLevel: CioLogLevel? = nil) -> SdkConfig {
             SdkConfig(logLevel: logLevel)
         }
-        #endif
 
         /// Constructs `SdkConfig` by parsing and applying configurations from provided dictionary.
         public static func create(from dictionary: [String: Any]) -> SdkConfig {
@@ -39,7 +37,7 @@ public struct SdkConfig {
 
     public let logLevel: CioLogLevel
 
-    // private init to ensure `SdkConfig` can either be created using `SDKConfigBuilder` or `SdkConfig.Factory` only.
+    // private init to ensure `SdkConfig` can either be created using `SdkConfig.Factory` only.
     private init(logLevel: CioLogLevel?) {
         self.logLevel = logLevel ?? CioLogLevel.error
     }
