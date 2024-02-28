@@ -1,8 +1,8 @@
 import Foundation
 
-struct TrackDeliveryEventRequestBody: Codable {
+public struct TrackDeliveryEventRequestBody: Codable {
     let type: DeliveryType
-    let payload: DeliveryPayload
+    public let payload: DeliveryPayload
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -10,11 +10,11 @@ struct TrackDeliveryEventRequestBody: Codable {
     }
 }
 
-struct DeliveryPayload: Codable {
-    let deliveryId: String
-    let event: InAppMetric
-    let timestamp: Date
-    let metaData: [String: String]
+public struct DeliveryPayload: Codable {
+    public let deliveryId: String
+    public let event: InAppMetric
+    public let timestamp: Date
+    public let metaData: [String: String]
 
     enum CodingKeys: String, CodingKey {
         case deliveryId = "delivery_id"

@@ -341,13 +341,17 @@ extension DataPipelineImplementation {
         analytics.process(event: trackRegisterTokenEvent)
     }
 
-    func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any] = [:]) {
-        let properties: [String: Any] = metaData.mergeWith([
-            "metric": event.rawValue,
-            "deliveryId": deliveryId,
-            "recipient": token
+    func processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
+        var properties: [String: Any] = metaData.mergeWith([
+            "metric": event,
+            "deliveryId": deliveryId
         ])
+        if let token = token {
+            properties["recipient"] = token
+        }
         var trackPushMetricEvent = TrackEvent(event: "Report Delivery Event", properties: try? JSON(properties))
+        // anonymousId or userId is required in the payload for backend processing
+        trackPushMetricEvent.anonymousId = deliveryId
         trackPushMetricEvent.timestamp = timestamp
         analytics.process(event: trackPushMetricEvent)
     }

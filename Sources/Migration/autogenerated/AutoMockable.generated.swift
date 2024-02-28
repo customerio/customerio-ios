@@ -305,16 +305,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processPushMetricsFromBGQReceivedArguments: (token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])?
+    public private(set) var processPushMetricsFromBGQReceivedArguments: (token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processPushMetricsFromBGQReceivedInvocations: [(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
+    public private(set) var processPushMetricsFromBGQReceivedInvocations: [(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var processPushMetricsFromBGQClosure: ((String, Metric, String, String, [String: Any]) -> Void)?
+    public var processPushMetricsFromBGQClosure: ((String?, String, String, String, [String: Any]) -> Void)?
 
-    /// Mocked function for `processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func processPushMetricsFromBGQ(token: String, event: Metric, deliveryId: String, timestamp: String, metaData: [String: Any]) {
+    /// Mocked function for `processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
         mockCalled = true
         processPushMetricsFromBGQCallsCount += 1
         processPushMetricsFromBGQReceivedArguments = (token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData)
