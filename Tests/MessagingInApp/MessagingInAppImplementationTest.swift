@@ -40,14 +40,12 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: initialize given an existing identifier
 
-    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
+    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() async throws {
         let givenProfileIdentifiedInSdk = String.random
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
         // call super.setUp() now to initialize the module after the profile is identified
-        super.setUp()
-        // wait for event bus to post any events
-        waitForEventBus()
+        try await super.setUp()
 
         XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
@@ -55,34 +53,33 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: profile hooks
 
-    func test_givenProfileIdentified_expectSetupWithInApp() {
-        super.setUp()
+    func test_givenProfileIdentified_expectSetupWithInApp() async throws {
+        try await super.setUp()
 
         let given = String.random
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
-
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
     }
 
-    func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
-        super.setUp()
+    func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() async throws {
+        try await super.setUp()
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
-        postEventAndWait(event: ResetEvent())
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
+        await postEventAndWait(event: ResetEvent())
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
 
     // MARK: screen view hooks
 
-    func test_givenScreenViewed_expectSetRouteOnInApp() {
-        super.setUp()
+    func test_givenScreenViewed_expectSetRouteOnInApp() async throws {
+        try await super.setUp()
 
         let given = String.random
 
-        postEventAndWait(event: ScreenViewedEvent(name: given))
+        await postEventAndWait(event: ScreenViewedEvent(name: given))
 
         XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
@@ -253,18 +250,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
 }
 
 extension MessagingInAppImplementationTest {
-    func postEventAndWait<E: EventRepresentable>(event: E, timeoutInSeconds: Double = 1.0) {
-        eventBusHandler.postEvent(event)
-        waitForEventBus(timeoutInSeconds: timeoutInSeconds)
-    }
-
-    func waitForEventBus(timeoutInSeconds: Double = 1.0) {
-        let expectation = XCTestExpectation(description: "wait for \(timeoutInSeconds) seconds")
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
-            expectation.fulfill()
-        }
-        // Wait for the expectations to be fulfilled, with a timeout slightly longer than given timeout
-        // Note: On CI, we experienced flakiness if the timeout value was only 0.1 seconds longer then the given timeout value.
-        wait(for: [expectation], timeout: timeoutInSeconds + 0.5)
+    func postEventAndWait<E: EventRepresentable>(event: E) async {
+        await eventBusHandler.postEventAndWait(event)
     }
 }

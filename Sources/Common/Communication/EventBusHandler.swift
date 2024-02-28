@@ -6,6 +6,7 @@ public protocol EventBusHandler {
     func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void)
     func removeObserver<E: EventRepresentable>(for eventType: E.Type)
     func postEvent<E: EventRepresentable>(_ event: E)
+    func postEventAndWait<E: EventRepresentable>(_ event: E) async
     func removeFromStorage<E: EventRepresentable>(_ event: E) async
     func reset() async
 }
@@ -101,14 +102,21 @@ public class CioEventBusHandler: EventBusHandler {
     /// Posts an event to the EventBus and stores it if there are no observers.
     /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        logger.debug("EventBusHandler: Posting event - \(event)")
         Task {
-            let hasObservers = await eventBus.post(event)
-            await eventCache.addEvent(event: event)
-            if !hasObservers {
-                logger.debug("EventBusHandler: Storing event in memory - \(event)")
-                await storeEvent(event)
-            }
+            await postEventAndWait(event)
+        }
+    }
+    
+    /// Version of `postEvent` that returns when the event has been posted.
+    public func postEventAndWait<E: EventRepresentable>(_ event: E) async {
+        logger.debug("EventBusHandler: Posting event - \(event)")
+        
+        let hasObservers = await eventBus.post(event)
+        await eventCache.addEvent(event: event)
+        
+        if !hasObservers {
+            logger.debug("EventBusHandler: Storing event in memory - \(event)")
+            await storeEvent(event)
         }
     }
 
