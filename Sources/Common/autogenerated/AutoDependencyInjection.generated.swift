@@ -28,7 +28,7 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
+     let wheels = DIGraphShared.shared.offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
  }
  ```
@@ -36,225 +36,15 @@ import Foundation
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DIGraph().reset()
+ DIGraphShared.shared.reset()
  ```
 
  */
-
-extension DIGraph {
-    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
-    // internal scope so each module can provide their own version of the function with the same name.
-    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    func testDependenciesAbleToResolve() -> Int {
-        var countDependenciesResolved = 0
-
-        _ = deviceInfo
-        countDependenciesResolved += 1
-
-        _ = simpleTimer
-        countDependenciesResolved += 1
-
-        _ = singleScheduleTimer
-        countDependenciesResolved += 1
-
-        _ = threadUtil
-        countDependenciesResolved += 1
-
-        _ = deviceMetricsGrabber
-        countDependenciesResolved += 1
-
-        _ = fileStorage
-        countDependenciesResolved += 1
-
-        _ = queueStorage
-        countDependenciesResolved += 1
-
-        _ = jsonAdapter
-        countDependenciesResolved += 1
-
-        _ = queueInventoryMemoryStore
-        countDependenciesResolved += 1
-
-        _ = dateUtil
-        countDependenciesResolved += 1
-
-        _ = uIKitWrapper
-        countDependenciesResolved += 1
-
-        _ = httpRequestRunner
-        countDependenciesResolved += 1
-
-        _ = sandboxedSiteIdKeyValueStorage
-        countDependenciesResolved += 1
-
-        return countDependenciesResolved
-    }
-
-    // DeviceInfo
-    public var deviceInfo: DeviceInfo {
-        getOverriddenInstance() ??
-            newDeviceInfo
-    }
-
-    private var newDeviceInfo: DeviceInfo {
-        CIODeviceInfo()
-    }
-
-    // SimpleTimer
-    var simpleTimer: SimpleTimer {
-        getOverriddenInstance() ??
-            newSimpleTimer
-    }
-
-    private var newSimpleTimer: SimpleTimer {
-        CioSimpleTimer(logger: logger)
-    }
-
-    // SingleScheduleTimer (singleton)
-    var singleScheduleTimer: SingleScheduleTimer {
-        getOverriddenInstance() ??
-            sharedSingleScheduleTimer
-    }
-
-    var sharedSingleScheduleTimer: SingleScheduleTimer {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_SingleScheduleTimer_singleton_access").sync {
-            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
-            let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
-            self.singletons[String(describing: SingleScheduleTimer.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_singleScheduleTimer() -> SingleScheduleTimer {
-        CioSingleScheduleTimer(timer: simpleTimer)
-    }
-
-    // ThreadUtil
-    public var threadUtil: ThreadUtil {
-        getOverriddenInstance() ??
-            newThreadUtil
-    }
-
-    private var newThreadUtil: ThreadUtil {
-        CioThreadUtil()
-    }
-
-    // DeviceMetricsGrabber
-    var deviceMetricsGrabber: DeviceMetricsGrabber {
-        getOverriddenInstance() ??
-            newDeviceMetricsGrabber
-    }
-
-    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
-        DeviceMetricsGrabberImpl()
-    }
-
-    // FileStorage
-    public var fileStorage: FileStorage {
-        getOverriddenInstance() ??
-            newFileStorage
-    }
-
-    private var newFileStorage: FileStorage {
-        FileManagerFileStorage(logger: logger)
-    }
-
-    // QueueStorage
-    public var queueStorage: QueueStorage {
-        getOverriddenInstance() ??
-            newQueueStorage
-    }
-
-    private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
-    }
-
-    // JsonAdapter
-    public var jsonAdapter: JsonAdapter {
-        getOverriddenInstance() ??
-            newJsonAdapter
-    }
-
-    private var newJsonAdapter: JsonAdapter {
-        JsonAdapter(log: logger)
-    }
-
-    // QueueInventoryMemoryStore (singleton)
-    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
-        getOverriddenInstance() ??
-            sharedQueueInventoryMemoryStore
-    }
-
-    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_QueueInventoryMemoryStore_singleton_access").sync {
-            if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
-            let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
-            self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
-        QueueInventoryMemoryStoreImpl()
-    }
-
-    // DateUtil
-    public var dateUtil: DateUtil {
-        getOverriddenInstance() ??
-            newDateUtil
-    }
-
-    private var newDateUtil: DateUtil {
-        SdkDateUtil()
-    }
-
-    // UIKitWrapper
-    @available(iOSApplicationExtension, unavailable)
-    public var uIKitWrapper: UIKitWrapper {
-        getOverriddenInstance() ??
-            newUIKitWrapper
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newUIKitWrapper: UIKitWrapper {
-        UIKitWrapperImpl()
-    }
-
-    // HttpRequestRunner
-    public var httpRequestRunner: HttpRequestRunner {
-        getOverriddenInstance() ??
-            newHttpRequestRunner
-    }
-
-    private var newHttpRequestRunner: HttpRequestRunner {
-        UrlRequestHttpRequestRunner()
-    }
-
-    // SandboxedSiteIdKeyValueStorage
-    public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
-        getOverriddenInstance() ??
-            newSandboxedSiteIdKeyValueStorage
-    }
-
-    private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
-        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
-    }
-}
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.

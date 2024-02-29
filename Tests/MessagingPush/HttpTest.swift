@@ -25,7 +25,7 @@ open class HttpTest: UnitTest {
     override open func setUp() {
         super.setUp()
 
-        deviceInfo = diGraph.deviceInfo
+        deviceInfo = diGraphShared.deviceInfo
         session = RichPushHttpClient.getBasicSession()
         runner = UrlRequestHttpRequestRunner()
 

@@ -34,10 +34,3 @@ public enum LockReference: String {
     case pushHistory
     case autoTrackScreenViewStore
 }
-
-// Dependency needs to be accessed by multiple graphs.
-extension DIGraph {
-    var lockManager: LockManager {
-        DIGraphShared.shared.lockManager
-    }
-}

@@ -8,7 +8,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     private let profileStoreMock = ProfileStoreMock()
     private let backgroundQueueMock = QueueMock()
     private let migrationHandler = DataPipelineMigrationActionMock()
-    private var queueStorage: QueueStorage { diGraph.queueStorage }
+    private var queueStorage: QueueStorage { diGraphShared.queueStorage }
     public var migrationAssistant: DataPipelineMigrationAssistant {
         DataPipelineMigrationAssistant(handler: migrationHandler)
     }

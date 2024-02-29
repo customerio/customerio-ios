@@ -15,7 +15,6 @@ public protocol HttpRequestRunner: AutoMockable {
     func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)
 }
 
-// sourcery: InjectRegister = "HttpRequestRunner"
 // sourcery: InjectRegisterShared = "HttpRequestRunner"
 public class UrlRequestHttpRequestRunner: HttpRequestRunner {
     /**

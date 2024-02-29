@@ -18,7 +18,6 @@ open class IntegrationTest: UnitTest {
         // execute the code in the real device into implementation.
         deviceInfoStub = DeviceInfoStub()
         diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
-        diGraph.override(value: deviceInfoStub, forType: DeviceInfo.self)
     }
 
     override open func initializeSDKComponents() -> MessagingPushInstance? {
