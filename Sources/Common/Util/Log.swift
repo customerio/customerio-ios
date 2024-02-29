@@ -59,12 +59,6 @@ public enum CioLogLevel: String, CaseIterable {
     #endif
 }
 
-public extension DIGraph {
-    var logger: Logger {
-        getOverriddenInstance() ?? DIGraphShared.shared.logger
-    }
-}
-
 // log messages to console.
 // sourcery: InjectRegisterShared = "Logger"
 public class ConsoleLogger: Logger {
