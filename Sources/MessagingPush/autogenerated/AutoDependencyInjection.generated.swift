@@ -29,7 +29,7 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
+     let wheels = DIGraphShared.shared.offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
  }
  ```
@@ -37,12 +37,12 @@ import Foundation
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DIGraph().reset()
+ DIGraphShared.shared.reset()
  ```
 
  */
