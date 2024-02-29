@@ -29,7 +29,6 @@ public protocol QueueStorage: AutoMockable {
     func delete(storageId: String, siteId: String) -> Bool
 }
 
-// sourcery: InjectRegister = "QueueStorage"
 // sourcery: InjectRegisterShared = "QueueStorage"
 public class FileManagerQueueStorage: QueueStorage {
     private let fileStorage: FileStorage
