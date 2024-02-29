@@ -10,7 +10,6 @@ protocol InAppProvider: AutoMockable {
     func dismissMessage()
 }
 
-// sourcery: InjectRegister = "InAppProvider"
 // sourcery: InjectRegisterShared = "InAppProvider"
 class GistInAppProvider: InAppProvider {
     func initialize(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool = false) {

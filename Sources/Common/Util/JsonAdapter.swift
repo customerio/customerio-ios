@@ -26,7 +26,6 @@ import Foundation
  XCAssertEqual(expectedObject, actualObject)
  ```
  */
-// sourcery: InjectRegister = "JsonAdapter"
 // sourcery: InjectRegisterShared = "JsonAdapter"
 public class JsonAdapter {
     var decoder: JSONDecoder {

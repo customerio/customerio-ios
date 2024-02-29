@@ -8,7 +8,6 @@ protocol SingleScheduleTimer: AutoMockable {
 
 // Since Queue isn't a singleton, we need timer to be so we don't start a new timer instance
 // for each time that a queue item is added.
-// sourcery: InjectRegister = "SingleScheduleTimer"
 // sourcery: InjectRegisterShared = "SingleScheduleTimer"
 // sourcery: InjectSingleton
 class CioSingleScheduleTimer: SingleScheduleTimer {

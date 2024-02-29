@@ -28,7 +28,6 @@ public protocol SandboxedSiteIdKeyValueStorage {
 /*
  Uses UserDefaults to store data in key/value pairs.
  */
-// sourcery: InjectRegister = "SandboxedSiteIdKeyValueStorage"
 // sourcery: InjectRegisterShared = "SandboxedSiteIdKeyValueStorage"
 public class UserDefaultsSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
     private let deviceMetricsGrabber: DeviceMetricsGrabber
