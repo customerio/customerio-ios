@@ -47,30 +47,6 @@ import Foundation
 
  */
 
-extension DIGraph {
-    // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
-    // internal scope so each module can provide their own version of the function with the same name.
-    @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    func testDependenciesAbleToResolve() -> Int {
-        var countDependenciesResolved = 0
-
-        _ = inAppProvider
-        countDependenciesResolved += 1
-
-        return countDependenciesResolved
-    }
-
-    // InAppProvider
-    var inAppProvider: InAppProvider {
-        getOverriddenInstance() ??
-            newInAppProvider
-    }
-
-    private var newInAppProvider: InAppProvider {
-        GistInAppProvider()
-    }
-}
-
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
