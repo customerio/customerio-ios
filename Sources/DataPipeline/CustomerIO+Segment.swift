@@ -4,7 +4,6 @@ import Segment
 
 // MARK: - System Modifiers
 
-// TODO: Add APITest for it?
 public extension CustomerIO {
     /// Enable/Disable analytics capture
     var enabled: Bool {
