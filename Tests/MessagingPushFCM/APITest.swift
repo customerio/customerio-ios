@@ -75,7 +75,8 @@ class MessagingPushFCMAPITest: UnitTest {
         // function is not available to iOS.
         // _ = MessagingPushConfigBuilder(cdpApiKey: "").build()
 
-        _ = MessagingPushConfigBuilder.build(from: [:])
+        let configOptions: [String: Any] = [:]
+        _ = MessagingPushConfigBuilder.build(from: configOptions)
     }
 
     func test_richPushPublicFunctions() throws {

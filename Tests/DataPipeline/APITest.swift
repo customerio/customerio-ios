@@ -149,7 +149,7 @@ class DataPipelineAPITest: UnitTest {
 
                 return viewController is MyViewController
             },
-            autoScreenViewBody: { [:] }
+            autoScreenViewBody: { self.dictionaryData }
         )
     }
 }

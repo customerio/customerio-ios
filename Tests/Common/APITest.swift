@@ -37,6 +37,7 @@ class CommonAPITest: UnitTest {
         // Factory method should allow nil values for `SdkConfig` to enable fallback to defaults.
         _ = SdkConfig.Factory.create(logLevel: nil)
         // Wrapper SDKs should be able to create a `SdkConfig` from a dictionary.
-        _ = SdkConfig.Factory.create(from: [:])
+        let configOptions: [String: Any] = [:]
+        _ = SdkConfig.Factory.create(from: configOptions)
     }
 }

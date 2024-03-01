@@ -29,7 +29,8 @@ class MessagingInAppAPITest: UnitTest {
         _ = MessagingInAppConfigBuilder(siteId: "", region: .US)
             .build()
 
-        _ = try? MessagingInAppConfigBuilder.build(from: [:])
+        let configOptions: [String: Any] = [:]
+        _ = try? MessagingInAppConfigBuilder.build(from: configOptions)
     }
 }
 
