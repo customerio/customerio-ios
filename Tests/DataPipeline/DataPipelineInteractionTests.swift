@@ -438,7 +438,6 @@ class DataPipelineInteractionTests: IntegrationTest {
 
     // MARK: registerDeviceToken
 
-    // TODO: [CDP] Confirm if this is still desired behavior
     func test_registerDeviceToken_givenNoProfileIdentified_expectStoreAndRegisterDevice() {
         let givenDeviceToken = String.random
         mockDeviceAttributes()
