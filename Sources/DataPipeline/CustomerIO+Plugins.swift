@@ -2,7 +2,6 @@ import CioInternalCommon
 import Foundation
 import Segment
 
-// TODO: Add APITest for it?
 public extension CustomerIO {
     /**
      Applies the supplied closure to the currently loaded set of plugins.
