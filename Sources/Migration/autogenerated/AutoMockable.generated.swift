@@ -126,9 +126,9 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
         processRegisterDeviceFromBGQReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        processPushMetricsFromBGQCallsCount = 0
-        processPushMetricsFromBGQReceivedArguments = nil
-        processPushMetricsFromBGQReceivedInvocations = []
+        processMetricsFromBGQCallsCount = 0
+        processMetricsFromBGQReceivedArguments = nil
+        processMetricsFromBGQReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -295,31 +295,31 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
         processRegisterDeviceFromBGQClosure?(identifier, token, timestamp, attributes)
     }
 
-    // MARK: - processPushMetricsFromBGQ
+    // MARK: - processMetricsFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processPushMetricsFromBGQCallsCount = 0
+    public private(set) var processMetricsFromBGQCallsCount = 0
     /// `true` if the function was ever called.
-    public var processPushMetricsFromBGQCalled: Bool {
-        processPushMetricsFromBGQCallsCount > 0
+    public var processMetricsFromBGQCalled: Bool {
+        processMetricsFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processPushMetricsFromBGQReceivedArguments: (token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])?
+    public private(set) var processMetricsFromBGQReceivedArguments: (token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processPushMetricsFromBGQReceivedInvocations: [(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
+    public private(set) var processMetricsFromBGQReceivedInvocations: [(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var processPushMetricsFromBGQClosure: ((String?, String, String, String, [String: Any]) -> Void)?
+    public var processMetricsFromBGQClosure: ((String?, String, String, String, [String: Any]) -> Void)?
 
-    /// Mocked function for `processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
+    /// Mocked function for `processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
         mockCalled = true
-        processPushMetricsFromBGQCallsCount += 1
-        processPushMetricsFromBGQReceivedArguments = (token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData)
-        processPushMetricsFromBGQReceivedInvocations.append((token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData))
-        processPushMetricsFromBGQClosure?(token, event, deliveryId, timestamp, metaData)
+        processMetricsFromBGQCallsCount += 1
+        processMetricsFromBGQReceivedArguments = (token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData)
+        processMetricsFromBGQReceivedInvocations.append((token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: metaData))
+        processMetricsFromBGQClosure?(token, event, deliveryId, timestamp, metaData)
     }
 }
 
