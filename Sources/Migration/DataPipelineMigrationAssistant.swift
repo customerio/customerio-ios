@@ -8,7 +8,7 @@ public protocol DataPipelineMigrationAction: AutoMockable {
     func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any])
     func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String)
     func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)
-    func processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])
+    func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])
 }
 
 public class DataPipelineMigrationAssistant {
@@ -85,7 +85,7 @@ public class DataPipelineMigrationAssistant {
                 return
             }
             let payload = trackInappTaskData.payload
-            migrationHandler.processPushMetricsFromBGQ(token: nil, event: payload.event.rawValue, deliveryId: payload.deliveryId, timestamp: timestamp, metaData: payload.metaData)
+            migrationHandler.processMetricsFromBGQ(token: nil, event: payload.event.rawValue, deliveryId: payload.deliveryId, timestamp: timestamp, metaData: payload.metaData)
 
         // Processes identify profile and profile attributes
         case .identifyProfile:
@@ -152,7 +152,7 @@ public class DataPipelineMigrationAssistant {
                 isProcessed = false
                 return
             }
-            migrationHandler.processPushMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event.rawValue, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
+            migrationHandler.processMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event.rawValue, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
         }
     }
 }

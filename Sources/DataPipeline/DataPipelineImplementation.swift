@@ -341,7 +341,7 @@ extension DataPipelineImplementation {
         analytics.process(event: trackRegisterTokenEvent)
     }
 
-    func processPushMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
+    func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any]) {
         var properties: [String: Any] = metaData.mergeWith([
             "metric": event,
             "deliveryId": deliveryId
