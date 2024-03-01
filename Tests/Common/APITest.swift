@@ -10,8 +10,7 @@ import XCTest
  that is a reminder to either fix the compilation and introduce the breaking change or
  fix the mistake and not introduce the breaking change in the code base.
  */
-
-class TrackingAPITest: UnitTest {
+class CommonAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
 
@@ -31,48 +30,13 @@ class TrackingAPITest: UnitTest {
         let _: CioLogLevel = .debug
     }
 
-    // SDK wrappers can configure the SDK from a Map.
-    // This test is in API tests as the String keys of the Map are public and need to not break for the SDK wrappers.
-    func test_createSdkConfigFromMap() {
-        let logLevel = "info"
-        let sdkWrapperSource = "Flutter"
-        let sdkWrapperVersion = "1000.33333.4444"
-
-        let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevel": logLevel,
-            "source": sdkWrapperSource,
-            "version": sdkWrapperVersion
-        ]
-
-        var actual = SdkConfig.Factory.create()
-        actual.modify(params: givenParamsFromSdkWrapper)
-
-        XCTAssertEqual(actual.logLevel.rawValue, logLevel)
-        XCTAssertNotNil(actual._sdkWrapperConfig)
-    }
-
-    func test_SdkConfigFromMap_givenWrongKeys_expectDefaults() {
-        let logLevel = "info"
-        let sdkWrapperSource = "Flutter"
-        let sdkWrapperVersion = "1000.33333.4444"
-
-        let givenParamsFromSdkWrapper: [String: Any] = [
-            "logLevelWrong": logLevel,
-            "sourceWrong": sdkWrapperSource,
-            "versionWrong": sdkWrapperVersion
-        ]
-
-        var actual = SdkConfig.Factory.create()
-        actual.modify(params: givenParamsFromSdkWrapper)
-
-        XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertNil(actual._sdkWrapperConfig)
-    }
-
-    func test_SdkConfig_givenNoModification_expectDefaults() {
-        let actual = SdkConfig.Factory.create()
-
-        XCTAssertEqual(actual.logLevel.rawValue, CioLogLevel.error.rawValue)
-        XCTAssertNil(actual._sdkWrapperConfig)
+    // This function checks that SdkConfig is accessible and can be created using the factory.
+    func test_createSdkConfig() {
+        // Outside of the Common module, we should be able to create a `SdkConfig` using the factory.
+        _ = SdkConfig.Factory.create(logLevel: .debug)
+        // Factory method should allow nil values for `SdkConfig` to enable fallback to defaults.
+        _ = SdkConfig.Factory.create(logLevel: nil)
+        // Wrapper SDKs should be able to create a `SdkConfig` from a dictionary.
+        _ = SdkConfig.Factory.create(from: [:])
     }
 }

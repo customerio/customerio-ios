@@ -23,17 +23,11 @@ open class BaseDIGraphTest: UnitTest {
         // Test will try to get an instance of every dependency in the graph.
         // If an exception is thrown, then there is a bug in the graph.
         let numberOfSharedDependenciesResolved = diGraphShared.testDependenciesAbleToResolve()
-        let numberOfDependenciesResolved = diGraph.testDependenciesAbleToResolve()
 
         // check to make sure test works as we expect it to. Since the test is automatically generated for us.
         if numberOfSharedDependenciesResolved <= 0 {
             XCTFail(
                 "there is probably a bug with the shared dependency injection graph test. 0 depdencies were resolved which is probably a bug."
-            )
-        }
-        if numberOfDependenciesResolved <= 0 {
-            XCTFail(
-                "there is probably a bug with the dependency injection graph test. 0 depdencies were resolved which is probably a bug."
             )
         }
     }

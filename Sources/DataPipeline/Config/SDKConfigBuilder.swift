@@ -7,10 +7,11 @@ import Segment
 /// the SDK, ensuring all required and optional settings are appropriately configured before the
 /// SDK is initialized.
 ///
-/// Usage Example:
+/// **Usage Example:**
+///
 /// ```
 /// let config = SDKConfigBuilder(cdpApiKey: "your_cdp_api_key")
-///   .apiHost("your_api_host")
+///   .logLevel(.debug)
 ///   .flushAt(30)
 ///   // additional configuration as needed...
 ///   .build()
@@ -39,11 +40,15 @@ public class SDKConfigBuilder {
     private var autoTrackDeviceAttributes: Bool = true
     private var siteId: String?
 
-    // allow construction of builder with required configurations only
+    /// Initializes new `SDKConfigBuilder` with required configuration options.
+    /// - Parameters:
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
     }
 
+    /// To help you get setup with the SDK or debug SDK, change the log level of logs you wish to
+    /// view from the SDK.
     @discardableResult
     public func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
         self.logLevel = logLevel
@@ -110,6 +115,8 @@ public class SDKConfigBuilder {
         return self
     }
 
+    /// Enable this property if you want SDK to automatic track device attributes such as
+    /// operating system, device locale, device model, app version etc.
     @discardableResult
     public func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
         autoTrackDeviceAttributes = autoTrack
@@ -124,8 +131,9 @@ public class SDKConfigBuilder {
 
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig`` from given configurations
-        var sdkConfig = SdkConfig.Factory.create()
-        sdkConfig.logLevel = logLevel
+        let sdkConfig = SdkConfig.Factory.create(
+            logLevel: logLevel
+        )
 
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(

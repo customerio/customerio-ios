@@ -21,8 +21,7 @@ open class UnitTestBase<Component>: XCTestCase {
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
     public let testSiteId = "testing"
-    public var diGraph: DIGraph!
-    public var sdkConfig: SdkConfig { diGraph.sdkConfig }
+    public var sdkConfig: SdkConfig!
 
     public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
     public var lockManager: LockManager { LockManager() }
@@ -72,12 +71,8 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        var newSdkConfig = sdkConfig ?? SdkConfig.Factory.create()
-        if enableLogs {
-            newSdkConfig.logLevel = CioLogLevel.debug
-        }
+        self.sdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
 
-        diGraph = DIGraph(sdkConfig: newSdkConfig)
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
         // setup SDK instance and set necessary components for testing
@@ -92,7 +87,6 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraphShared.override(value: threadUtilStub, forType: ThreadUtil.self)
-        diGraph.override(value: threadUtilStub, forType: ThreadUtil.self)
     }
 
     @discardableResult
@@ -112,7 +106,6 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()
-        diGraph.reset()
     }
 
     open func deleteAllPersistentData() {

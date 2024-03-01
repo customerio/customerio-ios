@@ -4,7 +4,7 @@ import Foundation
 protocol DeviceAttributesProvider: AutoMockable {
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void)
 }
-// sourcery: InjectRegister = "DeviceAttributesProvider"
+
 // sourcery: InjectRegisterShared = "DeviceAttributesProvider"
 class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let deviceInfo: DeviceInfo

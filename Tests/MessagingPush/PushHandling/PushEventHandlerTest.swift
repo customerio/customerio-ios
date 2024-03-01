@@ -16,12 +16,12 @@ class PushEventHandlerTest: UnitTest {
         super.setUp()
 
         pushEventHandler = IOSPushEventListener(
-            jsonAdapter: diGraph.jsonAdapter,
+            jsonAdapter: diGraphShared.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
             moduleConfig: diGraphShared.messagingPushConfigOptions,
             pushClickHandler: pushClickHandler,
             pushHistory: diGraphShared.pushHistory,
-            logger: diGraph.logger
+            logger: diGraphShared.logger
         )
     }
 

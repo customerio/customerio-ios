@@ -29,11 +29,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and
         // module was added later on, we can notify gist about it.
-        // FIXME: [CDP] Fetch from Journey
-        // if let identifier = profileStore.identifier {
-        //     inAppProvider.setProfileIdentifier(identifier)
-        // }
-
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { event in
             self.logger.debug("registering profile \(event.identifier) for in-app")
 

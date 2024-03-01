@@ -6,7 +6,6 @@ public protocol DateUtil {
     var now: Date { get }
 }
 
-// sourcery: InjectRegister = "DateUtil"
 // sourcery: InjectRegisterShared = "DateUtil"
 public class SdkDateUtil: DateUtil {
     public var now: Date {

@@ -2,7 +2,9 @@ import CioInternalCommon
 import Foundation
 import Segment
 
-/// Configuration options for the Customer.io Data Pipeline module
+/// Defines configuration options for the Customer.io Data Pipeline module.
+///
+/// Use `SDKConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct DataPipelineConfigOptions {
     /// Server key
     public let cdpApiKey: String

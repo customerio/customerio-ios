@@ -6,7 +6,6 @@ public protocol ThreadUtil {
     func runMain(_ block: @escaping () -> Void)
 }
 
-// sourcery: InjectRegister = "ThreadUtil"
 // sourcery: InjectRegisterShared = "ThreadUtil"
 public class CioThreadUtil: ThreadUtil {
     public func runMain(_ block: @escaping () -> Void) {

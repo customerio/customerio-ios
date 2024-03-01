@@ -70,12 +70,12 @@ extension AutomaticPushDeliveredAppInForegrondTest {
             .build()
 
         pushEventHandler = IOSPushEventListener(
-            jsonAdapter: diGraph.jsonAdapter,
+            jsonAdapter: diGraphShared.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
             moduleConfig: pushModuleConfig,
             pushClickHandler: pushClickHandler,
             pushHistory: diGraphShared.pushHistory,
-            logger: diGraph.logger
+            logger: diGraphShared.logger
         )
     }
 

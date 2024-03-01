@@ -1,70 +1,44 @@
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
-/**
- Configuration options for the Customer.io SDK.
- See `CustomerIO.config()` to configurate the SDK.
-
- Example use case:
- ```
- // create a new instance
- let sdkConfigInstance = SdkConfig.Factory.create(region: .US)
- // now, you can modify it
- sdkConfigInstance.trackingApiUrl = "https..."
- sdkConfigInstance.autoTrackPushEvents = false
- ```
- */
+/// Defines configuration options for the Customer.io SDK.
+///
+/// Use `SDKConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
 public struct SdkConfig {
-    // Used to create new instance of SdkConfig when the SDK is initialized.
-    // Then, each property of the SdkConfig object can be modified by the user.
+    // Since `SdkConfig` is normally created outside of Common module, we provide a factory to create `SdkConfig` instances.
     public enum Factory {
-        public static func create() -> SdkConfig {
-            SdkConfig(
-                logLevel: CioLogLevel.error
-            )
+        // Factory method to create `SdkConfig` with default values.
+        public static func create(logLevel: CioLogLevel? = nil) -> SdkConfig {
+            SdkConfig(logLevel: logLevel)
+        }
+
+        /// Constructs `SdkConfig` by parsing and applying configurations from provided dictionary.
+        public static func create(from dictionary: [String: Any]) -> SdkConfig {
+            // Build config using provided options.
+            // Use each option from `dictionary` if present, otherwise use default value.
+            // Ensure default values align with those in `SDKConfigBuilder`.
+            // We'll later work on adding option to centralize default values in one place, ideally within this struct.
+
+            var logLevel: CioLogLevel?
+            if let logLevelStringValue = dictionary[Keys.logLevel.rawValue] as? String,
+               let paramLogLevel = CioLogLevel.getLogLevel(for: logLevelStringValue) {
+                logLevel = paramLogLevel
+            }
+
+            return SdkConfig(logLevel: logLevel)
         }
     }
 
-    public mutating func modify(params: [String: Any]) {
-        // Each SDK config option should be able to be set from `param` map.
-        // If one isn't provided, use the default value instead.
-
-        // If a parameter takes more logic to calculate, perform the logic up here.
-        if let logLevelStringValue = params[Keys.logLevel.rawValue] as? String, let paramLogLevel =
-            CioLogLevel.getLogLevel(for: logLevelStringValue) {
-            logLevel = paramLogLevel
-        }
-
-        // Construct object with all required parameters. Each config option should be provided from `params` or a default value.
-        // Define default values here in constructor instead of in struct properties. This is by design so in the future if we add
-        // a new SDK config option to the struct, we get a compiler error here in the constructor reminding us that we need to
-        // add a way for `params` to override the SDK config option.
-
-        if let sdkSource = params[Keys.source.rawValue] as? String, let pversion = params[Keys.sourceVersion.rawValue] as? String, let sdkConfigSource = SdkWrapperConfig.Source(rawValue: sdkSource) {
-            _sdkWrapperConfig = SdkWrapperConfig(source: sdkConfigSource, version: pversion)
-        }
-    }
-
-    // Constants that SDK wrappers can use with `modify` function for setting configuration options with strings.
-    // It's important to keep these values backwards compatible to avoid breaking SDK wrappers.
-    public enum Keys: String { // Constants used to map each of the options in SdkConfig
+    /// Constants used to map each of the options in SdkConfig.
+    /// It's important to keep these values backwards compatible to avoid breaking SDK wrappers.
+    public enum Keys: String {
         // config features
         case logLevel
-        // SDK wrapper config
-        case source
-        case sourceVersion = "version"
     }
 
-    /// To help you get setup with the SDK or debug SDK, change the log level of logs you
-    /// wish to view from the SDK.
-    public var logLevel: CioLogLevel
+    public let logLevel: CioLogLevel
 
-    // property is used internally so disable swiftlint rule
-    /**
-     Used internally at Customer.io to override some information in the SDK when the SDK is being used
-     as a wrapper/bridge such as with ReactNative.
-     */
-    public var _sdkWrapperConfig: SdkWrapperConfig? // swiftlint:disable:this identifier_name
+    // private init to ensure `SdkConfig` can be created using `SdkConfig.Factory` only.
+    private init(logLevel: CioLogLevel?) {
+        self.logLevel = logLevel ?? CioLogLevel.error
+    }
 }
