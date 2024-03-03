@@ -22,6 +22,7 @@ public protocol CustomerIOInstance: AutoMockable {
      */
     func identify(userId: String, traits: [String: Any]?)
 
+    // swiftlint:disable orphaned_doc_comment
     /**
      Identify a customer (aka: Add or update a profile).
      [Learn more](https://customer.io/docs/identifying-people/) about identifying a customer in Customer.io
@@ -33,6 +34,7 @@ public protocol CustomerIOInstance: AutoMockable {
      [Learn more](https://customer.io/docs/api/#operation/identify)
      - traits: Request body of identifying profile. Use to define user attributes.
      */
+    // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=identifyEncodable
     // sourcery:DuplicateMethod=identify
     func identify<RequestBody: Codable>(
@@ -95,6 +97,7 @@ public protocol CustomerIOInstance: AutoMockable {
      */
     func track(name: String, properties: [String: Any]?)
 
+    // swiftlint:disable orphaned_doc_comment
     /**
      Track an event
      [Learn more](https://customer.io/docs/events/) about events in Customer.io
@@ -102,6 +105,7 @@ public protocol CustomerIOInstance: AutoMockable {
      - name: Name of the event you want to track.
      - properties: Optional event body of properties about the event.
      */
+    // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=trackEncodable
     // sourcery:DuplicateMethod=track
     func track<RequestBody: Codable>(
@@ -122,6 +126,7 @@ public protocol CustomerIOInstance: AutoMockable {
      */
     func screen(title: String, properties: [String: Any]?)
 
+    // swiftlint:disable orphaned_doc_comment
     /**
      Track a screen view
      [Learn more](https://customer.io/docs/events/) about events in Customer.io
@@ -129,6 +134,7 @@ public protocol CustomerIOInstance: AutoMockable {
      - title: Name of the currently active screen
      - properties: Optional event body of properties about the screen.
      */
+    // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=screenEncodable
     // sourcery:DuplicateMethod=screen
     func screen<RequestBody: Codable>(
