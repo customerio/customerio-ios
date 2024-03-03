@@ -7,24 +7,29 @@ import UIKit
 import XCTest
 
 class DataPipelineImplementationScreenViewsTest: IntegrationTest {
-    private var autoTrackingScreenViews: AutoTrackingScreenViews!
-    private var outputReader: OutputReaderPlugin!
+    private var autoTrackingScreenViews: AutoTrackingScreenViews?
+    private var outputReader: OutputReaderPlugin?
 
     override func setUp() {
         super.setUp()
 
         // setting up required plugins
-        outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
+        outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
         autoTrackingScreenViews = getTrackingScreenViewsPlugin()
     }
 
-    private func getTrackingScreenViewsPlugin() -> AutoTrackingScreenViews {
-        (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
+    private func getTrackingScreenViewsPlugin() -> AutoTrackingScreenViews? {
+        (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as? AutoTrackingScreenViews)
     }
 
     // MARK: performScreenTracking
 
     func test_performScreenTracking_givenCustomerProvidesFilter_expectSdkDefaultFilterNotUsed() {
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
+
         var customerProvidedFilterCalled = false
         autoTrackingScreenViews.filterAutoScreenViewEvents = { _ in
             customerProvidedFilterCalled = true
@@ -40,6 +45,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
     // SwiftUI wraps UIKit views and displays them in your app. Therefore, there is a good chance that automatic screenview tracking for a SwiftUI app will try to track screenview events from Views belonging to the SwiftUI framework or UIKit framework. Our SDK, by default, filters those events out.
     func test_performScreenTracking_givenViewFromSwiftUI_expectFalse() {
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
+
         autoTrackingScreenViews.performScreenTracking(onViewController: SwiftUI.UIHostingController(rootView: Text("")))
 
         assertNoEventTracked()
@@ -47,6 +57,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
     // Our SDK believes that UIKit framework views are irrelevant to tracking data for customers. Our SDK, by default, filters those events out.
     func test_performScreenTracking_givenViewFromUIKit_expectFalse() {
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
+
         autoTrackingScreenViews.performScreenTracking(onViewController: UIAlertController())
 
         assertNoEventTracked()
@@ -54,6 +69,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
     func test_performScreenTracking_givenViewFromHostApp_expectTrue() {
         class ViewInsideOfHostApp: UIViewController {}
+
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
 
         autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
 
@@ -63,6 +83,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     func test_performScreenTracking_givenViewSameScreenMultipleTimes_expectNoTrackingDuplicateEvents() {
         class ViewInsideOfHostApp: UIViewController {}
         class AnotherViewInsideOfHostApp: UIViewController {}
+
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
 
         // The first time that the screen is tracked, an event should be added
         autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
@@ -81,6 +106,11 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
         class ViewInsideOfHostApp: UIViewController {}
         class AnotherViewInsideOfHostApp: UIViewController {}
 
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
+
         // The first time that the screen is tracked, an event should be added
         autoTrackingScreenViews.performScreenTracking(onViewController: ViewInsideOfHostApp())
         assertEventTracked(numberOfEventsAdded: 1)
@@ -97,8 +127,20 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     func test_performScreenTracking_givenMultiplePluginInstances_expectNoTrackingDuplicateEvents() {
         class ViewInsideOfHostApp: UIViewController {}
 
-        let plugin1 = getTrackingScreenViewsPlugin()
-        let plugin2 = getTrackingScreenViewsPlugin()
+        guard let autoTrackingScreenViews = autoTrackingScreenViews else {
+            XCTFail("Expected non-nil autoTrackingScreenViews")
+            return
+        }
+
+        guard let plugin1 = getTrackingScreenViewsPlugin() else {
+            XCTFail("Expected non-nil object")
+            return
+        }
+
+        guard let plugin2 = getTrackingScreenViewsPlugin() else {
+            XCTFail("Expected non-nil object")
+            return
+        }
 
         plugin1.performScreenTracking(onViewController: ViewInsideOfHostApp())
         assertEventTracked(numberOfEventsAdded: 1)
@@ -136,11 +178,21 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
 
 extension DataPipelineImplementationScreenViewsTest {
     private func assertNoEventTracked() {
+        guard let outputReader = outputReader else {
+            XCTFail("Expected non-nil outputReader")
+            return
+        }
+
         let screenviewEvents = outputReader.screenEvents
         XCTAssertEqual(screenviewEvents.count, 0)
     }
 
     private func assertEventTracked(numberOfEventsAdded: Int = 1) {
+        guard let outputReader = outputReader else {
+            XCTFail("Expected non-nil outputReader")
+            return
+        }
+
         let screenviewEvents = outputReader.screenEvents
         XCTAssertEqual(screenviewEvents.count, numberOfEventsAdded)
     }
