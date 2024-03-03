@@ -6,7 +6,7 @@ import SwiftUI
 import UIKit
 import XCTest
 
-class DataPipelineImplementationScreenViewsTest: IntegrationTest {
+class DataPipelineScreenViewsTest: IntegrationTest {
     private var autoTrackingScreenViews: AutoTrackingScreenViews?
     private var outputReader: OutputReaderPlugin?
 
@@ -176,7 +176,7 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     }
 }
 
-extension DataPipelineImplementationScreenViewsTest {
+extension DataPipelineScreenViewsTest {
     private func assertNoEventTracked() {
         guard let outputReader = outputReader else {
             XCTFail("Expected non-nil outputReader")
