@@ -118,8 +118,12 @@ public class DataPipelineMigrationAssistant {
                 properties = attributes
             }
             let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
-            trackType.type == .screen ? migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
-                : migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+
+            if trackType.type == .screen {
+                migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+            } else {
+                migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+            }
 
         // Processes register device token and device attributes
         case .registerPushToken:

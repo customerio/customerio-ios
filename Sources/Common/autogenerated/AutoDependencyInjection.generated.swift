@@ -456,7 +456,7 @@ extension DIGraphShared {
     }
 
     private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
-        UserDefaultsSandboxedSiteIdKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
+        UserDefaultsSandboxedSiteIdKVStore(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 
     // SharedKeyValueStorage
