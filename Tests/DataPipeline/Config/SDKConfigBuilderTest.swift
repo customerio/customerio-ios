@@ -42,6 +42,8 @@ class SDKConfigBuilderTest: UnitTest {
 
         let (sdkConfig, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
             .logLevel(givenLogLevel)
+            // Region should be ignored because we are setting the API host and CDN host directly.
+            .region(.US)
             .apiHost(givenApiHost)
             .cdnHost(givenCdnHost)
             .flushAt(givenFlushAt)
@@ -95,6 +97,48 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertSame(actual.flushQueue, analyticsConfig.flushQueue)
         XCTAssertEqual(actual.operatingMode, analyticsConfig.operatingMode)
         XCTAssertEqual(actual.trackApplicationLifecycleEvents, analyticsConfig.trackApplicationLifecycleEvents)
+    }
+
+    func test_givenRegionUS_expectRegionDefaults() {
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .region(.US)
+            .build()
+
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+    }
+
+    func test_givenRegionEU_expectRegionDefaults() {
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .region(.EU)
+            .build()
+
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
+    }
+
+    func test_givenApiHostModified_expectIgnoreRegionDefaultsForApiHost() {
+        let givenApiHost = String.random
+
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .region(.US)
+            .apiHost(givenApiHost)
+            .build()
+
+        XCTAssertEqual(dataPipelineConfig.apiHost, givenApiHost)
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+    }
+
+    func test_givenCdnHostModified_expectIgnoreRegionDefaultsForCdnHost() {
+        let givenCdnHost = String.random
+
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .region(.US)
+            .cdnHost(givenCdnHost)
+            .build()
+
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
     }
 }
 
