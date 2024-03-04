@@ -15,12 +15,14 @@ class KeyValueStorageTests: UnitTest {
 
     func test_getFileName_expectGetFileName() {
         DIGraphShared.shared.override(value: deviceMetricsGrabberMock, forType: DeviceMetricsGrabber.self)
-        let store: UserDefaultsSharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage as! UserDefaultsSharedKeyValueStorage
+        let store: UserDefaultsSharedKeyValueStorage? = DIGraphShared.shared.sharedKeyValueStorage as? UserDefaultsSharedKeyValueStorage
+
+        XCTAssertNotNil(store)
 
         let givenAppBundleId = "com.foo.bar"
         deviceMetricsGrabberMock.underlyingAppBundleId = givenAppBundleId
 
-        XCTAssertEqual(store.getFileName(), "io.customer.sdk.com.foo.bar.shared")
+        XCTAssertEqual(store?.getFileName(), "io.customer.sdk.com.foo.bar.shared")
     }
 
     // MARK: double

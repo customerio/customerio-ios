@@ -66,93 +66,114 @@ public class DataPipelineMigrationAssistant {
      Retrieves a task from the queue based on its metadata.
      Fetches `type` of the task and processes accordingly
      */
-    func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
+    private func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task, siteId: siteId) else { return }
         let taskData = taskDetail.data
         let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
-        var isProcessed = true
+        var isProcessed = false
 
-        // Remove the task from the queue if the task has been processed successfully
-        defer {
-            if isProcessed {
-                backgroundQueue.deleteProcessedTask(task, siteId: siteId)
-            }
-        }
         switch taskDetail.taskType {
         case .trackDeliveryMetric:
-            guard let trackInappTaskData: TrackDeliveryEventRequestBody = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            let payload = trackInappTaskData.payload
-            migrationHandler.processMetricsFromBGQ(token: nil, event: payload.event.rawValue, deliveryId: payload.deliveryId, timestamp: timestamp, metaData: payload.metaData)
-
-        // Processes identify profile and profile attributes
+            isProcessed = processTrackDeliveryMetric(taskData: taskData, timestamp: timestamp)
         case .identifyProfile:
-            guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
-                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
-                return
-            }
-            guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-                migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
-                return
-            }
-            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
-
-        // Process `screen` and `event` types
+            isProcessed = processIdentifyProfile(taskData: taskData, timestamp: timestamp)
         case .trackEvent:
-            guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else {
-                isProcessed = false
-                return
-            }
-            var properties = [String: Any]()
-            if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
-                properties = attributes
-            }
-            let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
-            trackType.type == .screen ? migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
-                : migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
-
-        // Processes register device token and device attributes
+            isProcessed = processTrackEvent(taskData: taskData, timestamp: timestamp)
         case .registerPushToken:
-            guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            guard let allAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
-                isProcessed = false
-                return
-            }
-            guard let device = allAttributes["device"] as? [String: Any] else {
-                isProcessed = false
-                return
-            }
-            if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
-                migrationHandler.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
-            }
-        // Processes delete device token
+            isProcessed = processRegisterPushToken(taskData: taskData, timestamp: timestamp)
         case .deletePushToken:
-            guard let deletePushData: DeletePushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            migrationHandler.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
-
-        // Processes push metrics
+            isProcessed = processDeletePushToken(taskData: taskData, timestamp: timestamp)
         case .trackPushMetric:
-            guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
-                isProcessed = false
-                return
-            }
-            migrationHandler.processMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event.rawValue, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
+            isProcessed = processTrackPushMetric(taskData: taskData, timestamp: timestamp)
         }
+
+        // Remove the task from the queue if the task has been processed successfully
+        if isProcessed {
+            backgroundQueue.deleteProcessedTask(task, siteId: siteId)
+        }
+    }
+
+    // Processes in-app metric trackin
+    private func processTrackDeliveryMetric(taskData: Data, timestamp: String) -> Bool {
+        guard let trackInappTaskData: TrackDeliveryEventRequestBody = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        let payload = trackInappTaskData.payload
+        migrationHandler.processMetricsFromBGQ(token: nil, event: payload.event.rawValue, deliveryId: payload.deliveryId, timestamp: timestamp, metaData: payload.metaData)
+        return true
+    }
+
+    // Processes identify profile and profile attributes
+    private func processIdentifyProfile(taskData: Data, timestamp: String) -> Bool {
+        guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
+            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
+            return true
+        }
+        guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
+            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
+            return true
+        }
+        migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
+        return true
+    }
+
+    // Process `screen` and `event` types
+    private func processTrackEvent(taskData: Data, timestamp: String) -> Bool {
+        guard let trackTaskData: TrackEventQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        guard let trackType: TrackEventTypeForAnalytics = jsonAdapter.fromJson(trackTaskData.attributesJsonString.data) else {
+            return false
+        }
+        var properties = [String: Any]()
+        if let attributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString) {
+            properties = attributes
+        }
+        let timestamp = trackType.timestamp?.string(format: .iso8601WithMilliseconds)
+
+        if trackType.type == .screen {
+            migrationHandler.processScreenEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+        } else {
+            migrationHandler.processEventFromBGQ(identifier: trackTaskData.identifier, name: trackType.name, timestamp: timestamp, properties: properties)
+        }
+        return true
+    }
+
+    // Processes register device token and device attributes
+    private func processRegisterPushToken(taskData: Data, timestamp: String) -> Bool {
+        guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        guard let allAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
+            return false
+        }
+        guard let device = allAttributes["device"] as? [String: Any] else {
+            return false
+        }
+        if let token = device["id"] as? String, let attributes = device["attributes"] as? [String: Any] {
+            migrationHandler.processRegisterDeviceFromBGQ(identifier: registerPushTaskData.profileIdentifier, token: token, timestamp: timestamp, attributes: attributes)
+        }
+        return true
+    }
+
+    // Processes delete device token
+    private func processDeletePushToken(taskData: Data, timestamp: String) -> Bool {
+        guard let deletePushData: DeletePushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        migrationHandler.processDeleteTokenFromBGQ(identifier: deletePushData.profileIdentifier, token: deletePushData.deviceToken, timestamp: timestamp)
+        return true
+    }
+
+    // Processes push metrics
+    private func processTrackPushMetric(taskData: Data, timestamp: String) -> Bool {
+        guard let trackPushTaskData: MetricRequest = jsonAdapter.fromJson(taskData) else {
+            return false
+        }
+        migrationHandler.processMetricsFromBGQ(token: trackPushTaskData.deviceToken, event: trackPushTaskData.event.rawValue, deliveryId: trackPushTaskData.deliveryId, timestamp: trackPushTaskData.timestamp.string(format: .iso8601WithMilliseconds), metaData: [:])
+        return true
     }
 }

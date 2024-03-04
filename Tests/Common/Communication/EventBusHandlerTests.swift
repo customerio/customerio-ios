@@ -150,8 +150,7 @@ class EventBusHandlerTest: UnitTest {
         let secondObserverReceivedExpectation = XCTestExpectation(description: "Second observer should receive event only once")
         secondObserverReceivedExpectation.expectedFulfillmentCount = 1
 
-        mockEventBus.postClosure = {
-            _ in
+        mockEventBus.postClosure = { _ in
             firstObserverReceivedExpectation.fulfill()
             return true
         }
