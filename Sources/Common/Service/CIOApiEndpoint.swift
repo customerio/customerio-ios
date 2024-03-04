@@ -34,16 +34,3 @@ public extension CIOApiEndpoint {
         return fullPath
     }
 }
-
-/**
- Collection of the different base URLs for all the APIs of Customer.io.
- Each endpoint in `HttpEndpoint` knows what base API that it needs. That is where
- the full URL including path is constructed.
- */
-public struct HttpBaseUrls: Equatable {
-    let trackingApi: String
-
-    static func getProduction(region: Region) -> HttpBaseUrls {
-        HttpBaseUrls(trackingApi: region.productionTrackingUrl)
-    }
-}
