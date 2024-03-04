@@ -5,9 +5,9 @@ import SharedTests
 import XCTest
 
 class MessagingInAppImplementationTest: IntegrationTest {
-    private var messagingInApp: MessagingInAppImplementation? {
+    private var messagingInApp: MessagingInAppImplementation {
         // get MessagingInAppImplementation instance so we can call its methods directly
-        (MessagingInApp.shared.implementation as? MessagingInAppImplementation)
+        (MessagingInApp.shared.implementation as! MessagingInAppImplementation) // swiftlint:disable:this force_cast
     }
 
     private var eventBusHandler: EventBusHandler {
@@ -96,11 +96,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
 
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
-
         messagingInApp.setEventListener(eventListenerMock)
 
         XCTAssertFalse(eventListenerMock.messageShownCalled)
@@ -141,11 +136,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         super.setUp()
 
         let givenGistMessage = Message.random
-
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
 
         messagingInApp.setEventListener(eventListenerMock)
 
@@ -189,11 +179,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let givenAction = "gist://close"
         let givenName = String.random
 
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
-
         messagingInApp.setEventListener(eventListenerMock)
 
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 0)
@@ -227,11 +212,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let givenName = String.random
         let givenMetaData = ["action_name": givenName, "action_value": givenAction]
 
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
-
         messagingInApp.action(
             message: givenGistMessage,
             currentRoute: givenCurrentRoute,
@@ -253,11 +233,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
     func test_dismissMessage_givenNoInAppMessage_expectNoError() {
         super.setUp()
 
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
-
         // Dismiss in-app message
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
         messagingInApp.dismissMessage()
@@ -269,11 +244,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
         let givenGistMessage = Message.random
         _ = InAppMessage(gistMessage: givenGistMessage)
-
-        guard let messagingInApp = messagingInApp else {
-            XCTFail("Expected non-nil messagingInApp")
-            return
-        }
 
         // Dismiss in-app message when an in-app message is shown on screen
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)

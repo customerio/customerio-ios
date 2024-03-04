@@ -9,7 +9,7 @@ private typealias SavedEvent = [String: Any]
 
 class DataPipelineCompatibilityTests: IntegrationTest {
     private var storage: Storage!
-    private var dataPipelineImplementation: DataPipelineImplementation?
+    private var dataPipelineImplementation: DataPipelineImplementation!
 
     private let eventBusHandlerMock = EventBusHandlerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
@@ -29,7 +29,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         })
 
         // get DataPipelineImplementation instance so we can call its methods directly
-        dataPipelineImplementation = (customerIO.implementation as? DataPipelineImplementation)
+        dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation) // swiftlint:disable:this force_cast
 
         userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
 
@@ -334,11 +334,6 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         customerIO.identify(userId: String.random)
 
-        guard let dataPipelineImplementation = dataPipelineImplementation else {
-            XCTFail("Expected non-nil dataPipelineImplementation")
-            return
-        }
-
         dataPipelineImplementation.trackPushMetric(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -369,10 +364,6 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         customerIO.identify(userId: String.random)
 
-        guard let dataPipelineImplementation = dataPipelineImplementation else {
-            XCTFail("Expected non-nil dataPipelineImplementation")
-            return
-        }
         dataPipelineImplementation.trackInAppMetric(deliveryID: givenDeliveryID, event: givenMetric, metaData: givenMetaData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
