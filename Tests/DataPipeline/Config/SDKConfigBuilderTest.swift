@@ -80,7 +80,11 @@ class SDKConfigBuilderTest: UnitTest {
         let analyticsConfig = Configuration(writeKey: givenCdpApiKey).values
 
         var analyticsDefaultExpectedSettings = Settings(writeKey: givenCdpApiKey)
-        analyticsDefaultExpectedSettings.integrations = try! JSON(["Segment.io": true])
+        do {
+            analyticsDefaultExpectedSettings.integrations = try JSON(["Segment.io": true])
+        } catch {
+            XCTFail("Failed to setup test integrations with error: \(error)")
+        }
 
         let (_, actual) = SDKConfigBuilder(cdpApiKey: "").build()
 

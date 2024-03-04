@@ -7,7 +7,7 @@ import XCTest
 class MessagingInAppImplementationTest: IntegrationTest {
     private var messagingInApp: MessagingInAppImplementation {
         // get MessagingInAppImplementation instance so we can call its methods directly
-        (MessagingInApp.shared.implementation as! MessagingInAppImplementation)
+        (MessagingInApp.shared.implementation as! MessagingInAppImplementation) // swiftlint:disable:this force_cast
     }
 
     private var eventBusHandler: EventBusHandler {
