@@ -5,7 +5,7 @@ import UIKit
 
 struct SettingsView: View {
     var siteId: String?
-    var apiKey: String?
+    var cdpApiKey: String?
 
     var done: () -> Void
 
@@ -40,7 +40,7 @@ struct SettingsView: View {
                     LabeledStringTextField(title: "API Host:", appiumId: "API Host Input", value: $viewModel.settings.apiHost)
                         .autocapitalization(.none)
                     LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
-                    LabeledStringTextField(title: "API key:", appiumId: "API Key Input", value: $viewModel.settings.apiKey)
+                    LabeledStringTextField(title: "CDP API key:", appiumId: "CDP API Key Input", value: $viewModel.settings.cdpApiKey)
                     LabeledTimeIntervalTextField(title: "BQ seconds delay:", appiumId: nil, value: $viewModel.settings.bqSecondsDelay)
                     LabeledIntTextField(title: "BQ min number tasks:", appiumId: nil, value: $viewModel.settings.bqMinNumberTasks)
                     SettingsToggle(title: "Track screens", appiumId: "Track Screens Toggle", isOn: $viewModel.settings.trackScreens)
@@ -67,10 +67,12 @@ struct SettingsView: View {
 
                     viewModel.saveSettings()
 
+                    // TODO: Make initialising consistent with other sample apps
+
                     // Re-initialize the SDK to make the config changes go into place immediately
-                    CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
-                        viewModel.settings.configureCioSdk(config: &config)
-                    }
+//                    CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
+//                        viewModel.settings.configureCioSdk(config: &config)
+//                    }
 
                     let didChangeSiteId = siteIdBeforeEditingSettings != viewModel.settings.siteId
                     if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
@@ -92,8 +94,8 @@ struct SettingsView: View {
                 if let siteId = siteId {
                     viewModel.settings.siteId = siteId
                 }
-                if let apiKey = apiKey {
-                    viewModel.settings.apiKey = apiKey
+                if let cdpApiKey = cdpApiKey {
+                    viewModel.settings?.cdpApiKey = cdpApiKey
                 }
 
                 // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
@@ -164,6 +166,7 @@ struct SettingsView: View {
         func restoreDefaultSettings() {
             settingsManager.appSetSettings = nil // remove app overriden settings from device memory
 
+            // TODO: Make initialising consistent with other sample apps
             // restore the siteid and apikey used at compile-time as defaults.
             // Do this before reading the app settings from the SDK so that the correct siteid and apikey are read.
 //            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }

@@ -47,16 +47,14 @@ struct MainApp: App {
                             settingsScreen = nil // as long as user is logged in, this will make dashboard show
                         case "settings":
                             var siteId: String?
-                            var apiKey: String?
-                            var trackingUrl: String?
+                            var cdpApiKey: String?
 
                             if let queryItems = urlComponents.queryItems {
                                 siteId = queryItems.first { $0.name == "site_id" }?.value
-                                apiKey = queryItems.first { $0.name == "api_key" }?.value
-                                trackingUrl = queryItems.first { $0.name == "tracking_url" }?.value
+                                cdpApiKey = queryItems.first { $0.name == "cdp_api_key" }?.value
                             }
 
-                            settingsScreen = SettingsView(siteId: siteId, apiKey: apiKey, trackingUrl: trackingUrl) {
+                            settingsScreen = SettingsView(siteId: siteId, cdpApiKey: cdpApiKey) {
                                 settingsScreen = nil
                             }
                         default: break
