@@ -1,10 +1,10 @@
+import CioDataPipelines
 import CioTracking
 import Foundation
 
 // Stores all of the SDK settings that can be changed by the mobile app.
 // Note: This struct may not contain *all* of the settings that can be changed in the CIO SDK.
 public struct CioSettings: Codable {
-    public var trackUrl: String
     public var siteId: String
     public var cdpApiKey: String
     public var apiHost: String
@@ -27,19 +27,18 @@ public struct CioSettings: Codable {
 //        }
     }
 
-    public static func getFromCioSdk() -> CioSettings {
-        let sdkConfig = CustomerIO.shared.config!
+    public static func getFromCioSdk() -> CioSettings? {
+        guard let sdkConfig = DataPipeline.moduleConfig else { return nil }
 
         return CioSettings(
-            trackUrl: sdkConfig.trackingApiUrl,
-            siteId: sdkConfig.siteId,
+            siteId: sdkConfig.siteId ?? "",
             cdpApiKey: sdkConfig.cdpApiKey,
             apiHost: sdkConfig.apiHost,
             cdnHost: sdkConfig.cdnHost,
-            flushInterval: sdkConfig.backgroundQueueSecondsDelay,
-            flushAt: sdkConfig.backgroundQueueMinNumberOfTasks,
-            trackScreens: sdkConfig.autoTrackScreenViews,
-            debugSdkMode: sdkConfig.logLevel == CioLogLevel.debug,
+            flushInterval: sdkConfig.flushInterval,
+            flushAt: sdkConfig.flushAt,
+            trackScreens: Bool("REMOVE ME LATER") ?? false,
+            debugSdkMode: true,
             trackDeviceAttributes: sdkConfig.autoTrackDeviceAttributes
         )
     }

@@ -6,7 +6,6 @@ import UIKit
 struct SettingsView: View {
     var siteId: String?
     var apiKey: String?
-    var trackingUrl: String?
 
     var done: () -> Void
 
@@ -36,7 +35,9 @@ struct SettingsView: View {
                 }
 
                 Group {
-                    LabeledStringTextField(title: "Tracking URL:", appiumId: "Track URL Input", value: $viewModel.settings.trackUrl)
+                    LabeledStringTextField(title: "CDN Host:", appiumId: "CDN Host Input", value: $viewModel.settings.cdnHost)
+                        .autocapitalization(.none)
+                    LabeledStringTextField(title: "API Host:", appiumId: "API Host Input", value: $viewModel.settings.apiHost)
                         .autocapitalization(.none)
                     LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
                     LabeledStringTextField(title: "API key:", appiumId: "API Key Input", value: $viewModel.settings.apiKey)
@@ -60,7 +61,7 @@ struct SettingsView: View {
                         return
                     }
 
-                    guard verifyTrackUrl() else {
+                    guard verifyHost(isCDN: true) else {
                         return
                     }
 
@@ -94,9 +95,6 @@ struct SettingsView: View {
                 if let apiKey = apiKey {
                     viewModel.settings.apiKey = apiKey
                 }
-                if let trackingUrl = trackingUrl {
-                    viewModel.settings.trackUrl = trackingUrl
-                }
 
                 // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
                 // Therefore, this is how we can perform manual screen view tracking.
@@ -114,33 +112,28 @@ struct SettingsView: View {
         }
     }
 
-    private func verifyTrackUrl() -> Bool {
-        let enteredUrl = viewModel.settings.trackUrl
+    private func verifyHost(isCDN: Bool = true) -> Bool {
+        var enteredUrl = viewModel.settings.cdnHost
+        var hostType = "CDN Host"
+        if !isCDN {
+            enteredUrl = viewModel.settings.apiHost
+            hostType = "API Host"
+        }
 
         guard !enteredUrl.isEmpty else {
-            alertMessage = "Tracking URL is empty. Therefore, I cannot save the settings."
+            alertMessage = "\(hostType) is empty. Therefore, I cannot save the settings."
             return false
         }
 
         guard let url = URL(string: enteredUrl) else {
-            alertMessage = "Tracking URL, \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
+            alertMessage = "\(hostType), \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
             return false
         }
 
-        guard url.scheme != nil, url.scheme == "https" || url.scheme == "http" else {
-            alertMessage = "Tracking URL, \(enteredUrl), does not start with https or http. Therefore, I cannot save the settings."
-            return false
-        }
-
+        // TODO: Verify if this is required
         guard url.host != nil, !url.host!.isEmpty else {
-            alertMessage = "Tracking URL, \(enteredUrl), does not contain a domain name. Therefore, I cannot save the settings."
+            alertMessage = "\(hostType), \(enteredUrl), does not contain a domain name. Therefore, I cannot save the settings."
             return false
-        }
-
-        // Auto-fix this instead of making the user fix it.
-        let urlEndsWithTrailingSlash = url.absoluteString.hasSuffix("/")
-        if !urlEndsWithTrailingSlash {
-            viewModel.settings.trackUrl += "/"
         }
 
         return true
