@@ -19,24 +19,26 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         let appSetSettings = CioSettingsManager().appSetSettings
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
-        let cdpApiKey = appSetSettings?.apiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
+        let cdpApiKey = appSetSettings?.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
 
-        // Initialize the Customer.io SDK
-//        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-//            // Modify properties in the config object to configure the Customer.io SDK.
-//            // config.logLevel = .debug // Uncomment this line to enable debug logging.
-//
-//            // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
-//            appSetSettings?.configureCioSdk(config: &config)
-//        }
-
+        // Configure and initialize the Customer.io SDK
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
-            .logLevel(CioLogLevel.debug)
-
-        // TODO: Set CDN
-        // TODO: Configure values
+            .siteId(siteId)
+            .flushAt(appSetSettings?.flushAt ?? 10)
+            .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
+            .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
+        if let logLevel = appSetSettings?.debugSdkMode {
+            config.logLevel(CioLogLevel.debug)
+        }
+        if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
+            config.apiHost(apiHost)
+        }
+        if let cdnHost = appSetSettings?.cdnHost, !cdnHost.isEmpty {
+            config.cdnHost(cdnHost)
+        }
         CustomerIO.initialize(withConfig: config.build())
 
+        // Set auto tracking of screen views
         let autoScreenTrack = appSetSettings?.trackScreens ?? true
         if autoScreenTrack {
             CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))
