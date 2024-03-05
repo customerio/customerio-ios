@@ -113,13 +113,17 @@ struct SettingsView: View {
     }
 
     private func verifyHost(isCDN: Bool = true) -> Bool {
-        var enteredUrl = viewModel.settings.cdnHost
+        var enteredUrl = viewModel.settings?.cdnHost
         var hostType = "CDN Host"
         if !isCDN {
-            enteredUrl = viewModel.settings.apiHost
+            enteredUrl = viewModel.settings?.apiHost
             hostType = "API Host"
         }
 
+        guard let enteredUrl = enteredUrl else {
+            alertMessage = "\(hostType) not found. Therefore, I cannot save the settings."
+            return false
+        }
         guard !enteredUrl.isEmpty else {
             alertMessage = "\(hostType) is empty. Therefore, I cannot save the settings."
             return false
@@ -140,7 +144,7 @@ struct SettingsView: View {
     }
 
     class ViewModel: ObservableObject {
-        @Published var settings: CioSettings
+        @Published var settings: CioSettings?
         @Published var pushToken: String
 
         private let settingsManager: CioSettingsManager
@@ -162,7 +166,7 @@ struct SettingsView: View {
 
             // restore the siteid and apikey used at compile-time as defaults.
             // Do this before reading the app settings from the SDK so that the correct siteid and apikey are read.
-            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }
+//            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }
 
             settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
