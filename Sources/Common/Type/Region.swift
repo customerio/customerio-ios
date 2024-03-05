@@ -12,16 +12,6 @@ public enum Region: String, Equatable {
     case US
     /// The European Union (EU) data center
     case EU
-
-    // Note: These URLs are meant to be used specifically by the official
-    // mobile SDKs. View our API docs: https://customer.io/docs/api/
-    // to find the correct hostname for what you're trying to do.
-    public var productionTrackingUrl: String {
-        switch self {
-        case .US: return "https://track-sdk.customer.io"
-        case .EU: return "https://track-sdk-eu.customer.io"
-        }
-    }
 }
 
 public extension Region {
