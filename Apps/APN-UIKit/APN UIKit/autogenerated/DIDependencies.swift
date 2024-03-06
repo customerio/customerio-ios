@@ -1,10 +1,10 @@
 import Foundation
 
-// sourcery: InjectRegister = "UserDefaults"
+// sourcery: InjectRegisterShared = "UserDefaults"
 // sourcery: InjectCustom
 extension UserDefaults {}
 
-extension DIGraph {
+extension DIGraphShared {
     var customUserDefaults: UserDefaults {
         UserDefaults.standard
     }
