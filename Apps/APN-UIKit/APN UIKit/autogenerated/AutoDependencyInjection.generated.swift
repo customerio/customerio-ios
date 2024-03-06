@@ -100,14 +100,10 @@ extension DIGraphShared {
         Storage(userDefaults: userDefaults)
     }
 
-    // UserDefaults
+    // UserDefaults (custom. property getter provided via extension)
     var userDefaults: UserDefaults {
         getOverriddenInstance() ??
-            newUserDefaults
-    }
-
-    private var newUserDefaults: UserDefaults {
-        UserDefaults()
+            customUserDefaults
     }
 }
 

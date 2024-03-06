@@ -1,7 +1,7 @@
 import Foundation
 
 // sourcery: InjectRegisterShared = "UserDefaults"
-// sourcery: InjectCustom
+// sourcery: InjectCustomShared
 extension UserDefaults {}
 
 extension DIGraphShared {
