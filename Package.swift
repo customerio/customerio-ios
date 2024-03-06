@@ -15,7 +15,6 @@ import Foundation
 // All .library() products will be visible to customers in Xcode when they install our SDK into their app.
 // Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
-    .library(name: "Tracking", targets: ["CioTracking"]),
     .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
@@ -54,13 +53,6 @@ let package = Package(
         .testTarget(name: "CommonTests",
                     dependencies: ["CioInternalCommon", "SharedTests"],
                     path: "Tests/Common"),
-        // Tracking
-        .target(name: "CioTracking",
-                dependencies: ["CioInternalCommon", "CioDataPipelines"],
-                path: "Sources/Tracking"),
-        .testTarget(name: "TrackingTests",
-                    dependencies: ["CioTracking", "SharedTests"],
-                    path: "Tests/Tracking"),
         // Migration
         // this module handles Journeys tasks migration to Datapipeline.
         .target(name: "CioTrackingMigration",
