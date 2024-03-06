@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import UIKit
 import UserNotifications
 
@@ -24,9 +24,9 @@ class SettingsViewController: BaseViewController {
     @IBOutlet var cdnHostTextField: ThemeTextField!
     @IBOutlet var copyToClipboardImageView: UIImageView!
     @IBOutlet var clipboardView: UIView!
-    var notificationUtil = DIGraph.shared.notificationUtil
+    var notificationUtil = DIGraphShared.shared.notificationUtil
     var settingsRouter: SettingsRouting?
-    var storage = DIGraph.shared.storage
+    var storage = DIGraphShared.shared.storage
     var currentSettings: Settings!
     var deepLinkSiteId: String?
     var deeplinkCdpApiKey: String?
