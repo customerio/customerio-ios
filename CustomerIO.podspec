@@ -1,7 +1,7 @@
 # Cocoapods projects that provide multiple SDKs have a common naming pattern for installing pods:
-# CustomerIO/Tracking 
+# CustomerIO/DataPipelines
 # This podspec allows that. It publishes aliases for the cocoapods we have already published. 
-# Example: CustomerIO/Tracking is an alias for the published pod CustomerIOTracking
+# Example: CustomerIO/DataPipelines is an alias for the published pod CustomerIODataPipelines
 
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIO"
@@ -22,13 +22,10 @@ Pod::Spec.new do |spec|
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.default_subspec = "Tracking"
+  spec.default_subspec = "DataPipelines"
 
-  spec.subspec "Tracking" do |ss|
-    # Using `= X.X.X` is required for pre-release versions of an SDK (alpha, beta) 
-    # In the future, we can use: `~> X.X.X` which matches by semantic version rules. 
-    ss.dependency "CustomerIOTracking", "= #{spec.version.to_s}"
-  end
+  # Using `= X.X.X` is required for pre-release versions of an SDK (alpha, beta)
+  # In the future, we can use: `~> X.X.X` which matches by semantic version rules.
 
   spec.subspec "MessagingPush" do |ss|
     ss.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
