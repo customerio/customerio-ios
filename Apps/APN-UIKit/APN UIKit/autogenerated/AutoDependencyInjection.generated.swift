@@ -2,70 +2,68 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import Foundation
 import CioMessagingPushAPN
+import Foundation
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions.
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code?
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph:
-    let wheels = DIGraphShared.shared.offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase.
-}
-```
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DIGraphShared.shared.offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
+ }
+ ```
 
-5. How do I use this graph in my test suite?
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class
-DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DIGraphShared.shared.reset()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DIGraphShared.shared.reset()
+ ```
 
-*/
-
-
+ */
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = self.deepLinksHandlerUtil
+        _ = deepLinksHandlerUtil
         countDependenciesResolved += 1
 
-        _ = self.notificationUtil
+        _ = notificationUtil
         countDependenciesResolved += 1
 
-        _ = self.storage
+        _ = storage
         countDependenciesResolved += 1
 
-        _ = self.userDefaults
+        _ = userDefaults
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -73,36 +71,43 @@ extension DIGraphShared {
 
     // Handle classes annotated with InjectRegisterShared
     // DeepLinksHandlerUtil
-    internal var deepLinksHandlerUtil: DeepLinksHandlerUtil {
-        return getOverriddenInstance() ??
-            self.newDeepLinksHandlerUtil
+    var deepLinksHandlerUtil: DeepLinksHandlerUtil {
+        getOverriddenInstance() ??
+            newDeepLinksHandlerUtil
     }
+
     private var newDeepLinksHandlerUtil: DeepLinksHandlerUtil {
-        return AppDeepLinksHandlerUtil()
+        AppDeepLinksHandlerUtil()
     }
+
     // NotificationUtil
-    internal var notificationUtil: NotificationUtil {
-        return getOverriddenInstance() ??
-            self.newNotificationUtil
+    var notificationUtil: NotificationUtil {
+        getOverriddenInstance() ??
+            newNotificationUtil
     }
+
     private var newNotificationUtil: NotificationUtil {
-        return NotificationUtil()
+        NotificationUtil()
     }
+
     // Storage
-    internal var storage: Storage {
-        return getOverriddenInstance() ??
-            self.newStorage
+    var storage: Storage {
+        getOverriddenInstance() ??
+            newStorage
     }
+
     private var newStorage: Storage {
-        return Storage(userDefaults: self.userDefaults)
+        Storage(userDefaults: userDefaults)
     }
+
     // UserDefaults
-    internal var userDefaults: UserDefaults {
-        return getOverriddenInstance() ??
-            self.newUserDefaults
+    var userDefaults: UserDefaults {
+        getOverriddenInstance() ??
+            newUserDefaults
     }
+
     private var newUserDefaults: UserDefaults {
-        return UserDefaults()
+        UserDefaults()
     }
 }
 
