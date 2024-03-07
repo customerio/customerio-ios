@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CioTracking
 import Foundation
 
 // Forwards requests from our SDK to other push event handlers in the host iOS app, if our SDK does not handle the push event.
@@ -28,6 +29,13 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     // Use a map so that we only save 1 instance of a given handler.
     @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
 
+    private let logger: Logger?
+
+    init() {
+        // The code used to get a Logger instance is a bit ugly. The CDP branch's implementation will look better. So this mess on the `main` branch at this time is OK.
+        self.logger = SdkInitializedUtilImpl().postInitializedData?.diGraph.logger
+    }
+
     func addPushEventHandler(_ newHandler: PushEventHandler) {
         nestedDelegates[String(describing: newHandler)] = newHandler
     }
@@ -46,7 +54,15 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // Each iteration of the loop waits for the push event to be processed by the delegate.
             for delegate in nestedDelegates.values {
                 await withCheckedContinuation { continuation in
+                    let nameOfDelegateClass: String = .init(describing: delegate)
+
+                    // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
+                    // These logs could help in debuggging to determine what delegate did not call the completion handler.
+                    self.logger?.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+
                     delegate.onPushAction(pushAction) {
+                        self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+
                         continuation.resume()
                     }
                 }
@@ -76,7 +92,15 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // Each iteration of the loop waits for the push event to be processed by the delegate.
             for delegate in nestedDelegates.values {
                 await withCheckedContinuation { continuation in
+                    let nameOfDelegateClass: String = .init(describing: delegate)
+
+                    // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
+                    // These logs could help in debuggging to determine what delegate did not call the completion handler.
+                    self.logger?.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+
                     delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
+                        self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+
                         if delegateShouldDisplayPushResult {
                             shouldDisplayPush = true
                         }
