@@ -9,6 +9,12 @@
 /* Begin PBXBuildFile section */
 		6023AD352B913708001540EF /* CodeSnippets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD342B913708001540EF /* CodeSnippets.swift */; };
 		6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD362B9137F0001540EF /* AppDelegate.swift */; };
+		6023AD3D2B913954001540EF /* Logo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD392B913954001540EF /* Logo.swift */; };
+		6023AD3E2B913954001540EF /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3A2B913954001540EF /* ToastView.swift */; };
+		6023AD3F2B913954001540EF /* CommonLayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3B2B913954001540EF /* CommonLayoutView.swift */; };
+		6023AD402B913954001540EF /* TutorialsMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3C2B913954001540EF /* TutorialsMenuView.swift */; };
+		6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */; };
+		6023AD4D2B9153EB001540EF /* LineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4B2B9153EB001540EF /* LineView.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
@@ -27,6 +33,12 @@
 /* Begin PBXFileReference section */
 		6023AD342B913708001540EF /* CodeSnippets.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CodeSnippets.swift; sourceTree = "<group>"; };
 		6023AD362B9137F0001540EF /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		6023AD392B913954001540EF /* Logo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Logo.swift; sourceTree = "<group>"; };
+		6023AD3A2B913954001540EF /* ToastView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		6023AD3B2B913954001540EF /* CommonLayoutView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommonLayoutView.swift; sourceTree = "<group>"; };
+		6023AD3C2B913954001540EF /* TutorialsMenuView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TutorialsMenuView.swift; sourceTree = "<group>"; };
+		6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FloatingTitleTextField.swift; sourceTree = "<group>"; };
+		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
@@ -56,6 +68,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6023AD382B913954001540EF /* CommonViews */ = {
+			isa = PBXGroup;
+			children = (
+				6023AD3B2B913954001540EF /* CommonLayoutView.swift */,
+				6023AD3C2B913954001540EF /* TutorialsMenuView.swift */,
+				6023AD392B913954001540EF /* Logo.swift */,
+				6023AD3A2B913954001540EF /* ToastView.swift */,
+				6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */,
+				6023AD4B2B9153EB001540EF /* LineView.swift */,
+			);
+			path = CommonViews;
+			sourceTree = "<group>";
+		};
 		60F967242B9125D000A4E95E = {
 			isa = PBXGroup;
 			children = (
@@ -77,8 +102,9 @@
 		60F9672F2B9125D000A4E95E /* VisionOS */ = {
 			isa = PBXGroup;
 			children = (
-				60F967562B912C1000A4E95E /* ViewUtils */,
 				60F9674F2B91288400A4E95E /* Storage */,
+				60F967562B912C1000A4E95E /* ViewUtils */,
+				6023AD382B913954001540EF /* CommonViews */,
 				60F967342B9125D000A4E95E /* VisionOSApp.swift */,
 				6023AD362B9137F0001540EF /* AppDelegate.swift */,
 				60F967362B9125D000A4E95E /* MainScreen.swift */,
@@ -214,13 +240,19 @@
 				6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */,
 				60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */,
 				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
+				6023AD3F2B913954001540EF /* CommonLayoutView.swift in Sources */,
+				6023AD402B913954001540EF /* TutorialsMenuView.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
+				6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
 				6023AD352B913708001540EF /* CodeSnippets.swift in Sources */,
 				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
+				6023AD3E2B913954001540EF /* ToastView.swift in Sources */,
 				60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */,
 				60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */,
 				60F967532B91288400A4E95E /* AppState.swift in Sources */,
+				6023AD3D2B913954001540EF /* Logo.swift in Sources */,
+				6023AD4D2B9153EB001540EF /* LineView.swift in Sources */,
 				60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
