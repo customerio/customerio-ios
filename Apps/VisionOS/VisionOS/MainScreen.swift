@@ -13,6 +13,8 @@ import SwiftUI
     switch link {
     case .sampleAppIntro:
         SampleAppIntro()
+    case .install:
+        SDKInstallationTutorialView()
     default:
         Text("Not implemented")
     }
