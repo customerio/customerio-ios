@@ -14,7 +14,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
-
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
