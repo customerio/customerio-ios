@@ -1,6 +1,6 @@
+import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushFCM
-import CioDataPipelines
 import FirebaseCore
 import FirebaseMessaging
 import Foundation
