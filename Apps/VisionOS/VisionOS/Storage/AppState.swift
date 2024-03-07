@@ -72,6 +72,8 @@ class AppState: ObservableObject {
         }
     }
 
+    // MARK: non persistent state
+
     @Published var titleConfig: ScreenTitleConfig = .init("")
     @Published var errorMessage: String = ""
     @Published var successMessage: String = ""
