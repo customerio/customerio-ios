@@ -33,6 +33,10 @@ import SwiftUI
             }
             state.navigationPath = [.customerIOIntro]
         }
+
+    case .customerIOIntro:
+        PostInitializeCustomerIOIntro()
+
     default:
         Text("Not implemented")
     }
