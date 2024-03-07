@@ -3,6 +3,7 @@ import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
     private let moduleConfig: MessagingInAppConfigOptions
+
     private let logger: CioInternalCommon.Logger
     private var inAppProvider: InAppProvider
 
@@ -13,6 +14,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
+
         self.inAppProvider = diGraph.inAppProvider
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
