@@ -179,4 +179,10 @@ public extension UnitTest {
             block()
         }
     }
+
+    func runOnMain(_ block: @escaping () -> Void) {
+        CioThreadUtil().runMain {
+            block()
+        }
+    }
 }

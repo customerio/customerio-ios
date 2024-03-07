@@ -44,12 +44,19 @@ class IOSPushEventListener: PushEventHandler {
 
         logger.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
 
-        if pushAction.didClickOnPush {
-            pushClickHandler.pushClicked(push)
-        }
+        // Forward event to other push click handlers so they can receive a callback about this push event.
+        pushEventHandlerProxy.onPushAction(pushAction, completionHandler: {
+            // When this block of code executes, the customer is done processing the push event.
 
-        // call the completion handler so the customer does not need to.
-        completionHandler()
+            // We do not open deep link until after customer is done processing the push event in case the deep link would leave the app.
+            // We want to make sure the customer has a chance to process the push event before leaving the app.
+            if pushAction.didClickOnPush {
+                self.pushClickHandler.pushClicked(push)
+            }
+
+            // call the completion handler, indicating to the OS that we are done processing the push.
+            completionHandler()
+        })
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {

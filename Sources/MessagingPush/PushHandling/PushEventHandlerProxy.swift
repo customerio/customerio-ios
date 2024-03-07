@@ -26,25 +26,39 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     public static let shared = PushEventHandlerProxyImpl()
 
     // Use a map so that we only save 1 instance of a given handler.
-    private var nestedDelegates: [String: PushEventHandler] = [:]
+    @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
         nestedDelegates[String(describing: newHandler)] = newHandler
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+        let nestedDelegates = self.nestedDelegates // create a scoped copy for this function body.
+
         // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
         guard !nestedDelegates.isEmpty else {
             completionHandler()
             return
         }
 
-        nestedDelegates.forEach { _, delegate in
-            delegate.onPushAction(pushAction, completionHandler: completionHandler)
+        Task {
+            // Wait for all other push event handlers to finish before calling the completion handler.
+            // Each iteration of the loop waits for the push event to be processed by the delegate.
+            for delegate in nestedDelegates.values {
+                await withCheckedContinuation { continuation in
+                    delegate.onPushAction(pushAction) {
+                        continuation.resume()
+                    }
+                }
+            }
+            // After the loop finishes, call the completion handler to indicate the event has been fully processed by all delegates.
+            completionHandler()
         }
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+        let nestedDelegates = self.nestedDelegates // create a scoped copy for this function body.
+
         // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
         guard !nestedDelegates.isEmpty else {
             completionHandler(true)
