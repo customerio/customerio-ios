@@ -3,6 +3,7 @@ import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
     private let moduleConfig: MessagingInAppConfigOptions
+
     private let logger: CioInternalCommon.Logger
     private var inAppProvider: InAppProvider
 
