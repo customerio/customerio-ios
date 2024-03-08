@@ -29,10 +29,14 @@ class MessagingInAppImplementationTest: IntegrationTest {
         // tests and verify without module being initialized
     }
 
+    private func initializeModule() {
+        super.setUp(modifyModuleConfig: nil)
+    }
+
     // MARK: initialize
 
     func test_initialize_expectInitializeGistSDK() {
-        super.setUp()
+        initializeModule()
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
@@ -40,14 +44,13 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: initialize given an existing identifier
 
-    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() {
+    func test_initialize_givenExistingIdentifier_expectGistSetProfileIdentifier() async throws {
         let givenProfileIdentifiedInSdk = String.random
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
-        // call super.setUp() now to initialize the module after the profile is identified
-        super.setUp()
-        // wait for event bus to post any events
-        waitForEventBus()
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
+        // initialize the module after the profile is identified
+        initializeModule()
+        await eventBusHandler.waitForReplayEventsToFinish(ProfileIdentifiedEvent.self) // must wait again after initializing module
 
         XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
@@ -55,34 +58,34 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: profile hooks
 
-    func test_givenProfileIdentified_expectSetupWithInApp() {
-        super.setUp()
+    func test_givenProfileIdentified_expectSetupWithInApp() async throws {
+        initializeModule()
 
         let given = String.random
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
 
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
     }
 
-    func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() {
-        super.setUp()
+    func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() async throws {
+        initializeModule()
 
-        postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
-        postEventAndWait(event: ResetEvent())
+        await postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
+        await postEventAndWait(event: ResetEvent())
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
 
     // MARK: screen view hooks
 
-    func test_givenScreenViewed_expectSetRouteOnInApp() {
-        super.setUp()
+    func test_givenScreenViewed_expectSetRouteOnInApp() async throws {
+        initializeModule()
 
         let given = String.random
 
-        postEventAndWait(event: ScreenViewedEvent(name: given))
+        await postEventAndWait(event: ScreenViewedEvent(name: given))
 
         XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
@@ -91,7 +94,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     // MARK: event listeners
 
     func test_eventListeners_expectCallListenerWithData() {
-        super.setUp()
+        initializeModule()
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -133,7 +136,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     }
 
     func test_eventListeners_expectCallListenerForEachEvent() {
-        super.setUp()
+        initializeModule()
 
         let givenGistMessage = Message.random
 
@@ -171,7 +174,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
         // override event bus handler to mock it so we can capture events
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
-        super.setUp()
+        initializeModule()
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -203,7 +206,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
         // override event bus handler to mock it so we can capture events
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
-        super.setUp()
+        initializeModule()
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -231,7 +234,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     }
 
     func test_dismissMessage_givenNoInAppMessage_expectNoError() {
-        super.setUp()
+        initializeModule()
 
         // Dismiss in-app message
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
@@ -240,7 +243,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
     }
 
     func test_dismissMessage_givenInAppMessage_expectNoError() {
-        super.setUp()
+        initializeModule()
 
         let givenGistMessage = Message.random
         _ = InAppMessage(gistMessage: givenGistMessage)
@@ -253,18 +256,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
 }
 
 extension MessagingInAppImplementationTest {
-    func postEventAndWait<E: EventRepresentable>(event: E, timeoutInSeconds: Double = 1.0) {
-        eventBusHandler.postEvent(event)
-        waitForEventBus(timeoutInSeconds: timeoutInSeconds)
-    }
-
-    func waitForEventBus(timeoutInSeconds: Double = 1.0) {
-        let expectation = XCTestExpectation(description: "wait for \(timeoutInSeconds) seconds")
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeoutInSeconds) {
-            expectation.fulfill()
-        }
-        // Wait for the expectations to be fulfilled, with a timeout slightly longer than given timeout
-        // Note: On CI, we experienced flakiness if the timeout value was only 0.1 seconds longer then the given timeout value.
-        wait(for: [expectation], timeout: timeoutInSeconds + 0.5)
+    func postEventAndWait<E: EventRepresentable>(event: E) async {
+        await eventBusHandler.postEventAndWait(event)
     }
 }

@@ -136,16 +136,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processAlreadyIdentifiedUser
 
     /// Number of times the function was called.
-    public private(set) var processAlreadyIdentifiedUserCallsCount = 0
+    @Atomic public private(set) var processAlreadyIdentifiedUserCallsCount = 0
     /// `true` if the function was ever called.
     public var processAlreadyIdentifiedUserCalled: Bool {
         processAlreadyIdentifiedUserCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processAlreadyIdentifiedUserReceivedArguments: String?
+    @Atomic public private(set) var processAlreadyIdentifiedUserReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processAlreadyIdentifiedUserReceivedInvocations: [String] = []
+    @Atomic public private(set) var processAlreadyIdentifiedUserReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -163,16 +163,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processIdentifyFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processIdentifyFromBGQCallsCount = 0
+    @Atomic public private(set) var processIdentifyFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processIdentifyFromBGQCalled: Bool {
         processIdentifyFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processIdentifyFromBGQReceivedArguments: (identifier: String, timestamp: String, body: [String: Any]?)?
+    @Atomic public private(set) var processIdentifyFromBGQReceivedArguments: (identifier: String, timestamp: String, body: [String: Any]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processIdentifyFromBGQReceivedInvocations: [(identifier: String, timestamp: String, body: [String: Any]?)] = []
+    @Atomic public private(set) var processIdentifyFromBGQReceivedInvocations: [(identifier: String, timestamp: String, body: [String: Any]?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -190,16 +190,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processScreenEventFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processScreenEventFromBGQCallsCount = 0
+    @Atomic public private(set) var processScreenEventFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processScreenEventFromBGQCalled: Bool {
         processScreenEventFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processScreenEventFromBGQReceivedArguments: (identifier: String, name: String, timestamp: String?, properties: [String: Any])?
+    @Atomic public private(set) var processScreenEventFromBGQReceivedArguments: (identifier: String, name: String, timestamp: String?, properties: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processScreenEventFromBGQReceivedInvocations: [(identifier: String, name: String, timestamp: String?, properties: [String: Any])] = []
+    @Atomic public private(set) var processScreenEventFromBGQReceivedInvocations: [(identifier: String, name: String, timestamp: String?, properties: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -217,16 +217,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processEventFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processEventFromBGQCallsCount = 0
+    @Atomic public private(set) var processEventFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processEventFromBGQCalled: Bool {
         processEventFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processEventFromBGQReceivedArguments: (identifier: String, name: String, timestamp: String?, properties: [String: Any])?
+    @Atomic public private(set) var processEventFromBGQReceivedArguments: (identifier: String, name: String, timestamp: String?, properties: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processEventFromBGQReceivedInvocations: [(identifier: String, name: String, timestamp: String?, properties: [String: Any])] = []
+    @Atomic public private(set) var processEventFromBGQReceivedInvocations: [(identifier: String, name: String, timestamp: String?, properties: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -244,16 +244,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processDeleteTokenFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processDeleteTokenFromBGQCallsCount = 0
+    @Atomic public private(set) var processDeleteTokenFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processDeleteTokenFromBGQCalled: Bool {
         processDeleteTokenFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processDeleteTokenFromBGQReceivedArguments: (identifier: String, token: String, timestamp: String)?
+    @Atomic public private(set) var processDeleteTokenFromBGQReceivedArguments: (identifier: String, token: String, timestamp: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processDeleteTokenFromBGQReceivedInvocations: [(identifier: String, token: String, timestamp: String)] = []
+    @Atomic public private(set) var processDeleteTokenFromBGQReceivedInvocations: [(identifier: String, token: String, timestamp: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -271,16 +271,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processRegisterDeviceFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processRegisterDeviceFromBGQCallsCount = 0
+    @Atomic public private(set) var processRegisterDeviceFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processRegisterDeviceFromBGQCalled: Bool {
         processRegisterDeviceFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processRegisterDeviceFromBGQReceivedArguments: (identifier: String, token: String, timestamp: String, attributes: [String: Any]?)?
+    @Atomic public private(set) var processRegisterDeviceFromBGQReceivedArguments: (identifier: String, token: String, timestamp: String, attributes: [String: Any]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processRegisterDeviceFromBGQReceivedInvocations: [(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)] = []
+    @Atomic public private(set) var processRegisterDeviceFromBGQReceivedInvocations: [(identifier: String, token: String, timestamp: String, attributes: [String: Any]?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -298,16 +298,16 @@ public class DataPipelineMigrationActionMock: DataPipelineMigrationAction, Mock 
     // MARK: - processMetricsFromBGQ
 
     /// Number of times the function was called.
-    public private(set) var processMetricsFromBGQCallsCount = 0
+    @Atomic public private(set) var processMetricsFromBGQCallsCount = 0
     /// `true` if the function was ever called.
     public var processMetricsFromBGQCalled: Bool {
         processMetricsFromBGQCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var processMetricsFromBGQReceivedArguments: (token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])?
+    @Atomic public private(set) var processMetricsFromBGQReceivedArguments: (token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var processMetricsFromBGQReceivedInvocations: [(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
+    @Atomic public private(set) var processMetricsFromBGQReceivedInvocations: [(token: String?, event: String, deliveryId: String, timestamp: String, metaData: [String: Any])] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
