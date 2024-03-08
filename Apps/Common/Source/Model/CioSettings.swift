@@ -1,5 +1,4 @@
 import CioDataPipelines
-import CioTracking
 import Foundation
 
 // Stores all of the SDK settings that can be changed by the mobile app.
@@ -27,7 +26,7 @@ public struct CioSettings: Codable {
 //        }
     }
 
-    public static func getFromCioSdk() -> CioSettings? {
+    public static func getFromCioSdk() -> CioSettings {
         guard let sdkConfig = DataPipeline.moduleConfig else { return nil }
 
         return CioSettings(
