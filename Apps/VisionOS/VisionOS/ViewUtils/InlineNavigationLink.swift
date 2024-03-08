@@ -22,4 +22,49 @@ enum InlineNavigationLink: String, Codable, CaseIterable {
 
         self = link
     }
+
+    var menuTitle: String {
+        // TODO: menu title for each screen
+        switch self {
+        case .sampleAppIntro:
+            ""
+        case .install:
+            ""
+        case .setup:
+            ""
+        case .customerIOIntro:
+            ""
+        case .identify:
+            ""
+        case .howToTestIdentify:
+            ""
+        case .profileAttributes:
+            ""
+        case .howToTestProfileAttributes:
+            ""
+        case .deviceAttributes:
+            ""
+        case .howToTestDeviceAttributes:
+            ""
+        case .track:
+            ""
+        case .howToTestTrack:
+            ""
+        }
+    }
+
+    static let preInitializationLinks: [Self] = [
+        .sampleAppIntro,
+        .install,
+        .setup
+    ]
+
+    static let preIdentifyLinks: [Self] = [
+        .sampleAppIntro,
+        .install,
+        .setup,
+        .customerIOIntro,
+        .identify,
+        .howToTestIdentify
+    ]
 }
