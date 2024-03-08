@@ -8,19 +8,19 @@ struct PostInitializeCustomerIOIntro: View {
     var body: some View {
         ScrollView(.vertical) {
             Markdown {
-"""
-Congratulations! Now you integrated the SDK. Before we
-use it, let's do a very simplified version of what **Customer.io**
-platform is about, from the lense of a VisionOS or iOS developer and
-how you can unlock the platform capabilities for your marketing team.
+                """
+                Congratulations! Now you integrated the SDK. Before we
+                use it, let's do a very simplified version of what **Customer.io**
+                platform is about, from the lense of a VisionOS or iOS developer and
+                how you can unlock the platform capabilities for your marketing team.
 
-Beside other things, **Customer.io** serves as a message automation platform which can be used to help marketers reach their audience through targetted campaigns and the needed analysis for these campaigns to understand the strategies that leads to successful conversaions.
+                Beside other things, **Customer.io** serves as a message automation platform which can be used to help marketers reach their audience through targetted campaigns and the needed analysis for these campaigns to understand the strategies that leads to successful conversaions.
 
-In order to achieve that, companies use the client SDKs like this one to enrich Customer.io with the data needed to enable the marketing team to build such campaigns and analysis.
+                In order to achieve that, companies use the client SDKs like this one to enrich Customer.io with the data needed to enable the marketing team to build such campaigns and analysis.
 
 
-The following photo describes how the flow of data usually looks like
-"""
+                The following photo describes how the flow of data usually looks like
+                """
             }
             Image("PostInitialize")
                 .resizable()
