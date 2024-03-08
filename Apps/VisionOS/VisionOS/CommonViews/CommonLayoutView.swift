@@ -41,11 +41,25 @@ struct CommonLayoutView<ContentView: View>: View {
                 SuccessToastView(message: $state.successMessage)
             }
         }
+        .buttonStyle(CustomButtonStyle())
+    }
+}
+
+struct CustomButtonStyle: PrimitiveButtonStyle {
+    typealias Body = Button
+    func makeBody(configuration: Configuration) -> some View {
+        Button(configuration)
+            .buttonBorderShape(.roundedRectangle(radius: 10))
+            .background(Color(rgba: 0x333333FF))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .foregroundColor(Color.white)
     }
 }
 
 #Preview {
     CommonLayoutView {
         Text("Hello World")
+        FloatingTitleTextField(title: "Field", text: .constant("value"))
+        Button("Some button") {}
     }
 }
