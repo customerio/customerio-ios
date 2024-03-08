@@ -7,8 +7,8 @@ set -e # fail script if an error is encountered
 
 # We have cocoapods that depend on other cocoapods that we publish.
 # Example: 
-# Push - CustomerIOTracking version 1.1.1
-# Push - CustomerIOMessagingPush version 1.1.1, depends on CustomerIOTracking 1.1.1
+# Push - CustomerIODataPipelines version 1.1.1
+# Push - CustomerIOMessagingPush version 1.1.1
 # Pushing MessagingPush will fail because when you push a Cocoapod, the server you pushed to (the CDN)
 # Takes a few minutes to refresh. Pushing the cocoapod will fail because it will say that 
 # it cannot find the Tracking SDK version 1.1.1. 

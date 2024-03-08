@@ -24,9 +24,6 @@ fi
 echo "Push CustomerIOCommon"
 ./scripts/push-cocoapod.sh CustomerIOCommon.podspec 
 
-echo "Push CustomerIOTracking"
-./scripts/push-cocoapod.sh CustomerIOTracking.podspec
-
 echo "Push CustomerIODataPipelines"
 ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
 
