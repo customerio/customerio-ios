@@ -170,6 +170,8 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
       - name: Push CustomerIODataPipelines
         run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
+      - name: Push CustomerIOTrackingMigration
+        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
       - name: Push CustomerIOMessagingPush
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
       - name: Push CustomerIOMessagingPushAPN
