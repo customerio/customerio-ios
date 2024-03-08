@@ -105,7 +105,7 @@ class AutomaticPushClickHandlingMock: AutomaticPushClickHandling, Mock {
     // MARK: - start
 
     /// Number of times the function was called.
-    private(set) var startCallsCount = 0
+    @Atomic private(set) var startCallsCount = 0
     /// `true` if the function was ever called.
     var startCalled: Bool {
         startCallsCount > 0
@@ -150,16 +150,16 @@ class DeepLinkUtilMock: DeepLinkUtil, Mock {
     // MARK: - handleDeepLink
 
     /// Number of times the function was called.
-    private(set) var handleDeepLinkCallsCount = 0
+    @Atomic private(set) var handleDeepLinkCallsCount = 0
     /// `true` if the function was ever called.
     var handleDeepLinkCalled: Bool {
         handleDeepLinkCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var handleDeepLinkReceivedArguments: URL?
+    @Atomic private(set) var handleDeepLinkReceivedArguments: URL?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var handleDeepLinkReceivedInvocations: [URL] = []
+    @Atomic private(set) var handleDeepLinkReceivedInvocations: [URL] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -273,16 +273,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     // MARK: - registerDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var registerDeviceTokenCallsCount = 0
+    @Atomic public private(set) var registerDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var registerDeviceTokenCalled: Bool {
         registerDeviceTokenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: String?
+    @Atomic public private(set) var registerDeviceTokenReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
+    @Atomic public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -300,7 +300,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     // MARK: - deleteDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var deleteDeviceTokenCallsCount = 0
+    @Atomic public private(set) var deleteDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteDeviceTokenCalled: Bool {
         deleteDeviceTokenCallsCount > 0
@@ -321,16 +321,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     // MARK: - trackMetric
 
     /// Number of times the function was called.
-    public private(set) var trackMetricCallsCount = 0
+    @Atomic public private(set) var trackMetricCallsCount = 0
     /// `true` if the function was ever called.
     public var trackMetricCalled: Bool {
         trackMetricCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
+    @Atomic public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
+    @Atomic public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -349,16 +349,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var didReceiveNotificationRequestCallsCount = 0
+    @Atomic public private(set) var didReceiveNotificationRequestCallsCount = 0
     /// `true` if the function was ever called.
     public var didReceiveNotificationRequestCalled: Bool {
         didReceiveNotificationRequestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
+    @Atomic public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
+    @Atomic public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**
@@ -383,7 +383,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var serviceExtensionTimeWillExpireCallsCount = 0
+    @Atomic public private(set) var serviceExtensionTimeWillExpireCallsCount = 0
     /// `true` if the function was ever called.
     public var serviceExtensionTimeWillExpireCalled: Bool {
         serviceExtensionTimeWillExpireCallsCount > 0
@@ -406,16 +406,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var userNotificationCenter_withCompletionCallsCount = 0
+    @Atomic public private(set) var userNotificationCenter_withCompletionCallsCount = 0
     /// `true` if the function was ever called.
     public var userNotificationCenter_withCompletionCalled: Bool {
         userNotificationCenter_withCompletionCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenter_withCompletionReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)?
+    @Atomic public private(set) var userNotificationCenter_withCompletionReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenter_withCompletionReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)] = []
+    @Atomic public private(set) var userNotificationCenter_withCompletionReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse, completionHandler: () -> Void)] = []
     /// Value to return from the mocked function.
     public var userNotificationCenter_withCompletionReturnValue: Bool!
     /**
@@ -439,16 +439,16 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var userNotificationCenterCallsCount = 0
+    @Atomic public private(set) var userNotificationCenterCallsCount = 0
     /// `true` if the function was ever called.
     public var userNotificationCenterCalled: Bool {
         userNotificationCenterCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var userNotificationCenterReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse)?
+    @Atomic public private(set) var userNotificationCenterReceivedArguments: (center: UNUserNotificationCenter, response: UNNotificationResponse)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var userNotificationCenterReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse)] = []
+    @Atomic public private(set) var userNotificationCenterReceivedInvocations: [(center: UNUserNotificationCenter, response: UNNotificationResponse)] = []
     /// Value to return from the mocked function.
     public var userNotificationCenterReturnValue: CustomerIOParsedPushPayload?
     /**
@@ -496,16 +496,16 @@ class PushClickHandlerMock: PushClickHandler, Mock {
     // MARK: - pushClicked
 
     /// Number of times the function was called.
-    private(set) var pushClickedCallsCount = 0
+    @Atomic private(set) var pushClickedCallsCount = 0
     /// `true` if the function was ever called.
     var pushClickedCalled: Bool {
         pushClickedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var pushClickedReceivedArguments: PushNotification?
+    @Atomic private(set) var pushClickedReceivedArguments: PushNotification?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var pushClickedReceivedInvocations: [PushNotification] = []
+    @Atomic private(set) var pushClickedReceivedInvocations: [PushNotification] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -552,16 +552,16 @@ class PushEventHandlerMock: PushEventHandler, Mock {
     // MARK: - onPushAction
 
     /// Number of times the function was called.
-    private(set) var onPushActionCallsCount = 0
+    @Atomic private(set) var onPushActionCallsCount = 0
     /// `true` if the function was ever called.
     var onPushActionCalled: Bool {
         onPushActionCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var onPushActionReceivedArguments: (pushAction: PushNotificationAction, completionHandler: () -> Void)?
+    @Atomic private(set) var onPushActionReceivedArguments: (pushAction: PushNotificationAction, completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var onPushActionReceivedInvocations: [(pushAction: PushNotificationAction, completionHandler: () -> Void)] = []
+    @Atomic private(set) var onPushActionReceivedInvocations: [(pushAction: PushNotificationAction, completionHandler: () -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -579,16 +579,16 @@ class PushEventHandlerMock: PushEventHandler, Mock {
     // MARK: - shouldDisplayPushAppInForeground
 
     /// Number of times the function was called.
-    private(set) var shouldDisplayPushAppInForegroundCallsCount = 0
+    @Atomic private(set) var shouldDisplayPushAppInForegroundCallsCount = 0
     /// `true` if the function was ever called.
     var shouldDisplayPushAppInForegroundCalled: Bool {
         shouldDisplayPushAppInForegroundCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (Bool) -> Void)?
+    @Atomic private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (Bool) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (Bool) -> Void)] = []
+    @Atomic private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (Bool) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -641,16 +641,16 @@ class PushEventHandlerProxyMock: PushEventHandlerProxy, Mock {
     // MARK: - addPushEventHandler
 
     /// Number of times the function was called.
-    private(set) var addPushEventHandlerCallsCount = 0
+    @Atomic private(set) var addPushEventHandlerCallsCount = 0
     /// `true` if the function was ever called.
     var addPushEventHandlerCalled: Bool {
         addPushEventHandlerCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var addPushEventHandlerReceivedArguments: PushEventHandler?
+    @Atomic private(set) var addPushEventHandlerReceivedArguments: PushEventHandler?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var addPushEventHandlerReceivedInvocations: [PushEventHandler] = []
+    @Atomic private(set) var addPushEventHandlerReceivedInvocations: [PushEventHandler] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -668,16 +668,16 @@ class PushEventHandlerProxyMock: PushEventHandlerProxy, Mock {
     // MARK: - onPushAction
 
     /// Number of times the function was called.
-    private(set) var onPushActionCallsCount = 0
+    @Atomic private(set) var onPushActionCallsCount = 0
     /// `true` if the function was ever called.
     var onPushActionCalled: Bool {
         onPushActionCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var onPushActionReceivedArguments: (pushAction: PushNotificationAction, completionHandler: () -> Void)?
+    @Atomic private(set) var onPushActionReceivedArguments: (pushAction: PushNotificationAction, completionHandler: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var onPushActionReceivedInvocations: [(pushAction: PushNotificationAction, completionHandler: () -> Void)] = []
+    @Atomic private(set) var onPushActionReceivedInvocations: [(pushAction: PushNotificationAction, completionHandler: () -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -695,16 +695,16 @@ class PushEventHandlerProxyMock: PushEventHandlerProxy, Mock {
     // MARK: - shouldDisplayPushAppInForeground
 
     /// Number of times the function was called.
-    private(set) var shouldDisplayPushAppInForegroundCallsCount = 0
+    @Atomic private(set) var shouldDisplayPushAppInForegroundCallsCount = 0
     /// `true` if the function was ever called.
     var shouldDisplayPushAppInForegroundCalled: Bool {
         shouldDisplayPushAppInForegroundCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (Bool) -> Void)?
+    @Atomic private(set) var shouldDisplayPushAppInForegroundReceivedArguments: (push: PushNotification, completionHandler: (Bool) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (Bool) -> Void)] = []
+    @Atomic private(set) var shouldDisplayPushAppInForegroundReceivedInvocations: [(push: PushNotification, completionHandler: (Bool) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -746,16 +746,16 @@ class PushHistoryMock: PushHistory, Mock {
     // MARK: - hasHandledPush
 
     /// Number of times the function was called.
-    private(set) var hasHandledPushCallsCount = 0
+    @Atomic private(set) var hasHandledPushCallsCount = 0
     /// `true` if the function was ever called.
     var hasHandledPushCalled: Bool {
         hasHandledPushCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var hasHandledPushReceivedArguments: (pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)?
+    @Atomic private(set) var hasHandledPushReceivedArguments: (pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var hasHandledPushReceivedInvocations: [(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)] = []
+    @Atomic private(set) var hasHandledPushReceivedInvocations: [(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date)] = []
     /// Value to return from the mocked function.
     var hasHandledPushReturnValue: Bool!
     /**

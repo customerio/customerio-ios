@@ -52,6 +52,12 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
         postEventArguments = event
     }
 
+    public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
+        mockCalled = true
+        postEventCallsCount += 1
+        postEventArguments = event
+    }
+
     public private(set) var removeFromStorageCallsCount = 0
     public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
 

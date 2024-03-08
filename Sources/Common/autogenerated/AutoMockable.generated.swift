@@ -258,16 +258,16 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - identify
 
     /// Number of times the function was called.
-    public private(set) var identifyCallsCount = 0
+    @Atomic public private(set) var identifyCallsCount = 0
     /// `true` if the function was ever called.
     public var identifyCalled: Bool {
         identifyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var identifyReceivedArguments: (userId: String, traits: [String: Any]?)?
+    @Atomic public private(set) var identifyReceivedArguments: (userId: String, traits: [String: Any]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyReceivedInvocations: [(userId: String, traits: [String: Any]?)] = []
+    @Atomic public private(set) var identifyReceivedInvocations: [(userId: String, traits: [String: Any]?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -285,9 +285,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - identify<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var identifyEncodableReceivedArguments: (userId: String, traits: AnyEncodable)?
+    @Atomic public private(set) var identifyEncodableReceivedArguments: (userId: String, traits: AnyEncodable)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var identifyEncodableReceivedInvocations: [(userId: String, traits: AnyEncodable)] = []
+    @Atomic public private(set) var identifyEncodableReceivedInvocations: [(userId: String, traits: AnyEncodable)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -305,7 +305,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - clearIdentify
 
     /// Number of times the function was called.
-    public private(set) var clearIdentifyCallsCount = 0
+    @Atomic public private(set) var clearIdentifyCallsCount = 0
     /// `true` if the function was ever called.
     public var clearIdentifyCalled: Bool {
         clearIdentifyCallsCount > 0
@@ -326,16 +326,16 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - registerDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var registerDeviceTokenCallsCount = 0
+    @Atomic public private(set) var registerDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var registerDeviceTokenCalled: Bool {
         registerDeviceTokenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: String?
+    @Atomic public private(set) var registerDeviceTokenReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
+    @Atomic public private(set) var registerDeviceTokenReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -353,7 +353,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - deleteDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var deleteDeviceTokenCallsCount = 0
+    @Atomic public private(set) var deleteDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteDeviceTokenCalled: Bool {
         deleteDeviceTokenCallsCount > 0
@@ -374,16 +374,16 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - track
 
     /// Number of times the function was called.
-    public private(set) var trackCallsCount = 0
+    @Atomic public private(set) var trackCallsCount = 0
     /// `true` if the function was ever called.
     public var trackCalled: Bool {
         trackCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackReceivedArguments: (name: String, properties: [String: Any]?)?
+    @Atomic public private(set) var trackReceivedArguments: (name: String, properties: [String: Any]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackReceivedInvocations: [(name: String, properties: [String: Any]?)] = []
+    @Atomic public private(set) var trackReceivedInvocations: [(name: String, properties: [String: Any]?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -401,9 +401,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - track<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackEncodableReceivedArguments: (name: String, properties: AnyEncodable)?
+    @Atomic public private(set) var trackEncodableReceivedArguments: (name: String, properties: AnyEncodable)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackEncodableReceivedInvocations: [(name: String, properties: AnyEncodable)] = []
+    @Atomic public private(set) var trackEncodableReceivedInvocations: [(name: String, properties: AnyEncodable)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -421,16 +421,16 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - screen
 
     /// Number of times the function was called.
-    public private(set) var screenCallsCount = 0
+    @Atomic public private(set) var screenCallsCount = 0
     /// `true` if the function was ever called.
     public var screenCalled: Bool {
         screenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var screenReceivedArguments: (title: String, properties: [String: Any]?)?
+    @Atomic public private(set) var screenReceivedArguments: (title: String, properties: [String: Any]?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var screenReceivedInvocations: [(title: String, properties: [String: Any]?)] = []
+    @Atomic public private(set) var screenReceivedInvocations: [(title: String, properties: [String: Any]?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -448,9 +448,9 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - screen<RequestBody: Codable>
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var screenEncodableReceivedArguments: (title: String, properties: AnyEncodable)?
+    @Atomic public private(set) var screenEncodableReceivedArguments: (title: String, properties: AnyEncodable)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var screenEncodableReceivedInvocations: [(title: String, properties: AnyEncodable)] = []
+    @Atomic public private(set) var screenEncodableReceivedInvocations: [(title: String, properties: AnyEncodable)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -468,16 +468,16 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     // MARK: - trackMetric
 
     /// Number of times the function was called.
-    public private(set) var trackMetricCallsCount = 0
+    @Atomic public private(set) var trackMetricCallsCount = 0
     /// `true` if the function was ever called.
     public var trackMetricCalled: Bool {
         trackMetricCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
+    @Atomic public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
+    @Atomic public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -864,16 +864,16 @@ public class DeviceInfoMock: DeviceInfo, Mock {
     // MARK: - isPushSubscribed
 
     /// Number of times the function was called.
-    public private(set) var isPushSubscribedCallsCount = 0
+    @Atomic public private(set) var isPushSubscribedCallsCount = 0
     /// `true` if the function was ever called.
     public var isPushSubscribedCalled: Bool {
         isPushSubscribedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var isPushSubscribedReceivedArguments: ((Bool) -> Void)?
+    @Atomic public private(set) var isPushSubscribedReceivedArguments: ((Bool) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var isPushSubscribedReceivedInvocations: [(Bool) -> Void] = []
+    @Atomic public private(set) var isPushSubscribedReceivedInvocations: [(Bool) -> Void] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -986,16 +986,16 @@ public class EventBusMock: EventBus, Mock {
     // MARK: - post
 
     /// Number of times the function was called.
-    public private(set) var postCallsCount = 0
+    @Atomic public private(set) var postCallsCount = 0
     /// `true` if the function was ever called.
     public var postCalled: Bool {
         postCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var postReceivedArguments: AnyEventRepresentable?
+    @Atomic public private(set) var postReceivedArguments: AnyEventRepresentable?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var postReceivedInvocations: [AnyEventRepresentable] = []
+    @Atomic public private(set) var postReceivedInvocations: [AnyEventRepresentable] = []
     /// Value to return from the mocked function.
     public var postReturnValue: Bool!
     /**
@@ -1018,16 +1018,16 @@ public class EventBusMock: EventBus, Mock {
     // MARK: - addObserver
 
     /// Number of times the function was called.
-    public private(set) var addObserverCallsCount = 0
+    @Atomic public private(set) var addObserverCallsCount = 0
     /// `true` if the function was ever called.
     public var addObserverCalled: Bool {
         addObserverCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addObserverReceivedArguments: (eventType: String, action: (AnyEventRepresentable) -> Void)?
+    @Atomic public private(set) var addObserverReceivedArguments: (eventType: String, action: (AnyEventRepresentable) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addObserverReceivedInvocations: [(eventType: String, action: (AnyEventRepresentable) -> Void)] = []
+    @Atomic public private(set) var addObserverReceivedInvocations: [(eventType: String, action: (AnyEventRepresentable) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1045,16 +1045,16 @@ public class EventBusMock: EventBus, Mock {
     // MARK: - removeObserver
 
     /// Number of times the function was called.
-    public private(set) var removeObserverCallsCount = 0
+    @Atomic public private(set) var removeObserverCallsCount = 0
     /// `true` if the function was ever called.
     public var removeObserverCalled: Bool {
         removeObserverCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var removeObserverReceivedArguments: String?
+    @Atomic public private(set) var removeObserverReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var removeObserverReceivedInvocations: [String] = []
+    @Atomic public private(set) var removeObserverReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1072,7 +1072,7 @@ public class EventBusMock: EventBus, Mock {
     // MARK: - removeAllObservers
 
     /// Number of times the function was called.
-    public private(set) var removeAllObserversCallsCount = 0
+    @Atomic public private(set) var removeAllObserversCallsCount = 0
     /// `true` if the function was ever called.
     public var removeAllObserversCalled: Bool {
         removeAllObserversCallsCount > 0
@@ -1132,16 +1132,16 @@ public class EventCacheMock: EventCache, Mock {
     // MARK: - addEvent
 
     /// Number of times the function was called.
-    public private(set) var addEventCallsCount = 0
+    @Atomic public private(set) var addEventCallsCount = 0
     /// `true` if the function was ever called.
     public var addEventCalled: Bool {
         addEventCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var addEventReceivedArguments: AnyEventRepresentable?
+    @Atomic public private(set) var addEventReceivedArguments: AnyEventRepresentable?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var addEventReceivedInvocations: [AnyEventRepresentable] = []
+    @Atomic public private(set) var addEventReceivedInvocations: [AnyEventRepresentable] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1159,16 +1159,16 @@ public class EventCacheMock: EventCache, Mock {
     // MARK: - storeEvents
 
     /// Number of times the function was called.
-    public private(set) var storeEventsCallsCount = 0
+    @Atomic public private(set) var storeEventsCallsCount = 0
     /// `true` if the function was ever called.
     public var storeEventsCalled: Bool {
         storeEventsCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var storeEventsReceivedArguments: (events: [AnyEventRepresentable], key: String)?
+    @Atomic public private(set) var storeEventsReceivedArguments: (events: [AnyEventRepresentable], key: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var storeEventsReceivedInvocations: [(events: [AnyEventRepresentable], key: String)] = []
+    @Atomic public private(set) var storeEventsReceivedInvocations: [(events: [AnyEventRepresentable], key: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1186,16 +1186,16 @@ public class EventCacheMock: EventCache, Mock {
     // MARK: - getEvent
 
     /// Number of times the function was called.
-    public private(set) var getEventCallsCount = 0
+    @Atomic public private(set) var getEventCallsCount = 0
     /// `true` if the function was ever called.
     public var getEventCalled: Bool {
         getEventCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getEventReceivedArguments: String?
+    @Atomic public private(set) var getEventReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getEventReceivedInvocations: [String] = []
+    @Atomic public private(set) var getEventReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     public var getEventReturnValue: [AnyEventRepresentable]!
     /**
@@ -1217,16 +1217,16 @@ public class EventCacheMock: EventCache, Mock {
     // MARK: - removeAllEventsForKey
 
     /// Number of times the function was called.
-    public private(set) var removeAllEventsForKeyCallsCount = 0
+    @Atomic public private(set) var removeAllEventsForKeyCallsCount = 0
     /// `true` if the function was ever called.
     public var removeAllEventsForKeyCalled: Bool {
         removeAllEventsForKeyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var removeAllEventsForKeyReceivedArguments: String?
+    @Atomic public private(set) var removeAllEventsForKeyReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var removeAllEventsForKeyReceivedInvocations: [String] = []
+    @Atomic public private(set) var removeAllEventsForKeyReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1287,16 +1287,16 @@ public class EventStorageMock: EventStorage, Mock {
 
     var storeThrowableError: Error?
     /// Number of times the function was called.
-    public private(set) var storeCallsCount = 0
+    @Atomic public private(set) var storeCallsCount = 0
     /// `true` if the function was ever called.
     public var storeCalled: Bool {
         storeCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var storeReceivedArguments: AnyEventRepresentable?
+    @Atomic public private(set) var storeReceivedArguments: AnyEventRepresentable?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var storeReceivedInvocations: [AnyEventRepresentable] = []
+    @Atomic public private(set) var storeReceivedInvocations: [AnyEventRepresentable] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1318,16 +1318,16 @@ public class EventStorageMock: EventStorage, Mock {
 
     var retrieveThrowableError: Error?
     /// Number of times the function was called.
-    public private(set) var retrieveCallsCount = 0
+    @Atomic public private(set) var retrieveCallsCount = 0
     /// `true` if the function was ever called.
     public var retrieveCalled: Bool {
         retrieveCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var retrieveReceivedArguments: (eventType: String, storageId: String)?
+    @Atomic public private(set) var retrieveReceivedArguments: (eventType: String, storageId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var retrieveReceivedInvocations: [(eventType: String, storageId: String)] = []
+    @Atomic public private(set) var retrieveReceivedInvocations: [(eventType: String, storageId: String)] = []
     /// Value to return from the mocked function.
     public var retrieveReturnValue: AnyEventRepresentable?
     /**
@@ -1353,16 +1353,16 @@ public class EventStorageMock: EventStorage, Mock {
 
     var loadEventsThrowableError: Error?
     /// Number of times the function was called.
-    public private(set) var loadEventsCallsCount = 0
+    @Atomic public private(set) var loadEventsCallsCount = 0
     /// `true` if the function was ever called.
     public var loadEventsCalled: Bool {
         loadEventsCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var loadEventsReceivedArguments: String?
+    @Atomic public private(set) var loadEventsReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var loadEventsReceivedInvocations: [String] = []
+    @Atomic public private(set) var loadEventsReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     public var loadEventsReturnValue: [AnyEventRepresentable]!
     /**
@@ -1387,16 +1387,16 @@ public class EventStorageMock: EventStorage, Mock {
     // MARK: - remove
 
     /// Number of times the function was called.
-    public private(set) var removeCallsCount = 0
+    @Atomic public private(set) var removeCallsCount = 0
     /// `true` if the function was ever called.
     public var removeCalled: Bool {
         removeCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var removeReceivedArguments: (eventType: String, storageId: String)?
+    @Atomic public private(set) var removeReceivedArguments: (eventType: String, storageId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var removeReceivedInvocations: [(eventType: String, storageId: String)] = []
+    @Atomic public private(set) var removeReceivedInvocations: [(eventType: String, storageId: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1414,7 +1414,7 @@ public class EventStorageMock: EventStorage, Mock {
     // MARK: - removeAll
 
     /// Number of times the function was called.
-    public private(set) var removeAllCallsCount = 0
+    @Atomic public private(set) var removeAllCallsCount = 0
     /// `true` if the function was ever called.
     public var removeAllCalled: Bool {
         removeAllCallsCount > 0
@@ -1469,16 +1469,16 @@ public class FileStorageMock: FileStorage, Mock {
     // MARK: - save
 
     /// Number of times the function was called.
-    public private(set) var saveCallsCount = 0
+    @Atomic public private(set) var saveCallsCount = 0
     /// `true` if the function was ever called.
     public var saveCalled: Bool {
         saveCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var saveReceivedArguments: (siteId: String, type: FileType, contents: Data, fileId: String?)?
+    @Atomic public private(set) var saveReceivedArguments: (siteId: String, type: FileType, contents: Data, fileId: String?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var saveReceivedInvocations: [(siteId: String, type: FileType, contents: Data, fileId: String?)] = []
+    @Atomic public private(set) var saveReceivedInvocations: [(siteId: String, type: FileType, contents: Data, fileId: String?)] = []
     /// Value to return from the mocked function.
     public var saveReturnValue: Bool!
     /**
@@ -1500,16 +1500,16 @@ public class FileStorageMock: FileStorage, Mock {
     // MARK: - get
 
     /// Number of times the function was called.
-    public private(set) var getCallsCount = 0
+    @Atomic public private(set) var getCallsCount = 0
     /// `true` if the function was ever called.
     public var getCalled: Bool {
         getCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getReceivedArguments: (siteId: String, type: FileType, fileId: String?)?
+    @Atomic public private(set) var getReceivedArguments: (siteId: String, type: FileType, fileId: String?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getReceivedInvocations: [(siteId: String, type: FileType, fileId: String?)] = []
+    @Atomic public private(set) var getReceivedInvocations: [(siteId: String, type: FileType, fileId: String?)] = []
     /// Value to return from the mocked function.
     public var getReturnValue: Data?
     /**
@@ -1531,16 +1531,16 @@ public class FileStorageMock: FileStorage, Mock {
     // MARK: - delete
 
     /// Number of times the function was called.
-    public private(set) var deleteCallsCount = 0
+    @Atomic public private(set) var deleteCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteCalled: Bool {
         deleteCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteReceivedArguments: (siteId: String, type: FileType, fileId: String)?
+    @Atomic public private(set) var deleteReceivedArguments: (siteId: String, type: FileType, fileId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteReceivedInvocations: [(siteId: String, type: FileType, fileId: String)] = []
+    @Atomic public private(set) var deleteReceivedInvocations: [(siteId: String, type: FileType, fileId: String)] = []
     /// Value to return from the mocked function.
     public var deleteReturnValue: Bool!
     /**
@@ -1623,7 +1623,7 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
     // MARK: - deleteAll
 
     /// Number of times the function was called.
-    public private(set) var deleteAllCallsCount = 0
+    @Atomic public private(set) var deleteAllCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteAllCalled: Bool {
         deleteAllCallsCount > 0
@@ -1678,16 +1678,16 @@ public class HttpClientMock: HttpClient, Mock {
     // MARK: - request
 
     /// Number of times the function was called.
-    public private(set) var requestCallsCount = 0
+    @Atomic public private(set) var requestCallsCount = 0
     /// `true` if the function was ever called.
     public var requestCalled: Bool {
         requestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var requestReceivedArguments: (params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)?
+    @Atomic public private(set) var requestReceivedArguments: (params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
+    @Atomic public private(set) var requestReceivedInvocations: [(params: HttpRequestParams, onComplete: (Result<Data, HttpRequestError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1705,16 +1705,16 @@ public class HttpClientMock: HttpClient, Mock {
     // MARK: - downloadFile
 
     /// Number of times the function was called.
-    public private(set) var downloadFileCallsCount = 0
+    @Atomic public private(set) var downloadFileCallsCount = 0
     /// `true` if the function was ever called.
     public var downloadFileCalled: Bool {
         downloadFileCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)?
+    @Atomic public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)] = []
+    @Atomic public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, onComplete: (URL?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1732,16 +1732,16 @@ public class HttpClientMock: HttpClient, Mock {
     // MARK: - cancel
 
     /// Number of times the function was called.
-    public private(set) var cancelCallsCount = 0
+    @Atomic public private(set) var cancelCallsCount = 0
     /// `true` if the function was ever called.
     public var cancelCalled: Bool {
         cancelCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var cancelReceivedArguments: Bool?
+    @Atomic public private(set) var cancelReceivedArguments: Bool?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var cancelReceivedInvocations: [Bool] = []
+    @Atomic public private(set) var cancelReceivedInvocations: [Bool] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1788,16 +1788,16 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     // MARK: - request
 
     /// Number of times the function was called.
-    public private(set) var requestCallsCount = 0
+    @Atomic public private(set) var requestCallsCount = 0
     /// `true` if the function was ever called.
     public var requestCalled: Bool {
         requestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var requestReceivedArguments: (params: HttpRequestParams, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
+    @Atomic public private(set) var requestReceivedArguments: (params: HttpRequestParams, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var requestReceivedInvocations: [(params: HttpRequestParams, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
+    @Atomic public private(set) var requestReceivedInvocations: [(params: HttpRequestParams, session: URLSession, onComplete: (Data?, HTTPURLResponse?, Error?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1815,16 +1815,16 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     // MARK: - downloadFile
 
     /// Number of times the function was called.
-    public private(set) var downloadFileCallsCount = 0
+    @Atomic public private(set) var downloadFileCallsCount = 0
     /// `true` if the function was ever called.
     public var downloadFileCalled: Bool {
         downloadFileCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)?
+    @Atomic public private(set) var downloadFileReceivedArguments: (url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)] = []
+    @Atomic public private(set) var downloadFileReceivedInvocations: [(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: (URL?) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1919,16 +1919,16 @@ public class LoggerMock: Logger, Mock {
     // MARK: - setLogLevel
 
     /// Number of times the function was called.
-    public private(set) var setLogLevelCallsCount = 0
+    @Atomic public private(set) var setLogLevelCallsCount = 0
     /// `true` if the function was ever called.
     public var setLogLevelCalled: Bool {
         setLogLevelCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var setLogLevelReceivedArguments: CioLogLevel?
+    @Atomic public private(set) var setLogLevelReceivedArguments: CioLogLevel?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var setLogLevelReceivedInvocations: [CioLogLevel] = []
+    @Atomic public private(set) var setLogLevelReceivedInvocations: [CioLogLevel] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1946,16 +1946,16 @@ public class LoggerMock: Logger, Mock {
     // MARK: - debug
 
     /// Number of times the function was called.
-    public private(set) var debugCallsCount = 0
+    @Atomic public private(set) var debugCallsCount = 0
     /// `true` if the function was ever called.
     public var debugCalled: Bool {
         debugCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var debugReceivedArguments: String?
+    @Atomic public private(set) var debugReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var debugReceivedInvocations: [String] = []
+    @Atomic public private(set) var debugReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -1973,16 +1973,16 @@ public class LoggerMock: Logger, Mock {
     // MARK: - info
 
     /// Number of times the function was called.
-    public private(set) var infoCallsCount = 0
+    @Atomic public private(set) var infoCallsCount = 0
     /// `true` if the function was ever called.
     public var infoCalled: Bool {
         infoCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var infoReceivedArguments: String?
+    @Atomic public private(set) var infoReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var infoReceivedInvocations: [String] = []
+    @Atomic public private(set) var infoReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2000,16 +2000,16 @@ public class LoggerMock: Logger, Mock {
     // MARK: - error
 
     /// Number of times the function was called.
-    public private(set) var errorCallsCount = 0
+    @Atomic public private(set) var errorCallsCount = 0
     /// `true` if the function was ever called.
     public var errorCalled: Bool {
         errorCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var errorReceivedArguments: String?
+    @Atomic public private(set) var errorReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var errorReceivedInvocations: [String] = []
+    @Atomic public private(set) var errorReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2056,16 +2056,16 @@ public class ProfileStoreMock: ProfileStore, Mock {
     // MARK: - getProfileId
 
     /// Number of times the function was called.
-    public private(set) var getProfileIdCallsCount = 0
+    @Atomic public private(set) var getProfileIdCallsCount = 0
     /// `true` if the function was ever called.
     public var getProfileIdCalled: Bool {
         getProfileIdCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getProfileIdReceivedArguments: String?
+    @Atomic public private(set) var getProfileIdReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getProfileIdReceivedInvocations: [String] = []
+    @Atomic public private(set) var getProfileIdReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     public var getProfileIdReturnValue: String?
     /**
@@ -2087,16 +2087,16 @@ public class ProfileStoreMock: ProfileStore, Mock {
     // MARK: - deleteProfileId
 
     /// Number of times the function was called.
-    public private(set) var deleteProfileIdCallsCount = 0
+    @Atomic public private(set) var deleteProfileIdCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteProfileIdCalled: Bool {
         deleteProfileIdCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteProfileIdReceivedArguments: String?
+    @Atomic public private(set) var deleteProfileIdReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteProfileIdReceivedInvocations: [String] = []
+    @Atomic public private(set) var deleteProfileIdReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2148,16 +2148,16 @@ public class QueueMock: Queue, Mock {
     // MARK: - getAllStoredTasks
 
     /// Number of times the function was called.
-    public private(set) var getAllStoredTasksCallsCount = 0
+    @Atomic public private(set) var getAllStoredTasksCallsCount = 0
     /// `true` if the function was ever called.
     public var getAllStoredTasksCalled: Bool {
         getAllStoredTasksCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getAllStoredTasksReceivedArguments: String?
+    @Atomic public private(set) var getAllStoredTasksReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getAllStoredTasksReceivedInvocations: [String] = []
+    @Atomic public private(set) var getAllStoredTasksReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     public var getAllStoredTasksReturnValue: [QueueTaskMetadata]!
     /**
@@ -2179,16 +2179,16 @@ public class QueueMock: Queue, Mock {
     // MARK: - getTaskDetail
 
     /// Number of times the function was called.
-    public private(set) var getTaskDetailCallsCount = 0
+    @Atomic public private(set) var getTaskDetailCallsCount = 0
     /// `true` if the function was ever called.
     public var getTaskDetailCalled: Bool {
         getTaskDetailCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getTaskDetailReceivedArguments: (task: QueueTaskMetadata, siteId: String)?
+    @Atomic public private(set) var getTaskDetailReceivedArguments: (task: QueueTaskMetadata, siteId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getTaskDetailReceivedInvocations: [(task: QueueTaskMetadata, siteId: String)] = []
+    @Atomic public private(set) var getTaskDetailReceivedInvocations: [(task: QueueTaskMetadata, siteId: String)] = []
     /// Value to return from the mocked function.
     public var getTaskDetailReturnValue: TaskDetail?
     /**
@@ -2210,16 +2210,16 @@ public class QueueMock: Queue, Mock {
     // MARK: - deleteProcessedTask
 
     /// Number of times the function was called.
-    public private(set) var deleteProcessedTaskCallsCount = 0
+    @Atomic public private(set) var deleteProcessedTaskCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteProcessedTaskCalled: Bool {
         deleteProcessedTaskCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteProcessedTaskReceivedArguments: (task: QueueTaskMetadata, siteId: String)?
+    @Atomic public private(set) var deleteProcessedTaskReceivedArguments: (task: QueueTaskMetadata, siteId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteProcessedTaskReceivedInvocations: [(task: QueueTaskMetadata, siteId: String)] = []
+    @Atomic public private(set) var deleteProcessedTaskReceivedInvocations: [(task: QueueTaskMetadata, siteId: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2271,16 +2271,16 @@ public class QueueStorageMock: QueueStorage, Mock {
     // MARK: - getInventory
 
     /// Number of times the function was called.
-    public private(set) var getInventoryCallsCount = 0
+    @Atomic public private(set) var getInventoryCallsCount = 0
     /// `true` if the function was ever called.
     public var getInventoryCalled: Bool {
         getInventoryCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getInventoryReceivedArguments: String?
+    @Atomic public private(set) var getInventoryReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getInventoryReceivedInvocations: [String] = []
+    @Atomic public private(set) var getInventoryReceivedInvocations: [String] = []
     /// Value to return from the mocked function.
     public var getInventoryReturnValue: [QueueTaskMetadata]!
     /**
@@ -2302,16 +2302,16 @@ public class QueueStorageMock: QueueStorage, Mock {
     // MARK: - get
 
     /// Number of times the function was called.
-    public private(set) var getCallsCount = 0
+    @Atomic public private(set) var getCallsCount = 0
     /// `true` if the function was ever called.
     public var getCalled: Bool {
         getCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var getReceivedArguments: (storageId: String, siteId: String)?
+    @Atomic public private(set) var getReceivedArguments: (storageId: String, siteId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var getReceivedInvocations: [(storageId: String, siteId: String)] = []
+    @Atomic public private(set) var getReceivedInvocations: [(storageId: String, siteId: String)] = []
     /// Value to return from the mocked function.
     public var getReturnValue: QueueTask?
     /**
@@ -2333,16 +2333,16 @@ public class QueueStorageMock: QueueStorage, Mock {
     // MARK: - delete
 
     /// Number of times the function was called.
-    public private(set) var deleteCallsCount = 0
+    @Atomic public private(set) var deleteCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteCalled: Bool {
         deleteCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var deleteReceivedArguments: (storageId: String, siteId: String)?
+    @Atomic public private(set) var deleteReceivedArguments: (storageId: String, siteId: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var deleteReceivedInvocations: [(storageId: String, siteId: String)] = []
+    @Atomic public private(set) var deleteReceivedInvocations: [(storageId: String, siteId: String)] = []
     /// Value to return from the mocked function.
     public var deleteReturnValue: Bool!
     /**
@@ -2396,16 +2396,16 @@ class SimpleTimerMock: SimpleTimer, Mock {
     // MARK: - scheduleAndCancelPrevious
 
     /// Number of times the function was called.
-    private(set) var scheduleAndCancelPreviousCallsCount = 0
+    @Atomic private(set) var scheduleAndCancelPreviousCallsCount = 0
     /// `true` if the function was ever called.
     var scheduleAndCancelPreviousCalled: Bool {
         scheduleAndCancelPreviousCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var scheduleAndCancelPreviousReceivedArguments: (seconds: Seconds, block: () -> Void)?
+    @Atomic private(set) var scheduleAndCancelPreviousReceivedArguments: (seconds: Seconds, block: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var scheduleAndCancelPreviousReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
+    @Atomic private(set) var scheduleAndCancelPreviousReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2423,16 +2423,16 @@ class SimpleTimerMock: SimpleTimer, Mock {
     // MARK: - scheduleIfNotAlready
 
     /// Number of times the function was called.
-    private(set) var scheduleIfNotAlreadyCallsCount = 0
+    @Atomic private(set) var scheduleIfNotAlreadyCallsCount = 0
     /// `true` if the function was ever called.
     var scheduleIfNotAlreadyCalled: Bool {
         scheduleIfNotAlreadyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
+    @Atomic private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
+    @Atomic private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
     /// Value to return from the mocked function.
     var scheduleIfNotAlreadyReturnValue: Bool!
     /**
@@ -2454,7 +2454,7 @@ class SimpleTimerMock: SimpleTimer, Mock {
     // MARK: - cancel
 
     /// Number of times the function was called.
-    private(set) var cancelCallsCount = 0
+    @Atomic private(set) var cancelCallsCount = 0
     /// `true` if the function was ever called.
     var cancelCalled: Bool {
         cancelCallsCount > 0
@@ -2502,16 +2502,16 @@ class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
     // MARK: - scheduleIfNotAlready
 
     /// Number of times the function was called.
-    private(set) var scheduleIfNotAlreadyCallsCount = 0
+    @Atomic private(set) var scheduleIfNotAlreadyCallsCount = 0
     /// `true` if the function was ever called.
     var scheduleIfNotAlreadyCalled: Bool {
         scheduleIfNotAlreadyCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
+    @Atomic private(set) var scheduleIfNotAlreadyReceivedArguments: (seconds: Seconds, block: () -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
+    @Atomic private(set) var scheduleIfNotAlreadyReceivedInvocations: [(seconds: Seconds, block: () -> Void)] = []
     /// Value to return from the mocked function.
     var scheduleIfNotAlreadyReturnValue: Bool!
     /**
@@ -2533,7 +2533,7 @@ class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
     // MARK: - cancel
 
     /// Number of times the function was called.
-    private(set) var cancelCallsCount = 0
+    @Atomic private(set) var cancelCallsCount = 0
     /// `true` if the function was ever called.
     var cancelCalled: Bool {
         cancelCallsCount > 0
@@ -2584,16 +2584,16 @@ public class UIKitWrapperMock: UIKitWrapper, Mock {
     // MARK: - open
 
     /// Number of times the function was called.
-    public private(set) var openCallsCount = 0
+    @Atomic public private(set) var openCallsCount = 0
     /// `true` if the function was ever called.
     public var openCalled: Bool {
         openCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var openReceivedArguments: URL?
+    @Atomic public private(set) var openReceivedArguments: URL?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var openReceivedInvocations: [URL] = []
+    @Atomic public private(set) var openReceivedInvocations: [URL] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -2611,16 +2611,16 @@ public class UIKitWrapperMock: UIKitWrapper, Mock {
     // MARK: - continueNSUserActivity
 
     /// Number of times the function was called.
-    public private(set) var continueNSUserActivityCallsCount = 0
+    @Atomic public private(set) var continueNSUserActivityCallsCount = 0
     /// `true` if the function was ever called.
     public var continueNSUserActivityCalled: Bool {
         continueNSUserActivityCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var continueNSUserActivityReceivedArguments: URL?
+    @Atomic public private(set) var continueNSUserActivityReceivedArguments: URL?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var continueNSUserActivityReceivedInvocations: [URL] = []
+    @Atomic public private(set) var continueNSUserActivityReceivedInvocations: [URL] = []
     /// Value to return from the mocked function.
     public var continueNSUserActivityReturnValue: Bool!
     /**
@@ -2664,7 +2664,7 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
     // MARK: - getUserAgentHeaderValue
 
     /// Number of times the function was called.
-    public private(set) var getUserAgentHeaderValueCallsCount = 0
+    @Atomic public private(set) var getUserAgentHeaderValueCallsCount = 0
     /// `true` if the function was ever called.
     public var getUserAgentHeaderValueCalled: Bool {
         getUserAgentHeaderValueCallsCount > 0

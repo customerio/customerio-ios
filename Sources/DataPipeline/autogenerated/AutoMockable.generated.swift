@@ -106,16 +106,16 @@ class DeviceAttributesProviderMock: DeviceAttributesProvider, Mock {
     // MARK: - getDefaultDeviceAttributes
 
     /// Number of times the function was called.
-    private(set) var getDefaultDeviceAttributesCallsCount = 0
+    @Atomic private(set) var getDefaultDeviceAttributesCallsCount = 0
     /// `true` if the function was ever called.
     var getDefaultDeviceAttributesCalled: Bool {
         getDefaultDeviceAttributesCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var getDefaultDeviceAttributesReceivedArguments: (([String: Any]) -> Void)?
+    @Atomic private(set) var getDefaultDeviceAttributesReceivedArguments: (([String: Any]) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var getDefaultDeviceAttributesReceivedInvocations: [([String: Any]) -> Void] = []
+    @Atomic private(set) var getDefaultDeviceAttributesReceivedInvocations: [([String: Any]) -> Void] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
