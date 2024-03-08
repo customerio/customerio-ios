@@ -18,7 +18,7 @@ let package = Package(
     targets: [
         .target(
             name: "SampleAppsCommon",
-            dependencies: [.product(name: "Tracking", package: "customerio-ios")],
+            dependencies: [.product(name: "DataPipelines", package: "customerio-ios")],
             path: "Source"
         )
     ]

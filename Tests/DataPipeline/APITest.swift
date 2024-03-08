@@ -26,7 +26,7 @@ class DataPipelineAPITest: UnitTest {
 
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
-    func test_allPublicTrackingFunctions() throws {
+    func test_allPublicFunctions() throws {
         try skipRunningTest()
 
         // Initialize
@@ -94,7 +94,9 @@ class DataPipelineAPITest: UnitTest {
         let _: UtilityPluginMock? = CustomerIO.shared.find(pluginType: UtilityPluginMock.self)
         let _: [UtilityPluginMock]? = CustomerIO.shared.findAll(pluginType: UtilityPluginMock.self)
         let _: DestinationPlugin? = CustomerIO.shared.find(key: String.random)
+    }
 
+    func test_segmentPublicFunctions() throws {
         // segment
         let _: Bool = CustomerIO.shared.enabled
         let _: String = CustomerIO.shared.anonymousId

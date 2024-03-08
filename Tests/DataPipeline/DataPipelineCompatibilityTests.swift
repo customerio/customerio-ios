@@ -29,7 +29,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         })
 
         // get DataPipelineImplementation instance so we can call its methods directly
-        dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation)
+        dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation) // swiftlint:disable:this force_cast
 
         userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
 
@@ -333,6 +333,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         ]
 
         customerIO.identify(userId: String.random)
+
         dataPipelineImplementation.trackPushMetric(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
@@ -362,6 +363,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         ].mergeWith(givenMetaData)
 
         customerIO.identify(userId: String.random)
+
         dataPipelineImplementation.trackInAppMetric(deliveryID: givenDeliveryID, event: givenMetric, metaData: givenMetaData)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)

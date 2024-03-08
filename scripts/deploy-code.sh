@@ -22,10 +22,7 @@ fi
 # pods depend on others. You need to deploy each pod one-by-one to make sure that when a pod depends on another, 
 # all dependencies have already been deployed. 
 echo "Push CustomerIOCommon"
-./scripts/push-cocoapod.sh CustomerIOCommon.podspec 
-
-echo "Push CustomerIOTracking"
-./scripts/push-cocoapod.sh CustomerIOTracking.podspec
+./scripts/push-cocoapod.sh CustomerIOCommon.podspec
 
 echo "Push CustomerIOTrackingMigration"
 ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec

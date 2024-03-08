@@ -1,4 +1,4 @@
-import CioTracking
+import CioInternalCommon
 import Foundation
 
 class EnvironmentUtil {

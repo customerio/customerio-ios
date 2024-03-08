@@ -29,7 +29,7 @@ public protocol SandboxedSiteIdKeyValueStorage {
  Uses UserDefaults to store data in key/value pairs.
  */
 // sourcery: InjectRegisterShared = "SandboxedSiteIdKeyValueStorage"
-public class UserDefaultsSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
+public class UserDefaultsSandboxedSiteIdKVStore: SandboxedSiteIdKeyValueStorage {
     private let deviceMetricsGrabber: DeviceMetricsGrabber
 
     private func userDefaults(siteId: String) -> UserDefaults? {
