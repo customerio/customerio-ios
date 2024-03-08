@@ -10,11 +10,29 @@ import SwiftUI
  */
 
 @ViewBuilder func view(forLink link: InlineNavigationLink) -> some View {
+    let state = AppState.shared
     switch link {
     case .sampleAppIntro:
         SampleAppIntro()
     case .install:
         SDKInstallationTutorialView()
+    case .setup:
+        SetupTutorialView { workspaceSettings in
+            CustomerIO.initialize(
+                siteId: workspaceSettings.siteId,
+                apiKey: workspaceSettings.apiKey,
+                region: workspaceSettings.region
+            ) { config in
+
+                // Debug config just to make the demo
+                // easier. You can learn more about these configs
+                // here: https://customer.io/docs/sdk/ios/getting-started/#configuration-options
+                config.backgroundQueueMinNumberOfTasks = 1
+                config.backgroundQueueSecondsDelay = 0
+                config.logLevel = .debug
+            }
+            state.navigationPath = [.customerIOIntro]
+        }
     default:
         Text("Not implemented")
     }
