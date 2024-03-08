@@ -83,9 +83,17 @@ class IOSPushEventListener: PushEventHandler {
 
         logger.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
 
-        let shouldShowPush = moduleConfig.showPushAppInForeground
+        // Forward event to other push handlers so they can receive a callback about this push event.
+        pushEventHandlerProxy.shouldDisplayPushAppInForeground(push, completionHandler: { _ in
+            // When this block of code executes, the customer is done processing the push event.
 
-        // Call the completionHandler so customer does not need to. The push came from CIO, so it gets handled by the CIO SDK.
-        completionHandler(shouldShowPush)
+            // Because push came from CIO, ignore the return result of other push handlers.
+            // Determine if CIO push should be shown from SDK config
+            let shouldShowPush = self.moduleConfig.showPushAppInForeground
+
+            // The push came from CIO, so it gets handled by the CIO SDK.
+            // Calling the completion handler indicates to the OS that we are done processing the push.
+            completionHandler(shouldShowPush)
+        })
     }
 }

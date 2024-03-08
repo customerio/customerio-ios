@@ -65,8 +65,28 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             return
         }
 
-        nestedDelegates.forEach { _, delegate in
-            delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
+        Task {
+            // 2+ other push event handlers may exist in app. We need to decide if a push should be displayed or not, by combining all the results from all other push handlers.
+            // To do that, we start with Apple's default value of: do not display.
+            // If any of the handlers return result indicating push should be displayed, we return true.
+            // Apple docs: https://developer.apple.com/documentation/usernotifications/unusernotificationcenterdelegate/usernotificationcenter(_:willpresent:withcompletionhandler:)
+            var shouldDisplayPush = false
+
+            // Wait for all other push event handlers to finish before calling the completion handler.
+            // Each iteration of the loop waits for the push event to be processed by the delegate.
+            for delegate in nestedDelegates.values {
+                await withCheckedContinuation { continuation in
+                    delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
+                        if delegateShouldDisplayPushResult {
+                            shouldDisplayPush = true
+                        }
+
+                        continuation.resume()
+                    })
+                }
+            }
+            // After the loop finishes, call the completion handler to indicate the event has been fully processed by all delegates.
+            completionHandler(shouldDisplayPush)
         }
     }
 }
