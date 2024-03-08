@@ -25,12 +25,11 @@ struct WorkspaceSettings: UserDefaultsCodable {
 
 struct Profile: UserDefaultsCodable {
     var id: String
-    var name: String
-    var email: String
+    var properties: [Property]
     var loggedIn: Bool
 
     static func empty() -> Profile {
-        Profile(id: UUID().uuidString, name: "", email: "", loggedIn: false)
+        Profile(id: UUID().uuidString, properties: [], loggedIn: false)
     }
 
     static func storageKey() -> String {
@@ -40,46 +39,33 @@ struct Profile: UserDefaultsCodable {
 
 struct Event {
     var name: String = ""
-    var propertyName: String = ""
-    var propertyValue: String = ""
+    var properties: [Property]
 }
 
-struct ProfileAttribute {
+struct Property: Codable, Identifiable, Comparable {
+    static func < (lhs: Property, rhs: Property) -> Bool {
+        lhs.name == rhs.name
+    }
+
+    let id: String
     var name: String
     var value: String
-}
 
-struct DeviceAttribute {
-    var name: String
-    var value: String
-}
-
-extension Profile {
-    func fieldsToDictionay() -> [String: String] {
-        var dic: [String: String] = [:]
-        if !name.isEmpty {
-            dic["name"] = name
-        }
-
-        if !email.isEmpty {
-            dic["email"] = email
-        }
-
-        return dic
+    init(name: String, value: String) {
+        self.id = UUID().uuidString
+        self.name = name
+        self.value = value
     }
 }
 
-extension Event {
-    func fieldsToDictionay() -> [String: String] {
-        var dic: [String: String] = [:]
-        if !name.isEmpty {
-            dic["name"] = name
+extension [Property] {
+    func toDictionary() -> [String: String] {
+        var res: [String: String] = [:]
+        forEach { p in
+            if !p.name.isEmpty {
+                res[p.name] = p.value
+            }
         }
-
-        if !propertyName.isEmpty {
-            dic[propertyName] = propertyValue
-        }
-
-        return dic
+        return res
     }
 }
