@@ -1,4 +1,3 @@
-
 import Foundation
 
 // https://customer.io/docs/api/#operation/pushMetrics
