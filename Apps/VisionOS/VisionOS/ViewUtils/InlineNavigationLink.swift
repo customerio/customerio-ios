@@ -29,7 +29,7 @@ enum InlineNavigationLink: String, Codable, CaseIterable {
         case .sampleAppIntro:
             SampleAppIntro.title.menuTitle
         case .install:
-            ""
+            SDKInstallationTutorialView.title.menuTitle
         case .setup:
             ""
         case .customerIOIntro:
