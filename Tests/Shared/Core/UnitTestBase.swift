@@ -108,29 +108,42 @@ open class UnitTestBase<Component>: XCTestCase {
         diGraphShared.reset()
     }
 
+    // All data that the SDK writes, delete it here so each test function has a clean environment to run and does not depend on the result of the previous test.
     open func deleteAllPersistentData() {
-        var expectations: [XCTestExpectation] = []
+        deleteAllFiles()
+        deleteKeyValueStoredData()
+    }
 
-        let resetEventBusExpectation = XCTestExpectation(description: "reset EventBus to initial state")
-        expectations.append(resetEventBusExpectation)
-        Task {
-            await diGraphShared.eventBusHandler.reset()
-            resetEventBusExpectation.fulfill()
+    // Deletes all key/value storage pairs that the SDK could save
+    private func deleteKeyValueStoredData() {
+        diGraphShared.sharedKeyValueStorage.deleteAll()
+    }
+
+    private func deleteAllFiles() {
+        let fileManager = FileManager.default
+
+        let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
+            // OK to use try! here as we want tests to crash if for some reason we are not able to delete files from the
+            // device.
+            // if files do not get deleted between tests, we could have false positive tests.
+            // swiftlint:disable:next force_try
+            let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
+            // swiftlint:disable:next force_try
+            let fileURLs = try! fileManager.contentsOfDirectory(
+                at: pathUrl,
+                includingPropertiesForKeys: nil,
+                options: .skipsHiddenFiles
+            )
+            for fileURL in fileURLs {
+                try? fileManager.removeItem(at: fileURL)
+            }
         }
 
-        // The SDK does not use `UserDefaults.standard`, but in case a test needs to,
-        // let's delete the data for each test.
-        UserDefaults.standard.deleteAll()
+        // Delete all files in all of the OS directories that the SDK currently saves files to.
+        deleteFromSearchPath(.applicationSupportDirectory)
 
-        // delete key value data that belongs to shared storage.
-        diGraphShared.sharedKeyValueStorage.deleteAll()
-
-        // delete key value data that is global to all api keys in the SDK.
-        globalDataStore.deleteAll()
-
-        // cleaning up data should already have completed by now.
-        // but we'll wait for a bit to ensure it's done and not cause any issues for the next test.
-        wait(for: expectations, timeout: 5.0)
+        // Note: We will be no longer needing this directory after merging: https://github.com/customerio/customerio-ios/pull/600
+        deleteFromSearchPath(.documentDirectory)
     }
 
     open func waitForExpectations(file _: StaticString = #file, line _: UInt = #line) {
