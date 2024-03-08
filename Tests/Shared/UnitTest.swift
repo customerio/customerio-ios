@@ -185,4 +185,27 @@ public extension UnitTest {
             block()
         }
     }
+
+    /*
+     Run an async operation with a completion handler in a more convenient way.
+
+     Example:
+     ```
+     await waitForAsyncOperation { asyncComplete in
+        callCode {
+            // when this code runs, callCode's completion handler was called.
+            asyncComplete()
+        }
+     }
+     ```
+
+     This is an alternative to boilerplate `expectation()`, `expectation.fulfill()` API.
+     */
+    func waitForAsyncOperation(_ block: @escaping (@escaping () -> Void) -> Void) async {
+        await withCheckedContinuation { continuation in
+            block {
+                continuation.resume()
+            }
+        }
+    }
 }
