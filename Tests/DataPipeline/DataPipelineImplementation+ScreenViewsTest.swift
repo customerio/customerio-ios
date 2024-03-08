@@ -6,7 +6,7 @@ import SwiftUI
 import UIKit
 import XCTest
 
-class DataPipelineImplementationScreenViewsTest: IntegrationTest {
+class DataPipelineScreenViewsTest: IntegrationTest {
     private var autoTrackingScreenViews: AutoTrackingScreenViews!
     private var outputReader: OutputReaderPlugin!
 
@@ -14,12 +14,12 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
         super.setUp()
 
         // setting up required plugins
-        outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin)
+        outputReader = (CustomerIO.shared.add(plugin: OutputReaderPlugin()) as! OutputReaderPlugin) // swiftlint:disable:this force_cast
         autoTrackingScreenViews = getTrackingScreenViewsPlugin()
     }
 
     private func getTrackingScreenViewsPlugin() -> AutoTrackingScreenViews {
-        (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews)
+        (CustomerIO.shared.add(plugin: AutoTrackingScreenViews()) as! AutoTrackingScreenViews) // swiftlint:disable:this force_cast
     }
 
     // MARK: performScreenTracking
@@ -134,13 +134,23 @@ class DataPipelineImplementationScreenViewsTest: IntegrationTest {
     }
 }
 
-extension DataPipelineImplementationScreenViewsTest {
+extension DataPipelineScreenViewsTest {
     private func assertNoEventTracked() {
+        guard let outputReader = outputReader else {
+            XCTFail("Expected non-nil outputReader")
+            return
+        }
+
         let screenviewEvents = outputReader.screenEvents
         XCTAssertEqual(screenviewEvents.count, 0)
     }
 
     private func assertEventTracked(numberOfEventsAdded: Int = 1) {
+        guard let outputReader = outputReader else {
+            XCTFail("Expected non-nil outputReader")
+            return
+        }
+
         let screenviewEvents = outputReader.screenEvents
         XCTAssertEqual(screenviewEvents.count, numberOfEventsAdded)
     }

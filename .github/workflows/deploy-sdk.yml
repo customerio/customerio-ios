@@ -166,8 +166,6 @@ jobs:
         run: echo ''
       - name: Push CustomerIOCommon
         run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
-      - name: Push CustomerIOTracking
-        run: ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
       - name: Push CustomerIODataPipelines
         run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
       - name: Push CustomerIOMessagingPush

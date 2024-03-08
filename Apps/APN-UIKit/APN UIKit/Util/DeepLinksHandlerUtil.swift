@@ -5,9 +5,9 @@ protocol DeepLinksHandlerUtil {
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
-// sourcery: InjectRegister = "DeepLinksHandlerUtil"
+// sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
-    var storage = DIGraph.shared.storage
+    var storage = DIGraphShared.shared.storage
     // URLs accepted:
     // apn-uikit://deeplink
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {

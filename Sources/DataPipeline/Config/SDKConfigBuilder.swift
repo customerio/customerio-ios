@@ -18,17 +18,16 @@ import Segment
 /// // Use `config` for initializing the SDK...
 /// ```
 public class SDKConfigBuilder {
-    // default static values for configuration options
-    private static let defaultAPIHost = "cdp.customer.io/v1"
-    private static let defaultCDNHost = "cdp.customer.io/v1"
+    // helper configuration options to ease setting up other configurations such as `apiHost` and `cdnHost`
+    private var region: Region = .US
 
     // configuration options for SdkConfig
     private var logLevel: CioLogLevel = .error
 
     // configuration options for DataPipelineConfigOptions
     private let cdpApiKey: String
-    private var apiHost: String = SDKConfigBuilder.defaultAPIHost
-    private var cdnHost: String = SDKConfigBuilder.defaultCDNHost
+    private var apiHost: String?
+    private var cdnHost: String?
     private var flushAt: Int = 20
     private var flushInterval: Seconds = 30
     private var autoAddCustomerIODestination: Bool = true
@@ -45,6 +44,15 @@ public class SDKConfigBuilder {
     ///   - cdpApiKey: Customer.io Data Pipeline API Key
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
+    }
+
+    /// Specifies the workspace region to ensure CDP requests are routed to the correct regional endpoint.
+    /// Default values for apiHost and cdnHost are determined by the region.
+    /// However, if apiHost or cdnHost are manually specified, those values override region-based defaults.
+    @discardableResult
+    public func region(_ region: Region) -> SDKConfigBuilder {
+        self.region = region
+        return self
     }
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you wish to
@@ -138,8 +146,8 @@ public class SDKConfigBuilder {
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
             cdpApiKey: cdpApiKey,
-            apiHost: apiHost,
-            cdnHost: cdnHost,
+            apiHost: apiHost ?? region.apiHost,
+            cdnHost: cdnHost ?? region.cdnHost,
             flushAt: flushAt,
             flushInterval: flushInterval,
             autoAddCustomerIODestination: autoAddCustomerIODestination,

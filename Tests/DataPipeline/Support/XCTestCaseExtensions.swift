@@ -26,7 +26,7 @@ extension XCTest {
             pair.key.forEach { result[$0] = pair.value }
         }
 
-        func assertEqual<T: Equatable>(_ expectedValue: Any, actualValue: Any?, type _: T.Type, key: String, file: StaticString, line: UInt) {
+        func assertEqual<T: Equatable>(_ expectedValue: Any, actualValue: Any?, type _: T.Type, key: String, file: StaticString = #file, line: UInt = #line) {
             guard let expectedTypedValue = expectedValue as? T else {
                 let expectedType = String(describing: T.self)
                 let actualType = String(describing: type(of: expectedValue))
