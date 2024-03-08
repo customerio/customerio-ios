@@ -16,6 +16,7 @@
 		6023AD422B914F4D001540EF /* AppIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD412B914F4D001540EF /* AppIntroView.swift */; };
 		6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */; };
 		6023AD4D2B9153EB001540EF /* LineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4B2B9153EB001540EF /* LineView.swift */; };
+		606F2C212B9B79F3004E7318 /* PropertiesInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
@@ -41,6 +42,7 @@
 		6023AD412B914F4D001540EF /* AppIntroView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppIntroView.swift; sourceTree = "<group>"; };
 		6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FloatingTitleTextField.swift; sourceTree = "<group>"; };
 		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
+		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
@@ -79,6 +81,7 @@
 				6023AD3A2B913954001540EF /* ToastView.swift */,
 				6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */,
 				6023AD4B2B9153EB001540EF /* LineView.swift */,
+				606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */,
 			);
 			path = CommonViews;
 			sourceTree = "<group>";
@@ -252,6 +255,7 @@
 				60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */,
 				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
 				6023AD3F2B913954001540EF /* CommonLayoutView.swift in Sources */,
+				606F2C212B9B79F3004E7318 /* PropertiesInputView.swift in Sources */,
 				6023AD402B913954001540EF /* TutorialsMenuView.swift in Sources */,
 				6023AD422B914F4D001540EF /* AppIntroView.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
