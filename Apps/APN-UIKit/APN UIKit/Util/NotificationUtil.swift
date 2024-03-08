@@ -6,7 +6,7 @@ protocol NotificationUtility {
     func getPushPermission(completionHandler: @escaping (UNAuthorizationStatus) -> Void)
 }
 
-// sourcery: InjectRegister = "NotificationUtil"
+// sourcery: InjectRegisterShared = "NotificationUtil"
 class NotificationUtil: NotificationUtility {
     func showPromptForPushPermission(completionHandler: @escaping (Bool) -> Void) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound], completionHandler: { status, _ in

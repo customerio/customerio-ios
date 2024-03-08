@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import UIKit
 
 class LoginViewController: BaseViewController {
@@ -14,7 +14,7 @@ class LoginViewController: BaseViewController {
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var loginButton: ThemeButton!
     @IBOutlet var randomLoginButton: UIButton!
-    var storage = DIGraph.shared.storage
+    var storage = DIGraphShared.shared.storage
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {

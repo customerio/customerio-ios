@@ -1,3 +1,10 @@
+## [2.12.3](https://github.com/customerio/customerio-ios/compare/2.12.2...2.12.3) (2024-03-05)
+
+
+### Bug Fixes
+
+* expo users reported app crash on didFailToRegisterForRemoteNotificationsWithError ([#575](https://github.com/customerio/customerio-ios/issues/575)) ([ac70292](https://github.com/customerio/customerio-ios/commit/ac702920fc205354715a99985eb5469f5a3d99da))
+
 ## [2.12.2](https://github.com/customerio/customerio-ios/compare/2.12.1...2.12.2) (2024-02-23)
 
 
