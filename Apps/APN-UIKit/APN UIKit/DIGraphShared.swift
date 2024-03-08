@@ -1,7 +1,7 @@
 import Foundation
 
-public class DIGraph {
-    public static let shared: DIGraph = .init()
+public class DIGraphShared {
+    public static let shared: DIGraphShared = .init()
 
     public var overrides: [String: Any] = [:]
     public var singletons: [String: Any] = [:]

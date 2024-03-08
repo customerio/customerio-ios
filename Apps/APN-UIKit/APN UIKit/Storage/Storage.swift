@@ -15,7 +15,7 @@ protocol StorageManager {
     var didSetDefaults: Bool? { get set }
 }
 
-// sourcery: InjectRegister = "Storage"
+// sourcery: InjectRegisterShared = "Storage"
 class Storage: StorageManager {
     private let userDefaults: UserDefaults
 

@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import UIKit
 
 class DashboardViewController: BaseViewController {
@@ -16,8 +16,8 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
     var dashboardRouter: DashboardRouting?
-    var notificationUtil = DIGraph.shared.notificationUtil
-    var storage = DIGraph.shared.storage
+    var notificationUtil = DIGraphShared.shared.notificationUtil
+    var storage = DIGraphShared.shared.storage
     let randomData: [[String: Any?]] = [["name": "Order Purchased", "data": nil],
                                         ["name": "movie_watched", "data": ["movie_name": "The Incredibles"]],
                                         ["name": "appointmentScheduled", "data": ["appointmentTime": Date().addDaysToCurrentDate(days: 7)]]]
