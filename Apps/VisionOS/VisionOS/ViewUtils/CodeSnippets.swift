@@ -1,18 +1,12 @@
 import Foundation
 import MarkdownUI
 
-func dataToTutorialString(_ data: [String: String], linePrefix: String = "") -> String {
-    let keys = data.keys.sorted().reversed()
-
-    if keys.isEmpty {
-        return "[:]"
-    }
-
+func propertiesToTutorialString(_ properties: [Property], linePrefix: String = "") -> String {
     var res = "["
     var sep = ""
-    keys.forEach { key in
-        let propertyName = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        let propertyValue = data[key]!
+    properties.forEach { p in
+        let propertyName = p.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let propertyValue = p.value
             .trimmingCharacters(in: .whitespacesAndNewlines)
         res += """
         \(sep)"\(propertyName)": "\(propertyValue)"
@@ -35,7 +29,9 @@ func initializeCodeSnippet(withWorkspaceSettings settings: WorkspaceSettings)
 }
 
 func identifyAsText(withProfile profile: Profile) -> String {
-    if profile.email.isEmpty, profile.name.isEmpty {
+    if profile.properties.filter({ p in
+        !p.name.isEmpty
+    }).isEmpty {
         return
             """
             CustomerIO.shared.identify(
@@ -46,12 +42,14 @@ func identifyAsText(withProfile profile: Profile) -> String {
     return """
     CustomerIO.shared.identify(
       identifier: "\(profile.id)",
-      data: \(dataToTutorialString(profile.fieldsToDictionay(), linePrefix: "\t\t")))
+      data: \(propertiesToTutorialString(profile.properties, linePrefix: "\t\t")))
     """
 }
 
 func trackAsText(withEvent event: Event) -> String {
-    if event.propertyName.isEmpty, event.propertyValue.isEmpty {
+    if event.properties.filter({ p in
+        !p.name.isEmpty
+    }).isEmpty {
         return
             """
             CustomerIO.shared.track(
@@ -62,6 +60,6 @@ func trackAsText(withEvent event: Event) -> String {
     return """
     CustomerIO.shared.track(
       name: "\(event.name)",
-      data: \(dataToTutorialString(event.fieldsToDictionay(), linePrefix: "\t\t")))
+      data: \(propertiesToTutorialString(event.properties, linePrefix: "\t\t")))
     """
 }
