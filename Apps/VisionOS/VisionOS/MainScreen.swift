@@ -42,7 +42,9 @@ struct MainScreen: View {
                     guard let link = InlineNavigationLink(fromUrl: url) else {
                         return .systemAction
                     }
-                    state.navigationPath = [link]
+                    withAnimation {
+                        state.navigationPath = [link]
+                    }
                     return .handled
                 }
             )
