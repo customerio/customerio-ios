@@ -1,5 +1,25 @@
 import Foundation
 
+extension [InlineNavigationLink]: UserDefaultsCodable {
+    static func storageKey() -> String {
+        "navigationPath"
+    }
+
+    static func empty() -> [Element] {
+        []
+    }
+}
+
+extension Set<InlineNavigationLink>: UserDefaultsCodable {
+    static func storageKey() -> String {
+        "visitedLinks"
+    }
+
+    static func empty() -> Set<Element> {
+        .init()
+    }
+}
+
 struct ScreenTitleConfig {
     let screenTitle: String
     let menuTitle: String
@@ -33,7 +53,24 @@ class AppState: ObservableObject {
         }
     }
 
-    // MARK: non persistent state
+    @Published var navigationPath: [InlineNavigationLink] = .loadFromStorage() {
+        didSet {
+            UserDefaults.standard.setValue(
+                navigationPath.toJson(),
+                forKey: [InlineNavigationLink].storageKey()
+            )
+            visitedLinks.formUnion(navigationPath)
+        }
+    }
+
+    @Published var visitedLinks: Set<InlineNavigationLink> = .loadFromStorage() {
+        didSet {
+            UserDefaults.standard.setValue(
+                visitedLinks.toJson(),
+                forKey: Set<InlineNavigationLink>.storageKey()
+            )
+        }
+    }
 
     @Published var titleConfig: ScreenTitleConfig = .init("")
     @Published var errorMessage: String = ""
