@@ -5,7 +5,7 @@ struct PropertiesInputView: View {
     @EnvironmentObject var viewModel: ViewModel
     @Binding var properties: [Property]
     let addPropertiesLabel: String
-    
+
     var enableRemovingProperties = true
 
     @State private var additionalPropertyName: String = ""
@@ -14,7 +14,7 @@ struct PropertiesInputView: View {
     func onAddProperty() {
         let name = additionalPropertyName.trimmingCharacters(in: .whitespacesAndNewlines)
         let value = additionalPropertyValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if !name.isEmpty, !value.isEmpty {
             guard properties.firstIndex(where: { p in
                 p.name == name
@@ -22,7 +22,7 @@ struct PropertiesInputView: View {
                 viewModel.errorMessage = "Property with the same name already exists"
                 return
             }
-            
+
             let addedProperty = Property(
                 name: name,
                 value: value
@@ -34,7 +34,7 @@ struct PropertiesInputView: View {
             viewModel.errorMessage = "Please enter both property name and value"
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading) {
             ForEach($properties) { p in
@@ -46,14 +46,13 @@ struct PropertiesInputView: View {
                     FloatingTitleTextField(title: "Property Value", text: p.value)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    
+
                     if enableRemovingProperties {
                         Button {
                             if let pIndex = properties.firstIndex(of: p.wrappedValue) {
                                 properties.remove(at: pIndex)
                             }
-                            
-                            
+
                         } label: {
                             Image(systemName: "minus")
                                 .font(.largeTitle)
@@ -98,7 +97,7 @@ struct PropertiesInputView: View {
 
 #Preview {
     PropertiesInputView(properties: .constant([
-    Property(name: "name", value: ""),
-    Property(name: "email", value: "")
+        Property(name: "name", value: ""),
+        Property(name: "email", value: "")
     ]), addPropertiesLabel: "Add more properties?")
 }
