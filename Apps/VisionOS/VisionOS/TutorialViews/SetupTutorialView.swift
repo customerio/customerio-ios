@@ -4,7 +4,7 @@ import SwiftUI
 
 struct SetupTutorialView: View {
     static let title = ScreenTitleConfig("Initialize CustomerIO")
-    @ObservedObject var state = AppState.shared
+    @EnvironmentObject var viewModel: ViewModel
 
     let onSuccess: (_ workspaceSettings: WorkspaceSettings) -> Void
 
@@ -17,7 +17,7 @@ struct SetupTutorialView: View {
             }
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
         }
     }
 }
@@ -61,22 +61,26 @@ struct GetSiteIdAndAPIKeyTutorialView: View {
 struct InitilizeTheSDKTutorialView: View {
     @State private var workspaceSettings = AppState.shared.workspaceSettings
 
-    @ObservedObject var state = AppState.shared
+    @EnvironmentObject var viewModel: ViewModel
 
     let onSuccess: (_ workspaceSettings: WorkspaceSettings) -> Void
 
     var body: some View {
         Markdown {
-            """
-            ### Call CustomerIO.initialize
-            To initialize the SDK, you need to call `CustomerIO.initialize` in the `AppDelegate.application(_ ,didFinishLaunchingWithOptions:)` method
+"""
+### Call CustomerIO.initialize
+To initialize the SDK, you need to call `CustomerIO.initialize` in the `AppDelegate.application(_ ,didFinishLaunchingWithOptions:)` method
 
-            Although this example, we will call it when you hit the **Initialize** button. A call like whet you see in the code snippet.
+Although this example, we will call it when you hit the **Initialize** button. A call like whet you see in the code snippet.
 
-            ```swift
-            \(initializeCodeSnippet(withWorkspaceSettings: workspaceSettings))
-            ```
-            """
+```swift
+CustomerIO.initialize(
+                siteId: "\(workspaceSettings.siteId)",
+                apiKey: "\(workspaceSettings.apiKey)",
+                region: .\(workspaceSettings.region),
+                configure: nil)
+```
+"""
         }
         HStack(alignment: .top) {
             FloatingTitleTextField(title: "Site ID", text: $workspaceSettings.siteId)
@@ -99,7 +103,7 @@ struct InitilizeTheSDKTutorialView: View {
 
             Button("Initialize") {
                 if !workspaceSettings.isSet() {
-                    state.errorMessage = "Please make sure to set the site id and API key values"
+                    viewModel.errorMessage = "Please make sure to set the site id and API key values"
                     return
                 }
                 AppState.shared.workspaceSettings = workspaceSettings
