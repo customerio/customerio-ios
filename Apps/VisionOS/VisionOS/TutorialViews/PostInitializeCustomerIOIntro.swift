@@ -2,7 +2,8 @@ import MarkdownUI
 import SwiftUI
 
 struct PostInitializeCustomerIOIntro: View {
-    @ObservedObject var state = AppState.shared
+    @ObservedObject private var state = AppState.shared
+    @EnvironmentObject private var viewModel: ViewModel
 
     static let title = ScreenTitleConfig("Customer.io In a Nutshell")
     var body: some View {
@@ -69,7 +70,7 @@ struct PostInitializeCustomerIOIntro: View {
             }
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
         }
     }
 }

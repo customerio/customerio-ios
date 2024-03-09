@@ -4,7 +4,7 @@ import SwiftUI
 struct SDKInstallationTutorialView: View {
     static let title = ScreenTitleConfig("SDK Installation")
     @ObservedObject var state = AppState.shared
-
+    @EnvironmentObject private var viewModel: ViewModel
     var body: some View {
         Markdown {
             """
@@ -30,7 +30,7 @@ struct SDKInstallationTutorialView: View {
             """
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
         }
     }
 }

@@ -8,6 +8,7 @@ struct SampleAppIntro: View {
         showVisionProLogo: true
     )
 
+    @EnvironmentObject var viewModel: ViewModel
     @ObservedObject var state = AppState.shared
 
     var body: some View {
@@ -28,7 +29,7 @@ struct SampleAppIntro: View {
             """
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
             state.visitedLinks.insert(.sampleAppIntro)
         }
     }

@@ -4,7 +4,7 @@ import SwiftUI
 
 struct SetupTutorialView: View {
     static let title = ScreenTitleConfig("Initialize CustomerIO")
-    @ObservedObject var state = AppState.shared
+    @EnvironmentObject var viewModel: ViewModel
 
     let onSuccess: (_ workspaceSettings: WorkspaceSettings) -> Void
 
@@ -17,7 +17,7 @@ struct SetupTutorialView: View {
             }
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
         }
     }
 }
@@ -61,7 +61,7 @@ struct GetSiteIdAndAPIKeyTutorialView: View {
 struct InitilizeTheSDKTutorialView: View {
     @State private var workspaceSettings = AppState.shared.workspaceSettings
 
-    @ObservedObject var state = AppState.shared
+    @EnvironmentObject var viewModel: ViewModel
 
     let onSuccess: (_ workspaceSettings: WorkspaceSettings) -> Void
 
@@ -74,7 +74,11 @@ struct InitilizeTheSDKTutorialView: View {
             Although this example, we will call it when you hit the **Initialize** button. A call like whet you see in the code snippet.
 
             ```swift
-            \(initializeCodeSnippet(withWorkspaceSettings: workspaceSettings))
+            CustomerIO.initialize(
+                            siteId: "\(workspaceSettings.siteId)",
+                            apiKey: "\(workspaceSettings.apiKey)",
+                            region: .\(workspaceSettings.region),
+                            configure: nil)
             ```
             """
         }
@@ -99,7 +103,7 @@ struct InitilizeTheSDKTutorialView: View {
 
             Button("Initialize") {
                 if !workspaceSettings.isSet() {
-                    state.errorMessage = "Please make sure to set the site id and API key values"
+                    viewModel.errorMessage = "Please make sure to set the site id and API key values"
                     return
                 }
                 AppState.shared.workspaceSettings = workspaceSettings
