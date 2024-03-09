@@ -67,20 +67,20 @@ struct InitilizeTheSDKTutorialView: View {
 
     var body: some View {
         Markdown {
-"""
-### Call CustomerIO.initialize
-To initialize the SDK, you need to call `CustomerIO.initialize` in the `AppDelegate.application(_ ,didFinishLaunchingWithOptions:)` method
+            """
+            ### Call CustomerIO.initialize
+            To initialize the SDK, you need to call `CustomerIO.initialize` in the `AppDelegate.application(_ ,didFinishLaunchingWithOptions:)` method
 
-Although this example, we will call it when you hit the **Initialize** button. A call like whet you see in the code snippet.
+            Although this example, we will call it when you hit the **Initialize** button. A call like whet you see in the code snippet.
 
-```swift
-CustomerIO.initialize(
-                siteId: "\(workspaceSettings.siteId)",
-                apiKey: "\(workspaceSettings.apiKey)",
-                region: .\(workspaceSettings.region),
-                configure: nil)
-```
-"""
+            ```swift
+            CustomerIO.initialize(
+                            siteId: "\(workspaceSettings.siteId)",
+                            apiKey: "\(workspaceSettings.apiKey)",
+                            region: .\(workspaceSettings.region),
+                            configure: nil)
+            ```
+            """
         }
         HStack(alignment: .top) {
             FloatingTitleTextField(title: "Site ID", text: $workspaceSettings.siteId)
