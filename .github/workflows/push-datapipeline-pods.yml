@@ -22,8 +22,16 @@ jobs:
       - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
         run: echo ''
         
-      - name: Push CustomerIOCommon
-        run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
+      - name: Push CustomerIODataPipelines
+        run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
+      - name: Push CustomerIOMessagingPush
+        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
+      - name: Push CustomerIOMessagingPushAPN
+        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
+      - name: Push CustomerIOMessagingPushFCM
+        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
+      - name: Push CustomerIOMessagingInApp
+        run: ./scripts/push-cocoapod.sh CustomerIOMessagingInApp.podspec
+      - name: Push CustomerIO
+        run: ./scripts/push-cocoapod.sh CustomerIO.podspec
 
-      - name: Push CustomerIOTrackingMigration
-        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
