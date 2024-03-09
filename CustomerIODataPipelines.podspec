@@ -20,9 +20,9 @@ Pod::Spec.new do |spec|
   spec.source_files  = "Sources/DataPipeline/**/*"
   spec.module_name = "CioDataPipelines" # the `import X` name when using SDK in Swift files
   
-  # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-
   spec.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
+
+  # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
   spec.dependency 'AnalyticsSwiftCIO', '~> 1.5.5'
 end
