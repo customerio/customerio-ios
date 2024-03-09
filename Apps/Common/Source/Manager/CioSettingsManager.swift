@@ -1,4 +1,3 @@
-import CioTracking
 import Foundation
 
 // Stores the settings that override behavior of the Customer.io SDK in the app.

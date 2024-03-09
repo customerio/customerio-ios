@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioInternalCommon
 import Foundation
 
 // Stores all of the SDK settings that can be changed by the mobile app.
@@ -14,7 +15,7 @@ public struct CioSettings: Codable {
     public var debugSdkMode: Bool
     public var trackDeviceAttributes: Bool
 
-    public func configureCioSdk(config: inout CioSdkConfig) {
+    public func configureCioSdk(config: inout DataPipelineConfigOptions) {
 //        config.trackingApiUrl = trackUrl
 //        config.backgroundQueueSecondsDelay = bqSecondsDelay
 //        config.backgroundQueueMinNumberOfTasks = bqMinNumberTasks
@@ -27,18 +28,18 @@ public struct CioSettings: Codable {
     }
 
     public static func getFromCioSdk() -> CioSettings {
-        guard let sdkConfig = DataPipeline.moduleConfig else { return nil }
-
+        let sdkConfig = DataPipeline.moduleConfig
+        let logLevel = DIGraphShared.shared.logger.logLevel
         return CioSettings(
-            siteId: sdkConfig.siteId ?? "",
-            cdpApiKey: sdkConfig.cdpApiKey,
-            apiHost: sdkConfig.apiHost,
-            cdnHost: sdkConfig.cdnHost,
-            flushInterval: sdkConfig.flushInterval,
-            flushAt: sdkConfig.flushAt,
+            siteId: sdkConfig?.siteId ?? "",
+            cdpApiKey: sdkConfig?.cdpApiKey ?? "",
+            apiHost: sdkConfig?.apiHost ?? "",
+            cdnHost: sdkConfig?.cdnHost ?? "",
+            flushInterval: sdkConfig?.flushInterval ?? 30,
+            flushAt: sdkConfig?.flushAt ?? 10,
             trackScreens: Bool("REMOVE ME LATER") ?? false,
-            debugSdkMode: true,
-            trackDeviceAttributes: sdkConfig.autoTrackDeviceAttributes
+            debugSdkMode: logLevel == .debug,
+            trackDeviceAttributes: sdkConfig?.autoTrackDeviceAttributes ?? true
         )
     }
 }
