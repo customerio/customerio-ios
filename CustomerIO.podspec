@@ -36,7 +36,7 @@ Pod::Spec.new do |spec|
   end
   
   spec.subspec "Migration" do |ss|
-    ss.dependency "CustomerIOMigrationTracking", "= #{spec.version.to_s}"
+    ss.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingPushAPN" do |ss|
