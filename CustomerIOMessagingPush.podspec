@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPush"
-  spec.version      = "2.12.3" # Don't modify this line - it's automatically updated
+  spec.version      = "3.0.0-rc" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'

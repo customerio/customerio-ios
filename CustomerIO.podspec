@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIO"
-  spec.version      = "2.12.3" # Don't modify this line - it's automatically updated
+  spec.version      = "3.0.0-rc" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."  
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -34,8 +34,9 @@ Pod::Spec.new do |spec|
   spec.subspec "DataPipelines" do |ss|
     ss.dependency "CustomerIODataPipelines", "= #{spec.version.to_s}"
   end
-      spec.subspec "Migration" do |ss|
-    ss.dependency "CustomerIOMigrationTracking", "= #{spec.version.to_s}"
+  
+  spec.subspec "Migration" do |ss|
+    ss.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
   end
 
   spec.subspec "MessagingPushAPN" do |ss|
