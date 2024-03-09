@@ -1,13 +1,13 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOCommon"
-  spec.version      = "2.12.3" # Don't modify this line - it's automatically updated
+  spec.version      = "3.0.0-rc" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
   spec.changelog    = "https://github.com/customerio/customerio-ios/blob/#{spec.version.to_s}/CHANGELOG.md"
   spec.license      = { :type => "MIT", :file => "LICENSE" }
   spec.author       = { "CustomerIO Team" => "win@customer.io" }
-  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :tag => spec.version.to_s }
+  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :branch => 'aman/migration-cocoapods' }
 
   spec.swift_version = '5.3'
   spec.cocoapods_version = '>= 1.11.0'
