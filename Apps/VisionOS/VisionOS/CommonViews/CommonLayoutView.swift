@@ -2,7 +2,7 @@ import MarkdownUI
 import SwiftUI
 
 struct CommonLayoutView<ContentView: View>: View {
-    @ObservedObject var state = AppState.shared
+    @EnvironmentObject var viewModel: ViewModel
 
     @ViewBuilder var contentView: ContentView
 
@@ -13,9 +13,9 @@ struct CommonLayoutView<ContentView: View>: View {
                     TutorialsMenuView()
 
                     Markdown {
-                        "## \(state.titleConfig.screenTitle)"
+                        "## \(viewModel.titleConfig.screenTitle)"
                     }
-                    if state.titleConfig.showVisionProLogo {
+                    if viewModel.titleConfig.showVisionProLogo {
                         Image(systemName: "visionpro.fill")
                             .font(.extraLargeTitle)
                     }
@@ -37,8 +37,8 @@ struct CommonLayoutView<ContentView: View>: View {
 
             VStack {
                 Spacer()
-                ErrorToastView(error: $state.errorMessage)
-                SuccessToastView(message: $state.successMessage)
+                ErrorToastView(error: $viewModel.errorMessage)
+                SuccessToastView(message: $viewModel.successMessage)
             }
         }
         .buttonStyle(CustomButtonStyle())
