@@ -32,7 +32,7 @@
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
 		60F967382B9125D100A4E95E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		60F9673D2B9125D100A4E95E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		60F9674B2B91267200A4E95E /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
+		60F9674B2B91267200A4E95E /* cio-ios-spl */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
 		60F967502B91288400A4E95E /* AppState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		60F967512B91288400A4E95E /* Payloads.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Payloads.swift; sourceTree = "<group>"; };
 		60F967522B91288400A4E95E /* UserDefaultsCodable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserDefaultsCodable.swift; sourceTree = "<group>"; };
@@ -116,10 +116,9 @@
 		60F967562B912C1000A4E95E /* ViewUtils */ = {
 			isa = PBXGroup;
 			children = (
-				6023AD342B913708001540EF /* CodeSnippets.swift */,
 				60F9675E2B912E2E00A4E95E /* InlineNavigationLink.swift */,
-				60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */,
 				60F967572B912C1000A4E95E /* SyntaxHighlighting */,
+				60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */,
 			);
 			path = ViewUtils;
 			sourceTree = "<group>";
@@ -216,7 +215,6 @@
 				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
-				6023AD352B913708001540EF /* CodeSnippets.swift in Sources */,
 				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
 				60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */,
 				60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */,
