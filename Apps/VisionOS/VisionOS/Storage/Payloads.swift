@@ -37,12 +37,7 @@ struct Profile: UserDefaultsCodable {
     }
 }
 
-struct Event {
-    var name: String = ""
-    var properties: [Property]
-}
-
-struct Property: Codable, Identifiable, Comparable {
+struct Property: Codable, Identifiable, Comparable, Equatable {
     static func < (lhs: Property, rhs: Property) -> Bool {
         lhs.name == rhs.name
     }
