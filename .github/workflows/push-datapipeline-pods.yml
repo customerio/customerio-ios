@@ -1,0 +1,23 @@
+name: PushDP
+
+on: 
+  push:
+    branches: [aman/migration-cocoapods]
+
+jobs:
+    name: Deploy-DP-to-Cocoapods
+    env:
+      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+    runs-on: macos-13
+    steps:
+      - uses: ./.github/actions/setup-ios
+
+      - name: Install cocoapods
+        run: gem install cocoapods
+      - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
+        run: echo ''
+      - name: Push CustomerIODataPipelines
+        run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
+      - name: Push CustomerIOTrackingMigration
+        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
+
