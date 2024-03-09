@@ -7,7 +7,7 @@ Pod::Spec.new do |spec|
   spec.changelog    = "https://github.com/customerio/customerio-ios/blob/#{spec.version.to_s}/CHANGELOG.md"
   spec.license      = { :type => "MIT", :file => "LICENSE" }
   spec.author       = { "CustomerIO Team" => "win@customer.io" }
-  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :branch => 'aman/migration-cocoapods' }
+  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :branch => 'main-replica-for-cdp' }
 
   spec.swift_version = '5.3'
   spec.cocoapods_version = '>= 1.11.0'
