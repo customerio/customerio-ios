@@ -2,7 +2,7 @@ import MarkdownUI
 import SwiftUI
 
 struct CommonLayoutView<ContentView: View>: View {
-    @EnvironmentObject var viewModel: ViewModel
+    @EnvironmentObject private var viewModel: ViewModel
 
     @ViewBuilder var contentView: ContentView
 
