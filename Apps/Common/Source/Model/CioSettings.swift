@@ -15,18 +15,6 @@ public struct CioSettings: Codable {
     public var debugSdkMode: Bool
     public var trackDeviceAttributes: Bool
 
-    public func configureCioSdk(config: inout DataPipelineConfigOptions) {
-//        config.trackingApiUrl = trackUrl
-//        config.backgroundQueueSecondsDelay = bqSecondsDelay
-//        config.backgroundQueueMinNumberOfTasks = bqMinNumberTasks
-//        config.autoTrackScreenViews = trackScreens
-//        config.autoTrackDeviceAttributes = trackDeviceAttributes
-//
-//        if debugSdkMode {
-//            config.logLevel = .debug
-//        }
-    }
-
     public static func getFromCioSdk() -> CioSettings {
         let sdkConfig = DataPipeline.moduleConfig
         let logLevel = DIGraphShared.shared.logger.logLevel
@@ -37,7 +25,7 @@ public struct CioSettings: Codable {
             cdnHost: sdkConfig?.cdnHost ?? "",
             flushInterval: sdkConfig?.flushInterval ?? 30,
             flushAt: sdkConfig?.flushAt ?? 10,
-            trackScreens: Bool("REMOVE ME LATER") ?? false,
+            trackScreens: false, // Track screen is no longer SDK configurable property. If you want to enable/disable autoScreenTrack then refer AppDelegate for use case. Setting default value as false for sample app
             debugSdkMode: logLevel == .debug,
             trackDeviceAttributes: sdkConfig?.autoTrackDeviceAttributes ?? true
         )

@@ -8,12 +8,13 @@ struct SettingsView: View {
     var cdpApiKey: String?
 
     var done: () -> Void
-
+    private let timer = SwiftUITimer()
     @StateObject private var viewModel = ViewModel()
 
     @State private var alertMessage: String?
 
     @EnvironmentObject var userManager: UserManager
+    @State private var nonBlockingMessage: String?
 
     @State private var siteIdBeforeEditingSettings: String = ""
 
@@ -35,13 +36,12 @@ struct SettingsView: View {
                 }
 
                 Group {
-                    // TODO: Throws error
-//                    LabeledStringTextField(title: "CDN Host:", appiumId: "CDN Host Input", value: $viewModel.settings.cdnHost)
-//                        .autocapitalization(.none)
-//                    LabeledStringTextField(title: "API Host:", appiumId: "API Host Input", value: $viewModel.settings.apiHost)
-//                        .autocapitalization(.none)
-//                    LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
-//                    LabeledStringTextField(title: "CDP API key:", appiumId: "CDP API Key Input", value: $viewModel.settings.cdpApiKey)
+                    LabeledStringTextField(title: "CDN Host:", appiumId: "CDN Host Input", value: $viewModel.settings.cdnHost)
+                        .autocapitalization(.none)
+                    LabeledStringTextField(title: "API Host:", appiumId: "API Host Input", value: $viewModel.settings.apiHost)
+                        .autocapitalization(.none)
+                    LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
+                    LabeledStringTextField(title: "CDP API key:", appiumId: "CDP API Key Input", value: $viewModel.settings.cdpApiKey)
                     LabeledTimeIntervalTextField(title: "BQ seconds delay:", appiumId: nil, value: $viewModel.settings.flushInterval)
                     LabeledIntTextField(title: "BQ min number tasks:", appiumId: nil, value: $viewModel.settings.flushAt)
                     SettingsToggle(title: "Track screens", appiumId: "Track Screens Toggle", isOn: $viewModel.settings.trackScreens)
@@ -66,27 +66,23 @@ struct SettingsView: View {
                         return
                     }
 
+                    nonBlockingMessage = "Settings saved. This will require an app restart to bring the changes in effect."
                     viewModel.saveSettings()
-
-                    // TODO: Make initialising consistent with other sample apps
-
-                    // Re-initialize the SDK to make the config changes go into place immediately
-//                    CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
-//                        viewModel.settings.configureCioSdk(config: &config)
-//                    }
 
                     let didChangeSiteId = siteIdBeforeEditingSettings != viewModel.settings.siteId
                     if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
                         userManager.logout()
                     }
-
-                    done()
+                    timer.start(interval: TimeInterval(3)) {
+                        done()
+                    }
                 }.setAppiumId("Save Settings Button")
 
                 Button("Restore default settings") {
                     viewModel.restoreDefaultSettings()
                 }.setAppiumId("Restore Default Settings Button")
             }
+
             .padding([.leading, .trailing], 10)
             .onAppear {
                 siteIdBeforeEditingSettings = BuildEnvironment.CustomerIO.siteId
@@ -113,6 +109,9 @@ struct SettingsView: View {
                 )
             }
         }
+        .overlay(
+            ToastView(message: $nonBlockingMessage)
+        )
     }
 
     private func verifyHost(isCDN: Bool = true) -> Bool {
@@ -128,14 +127,8 @@ struct SettingsView: View {
             return false
         }
 
-        guard let url = URL(string: enteredUrl) else {
+        guard let _ = URL(string: enteredUrl) else {
             alertMessage = "\(hostType), \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
-            return false
-        }
-
-        // TODO: Verify if this is required
-        guard url.host != nil, !url.host!.isEmpty else {
-            alertMessage = "\(hostType), \(enteredUrl), does not contain a domain name. Therefore, I cannot save the settings."
             return false
         }
 
@@ -162,11 +155,6 @@ struct SettingsView: View {
 
         func restoreDefaultSettings() {
             settingsManager.appSetSettings = nil // remove app overriden settings from device memory
-
-            // TODO: Make initialising consistent with other sample apps
-            // restore the siteid and apikey used at compile-time as defaults.
-            // Do this before reading the app settings from the SDK so that the correct siteid and apikey are read.
-//            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }
 
             settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
