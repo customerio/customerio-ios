@@ -34,7 +34,8 @@ public class MessagingPushConfigBuilder {
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
 
-    @available(iOSApplicationExtension, unavailable)
+    // Need to be available for NotificationServiceExtension and AppDelegate
+    // otherwise, it will throw an error when we add this module in the NotificationServiceExtension target in podfile
     public init() {
         self.cdpApiKey = ""
     }

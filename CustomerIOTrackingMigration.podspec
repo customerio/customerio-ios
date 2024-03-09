@@ -1,5 +1,5 @@
 Pod::Spec.new do |spec|
-  spec.name         = "CustomerIOMessagingInApp"
+  spec.name         = "CustomerIOTrackingMigration"
   spec.version      = "3.0.0-rc" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
@@ -17,8 +17,8 @@ Pod::Spec.new do |spec|
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.source_files  = "Sources/MessagingInApp/**/*"
-  spec.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files
-  
+  spec.source_files  = "Sources/Migration/**/*"
+  spec.module_name = "CioTrackingMigration" # the `import X` name when using SDK in Swift files
+
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
- end
+end
