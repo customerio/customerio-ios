@@ -4,33 +4,33 @@ import SwiftUI
 struct SDKInstallationTutorialView: View {
     static let title = ScreenTitleConfig("SDK Installation")
     @ObservedObject var state = AppState.shared
-
+    @EnvironmentObject private var viewModel: ViewModel
     var body: some View {
         Markdown {
-            """
-            You can install CustomerIO Swift SDKs
-            using either Swift Package Manager (SPM) or Cocoapods.
+"""
+You can install CustomerIO Swift SDKs
+using either Swift Package Manager (SPM) or Cocoapods.
 
-            There are few packages for Swift, but for now you only need the `Tracking` package.
-            We will get to the other packages later.
+There are few packages for Swift, but for now you only need the `Tracking` package.
+We will get to the other packages later.
 
-            **SPM:**
-            Add the dependencies from the repo:
-            `https://github.com/customerio/customerio-ios.git` and add only the tracking
-            package
+**SPM:**
+Add the dependencies from the repo:
+`https://github.com/customerio/customerio-ios.git` and add only the tracking
+package
 
-            **Cocoapods:** Add the following pod to your Podfile
+**Cocoapods:** Add the following pod to your Podfile
 
-            ```bash
-            CustomerIO/Tracking
-            ```
+```bash
+CustomerIO/Tracking
+```
 
-            Once done, make sure your app builds and runs as expected.
-            [Let's setup the sdk](\(InlineNavigationLink.setup))
-            """
+Once done, make sure your app builds and runs as expected.
+[Let's setup the sdk](\(InlineNavigationLink.setup))
+"""
         }
         .onAppear {
-            state.titleConfig = Self.title
+            viewModel.titleConfig = Self.title
         }
     }
 }
