@@ -34,7 +34,6 @@ public class MessagingPushConfigBuilder {
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
 
-    @available(iOSApplicationExtension, unavailable)
     public init() {
         self.cdpApiKey = ""
     }

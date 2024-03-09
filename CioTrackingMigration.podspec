@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
-  spec.name         = "CustomerIODataPipelines"
-  spec.version      = "2.12.3" # Don't modify this line - it's automatically updated
+  spec.name         = "CioTrackingMigration"
+  spec.version      = "2.12.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -12,17 +12,11 @@ Pod::Spec.new do |spec|
   spec.swift_version = '5.3'
   spec.cocoapods_version = '>= 1.11.0'
 
-  spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms.
+  spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms. 
   spec.ios.deployment_target = "13.0"
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.source_files  = "Sources/DataPipeline/**/*"
-  spec.module_name = "CioDataPipelines" # the `import X` name when using SDK in Swift files
-  
-  spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  spec.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
-
-  # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
-  spec.dependency 'AnalyticsSwiftCIO', '~> 1.5.5'
+  spec.source_files  = "Sources/Migration/**/*"
+  spec.module_name = "CioTrackingMigration" # the `import X` name when using SDK in Swift files
 end
