@@ -28,7 +28,7 @@ jobs:
         bundler-cache: true # install dependencies in Gemfile, including Fastlane. 
 
     - name: Run tests 
-      uses: maierj/fastlane-action@v3.0.0
+      uses: maierj/fastlane-action@v3.1.0
       with:
         lane: 'scan'
 
