@@ -33,6 +33,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 config.logLevel = .debug
             }
         }
+        
+        // If user already logged in, let's
+        // call identify
+        let profile = AppState.shared.profile
+        if profile.loggedIn {
+            CustomerIO.shared.identify(
+                identifier: profile.id,
+                body: profile.properties.toDictionary())
+        }
 
         return true
     }
