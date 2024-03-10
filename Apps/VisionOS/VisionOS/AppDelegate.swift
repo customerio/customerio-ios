@@ -10,12 +10,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         /*
 
          How do I get the values for the siteId and apiKy?
-         1- Login or Signup in CustomerIO platform: https://fly.customer.io/
-         2- On the top right section click the
-         Settings Icon >> Workspace Settings >> API and webhook credentials
-         You will see list of one or more workspaces and each has
-         its own pair of siteId and apiKey, these are the ones
-         to use here.
+         You can find/create them here: https://fly.customer.io/settings/api_credentials
+         For more information about workspaces checkout these
+         docs: https://customer.io/docs/accounts-and-workspaces/workspaces/
          */
 
         let workspaceSettings = AppState.shared.workspaceSettings
