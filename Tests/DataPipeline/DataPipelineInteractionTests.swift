@@ -23,7 +23,7 @@ open class DataPipelineInteractionTests: IntegrationTest {
     }
 }
 
-class DataPipelineInteractionDefaultConfigTests: DataPipelineInteractionTests {
+class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
     override open func setUp() {
         super.setUp()
 
@@ -566,7 +566,7 @@ class DataPipelineInteractionDefaultConfigTests: DataPipelineInteractionTests {
     }
 }
 
-class DataPipelineInteractionCustomConfigTest: DataPipelineInteractionTests {
+class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
     override func setUp() {
         // keep setUp empty to prevent default setUp so we can test with custom configurations for each test.
     }
