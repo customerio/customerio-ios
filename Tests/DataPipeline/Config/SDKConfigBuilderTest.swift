@@ -20,7 +20,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.operatingMode, OperatingMode.asynchronous)
         XCTAssertTrue(dataPipelineConfig.trackApplicationLifecycleEvents)
         XCTAssertTrue(dataPipelineConfig.autoTrackDeviceAttributes)
-        XCTAssertNil(dataPipelineConfig.siteId)
+        XCTAssertNil(dataPipelineConfig.migrationSiteId)
     }
 
     func test_initializeAndModify_expectCustomValues() {
@@ -55,7 +55,7 @@ class SDKConfigBuilderTest: UnitTest {
             .operatingMode(givenOperatingMode)
             .trackApplicationLifecycleEvents(givenTrackApplicationLifecycleEvents)
             .autoTrackDeviceAttributes(givenAutoTrackDeviceAttributes)
-            .siteId(givenSiteId)
+            .migrationSiteId(givenSiteId)
             .build()
 
         XCTAssertEqual(sdkConfig.logLevel, givenLogLevel)
@@ -72,7 +72,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.operatingMode, givenOperatingMode)
         XCTAssertEqual(dataPipelineConfig.trackApplicationLifecycleEvents, givenTrackApplicationLifecycleEvents)
         XCTAssertEqual(dataPipelineConfig.autoTrackDeviceAttributes, givenAutoTrackDeviceAttributes)
-        XCTAssertEqual(dataPipelineConfig.siteId, givenSiteId)
+        XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
     }
 
     func test_givenDefaults_expectMatchAnalyticsDefaults() {
