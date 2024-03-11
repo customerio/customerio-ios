@@ -16,6 +16,9 @@
 		60F967532B91288400A4E95E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967502B91288400A4E95E /* AppState.swift */; };
 		60F967542B91288400A4E95E /* Payloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967512B91288400A4E95E /* Payloads.swift */; };
 		60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967522B91288400A4E95E /* UserDefaultsCodable.swift */; };
+		60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967582B912C1000A4E95E /* TextOutputFormat.swift */; };
+		60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967592B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift */; };
+		60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +31,9 @@
 		60F967502B91288400A4E95E /* AppState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		60F967512B91288400A4E95E /* Payloads.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Payloads.swift; sourceTree = "<group>"; };
 		60F967522B91288400A4E95E /* UserDefaultsCodable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserDefaultsCodable.swift; sourceTree = "<group>"; };
+		60F967582B912C1000A4E95E /* TextOutputFormat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextOutputFormat.swift; sourceTree = "<group>"; };
+		60F967592B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
+		60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MarkdownTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +71,7 @@
 		60F9672F2B9125D000A4E95E /* VisionOS */ = {
 			isa = PBXGroup;
 			children = (
+				60F967562B912C1000A4E95E /* ViewUtils */,
 				60F9674F2B91288400A4E95E /* Storage */,
 				60F967342B9125D000A4E95E /* VisionOSApp.swift */,
 				60F967362B9125D000A4E95E /* MainScreen.swift */,
@@ -97,6 +104,24 @@
 				60F967522B91288400A4E95E /* UserDefaultsCodable.swift */,
 			);
 			path = Storage;
+			sourceTree = "<group>";
+		};
+		60F967562B912C1000A4E95E /* ViewUtils */ = {
+			isa = PBXGroup;
+			children = (
+				60F967572B912C1000A4E95E /* SyntaxHighlighting */,
+				60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */,
+			);
+			path = ViewUtils;
+			sourceTree = "<group>";
+		};
+		60F967572B912C1000A4E95E /* SyntaxHighlighting */ = {
+			isa = PBXGroup;
+			children = (
+				60F967582B912C1000A4E95E /* TextOutputFormat.swift */,
+				60F967592B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift */,
+			);
+			path = SyntaxHighlighting;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -177,8 +202,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
+				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
+				60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */,
 				60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */,
 				60F967532B91288400A4E95E /* AppState.swift in Sources */,
 				60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */,
