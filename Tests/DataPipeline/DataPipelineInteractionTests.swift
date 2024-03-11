@@ -5,30 +5,28 @@ import Foundation
 @testable import SharedTests
 import XCTest
 
-class DataPipelineInteractionTests: IntegrationTest {
-    private var outputReader: OutputReaderPlugin!
+// Base class for testing interactions with the data pipeline.
+// The class is meant to be subclassed to run DataPipeline tests with both default and custom configurations.
+open class DataPipelineInteractionTests: IntegrationTest {
+    fileprivate var outputReader: OutputReaderPlugin!
 
-    private let deviceAttributesMock = DeviceAttributesProviderMock()
-    private let eventBusHandlerMock = EventBusHandlerMock()
-    private let globalDataStoreMock = GlobalDataStoreMock()
+    fileprivate let deviceAttributesMock = DeviceAttributesProviderMock()
+    fileprivate let eventBusHandlerMock = EventBusHandlerMock()
+    fileprivate let globalDataStoreMock = GlobalDataStoreMock()
 
-    override func setUpDependencies() {
+    override open func setUpDependencies() {
         super.setUpDependencies()
 
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
     }
+}
 
-    override func setUp() {
+class DataPipelineInteractionDefaultConfigTests: DataPipelineInteractionTests {
+    override open func setUp() {
         super.setUp()
 
-        // OutputReaderPlugin helps validating interactions with analytics
-        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
-    }
-
-    override func setUp(enableLogs: Bool = false, cdpApiKey: String? = nil, modifySdkConfig: ((SDKConfigBuilder) -> Void)?) {
-        super.setUp(enableLogs: enableLogs, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
@@ -317,32 +315,6 @@ class DataPipelineInteractionTests: IntegrationTest {
         XCTAssertNotNil(eventDeviceAttributes?["type"])
     }
 
-    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
-        setUp(modifySdkConfig: { config in
-            config.autoTrackDeviceAttributes(false)
-        })
-
-        customerIO.track(name: String.random)
-
-        XCTAssertEqual(outputReader.events.count, 1)
-        XCTAssertEqual(outputReader.trackEvents.count, 1)
-
-        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
-            XCTFail("recorded event is not an instance of TrackEvent")
-            return
-        }
-
-        let eventDeviceAttributes = trackEvent.deviceAttributes
-        // cio default attributes
-        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
-        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
-        // segment events
-        XCTAssertNil(eventDeviceAttributes?["id"])
-        XCTAssertNil(eventDeviceAttributes?["model"])
-        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
-        XCTAssertNil(eventDeviceAttributes?["type"])
-    }
-
     func test_track_expectCorrectEventDispatched_expectAssociateEventWithCurrentlyIdentifiedProfile() {
         let givenIdentifier = String.random
         let givenData: [String: Any] = ["first_name": "Dana", "age": 30]
@@ -591,6 +563,44 @@ class DataPipelineInteractionTests: IntegrationTest {
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("deliveryId")), givenDeliveryId)
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("metric")), givenEvent.rawValue)
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("recipient")), givenDeviceToken)
+    }
+}
+
+class DataPipelineInteractionCustomConfigTest: DataPipelineInteractionTests {
+    override func setUp() {
+        // keep setUp empty to prevent default setUp so we can test with custom configurations for each test.
+    }
+
+    override func setUp(enableLogs: Bool = false, cdpApiKey: String? = nil, modifySdkConfig: ((SDKConfigBuilder) -> Void)?) {
+        super.setUp(enableLogs: enableLogs, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig)
+        // OutputReaderPlugin helps validating interactions with analytics
+        outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
+    }
+
+    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
+        setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(false)
+        })
+
+        customerIO.track(name: String.random)
+
+        XCTAssertEqual(outputReader.events.count, 1)
+        XCTAssertEqual(outputReader.trackEvents.count, 1)
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        let eventDeviceAttributes = trackEvent.deviceAttributes
+        // cio default attributes
+        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
+        // segment events
+        XCTAssertNil(eventDeviceAttributes?["id"])
+        XCTAssertNil(eventDeviceAttributes?["model"])
+        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
+        XCTAssertNil(eventDeviceAttributes?["type"])
     }
 }
 
