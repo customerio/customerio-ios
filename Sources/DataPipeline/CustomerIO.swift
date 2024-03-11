@@ -12,9 +12,10 @@ public extension CustomerIO {
         // can introduce an option to store and retrieve it.
         let (sdkConfig, cdpConfig) = config
 
-        let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
-        // set the logLevel for ConsoleLogger
+        // set the logLevel for ConsoleLogger before initializing any module
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
+        // initialize DataPipeline module with the provided configuration
+        let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
         // enable Analytics logs accordingly to logLevel
         CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == CioLogLevel.debug)
         initialize(implementation: implementation)
