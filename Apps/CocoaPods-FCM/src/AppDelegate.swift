@@ -37,12 +37,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
         CustomerIO.initialize(withConfig: config.build())
 
-        // Set auto tracking of screen views
-        let autoScreenTrack = appSetSettings?.trackScreens ?? true
-        if autoScreenTrack {
-            CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))
-        }
-
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
