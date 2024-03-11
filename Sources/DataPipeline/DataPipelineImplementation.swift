@@ -51,7 +51,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func postProfileAlreadyIdentified() {
-        if let siteId = moduleConfig.siteId, let identifier = profileStore.getProfileId(siteId: siteId) {
+        if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))

@@ -138,7 +138,7 @@ class DataPipelineAPITest: UnitTest {
             .operatingMode(OperatingMode.asynchronous)
             .trackApplicationLifecycleEvents(true)
             .autoTrackDeviceAttributes(true)
-            .siteId("")
+            .migrationSiteId("")
             .build()
     }
 

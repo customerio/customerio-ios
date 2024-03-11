@@ -29,5 +29,5 @@ public struct DataPipelineConfigOptions {
     public let autoTrackDeviceAttributes: Bool
 
     /// Configuration options required for migration from earlier versions
-    public let siteId: String?
+    public let migrationSiteId: String?
 }
