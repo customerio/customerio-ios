@@ -1,3 +1,5 @@
+import CioDataPipelines
+import MarkdownUI
 import SwiftUI
 
 /**
@@ -13,10 +15,17 @@ struct MainScreen: View {
     @ObservedObject var state: AppState = .shared
     @State var selectedExample = CIOExample.initialize
     var body: some View {
-        CommonLayoutView(selectedExample: $selectedExample) {
+        MainLayoutView(selectedExample: $selectedExample) {
             switch selectedExample {
             case .initialize:
-                Text("SDK Initialization")
+                SDKInitializationView { workspaceSettings in
+                    CustomerIO.initialize(
+                        withConfig:
+                        SDKConfigBuilder(cdpApiKey: workspaceSettings.cdpApiKy)
+                            .region(workspaceSettings.region)
+                            .logLevel(.debug)
+                            .build())
+                }
             case .identify:
                 Text("Identify")
             case .track:
