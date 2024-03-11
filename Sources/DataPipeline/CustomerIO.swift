@@ -22,7 +22,7 @@ public extension CustomerIO {
 
         // Handle logged-in user from Journeys to CDP and check
         // if any unprocessed tasks are pending in the background queue.
-        if let siteId = cdpConfig.siteId {
+        if let siteId = cdpConfig.migrationSiteId {
             let migrationAssistant = DataPipelineMigrationAssistant(handler: implementation)
             migrationAssistant.performMigration(siteId: siteId)
         }

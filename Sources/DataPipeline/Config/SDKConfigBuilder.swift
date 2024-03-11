@@ -37,7 +37,7 @@ public class SDKConfigBuilder {
     private var operatingMode: OperatingMode = .asynchronous
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
-    private var siteId: String?
+    private var migrationSiteId: String?
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -132,8 +132,8 @@ public class SDKConfigBuilder {
     }
 
     @discardableResult
-    public func siteId(_ siteId: String) -> SDKConfigBuilder {
-        self.siteId = siteId
+    public func migrationSiteId(_ siteId: String) -> SDKConfigBuilder {
+        migrationSiteId = siteId
         return self
     }
 
@@ -157,7 +157,7 @@ public class SDKConfigBuilder {
             operatingMode: operatingMode,
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
             autoTrackDeviceAttributes: autoTrackDeviceAttributes,
-            siteId: siteId
+            migrationSiteId: migrationSiteId
         )
 
         return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)

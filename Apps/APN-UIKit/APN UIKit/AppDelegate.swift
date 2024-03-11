@@ -49,7 +49,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
             .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
             .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
-            .siteId(siteId)
+            .migrationSiteId(siteId)
 
         if let apiHost = storage.apiHost, !apiHost.isEmpty {
             config.apiHost(apiHost)

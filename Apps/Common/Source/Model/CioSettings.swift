@@ -19,7 +19,7 @@ public struct CioSettings: Codable {
         let sdkConfig = DataPipeline.moduleConfig
         let logLevel = DIGraphShared.shared.logger.logLevel
         return CioSettings(
-            siteId: sdkConfig?.siteId ?? "",
+            siteId: sdkConfig?.migrationSiteId ?? "",
             cdpApiKey: sdkConfig?.cdpApiKey ?? "",
             apiHost: sdkConfig?.apiHost ?? "",
             cdnHost: sdkConfig?.cdnHost ?? "",

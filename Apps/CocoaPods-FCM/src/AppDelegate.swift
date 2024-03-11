@@ -22,7 +22,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Configure and initialize the Customer.io SDK
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
-            .siteId(siteId)
+            .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
