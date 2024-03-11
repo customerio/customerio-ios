@@ -27,7 +27,7 @@ enum InlineNavigationLink: String, Codable, CaseIterable {
         // TODO: menu title for each screen
         switch self {
         case .sampleAppIntro:
-            ""
+            SampleAppIntro.title.menuTitle
         case .install:
             ""
         case .setup:
