@@ -18,6 +18,7 @@
 		60C32BFB2BABAFBE006F5DC3 /* MainLayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3B2B913954001540EF /* MainLayoutView.swift */; };
 		60C32BFD2BABAFFB006F5DC3 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFC2BABAFFB006F5DC3 /* MarkdownUI */; };
 		60C32BFF2BABB02E006F5DC3 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFE2BABB02E006F5DC3 /* Splash */; };
+		60E792522BACDE72003736F4 /* SDKInitializationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E792512BACDE72003736F4 /* SDKInitializationView.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
@@ -38,6 +39,7 @@
 		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
 		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
 		60C32BEB2BABAD4D006F5DC3 /* ViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		60E792512BACDE72003736F4 /* SDKInitializationView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SDKInitializationView.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
@@ -79,6 +81,14 @@
 			path = CommonViews;
 			sourceTree = "<group>";
 		};
+		60E792502BACDE36003736F4 /* APIViews */ = {
+			isa = PBXGroup;
+			children = (
+				60E792512BACDE72003736F4 /* SDKInitializationView.swift */,
+			);
+			path = APIViews;
+			sourceTree = "<group>";
+		};
 		60F967242B9125D000A4E95E = {
 			isa = PBXGroup;
 			children = (
@@ -103,6 +113,7 @@
 				60F9674F2B91288400A4E95E /* Storage */,
 				60F967562B912C1000A4E95E /* ViewUtils */,
 				6023AD382B913954001540EF /* CommonViews */,
+				60E792502BACDE36003736F4 /* APIViews */,
 				60F967342B9125D000A4E95E /* VisionOSApp.swift */,
 				6023AD362B9137F0001540EF /* AppDelegate.swift */,
 				60F967362B9125D000A4E95E /* MainScreen.swift */,
@@ -249,6 +260,7 @@
 				60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */,
 				60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */,
 				60F967532B91288400A4E95E /* AppState.swift in Sources */,
+				60E792522BACDE72003736F4 /* SDKInitializationView.swift in Sources */,
 				60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

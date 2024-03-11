@@ -1,3 +1,5 @@
+import CioDataPipelines
+import MarkdownUI
 import SwiftUI
 
 /**
@@ -21,12 +23,23 @@ private func getFirstScreen() -> CIOExample {
 
 struct MainScreen: View {
     @ObservedObject var state: AppState = .shared
+    @EnvironmentObject private var viewModel: ViewModel
+
     @State var selectedExample = getFirstScreen()
     var body: some View {
         MainLayoutView(selectedExample: $selectedExample) {
             switch selectedExample {
             case .initialize:
-                Text("SDK Initialization")
+                SDKInitializationView { workspaceSettings in
+                    CustomerIO.initialize(
+                        withConfig:
+                        SDKConfigBuilder(cdpApiKey: workspaceSettings.cdpApiKy)
+                            .logLevel(.debug)
+                            .build())
+
+                    viewModel.successMessage = "SDK Initialized. You can now identify the user"
+                    selectedExample = .identify
+                }
             case .identify:
                 Text("Identify")
             case .track:
