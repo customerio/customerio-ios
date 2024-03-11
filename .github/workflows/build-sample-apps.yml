@@ -91,7 +91,7 @@ jobs:
       run: |
         make setup_sample_app app=${{ matrix.sample-app }}
         sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_API_KEY ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
+        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
 
     - name: Does ${{ matrix.sample-app }} use CocoaPods? 
       id: check_podfile_exists
