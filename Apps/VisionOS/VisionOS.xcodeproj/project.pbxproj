@@ -13,6 +13,7 @@
 		6023AD3F2B913954001540EF /* CommonLayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3B2B913954001540EF /* CommonLayoutView.swift */; };
 		6023AD402B913954001540EF /* TutorialsMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3C2B913954001540EF /* TutorialsMenuView.swift */; };
 		6023AD422B914F4D001540EF /* AppIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD412B914F4D001540EF /* AppIntroView.swift */; };
+		6023AD482B915391001540EF /* SetupTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD462B915391001540EF /* SetupTutorialView.swift */; };
 		6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */; };
 		6023AD4D2B9153EB001540EF /* LineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4B2B9153EB001540EF /* LineView.swift */; };
 		606F2C212B9B79F3004E7318 /* PropertiesInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */; };
@@ -40,6 +41,7 @@
 		6023AD3B2B913954001540EF /* CommonLayoutView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommonLayoutView.swift; sourceTree = "<group>"; };
 		6023AD3C2B913954001540EF /* TutorialsMenuView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TutorialsMenuView.swift; sourceTree = "<group>"; };
 		6023AD412B914F4D001540EF /* AppIntroView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppIntroView.swift; sourceTree = "<group>"; };
+		6023AD462B915391001540EF /* SetupTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SetupTutorialView.swift; sourceTree = "<group>"; };
 		6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FloatingTitleTextField.swift; sourceTree = "<group>"; };
 		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
 		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */,
+				6023AD462B915391001540EF /* SetupTutorialView.swift */,
 			);
 			path = TutorialViews;
 			sourceTree = "<group>";
@@ -254,6 +257,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6023AD482B915391001540EF /* SetupTutorialView.swift in Sources */,
 				6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */,
 				60A077722B9CE8C1000600CF /* SDKInstallationTutorialView.swift in Sources */,
 				60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */,
