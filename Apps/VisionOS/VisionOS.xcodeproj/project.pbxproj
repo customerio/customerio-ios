@@ -19,6 +19,10 @@
 		606F2C212B9B79F3004E7318 /* PropertiesInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */; };
 		60A077662B9C8E1D000600CF /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A077652B9C8E1D000600CF /* ViewModel.swift */; };
 		60A077722B9CE8C1000600CF /* SDKInstallationTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */; };
+		6023AD482B915391001540EF /* SetupTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD462B915391001540EF /* SetupTutorialView.swift */; };
+		6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */; };
+		6023AD4D2B9153EB001540EF /* LineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4B2B9153EB001540EF /* LineView.swift */; };
+		60F485152B9157340091A34A /* PostInitializeCustomerIOIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
@@ -47,6 +51,10 @@
 		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
 		60A077652B9C8E1D000600CF /* ViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
 		60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SDKInstallationTutorialView.swift; sourceTree = "<group>"; };
+		6023AD462B915391001540EF /* SetupTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SetupTutorialView.swift; sourceTree = "<group>"; };
+		6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FloatingTitleTextField.swift; sourceTree = "<group>"; };
+		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
+		60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PostInitializeCustomerIOIntro.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
@@ -95,6 +103,7 @@
 			children = (
 				60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */,
 				6023AD462B915391001540EF /* SetupTutorialView.swift */,
+				60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */,
 			);
 			path = TutorialViews;
 			sourceTree = "<group>";
@@ -269,6 +278,8 @@
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
 				6023AD4C2B9153EB001540EF /* FloatingTitleTextField.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
+				6023AD352B913708001540EF /* CodeSnippets.swift in Sources */,
+				60F485152B9157340091A34A /* PostInitializeCustomerIOIntro.swift in Sources */,
 				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
 				60A077662B9C8E1D000600CF /* ViewModel.swift in Sources */,
 				6023AD3E2B913954001540EF /* ToastView.swift in Sources */,
