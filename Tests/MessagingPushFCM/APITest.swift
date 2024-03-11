@@ -31,8 +31,8 @@ class MessagingPushFCMAPITest: UnitTest {
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
-        // MessagingPush.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: "").build())
-        // MessagingPushFCM.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: "").build())
+        // MessagingPush.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: .random).build())
+        // MessagingPushFCM.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: .random).build())
 
         // `moduleConfig` is not really meant to be accessed by customers, so it is okay to not have it in the mock.
         // However, it is public so we should make sure it does not change.
@@ -73,7 +73,7 @@ class MessagingPushFCMAPITest: UnitTest {
         // to other targets (such as iOS).
         // You should be able to uncomment the initialize() function below and should get compile errors saying that the
         // function is not available to iOS.
-        // _ = MessagingPushConfigBuilder(cdpApiKey: "").build()
+        // _ = MessagingPushConfigBuilder(cdpApiKey: .random).build()
 
         let configOptions: [String: Any] = [:]
         _ = MessagingPushConfigBuilder.build(from: configOptions)
