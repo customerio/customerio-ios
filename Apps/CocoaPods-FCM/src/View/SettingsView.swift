@@ -5,16 +5,16 @@ import UIKit
 
 struct SettingsView: View {
     var siteId: String?
-    var apiKey: String?
-    var trackingUrl: String?
+    var cdpApiKey: String?
 
     var done: () -> Void
-
+    private let timer = SwiftUITimer()
     @StateObject private var viewModel = ViewModel()
 
     @State private var alertMessage: String?
 
     @EnvironmentObject var userManager: UserManager
+    @State private var nonBlockingMessage: String?
 
     @State private var siteIdBeforeEditingSettings: String = ""
 
@@ -36,12 +36,14 @@ struct SettingsView: View {
                 }
 
                 Group {
-                    LabeledStringTextField(title: "Tracking URL:", appiumId: "Track URL Input", value: $viewModel.settings.trackUrl)
+                    LabeledStringTextField(title: "CDN Host:", appiumId: "CDN Host Input", value: $viewModel.settings.cdnHost)
+                        .autocapitalization(.none)
+                    LabeledStringTextField(title: "API Host:", appiumId: "API Host Input", value: $viewModel.settings.apiHost)
                         .autocapitalization(.none)
                     LabeledStringTextField(title: "Site id:", appiumId: "Site ID Input", value: $viewModel.settings.siteId)
-                    LabeledStringTextField(title: "API key:", appiumId: "API Key Input", value: $viewModel.settings.apiKey)
-                    LabeledTimeIntervalTextField(title: "BQ seconds delay:", appiumId: nil, value: $viewModel.settings.bqSecondsDelay)
-                    LabeledIntTextField(title: "BQ min number tasks:", appiumId: nil, value: $viewModel.settings.bqMinNumberTasks)
+                    LabeledStringTextField(title: "CDP API key:", appiumId: "CDP API Key Input", value: $viewModel.settings.cdpApiKey)
+                    LabeledTimeIntervalTextField(title: "BQ seconds delay:", appiumId: nil, value: $viewModel.settings.flushInterval)
+                    LabeledIntTextField(title: "BQ min number tasks:", appiumId: nil, value: $viewModel.settings.flushAt)
                     SettingsToggle(title: "Track screens", appiumId: "Track Screens Toggle", isOn: $viewModel.settings.trackScreens)
                     SettingsToggle(title: "Track device attributes", appiumId: "Track Device Attributes Toggle", isOn: $viewModel.settings.trackDeviceAttributes)
                     SettingsToggle(title: "Debug mode", appiumId: "Debug Mode Toggle", isOn: $viewModel.settings.debugSdkMode)
@@ -50,57 +52,52 @@ struct SettingsView: View {
                 ColorButton("Save") {
                     hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
 
-                    guard viewModel.settings.bqSecondsDelay > 0 else {
+                    guard viewModel.settings.flushInterval > 0 else {
                         alertMessage = "BQ seconds delay must be > 0"
                         return
                     }
 
-                    guard viewModel.settings.bqMinNumberTasks > 0 else {
+                    guard viewModel.settings.flushAt > 0 else {
                         alertMessage = "BQ min number tasks must be > 0"
                         return
                     }
 
-                    guard verifyTrackUrl() else {
+                    guard verifyHost(isCDN: true) else {
                         return
                     }
 
+                    nonBlockingMessage = "Settings saved. This will require an app restart to bring the changes in effect."
                     viewModel.saveSettings()
-
-                    // Re-initialize the SDK to make the config changes go into place immediately
-                    CustomerIO.initialize(siteId: viewModel.settings.siteId, apiKey: viewModel.settings.apiKey, region: .US) { config in
-                        viewModel.settings.configureCioSdk(config: &config)
-                    }
 
                     let didChangeSiteId = siteIdBeforeEditingSettings != viewModel.settings.siteId
                     if didChangeSiteId { // if siteid changed, we need to re-identify for the Customer.io SDK to get into a working state.
                         userManager.logout()
                     }
-
-                    done()
+                    timer.start(interval: TimeInterval(3)) {
+                        done()
+                    }
                 }.setAppiumId("Save Settings Button")
 
                 Button("Restore default settings") {
                     viewModel.restoreDefaultSettings()
                 }.setAppiumId("Restore Default Settings Button")
             }
+
             .padding([.leading, .trailing], 10)
             .onAppear {
-                siteIdBeforeEditingSettings = CustomerIO.shared.siteId!
+                siteIdBeforeEditingSettings = BuildEnvironment.CustomerIO.siteId
 
                 // If parameters were passed into this View's constructor, updating the VM now will update the UI.
                 if let siteId = siteId {
                     viewModel.settings.siteId = siteId
                 }
-                if let apiKey = apiKey {
-                    viewModel.settings.apiKey = apiKey
-                }
-                if let trackingUrl = trackingUrl {
-                    viewModel.settings.trackUrl = trackingUrl
+                if let cdpApiKey = cdpApiKey {
+                    viewModel.settings.cdpApiKey = cdpApiKey
                 }
 
                 // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
                 // Therefore, this is how we can perform manual screen view tracking.
-                CustomerIO.shared.screen(name: "Settings")
+                CustomerIO.shared.screen(title: "Settings")
             }
             .alert(isPresented: .notNil(alertMessage)) {
                 Alert(
@@ -112,35 +109,27 @@ struct SettingsView: View {
                 )
             }
         }
+        .overlay(
+            ToastView(message: $nonBlockingMessage)
+        )
     }
 
-    private func verifyTrackUrl() -> Bool {
-        let enteredUrl = viewModel.settings.trackUrl
+    private func verifyHost(isCDN: Bool = true) -> Bool {
+        var enteredUrl = viewModel.settings.cdnHost
+        var hostType = "CDN Host"
+        if !isCDN {
+            enteredUrl = viewModel.settings.apiHost
+            hostType = "API Host"
+        }
 
-        guard !enteredUrl.isEmpty else {
-            alertMessage = "Tracking URL is empty. Therefore, I cannot save the settings."
+        if enteredUrl.isEmpty {
+            alertMessage = "\(hostType) is empty. Therefore, I cannot save the settings."
             return false
         }
 
-        guard let url = URL(string: enteredUrl) else {
-            alertMessage = "Tracking URL, \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
+        guard let _ = URL(string: enteredUrl) else {
+            alertMessage = "\(hostType), \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
             return false
-        }
-
-        guard url.scheme != nil, url.scheme == "https" || url.scheme == "http" else {
-            alertMessage = "Tracking URL, \(enteredUrl), does not start with https or http. Therefore, I cannot save the settings."
-            return false
-        }
-
-        guard url.host != nil, !url.host!.isEmpty else {
-            alertMessage = "Tracking URL, \(enteredUrl), does not contain a domain name. Therefore, I cannot save the settings."
-            return false
-        }
-
-        // Auto-fix this instead of making the user fix it.
-        let urlEndsWithTrailingSlash = url.absoluteString.hasSuffix("/")
-        if !urlEndsWithTrailingSlash {
-            viewModel.settings.trackUrl += "/"
         }
 
         return true
@@ -166,10 +155,6 @@ struct SettingsView: View {
 
         func restoreDefaultSettings() {
             settingsManager.appSetSettings = nil // remove app overriden settings from device memory
-
-            // restore the siteid and apikey used at compile-time as defaults.
-            // Do this before reading the app settings from the SDK so that the correct siteid and apikey are read.
-            CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: .US) { _ in }
 
             settings = CioSettings.getFromCioSdk() // Now that the SDK has default configuration back, refresh UI
         }
