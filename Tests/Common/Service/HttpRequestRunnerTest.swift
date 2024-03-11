@@ -39,4 +39,44 @@ class HttpRequestRunnerTest: HttpTest {
 
         waitForExpectations()
     }
+
+    func testParallelDownloadFileCreatesUniquePaths() {
+        let expectation1 = expectation(description: "Parallel download file 1")
+        let expectation2 = expectation(description: "Parallel download file 2")
+
+        // Got URL from: https://picsum.photos/
+        // Try to find file with a small file size and from a CDN that the CI can download from.
+        let url = URL(string: "https://picsum.photos/200/300.jpg")!
+        var path1: URL?
+        var path2: URL?
+
+        // Initiate the first download
+        runner?.downloadFile(
+            url: url,
+            fileType: .richPushImage,
+            session: publicSession,
+            onComplete: { path in
+                path1 = path
+                expectation1.fulfill()
+            }
+        )
+
+        // Initiate the second download in parallel
+        runner?.downloadFile(
+            url: url,
+            fileType: .richPushImage,
+            session: publicSession,
+            onComplete: { path in
+                path2 = path
+                expectation2.fulfill()
+            }
+        )
+
+        waitForExpectations()
+
+        XCTAssertNotNil(path1)
+        XCTAssertNotNil(path2)
+
+        XCTAssertNotEqual(path1, path2, "Expected unique path for each parallel download")
+    }
 }
