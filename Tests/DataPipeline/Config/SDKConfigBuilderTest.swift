@@ -5,7 +5,7 @@ import XCTest
 
 class SDKConfigBuilderTest: UnitTest {
     func test_initializeAndDoNotModify_expectDefaultValues() {
-        let (sdkConfig, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: "").build()
+        let (sdkConfig, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random).build()
 
         XCTAssertEqual(sdkConfig.logLevel, .error)
 
@@ -86,7 +86,7 @@ class SDKConfigBuilderTest: UnitTest {
             XCTFail("Failed to setup test integrations with error: \(error)")
         }
 
-        let (_, actual) = SDKConfigBuilder(cdpApiKey: "").build()
+        let (_, actual) = SDKConfigBuilder(cdpApiKey: .random).build()
 
         // API host and CDN host should match Customer.io's CDP settings.
         XCTAssertEqual(actual.apiHost, "cdp.customer.io/v1")

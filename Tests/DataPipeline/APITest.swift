@@ -30,7 +30,7 @@ class DataPipelineAPITest: UnitTest {
         try skipRunningTest()
 
         // Initialize
-        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: "").build())
+        CustomerIO.initialize(withConfig: SDKConfigBuilder(cdpApiKey: .random).build())
 
         // Identify
         CustomerIO.shared.identify(userId: "")
@@ -125,7 +125,7 @@ class DataPipelineAPITest: UnitTest {
     func test_allPublicModuleConfigOptions() throws {
         try skipRunningTest()
 
-        _ = SDKConfigBuilder(cdpApiKey: "")
+        _ = SDKConfigBuilder(cdpApiKey: .random)
             .logLevel(.info)
             .apiHost("")
             .cdnHost("")

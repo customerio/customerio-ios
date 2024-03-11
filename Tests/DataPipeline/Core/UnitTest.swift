@@ -75,6 +75,7 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
 
     override open func cleanupTestEnvironment() {
         super.cleanupTestEnvironment()
+        Analytics.removeActiveWriteKey(dataPipelineConfigOptions.cdpApiKey)
         CustomerIO.resetTestEnvironment()
     }
 }
