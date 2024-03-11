@@ -18,30 +18,32 @@ class PushClickHandlerTest: IntegrationTest {
         pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
     }
 
-    // MARK: pushClicked
+    // MARK: handleDeepLink
 
-    func test_pushClicked_givenNoDeepLinkAttached_expectDoNotHandleDeepLink() {
+    func test_handleDeepLink_givenNoDeepLinkAttached_expectDoNotHandleDeepLink() {
         let givenPush = PushNotificationStub.getPushSentFromCIO(imageUrl: "https://example.com/image.png")
 
-        pushClickHandler.pushClicked(givenPush)
+        pushClickHandler.handleDeepLink(for: givenPush)
 
         XCTAssertFalse(deepLinkUtilMock.mockCalled)
     }
 
-    func test_pushClicked_givenDeepLinkAttached_expectHandleDeepLink() {
+    func test_handleDeepLink_givenDeepLinkAttached_expectHandleDeepLink() {
         let givenDeepLink = "https://example.com/\(String.random)"
         let givenPush = PushNotificationStub.getPushSentFromCIO(deepLink: givenDeepLink, imageUrl: "https://example.com/image.png")
 
-        pushClickHandler.pushClicked(givenPush)
+        pushClickHandler.handleDeepLink(for: givenPush)
 
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkCallsCount, 1)
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkReceivedArguments, URL(string: givenDeepLink))
     }
 
-    func test_pushClicked_expectTrackOpenedEvent() {
+    // MARK: trackPushMetrics
+
+    func test_trackPushMetrics_expectTrackOpenedEvent() {
         let givenPush = PushNotificationStub.getPushSentFromCIO(imageUrl: "https://example.com/image.png")
 
-        pushClickHandler.pushClicked(givenPush)
+        pushClickHandler.trackPushMetrics(for: givenPush)
 
         XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
     }
