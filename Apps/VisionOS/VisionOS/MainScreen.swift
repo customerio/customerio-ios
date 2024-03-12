@@ -41,7 +41,21 @@ struct MainScreen: View {
                     selectedExample = .identify
                 }
             case .identify:
-                Text("Identify")
+                IdentifyView { profile in
+                    if !profile.userId.isEmpty, !profile.traits.isEmpty {
+                        CustomerIO.shared.identify(userId: profile.userId, traits: profile.traits.toDictionary())
+                    }
+                    if !profile.userId.isEmpty {
+                        CustomerIO.shared.identify(userId: profile.userId)
+                    } else {
+                        CustomerIO.shared.identify(traits: profile.traits.toDictionary())
+                    }
+
+                    viewModel.successMessage = "Now you can use other features such as event tracking"
+
+                    // For debug purpose only
+                    CustomerIO.shared.flush()
+                }
             case .track:
                 Text("Track")
             case .profileAttributes:
