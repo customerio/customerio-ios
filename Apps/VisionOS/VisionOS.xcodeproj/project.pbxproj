@@ -18,6 +18,8 @@
 		60C32BFB2BABAFBE006F5DC3 /* MainLayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3B2B913954001540EF /* MainLayoutView.swift */; };
 		60C32BFD2BABAFFB006F5DC3 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFC2BABAFFB006F5DC3 /* MarkdownUI */; };
 		60C32BFF2BABB02E006F5DC3 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFE2BABB02E006F5DC3 /* Splash */; };
+		60DE3F7B2BAD38C600C6816C /* IdentifyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60DE3F7A2BAD38C600C6816C /* IdentifyView.swift */; };
+		60DE3F7D2BAD392000C6816C /* CodeSnippetHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60DE3F7C2BAD392000C6816C /* CodeSnippetHelper.swift */; };
 		60E792522BACDE72003736F4 /* SDKInitializationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E792512BACDE72003736F4 /* SDKInitializationView.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
@@ -39,6 +41,8 @@
 		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
 		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
 		60C32BEB2BABAD4D006F5DC3 /* ViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
+		60DE3F7A2BAD38C600C6816C /* IdentifyView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IdentifyView.swift; sourceTree = "<group>"; };
+		60DE3F7C2BAD392000C6816C /* CodeSnippetHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CodeSnippetHelper.swift; sourceTree = "<group>"; };
 		60E792512BACDE72003736F4 /* SDKInitializationView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SDKInitializationView.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
@@ -84,6 +88,7 @@
 		60E792502BACDE36003736F4 /* APIViews */ = {
 			isa = PBXGroup;
 			children = (
+				60DE3F7A2BAD38C600C6816C /* IdentifyView.swift */,
 				60E792512BACDE72003736F4 /* SDKInitializationView.swift */,
 			);
 			path = APIViews;
@@ -152,6 +157,7 @@
 		60F967562B912C1000A4E95E /* ViewUtils */ = {
 			isa = PBXGroup;
 			children = (
+				60DE3F7C2BAD392000C6816C /* CodeSnippetHelper.swift */,
 				60F967572B912C1000A4E95E /* SyntaxHighlighting */,
 				60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */,
 			);
@@ -251,10 +257,12 @@
 				60C32BF62BABAFBE006F5DC3 /* LineView.swift in Sources */,
 				60C32BF72BABAFBE006F5DC3 /* FloatingTitleTextField.swift in Sources */,
 				60C32BF82BABAFBE006F5DC3 /* ToastView.swift in Sources */,
+				60DE3F7B2BAD38C600C6816C /* IdentifyView.swift in Sources */,
 				60C32BF92BABAFBE006F5DC3 /* Logo.swift in Sources */,
 				60C32BFA2BABAFBE006F5DC3 /* PropertiesInputView.swift in Sources */,
 				60C32BFB2BABAFBE006F5DC3 /* MainLayoutView.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
+				60DE3F7D2BAD392000C6816C /* CodeSnippetHelper.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
 				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
 				60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */,
