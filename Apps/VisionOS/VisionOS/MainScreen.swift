@@ -45,6 +45,8 @@ import SwiftUI
             )
             state.navigationPath = [.howToTestIdentify]
         }
+    case .howToTestIdentify:
+        HowToTestIdentifyTutorialView()
     default:
         Text("Not implemented")
     }

@@ -37,7 +37,7 @@ enum InlineNavigationLink: String, Codable, CaseIterable {
         case .identify:
             IdentifyTutorialView.title.menuTitle
         case .howToTestIdentify:
-            ""
+            HowToTestIdentifyTutorialView.title.menuTitle
         case .profileAttributes:
             ""
         case .howToTestProfileAttributes:

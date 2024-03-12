@@ -20,6 +20,7 @@
 		60A077662B9C8E1D000600CF /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A077652B9C8E1D000600CF /* ViewModel.swift */; };
 		60A077722B9CE8C1000600CF /* SDKInstallationTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */; };
 		60A077762B9D040F000600CF /* CodeSnippetHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A077752B9D040F000600CF /* CodeSnippetHelper.swift */; };
+		60B151F92BA005A9003C4726 /* HowToTestIdentifyTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B151F82BA005A9003C4726 /* HowToTestIdentifyTutorialView.swift */; };
 		60F485152B9157340091A34A /* PostInitializeCustomerIOIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */; };
 		60F485172B9158CF0091A34A /* IdentifyTutorialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F485162B9158CF0091A34A /* IdentifyTutorialView.swift */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
@@ -51,6 +52,7 @@
 		60A077652B9C8E1D000600CF /* ViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
 		60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SDKInstallationTutorialView.swift; sourceTree = "<group>"; };
 		60A077752B9D040F000600CF /* CodeSnippetHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeSnippetHelper.swift; sourceTree = "<group>"; };
+		60B151F82BA005A9003C4726 /* HowToTestIdentifyTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HowToTestIdentifyTutorialView.swift; sourceTree = "<group>"; };
 		60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PostInitializeCustomerIOIntro.swift; sourceTree = "<group>"; };
 		60F485162B9158CF0091A34A /* IdentifyTutorialView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IdentifyTutorialView.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -99,6 +101,7 @@
 		60A0776C2B9CC98B000600CF /* TutorialViews */ = {
 			isa = PBXGroup;
 			children = (
+				60B151F82BA005A9003C4726 /* HowToTestIdentifyTutorialView.swift */,
 				60A077712B9CE8C1000600CF /* SDKInstallationTutorialView.swift */,
 				6023AD462B915391001540EF /* SetupTutorialView.swift */,
 				60F485142B9157340091A34A /* PostInitializeCustomerIOIntro.swift */,
@@ -266,6 +269,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				60B151F92BA005A9003C4726 /* HowToTestIdentifyTutorialView.swift in Sources */,
 				60F485172B9158CF0091A34A /* IdentifyTutorialView.swift in Sources */,
 				6023AD482B915391001540EF /* SetupTutorialView.swift in Sources */,
 				6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */,
