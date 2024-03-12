@@ -27,7 +27,16 @@ struct MainScreen: View {
                             .build())
                 }
             case .identify:
-                Text("Identify")
+                IdentifyView { profile in
+                    if !profile.userId.isEmpty, !profile.traits.isEmpty {
+                        CustomerIO.shared.identify(userId: profile.userId, traits: profile.traits)
+                    }
+                    if !profile.userId.isEmpty {
+                        CustomerIO.shared.identify(userId: profile.userId)
+                    } else {
+                        CustomerIO.shared.identify(traits: profile.traits)
+                    }
+                }
             case .track:
                 Text("Track")
             case .profileAttributes:
