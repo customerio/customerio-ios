@@ -11,7 +11,7 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   automated-tests:
-    runs-on: macos-13
+    runs-on: macos-14
     permissions:
       checks: write # Need write permission to add test result check.
     steps:
