@@ -35,7 +35,7 @@ enum InlineNavigationLink: String, Codable, CaseIterable {
         case .customerIOIntro:
             PostInitializeCustomerIOIntro.title.menuTitle
         case .identify:
-            ""
+            IdentifyTutorialView.title.menuTitle
         case .howToTestIdentify:
             ""
         case .profileAttributes:

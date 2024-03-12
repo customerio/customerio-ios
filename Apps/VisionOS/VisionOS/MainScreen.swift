@@ -37,6 +37,14 @@ import SwiftUI
     case .customerIOIntro:
         PostInitializeCustomerIOIntro()
 
+    case .identify:
+        IdentifyTutorialView { _ in
+            CustomerIO.shared.identify(
+                identifier: state.profile.id,
+                body: state.profile.properties.toDictionary()
+            )
+            state.navigationPath = [.howToTestIdentify]
+        }
     default:
         Text("Not implemented")
     }
