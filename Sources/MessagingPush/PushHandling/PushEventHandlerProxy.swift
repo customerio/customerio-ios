@@ -49,7 +49,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             return
         }
 
-        Task {
+        // UserNotification runs this event on the main thread.
+        // Run this async task on the main thread to match that behavior. Otherwise, we run the risk of warnings or crashes by trying to call UIKit
+        // functions from a background thread.
+        Task { @MainActor in
             // Wait for all other push event handlers to finish before calling the completion handler.
             // Each iteration of the loop waits for the push event to be processed by the delegate.
             for delegate in nestedDelegates.values {
@@ -81,7 +84,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             return
         }
 
-        Task {
+        // UserNotification runs this event on the main thread.
+        // Run this async task on the main thread to match that behavior. Otherwise, we run the risk of warnings or crashes by trying to call UIKit
+        // functions from a background thread.
+        Task { @MainActor in
             // 2+ other push event handlers may exist in app. We need to decide if a push should be displayed or not, by combining all the results from all other push handlers.
             // To do that, we start with Apple's default value of: do not display.
             // If any of the handlers return result indicating push should be displayed, we return true.
