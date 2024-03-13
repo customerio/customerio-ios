@@ -154,14 +154,6 @@ open class UnitTestBase<Component>: XCTestCase {
         await fulfillment(of: expectations, timeout: 0.5)
     }
 
-    public func runTest(numberOfTimes: Int, test: () -> Void) {
-        for _ in 0 ..< numberOfTimes {
-            setUp()
-            test()
-            tearDown()
-        }
-    }
-
     public func runOnBackground(_ block: @escaping () -> Void) {
         CioThreadUtil().runBackground {
             block()

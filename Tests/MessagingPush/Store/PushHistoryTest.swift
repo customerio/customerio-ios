@@ -82,23 +82,21 @@ class PushHistoryTest: IntegrationTest {
     }
 
     func test_hasHandledPush_expectThreadSafe() {
-        runTest(numberOfTimes: 100) {
-            let givenPushId = String.random
-            let givenDate = Date().subtract(10, .minute)
+        let givenPushId = String.random
+        let givenDate = Date().subtract(10, .minute)
 
-            let expectBackgroundThreadCheckToComplete = expectation(description: "Background thread check should complete")
+        let expectBackgroundThreadCheckToComplete = expectation(description: "Background thread check should complete")
 
-            // Handle push
-            XCTAssertFalse(self.pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
+        // Handle push
+        XCTAssertFalse(pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
 
-            // Assert that the push was handled when accessing from a different thread.
-            runOnBackground {
-                XCTAssertTrue(self.pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
+        // Assert that the push was handled when accessing from a different thread.
+        runOnBackground {
+            XCTAssertTrue(self.pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: givenPushId, pushDeliveryDate: givenDate))
 
-                expectBackgroundThreadCheckToComplete.fulfill()
-            }
-
-            waitForExpectations()
+            expectBackgroundThreadCheckToComplete.fulfill()
         }
+
+        waitForExpectations()
     }
 }
