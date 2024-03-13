@@ -160,7 +160,7 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     private func _get_pushEventHandlerProxy() -> PushEventHandlerProxy {
-        PushEventHandlerProxyImpl()
+        PushEventHandlerProxyImpl(logger: logger)
     }
 
     // PushHistory (singleton)

@@ -10,7 +10,9 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     private var pushEventHandler: PushEventHandler!
 
     private let pushClickHandler = PushClickHandlerMock()
-    private let pushEventHandlerProxy = PushEventHandlerProxyImpl()
+    private var pushEventHandlerProxy: PushEventHandlerProxy {
+        DIGraphShared.shared.pushEventHandlerProxy
+    }
 
     override func setUp() {
         super.setUp()
@@ -25,6 +27,29 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
         )
     }
 
+    // MARK: push clicked
+
+    func test_pushClicked_expectHandlePushClick() {
+        let givenPush = PushNotificationStub.getPushSentFromCIO()
+
+        // The order matters of push click handling
+        pushClickHandler.assertWillHandleDeepLinkLast(for: givenPush)
+
+        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
+
+        pushClickHandler.assertHandledPushClick(for: givenPush)
+    }
+
+    // MARK: push swiped away
+
+    func test_pushSwipedAway_expectDoNotRunCodeWhenPushIsClicked() {
+        let givenPush = PushNotificationStub.getPushSentFromCIO()
+
+        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: false))
+
+        pushClickHandler.assertDidNotHandlePushClick()
+    }
+
     // MARK: When the CIO SDK is the only click handler in the app.
 
     func test_givenCioSdkOnlyPushHandler_givenClickedOnCioPush_expectEventHandled() {
@@ -32,7 +57,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
 
-        assertHandledClick(for: givenPush)
+        pushClickHandler.assertHandledPushClick(for: givenPush)
     }
 
     func test_givenCioSdkOnlyPushHandler_givenClickedOnPushNotSentFromCio_expectEventHandled() {
@@ -40,23 +65,18 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
 
-        assertNoPushHanding()
-    }
-
-    func test_givenCioSdkOnlyPushHandler_givenSwipedAwayPushPushSentFromCio_expectEventHandled() {
-        let givenPush = PushNotificationStub.getPushSentFromCIO()
-
-        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: false))
-
-        assertHandledNoClick()
+        pushClickHandler.assertDidNotHandlePushClick()
     }
 
     // MARK: When CIO SDK not only click handler in app.
 
-    func test_givenMultiplePushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
+    func test_givenOtherPushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
+        let expectOtherClickHandlerToGetCallback = expectation(description: "Receive a callback")
+
         let givenOtherPushHandler = PushEventHandlerMock()
-        givenOtherPushHandler.onPushActionClosure = { _, _ in
-            XCTFail("Should not have called other push handler.")
+        givenOtherPushHandler.onPushActionClosure = { _, onComplete in
+            expectOtherClickHandlerToGetCallback.fulfill()
+            onComplete()
         }
         addOtherPushEventHandler(givenOtherPushHandler)
 
@@ -64,10 +84,11 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
 
-        assertHandledClick(for: givenPush)
+        waitForExpectations()
+        pushClickHandler.assertHandledPushClick(for: givenPush)
     }
 
-    func test_givenMultiplePushHandlers_givenClickedOnPushNotSentFromCio_expectPushClickHandledByOtherHandler() {
+    func test_givenOtherPushHandlers_givenClickedOnPushNotSentFromCio_expectPushClickHandledByOtherHandler() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
         let givenOtherPushHandler = PushEventHandlerMock()
 
@@ -82,7 +103,76 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         waitForExpectations()
 
-        assertNoPushHanding() // CIO SDK should not handle push.
+        pushClickHandler.assertDidNotHandlePushClick() // CIO SDK should not handle push.
+    }
+
+    // Important to test that 2+ 3rd party push handlers for some use cases.
+    func test_givenMultiplePushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
+        let expectOtherPushHandlersCalled = expectation(description: "Receive a callback")
+        expectOtherPushHandlersCalled.expectedFulfillmentCount = 2
+
+        // In order to add 2+ push handlers to SDK, each class needs to have a unique name.
+        // The SDK only accepts unique push event handlers. Creating this class makes each push handler unique.
+        class PushEventHandlerMock2: PushEventHandlerMock {}
+
+        let givenOtherPushHandler1 = PushEventHandlerMock()
+        let givenOtherPushHandler2 = PushEventHandlerMock2()
+        givenOtherPushHandler1.onPushActionClosure = { _, onComplete in
+            expectOtherPushHandlersCalled.fulfill()
+            onComplete()
+        }
+        givenOtherPushHandler2.onPushActionClosure = { _, onComplete in
+            expectOtherPushHandlersCalled.fulfill()
+            onComplete()
+        }
+        addOtherPushEventHandler(givenOtherPushHandler1)
+        addOtherPushEventHandler(givenOtherPushHandler2)
+
+        let givenPush = PushNotificationStub.getPushSentFromCIO()
+
+        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
+
+        waitForExpectations()
+        pushClickHandler.assertHandledPushClick(for: givenPush)
+    }
+
+    // MARK: completion handler
+
+    // All UserNotification framework functions for handling push events are async and have a callback closure.
+    // These tests cover the expected behavior of the SDK and how callback closures are handled.
+
+    func test_givenMultiplePushHandlers_givenClickedOnCioPush_givenOtherPushHandlerDoesNotCallCompletionHandler_expectCompletionHandlerDoesNotGetCalled() {
+        let expectOtherClickHandlerToGetCallback = expectation(description: "Receive a callback")
+        let givenPush = PushNotificationStub.getPushSentFromCIO()
+        let givenOtherPushHandler = PushEventHandlerMock()
+
+        givenOtherPushHandler.onPushActionClosure = { _, _ in
+            // Do not call completion handler.
+            expectOtherClickHandlerToGetCallback.fulfill()
+        }
+        addOtherPushEventHandler(givenOtherPushHandler)
+
+        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true), expectToCallCompletionHandler: false)
+
+        waitForExpectations(for: [expectOtherClickHandlerToGetCallback])
+
+        // If the completion handler does not get called, then the CIO SDK can only partially handle the push event.
+        pushClickHandler.assertTrackedOpenPushMetric(for: givenPush)
+        pushClickHandler.assertOpenedDeepLink(for: givenPush, false)
+    }
+
+    func test_givenMultiplePushHandlers_givenClickedOnCioPush_givenOtherPushHandlerCallsCompletionHandler_expectCioSdkHandlesPush() {
+        let givenPush = PushNotificationStub.getPushSentFromCIO()
+        let givenOtherPushHandler = PushEventHandlerMock()
+        givenOtherPushHandler.onPushActionClosure = { _, onComplete in
+            onComplete()
+        }
+        addOtherPushEventHandler(givenOtherPushHandler)
+
+        performPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true))
+
+        // Assert that Cio SDK still handled push click, even though completion handler called by other push handler.
+        pushClickHandler.assertHandledPushClick(for: givenPush)
     }
 
     // MARK: prevent infinite loops with notification center proxy
@@ -117,7 +207,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         waitForExpectations()
 
-        assertNoPushHanding() // CIO SDK should not handle push.
+        pushClickHandler.assertDidNotHandlePushClick() // CIO SDK should not handle push.
     }
 
     // MARK: local push notification support
@@ -127,7 +217,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
         performPushAction(PushNotificationActionStub(push: givenLocalPush, didClickOnPush: true))
 
-        assertNoPushHanding()
+        pushClickHandler.assertDidNotHandlePushClick()
     }
 
     func test_givenClickOnLocalPush_expectOtherClickHandlerHandlesClickEvent() {
@@ -170,11 +260,16 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 }
 
 extension AutomaticPushClickedIntegrationTest {
-    func performPushAction(_ pushAction: PushNotificationAction) {
+    func performPushAction(_ pushAction: PushNotificationAction, expectToCallCompletionHandler: Bool = true) {
         // Note: It's important that we test that the `withContentHandler` callback function gets called either by our SDK (when we handle it), or the 3rd party handler.
         //       We add an expectation to verify that 1 push click handler calls it.
         let expectCompletionHandlerCalled = expectation(description: "Expect completion handler called by a click handler")
-        expectCompletionHandlerCalled.expectedFulfillmentCount = 1 // Test will fail if called 2+ times which could indicate a bug because only 1 push click handler should be calling it.
+
+        if expectToCallCompletionHandler {
+            expectCompletionHandlerCalled.expectedFulfillmentCount = 1 // Test will fail if called 2+ times which could indicate a bug because only 1 push click handler should be calling it.
+        } else {
+            expectCompletionHandlerCalled.isInverted = true
+        }
 
         performPushAction(pushAction) {
             expectCompletionHandlerCalled.fulfill()
@@ -191,18 +286,5 @@ extension AutomaticPushClickedIntegrationTest {
 
     func addOtherPushEventHandler(_ pushEventHandler: PushEventHandler) {
         pushEventHandlerProxy.addPushEventHandler(pushEventHandler)
-    }
-
-    func assertHandledClick(for push: PushNotification) {
-        XCTAssertEqual(pushClickHandler.pushClickedCallsCount, 1)
-        XCTAssertEqual(pushClickHandler.pushClickedReceivedArguments!.pushId, push.pushId)
-    }
-
-    func assertHandledNoClick() {
-        XCTAssertFalse(pushClickHandler.pushClickedCalled)
-    }
-
-    func assertNoPushHanding() {
-        XCTAssertFalse(pushClickHandler.mockCalled)
     }
 }

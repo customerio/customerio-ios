@@ -1,3 +1,13 @@
+## [2.12.4](https://github.com/customerio/customerio-ios/compare/2.12.3...2.12.4) (2024-03-13)
+
+
+### Bug Fixes
+
+* call completionHandler if push handler does not implement optional function ([9996872](https://github.com/customerio/customerio-ios/commit/9996872e774a0c0c2135a0e02a398c07ab2397f8))
+* forward push received app in foreground events to 3rd party callbacks ([bd55e2b](https://github.com/customerio/customerio-ios/commit/bd55e2b9b2aa349d7f78c1e76d22dfa1463e35ac))
+* forward push response events to 3rd party callback functions, for CIO push ([121b157](https://github.com/customerio/customerio-ios/commit/121b157457708a6ac9f971a367f85d37a1684bde))
+* open deep link from main thread as required by UIKit ([7d7867f](https://github.com/customerio/customerio-ios/commit/7d7867fa0265169daa4e62bd016dbfb3f1764d65))
+
 ## [2.12.3](https://github.com/customerio/customerio-ios/compare/2.12.2...2.12.3) (2024-03-05)
 
 

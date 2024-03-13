@@ -5,33 +5,34 @@ import SharedTests
 import XCTest
 
 class ManualPushHandlingIntegrationTests: IntegrationTest {
+    private let pushClickHandler = PushClickHandlerMock()
+
     // The manual push click handling functions are currently housed in `MessagingPushImplementation`. Get instance for integration test.
     private var messagingPush: MessagingPushImplementation? {
         notNilOrFail(MessagingPush.shared.implementation as? MessagingPushImplementation)
     }
-
-    private let pushClickHandlerMock = PushClickHandlerMock()
 
     override func setUp() {
         super.setUp { config in
             config.autoTrackPushEvents(false) // we are testing manual push tracking. Disable automatic push tracking feature.
         }
 
-        DIGraphShared.shared.override(value: pushClickHandlerMock, forType: PushClickHandler.self)
+        DIGraphShared.shared.override(value: pushClickHandler, forType: PushClickHandler.self)
     }
 
-    // MARK: opened push metrics
+    // MARK: manual push click handling
 
-    func test_expectTrackOpenedMetrics() {
+    func test_manualPushClick_expectHandlePushClick() {
         let givenDeliveryId = String.random
         let givenDeviceToken = String.random
 
         let cioPush = PushNotificationStub.getPushSentFromCIO(deliveryId: givenDeliveryId, deviceToken: givenDeviceToken)
 
+        // The order matters of push click handling
+        pushClickHandler.assertWillHandleDeepLinkLast(for: cioPush)
+
         messagingPush?.manualPushClickHandling(push: cioPush)
 
-        XCTAssertEqual(pushClickHandlerMock.pushClickedCallsCount, 1)
-        XCTAssertEqual(pushClickHandlerMock.pushClickedReceivedArguments?.cioDelivery?.id, givenDeliveryId)
-        XCTAssertEqual(pushClickHandlerMock.pushClickedReceivedArguments?.cioDelivery?.token, givenDeviceToken)
+        pushClickHandler.assertHandledPushClick(for: cioPush)
     }
 }

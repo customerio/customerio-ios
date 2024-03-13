@@ -21,33 +21,95 @@ protocol PushEventHandlerProxy: AutoMockable {
 // sourcery: InjectSingleton
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     // Use a map so that we only save 1 instance of a given handler.
-    private var nestedDelegates: [String: PushEventHandler] = [:]
+    @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
+
+    private let logger: Logger
+
+    init(logger: Logger) {
+        self.logger = logger
+    }
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
         nestedDelegates[String(describing: newHandler)] = newHandler
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+        let nestedDelegates = self.nestedDelegates // create a scoped copy for this function body.
+
         // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
         guard !nestedDelegates.isEmpty else {
             completionHandler()
             return
         }
 
-        nestedDelegates.forEach { _, delegate in
-            delegate.onPushAction(pushAction, completionHandler: completionHandler)
+        // UserNotification runs this event on the main thread.
+        // Run this async task on the main thread to match that behavior. Otherwise, we run the risk of warnings or crashes by trying to call UIKit
+        // functions from a background thread.
+        Task { @MainActor in
+            // Wait for all other push event handlers to finish before calling the completion handler.
+            // Each iteration of the loop waits for the push event to be processed by the delegate.
+            for delegate in nestedDelegates.values {
+                await withCheckedContinuation { continuation in
+                    let nameOfDelegateClass: String = .init(describing: delegate)
+
+                    // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
+                    // These logs could help in debuggging to determine what delegate did not call the completion handler.
+                    self.logger.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+
+                    delegate.onPushAction(pushAction) {
+                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+
+                        continuation.resume()
+                    }
+                }
+            }
+            // After the loop finishes, call the completion handler to indicate the event has been fully processed by all delegates.
+            completionHandler()
         }
     }
 
     func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+        let nestedDelegates = self.nestedDelegates // create a scoped copy for this function body.
+
         // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
         guard !nestedDelegates.isEmpty else {
             completionHandler(true)
             return
         }
 
-        nestedDelegates.forEach { _, delegate in
-            delegate.shouldDisplayPushAppInForeground(push, completionHandler: completionHandler)
+        // UserNotification runs this event on the main thread.
+        // Run this async task on the main thread to match that behavior. Otherwise, we run the risk of warnings or crashes by trying to call UIKit
+        // functions from a background thread.
+        Task { @MainActor in
+            // 2+ other push event handlers may exist in app. We need to decide if a push should be displayed or not, by combining all the results from all other push handlers.
+            // To do that, we start with Apple's default value of: do not display.
+            // If any of the handlers return result indicating push should be displayed, we return true.
+            // Apple docs: https://developer.apple.com/documentation/usernotifications/unusernotificationcenterdelegate/usernotificationcenter(_:willpresent:withcompletionhandler:)
+            var shouldDisplayPush = false
+
+            // Wait for all other push event handlers to finish before calling the completion handler.
+            // Each iteration of the loop waits for the push event to be processed by the delegate.
+            for delegate in nestedDelegates.values {
+                await withCheckedContinuation { continuation in
+                    let nameOfDelegateClass: String = .init(describing: delegate)
+
+                    // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
+                    // These logs could help in debuggging to determine what delegate did not call the completion handler.
+                    self.logger.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+
+                    delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
+                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+
+                        if delegateShouldDisplayPushResult {
+                            shouldDisplayPush = true
+                        }
+
+                        continuation.resume()
+                    })
+                }
+            }
+            // After the loop finishes, call the completion handler to indicate the event has been fully processed by all delegates.
+            completionHandler(shouldDisplayPush)
         }
     }
 }

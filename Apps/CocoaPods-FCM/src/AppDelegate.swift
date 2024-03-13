@@ -87,9 +87,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         completionHandler()
     }
 
-    // For testing purposes, it's suggested to not include the willPresent function in the AppDelegate.
-    // The automatic push click handling feature uses swizzling. A good edge case to test with swizzling is when
-    // there is an optional function of UNUserNotificationCenterDelegate not implemented. By not including willPresent, we are able to test this case.
+    // For QA testing, it's suggested to not implement this optional function.
+    // The SDK contains logic that handles when this optional function is implemented in a host iOS app, or not. Do not implement it to test the use case.
+    //
 //    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
 }
 
