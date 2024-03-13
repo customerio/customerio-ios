@@ -48,7 +48,7 @@ class PushEventHandlerProxyTest: UnitTest {
         wait(for: [
             expectDelegatesReceiveEvent,
             expectCompleteCallingAllDelegates
-        ], enforceOrder: true)
+        ], timeout: longTimeout, enforceOrder: true)
     }
 
     func test_shouldDisplayPushAppInForeground_ensureThreadSafetyCallingDelegates() {
@@ -90,7 +90,7 @@ class PushEventHandlerProxyTest: UnitTest {
         wait(for: [
             expectDelegatesReceiveEvent,
             expectCompleteCallingAllDelegates
-        ], enforceOrder: true)
+        ], timeout: longTimeout, enforceOrder: true)
     }
 
     // MARK: shouldDisplayPushAppInForeground

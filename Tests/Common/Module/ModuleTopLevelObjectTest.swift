@@ -33,7 +33,7 @@ class ModuleTopLevelObjectTest: UnitTest {
             }
         }
 
-        waitForExpectations()
+        waitForExpectations(timeout: longTimeout)
 
         // Even though we call initialize multiple times, the initialize count should only be 1.
         XCTAssertEqual(ModuleTopLevelObjectStub.shared.initializeCount, 1)

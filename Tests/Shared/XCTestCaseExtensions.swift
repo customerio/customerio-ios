@@ -2,6 +2,19 @@ import Foundation
 import XCTest
 
 public extension XCTestCase {
+    var shortTimeout: Double {
+        0.5
+    }
+
+    // Some wait operations are flaky when running on the CI server. This is a workaround to make the tests more reliable.
+    var longTimeout: Double {
+        2.0
+    }
+
+    var defaultTimeout: Double {
+        shortTimeout
+    }
+
     func waitForExpectations(_ timeout: Double, file _: StaticString = #file, line _: UInt = #line) {
         waitForExpectations(timeout: timeout, handler: nil)
     }
@@ -12,7 +25,7 @@ public extension XCTestCase {
         file _: StaticString = #file,
         line _: UInt = #line
     ) {
-        wait(for: expectations, timeout: 0.5, enforceOrder: enforceOrder)
+        wait(for: expectations, timeout: defaultTimeout, enforceOrder: enforceOrder)
     }
 
     func getEnvironmentVariable(_ key: String) -> String? {

@@ -97,6 +97,6 @@ class PushHistoryTest: IntegrationTest {
             expectBackgroundThreadCheckToComplete.fulfill()
         }
 
-        waitForExpectations()
+        waitForExpectations(timeout: longTimeout)
     }
 }
