@@ -25,18 +25,61 @@ class MessagingInAppImplementationTest: IntegrationTest {
     }
 
     override func setUp() {
-        // do not call super.setUp() because we want to initialize the module late for some
-        // tests and verify without module being initialized
+        // do not call super.setUp() because we want to initialize the module manually in test functions so we can test module being initialized.
     }
 
-    private func initializeModule() {
+    // Function to call when test function is ready to initialize the SDK module.
+    //
+    // There are async tasks that can be performed after the module is initialized.
+    // Each parameter of this function represents 1 async task that could be performed. Have each test function specify what async tasks it expects to have happen.
+    // Make sure to have the test function eventually wait for the returned expectations to be fulfilled.
+    private func initializeModule(
+        expectProfileToIdentify: Bool = false,
+        expectSdkReset: Bool = false,
+        expectScreenViewEvent: Bool = false
+    ) -> [XCTestExpectation] {
         super.setUp(modifyModuleConfig: nil)
+
+        var combinedExpectations: [XCTestExpectation] = []
+
+        // Set default values on all expectations created in this function.
+        let createDefaultExpectation: (String, Bool) -> XCTestExpectation = { description, expectToHappen in
+            let expectation = self.expectation(description: description)
+
+            // Setup expectation to only assert that the event happened or did not.
+            // The number of times the expectation is called is not checked as it has been unreliable.
+            // Instead, have the test function check the number of times a mock was called.
+            expectation.assertForOverFulfill = false
+            expectation.isInverted = !expectToHappen
+
+            return expectation
+        }
+
+        let profileIdentifiedExpectation = createDefaultExpectation("Profile identified event to be received", expectProfileToIdentify)
+        inAppProviderMock.setProfileIdentifierClosure = { _ in
+            profileIdentifiedExpectation.fulfill()
+        }
+        combinedExpectations.append(profileIdentifiedExpectation)
+
+        let sdkResetExpectation = createDefaultExpectation("SDK reset event to be received", expectSdkReset)
+        inAppProviderMock.clearIdentifyClosure = {
+            sdkResetExpectation.fulfill()
+        }
+        combinedExpectations.append(sdkResetExpectation)
+
+        let screenViewEventExpectation = createDefaultExpectation("Screen view event to be received", expectScreenViewEvent)
+        inAppProviderMock.setRouteClosure = { _ in
+            screenViewEventExpectation.fulfill()
+        }
+        combinedExpectations.append(screenViewEventExpectation)
+
+        return combinedExpectations
     }
 
     // MARK: initialize
 
-    func test_initialize_expectInitializeGistSDK() {
-        initializeModule()
+    func test_initialize_expectInitializeGistSDK() async {
+        await waitForExpectations(initializeModule())
 
         XCTAssertTrue(inAppProviderMock.initializeCalled)
         XCTAssertFalse(inAppProviderMock.setProfileIdentifierCalled)
@@ -48,9 +91,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let givenProfileIdentifiedInSdk = String.random
 
         await postEventAndWait(event: ProfileIdentifiedEvent(identifier: givenProfileIdentifiedInSdk))
-        // initialize the module after the profile is identified
-        initializeModule()
-        await eventBusHandler.waitForReplayEventsToFinish(ProfileIdentifiedEvent.self) // must wait again after initializing module
+
+        await waitForExpectations(initializeModule(expectProfileToIdentify: true))
 
         XCTAssertTrue(inAppProviderMock.setProfileIdentifierCalled)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, givenProfileIdentifiedInSdk)
@@ -58,22 +100,26 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: profile hooks
 
-    func test_givenProfileIdentified_expectSetupWithInApp() async throws {
-        initializeModule()
+    func test_givenProfileIdentified_expectSetupWithInApp() async {
+        let expectAsyncEventBusEvents = initializeModule(expectProfileToIdentify: true)
 
         let given = String.random
 
         await postEventAndWait(event: ProfileIdentifiedEvent(identifier: given))
+
+        await waitForExpectations(expectAsyncEventBusEvents)
 
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setProfileIdentifierReceivedArguments, given)
     }
 
     func test_givenProfileNoLongerIdentified_expectRemoveFromInApp() async throws {
-        initializeModule()
+        let expectAsyncEventBusEvents = initializeModule(expectProfileToIdentify: true, expectSdkReset: true)
 
         await postEventAndWait(event: ProfileIdentifiedEvent(identifier: String.random))
         await postEventAndWait(event: ResetEvent())
+
+        await waitForExpectations(expectAsyncEventBusEvents)
 
         XCTAssertEqual(inAppProviderMock.clearIdentifyCallsCount, 1)
     }
@@ -81,11 +127,13 @@ class MessagingInAppImplementationTest: IntegrationTest {
     // MARK: screen view hooks
 
     func test_givenScreenViewed_expectSetRouteOnInApp() async throws {
-        initializeModule()
+        let expectAsyncEventBusEvents = initializeModule(expectScreenViewEvent: true)
 
         let given = String.random
 
         await postEventAndWait(event: ScreenViewedEvent(name: given))
+
+        await waitForExpectations(expectAsyncEventBusEvents)
 
         XCTAssertEqual(inAppProviderMock.setRouteCallsCount, 1)
         XCTAssertEqual(inAppProviderMock.setRouteReceivedArguments, given)
@@ -93,8 +141,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
     // MARK: event listeners
 
-    func test_eventListeners_expectCallListenerWithData() {
-        initializeModule()
+    func test_eventListeners_expectCallListenerWithData() async {
+        await waitForExpectations(initializeModule())
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -135,8 +183,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, givenName)
     }
 
-    func test_eventListeners_expectCallListenerForEachEvent() {
-        initializeModule()
+    func test_eventListeners_expectCallListenerForEachEvent() async {
+        await waitForExpectations(initializeModule())
 
         let givenGistMessage = Message.random
 
@@ -170,11 +218,11 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 2)
     }
 
-    func test_eventListeners_givenCloseAction_expectListenerEvent() {
+    func test_eventListeners_givenCloseAction_expectListenerEvent() async {
         // override event bus handler to mock it so we can capture events
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
-        initializeModule()
+        await waitForExpectations(initializeModule())
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -202,11 +250,11 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 0)
     }
 
-    func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() {
+    func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() async {
         // override event bus handler to mock it so we can capture events
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
-        initializeModule()
+        await waitForExpectations(initializeModule())
 
         let givenGistMessage = Message.random
         let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
@@ -233,8 +281,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(postEventArgument.params, givenMetaData)
     }
 
-    func test_dismissMessage_givenNoInAppMessage_expectNoError() {
-        initializeModule()
+    func test_dismissMessage_givenNoInAppMessage_expectNoError() async {
+        await waitForExpectations(initializeModule())
 
         // Dismiss in-app message
         XCTAssertFalse(inAppProviderMock.dismissMessageCalled)
@@ -242,8 +290,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(inAppProviderMock.dismissMessageCallsCount, 1)
     }
 
-    func test_dismissMessage_givenInAppMessage_expectNoError() {
-        initializeModule()
+    func test_dismissMessage_givenInAppMessage_expectNoError() async {
+        await waitForExpectations(initializeModule())
 
         let givenGistMessage = Message.random
         _ = InAppMessage(gistMessage: givenGistMessage)

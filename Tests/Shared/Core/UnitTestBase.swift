@@ -150,6 +150,10 @@ open class UnitTestBase<Component>: XCTestCase {
         waitForExpectations(0.5)
     }
 
+    open func waitForExpectations(_ expectations: [XCTestExpectation], file _: StaticString = #file, line _: UInt = #line) async {
+        await fulfillment(of: expectations, timeout: 0.5)
+    }
+
     public func runTest(numberOfTimes: Int, test: () -> Void) {
         for _ in 0 ..< numberOfTimes {
             setUp()
