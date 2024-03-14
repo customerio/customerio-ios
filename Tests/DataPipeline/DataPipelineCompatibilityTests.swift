@@ -267,6 +267,29 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         XCTAssertEqual(savedEvent[keyPath: "context.userAgent"] as? String, userAgent)
     }
 
+    func test_anyEvent_expectFinalJsonDoesNotHaveLibrary() {
+        let givenUserAgent = userAgentUtil?.getUserAgentHeaderValue()
+        let givenEvent = String.random
+        customerIO.track(name: givenEvent)
+
+        let allEvents = readTypeFromStorage(key: Storage.Constants.events)
+        let filteredEvents = allEvents.filter { $0.eventType == "track" }
+        XCTAssertEqual(filteredEvents.count, 1, "too many events received")
+
+        guard let savedEvent = filteredEvents.last else {
+            XCTFail("saved event must not be nil")
+            return
+        }
+
+        guard let userAgent = givenUserAgent else {
+            XCTFail("user agent must not be nil")
+            return
+        }
+
+        XCTAssertEqual(savedEvent[keyPath: "event"] as? String, givenEvent)
+        XCTAssertNil(savedEvent[keyPath: "context.library"])
+    }
+
     func test_eventWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {
         let givenEvent = String.random
 

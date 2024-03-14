@@ -43,7 +43,7 @@ class Context: Plugin {
             // remove library from context
             context.removeValue(forKey: "library")
 
-            // if autoTrackDeviceAttributes is false, remove all device attributes except token and type which other destination might depend on
+            // if autoTrackDeviceAttributes is false, remove all device attributes except token and type which other destination depend on
             if let device = context[keyPath: "device"] as? [String: Any] {
                 if !autoTrackDeviceAttributes {
                     // Keep only device.token and device.type, remove everything else
