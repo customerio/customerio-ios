@@ -285,7 +285,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
     // MARK: track
 
-    func test_track_givenAutoTrackDeviceAttributesEnabled_expectCorrectSegmentOnlyDeviceAttributesInContext() {
+    func test_track_givenAutoTrackDeviceAttributesEnabled_expectSegmentDeviceAttributesInContextNotProperties() {
         let givenDefaultAttributes: [String: Any] = [
             "cio_sdk_version": "3.0.0",
             "push_enabled": true
@@ -303,6 +303,15 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
             XCTFail("recorded event is not an instance of TrackEvent")
             return
         }
+
+        let properties = trackEvent.properties?.dictionaryValue
+        XCTAssertNil(properties?["network_bluetooth"])
+        XCTAssertNil(properties?["network_cellular"])
+        XCTAssertNil(properties?["network_wifi"])
+        XCTAssertNil(properties?["screen_width"])
+        XCTAssertNil(properties?["timezone"])
+        XCTAssertNil(properties?["screen_height"])
+        XCTAssertNil(properties?["ip"])
 
         let eventDeviceAttributes = trackEvent.deviceAttributes
         // cio default attributes
