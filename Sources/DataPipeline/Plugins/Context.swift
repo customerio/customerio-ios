@@ -40,12 +40,19 @@ class Context: Plugin {
             // set the user agent
             context["userAgent"] = userAgentUtil.getUserAgentHeaderValue()
 
-            // set the device attributes
-            if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
-                context["device"] = device.mergeWith(attributes)
-            } else {
-                context["device"] = attributes
+            // remove library from context
+            context.removeValue(forKey: "library")
+
+            // if autoTrackDeviceAttributes is false, remove all device attributes except token and type which other destination might depend on
+            if let device = context[keyPath: "device"] as? [String: Any] {
+                if !autoTrackDeviceAttributes {
+                    // Keep only device.token and device.type, remove everything else
+                    let token = device["token"]
+                    let type = device["type"]
+                    context["device"] = ["token": token, "type": type]
+                }
             }
+
             workingEvent.context = try JSON(context)
         } catch {
             analytics?.reportInternalError(error)

@@ -285,7 +285,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
     // MARK: track
 
-    func test_track_givenAutoTrackDeviceAttributesEnabled_expectCorrectDeviceAttributesInContext() {
+    func test_track_givenAutoTrackDeviceAttributesEnabled_expectCorrectSegmentOnlyDeviceAttributesInContext() {
         let givenDefaultAttributes: [String: Any] = [
             "cio_sdk_version": "3.0.0",
             "push_enabled": true
@@ -306,8 +306,8 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
         let eventDeviceAttributes = trackEvent.deviceAttributes
         // cio default attributes
-        XCTAssertNotNil(eventDeviceAttributes?["cio_sdk_version"])
-        XCTAssertNotNil(eventDeviceAttributes?["push_enabled"])
+        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
         // segment events
         XCTAssertNotNil(eventDeviceAttributes?["id"])
         XCTAssertNotNil(eventDeviceAttributes?["model"])
@@ -459,11 +459,23 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        XCTAssertMatches(
-            deviceUpdatedEvent?.properties,
-            givenDefaultAttributes,
-            withTypeMap: [["push_enabled"]: Bool.self]
-        )
+        let actualValues = deviceUpdatedEvent?.properties?.dictionaryValue as? [String: Any]
+
+        // Check for "cio_sdk_version"
+        let actualCioSdkVersion = actualValues?["cio_sdk_version"]
+        XCTAssertNotNil(actualCioSdkVersion, "Expected 'cio_sdk_version' key is missing")
+        if let actualCioSdkVersion = actualCioSdkVersion as? String,
+           let expectedCioSdkVersion = givenDefaultAttributes["cio_sdk_version"] as? String {
+            XCTAssertEqual(actualCioSdkVersion, expectedCioSdkVersion, "'cio_sdk_version' does not match")
+        }
+
+        // Check for "push_enabled"
+        let actualPushEnabled = actualValues?["push_enabled"]
+        XCTAssertNotNil(actualPushEnabled, "Expected 'push_enabled' key is missing")
+        if let actualPushEnabled = actualPushEnabled as? Bool,
+           let expectedPushEnabled = givenDefaultAttributes["push_enabled"] as? Bool {
+            XCTAssertEqual(actualPushEnabled, expectedPushEnabled, "'push_enabled' does not match")
+        }
     }
 
     func test_registerDeviceToken_givenNoOsNameAvailable_expectDeviceCreateEvent() {
@@ -600,7 +612,6 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
         XCTAssertNil(eventDeviceAttributes?["id"])
         XCTAssertNil(eventDeviceAttributes?["model"])
         XCTAssertNil(eventDeviceAttributes?["manufacturer"])
-        XCTAssertNil(eventDeviceAttributes?["type"])
     }
 }
 

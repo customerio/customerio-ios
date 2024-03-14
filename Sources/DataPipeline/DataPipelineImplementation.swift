@@ -39,6 +39,9 @@ class DataPipelineImplementation: DataPipelineInstance {
             analytics.add(plugin: customerIODestination)
         }
 
+        // plugin to add contextual inforamation to device attributes
+        analytics.add(plugin: DeviceCreateOrUpdate())
+
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 
