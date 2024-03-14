@@ -57,11 +57,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
             config.cdnHost(cdnHost)
         }
-        CustomerIO.initialize(withConfig: config.build())
-        let autoScreenTrack = storage.isTrackScreenEnabled ?? true
-        if autoScreenTrack {
-            CustomerIO.shared.add(plugin: AutoTrackingScreenViews(filterAutoScreenViewEvents: nil, autoScreenViewBody: nil))
+        if storage.isTrackScreenEnabled == true {
+            config.autoTrackScreenViews()
         }
+        CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
