@@ -147,11 +147,13 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         var expectedData = givenDefaultAttributes
         expectedData.merge(
+            // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
             uniquingKeysWith: { current, _ in current }
         )
 
         expectedData.merge(
+            // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),
             uniquingKeysWith: { current, _ in current }
         )
@@ -196,11 +198,13 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         var expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
 
         expectedData.merge(
+            // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
             uniquingKeysWith: { current, _ in current }
         )
 
         expectedData.merge(
+            // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),
             uniquingKeysWith: { current, _ in current }
         )
@@ -281,7 +285,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
             return
         }
 
-        guard let userAgent = givenUserAgent else {
+        guard givenUserAgent != nil else {
             XCTFail("user agent must not be nil")
             return
         }
