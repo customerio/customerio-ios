@@ -21,6 +21,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertTrue(dataPipelineConfig.trackApplicationLifecycleEvents)
         XCTAssertTrue(dataPipelineConfig.autoTrackDeviceAttributes)
         XCTAssertNil(dataPipelineConfig.migrationSiteId)
+        XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
     }
 
     func test_initializeAndModify_expectCustomValues() {
@@ -143,6 +144,36 @@ class SDKConfigBuilderTest: UnitTest {
 
         XCTAssertEqual(dataPipelineConfig.apiHost, "cdp.customer.io/v1")
         XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
+    }
+
+    func test_autoScreenTrackingEnabled_expectScreenPluginAttached() {
+        let autoScreenViewBodyExpectation = expectation(description: "Waiting for autoScreenViewBody to be invoked")
+        let givenAutoScreenViewBody: (() -> [String: Any]) = {
+            autoScreenViewBodyExpectation.fulfill()
+            return [:]
+        }
+
+        let filterAutoScreenViewEventsExpectation = expectation(description: "Waiting for filterAutoScreenViewEvents to be invoked")
+        let givenFilterAutoScreenViewEvents: ((UIViewController) -> Bool) = { _ in
+            filterAutoScreenViewEventsExpectation.fulfill()
+            return true
+        }
+
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .autoTrackScreenViews(
+                autoScreenViewBody: givenAutoScreenViewBody,
+                filterAutoScreenViewEvents: givenFilterAutoScreenViewEvents
+            )
+            .build()
+
+        let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
+        let screenPlugin = autoConfiguredPlugins.first
+        (screenPlugin as? AutoTrackingScreenViews)?.performScreenTracking(onViewController: UIAlertController())
+
+        XCTAssertEqual(autoConfiguredPlugins.count, 1)
+        XCTAssertNotNil(screenPlugin)
+        XCTAssertTrue(screenPlugin is AutoTrackingScreenViews)
+        waitForExpectations()
     }
 }
 
