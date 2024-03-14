@@ -164,8 +164,9 @@ public class SDKConfigBuilder {
         return self
     }
 
+    @available(iOSApplicationExtension, unavailable)
     public func build() -> SDKConfigBuilderResult {
-        // create `SdkConfig`` from given configurations
+        // create `SdkConfig` from given configurations
         let sdkConfig = SdkConfig.Factory.create(
             logLevel: logLevel
         )
