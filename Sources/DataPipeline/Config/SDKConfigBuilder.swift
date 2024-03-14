@@ -23,7 +23,7 @@ import UIKit
 public class SDKConfigBuilder {
     // helper configuration options to ease setting up other configurations such as `apiHost` and `cdnHost`
     private var region: Region = .US
-    private var autoTrackScreenViews: Bool = false
+    private var autoTrackUIKitScreenViews: Bool = false
     private var autoScreenViewBody: (() -> [String: Any])?
     #if canImport(UIKit)
     private var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
@@ -71,11 +71,12 @@ public class SDKConfigBuilder {
     ///     Return `true` from function if you would like the screenview event to be tracked. Default: `nil`,
     ///     which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
     @discardableResult
-    public func autoTrackScreenViews(
+    public func autoTrackUIKitScreenViews(
+        enabled: Bool = true,
         autoScreenViewBody: (() -> [String: Any])? = nil,
         filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil
     ) -> SDKConfigBuilder {
-        autoTrackScreenViews = true
+        autoTrackUIKitScreenViews = enabled
         self.autoScreenViewBody = autoScreenViewBody
         self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
         return self
@@ -171,7 +172,7 @@ public class SDKConfigBuilder {
 
         // create plugins based on given configurations
         var configuredPlugins: [Plugin] = []
-        if autoTrackScreenViews {
+        if autoTrackUIKitScreenViews {
             configuredPlugins.append(AutoTrackingScreenViews(
                 filterAutoScreenViewEvents: filterAutoScreenViewEvents,
                 autoScreenViewBody: autoScreenViewBody

@@ -58,7 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.cdnHost(cdnHost)
         }
         if storage.isTrackScreenEnabled == true {
-            config.autoTrackScreenViews()
+            config.autoTrackUIKitScreenViews()
         }
         CustomerIO.initialize(withConfig: config.build())
 

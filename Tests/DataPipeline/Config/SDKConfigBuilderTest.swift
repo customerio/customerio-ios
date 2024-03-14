@@ -56,6 +56,7 @@ class SDKConfigBuilderTest: UnitTest {
             .operatingMode(givenOperatingMode)
             .trackApplicationLifecycleEvents(givenTrackApplicationLifecycleEvents)
             .autoTrackDeviceAttributes(givenAutoTrackDeviceAttributes)
+            .autoTrackUIKitScreenViews(enabled: false)
             .migrationSiteId(givenSiteId)
             .build()
 
@@ -74,6 +75,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.trackApplicationLifecycleEvents, givenTrackApplicationLifecycleEvents)
         XCTAssertEqual(dataPipelineConfig.autoTrackDeviceAttributes, givenAutoTrackDeviceAttributes)
         XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
+        XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
     }
 
     func test_givenDefaults_expectMatchAnalyticsDefaults() {
@@ -160,7 +162,8 @@ class SDKConfigBuilderTest: UnitTest {
         }
 
         let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
-            .autoTrackScreenViews(
+            .autoTrackUIKitScreenViews(
+                enabled: true,
                 autoScreenViewBody: givenAutoScreenViewBody,
                 filterAutoScreenViewEvents: givenFilterAutoScreenViewEvents
             )
