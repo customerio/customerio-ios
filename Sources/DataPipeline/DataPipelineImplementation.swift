@@ -39,6 +39,11 @@ class DataPipelineImplementation: DataPipelineInstance {
             analytics.add(plugin: customerIODestination)
         }
 
+        // add configured plugins to analytics
+        for plugin in moduleConfig.autoConfiguredPlugins {
+            analytics.add(plugin: plugin)
+        }
+
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 

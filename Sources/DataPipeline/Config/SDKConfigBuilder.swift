@@ -1,6 +1,9 @@
 import CioInternalCommon
 import Foundation
 import Segment
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Builder class designed to facilitate the creation of `SdkConfig` and `DataPipelineConfigOptions`.
 /// The builder pattern allows for a fluent and intuitive way to set up configuration options for
@@ -20,6 +23,11 @@ import Segment
 public class SDKConfigBuilder {
     // helper configuration options to ease setting up other configurations such as `apiHost` and `cdnHost`
     private var region: Region = .US
+    private var autoTrackScreenViews: Bool = false
+    private var autoScreenViewBody: (() -> [String: Any])?
+    #if canImport(UIKit)
+    private var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
+    #endif
 
     // configuration options for SdkConfig
     private var logLevel: CioLogLevel = .error
@@ -52,6 +60,24 @@ public class SDKConfigBuilder {
     @discardableResult
     public func region(_ region: Region) -> SDKConfigBuilder {
         self.region = region
+        return self
+    }
+
+    /// Automatic tracking of screen views will generate `screen` type events on every screen transition within your application.
+    /// - Parameters:
+    ///     - autoScreenViewBody: Handler to be called by our automatic screen tracker to generate `screen` event body variables.
+    ///     You can use this to override our defaults and pass custom values in the body of the `screen` event.
+    ///     - filterAutoScreenViewEvents: Filter automatic screenview events to remove events that are irrelevant to your app.
+    ///     Return `true` from function if you would like the screenview event to be tracked. Default: `nil`,
+    ///     which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
+    @discardableResult
+    public func autoTrackScreenViews(
+        autoScreenViewBody: (() -> [String: Any])? = nil,
+        filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil
+    ) -> SDKConfigBuilder {
+        autoTrackScreenViews = true
+        self.autoScreenViewBody = autoScreenViewBody
+        self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
         return self
     }
 
@@ -143,6 +169,15 @@ public class SDKConfigBuilder {
             logLevel: logLevel
         )
 
+        // create plugins based on given configurations
+        var configuredPlugins: [Plugin] = []
+        if autoTrackScreenViews {
+            configuredPlugins.append(AutoTrackingScreenViews(
+                filterAutoScreenViewEvents: filterAutoScreenViewEvents,
+                autoScreenViewBody: autoScreenViewBody
+            ))
+        }
+
         // create `DataPipelineConfigOptions` from given configurations
         let dataPipelineConfig = DataPipelineConfigOptions(
             cdpApiKey: cdpApiKey,
@@ -157,7 +192,8 @@ public class SDKConfigBuilder {
             operatingMode: operatingMode,
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
             autoTrackDeviceAttributes: autoTrackDeviceAttributes,
-            migrationSiteId: migrationSiteId
+            migrationSiteId: migrationSiteId,
+            autoConfiguredPlugins: configuredPlugins
         )
 
         return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)
