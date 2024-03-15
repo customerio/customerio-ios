@@ -177,6 +177,9 @@ public class SDKConfigBuilder {
 
         // create plugins based on given configurations
         var configuredPlugins: [Plugin] = []
+        if logLevel == CioLogLevel.debug {
+            configuredPlugins.append(ConsoleLogger(diGraph: DIGraphShared.shared))
+        }
         if autoTrackUIKitScreenViews {
             configuredPlugins.append(AutoTrackingScreenViews(
                 filterAutoScreenViewEvents: filterAutoScreenViewEvents,

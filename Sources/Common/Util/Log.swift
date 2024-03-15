@@ -61,6 +61,7 @@ public enum CioLogLevel: String, CaseIterable {
 
 // log messages to console.
 // sourcery: InjectRegisterShared = "Logger"
+// sourcery: InjectSingleton
 public class ConsoleLogger: Logger {
     public var logLevel: CioLogLevel = .error
 

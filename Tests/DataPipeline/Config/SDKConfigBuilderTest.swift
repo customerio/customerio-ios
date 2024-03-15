@@ -179,6 +179,19 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertTrue(configuredPlugin is AutoTrackingScreenViews)
         waitForExpectations()
     }
+
+    func test_debugLogsEnabled_expectLoggerPluginAttached() {
+        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
+            .logLevel(.debug)
+            .build()
+
+        let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
+        let configuredPlugin = autoConfiguredPlugins.first
+
+        XCTAssertEqual(autoConfiguredPlugins.count, 1)
+        XCTAssertNotNil(configuredPlugin)
+        XCTAssertTrue(configuredPlugin is ConsoleLogger)
+    }
 }
 
 /// Helper methods to assert custom types.

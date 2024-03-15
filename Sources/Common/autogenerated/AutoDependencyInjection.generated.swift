@@ -237,13 +237,27 @@ extension DIGraphShared {
         CioThreadUtil()
     }
 
-    // Logger
+    // Logger (singleton)
     public var logger: Logger {
         getOverriddenInstance() ??
-            newLogger
+            sharedLogger
     }
 
-    private var newLogger: Logger {
+    public var sharedLogger: Logger {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
+            if let overridenDep: Logger = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: Logger.self)] as? Logger
+            let instance = existingSingletonInstance ?? _get_logger()
+            self.singletons[String(describing: Logger.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_logger() -> Logger {
         ConsoleLogger()
     }
 

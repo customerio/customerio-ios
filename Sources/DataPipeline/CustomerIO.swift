@@ -16,8 +16,6 @@ public extension CustomerIO {
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
         // initialize DataPipeline module with the provided configuration
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
-        // enable Analytics logs accordingly to logLevel
-        CustomerIO.shared.setDebugLogsEnabled(sdkConfig.logLevel == CioLogLevel.debug)
         initialize(implementation: implementation)
 
         // Handle logged-in user from Journeys to CDP and check
