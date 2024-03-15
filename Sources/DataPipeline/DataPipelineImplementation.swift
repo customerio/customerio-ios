@@ -33,7 +33,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     private func initialize(diGraph: DIGraphShared) {
         // enable Analytics logs accordingly to logLevel
-        Analytics.debugLogsEnabled = diGraph.logger.logLevel == .debug
+        Analytics.debugLogsEnabled = logger.logLevel == .debug
 
         // add CustomerIO destination plugin
         if moduleConfig.autoAddCustomerIODestination {
