@@ -68,7 +68,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
-            shared.getImplementation(config: config)
+            // Set logLevel of shared logger only when module is initialized from NotificationServiceExtension.
+            DIGraphShared.shared.logger.setLogLevel(config.logLevel)
+            return shared.getImplementation(config: config)
         }
 
         return shared

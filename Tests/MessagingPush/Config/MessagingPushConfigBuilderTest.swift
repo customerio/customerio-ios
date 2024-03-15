@@ -79,6 +79,7 @@ class MessagingPushConfigBuilderTest: UnitTest {
 extension MessagingPushConfigBuilderTest {
     // Extension method to conveniently assert default values.
     private func XCTAssertDefaultValues(config: MessagingPushConfigOptions, file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(config.logLevel, .error, file: file, line: line)
         XCTAssertTrue(config.autoFetchDeviceToken, file: file, line: line)
         XCTAssertTrue(config.autoTrackPushEvents, file: file, line: line)
         XCTAssertTrue(config.showPushAppInForeground, file: file, line: line)

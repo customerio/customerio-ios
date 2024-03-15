@@ -28,6 +28,9 @@ import Foundation
 /// // Use `config` for initializing the push module in NotificationServiceExtension...
 /// ```
 public class MessagingPushConfigBuilder {
+    // configuration options for SdkConfig
+    private var logLevel: CioLogLevel = .error
+
     // configuration options for MessagingPushConfigOptions
     private let cdpApiKey: String
     private var autoFetchDeviceToken: Bool = true
@@ -47,6 +50,16 @@ public class MessagingPushConfigBuilder {
     ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
+    }
+
+    /// Configures the log level for NotificationServiceExtension, allowing customization of SDK log
+    /// verbosity to help setup and debugging
+    @discardableResult
+    @available(iOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    public func logLevel(_ logLevel: CioLogLevel) -> MessagingPushConfigBuilder {
+        self.logLevel = logLevel
+        return self
     }
 
     /// Enable automatic fetching of device token by the SDK without the need to write custom code by the customer.
@@ -75,6 +88,7 @@ public class MessagingPushConfigBuilder {
     /// Builds and returns `MessagingPushConfigOptions` instance from the configured properties.
     public func build() -> MessagingPushConfigOptions {
         let configOptions = MessagingPushConfigOptions(
+            logLevel: logLevel,
             cdpApiKey: cdpApiKey,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
