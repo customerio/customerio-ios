@@ -37,7 +37,8 @@ class Context: Plugin {
             // set the user agent
             context["userAgent"] = userAgentUtil.getUserAgentHeaderValue()
 
-            // remove library from context
+            // Remove analytics library information from context
+            // CIO SDK information is being sent through user-agent
             context.removeValue(forKey: "library")
 
             workingEvent.context = try JSON(context)
