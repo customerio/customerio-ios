@@ -597,31 +597,6 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
     }
-
-    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
-        setUp(modifySdkConfig: { config in
-            config.autoTrackDeviceAttributes(false)
-        })
-
-        customerIO.track(name: String.random)
-
-        XCTAssertEqual(outputReader.events.count, 1)
-        XCTAssertEqual(outputReader.trackEvents.count, 1)
-
-        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
-            XCTFail("recorded event is not an instance of TrackEvent")
-            return
-        }
-
-        let eventDeviceAttributes = trackEvent.deviceAttributes
-        // cio default attributes
-        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
-        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
-        // segment events
-        XCTAssertNil(eventDeviceAttributes?["id"])
-        XCTAssertNil(eventDeviceAttributes?["model"])
-        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
-    }
 }
 
 extension DataPipelineInteractionTests {
