@@ -42,6 +42,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         // plugin to add contextual information to device attributes
         if moduleConfig.autoTrackDeviceAttributes {
             analytics.add(plugin: DeviceContexualAttributes())
+
+        // add configured plugins to analytics
+        for plugin in moduleConfig.autoConfiguredPlugins {
+            analytics.add(plugin: plugin)
         }
 
         // plugin to update context properties for each request
