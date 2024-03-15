@@ -63,13 +63,17 @@ public class SDKConfigBuilder {
         return self
     }
 
-    /// Automatic tracking of screen views will generate `screen` type events on every screen transition within your application.
+    /// Enable this property if you want SDK to automatically track screen views for UIKit based apps.
     /// - Parameters:
-    ///     - autoScreenViewBody: Handler to be called by our automatic screen tracker to generate `screen` event body variables.
-    ///     You can use this to override our defaults and pass custom values in the body of the `screen` event.
-    ///     - filterAutoScreenViewEvents: Filter automatic screenview events to remove events that are irrelevant to your app.
-    ///     Return `true` from function if you would like the screenview event to be tracked. Default: `nil`,
-    ///     which uses the default filter function packaged by the SDK. Provide a non-nil value to not call the SDK's filtering.
+    ///   - enabled: `true` to enable auto tracking of screen views, `false` to disable.
+    ///   - autoScreenViewBody: Closure that returns a dictionary of properties to be sent with the
+    ///     screen view event. This closure is called every time a screen view event is sent and can be used
+    ///     to override our defaults and provide custom values in the body of the `screen` event..
+    ///   - filterAutoScreenViewEvents: Closure that returns a boolean value indicating whether
+    ///     the screen view event should be sent. Return `true` from function if you would like the screen
+    ///     view event to be tracked. This closure is called every time a screen view event is about to be
+    ///     tracked. Default value is `nil`, which uses the default filter function packaged by the SDK.
+    ///     Provide a non-nil value to not call the SDK's filtering.
     @discardableResult
     public func autoTrackUIKitScreenViews(
         enabled: Bool = true,
