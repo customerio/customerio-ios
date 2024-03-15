@@ -14,10 +14,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.flushAt, 20)
         XCTAssertEqual(dataPipelineConfig.flushInterval, 30.0)
         XCTAssertTrue(dataPipelineConfig.autoAddCustomerIODestination)
-        XCTAssertNil(dataPipelineConfig.defaultSettings)
         XCTAssertSame(dataPipelineConfig.flushPolicies, [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()])
-        XCTAssertSame(dataPipelineConfig.flushQueue, DispatchQueue(label: "com.segment.operatingModeQueue", qos: .utility))
-        XCTAssertEqual(dataPipelineConfig.operatingMode, OperatingMode.asynchronous)
         XCTAssertTrue(dataPipelineConfig.trackApplicationLifecycleEvents)
         XCTAssertTrue(dataPipelineConfig.autoTrackDeviceAttributes)
         XCTAssertNil(dataPipelineConfig.migrationSiteId)
@@ -33,10 +30,7 @@ class SDKConfigBuilderTest: UnitTest {
         let givenFlushAt = 17
         let givenFlushInterval = 23.7
         let givenAutoAddCustomerIODestination = false
-        let givenSettings = Settings(writeKey: givenCdpApiKey)
         let givenFlushPolicies: [FlushPolicy] = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
-        let givenFlushQueue = DispatchQueue(label: "com.segment.operatingModeQueue", qos: .utility)
-        let givenOperatingMode = OperatingMode.synchronous
         let givenTrackApplicationLifecycleEvents = false
         let givenAutoTrackDeviceAttributes = false
         let givenSiteId = String.random
@@ -50,10 +44,7 @@ class SDKConfigBuilderTest: UnitTest {
             .flushAt(givenFlushAt)
             .flushInterval(givenFlushInterval)
             .autoAddCustomerIODestination(givenAutoAddCustomerIODestination)
-            .defaultSettings(givenSettings)
             .flushPolicies(givenFlushPolicies)
-            .flushQueue(givenFlushQueue)
-            .operatingMode(givenOperatingMode)
             .trackApplicationLifecycleEvents(givenTrackApplicationLifecycleEvents)
             .autoTrackDeviceAttributes(givenAutoTrackDeviceAttributes)
             .autoTrackUIKitScreenViews(enabled: false)
@@ -68,10 +59,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.flushAt, givenFlushAt)
         XCTAssertEqual(dataPipelineConfig.flushInterval, givenFlushInterval)
         XCTAssertEqual(dataPipelineConfig.autoAddCustomerIODestination, givenAutoAddCustomerIODestination)
-        XCTAssertSame(dataPipelineConfig.defaultSettings, givenSettings)
         XCTAssertSame(dataPipelineConfig.flushPolicies, givenFlushPolicies)
-        XCTAssertSame(dataPipelineConfig.flushQueue, givenFlushQueue)
-        XCTAssertEqual(dataPipelineConfig.operatingMode, givenOperatingMode)
         XCTAssertEqual(dataPipelineConfig.trackApplicationLifecycleEvents, givenTrackApplicationLifecycleEvents)
         XCTAssertEqual(dataPipelineConfig.autoTrackDeviceAttributes, givenAutoTrackDeviceAttributes)
         XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
@@ -98,11 +86,10 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(actual.flushAt, analyticsConfig.flushAt)
         XCTAssertEqual(actual.flushInterval, analyticsConfig.flushInterval)
         XCTAssertEqual(actual.autoAddCustomerIODestination, analyticsConfig.autoAddSegmentDestination)
-        XCTAssertNil(actual.defaultSettings)
         XCTAssertSame(analyticsConfig.defaultSettings, analyticsDefaultExpectedSettings)
         XCTAssertSame(actual.flushPolicies, analyticsConfig.flushPolicies)
-        XCTAssertSame(actual.flushQueue, analyticsConfig.flushQueue)
-        XCTAssertEqual(actual.operatingMode, analyticsConfig.operatingMode)
+        XCTAssertSame(DispatchQueue(label: "com.segment.operatingModeQueue", qos: .utility), analyticsConfig.flushQueue)
+        XCTAssertEqual(OperatingMode.asynchronous, analyticsConfig.operatingMode)
         XCTAssertEqual(actual.trackApplicationLifecycleEvents, analyticsConfig.trackApplicationLifecycleEvents)
     }
 
