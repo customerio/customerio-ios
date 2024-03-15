@@ -57,21 +57,4 @@ public extension CustomerIO {
     func find(key: String) -> DestinationPlugin? {
         DataPipeline.shared.analytics.find(key: key)
     }
-
-    func setDebugLogsEnabled(_ enabled: Bool = true) {
-        // enable debug logs in analytics
-        Analytics.debugLogsEnabled = enabled
-
-        let analytics = DataPipeline.shared.analytics
-        let loggerPlugin = analytics.find(pluginType: ConsoleLogger.self)
-        if enabled {
-            // if logs are enabled but plugin is not added, add it to enable logs
-            if loggerPlugin == nil {
-                analytics.add(plugin: ConsoleLogger(diGraph: DIGraphShared.shared))
-            }
-            // else if logs are disabled, remove plugin if added already
-        } else if let loggerPlugin = loggerPlugin {
-            analytics.remove(plugin: loggerPlugin)
-        }
-    }
 }

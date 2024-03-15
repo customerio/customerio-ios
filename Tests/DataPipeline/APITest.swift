@@ -81,10 +81,6 @@ class DataPipelineAPITest: UnitTest {
         CustomerIO.shared.deviceAttributes = dictionaryData
         mock.deviceAttributes = dictionaryData
 
-        // extensions
-        CustomerIO.shared.setDebugLogsEnabled()
-        CustomerIO.shared.setDebugLogsEnabled(false)
-
         // plugins
         CustomerIO.shared.apply { (_: Plugin) in }
         CustomerIO.shared.add(plugin: UtilityPluginMock())

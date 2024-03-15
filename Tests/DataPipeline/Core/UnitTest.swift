@@ -59,7 +59,6 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
 
         // setup shared instance with desired implementation for unit tests
         customerIO = CustomerIO.setUpSharedInstanceForUnitTest(implementation: implementation)
-        customerIO.setDebugLogsEnabled(sdkConfig.logLevel == .debug)
 
         // wait for analytics queue to start emitting events
         analytics = implementation.analytics
