@@ -148,7 +148,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
     }
 
-    func test_autoScreenTrackingEnabled_expectScreenPluginAttached() {
+    func test_autoScreenTrackingEnabled_expectScreenPluginAttachedWithGivenHandlers() {
         let autoScreenViewBodyExpectation = expectation(description: "Waiting for autoScreenViewBody to be invoked")
         let givenAutoScreenViewBody: (() -> [String: Any]) = {
             autoScreenViewBodyExpectation.fulfill()
@@ -171,6 +171,7 @@ class SDKConfigBuilderTest: UnitTest {
 
         let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
         let screenPlugin = autoConfiguredPlugins.first
+        // track screen to verify handlers are attached to the plugin.
         (screenPlugin as? AutoTrackingScreenViews)?.performScreenTracking(onViewController: UIAlertController())
 
         XCTAssertEqual(autoConfiguredPlugins.count, 1)
