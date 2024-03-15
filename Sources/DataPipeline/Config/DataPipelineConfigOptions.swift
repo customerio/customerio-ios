@@ -30,4 +30,7 @@ public struct DataPipelineConfigOptions {
 
     /// Configuration options required for migration from earlier versions
     public let migrationSiteId: String?
+
+    /// Plugins identified based on configuration provided by the user
+    let autoConfiguredPlugins: [Plugin]
 }
