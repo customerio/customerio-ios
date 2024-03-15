@@ -37,7 +37,7 @@ class ModuleTopLevelObjectTest: UnitTest {
                 expectAllThreadsToComplete.fulfill()
             }
 
-            waitForExpectations(1) // test may take up to 1 second to finish because it is running so many times. CI server is a less powerful machine and this test is flaky when we set wait() for < 1 second.
+            waitForExpectations()
 
             // Even though we call initialize twice, the initialize count should only be 1.
             XCTAssertEqual(ModuleTopLevelObjectStub.shared.initializeCount, 1)

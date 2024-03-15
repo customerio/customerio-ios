@@ -28,7 +28,7 @@ class PushEventHandlerProxyTest: UnitTest {
             delegate1.onPushActionClosure = { _, completion in
                 expectDelegatesReceiveEvent.fulfill()
 
-                self.runOnMain {
+                self.runOnBackground {
                     completion()
                 }
             }
@@ -69,7 +69,7 @@ class PushEventHandlerProxyTest: UnitTest {
             delegate1.shouldDisplayPushAppInForegroundClosure = { _, completion in
                 expectDelegatesReceiveEvent.fulfill()
 
-                self.runOnMain {
+                self.runOnBackground {
                     completion(false)
                 }
             }
