@@ -165,13 +165,7 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     public func runOnBackground(_ block: @escaping () -> Void) {
-        CioThreadUtil().runBackground {
-            block()
-        }
-    }
-
-    public func runOnMain(_ block: @escaping () -> Void) {
-        CioThreadUtil().runMain {
+        Task {
             block()
         }
     }
