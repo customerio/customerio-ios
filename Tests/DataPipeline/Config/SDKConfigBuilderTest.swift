@@ -170,13 +170,13 @@ class SDKConfigBuilderTest: UnitTest {
             .build()
 
         let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
-        let screenPlugin = autoConfiguredPlugins.first
+        let configuredPlugins = autoConfiguredPlugins.first
         // track screen to verify handlers are attached to the plugin.
-        (screenPlugin as? AutoTrackingScreenViews)?.performScreenTracking(onViewController: UIAlertController())
+        (configuredPlugins as? AutoTrackingScreenViews)?.performScreenTracking(onViewController: UIAlertController())
 
         XCTAssertEqual(autoConfiguredPlugins.count, 1)
-        XCTAssertNotNil(screenPlugin)
-        XCTAssertTrue(screenPlugin is AutoTrackingScreenViews)
+        XCTAssertNotNil(configuredPlugins)
+        XCTAssertTrue(configuredPlugins is AutoTrackingScreenViews)
         waitForExpectations()
     }
 }
