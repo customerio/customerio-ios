@@ -11,10 +11,7 @@ class Context: Plugin {
 
     let userAgentUtil: UserAgentUtil
 
-    public var autoTrackDeviceAttributes: Bool
-
-    public required init(autoTrackDeviceAttributes: Bool, diGraph: DIGraphShared) {
-        self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+    public required init(diGraph: DIGraphShared) {
         self.userAgentUtil = diGraph.userAgentUtil
     }
 
@@ -40,12 +37,10 @@ class Context: Plugin {
             // set the user agent
             context["userAgent"] = userAgentUtil.getUserAgentHeaderValue()
 
-            // set the device attributes
-            if let device = context[keyPath: "device"] as? [String: Any], autoTrackDeviceAttributes {
-                context["device"] = device.mergeWith(attributes)
-            } else {
-                context["device"] = attributes
-            }
+            // Remove analytics library information from context
+            // CIO SDK information is being sent through user-agent
+            context.removeValue(forKey: "library")
+
             workingEvent.context = try JSON(context)
         } catch {
             analytics?.reportInternalError(error)
