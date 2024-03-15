@@ -26,7 +26,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
 
-        self.contextPlugin = Context(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes, diGraph: diGraph)
+        self.contextPlugin = Context(diGraph: diGraph)
 
         initialize(diGraph: diGraph)
     }
@@ -37,6 +37,11 @@ class DataPipelineImplementation: DataPipelineInstance {
             let customerIODestination = CustomerIODestination()
             customerIODestination.analytics = analytics
             analytics.add(plugin: customerIODestination)
+        }
+
+        // plugin to add contextual information to device attributes
+        if moduleConfig.autoTrackDeviceAttributes {
+            analytics.add(plugin: DeviceContexualAttributes())
         }
 
         // add configured plugins to analytics

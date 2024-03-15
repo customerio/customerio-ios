@@ -123,7 +123,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
     func test_registerDeviceToken_expectFinalJSONHasCorrectKeysAndValues() {
         let givenIdentifier = String.random
         let givenToken = String.random
-        let expectedData = deviceInfoStub.getDefaultAttributes()
+        let givenDefaultAttributes = deviceInfoStub.getDefaultAttributes()
 
         customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
@@ -145,7 +145,29 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         XCTAssertFalse(savedEvent.containsKey("last_used"))
         XCTAssertFalse(savedEvent.containsKey("platform"))
 
-        XCTAssertMatches(savedEvent[mapKeyPath: "properties"], expectedData)
+        var expectedData = givenDefaultAttributes
+        expectedData.merge(
+            // swiftlint:disable:next force_cast
+            (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
+            uniquingKeysWith: { current, _ in current }
+        )
+
+        expectedData.merge(
+            // swiftlint:disable:next force_cast
+            (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),
+            uniquingKeysWith: { current, _ in current }
+        )
+        expectedData["timezone"] = savedEvent[keyPath: "context.timezone"] as? String
+        expectedData["ip"] = savedEvent[keyPath: "context.ip"] as? String
+
+        XCTAssertMatches(
+            savedEvent[mapKeyPath: "properties"],
+            expectedData,
+            withTypeMap: [
+                ["network_bluetooth", "network_cellular", "network_wifi"]: Bool.self,
+                ["screen_height", "screen_width"]: Int.self
+            ]
+        )
     }
 
     func test_setDeviceAttributes_expectFinalJSONHasCorrectKeysAndValues() {
@@ -155,7 +177,6 @@ class DataPipelineCompatibilityTests: IntegrationTest {
             "source": "test",
             "debugMode": true
         ]
-        let expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
 
         customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
@@ -174,10 +195,29 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         XCTAssertEqual(savedEvent[keyPath: "userId"] as? String, givenIdentifier)
         XCTAssertEqual(savedEvent[keyPath: "context.device.token"] as? String, givenToken)
 
+        var expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
+
+        expectedData.merge(
+            // swiftlint:disable:next force_cast
+            (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
+            uniquingKeysWith: { current, _ in current }
+        )
+
+        expectedData.merge(
+            // swiftlint:disable:next force_cast
+            (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),
+            uniquingKeysWith: { current, _ in current }
+        )
+        expectedData["timezone"] = savedEvent[keyPath: "context.timezone"] as? String
+        expectedData["ip"] = savedEvent[keyPath: "context.ip"] as? String
+
         XCTAssertMatches(
             savedEvent[mapKeyPath: "properties"],
             expectedData,
-            withTypeMap: [["debugMode"]: Bool.self]
+            withTypeMap: [
+                ["network_bluetooth", "network_cellular", "network_wifi", "debugMode"]: Bool.self,
+                ["screen_height", "screen_width"]: Int.self
+            ]
         )
     }
 
@@ -229,6 +269,29 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         XCTAssertEqual(savedEvent[keyPath: "event"] as? String, givenEvent)
         XCTAssertEqual(savedEvent[keyPath: "context.userAgent"] as? String, userAgent)
+    }
+
+    func test_anyEvent_expectFinalJsonDoesNotHaveLibrary() {
+        let givenUserAgent = userAgentUtil?.getUserAgentHeaderValue()
+        let givenEvent = String.random
+        customerIO.track(name: givenEvent)
+
+        let allEvents = readTypeFromStorage(key: Storage.Constants.events)
+        let filteredEvents = allEvents.filter { $0.eventType == "track" }
+        XCTAssertEqual(filteredEvents.count, 1, "too many events received")
+
+        guard let savedEvent = filteredEvents.last else {
+            XCTFail("saved event must not be nil")
+            return
+        }
+
+        guard givenUserAgent != nil else {
+            XCTFail("user agent must not be nil")
+            return
+        }
+
+        XCTAssertEqual(savedEvent[keyPath: "event"] as? String, givenEvent)
+        XCTAssertNil(savedEvent[keyPath: "context.library"])
     }
 
     func test_eventWithoutAttributes_expectFinalJSONHasCorrectKeysAndValues() {

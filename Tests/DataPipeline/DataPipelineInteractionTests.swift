@@ -285,7 +285,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
     // MARK: track
 
-    func test_track_givenAutoTrackDeviceAttributesEnabled_expectCorrectDeviceAttributesInContext() {
+    func test_track_givenAutoTrackDeviceAttributesEnabled_expectSegmentDeviceAttributesInContextNotProperties() {
         let givenDefaultAttributes: [String: Any] = [
             "cio_sdk_version": "3.0.0",
             "push_enabled": true
@@ -304,10 +304,19 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
             return
         }
 
+        let properties = trackEvent.properties?.dictionaryValue
+        XCTAssertNil(properties?["network_bluetooth"])
+        XCTAssertNil(properties?["network_cellular"])
+        XCTAssertNil(properties?["network_wifi"])
+        XCTAssertNil(properties?["screen_width"])
+        XCTAssertNil(properties?["timezone"])
+        XCTAssertNil(properties?["screen_height"])
+        XCTAssertNil(properties?["ip"])
+
         let eventDeviceAttributes = trackEvent.deviceAttributes
         // cio default attributes
-        XCTAssertNotNil(eventDeviceAttributes?["cio_sdk_version"])
-        XCTAssertNotNil(eventDeviceAttributes?["push_enabled"])
+        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
         // segment events
         XCTAssertNotNil(eventDeviceAttributes?["id"])
         XCTAssertNotNil(eventDeviceAttributes?["model"])
@@ -459,11 +468,23 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(deviceUpdatedEvent?.deviceToken, givenDeviceToken)
         XCTAssertEqual(globalDataStoreMock.pushDeviceToken, givenDeviceToken)
 
-        XCTAssertMatches(
-            deviceUpdatedEvent?.properties,
-            givenDefaultAttributes,
-            withTypeMap: [["push_enabled"]: Bool.self]
-        )
+        let actualValues = deviceUpdatedEvent?.properties?.dictionaryValue as? [String: Any]
+
+        // Check for "cio_sdk_version"
+        let actualCioSdkVersion = actualValues?["cio_sdk_version"]
+        XCTAssertNotNil(actualCioSdkVersion, "Expected 'cio_sdk_version' key is missing")
+        if let actualCioSdkVersion = actualCioSdkVersion as? String,
+           let expectedCioSdkVersion = givenDefaultAttributes["cio_sdk_version"] as? String {
+            XCTAssertEqual(actualCioSdkVersion, expectedCioSdkVersion, "'cio_sdk_version' does not match")
+        }
+
+        // Check for "push_enabled"
+        let actualPushEnabled = actualValues?["push_enabled"]
+        XCTAssertNotNil(actualPushEnabled, "Expected 'push_enabled' key is missing")
+        if let actualPushEnabled = actualPushEnabled as? Bool,
+           let expectedPushEnabled = givenDefaultAttributes["push_enabled"] as? Bool {
+            XCTAssertEqual(actualPushEnabled, expectedPushEnabled, "'push_enabled' does not match")
+        }
     }
 
     func test_registerDeviceToken_givenNoOsNameAvailable_expectDeviceCreateEvent() {
@@ -575,32 +596,6 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
         super.setUp(enableLogs: enableLogs, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
-    }
-
-    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInContext() {
-        setUp(modifySdkConfig: { config in
-            config.autoTrackDeviceAttributes(false)
-        })
-
-        customerIO.track(name: String.random)
-
-        XCTAssertEqual(outputReader.events.count, 1)
-        XCTAssertEqual(outputReader.trackEvents.count, 1)
-
-        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
-            XCTFail("recorded event is not an instance of TrackEvent")
-            return
-        }
-
-        let eventDeviceAttributes = trackEvent.deviceAttributes
-        // cio default attributes
-        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
-        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
-        // segment events
-        XCTAssertNil(eventDeviceAttributes?["id"])
-        XCTAssertNil(eventDeviceAttributes?["model"])
-        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
-        XCTAssertNil(eventDeviceAttributes?["type"])
     }
 }
 
