@@ -11,10 +11,7 @@ class Context: Plugin {
 
     let userAgentUtil: UserAgentUtil
 
-    public var autoTrackDeviceAttributes: Bool
-
-    public required init(autoTrackDeviceAttributes: Bool, diGraph: DIGraphShared) {
-        self.autoTrackDeviceAttributes = autoTrackDeviceAttributes
+    public required init(diGraph: DIGraphShared) {
         self.userAgentUtil = diGraph.userAgentUtil
     }
 
@@ -42,16 +39,6 @@ class Context: Plugin {
 
             // remove library from context
             context.removeValue(forKey: "library")
-
-            // if autoTrackDeviceAttributes is false, remove all device attributes except token and type which other destination depend on
-            if let device = context[keyPath: "device"] as? [String: Any] {
-                if !autoTrackDeviceAttributes {
-                    // Keep only device.token and device.type, remove everything else
-                    let token = device["token"]
-                    let type = device["type"]
-                    context["device"] = ["token": token, "type": type]
-                }
-            }
 
             workingEvent.context = try JSON(context)
         } catch {

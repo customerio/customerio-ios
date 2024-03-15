@@ -12,7 +12,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
-    private var deviceUpdatePlugin: DeviceCreateOrUpdate?
+    private var deviceUpdatePlugin: DeviceContexualAttributes?
     private let profileStore: ProfileStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
@@ -27,10 +27,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
 
-        self.contextPlugin = Context(autoTrackDeviceAttributes: moduleConfig.autoTrackDeviceAttributes, diGraph: diGraph)
+        self.contextPlugin = Context(diGraph: diGraph)
 
         if moduleConfig.autoTrackDeviceAttributes {
-            self.deviceUpdatePlugin = DeviceCreateOrUpdate()
+            self.deviceUpdatePlugin = DeviceContexualAttributes()
         }
 
         initialize(diGraph: diGraph)

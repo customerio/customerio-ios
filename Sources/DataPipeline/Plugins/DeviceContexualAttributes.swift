@@ -1,7 +1,8 @@
 import Foundation
 import Segment
 
-class DeviceCreateOrUpdate: EventPlugin {
+// This plugin is used to add contextual data to the device attributes
+class DeviceContexualAttributes: EventPlugin {
     var type: PluginType = .enrichment
     var analytics: Analytics?
 
