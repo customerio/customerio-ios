@@ -75,6 +75,8 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
+        // set log level after setting up dependencies
+        log.setLogLevel(self.sdkConfig.logLevel)
         // setup SDK instance and set necessary components for testing
         initializeSDKComponents()
 
