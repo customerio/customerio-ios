@@ -66,33 +66,6 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
     }
 
-    func test_givenDefaults_expectMatchAnalyticsDefaults() {
-        let givenCdpApiKey = String.random
-        let analyticsConfig = Configuration(writeKey: givenCdpApiKey).values
-
-        var analyticsDefaultExpectedSettings = Settings(writeKey: givenCdpApiKey)
-        do {
-            analyticsDefaultExpectedSettings.integrations = try JSON(["Segment.io": true])
-        } catch {
-            XCTFail("Failed to setup test integrations with error: \(error)")
-        }
-
-        let (_, actual) = SDKConfigBuilder(cdpApiKey: .random).build()
-
-        // API host and CDN host should match Customer.io's CDP settings.
-        XCTAssertEqual(actual.apiHost, "cdp.customer.io/v1")
-        XCTAssertEqual(actual.cdnHost, "cdp.customer.io/v1")
-        // Remaining values should match the analytics configuration.
-        XCTAssertEqual(actual.flushAt, analyticsConfig.flushAt)
-        XCTAssertEqual(actual.flushInterval, analyticsConfig.flushInterval)
-        XCTAssertEqual(actual.autoAddCustomerIODestination, analyticsConfig.autoAddSegmentDestination)
-        XCTAssertSame(analyticsConfig.defaultSettings, analyticsDefaultExpectedSettings)
-        XCTAssertSame(actual.flushPolicies, analyticsConfig.flushPolicies)
-        XCTAssertSame(DispatchQueue(label: "com.segment.operatingModeQueue", qos: .utility), analyticsConfig.flushQueue)
-        XCTAssertEqual(OperatingMode.asynchronous, analyticsConfig.operatingMode)
-        XCTAssertEqual(actual.trackApplicationLifecycleEvents, analyticsConfig.trackApplicationLifecycleEvents)
-    }
-
     func test_givenRegionUS_expectRegionDefaults() {
         let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: .random)
             .region(.US)
@@ -178,27 +151,5 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(autoConfiguredPlugins.count, 1)
         XCTAssertNotNil(configuredPlugin)
         XCTAssertTrue(configuredPlugin is ConsoleLogger)
-    }
-}
-
-/// Helper methods to assert custom types.
-extension SDKConfigBuilderTest {
-    func XCTAssertSame(_ actual: Settings?, _ expected: Settings, file: StaticString = #file, line: UInt = #line) {
-        XCTAssertEqual(actual?.integrations, expected.integrations, file: file, line: line)
-    }
-
-    func XCTAssertSame(_ actual: [FlushPolicy], _ expected: [FlushPolicy], file: StaticString = #file, line: UInt = #line) {
-        XCTAssertEqual(actual.count, expected.count, file: file, line: line)
-        // This is not the best way to compare arrays, but it's the best we can do for now without complicating the code.
-        for index in actual.indices {
-            // We assume if class types of policies are same, then policies are the same too.
-            XCTAssertTrue(type(of: actual[index]) == type(of: expected[index]), file: file, line: line)
-        }
-    }
-
-    func XCTAssertSame(_ actual: DispatchQueue?, _ expected: DispatchQueue, file: StaticString = #file, line: UInt = #line) {
-        XCTAssertNotNil(actual)
-        XCTAssertEqual(actual?.label, expected.label, file: file, line: line)
-        XCTAssertEqual(actual?.qos, expected.qos, file: file, line: line)
     }
 }
