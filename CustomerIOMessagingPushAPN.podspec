@@ -18,6 +18,7 @@ Pod::Spec.new do |spec|
   # spec.tvos.deployment_target = '13.0'
 
   spec.source_files  = "Sources/MessagingPushAPN/**/*"
+  spec.exclude_files = "Sources/**/*{.md}"
   spec.module_name = "CioMessagingPushAPN" # the `import X` name when using SDK in Swift files
   
   spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"
