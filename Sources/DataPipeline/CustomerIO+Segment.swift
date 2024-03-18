@@ -160,15 +160,14 @@ extension DataPipelineConfigOptions {
         result.trackApplicationLifecycleEvents(trackApplicationLifecycleEvents)
         result.flushAt(flushAt)
         result.flushInterval(flushInterval)
-        result.defaultSettings(defaultSettings)
+        // Set settings to nil as we don't want to add default Segment integration
+        result.defaultSettings(nil)
         // Force set to false as we will never add Segment destination
         // User can disable CIO destination to achieve same results
         result.autoAddSegmentDestination(false)
         result.apiHost(apiHost)
         result.cdnHost(cdnHost)
         result.flushPolicies(flushPolicies)
-        result.operatingMode(operatingMode)
-        result.flushQueue(flushQueue)
         return result
     }
 }

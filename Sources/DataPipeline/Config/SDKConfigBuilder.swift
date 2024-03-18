@@ -39,10 +39,7 @@ public class SDKConfigBuilder {
     private var flushAt: Int = 20
     private var flushInterval: Seconds = 30
     private var autoAddCustomerIODestination: Bool = true
-    private var defaultSettings: Settings?
     private var flushPolicies: [FlushPolicy] = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
-    private var flushQueue: DispatchQueue = .init(label: "com.segment.operatingModeQueue", qos: .utility)
-    private var operatingMode: OperatingMode = .asynchronous
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
     private var migrationSiteId: String?
@@ -119,32 +116,14 @@ public class SDKConfigBuilder {
     }
 
     @discardableResult
-    public func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
+    func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
         autoAddCustomerIODestination = autoAdd
-        return self
-    }
-
-    @discardableResult
-    public func defaultSettings(_ settings: Settings?) -> SDKConfigBuilder {
-        defaultSettings = settings
         return self
     }
 
     @discardableResult
     public func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
         flushPolicies = policies
-        return self
-    }
-
-    @discardableResult
-    public func flushQueue(_ queue: DispatchQueue) -> SDKConfigBuilder {
-        flushQueue = queue
-        return self
-    }
-
-    @discardableResult
-    public func operatingMode(_ mode: OperatingMode) -> SDKConfigBuilder {
-        operatingMode = mode
         return self
     }
 
@@ -195,10 +174,7 @@ public class SDKConfigBuilder {
             flushAt: flushAt,
             flushInterval: flushInterval,
             autoAddCustomerIODestination: autoAddCustomerIODestination,
-            defaultSettings: defaultSettings,
             flushPolicies: flushPolicies,
-            flushQueue: flushQueue,
-            operatingMode: operatingMode,
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
             autoTrackDeviceAttributes: autoTrackDeviceAttributes,
             migrationSiteId: migrationSiteId,

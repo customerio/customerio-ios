@@ -19,10 +19,7 @@ public struct DataPipelineConfigOptions {
 
     /// Segment configurations
     public let autoAddCustomerIODestination: Bool
-    public let defaultSettings: Settings?
     public let flushPolicies: [FlushPolicy]
-    public let flushQueue: DispatchQueue
-    public let operatingMode: OperatingMode
     public let trackApplicationLifecycleEvents: Bool
 
     /// Configuration options for users to easily add available plugins
