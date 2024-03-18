@@ -313,7 +313,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertNil(properties?["screen_height"])
         XCTAssertNil(properties?["ip"])
 
-        let eventDeviceAttributes = trackEvent.deviceAttributes
+        let eventDeviceAttributes = trackEvent.contextDeviceAttributes
         // cio default attributes
         XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
         XCTAssertNil(eventDeviceAttributes?["push_enabled"])
@@ -596,6 +596,36 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
         super.setUp(enableLogs: enableLogs, cdpApiKey: cdpApiKey, modifySdkConfig: modifySdkConfig)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
+    }
+
+    func test_track_givenAutoTrackDeviceAttributesDisabled_expectNoDeviceAttributesInProperties() {
+        setUp(modifySdkConfig: { config in
+            config.autoTrackDeviceAttributes(false)
+        })
+
+        let givenIdentifier = String.random
+        let givenDeviceToken = String.random
+
+        mockDeviceAttributes()
+        customerIO.identify(userId: givenIdentifier)
+        outputReader.resetPlugin()
+
+        customerIO.registerDeviceToken(givenDeviceToken)
+
+        guard let trackEvent = outputReader.deviceUpdateEvents.last else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        let eventDeviceAttributes = trackEvent.properties
+        // cio default attributes
+        XCTAssertNil(eventDeviceAttributes?["cio_sdk_version"])
+        XCTAssertNil(eventDeviceAttributes?["push_enabled"])
+        // segment events
+        XCTAssertNil(eventDeviceAttributes?["id"])
+        XCTAssertNil(eventDeviceAttributes?["model"])
+        XCTAssertNil(eventDeviceAttributes?["manufacturer"])
+        XCTAssertNil(eventDeviceAttributes?["type"])
     }
 }
 
