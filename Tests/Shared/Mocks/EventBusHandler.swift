@@ -16,6 +16,7 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
         removeObserverCallsCount = 0
         postEventCallsCount = 0
         removeFromStorageCallsCount = 0
+        removeAllObserversCallsCount = 0
     }
 
     public private(set) var loadEventsFromStorageCallsCount = 0
@@ -66,11 +67,24 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
         removeFromStorageCallsCount += 1
     }
 
-    public private(set) var resetCallsCount = 0
-    public var resetCalled: Bool { resetCallsCount > 0 }
+    // MARK: - removeAllObservers
 
-    public func reset() async {
+    /// Number of times the function was called.
+    @Atomic public private(set) var removeAllObserversCallsCount = 0
+    /// `true` if the function was ever called.
+    public var removeAllObserversCalled: Bool {
+        removeAllObserversCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var removeAllObserversClosure: (() -> Void)?
+
+    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func removeAllObservers() {
         mockCalled = true
-        resetCallsCount += 1
+        removeAllObserversCallsCount += 1
+        removeAllObserversClosure?()
     }
 }

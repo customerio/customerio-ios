@@ -67,7 +67,7 @@ extension RawEvent {
         return nil
     }
 
-    var deviceAttributes: [String: Any]? {
+    var contextDeviceAttributes: [String: Any]? {
         if let context = context?.dictionaryValue {
             return context[keyPath: "device"] as? [String: Any]
         }
