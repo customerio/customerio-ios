@@ -34,10 +34,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingPushFCM.initialize { config in
             config.autoFetchDeviceToken = true
         }
-
-        // Manually get FCM device token. Swizzling hasn't been working for me.
-        Messaging.messaging().delegate = self
-
         /**
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
          This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
@@ -50,7 +46,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    // Because this is a SwiftUI app, we need to add this function to inform FCM about an APN token being registered.
+    // Without this function, the FCM delegate will not be called with a FCM token registered.
+    // Docs: https://firebase.google.com/docs/cloud-messaging/ios/client#token-swizzle-disabled
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // You may or may not set apnsToken here
+        // Adding this method will also serve the purpose
         Messaging.messaging().apnsToken = deviceToken
     }
 }
