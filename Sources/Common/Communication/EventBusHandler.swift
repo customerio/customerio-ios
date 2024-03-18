@@ -144,7 +144,6 @@ public class CioEventBusHandler: EventBusHandler {
 
     /// Resets the EventBus to initial state by removing all observers and stored events.
     public func reset() async {
-        await eventStorage.removeAll()
         await eventBus.removeAllObservers()
     }
 }

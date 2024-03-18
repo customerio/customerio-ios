@@ -30,35 +30,35 @@ class DataPipelineEventBustTests: IntegrationTest {
         userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
     }
 
-//    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackMetricEvent() async {
-//        diGraphShared.override(value: eventBusHandler, forType: EventBusHandler.self)
-//
-//        let givenDeliveryID = String.random
-//        let givenMetric = Metric.delivered.rawValue
-//        let givenDeviceToken = String.random
-//
-//        let givenMetricEvent = TrackMetricEvent(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
-//
-//        await eventBusHandler.postEventAndWait(givenMetricEvent)
-//
-//        let expectedData: [String: Any] = [
-//            "metric": givenMetric,
-//            "deliveryId": givenDeliveryID,
-//            "recipient": givenDeviceToken
-//        ]
-//
-//        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
-//            XCTFail("recorded event is not an instance of TrackEvent")
-//            return
-//        }
-//
-//        XCTAssertEqual(trackEvent.type, "track")
-//        XCTAssertEqual(trackEvent.event, "Report Delivery Event")
-//        XCTAssertMatches(
-//            trackEvent.properties,
-//            expectedData
-//        )
-//    }
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackMetricEvent() async {
+        diGraphShared.override(value: eventBusHandler, forType: EventBusHandler.self)
+
+        let givenDeliveryID = String.random
+        let givenMetric = Metric.delivered.rawValue
+        let givenDeviceToken = String.random
+
+        let givenMetricEvent = TrackMetricEvent(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
+
+        await eventBusHandler.postEventAndWait(givenMetricEvent)
+
+        let expectedData: [String: Any] = [
+            "metric": givenMetric,
+            "deliveryId": givenDeliveryID,
+            "recipient": givenDeviceToken
+        ]
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.event, "Report Delivery Event")
+        XCTAssertMatches(
+            trackEvent.properties,
+            expectedData
+        )
+    }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesRegisterDeviceEvent() async {
         let givenToken = String.random
