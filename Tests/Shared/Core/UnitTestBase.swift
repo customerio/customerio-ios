@@ -114,7 +114,7 @@ open class UnitTestBase<Component>: XCTestCase {
     open func deleteAllPersistentData() {
         // need to remove the observers for integration tests that utilizes actual NotificationCenter
         // otherwise, results are flaky
-        Task { await diGraphShared.eventBusHandler.reset() }
+        Task { await diGraphShared.eventBusHandler.removeAllObservers() }
         deleteAllFiles()
         deleteKeyValueStoredData()
     }

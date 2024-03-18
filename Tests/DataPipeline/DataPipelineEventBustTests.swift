@@ -14,7 +14,6 @@ class DataPipelineEventBustTests: IntegrationTest {
 
     private let deviceAttributesMock = DeviceAttributesProviderMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
-    private var userAgentUtil: UserAgentUtil?
 
     override func setUpDependencies() {
         super.setUpDependencies()
@@ -27,12 +26,9 @@ class DataPipelineEventBustTests: IntegrationTest {
         super.setUp(modifySdkConfig: nil)
         // OutputReaderPlugin helps validating interactions with analytics
         outputReader = (customerIO.add(plugin: OutputReaderPlugin()) as? OutputReaderPlugin)
-        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesTrackMetricEvent() async {
-        diGraphShared.override(value: eventBusHandler, forType: EventBusHandler.self)
-
         let givenDeliveryID = String.random
         let givenMetric = Metric.delivered.rawValue
         let givenDeviceToken = String.random
