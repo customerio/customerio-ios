@@ -91,7 +91,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         // initialize parent module to initialize features shared by APN and FCM modules
         let implementation = MessagingPush.initialize(withConfig: config)
 
-        let pushConfigOptions = implementation.moduleConfig
+        let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken {
             shared.setupAutoFetchDeviceToken()
         }
