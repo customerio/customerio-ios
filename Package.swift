@@ -43,7 +43,9 @@ let package = Package(
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
         .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
-        .package(name: "Segment", url: "https://github.com/customerio/cdp-analytics-swift.git", .branch("main"))
+
+        // The version is a git commit hash. Make sure the commit is the same as what the DataPipelines CocoaPods is using.
+        .package(name: "Segment", url: "https://github.com/customerio/cdp-analytics-swift.git", .revision("b2f8f5b68dd0d8796b4bacdec39aacb5b6387a41"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.

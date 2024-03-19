@@ -288,11 +288,6 @@ extension DataPipelineImplementation {
     func processIdentifyFromBGQ(identifier: String, timestamp: String, body: [String: Any]?) {
         var identifyEvent = IdentifyEvent(userId: identifier, traits: nil)
         identifyEvent.timestamp = timestamp
-
-        let contextDict = ["journeys": ["identifiers": ["id": identifier]]]
-        if let context = try? JSON(contextDict) {
-            identifyEvent.context = context
-        }
         if let traits = body {
             let jsonTraits = try? JSON(traits)
             identifyEvent.traits = jsonTraits
@@ -324,9 +319,8 @@ extension DataPipelineImplementation {
         var trackDeleteEvent = TrackEvent(event: "Device Deleted", properties: nil)
         trackDeleteEvent.userId = identifier
         trackDeleteEvent.timestamp = timestamp
-        let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         let deviceDict: [String: Any] = ["device": ["token": token, "type": "ios"]]
-        if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
+        if let context = try? JSON(deviceDict) {
             trackDeleteEvent.context = context
         }
         analytics.process(event: trackDeleteEvent)
@@ -336,11 +330,10 @@ extension DataPipelineImplementation {
         var trackRegisterTokenEvent = TrackEvent(event: "Device Created or Updated", properties: nil)
         trackRegisterTokenEvent.userId = identifier
         trackRegisterTokenEvent.timestamp = timestamp
-        let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         let tokenDict: [String: Any] = ["token": token, "type": "ios"]
 
         let deviceDict: [String: Any] = ["device": tokenDict]
-        if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
+        if let context = try? JSON(deviceDict) {
             trackRegisterTokenEvent.context = context
         }
         if let attributes = attributes, let attributes = try? JSON(attributes) {

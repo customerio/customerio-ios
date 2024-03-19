@@ -97,25 +97,13 @@ class DataPipelineAPITest: UnitTest {
         let _: Bool = CustomerIO.shared.enabled
         let _: String = CustomerIO.shared.anonymousId
         let _: String? = CustomerIO.shared.userId
-        let _: OperatingMode = CustomerIO.shared.operatingMode
-        let _: TimeInterval = CustomerIO.shared.flushInterval
-        let _: Int = CustomerIO.shared.flushAt
-        let _: [FlushPolicy] = CustomerIO.shared.flushPolicies
-        let _: CodableExample? = CustomerIO.shared.traits()
-        let _: [String: Any]? = CustomerIO.shared.traits()
         CustomerIO.shared.flush {}
         CustomerIO.shared.reset()
-        let _: String = CustomerIO.shared.version()
-        let _: Settings? = CustomerIO.shared.settings()
-        CustomerIO.shared.manuallyEnableDestination(plugin: DestinationPluginMock())
         let _: Bool = CustomerIO.shared.hasUnsentEvents
         let _: [URL]? = CustomerIO.shared.pendingUploads
         CustomerIO.shared.purgeStorage()
         CustomerIO.shared.purgeStorage(fileURL: exampleURL)
         CustomerIO.shared.waitUntilStarted()
-        CustomerIO.shared.openURL(exampleURL)
-        CustomerIO.shared.openURL(exampleURL, options: codedData)
-        CustomerIO.shared.openURL(exampleURL, options: dictionaryData)
     }
 
     func test_allPublicModuleConfigOptions() throws {
