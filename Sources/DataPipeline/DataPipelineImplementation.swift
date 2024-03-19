@@ -337,7 +337,7 @@ extension DataPipelineImplementation {
         trackRegisterTokenEvent.userId = identifier
         trackRegisterTokenEvent.timestamp = timestamp
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
-        var tokenDict: [String: Any] = ["token": token, "type": "ios"]
+        let tokenDict: [String: Any] = ["token": token, "type": "ios"]
 
         let deviceDict: [String: Any] = ["device": tokenDict]
         if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
