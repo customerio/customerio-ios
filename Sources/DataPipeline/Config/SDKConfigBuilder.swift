@@ -60,6 +60,7 @@ public class SDKConfigBuilder {
         return self
     }
 
+    #if canImport(UIKit)
     /// Enable this property if you want SDK to automatically track screen views for UIKit based apps.
     /// - Parameters:
     ///   - enabled: `true` to enable auto tracking of screen views, `false` to disable.
@@ -82,6 +83,7 @@ public class SDKConfigBuilder {
         self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
         return self
     }
+    #endif
 
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you wish to
     /// view from the SDK.
