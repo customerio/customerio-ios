@@ -190,45 +190,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         Mocks.shared.add(mock: self)
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    public var underlyingModuleConfig: MessagingPushConfigOptions!
-    /// `true` if the getter or setter of property is called at least once.
-    public var moduleConfigCalled: Bool {
-        moduleConfigGetCalled || moduleConfigSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var moduleConfigGetCalled: Bool {
-        moduleConfigGetCallsCount > 0
-    }
-
-    public var moduleConfigGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    public var moduleConfigSetCalled: Bool {
-        moduleConfigSetCallsCount > 0
-    }
-
-    public var moduleConfigSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    public var moduleConfig: MessagingPushConfigOptions {
-        get {
-            mockCalled = true
-            moduleConfigGetCallsCount += 1
-            return underlyingModuleConfig
-        }
-        set(value) {
-            mockCalled = true
-            moduleConfigSetCallsCount += 1
-            underlyingModuleConfig = value
-        }
-    }
-
     public func resetMock() {
-        moduleConfigGetCallsCount = 0
-        moduleConfigSetCallsCount = 0
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []

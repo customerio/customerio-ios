@@ -36,7 +36,7 @@ class MessagingPushAPNAPITest: UnitTest {
 
         // `moduleConfig` is not really meant to be accessed by customers, so it is okay to not have it in the mock.
         // However, it is public so we should make sure it does not change.
-        _ = MessagingPush.shared.moduleConfig
+        _ = MessagingPush.moduleConfig
 
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())
         mock.registerDeviceToken(apnDeviceToken: Data())

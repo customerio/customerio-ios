@@ -7,11 +7,11 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @Atomic public private(set) static var shared = MessagingPush()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
 
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
-    public var moduleConfig: MessagingPushConfigOptions { implementation?.moduleConfig ?? MessagingPushConfigBuilder().build() }
 
     // singleton constructor
     private init() {
@@ -26,6 +26,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
+        moduleConfig = config
         shared.globalDataStore = diGraphShared.globalDataStore
         shared._implementation = implementation
         return implementation
@@ -33,11 +34,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+        moduleConfig = config
         let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
         return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
+        moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
     }
     #endif
@@ -50,6 +53,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
+            // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
+            Self.moduleConfig = config
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
             if config.autoTrackPushEvents {
@@ -68,6 +73,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
+            // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
+            Self.moduleConfig = config
             // set logLevel of shared logger only when module is initialized from NotificationServiceExtension.
             DIGraphShared.shared.logger.setLogLevel(config.logLevel)
             return shared.getImplementation(config: config)
