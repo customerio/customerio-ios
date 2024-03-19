@@ -339,13 +339,12 @@ extension DataPipelineImplementation {
         let journeyDict: [String: Any] = ["journeys": ["identifiers": ["id": identifier]]]
         var tokenDict: [String: Any] = ["token": token, "type": "ios"]
 
-        if let attributes = attributes {
-            tokenDict = tokenDict.mergeWith(attributes)
-        }
-
         let deviceDict: [String: Any] = ["device": tokenDict]
         if let context = try? JSON(deviceDict.mergeWith(journeyDict)) {
             trackRegisterTokenEvent.context = context
+        }
+        if let attributes = attributes, let attributes = try? JSON(attributes) {
+            trackRegisterTokenEvent.properties = attributes
         }
         analytics.process(event: trackRegisterTokenEvent)
     }

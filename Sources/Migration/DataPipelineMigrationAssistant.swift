@@ -55,9 +55,9 @@ public class DataPipelineMigrationAssistant {
             logger.info("CIO-CDP Migration: No tasks pending in the background queue to be executed.")
             return
         }
-        threadUtil.runBackground { [weak self] in
+        threadUtil.runBackground {
             allStoredTasks.forEach { task in
-                self?.getAndProcessTask(for: task, siteId: siteId)
+                self.getAndProcessTask(for: task, siteId: siteId)
             }
         }
     }
