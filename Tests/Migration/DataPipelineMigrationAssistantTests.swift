@@ -238,6 +238,28 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
     }
 
+    func test_givenScreenTrackEvent_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.trackEvent
+
+        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
+            XCTFail("Failed to create task")
+            return
+        }
+
+        let trackEventAttributedJSON = TrackEventTypeForAnalytics(type: .screen, name: String.random, timestamp: dateUtilStub.now)
+        let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: jsonAdapter.toJsonString(trackEventAttributedJSON)!)
+
+        guard let jsonData = try? JSONEncoder().encode(trackEventData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
     func test_givenRegisterPushToken_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.registerPushToken
 
