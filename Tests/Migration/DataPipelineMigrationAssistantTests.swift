@@ -71,7 +71,10 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
         let givenType = QueueTaskType.identifyProfile
-
+        guard let _ = createTaskAndStoreInInventory(forType: givenType) else {
+            XCTFail("Failed to create task")
+            return
+        }
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
