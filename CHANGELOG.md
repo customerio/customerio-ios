@@ -1,3 +1,10 @@
+## [2.12.5](https://github.com/customerio/customerio-ios/compare/2.12.4...2.12.5) (2024-03-18)
+
+
+### Bug Fixes
+
+* do not bundle .md files in cocoapods deployments ([15dbb48](https://github.com/customerio/customerio-ios/commit/15dbb48b942008178f5d6433fe9fc144f7c740b9))
+
 ## [2.12.4](https://github.com/customerio/customerio-ios/compare/2.12.3...2.12.4) (2024-03-13)
 
 
