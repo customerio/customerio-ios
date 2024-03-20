@@ -1,4 +1,3 @@
-import CioTracking
 import Foundation
 
 struct WorkspaceSettings: UserDefaultsCodable {
@@ -18,12 +17,12 @@ struct WorkspaceSettings: UserDefaultsCodable {
 }
 
 struct Profile: UserDefaultsCodable {
-    var id: String
-    var properties: [Property]
+    var userId: String
+    var traits: [Property]
     var loggedIn: Bool
 
     static func empty() -> Profile {
-        Profile(id: UUID().uuidString, properties: [], loggedIn: false)
+        Profile(userId: "", traits: [], loggedIn: false)
     }
 
     static func storageKey() -> String {
@@ -33,16 +32,18 @@ struct Profile: UserDefaultsCodable {
 
 struct Property: Codable, Identifiable, Comparable, Equatable {
     static func < (lhs: Property, rhs: Property) -> Bool {
-        lhs.name == rhs.name
+        lhs.key == rhs.key
     }
 
-    let id: String
-    var name: String
+    var id: String {
+        key
+    }
+
+    var key: String
     var value: String
 
-    init(name: String, value: String) {
-        self.id = UUID().uuidString
-        self.name = name
+    init(key: String, value: String) {
+        self.key = key
         self.value = value
     }
 }
@@ -51,8 +52,8 @@ extension [Property] {
     func toDictionary() -> [String: String] {
         var res: [String: String] = [:]
         forEach { p in
-            if !p.name.isEmpty {
-                res[p.name] = p.value
+            if !p.key.isEmpty {
+                res[p.key] = p.value
             }
         }
         return res
