@@ -1,3 +1,32 @@
+## [3.0.0](https://github.com/customerio/customerio-ios/compare/2.12.5...3.0.0) (2024-03-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* iOS as a source for Data Pipelines (#659)
+
+### Features
+
+* iOS as a source for Data Pipelines ([#659](https://github.com/customerio/customerio-ios/issues/659)) ([0a68373](https://github.com/customerio/customerio-ios/commit/0a683732a8eea6372445b30c4bcce2f1dc9caa86))
+* migration module to cater to all migration tasks  ([#530](https://github.com/customerio/customerio-ios/issues/530)) ([2feb1d4](https://github.com/customerio/customerio-ios/commit/2feb1d4af49d1cf80ef1eecacb7ce2ea0a7881c9))
+
+
+### Bug Fixes
+
+* add attributes to properties  ([#649](https://github.com/customerio/customerio-ios/issues/649)) ([4b02e92](https://github.com/customerio/customerio-ios/commit/4b02e926e64ad3f26b111a7b7ff6a421d71203d9))
+* all sdk modules can only be initialized once ([ae46c7f](https://github.com/customerio/customerio-ios/commit/ae46c7f01c73d5db5a40d23f5959be7bf83c2e93))
+* app crash on identify method ([#458](https://github.com/customerio/customerio-ios/issues/458)) ([13e9862](https://github.com/customerio/customerio-ios/commit/13e9862b3e8161185e7f5dd823297187eb79d78a))
+* compilation for test ([f14b773](https://github.com/customerio/customerio-ios/commit/f14b77331c372689cc8d1791b625500ab4b3182b))
+* compilation issue ([420a61e](https://github.com/customerio/customerio-ios/commit/420a61e40d7a899bca7549390cbc33fbff16d7c4))
+* eventbus handler ref ([#469](https://github.com/customerio/customerio-ios/issues/469)) ([8c8ef91](https://github.com/customerio/customerio-ios/commit/8c8ef91bfbd7722ecd911f6be83a7ec5e1cc0725))
+* journey id in migration payload ([#653](https://github.com/customerio/customerio-ios/issues/653)) ([3b649c9](https://github.com/customerio/customerio-ios/commit/3b649c905946af1922665b183007b008d8bc0274))
+* prevent duplicate automatic screenview events from being tracked ([fea9ec5](https://github.com/customerio/customerio-ios/commit/fea9ec5ea498e25b24d65ef9e619790102337a0d))
+* pushEventHandler test ([dc80fc2](https://github.com/customerio/customerio-ios/commit/dc80fc2d66c290ad7080ac8e05a4cded2f729071))
+* remove occurrence of autoTrackDeviceAttributes from all push modules ([#505](https://github.com/customerio/customerio-ios/issues/505)) ([8dc6507](https://github.com/customerio/customerio-ios/commit/8dc6507582f1aed97fb80229df152f2ec152b186))
+* removed last_used from properties  ([#477](https://github.com/customerio/customerio-ios/issues/477)) ([b0b9631](https://github.com/customerio/customerio-ios/commit/b0b9631d88c558206f88d7de161ec51c7a15c2cf))
+* sample app issues ([#551](https://github.com/customerio/customerio-ios/issues/551)) ([05544b3](https://github.com/customerio/customerio-ios/commit/05544b3014b5276d21be736a9618046321967f23))
+* use git commit instead of git branch for segment dependency ([d245015](https://github.com/customerio/customerio-ios/commit/d2450154725c54898b5d08defacdd2e2f37406e8))
+
 ## [2.12.5](https://github.com/customerio/customerio-ios/compare/2.12.4...2.12.5) (2024-03-18)
 
 
