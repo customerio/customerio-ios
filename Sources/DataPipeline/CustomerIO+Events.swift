@@ -23,14 +23,6 @@ public extension CustomerIO {
         DataPipeline.shared.analytics.screen(title: title, category: category)
     }
 
-    func group<T: Codable>(groupId: String, traits: T?) {
-        DataPipeline.shared.analytics.group(groupId: groupId, traits: traits)
-    }
-
-    func group(groupId: String) {
-        DataPipeline.shared.analytics.group(groupId: groupId)
-    }
-
     func alias(newId: String) {
         DataPipeline.shared.analytics.alias(newId: newId)
     }
@@ -46,13 +38,5 @@ public extension CustomerIO {
     ///   - properties: Any extra metadata associated with the screen. e.g. method of access, size, etc.
     func screen(title: String, category: String? = nil, properties: [String: Any]? = nil) {
         DataPipeline.shared.analytics.screen(title: title, category: category, properties: properties)
-    }
-
-    /// Associate a user with a group such as a company, organization, project, etc.
-    /// - Parameters:
-    ///   - groupId: A unique identifier for the group identification in your system.
-    ///   - traits: Traits of the group you may be interested in such as email, phone or name.
-    func group(groupId: String, traits: [String: Any]?) {
-        DataPipeline.shared.analytics.group(groupId: groupId, traits: traits)
     }
 }
