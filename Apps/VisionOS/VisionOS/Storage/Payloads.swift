@@ -1,5 +1,6 @@
-import CioTracking
 import Foundation
+
+import CioInternalCommon
 
 extension Region: CaseIterable, Codable {
     public static var allCases: [Region] = [.EU, .US]
@@ -23,12 +24,12 @@ struct WorkspaceSettings: UserDefaultsCodable {
 }
 
 struct Profile: UserDefaultsCodable {
-    var id: String
-    var properties: [Property]
+    var userId: String
+    var traits: [Property]
     var loggedIn: Bool
 
     static func empty() -> Profile {
-        Profile(id: UUID().uuidString, properties: [], loggedIn: false)
+        Profile(userId: "", traits: [], loggedIn: false)
     }
 
     static func storageKey() -> String {

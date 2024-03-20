@@ -9,22 +9,35 @@
 /* Begin PBXBuildFile section */
 		6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD362B9137F0001540EF /* AppDelegate.swift */; };
 		60B151FB2BAB4AA9003C4726 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = 60B151FA2BAB4AA9003C4726 /* DataPipelines */; };
+		60C32BEC2BABAD4D006F5DC3 /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C32BEB2BABAD4D006F5DC3 /* ViewModel.swift */; };
+		60C32BF62BABAFBE006F5DC3 /* LineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4B2B9153EB001540EF /* LineView.swift */; };
+		60C32BF72BABAFBE006F5DC3 /* FloatingTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */; };
+		60C32BF82BABAFBE006F5DC3 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3A2B913954001540EF /* ToastView.swift */; };
+		60C32BF92BABAFBE006F5DC3 /* Logo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD392B913954001540EF /* Logo.swift */; };
+		60C32BFA2BABAFBE006F5DC3 /* PropertiesInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */; };
+		60C32BFB2BABAFBE006F5DC3 /* MainLayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD3B2B913954001540EF /* MainLayoutView.swift */; };
+		60C32BFD2BABAFFB006F5DC3 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFC2BABAFFB006F5DC3 /* MarkdownUI */; };
+		60C32BFF2BABB02E006F5DC3 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 60C32BFE2BABB02E006F5DC3 /* Splash */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
-		60F967472B91264B00A4E95E /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 60F967462B91264B00A4E95E /* Splash */; };
-		60F9674A2B91265B00A4E95E /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 60F967492B91265B00A4E95E /* MarkdownUI */; };
 		60F967532B91288400A4E95E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967502B91288400A4E95E /* AppState.swift */; };
 		60F967542B91288400A4E95E /* Payloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967512B91288400A4E95E /* Payloads.swift */; };
 		60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967522B91288400A4E95E /* UserDefaultsCodable.swift */; };
 		60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967582B912C1000A4E95E /* TextOutputFormat.swift */; };
 		60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967592B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift */; };
 		60F9675D2B912C1000A4E95E /* MarkdownTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */; };
-		60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F9675E2B912E2E00A4E95E /* InlineNavigationLink.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		6023AD362B9137F0001540EF /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		6023AD392B913954001540EF /* Logo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Logo.swift; sourceTree = "<group>"; };
+		6023AD3A2B913954001540EF /* ToastView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		6023AD3B2B913954001540EF /* MainLayoutView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MainLayoutView.swift; sourceTree = "<group>"; };
+		6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FloatingTitleTextField.swift; sourceTree = "<group>"; };
+		6023AD4B2B9153EB001540EF /* LineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LineView.swift; sourceTree = "<group>"; };
+		606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertiesInputView.swift; sourceTree = "<group>"; };
+		60C32BEB2BABAD4D006F5DC3 /* ViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewModel.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
@@ -37,7 +50,6 @@
 		60F967582B912C1000A4E95E /* TextOutputFormat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextOutputFormat.swift; sourceTree = "<group>"; };
 		60F967592B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
 		60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MarkdownTheme.swift; sourceTree = "<group>"; };
-		60F9675E2B912E2E00A4E95E /* InlineNavigationLink.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InlineNavigationLink.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,15 +57,28 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				60F967472B91264B00A4E95E /* Splash in Frameworks */,
 				60B151FB2BAB4AA9003C4726 /* DataPipelines in Frameworks */,
-				60F9674A2B91265B00A4E95E /* MarkdownUI in Frameworks */,
+				60C32BFD2BABAFFB006F5DC3 /* MarkdownUI in Frameworks */,
+				60C32BFF2BABB02E006F5DC3 /* Splash in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6023AD382B913954001540EF /* CommonViews */ = {
+			isa = PBXGroup;
+			children = (
+				6023AD3B2B913954001540EF /* MainLayoutView.swift */,
+				6023AD392B913954001540EF /* Logo.swift */,
+				6023AD3A2B913954001540EF /* ToastView.swift */,
+				6023AD4A2B9153EB001540EF /* FloatingTitleTextField.swift */,
+				6023AD4B2B9153EB001540EF /* LineView.swift */,
+				606F2C202B9B79F3004E7318 /* PropertiesInputView.swift */,
+			);
+			path = CommonViews;
+			sourceTree = "<group>";
+		};
 		60F967242B9125D000A4E95E = {
 			isa = PBXGroup;
 			children = (
@@ -75,11 +100,13 @@
 		60F9672F2B9125D000A4E95E /* VisionOS */ = {
 			isa = PBXGroup;
 			children = (
-				60F967562B912C1000A4E95E /* ViewUtils */,
 				60F9674F2B91288400A4E95E /* Storage */,
+				60F967562B912C1000A4E95E /* ViewUtils */,
+				6023AD382B913954001540EF /* CommonViews */,
 				60F967342B9125D000A4E95E /* VisionOSApp.swift */,
 				6023AD362B9137F0001540EF /* AppDelegate.swift */,
 				60F967362B9125D000A4E95E /* MainScreen.swift */,
+				60C32BEB2BABAD4D006F5DC3 /* ViewModel.swift */,
 				60F967382B9125D100A4E95E /* Assets.xcassets */,
 				60F9673D2B9125D100A4E95E /* Info.plist */,
 			);
@@ -114,7 +141,6 @@
 		60F967562B912C1000A4E95E /* ViewUtils */ = {
 			isa = PBXGroup;
 			children = (
-				60F9675E2B912E2E00A4E95E /* InlineNavigationLink.swift */,
 				60F967572B912C1000A4E95E /* SyntaxHighlighting */,
 				60F9675A2B912C1000A4E95E /* MarkdownTheme.swift */,
 			);
@@ -147,9 +173,9 @@
 			);
 			name = VisionOS;
 			packageProductDependencies = (
-				60F967462B91264B00A4E95E /* Splash */,
-				60F967492B91265B00A4E95E /* MarkdownUI */,
 				60B151FA2BAB4AA9003C4726 /* DataPipelines */,
+				60C32BFC2BABAFFB006F5DC3 /* MarkdownUI */,
+				60C32BFE2BABB02E006F5DC3 /* Splash */,
 			);
 			productName = VisionOS;
 			productReference = 60F9672D2B9125D000A4E95E /* VisionOS.app */;
@@ -209,8 +235,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */,
-				60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */,
 				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
+				60C32BEC2BABAD4D006F5DC3 /* ViewModel.swift in Sources */,
+				60C32BF62BABAFBE006F5DC3 /* LineView.swift in Sources */,
+				60C32BF72BABAFBE006F5DC3 /* FloatingTitleTextField.swift in Sources */,
+				60C32BF82BABAFBE006F5DC3 /* ToastView.swift in Sources */,
+				60C32BF92BABAFBE006F5DC3 /* Logo.swift in Sources */,
+				60C32BFA2BABAFBE006F5DC3 /* PropertiesInputView.swift in Sources */,
+				60C32BFB2BABAFBE006F5DC3 /* MainLayoutView.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
 				60F967372B9125D000A4E95E /* MainScreen.swift in Sources */,
 				60F9675B2B912C1000A4E95E /* TextOutputFormat.swift in Sources */,
@@ -442,15 +474,15 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = DataPipelines;
 		};
-		60F967462B91264B00A4E95E /* Splash */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 60F967452B91264B00A4E95E /* XCRemoteSwiftPackageReference "Splash" */;
-			productName = Splash;
-		};
-		60F967492B91265B00A4E95E /* MarkdownUI */ = {
+		60C32BFC2BABAFFB006F5DC3 /* MarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 60F967482B91265B00A4E95E /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
+		};
+		60C32BFE2BABB02E006F5DC3 /* Splash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60F967452B91264B00A4E95E /* XCRemoteSwiftPackageReference "Splash" */;
+			productName = Splash;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
