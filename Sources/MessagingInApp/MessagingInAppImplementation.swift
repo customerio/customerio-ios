@@ -1,81 +1,64 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
-    private let siteId: String
-    private let region: Region
-    private let logLevel: CioLogLevel
+    private let moduleConfig: MessagingInAppConfigOptions
+
     private let logger: CioInternalCommon.Logger
-    private var queue: Queue
-    private var jsonAdapter: JsonAdapter
     private var inAppProvider: InAppProvider
-    private var profileStore: ProfileStore
 
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
+    let eventBusHandler: EventBusHandler
 
-    init(diGraph: DIGraph) {
-        self.siteId = diGraph.sdkConfig.siteId
-        self.region = diGraph.sdkConfig.region
+    init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
+        self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
-        self.logLevel = diGraph.sdkConfig.logLevel
-        self.queue = diGraph.queue
-        self.jsonAdapter = diGraph.jsonAdapter
         self.inAppProvider = diGraph.inAppProvider
-        self.profileStore = diGraph.profileStore
         self.threadUtil = diGraph.threadUtil
-    }
-
-    func initialize() {
-        inAppProvider.initialize(siteId: siteId, region: region, delegate: self, enableLogging: logLevel == .debug)
-
-        // if identifier is already present, set the userToken again so in case if the customer was already identified and
-        // module was added later on, we can notify gist about it.
-        if let identifier = profileStore.identifier {
-            inAppProvider.setProfileIdentifier(identifier)
-        }
-    }
-
-    func initialize(eventListener: InAppEventListener) {
-        self.eventListener = eventListener
+        self.eventBusHandler = diGraph.eventBusHandler
         initialize()
     }
 
-    // Functions deprecated but need to exist for `MessagingInAppInstance` protocol.
-    // Do not call these functions but non-deprecated ones.
-    func initialize(organizationId: String) {}
+    private func initialize() {
+        inAppProvider.initialize(
+            siteId: moduleConfig.siteId,
+            region: moduleConfig.region,
+            delegate: self,
+            enableLogging: logger.logLevel == .debug
+        )
+
+        // if identifier is already present, set the userToken again so in case if the customer was already identified and
+        // module was added later on, we can notify gist about it.
+        eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { event in
+            self.logger.debug("registering profile \(event.identifier) for in-app")
+
+            self.inAppProvider.setProfileIdentifier(event.identifier)
+        }
+
+        eventBusHandler.addObserver(ScreenViewedEvent.self) { event in
+            self.logger.debug("setting route for in-app to \(event.name)")
+
+            // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
+            self.threadUtil.runMain {
+                self.inAppProvider.setRoute(event.name)
+            }
+        }
+
+        eventBusHandler.addObserver(ResetEvent.self) { _ in
+            self.logger.debug("removing profile for in-app")
+
+            self.inAppProvider.clearIdentify()
+        }
+    }
+
+    func setEventListener(_ eventListener: InAppEventListener?) {
+        self.eventListener = eventListener
+    }
 
     // Dismiss in-app message
     func dismissMessage() {
         inAppProvider.dismissMessage()
-    }
-}
-
-extension MessagingInAppImplementation: ProfileIdentifyHook {
-    public func beforeIdentifiedProfileChange(oldIdentifier: String, newIdentifier: String) {}
-
-    public func profileIdentified(identifier: String) {
-        logger.debug("registering profile \(identifier) for in-app")
-
-        inAppProvider.setProfileIdentifier(identifier)
-    }
-
-    public func beforeProfileStoppedBeingIdentified(oldIdentifier: String) {
-        logger.debug("removing profile for in-app")
-
-        inAppProvider.clearIdentify()
-    }
-}
-
-extension MessagingInAppImplementation: ScreenTrackingHook {
-    public func screenViewed(name: String) {
-        logger.debug("setting route for in-app to \(name)")
-
-        // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
-        threadUtil.runMain {
-            self.inAppProvider.setRoute(name)
-        }
     }
 }
 
@@ -89,8 +72,7 @@ extension MessagingInAppImplementation: GistDelegate {
         eventListener?.messageShown(message: InAppMessage(gistMessage: message))
 
         if let deliveryId = getDeliveryId(from: message) {
-            // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-            _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .opened)
+            eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
 
@@ -112,8 +94,7 @@ extension MessagingInAppImplementation: GistDelegate {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: message) {
-                // the state of the SDK does not change if adding this queue task isn't successful so ignore result
-                _ = queue.addTrackInAppDeliveryTask(deliveryId: deliveryId, event: .clicked, metaData: ["action_name": name, "action_value": action])
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["action_name": name, "action_value": action]))
             }
         }
 

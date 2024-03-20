@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 class RichPushRequestHandler {
@@ -18,11 +17,7 @@ class RichPushRequestHandler {
         let existingRequest = requests[requestId]
         if existingRequest != nil { return }
 
-        let sdkInitializedUtil = SdkInitializedUtilImpl()
-
-        guard let postSdkInitializedData = sdkInitializedUtil.postInitializedData else { return }
-
-        let diGraph = postSdkInitializedData.diGraph
+        let diGraph = DIGraphShared.shared
         let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(

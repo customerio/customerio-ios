@@ -10,18 +10,20 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     private var pushEventHandler: PushEventHandler!
 
     private let pushClickHandler = PushClickHandlerMock()
-    private let pushEventHandlerProxy = PushEventHandlerProxyImpl()
+    private var pushEventHandlerProxy: PushEventHandlerProxy {
+        DIGraphShared.shared.pushEventHandlerProxy
+    }
 
     override func setUp() {
         super.setUp()
 
         pushEventHandler = IOSPushEventListener(
-            jsonAdapter: diGraph.jsonAdapter,
+            jsonAdapter: diGraphShared.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
-            moduleConfig: MessagingPushConfigOptions(),
+            moduleConfig: diGraphShared.messagingPushConfigOptions,
             pushClickHandler: pushClickHandler,
-            pushHistory: diGraph.pushHistory,
-            logger: diGraph.logger
+            pushHistory: diGraphShared.pushHistory,
+            logger: diGraphShared.logger
         )
     }
 

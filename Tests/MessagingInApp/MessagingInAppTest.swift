@@ -1,104 +1,66 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
-@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest
 
 class MessagingInAppTest: UnitTest {
-    private let hooksMock = HooksManagerMock()
     private let implementationMock = MessagingInAppInstanceMock()
-    private let sdkInitializedUtilMock = SdkInitializedUtilMock()
 
-    override func setUp() {
-        super.setUp()
-
-        // This is where we inject the DI graph into our tests
-        sdkInitializedUtilMock.isInitlaized = true
-        sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
-
-        // This is where we inject the DI graph into our tests
-        sdkInitializedUtilMock.underlyingPostInitializedData = (siteId: testSiteId, diGraph: diGraph)
-
-        diGraph.override(value: hooksMock, forType: HooksManager.self)
-
-        // Sets default shared instance, which injects the DI graph
-        MessagingInApp.shared = MessagingInApp(implementation: implementationMock, sdkInitializedUtil: sdkInitializedUtilMock)
+    override func initializeSDKComponents() -> MessagingInAppInstance? {
+        // Don't initialize the SDK components because we may want to test the initialize function differently in each test.
+        nil
     }
 
-    override func tearDown() {
-        super.tearDown()
+    // MARK: initialize functions with Module initialized
 
-        MessagingInApp.resetSharedInstance()
-    }
-
-    // MARK: initialize functions with SDK initialized
-
-    func test_initialize_givenSdkInitialized_expectModuleIsInitialized() {
-        MessagingInApp.initialize()
+    func test_initialize_givenModuleInitialized_expectModuleIsInitialized() {
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
 
         assertModuleInitialized(isInitialized: true, givenEventListener: nil)
     }
 
-    func test_initializeEventListener_givenSdkInitialized_expectModuleIsInitialized() {
+    func test_setEventListener_givenModuleInitialized_expectListenerIsSet() {
         let givenListener = InAppEventListenerMock()
 
-        MessagingInApp.initialize(eventListener: givenListener)
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
+        MessagingInApp.shared.setEventListener(givenListener)
 
         assertModuleInitialized(isInitialized: true, givenEventListener: givenListener)
     }
 
-    func test_initializeOrganizationId_givenSdkInitialized_expectModuleIsInitialized() {
-        MessagingInApp.initialize(organizationId: .random)
-
-        assertModuleInitialized(isInitialized: true, givenEventListener: nil)
-    }
-
-    // MARK: initialize functions with SDK not initialized
-
-    func test_initialize_givenSdkNotInitialized_expectModuleNotInitialized() {
-        sdkInitializedUtilMock.underlyingIsInitlaized = false
-
-        MessagingInApp.initialize()
-
-        assertModuleInitialized(isInitialized: false, givenEventListener: nil)
-    }
-
-    func test_initializeEventListener_givenSdkNotInitialized_expectModuleNotInitialized() {
-        sdkInitializedUtilMock.underlyingIsInitlaized = false
+    func test_clearEventListener_givenModuleInitialized_expectListenerIsCleared() {
         let givenListener = InAppEventListenerMock()
 
-        MessagingInApp.initialize(eventListener: givenListener)
+        MessagingInApp.setUpSharedInstanceForUnitTest(implementation: implementationMock)
+        MessagingInApp.shared.setEventListener(givenListener)
+        // clear event listener
+        MessagingInApp.shared.setEventListener(nil)
 
-        assertModuleInitialized(isInitialized: false, givenEventListener: givenListener)
+        assertModuleInitialized(isInitialized: true, givenEventListener: nil, setEventListenerCallsCount: 2)
     }
 
-    func test_initializeOrganizationId_givenSdkNotInitialized_expectModuleNotInitialized() {
-        sdkInitializedUtilMock.underlyingIsInitlaized = false
+    // MARK: initialize functions with Module not initialized
 
-        MessagingInApp.initialize(organizationId: .random)
+    func test_setEventListener_givenModuleNotInitialized_expectListenerNotSet() {
+        let givenListener = InAppEventListenerMock()
+
+        MessagingInApp.shared.setEventListener(givenListener)
 
         assertModuleInitialized(isInitialized: false, givenEventListener: nil)
     }
 }
 
 extension MessagingInAppTest {
-    private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, file: StaticString = #file, line: UInt = #line) {
+    private func assertModuleInitialized(isInitialized: Bool, givenEventListener: InAppEventListener?, setEventListenerCallsCount: Int? = nil, file: StaticString = #file, line: UInt = #line) {
         if isInitialized {
-            XCTAssertEqual(hooksMock.addCallsCount, 1, file: file, line: line)
-            XCTAssertEqual(hooksMock.addReceivedArguments?.key, .messagingInApp, file: file, line: line)
+            XCTAssertNotNil(MessagingInApp.shared.implementation, file: file, line: line)
 
-            if givenEventListener != nil {
-                XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 1)
-                XCTAssertEqual(implementationMock.initializeCallsCount, 0)
-            } else {
-                XCTAssertEqual(implementationMock.initializeEventListenerCallsCount, 0)
-                XCTAssertEqual(implementationMock.initializeCallsCount, 1)
-            }
+            let eventListenerCallsCount = setEventListenerCallsCount ?? (givenEventListener != nil ? 1 : 0)
+            XCTAssertEqual(implementationMock.setEventListenerCallsCount, eventListenerCallsCount, file: file, line: line)
         } else {
-            XCTAssertFalse(hooksMock.addCalled, file: file, line: line)
-            XCTAssertFalse(hooksMock.mockCalled, file: file, line: line)
-            XCTAssertFalse(implementationMock.initializeCalled && implementationMock.initializeEventListenerCalled)
+            XCTAssertNil(MessagingInApp.shared.implementation, file: file, line: line)
+            XCTAssertFalse(implementationMock.mockCalled, file: file, line: line)
         }
     }
 }

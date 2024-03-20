@@ -9,7 +9,9 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
     private var pushEventHandler: PushEventHandler!
 
     private let pushClickHandler = PushClickHandlerMock()
-    private let pushEventHandlerProxy = PushEventHandlerProxyImpl()
+    private var pushEventHandlerProxy: PushEventHandlerProxy {
+        DIGraphShared.shared.pushEventHandlerProxy
+    }
 
     // MARK: SDK configuration behavior
 
@@ -145,16 +147,17 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
 
 extension AutomaticPushDeliveredAppInForegrondTest {
     private func configureSdk(shouldDisplayPushAppInForeground: Bool) {
-        var pushModuleConfig = MessagingPushConfigOptions()
-        pushModuleConfig.showPushAppInForeground = shouldDisplayPushAppInForeground
+        let pushModuleConfig = MessagingPushConfigBuilder()
+            .showPushAppInForeground(shouldDisplayPushAppInForeground)
+            .build()
 
         pushEventHandler = IOSPushEventListener(
-            jsonAdapter: diGraph.jsonAdapter,
+            jsonAdapter: diGraphShared.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
             moduleConfig: pushModuleConfig,
             pushClickHandler: pushClickHandler,
-            pushHistory: diGraph.pushHistory,
-            logger: diGraph.logger
+            pushHistory: diGraphShared.pushHistory,
+            logger: diGraphShared.logger
         )
     }
 

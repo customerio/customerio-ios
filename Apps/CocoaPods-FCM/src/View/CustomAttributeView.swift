@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import SwiftUI
 
 struct CustomAttributeView: View {
@@ -59,7 +59,7 @@ struct CustomAttributeView: View {
         ).onAppear {
             // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
             // Therefore, this is how we can perform manual screen view tracking.
-            CustomerIO.shared.screen(name: "Custom\(attributeTypeName.capitalized)Attributes")
+            CustomerIO.shared.screen(title: "Custom\(attributeTypeName.capitalized)Attributes")
         }
     }
 }

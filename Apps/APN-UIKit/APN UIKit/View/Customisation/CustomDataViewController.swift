@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import UIKit
 
 enum CustomDataSource {
@@ -79,7 +79,7 @@ class CustomDataViewController: BaseViewController {
         var toastMessage = ""
         if source == .customEvents {
             guard let eventName = eventNameTextField.text else { return }
-            CustomerIO.shared.track(name: eventName, data: [propName: propValue])
+            CustomerIO.shared.track(name: eventName, properties: [propName: propValue])
             toastMessage = "Custom event tracked successfully"
         } else if source == .deviceAttributes {
             CustomerIO.shared.deviceAttributes = [propName: propValue]

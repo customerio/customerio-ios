@@ -1,5 +1,4 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 // Forwards requests from our SDK to other push event handlers in the host iOS app, if our SDK does not handle the push event.
@@ -18,22 +17,16 @@ protocol PushEventHandlerProxy: AutoMockable {
  This class is a proxy that forwards requests to all other click handlers that have been registered with the app. Including 3rd party SDKs.
  */
 @available(iOSApplicationExtension, unavailable)
+// sourcery: InjectRegisterShared = "PushEventHandlerProxy"
+// sourcery: InjectSingleton
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
-    /*
-     # Why is this class not stored in the digraph?
-
-     Similar to why the SDK's `UNUserNotificationCenterDelegate` instance is also not in the digraph. See those comments to learn more.
-     */
-    public static let shared = PushEventHandlerProxyImpl()
-
     // Use a map so that we only save 1 instance of a given handler.
     @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
 
-    private let logger: Logger?
+    private let logger: Logger
 
-    init() {
-        // The code used to get a Logger instance is a bit ugly. The CDP branch's implementation will look better. So this mess on the `main` branch at this time is OK.
-        self.logger = SdkInitializedUtilImpl().postInitializedData?.diGraph.logger
+    init(logger: Logger) {
+        self.logger = logger
     }
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
@@ -61,10 +54,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
                     // These logs could help in debuggging to determine what delegate did not call the completion handler.
-                    self.logger?.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+                    self.logger.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.onPushAction(pushAction) {
-                        self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
 
                         continuation.resume()
                     }
@@ -102,10 +95,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
                     // These logs could help in debuggging to determine what delegate did not call the completion handler.
-                    self.logger?.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+                    self.logger.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
-                        self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
 
                         if delegateShouldDisplayPushResult {
                             shouldDisplayPush = true
@@ -118,15 +111,5 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // After the loop finishes, call the completion handler to indicate the event has been fully processed by all delegates.
             completionHandler(shouldDisplayPush)
         }
-    }
-}
-
-// Manually add a getter in the digraph.
-// We must use this manual approach instead of auto generated code because the class maintains its own singleton instance outside of the digraph.
-// This getter allows convenient access to this dependency via the digraph.
-extension DIGraph {
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventHandlerProxy: PushEventHandlerProxy {
-        PushEventHandlerProxyImpl.shared
     }
 }

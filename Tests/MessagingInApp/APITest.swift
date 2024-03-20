@@ -1,5 +1,4 @@
 import CioMessagingInApp // do not use `@testable` so we can test functions are made public and not `internal`.
-import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -18,15 +17,20 @@ class MessagingInAppAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        MessagingInApp.initialize()
-        mock.initialize()
+        MessagingInApp.initialize(withConfig: MessagingInAppConfigBuilder(siteId: "", region: .US).build())
+        MessagingInApp.shared.setEventListener(self)
 
-        MessagingInApp.initialize(eventListener: self)
-        mock.initialize(eventListener: self)
+        mock.setEventListener(self)
+    }
 
-        // Function exists for backwards compatibility, but is deprecated.
-        MessagingInApp.initialize(organizationId: "")
-        mock.initialize(organizationId: "")
+    func test_allPublicModuleConfigOptions() throws {
+        try skipRunningTest()
+
+        _ = MessagingInAppConfigBuilder(siteId: "", region: .US)
+            .build()
+
+        let configOptions: [String: Any] = [:]
+        _ = try? MessagingInAppConfigBuilder.build(from: configOptions)
     }
 }
 

@@ -4,7 +4,6 @@
 
 import CioInternalCommon
 import CioMessagingPush
-import CioTracking
 import Foundation
 
 /**
@@ -31,7 +30,7 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
+     let wheels = DIGraphShared.shared.offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
  }
  ```
@@ -39,17 +38,17 @@ import Foundation
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DIGraph().reset()
+ DIGraphShared.shared.reset()
  ```
 
  */
 
-extension DIGraph {
+extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
@@ -58,6 +57,8 @@ extension DIGraph {
 
         return countDependenciesResolved
     }
+
+    // Handle classes annotated with InjectRegisterShared
 }
 
 // swiftlint:enable all

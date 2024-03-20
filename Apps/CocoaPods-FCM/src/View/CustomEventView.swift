@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import SwiftUI
 
 struct CustomEventView: View {
@@ -28,7 +28,7 @@ struct CustomEventView: View {
                 ColorButton("Send Event") {
                     hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
 
-                    CustomerIO.shared.track(name: eventName, data: [propertyName: propertyValue])
+                    CustomerIO.shared.track(name: eventName, properties: [propertyName: propertyValue])
 
                     var successMessage = "Custom event sent"
 
@@ -44,7 +44,7 @@ struct CustomEventView: View {
         ).onAppear {
             // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
             // Therefore, this is how we can perform manual screen view tracking.
-            CustomerIO.shared.screen(name: "CustomEvent")
+            CustomerIO.shared.screen(title: "CustomEvent")
         }
     }
 }

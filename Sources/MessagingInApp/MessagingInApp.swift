@@ -1,40 +1,50 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 public protocol MessagingInAppInstance: AutoMockable {
-    // sourcery:Name=initialize
-    func initialize()
-    // sourcery:Name=initializeEventListener
-    func initialize(eventListener: InAppEventListener)
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    // sourcery:Name=initializeOrganizationId
-    func initialize(organizationId: String)
+    // sourcery:Name=setEventListener
+    func setEventListener(_ eventListener: InAppEventListener?)
 
     func dismissMessage()
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
     @Atomic public internal(set) static var shared = MessagingInApp()
+    private static let moduleName = "MessagingInApp"
 
     // constructor that is called by test classes
     // This function's job is to populate the `shared` property with
     // overrides such as DI graph.
-    override init(implementation: MessagingInAppInstance?, sdkInitializedUtil: SdkInitializedUtil) {
-        super.init(implementation: implementation, sdkInitializedUtil: sdkInitializedUtil)
+    init(implementation: MessagingInAppInstance?) {
+        super.init(moduleName: Self.moduleName, implementation: implementation)
     }
 
     // constructor used in production with default DI graph
     // singleton constructor
-    override private init() {
-        super.init()
+    private init() {
+        super.init(moduleName: Self.moduleName)
     }
 
-    // for testing
-    static func resetSharedInstance() {
+    #if DEBUG
+    // Methods to set up the test environment.
+    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
+
+    @discardableResult
+    static func setUpSharedInstanceForUnitTest(implementation: MessagingInAppInstance) -> MessagingInAppInstance {
+        shared._implementation = implementation
+        return implementation
+    }
+
+    @discardableResult
+    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
+        let implementation = MessagingInAppImplementation(diGraph: diGraphShared, moduleConfig: config)
+        return setUpSharedInstanceForUnitTest(implementation: implementation)
+    }
+
+    static func resetTestEnvironment() {
         shared = MessagingInApp()
     }
+    #endif
 
     // MARK: static initialized functions for customers.
 
@@ -42,66 +52,22 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // API for customers. Customers can use `MessagingInApp.initialize(...)` instead of `MessagingInApp.shared.initialize(...)`.
     // Trying to follow the same API as `CustomerIO` class with `initialize()`.
 
-    // Initialize SDK module
-    public static func initialize() {
-        shared.initialize()
-    }
-
-    public static func initialize(eventListener: InAppEventListener) {
-        shared.initialize(eventListener: eventListener)
-    }
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public static func initialize(organizationId: String) {
-        shared.initialize(organizationId: organizationId)
-    }
-
-    // MARK: initialize functions to initialize module.
-
-    // Multiple initialize functions to inherit the InAppInstance protocol which contains multiple initialize functions.
-
-    public func initialize() {
-        commonInitialize(eventListener: nil)
-    }
-
-    public func initialize(eventListener: InAppEventListener) {
-        commonInitialize(eventListener: eventListener)
-    }
-
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public func initialize(organizationId: String) {
-        commonInitialize(eventListener: nil)
-    }
-
-    private func commonInitialize(eventListener: InAppEventListener?) {
-        guard let implementation = implementation else {
-            sdkNotInitializedAlert("CustomerIO class has not yet been initialized. Request to initialize the in-app module has been ignored.")
-            return
+    /**
+     Initialize the shared `instance` of `MessagingInApp`.
+     Call this function when your app launches, before using `MessagingInApp.shared`.
+     */
+    @available(iOSApplicationExtension, unavailable)
+    @discardableResult
+    public static func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance {
+        shared.initializeModuleIfNotAlready {
+            MessagingInAppImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
         }
 
-        initializeModuleIfSdkInitialized()
-
-        if let eventListener = eventListener {
-            implementation.initialize(eventListener: eventListener)
-        } else {
-            implementation.initialize()
-        }
+        return shared
     }
 
-    override public func inititlizeModule(diGraph: DIGraph) {
-        let logger = diGraph.logger
-        logger.debug("Setting up in-app module...")
-
-        // Register MessagingPush module hooks now that the module is being initialized.
-        let hooks = diGraph.hooksManager
-        let moduleHookProvider = MessagingInAppModuleHookProvider()
-        hooks.add(key: .messagingInApp, provider: moduleHookProvider)
-
-        logger.info("In-app module setup with SDK")
-    }
-
-    override public func getImplementationInstance(diGraph: DIGraph) -> MessagingInAppInstance {
-        MessagingInAppImplementation(diGraph: diGraph)
+    public func setEventListener(_ eventListener: InAppEventListener?) {
+        implementation?.setEventListener(eventListener)
     }
 
     // Dismiss in-app message

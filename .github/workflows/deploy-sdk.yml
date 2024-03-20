@@ -144,7 +144,7 @@ jobs:
     if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout git tag that got created in previous step
         uses: actions/checkout@v4
@@ -166,8 +166,10 @@ jobs:
         run: echo ''
       - name: Push CustomerIOCommon
         run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
-      - name: Push CustomerIOTracking
-        run: ./scripts/push-cocoapod.sh CustomerIOTracking.podspec
+      - name: Push CustomerIOTrackingMigration
+        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
+      - name: Push CustomerIODataPipelines
+        run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
       - name: Push CustomerIOMessagingPush
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
       - name: Push CustomerIOMessagingPushAPN

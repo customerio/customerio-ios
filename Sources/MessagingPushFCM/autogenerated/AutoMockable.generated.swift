@@ -11,7 +11,6 @@ import UserNotifications
 #endif
 import CioInternalCommon
 import CioMessagingPush
-import CioTracking
 
 /**
  ######################################################
@@ -138,16 +137,16 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     // MARK: - registerDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var registerDeviceTokenCallsCount = 0
+    @Atomic public private(set) var registerDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var registerDeviceTokenCalled: Bool {
         registerDeviceTokenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var registerDeviceTokenReceivedArguments: String??
+    @Atomic public private(set) var registerDeviceTokenReceivedArguments: String??
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var registerDeviceTokenReceivedInvocations: [String?] = []
+    @Atomic public private(set) var registerDeviceTokenReceivedInvocations: [String?] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -165,16 +164,16 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     // MARK: - messaging
 
     /// Number of times the function was called.
-    public private(set) var didReceiveRegistrationTokenCallsCount = 0
+    @Atomic public private(set) var didReceiveRegistrationTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var didReceiveRegistrationTokenCalled: Bool {
         didReceiveRegistrationTokenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveRegistrationTokenReceivedArguments: (messaging: Any, fcmToken: String?)?
+    @Atomic public private(set) var didReceiveRegistrationTokenReceivedArguments: (messaging: Any, fcmToken: String?)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveRegistrationTokenReceivedInvocations: [(messaging: Any, fcmToken: String?)] = []
+    @Atomic public private(set) var didReceiveRegistrationTokenReceivedInvocations: [(messaging: Any, fcmToken: String?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -192,16 +191,16 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     // MARK: - application
 
     /// Number of times the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsCallsCount = 0
+    @Atomic public private(set) var didFailToRegisterForRemoteNotificationsCallsCount = 0
     /// `true` if the function was ever called.
     public var didFailToRegisterForRemoteNotificationsCalled: Bool {
         didFailToRegisterForRemoteNotificationsCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
+    @Atomic public private(set) var didFailToRegisterForRemoteNotificationsReceivedArguments: (application: Any, error: Error)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any, error: Error)] = []
+    @Atomic public private(set) var didFailToRegisterForRemoteNotificationsReceivedInvocations: [(application: Any, error: Error)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -219,7 +218,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     // MARK: - deleteDeviceToken
 
     /// Number of times the function was called.
-    public private(set) var deleteDeviceTokenCallsCount = 0
+    @Atomic public private(set) var deleteDeviceTokenCallsCount = 0
     /// `true` if the function was ever called.
     public var deleteDeviceTokenCalled: Bool {
         deleteDeviceTokenCallsCount > 0
@@ -240,16 +239,16 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     // MARK: - trackMetric
 
     /// Number of times the function was called.
-    public private(set) var trackMetricCallsCount = 0
+    @Atomic public private(set) var trackMetricCallsCount = 0
     /// `true` if the function was ever called.
     public var trackMetricCalled: Bool {
         trackMetricCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
+    @Atomic public private(set) var trackMetricReceivedArguments: (deliveryID: String, event: Metric, deviceToken: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
+    @Atomic public private(set) var trackMetricReceivedInvocations: [(deliveryID: String, event: Metric, deviceToken: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -268,16 +267,16 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var didReceiveNotificationRequestCallsCount = 0
+    @Atomic public private(set) var didReceiveNotificationRequestCallsCount = 0
     /// `true` if the function was ever called.
     public var didReceiveNotificationRequestCalled: Bool {
         didReceiveNotificationRequestCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
+    @Atomic public private(set) var didReceiveNotificationRequestReceivedArguments: (request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
+    @Atomic public private(set) var didReceiveNotificationRequestReceivedInvocations: [(request: UNNotificationRequest, contentHandler: (UNNotificationContent) -> Void)] = []
     /// Value to return from the mocked function.
     public var didReceiveNotificationRequestReturnValue: Bool!
     /**
@@ -302,7 +301,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
 
     #if canImport(UserNotifications)
     /// Number of times the function was called.
-    public private(set) var serviceExtensionTimeWillExpireCallsCount = 0
+    @Atomic public private(set) var serviceExtensionTimeWillExpireCallsCount = 0
     /// `true` if the function was ever called.
     public var serviceExtensionTimeWillExpireCalled: Bool {
         serviceExtensionTimeWillExpireCallsCount > 0

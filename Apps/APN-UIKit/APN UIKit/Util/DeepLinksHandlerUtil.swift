@@ -5,9 +5,9 @@ protocol DeepLinksHandlerUtil {
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
-// sourcery: InjectRegister = "DeepLinksHandlerUtil"
+// sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
-    var storage = DIGraph.shared.storage
+    var storage = DIGraphShared.shared.storage
     // URLs accepted:
     // apn-uikit://deeplink
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {
@@ -23,7 +23,7 @@ extension AppDeepLinksHandlerUtil {
             var userInfo: [String: String] = [:]
 
             urlComponents.queryItems?.forEach { queryItem in
-                if queryItem.name == "site_id" || queryItem.name == "api_key" {
+                if queryItem.name == "site_id" || queryItem.name == "cdp_api_key" {
                     userInfo[queryItem.name] = queryItem.value
                 }
             }

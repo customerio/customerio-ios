@@ -1,12 +1,12 @@
+import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushAPN
-import CioTracking
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    var storage = DIGraph.shared.storage
-    var deepLinkHandler = DIGraph.shared.deepLinksHandlerUtil
+    var storage = DIGraphShared.shared.storage
+    var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -34,33 +34,42 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             storage.isTrackScreenEnabled = true
             storage.isTrackDeviceAttrEnabled = true
         }
+        var cdpApiKey = BuildEnvironment.CustomerIO.cdpApiKey
         var siteId = BuildEnvironment.CustomerIO.siteId
-        var apiKey = BuildEnvironment.CustomerIO.apiKey
         if let storedSiteId = storage.siteId {
             siteId = storedSiteId
         }
-        if let storedApiKey = storage.apiKey {
-            apiKey = storedApiKey
+        if let storedCdpApiKey = storage.cdpApiKey {
+            cdpApiKey = storedCdpApiKey
         }
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-            config.logLevel = self.storage.isDebugModeEnabled ?? true ? .debug : .error
-            config.autoTrackDeviceAttributes = self.storage.isTrackDeviceAttrEnabled ?? true
-            config.backgroundQueueSecondsDelay = Double(self.storage.bgQDelay ?? "30") ?? 30
-            config.backgroundQueueMinNumberOfTasks = Int(self.storage.bgNumOfTasks ?? "10") ?? 10
-            config.autoTrackScreenViews = self.storage.isTrackScreenEnabled ?? true
+        let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
+        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+            .logLevel(logLevel)
+            .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
+            .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
+            .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
+            .migrationSiteId(siteId)
 
-            config.autoTrackPushEvents = true
-
-            if let trackUrl = self.storage.trackUrl, !trackUrl.isEmpty {
-                config.trackingApiUrl = trackUrl
-            }
+        if let apiHost = storage.apiHost, !apiHost.isEmpty {
+            config.apiHost(apiHost)
         }
+        if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
+            config.cdnHost(cdnHost)
+        }
+        if storage.isTrackScreenEnabled == true {
+            config.autoTrackUIKitScreenViews()
+        }
+        CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
-        MessagingInApp.initialize(eventListener: self)
-        MessagingPushAPN.initialize { config in
-            config.autoFetchDeviceToken = true
-        }
+        MessagingInApp
+            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
+            .setEventListener(self)
+        MessagingPushAPN.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(true)
+                .build()
+        )
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
@@ -97,7 +106,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
             name: "push clicked",
-            data: ["push": response.notification.request.content.userInfo]
+            properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
@@ -116,7 +125,7 @@ extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -124,7 +133,7 @@ extension AppDelegate: InAppEventListener {
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -132,7 +141,7 @@ extension AppDelegate: InAppEventListener {
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
@@ -141,7 +150,7 @@ extension AppDelegate: InAppEventListener {
         if actionName == "remove" || actionName == "test" {
             MessagingInApp.shared.dismissMessage()
         }
-        CustomerIO.shared.track(name: "inapp action", data: [
+        CustomerIO.shared.track(name: "inapp action", properties: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,
             "action-value": actionValue,

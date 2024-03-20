@@ -2,8 +2,8 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
-    let storage = DIGraph.shared.storage
-    var deepLinkHandler = DIGraph.shared.deepLinksHandlerUtil
+    let storage = DIGraphShared.shared.storage
+    var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.

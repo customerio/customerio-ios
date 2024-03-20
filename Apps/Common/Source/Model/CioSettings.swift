@@ -1,42 +1,33 @@
-import CioTracking
+import CioDataPipelines
+import CioInternalCommon
 import Foundation
 
 // Stores all of the SDK settings that can be changed by the mobile app.
 // Note: This struct may not contain *all* of the settings that can be changed in the CIO SDK.
 public struct CioSettings: Codable {
-    public var trackUrl: String
     public var siteId: String
-    public var apiKey: String
-    public var bqSecondsDelay: TimeInterval
-    public var bqMinNumberTasks: Int
+    public var cdpApiKey: String
+    public var apiHost: String
+    public var cdnHost: String
+    public var flushInterval: Double
+    public var flushAt: Int
     public var trackScreens: Bool
     public var debugSdkMode: Bool
     public var trackDeviceAttributes: Bool
 
-    public func configureCioSdk(config: inout CioSdkConfig) {
-        config.trackingApiUrl = trackUrl
-        config.backgroundQueueSecondsDelay = bqSecondsDelay
-        config.backgroundQueueMinNumberOfTasks = bqMinNumberTasks
-        config.autoTrackScreenViews = trackScreens
-        config.autoTrackDeviceAttributes = trackDeviceAttributes
-
-        if debugSdkMode {
-            config.logLevel = .debug
-        }
-    }
-
     public static func getFromCioSdk() -> CioSettings {
-        let sdkConfig = CustomerIO.shared.config!
-
+        let sdkConfig = DataPipeline.moduleConfig
+        let logLevel = DIGraphShared.shared.logger.logLevel
         return CioSettings(
-            trackUrl: sdkConfig.trackingApiUrl,
-            siteId: sdkConfig.siteId,
-            apiKey: sdkConfig.apiKey,
-            bqSecondsDelay: sdkConfig.backgroundQueueSecondsDelay,
-            bqMinNumberTasks: sdkConfig.backgroundQueueMinNumberOfTasks,
-            trackScreens: sdkConfig.autoTrackScreenViews,
-            debugSdkMode: sdkConfig.logLevel == .debug,
-            trackDeviceAttributes: sdkConfig.autoTrackDeviceAttributes
+            siteId: sdkConfig?.migrationSiteId ?? "",
+            cdpApiKey: sdkConfig?.cdpApiKey ?? "",
+            apiHost: sdkConfig?.apiHost ?? "",
+            cdnHost: sdkConfig?.cdnHost ?? "",
+            flushInterval: sdkConfig?.flushInterval ?? 30,
+            flushAt: sdkConfig?.flushAt ?? 10,
+            trackScreens: false, // Track screen is no longer SDK configurable property. If you want to enable/disable autoScreenTrack then refer AppDelegate for use case. Setting default value as false for sample app
+            debugSdkMode: logLevel == .debug,
+            trackDeviceAttributes: sdkConfig?.autoTrackDeviceAttributes ?? true
         )
     }
 }

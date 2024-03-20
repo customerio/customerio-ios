@@ -1,9 +1,10 @@
 import Foundation
 
 protocol StorageManager {
-    var trackUrl: String? { get set }
+    var cdnHost: String? { get set }
+    var apiHost: String? { get set }
     var siteId: String? { get set }
-    var apiKey: String? { get set }
+    var cdpApiKey: String? { get set }
     var bgQDelay: String? { get set }
     var bgNumOfTasks: String? { get set }
     var isTrackScreenEnabled: Bool? { get set }
@@ -14,22 +15,13 @@ protocol StorageManager {
     var didSetDefaults: Bool? { get set }
 }
 
-// sourcery: InjectRegister = "Storage"
+// sourcery: InjectRegisterShared = "Storage"
 class Storage: StorageManager {
     private let userDefaults: UserDefaults
 
     // Initialization
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
-    }
-
-    var trackUrl: String? {
-        get {
-            userDefaults.string(forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
-        set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.trackUrl.rawValue)
-        }
     }
 
     var deviceToken: String? {
@@ -59,12 +51,12 @@ class Storage: StorageManager {
         }
     }
 
-    var apiKey: String? {
+    var cdpApiKey: String? {
         get {
-            userDefaults.string(forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.string(forKey: UserDefaultKeys.cdpApiKey.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.apiKey.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdpApiKey.rawValue)
         }
     }
 
@@ -119,6 +111,24 @@ class Storage: StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
+        }
+    }
+
+    var apiHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.apiHost.rawValue)
+        }
+    }
+
+    var cdnHost: String? {
+        get {
+            userDefaults.string(forKey: UserDefaultKeys.cdnHost.rawValue)
+        }
+        set {
+            userDefaults.set(newValue, forKey: UserDefaultKeys.cdnHost.rawValue)
         }
     }
 }

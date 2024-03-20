@@ -15,7 +15,7 @@ import Foundation
 // All .library() products will be visible to customers in Xcode when they install our SDK into their app.
 // Therefore, it's important that we only expose modules that we want customers to use. Internal modules should not be included in this array.
 var products: [PackageDescription.Product] = [
-    .library(name: "Tracking", targets: ["CioTracking"]),
+    .library(name: "DataPipelines", targets: ["CioDataPipelines"]),
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"])
@@ -28,6 +28,7 @@ var products: [PackageDescription.Product] = [
 if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a CI machine. Important this is false for a customer trying to install our SDK on their machine. 
     // append all internal modules to the products array.
     products.append(.library(name: "InternalCommon", targets: ["CioInternalCommon"]))
+    products.append(.library(name: "Migration", targets: ["CioTrackingMigration"]))
 }
 
 let package = Package(
@@ -41,7 +42,10 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
+
+        // The version is a git commit hash. Make sure the commit is the same as what the DataPipelines CocoaPods is using.
+        .package(name: "Segment", url: "https://github.com/customerio/cdp-analytics-swift.git", .revision("b2f8f5b68dd0d8796b4bacdec39aacb5b6387a41"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -49,19 +53,19 @@ let package = Package(
         .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
-                    dependencies: ["SharedTests"],
+                    dependencies: ["CioInternalCommon", "SharedTests"],
                     path: "Tests/Common"),
-        // Tracking
-        .target(name: "CioTracking",
+        // Migration
+        // this module handles Journeys tasks migration to Datapipeline.
+        .target(name: "CioTrackingMigration",
                 dependencies: ["CioInternalCommon"],
-                path: "Sources/Tracking"),
-        .testTarget(name: "TrackingTests",
-                    dependencies: ["CioTracking", "SharedTests"],
-                    path: "Tests/Tracking"),
-
+                path: "Sources/Migration"),
+        .testTarget(name: "MigrationTests",
+                    dependencies: ["CioTrackingMigration", "SharedTests"],
+                    path: "Tests/Migration"),
         // shared code dependency that other test targets use. 
         .target(name: "SharedTests",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Tests/Shared",
                 resources: [
                     .copy("SampleDataFiles") // static files that are used in test functions.
@@ -69,11 +73,19 @@ let package = Package(
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush"),
+        
+        // Data Pipeline
+        .target(name: "CioDataPipelines",
+                dependencies: ["CioInternalCommon", "CioTrackingMigration", .product(name: "Segment", package: "Segment")],
+                path: "Sources/DataPipeline"),
+        .testTarget(name: "DataPipelineTests",
+                    dependencies: ["CioDataPipelines", "SharedTests"],
+                    path: "Tests/DataPipeline"),
 
         // APN
         .target(name: "CioMessagingPushAPN",
@@ -92,7 +104,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["CioTracking"],
+                dependencies: ["CioInternalCommon"],
                 path: "Sources/MessagingInApp"),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],

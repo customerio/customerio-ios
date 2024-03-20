@@ -1,9 +1,8 @@
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 @available(iOSApplicationExtension, unavailable)
-// sourcery: InjectRegister = "PushEventHandler"
+// sourcery: InjectRegisterShared = "PushEventHandler"
 class IOSPushEventListener: PushEventHandler {
     private let jsonAdapter: JsonAdapter
     private var pushEventHandlerProxy: PushEventHandlerProxy

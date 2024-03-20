@@ -1,6 +1,5 @@
 // import CioMessagingPush // do not import. We want to test that customers only need to import 'CioMessagingPushFCM'
 import CioMessagingPushFCM // do not use `@testable` so we can test functions are made public and not `internal`.
-import CioTracking // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
 import XCTest
@@ -19,6 +18,26 @@ class MessagingPushFCMAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
+        // Config is optional because MessagingPushConfigOptions does not have any required fields.
+        // Providing default value for config makes it easier for customers to initialize MessagingPush module.
+        MessagingPush.initialize()
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
+
+        // MessagingPushFCM should be able to be initialized with the same initialize() function as MessagingPush.
+        MessagingPushFCM.initialize()
+        MessagingPushFCM.initialize(withConfig: MessagingPushConfigBuilder().build())
+
+        // This is the `initialize()` function that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // MessagingPush.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: .random).build())
+        // MessagingPushFCM.initialize(withConfig: MessagingPushConfigBuilder(cdpApiKey: .random).build())
+
+        // `moduleConfig` is not really meant to be accessed by customers, so it is okay to not have it in the mock.
+        // However, it is public so we should make sure it does not change.
+        _ = MessagingPush.moduleConfig
+
         MessagingPush.shared.registerDeviceToken(fcmToken: "")
         mock.registerDeviceToken(fcmToken: "")
 
@@ -30,16 +49,34 @@ class MessagingPushFCMAPITest: UnitTest {
 
         MessagingPush.shared.application(
             "",
-            didFailToRegisterForRemoteNotificationsWithError: CustomerIOError
-                .notInitialized
+            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
         )
-        mock.application("", didFailToRegisterForRemoteNotificationsWithError: CustomerIOError.notInitialized)
+        mock.application("", didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed)
 
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
 
-        MessagingPush.shared.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: Metric.delivered, deviceToken: "")
+        MessagingPush.shared.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+        mock.trackMetric(deliveryID: "", event: .delivered, deviceToken: "")
+    }
+
+    func test_allPublicModuleConfigOptions() throws {
+        try skipRunningTest()
+
+        _ = MessagingPushConfigBuilder()
+            .autoFetchDeviceToken(true)
+            .autoTrackPushEvents(true)
+            .showPushAppInForeground(true)
+            .build()
+
+        // This is a constructor for `MessagingPushConfigBuilder` that's available to Notification Service Extension and not available
+        // to other targets (such as iOS).
+        // You should be able to uncomment the initialize() function below and should get compile errors saying that the
+        // function is not available to iOS.
+        // _ = MessagingPushConfigBuilder(cdpApiKey: .random).build()
+
+        let configOptions: [String: Any] = [:]
+        _ = MessagingPushConfigBuilder.build(from: configOptions)
     }
 
     func test_richPushPublicFunctions() throws {

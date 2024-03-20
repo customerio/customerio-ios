@@ -8,7 +8,7 @@ protocol SimpleTimer: AutoMockable {
     func cancel()
 }
 
-// sourcery: InjectRegister = "SimpleTimer"
+// sourcery: InjectRegisterShared = "SimpleTimer"
 class CioSimpleTimer: SimpleTimer {
     // Because timer operations are asynchronous (DispatchQueue.main.async), this property
     // synchronously keeps track of the status of the timer operations (schedule, cancel)

@@ -4,8 +4,8 @@
 
 1. Make sure that the mobile app that you are testing with has SDK logging enabled. This is done with the following code:
 ```swift
-CustomerIO.initialize(siteId: Env.customerIOSiteId, apiKey: Env.customerIOApiKey, region: region) { config in
-    config.logLevel = .debug
+CustomerIO.initialize(cdpApiKey: Env.cdpApiKey) { config in
+    config.autoTrackDeviceAttributes = true
 }
 ```
 

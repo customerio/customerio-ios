@@ -1,5 +1,4 @@
 import CioMessagingPushAPN
-import CioTracking
 import UserNotifications
 
 class NotificationService: UNNotificationServiceExtension {
@@ -7,9 +6,11 @@ class NotificationService: UNNotificationServiceExtension {
     var bestAttemptContent: UNMutableNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        CustomerIO.initialize(siteId: BuildEnvironment.CustomerIO.siteId, apiKey: BuildEnvironment.CustomerIO.apiKey, region: Region.US) { config in
-            config.autoTrackPushEvents = true
-        }
+        MessagingPushAPN.initializeForExtension(
+            withConfig: MessagingPushConfigBuilder(cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey)
+                .logLevel(.debug)
+                .build()
+        )
 
         MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
     }

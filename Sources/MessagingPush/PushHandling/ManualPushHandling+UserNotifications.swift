@@ -95,11 +95,10 @@ extension MessagingPushImplementation {
     func manualPushClickHandling(push: PushNotification) {
         // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
         // We get around this by getting a instance in this function, only.
-        if let pushClickHandler = sdkInitializedUtil.postInitializedData?.diGraph.pushClickHandler {
-            pushClickHandler.trackPushMetrics(for: push)
-            pushClickHandler.cleanupAfterPushInteractedWith(for: push)
-            pushClickHandler.handleDeepLink(for: push)
-        }
+        let pushClickHandler = DIGraphShared.shared.pushClickHandler
+        pushClickHandler.trackPushMetrics(for: push)
+        pushClickHandler.cleanupAfterPushInteractedWith(for: push)
+        pushClickHandler.handleDeepLink(for: push)
     }
 }
 #endif

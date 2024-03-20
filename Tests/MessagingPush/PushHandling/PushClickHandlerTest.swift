@@ -1,6 +1,5 @@
 import CioInternalCommon
 @testable import CioMessagingPush
-@testable import CioTracking
 import Foundation
 import SharedTests
 import UserNotifications
@@ -10,12 +9,12 @@ class PushClickHandlerTest: IntegrationTest {
     private var pushClickHandler: PushClickHandler!
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
-    private let customerIOMock = CustomerIOInstanceMock()
+    private let messagingPushMock = MessagingPushInstanceMock()
 
     override func setUp() {
         super.setUp()
 
-        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, customerIO: customerIOMock)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock)
     }
 
     // MARK: handleDeepLink
@@ -45,6 +44,6 @@ class PushClickHandlerTest: IntegrationTest {
 
         pushClickHandler.trackPushMetrics(for: givenPush)
 
-        XCTAssertEqual(customerIOMock.trackMetricCallsCount, 1)
+        XCTAssertEqual(messagingPushMock.trackMetricCallsCount, 1)
     }
 }

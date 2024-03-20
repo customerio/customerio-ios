@@ -3,10 +3,10 @@ import Foundation
 public protocol FileStorage: AutoMockable {
     /// return `true` if the save was successful and no errors were caught/logged
     /// `fileId` - the file name. `nil` if
-    func save(type: FileType, contents: Data, fileId: String?) -> Bool
+    func save(siteId: String, type: FileType, contents: Data, fileId: String?) -> Bool
     /// return `nil` if an error was caught and logged *or* if the file simply doesn't exist
-    func get(type: FileType, fileId: String?) -> Data?
-    func delete(type: FileType, fileId: String) -> Bool
+    func get(siteId: String, type: FileType, fileId: String?) -> Data?
+    func delete(siteId: String, type: FileType, fileId: String) -> Bool
 }
 
 public enum FileType {
@@ -66,20 +66,18 @@ public enum FileType {
  Notice that we are using the <site id> as a way to isolate files from each other.
  The file tree remains the same for all site ids.
  */
-// sourcery: InjectRegister = "FileStorage"
+// sourcery: InjectRegisterShared = "FileStorage"
 public class FileManagerFileStorage: FileStorage {
     private let fileManager = FileManager.default
-    private let siteId: String
     private let logger: Logger
 
-    init(sdkConfig: SdkConfig, logger: Logger) {
-        self.siteId = sdkConfig.siteId
+    init(logger: Logger) {
         self.logger = logger
     }
 
-    public func save(type: FileType, contents: Data, fileId: String?) -> Bool {
+    public func save(siteId: String, type: FileType, contents: Data, fileId: String?) -> Bool {
         do {
-            guard let saveLocationUrl = try getUrl(type: type, fileId: fileId) else { return false }
+            guard let saveLocationUrl = try getUrl(siteId: siteId, type: type, fileId: fileId) else { return false }
 
             try contents.write(to: saveLocationUrl)
 
@@ -90,9 +88,9 @@ public class FileManagerFileStorage: FileStorage {
         }
     }
 
-    public func get(type: FileType, fileId: String?) -> Data? {
+    public func get(siteId: String, type: FileType, fileId: String?) -> Data? {
         do {
-            guard let saveLocationUrl = try getUrl(type: type, fileId: fileId) else { return nil }
+            guard let saveLocationUrl = try getUrl(siteId: siteId, type: type, fileId: fileId) else { return nil }
 
             return try? Data(contentsOf: saveLocationUrl)
         } catch {
@@ -101,9 +99,9 @@ public class FileManagerFileStorage: FileStorage {
         }
     }
 
-    public func delete(type: FileType, fileId: String) -> Bool {
+    public func delete(siteId: String, type: FileType, fileId: String) -> Bool {
         do {
-            guard let urlFileToDelete = try getUrl(type: type, fileId: fileId) else { return false }
+            guard let urlFileToDelete = try getUrl(siteId: siteId, type: type, fileId: fileId) else { return false }
 
             try fileManager.removeItem(at: urlFileToDelete)
 
@@ -114,7 +112,7 @@ public class FileManagerFileStorage: FileStorage {
         }
     }
 
-    func getUrl(type: FileType, fileId: String?) throws -> URL? {
+    func getUrl(siteId: String, type: FileType, fileId: String?) throws -> URL? {
         guard var fileName = type.fileName ?? fileId else { return nil } // let the type be first to define file name
         fileName = fileName.setLastCharacters(type.fileExtension) // make sure file has extension.
 

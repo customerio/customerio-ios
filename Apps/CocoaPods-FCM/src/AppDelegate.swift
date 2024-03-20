@@ -1,6 +1,6 @@
+import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushFCM
-import CioTracking
 import FirebaseCore
 import FirebaseMessaging
 import Foundation
@@ -18,24 +18,36 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         let appSetSettings = CioSettingsManager().appSetSettings
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
-        let apiKey = appSetSettings?.apiKey ?? BuildEnvironment.CustomerIO.apiKey
+        let cdpApiKey = appSetSettings?.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
 
-        // Initialize the Customer.io SDK
-        CustomerIO.initialize(siteId: siteId, apiKey: apiKey, region: .US) { config in
-            // Modify properties in the config object to configure the Customer.io SDK.
-            config.autoTrackPushEvents = true
-            // config.logLevel = .debug // Uncomment this line to enable debug logging.
-
-            // This line of code is internal to Customer.io for testing purposes. Do not add this code to your app.
-            appSetSettings?.configureCioSdk(config: &config)
+        // Configure and initialize the Customer.io SDK
+        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+            .migrationSiteId(siteId)
+            .flushAt(appSetSettings?.flushAt ?? 10)
+            .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
+            .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
+        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
+            config.logLevel(CioLogLevel.debug)
         }
+        if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
+            config.apiHost(apiHost)
+        }
+        if let cdnHost = appSetSettings?.cdnHost, !cdnHost.isEmpty {
+            config.cdnHost(cdnHost)
+        }
+        CustomerIO.initialize(withConfig: config.build())
+
         // Initialize messaging features after initializing Customer.io SDK
-        MessagingInApp.initialize(eventListener: self)
-        MessagingPushFCM.initialize { config in
-            config.autoFetchDeviceToken = true
-        }
+        MessagingInApp
+            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
+            .setEventListener(self)
+        MessagingPushFCM.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(true)
+                .build()
+        )
 
-        // Manually get FCM device token. Swizzling hasn't been working for me.
+        // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
         Messaging.messaging().delegate = self
 
         /**
@@ -56,7 +68,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension AppDelegate: MessagingDelegate {
+    // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        // Forward the device token to the Customer.io SDK:
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
@@ -67,7 +81,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
             name: "push clicked",
-            data: ["push": response.notification.request.content.userInfo]
+            properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
@@ -83,26 +97,26 @@ extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
     func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
     func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
-            data: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
-        CustomerIO.shared.track(name: "inapp action", data: [
+        CustomerIO.shared.track(name: "inapp action", properties: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,
             "action-value": actionValue,

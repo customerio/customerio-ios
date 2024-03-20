@@ -37,7 +37,7 @@ protocol AutomaticPushClickHandling: AutoMockable {
 }
 
 @available(iOSApplicationExtension, unavailable)
-// sourcery: InjectRegister = "AutomaticPushClickHandling"
+// sourcery: InjectRegisterShared = "AutomaticPushClickHandling"
 class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
     private let notificationCenterAdapter: UserNotificationsFrameworkAdapter
     private let logger: Logger

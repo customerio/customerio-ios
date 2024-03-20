@@ -150,7 +150,7 @@ class ExampleTest: XCTestCase {
     {% if not method|annotated:"DuplicateMethod" %}
     {% if not method.isInitializer %}
     /// Number of times the function was called.  
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}CallsCount = 0
+    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}CallsCount = 0
     /// `true` if the function was ever called. 
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}Called: Bool {
         return {% call swiftifyMethodName method %}CallsCount > 0
@@ -159,14 +159,14 @@ class ExampleTest: XCTestCase {
     {% endif %} {# endif DuplicateMethod #}
     {% if method.parameters.count == 1 %}
     /// The arguments from the *last* time the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?
+    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?
     /// Arguments from *all* of the times that the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})] = []
+    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})] = []
     {% elif not method.parameters.count == 0 %}
     /// The arguments from the *last* time the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})?
+    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})?
     /// Arguments from *all* of the times that the function was called. 
-    {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})] = []
     {% endif %}
     {% if not method.returnTypeName.isVoid and not method.isInitializer %}
     /// Value to return from the mocked function. 

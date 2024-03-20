@@ -6,7 +6,7 @@ protocol DeepLinkUtil: AutoMockable {
 }
 
 @available(iOSApplicationExtension, unavailable)
-// sourcery: InjectRegister = "DeepLinkUtil"
+// sourcery: InjectRegisterShared = "DeepLinkUtil"
 class DeepLinkUtilImpl: DeepLinkUtil {
     private let logger: Logger
     private let uiKit: UIKitWrapper

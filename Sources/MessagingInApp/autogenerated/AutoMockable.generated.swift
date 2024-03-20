@@ -10,7 +10,6 @@ import FoundationNetworking
 import UserNotifications
 #endif
 import CioInternalCommon
-import CioTracking
 
 /**
  ######################################################
@@ -122,16 +121,16 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     // MARK: - messageShown
 
     /// Number of times the function was called.
-    public private(set) var messageShownCallsCount = 0
+    @Atomic public private(set) var messageShownCallsCount = 0
     /// `true` if the function was ever called.
     public var messageShownCalled: Bool {
         messageShownCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageShownReceivedArguments: InAppMessage?
+    @Atomic public private(set) var messageShownReceivedArguments: InAppMessage?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageShownReceivedInvocations: [InAppMessage] = []
+    @Atomic public private(set) var messageShownReceivedInvocations: [InAppMessage] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -149,16 +148,16 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     // MARK: - messageDismissed
 
     /// Number of times the function was called.
-    public private(set) var messageDismissedCallsCount = 0
+    @Atomic public private(set) var messageDismissedCallsCount = 0
     /// `true` if the function was ever called.
     public var messageDismissedCalled: Bool {
         messageDismissedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageDismissedReceivedArguments: InAppMessage?
+    @Atomic public private(set) var messageDismissedReceivedArguments: InAppMessage?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageDismissedReceivedInvocations: [InAppMessage] = []
+    @Atomic public private(set) var messageDismissedReceivedInvocations: [InAppMessage] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -176,16 +175,16 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     // MARK: - errorWithMessage
 
     /// Number of times the function was called.
-    public private(set) var errorWithMessageCallsCount = 0
+    @Atomic public private(set) var errorWithMessageCallsCount = 0
     /// `true` if the function was ever called.
     public var errorWithMessageCalled: Bool {
         errorWithMessageCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var errorWithMessageReceivedArguments: InAppMessage?
+    @Atomic public private(set) var errorWithMessageReceivedArguments: InAppMessage?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var errorWithMessageReceivedInvocations: [InAppMessage] = []
+    @Atomic public private(set) var errorWithMessageReceivedInvocations: [InAppMessage] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -203,16 +202,16 @@ public class InAppEventListenerMock: InAppEventListener, Mock {
     // MARK: - messageActionTaken
 
     /// Number of times the function was called.
-    public private(set) var messageActionTakenCallsCount = 0
+    @Atomic public private(set) var messageActionTakenCallsCount = 0
     /// `true` if the function was ever called.
     public var messageActionTakenCalled: Bool {
         messageActionTakenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var messageActionTakenReceivedArguments: (message: InAppMessage, actionValue: String, actionName: String)?
+    @Atomic public private(set) var messageActionTakenReceivedArguments: (message: InAppMessage, actionValue: String, actionName: String)?
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var messageActionTakenReceivedInvocations: [(message: InAppMessage, actionValue: String, actionName: String)] = []
+    @Atomic public private(set) var messageActionTakenReceivedInvocations: [(message: InAppMessage, actionValue: String, actionName: String)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -270,16 +269,16 @@ class InAppProviderMock: InAppProvider, Mock {
     // MARK: - initialize
 
     /// Number of times the function was called.
-    private(set) var initializeCallsCount = 0
+    @Atomic private(set) var initializeCallsCount = 0
     /// `true` if the function was ever called.
     var initializeCalled: Bool {
         initializeCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var initializeReceivedArguments: (siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)?
+    @Atomic private(set) var initializeReceivedArguments: (siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var initializeReceivedInvocations: [(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)] = []
+    @Atomic private(set) var initializeReceivedInvocations: [(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -297,16 +296,16 @@ class InAppProviderMock: InAppProvider, Mock {
     // MARK: - setProfileIdentifier
 
     /// Number of times the function was called.
-    private(set) var setProfileIdentifierCallsCount = 0
+    @Atomic private(set) var setProfileIdentifierCallsCount = 0
     /// `true` if the function was ever called.
     var setProfileIdentifierCalled: Bool {
         setProfileIdentifierCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var setProfileIdentifierReceivedArguments: String?
+    @Atomic private(set) var setProfileIdentifierReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var setProfileIdentifierReceivedInvocations: [String] = []
+    @Atomic private(set) var setProfileIdentifierReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -324,7 +323,7 @@ class InAppProviderMock: InAppProvider, Mock {
     // MARK: - clearIdentify
 
     /// Number of times the function was called.
-    private(set) var clearIdentifyCallsCount = 0
+    @Atomic private(set) var clearIdentifyCallsCount = 0
     /// `true` if the function was ever called.
     var clearIdentifyCalled: Bool {
         clearIdentifyCallsCount > 0
@@ -345,16 +344,16 @@ class InAppProviderMock: InAppProvider, Mock {
     // MARK: - setRoute
 
     /// Number of times the function was called.
-    private(set) var setRouteCallsCount = 0
+    @Atomic private(set) var setRouteCallsCount = 0
     /// `true` if the function was ever called.
     var setRouteCalled: Bool {
         setRouteCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    private(set) var setRouteReceivedArguments: String?
+    @Atomic private(set) var setRouteReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    private(set) var setRouteReceivedInvocations: [String] = []
+    @Atomic private(set) var setRouteReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
@@ -372,7 +371,7 @@ class InAppProviderMock: InAppProvider, Mock {
     // MARK: - dismissMessage
 
     /// Number of times the function was called.
-    private(set) var dismissMessageCallsCount = 0
+    @Atomic private(set) var dismissMessageCallsCount = 0
     /// `true` if the function was ever called.
     var dismissMessageCalled: Bool {
         dismissMessageCallsCount > 0
@@ -407,17 +406,9 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
     }
 
     public func resetMock() {
-        initializeCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
-        initializeEventListenerCallsCount = 0
-        initializeEventListenerReceivedArguments = nil
-        initializeEventListenerReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
-        initializeOrganizationIdCallsCount = 0
-        initializeOrganizationIdReceivedArguments = nil
-        initializeOrganizationIdReceivedInvocations = []
+        setEventListenerCallsCount = 0
+        setEventListenerReceivedArguments = nil
+        setEventListenerReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         dismissMessageCallsCount = 0
@@ -425,86 +416,37 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - initialize
+    // MARK: - setEventListener
 
     /// Number of times the function was called.
-    public private(set) var initializeCallsCount = 0
+    @Atomic public private(set) var setEventListenerCallsCount = 0
     /// `true` if the function was ever called.
-    public var initializeCalled: Bool {
-        initializeCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var initializeClosure: (() -> Void)?
-
-    /// Mocked function for `initialize()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func initialize() {
-        mockCalled = true
-        initializeCallsCount += 1
-        initializeClosure?()
-    }
-
-    // MARK: - initialize
-
-    /// Number of times the function was called.
-    public private(set) var initializeEventListenerCallsCount = 0
-    /// `true` if the function was ever called.
-    public var initializeEventListenerCalled: Bool {
-        initializeEventListenerCallsCount > 0
+    public var setEventListenerCalled: Bool {
+        setEventListenerCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    public private(set) var initializeEventListenerReceivedArguments: InAppEventListener?
+    @Atomic public private(set) var setEventListenerReceivedArguments: InAppEventListener??
     /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeEventListenerReceivedInvocations: [InAppEventListener] = []
+    @Atomic public private(set) var setEventListenerReceivedInvocations: [InAppEventListener?] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var initializeEventListenerClosure: ((InAppEventListener) -> Void)?
+    public var setEventListenerClosure: ((InAppEventListener?) -> Void)?
 
-    /// Mocked function for `initialize(eventListener: InAppEventListener)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func initialize(eventListener: InAppEventListener) {
+    /// Mocked function for `setEventListener(_ eventListener: InAppEventListener?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setEventListener(_ eventListener: InAppEventListener?) {
         mockCalled = true
-        initializeEventListenerCallsCount += 1
-        initializeEventListenerReceivedArguments = eventListener
-        initializeEventListenerReceivedInvocations.append(eventListener)
-        initializeEventListenerClosure?(eventListener)
-    }
-
-    // MARK: - initialize
-
-    /// Number of times the function was called.
-    public private(set) var initializeOrganizationIdCallsCount = 0
-    /// `true` if the function was ever called.
-    public var initializeOrganizationIdCalled: Bool {
-        initializeOrganizationIdCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    public private(set) var initializeOrganizationIdReceivedArguments: String?
-    /// Arguments from *all* of the times that the function was called.
-    public private(set) var initializeOrganizationIdReceivedInvocations: [String] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var initializeOrganizationIdClosure: ((String) -> Void)?
-
-    /// Mocked function for `initialize(organizationId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    @available(*, deprecated, message: "Parameter organizationId no longer being used. Remove the parameter from your function call to migrate to new function.")
-    public func initialize(organizationId: String) {
-        mockCalled = true
-        initializeOrganizationIdCallsCount += 1
-        initializeOrganizationIdReceivedArguments = organizationId
-        initializeOrganizationIdReceivedInvocations.append(organizationId)
-        initializeOrganizationIdClosure?(organizationId)
+        setEventListenerCallsCount += 1
+        setEventListenerReceivedArguments = eventListener
+        setEventListenerReceivedInvocations.append(eventListener)
+        setEventListenerClosure?(eventListener)
     }
 
     // MARK: - dismissMessage
 
     /// Number of times the function was called.
-    public private(set) var dismissMessageCallsCount = 0
+    @Atomic public private(set) var dismissMessageCallsCount = 0
     /// `true` if the function was ever called.
     public var dismissMessageCalled: Bool {
         dismissMessageCallsCount > 0

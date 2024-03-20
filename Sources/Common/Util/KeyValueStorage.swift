@@ -3,9 +3,7 @@ import Foundation
 /**
  Stores data in key/value pairs.
  */
-public protocol KeyValueStorage {
-    func switchToGlobalDataStore()
-
+public protocol SharedKeyValueStorage {
     func integer(_ key: KeyValueStorageKey) -> Int?
     func setInt(_ value: Int?, forKey key: KeyValueStorageKey)
     func double(_ key: KeyValueStorageKey) -> Double?
@@ -17,28 +15,66 @@ public protocol KeyValueStorage {
     func deleteAll()
 }
 
+/**
+ Key/Value storage that is sandboxed by a given siteId.
+
+ This is to support legacy code before the CDP mobile SDK. So, we only need to have a couple methods instead of all of the methods that `SharedKeyValueStorage` has.
+ */
+public protocol SandboxedSiteIdKeyValueStorage {
+    func string(_ key: KeyValueStorageKey, siteId: String) -> String?
+    func setString(_ value: String?, forKey key: KeyValueStorageKey, siteId: String)
+}
+
 /*
  Uses UserDefaults to store data in key/value pairs.
  */
-// sourcery: InjectRegister = "KeyValueStorage"
-public class UserDefaultsKeyValueStorage: KeyValueStorage {
-    private var siteId: String?
+// sourcery: InjectRegisterShared = "SandboxedSiteIdKeyValueStorage"
+public class UserDefaultsSandboxedSiteIdKVStore: SandboxedSiteIdKeyValueStorage {
+    private let deviceMetricsGrabber: DeviceMetricsGrabber
+
+    private func userDefaults(siteId: String) -> UserDefaults? {
+        UserDefaults(suiteName: getFileName(siteId: siteId))
+    }
+
+    init(deviceMetricsGrabber: DeviceMetricsGrabber) {
+        self.deviceMetricsGrabber = deviceMetricsGrabber
+    }
+
+    /**
+     We want to sandbox all of the data for each CIO workspace and app.
+     Therefore, we use the app's bundle ID to be unique to the app and the siteId to separate all of the sites.
+
+     We also need to have 1 set of UserPreferences that all workspaces of an app share.
+     For these moments, use `shared` as the `siteId` value.
+     */
+    func getFileName(siteId: String) -> String {
+        var appUniqueIdentifier = ""
+        if let appBundleId = deviceMetricsGrabber.appBundleId {
+            appUniqueIdentifier = ".\(appBundleId)"
+        }
+
+        return "io.customer.sdk\(appUniqueIdentifier).\(siteId)"
+    }
+
+    public func string(_ key: KeyValueStorageKey, siteId: String) -> String? {
+        userDefaults(siteId: siteId)?.string(forKey: key.rawValue)
+    }
+
+    public func setString(_ value: String?, forKey key: KeyValueStorageKey, siteId: String) {
+        userDefaults(siteId: siteId)?.set(value, forKey: key.rawValue)
+    }
+}
+
+// sourcery: InjectRegisterShared = "SharedKeyValueStorage"
+public class UserDefaultsSharedKeyValueStorage: SharedKeyValueStorage {
     private let deviceMetricsGrabber: DeviceMetricsGrabber
 
     private var userDefaults: UserDefaults? {
         UserDefaults(suiteName: getFileName())
     }
 
-    init(sdkConfig: SdkConfig, deviceMetricsGrabber: DeviceMetricsGrabber) {
-        self.siteId = sdkConfig.siteId
+    init(deviceMetricsGrabber: DeviceMetricsGrabber) {
         self.deviceMetricsGrabber = deviceMetricsGrabber
-    }
-
-    // Used for global data that's relevant to *all* of the site-ids (not sandboxed).
-    // Instead of the more common way the SDK stores data by sandboxing all of that data by site-id.
-    // See `GlobalDataStore` for data that is relevant for *all* site-ids in the SDK.
-    public func switchToGlobalDataStore() {
-        siteId = nil
     }
 
     /**
@@ -54,12 +90,7 @@ public class UserDefaultsKeyValueStorage: KeyValueStorage {
             appUniqueIdentifier = ".\(appBundleId)"
         }
 
-        var siteIdPart = ".shared" // used for storing global data used for all site-ids.
-        if let siteId = siteId { // if a siteid is given to this instance, we dont store global data with this instance.
-            siteIdPart = ".\(siteId)"
-        }
-
-        return "io.customer.sdk\(appUniqueIdentifier)\(siteIdPart)"
+        return "io.customer.sdk\(appUniqueIdentifier).shared"
     }
 
     public func integer(_ key: KeyValueStorageKey) -> Int? {

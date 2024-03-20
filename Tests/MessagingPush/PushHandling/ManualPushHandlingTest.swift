@@ -1,5 +1,5 @@
+@testable import CioInternalCommon
 @testable import CioMessagingPush
-@testable import CioTracking
 import Foundation
 import SharedTests
 import XCTest
@@ -14,10 +14,10 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
 
     override func setUp() {
         super.setUp { config in
-            config.autoTrackPushEvents = false // we are testing manual push tracking. Disable automatic push tracking feature.
+            config.autoTrackPushEvents(false) // we are testing manual push tracking. Disable automatic push tracking feature.
         }
 
-        diGraph.override(value: pushClickHandler, forType: PushClickHandler.self)
+        DIGraphShared.shared.override(value: pushClickHandler, forType: PushClickHandler.self)
     }
 
     // MARK: manual push click handling

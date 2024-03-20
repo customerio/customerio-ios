@@ -6,14 +6,15 @@ sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 
 target 'test cocoapods' do
   pod 'CustomerIOCommon', :path => sdk_local_path
-  pod 'CustomerIOTracking', :path => sdk_local_path
-  pod 'CustomerIOMessagingPush', :path => sdk_local_path    
+  pod 'CustomerIODataPipelines', :path => sdk_local_path
+  pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
 
   # Adding APN for internal testing, only. Code from this pod is not used at runtime. 
   # We need to confirm that cocoapods customers can compile their apps with this pod installed. 
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
+  pod 'CustomerIOTrackingMigration', :path => sdk_local_path
 
   # The "CustomerIOMessagingPushFCM" SDK installs the FCM SDK for you, defaulting to the latest version. 
   # If your app needs to use a specific version of the FCM SDK, you can add the line below to your app's Podfile 
@@ -29,7 +30,7 @@ end
 
 target 'Rich Push Notification Service Extension' do 
   pod 'CustomerIOCommon', :path => sdk_local_path
-  pod 'CustomerIOTracking', :path => sdk_local_path
+  pod 'CustomerIODataPipelines', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
 

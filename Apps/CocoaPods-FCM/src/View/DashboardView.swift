@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import SwiftUI
 import UserNotifications
 
@@ -56,14 +56,14 @@ struct DashboardView: View {
                         case 1:
                             CustomerIO.shared.track(
                                 name: "movie_watched",
-                                data: [
+                                properties: [
                                     "movie_name": "The Incredibles"
                                 ]
                             )
                         default: // case 2
                             CustomerIO.shared.track(
                                 name: "appointmentScheduled",
-                                data: [
+                                properties: [
                                     "appointmentTime": Calendar.current.date(byAdding: .day, value: 7, to: Date())!.epochNoMilliseconds
                                 ]
                             )
@@ -163,7 +163,7 @@ struct DashboardView: View {
         .onAppear {
             // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
             // Therefore, this is how we can perform manual screen view tracking.
-            CustomerIO.shared.screen(name: "Dashboard")
+            CustomerIO.shared.screen(title: "Dashboard")
         }
     }
 }

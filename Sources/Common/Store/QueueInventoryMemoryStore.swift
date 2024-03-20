@@ -8,8 +8,8 @@ protocol QueueInventoryMemoryStore {
 // The in-memory store should be a singleton to be re-used during the lifecycle of the SDK.
 // Try to keep this class small because it's a singleton.
 //
-// sourcery: InjectRegister = "QueueInventoryMemoryStore"
 // sourcery: InjectSingleton
+// sourcery: InjectRegisterShared = "QueueInventoryMemoryStore"
 class QueueInventoryMemoryStoreImpl: QueueInventoryMemoryStore {
     @Atomic var inventory: [QueueTaskMetadata]?
 }

@@ -3,7 +3,6 @@
 // swiftlint:disable all
 
 import CioInternalCommon
-import CioTracking
 import Foundation
 
 /**
@@ -30,7 +29,7 @@ import Foundation
 
  class ViewController: UIViewController {
      // Call the property getter to get your dependency from the graph:
-     let wheels = DIGraph.getInstance(siteId: "").offRoadWheels
+     let wheels = DIGraphShared.shared.offRoadWheels
      // note the name of the property is name of the class with the first letter lowercase.
  }
  ```
@@ -38,17 +37,17 @@ import Foundation
  5. How do I use this graph in my test suite?
  ```
  let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIGraph().override(mockOffRoadWheels, OffRoadWheels.self)
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
  ```
 
  Then, when your test function finishes, reset the graph:
  ```
- DIGraph().reset()
+ DIGraphShared.shared.reset()
  ```
 
  */
 
-extension DIGraph {
+extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
@@ -67,15 +66,28 @@ extension DIGraph {
         _ = pushClickHandler
         countDependenciesResolved += 1
 
+        _ = pushEventHandlerProxy
+        countDependenciesResolved += 1
+
         _ = pushHistory
+        countDependenciesResolved += 1
+
+        _ = richPushDeliveryTracker
+        countDependenciesResolved += 1
+
+        _ = httpClient
         countDependenciesResolved += 1
 
         _ = userNotificationCenter
         countDependenciesResolved += 1
 
+        _ = userNotificationsFrameworkAdapter
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
+    // Handle classes annotated with InjectRegisterShared
     // AutomaticPushClickHandling
     @available(iOSApplicationExtension, unavailable)
     var automaticPushClickHandling: AutomaticPushClickHandling {
@@ -121,7 +133,34 @@ extension DIGraph {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
-        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, customerIO: customerIOInstance)
+        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance)
+    }
+
+    // PushEventHandlerProxy (singleton)
+    @available(iOSApplicationExtension, unavailable)
+    var pushEventHandlerProxy: PushEventHandlerProxy {
+        getOverriddenInstance() ??
+            sharedPushEventHandlerProxy
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    var sharedPushEventHandlerProxy: PushEventHandlerProxy {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_PushEventHandlerProxy_singleton_access").sync {
+            if let overridenDep: PushEventHandlerProxy = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: PushEventHandlerProxy.self)] as? PushEventHandlerProxy
+            let instance = existingSingletonInstance ?? _get_pushEventHandlerProxy()
+            self.singletons[String(describing: PushEventHandlerProxy.self)] = instance
+            return instance
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_pushEventHandlerProxy() -> PushEventHandlerProxy {
+        PushEventHandlerProxyImpl(logger: logger)
     }
 
     // PushHistory (singleton)
@@ -133,7 +172,7 @@ extension DIGraph {
     var sharedPushHistory: PushHistory {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraph_PushHistory_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_PushHistory_singleton_access").sync {
             if let overridenDep: PushHistory = getOverriddenInstance() {
                 return overridenDep
             }
@@ -148,6 +187,26 @@ extension DIGraph {
         PushHistoryImpl(lockManager: lockManager)
     }
 
+    // RichPushDeliveryTracker
+    var richPushDeliveryTracker: RichPushDeliveryTracker {
+        getOverriddenInstance() ??
+            newRichPushDeliveryTracker
+    }
+
+    private var newRichPushDeliveryTracker: RichPushDeliveryTracker {
+        RichPushDeliveryTracker(httpClient: httpClient, logger: logger)
+    }
+
+    // HttpClient
+    public var httpClient: HttpClient {
+        getOverriddenInstance() ??
+            newHttpClient
+    }
+
+    private var newHttpClient: HttpClient {
+        RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, deviceInfo: deviceInfo)
+    }
+
     // UserNotificationCenter
     var userNotificationCenter: UserNotificationCenter {
         getOverriddenInstance() ??
@@ -156,6 +215,33 @@ extension DIGraph {
 
     private var newUserNotificationCenter: UserNotificationCenter {
         UserNotificationCenterImpl()
+    }
+
+    // UserNotificationsFrameworkAdapter (singleton)
+    @available(iOSApplicationExtension, unavailable)
+    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+        getOverriddenInstance() ??
+            sharedUserNotificationsFrameworkAdapter
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    var sharedUserNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_UserNotificationsFrameworkAdapter_singleton_access").sync {
+            if let overridenDep: UserNotificationsFrameworkAdapter = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: UserNotificationsFrameworkAdapter.self)] as? UserNotificationsFrameworkAdapter
+            let instance = existingSingletonInstance ?? _get_userNotificationsFrameworkAdapter()
+            self.singletons[String(describing: UserNotificationsFrameworkAdapter.self)] = instance
+            return instance
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_userNotificationsFrameworkAdapter() -> UserNotificationsFrameworkAdapter {
+        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter, notificationCenterDelegateProxy: pushEventHandlerProxy)
     }
 }
 

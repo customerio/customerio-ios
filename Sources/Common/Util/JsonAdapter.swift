@@ -26,7 +26,7 @@ import Foundation
  XCAssertEqual(expectedObject, actualObject)
  ```
  */
-// sourcery: InjectRegister = "JsonAdapter"
+// sourcery: InjectRegisterShared = "JsonAdapter"
 public class JsonAdapter {
     var decoder: JSONDecoder {
         let decoder = JSONDecoder()
@@ -82,6 +82,17 @@ public class JsonAdapter {
             log.error("\(error.localizedDescription), object: \(obj)")
         }
 
+        return nil
+    }
+
+    // Converts jsonString to a dictionary
+    public func fromJsonString(_ jsonString: String) -> [String: Any]? {
+        do {
+            let jsonData = Data(jsonString.utf8)
+            return try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any]
+        } catch {
+            print("Error decoding JSON: \(error)")
+        }
         return nil
     }
 

@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import SwiftUI
 
 struct LoginView: View {
@@ -60,7 +60,7 @@ struct LoginView: View {
         }.onAppear {
             // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
             // Therefore, this is how we can perform manual screen view tracking.
-            CustomerIO.shared.screen(name: "Login")
+            CustomerIO.shared.screen(title: "Login")
         }
     }
 
@@ -73,7 +73,7 @@ struct LoginView: View {
             return
         }
 
-        CustomerIO.shared.identify(identifier: emailText, body: [
+        CustomerIO.shared.identify(userId: emailText, traits: [
             "email": emailText,
             "first_name": firstNameText
         ])

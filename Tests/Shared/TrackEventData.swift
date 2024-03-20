@@ -1,4 +1,3 @@
-@testable import CioTracking
 import Foundation
 
 /// Example event body

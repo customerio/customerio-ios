@@ -1,4 +1,4 @@
-import CioTracking
+import CioDataPipelines
 import UIKit
 
 class LoginViewController: BaseViewController {
@@ -14,7 +14,7 @@ class LoginViewController: BaseViewController {
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var loginButton: ThemeButton!
     @IBOutlet var randomLoginButton: UIButton!
-    var storage = DIGraph.shared.storage
+    var storage = DIGraphShared.shared.storage
     var loginRouter: LoginRouting?
 
     override func viewWillAppear(_ animated: Bool) {
@@ -92,9 +92,9 @@ class LoginViewController: BaseViewController {
         if let name = firstNameTextField.text, !name.isEmpty {
             body = ["first_name": name]
         }
-        CustomerIO.shared.identify(identifier: emailId, body: body)
         storage.userEmailId = emailId
         loginRouter?.routeToDashboard()
+        CustomerIO.shared.identify(userId: emailId, traits: body)
     }
 
     @objc func settingsTapped() {

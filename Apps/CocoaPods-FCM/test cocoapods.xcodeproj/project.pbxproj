@@ -31,7 +31,6 @@
 		F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAA2A5C8C1F00C5C952 /* Toast.swift */; };
 		F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
-		F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A9291D5D8100115DB8 /* CioTracking.framework */; };
 		F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D762A05588E00641391 /* ColorExtensions.swift */; };
 		F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D782A058B5000641391 /* SettingsButton.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -131,7 +130,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */,
-				F78793AA291D5D8100115DB8 /* CioTracking.framework in Frameworks */,
 				6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
