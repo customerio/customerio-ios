@@ -18,15 +18,15 @@ import XCTest
  */
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner!
-    public var userAgentUtil: UserAgentUtil!
-    public var session: URLSession?
-    public var publicSession: URLSession = CIOHttpClient.getBasicSession()
+    public var deviceInfo: DeviceInfo!
+    public var cioSession: URLSession?
+    public var publicSession: URLSession = RichPushHttpClient.getBasicSession()
 
     override open func setUp() {
         super.setUp()
 
         deviceInfo = diGraphShared.deviceInfo
-        session = RichPushHttpClient.getBasicSession()
+        publicSession = RichPushHttpClient.getBasicSession()
         runner = UrlRequestHttpRequestRunner()
 
         /*
