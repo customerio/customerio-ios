@@ -6,8 +6,7 @@ extension Region: CaseIterable, Codable {
 }
 
 struct WorkspaceSettings: UserDefaultsCodable {
-    var siteId: String
-    var apiKey: String
+    var cdpApiKy: String
     var region: Region = .EU
 
     static func storageKey() -> String {
@@ -15,11 +14,11 @@ struct WorkspaceSettings: UserDefaultsCodable {
     }
 
     static func empty() -> Self {
-        WorkspaceSettings(siteId: "", apiKey: "")
+        WorkspaceSettings(cdpApiKy:"")
     }
 
     func isSet() -> Bool {
-        !siteId.isEmpty && !apiKey.isEmpty
+        !cdpApiKy.isEmpty
     }
 }
 

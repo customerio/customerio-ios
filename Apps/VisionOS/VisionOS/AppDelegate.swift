@@ -1,5 +1,6 @@
-import CioTracking
 import UIKit
+
+import CioDataPipelines
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
@@ -9,26 +10,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         /*
 
-         How do I get the values for the siteId and apiKy?
-         You can find/create them here: https://fly.customer.io/settings/api_credentials
-         For more information about workspaces checkout these
-         docs: https://customer.io/docs/accounts-and-workspaces/workspaces/
+         You will need cdpApiKey to initialize CustomerIO
+         Learn more about it here: https://customer.io/docs/sdk/ios/quick-start-guide/#prerequisites
          */
 
         let workspaceSettings = AppState.shared.workspaceSettings
         if workspaceSettings.isSet() {
+            
             CustomerIO.initialize(
-                siteId: workspaceSettings.siteId,
-                apiKey: workspaceSettings.apiKey,
-                region: workspaceSettings.region
-            ) { config in
-                // Debug config just to make the demo
-                // easier. You can learn more about these configs
-                // here: https://customer.io/docs/sdk/ios/getting-started/#configuration-options
-                config.backgroundQueueMinNumberOfTasks = 1
-                config.backgroundQueueSecondsDelay = 0
-                config.logLevel = .debug
-            }
+                withConfig:
+                    SDKConfigBuilder(cdpApiKey: workspaceSettings.cdpApiKy)
+                    .logLevel(.debug)
+                    .build())
+           
         }
 
         return true
