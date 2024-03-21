@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/customerio/customerio-ios/compare/3.0.0...3.0.1) (2024-03-21)
+
+
+### Bug Fixes
+
+* install 3.0 with Swift Package Manager from Xcode ([#660](https://github.com/customerio/customerio-ios/issues/660)) ([45b0367](https://github.com/customerio/customerio-ios/commit/45b0367451b81aae952ee4f248226be48a37650f))
+
 ## [3.0.0](https://github.com/customerio/customerio-ios/compare/2.12.5...3.0.0) (2024-03-20)
 
 
