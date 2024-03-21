@@ -1,25 +1,19 @@
 import CioTracking
 import Foundation
 
-extension Region: CaseIterable, Codable {
-    public static var allCases: [Region] = [.EU, .US]
-}
-
 struct WorkspaceSettings: UserDefaultsCodable {
-    var siteId: String
-    var apiKey: String
-    var region: Region = .EU
+    var cdpApiKy: String
 
     static func storageKey() -> String {
         "UserDefaultsCodable"
     }
 
     static func empty() -> Self {
-        WorkspaceSettings(siteId: "", apiKey: "")
+        WorkspaceSettings(cdpApiKy: "")
     }
 
     func isSet() -> Bool {
-        !siteId.isEmpty && !apiKey.isEmpty
+        !cdpApiKy.isEmpty
     }
 }
 

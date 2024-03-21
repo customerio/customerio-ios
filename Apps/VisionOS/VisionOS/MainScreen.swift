@@ -7,17 +7,6 @@ struct MainScreen: View {
             Text("Hello, world!")
         }
         .padding()
-        .environment(
-            \.openURL,
-            OpenURLAction { url in
-                guard let link = InlineNavigationLink(fromUrl: url) else {
-                    return .systemAction
-                }
-                state.navigationPath = [link]
-
-                return .handled
-            }
-        )
     }
 }
 
