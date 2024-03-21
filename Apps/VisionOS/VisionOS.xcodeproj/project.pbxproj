@@ -7,12 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6023AD362B9137F0001540EF /* AppDelegate.swift */; };
+		60B151FB2BAB4AA9003C4726 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = 60B151FA2BAB4AA9003C4726 /* DataPipelines */; };
 		60F967352B9125D000A4E95E /* VisionOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967342B9125D000A4E95E /* VisionOSApp.swift */; };
 		60F967372B9125D000A4E95E /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967362B9125D000A4E95E /* MainScreen.swift */; };
 		60F967392B9125D100A4E95E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60F967382B9125D100A4E95E /* Assets.xcassets */; };
 		60F967472B91264B00A4E95E /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 60F967462B91264B00A4E95E /* Splash */; };
 		60F9674A2B91265B00A4E95E /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 60F967492B91265B00A4E95E /* MarkdownUI */; };
-		60F9674E2B91269D00A4E95E /* Tracking in Frameworks */ = {isa = PBXBuildFile; productRef = 60F9674D2B91269D00A4E95E /* Tracking */; };
 		60F967532B91288400A4E95E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967502B91288400A4E95E /* AppState.swift */; };
 		60F967542B91288400A4E95E /* Payloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967512B91288400A4E95E /* Payloads.swift */; };
 		60F967552B91288400A4E95E /* UserDefaultsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F967522B91288400A4E95E /* UserDefaultsCodable.swift */; };
@@ -23,12 +24,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6023AD362B9137F0001540EF /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		60F9672D2B9125D000A4E95E /* VisionOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		60F967342B9125D000A4E95E /* VisionOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOSApp.swift; sourceTree = "<group>"; };
 		60F967362B9125D000A4E95E /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScreen.swift; sourceTree = "<group>"; };
 		60F967382B9125D100A4E95E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		60F9673D2B9125D100A4E95E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		60F9674B2B91267200A4E95E /* cio-ios-spl */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
+		60F9674B2B91267200A4E95E /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../../..; sourceTree = "<group>"; };
 		60F967502B91288400A4E95E /* AppState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		60F967512B91288400A4E95E /* Payloads.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Payloads.swift; sourceTree = "<group>"; };
 		60F967522B91288400A4E95E /* UserDefaultsCodable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserDefaultsCodable.swift; sourceTree = "<group>"; };
@@ -44,8 +46,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				60F967472B91264B00A4E95E /* Splash in Frameworks */,
+				60B151FB2BAB4AA9003C4726 /* DataPipelines in Frameworks */,
 				60F9674A2B91265B00A4E95E /* MarkdownUI in Frameworks */,
-				60F9674E2B91269D00A4E95E /* Tracking in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +78,7 @@
 				60F967562B912C1000A4E95E /* ViewUtils */,
 				60F9674F2B91288400A4E95E /* Storage */,
 				60F967342B9125D000A4E95E /* VisionOSApp.swift */,
+				6023AD362B9137F0001540EF /* AppDelegate.swift */,
 				60F967362B9125D000A4E95E /* MainScreen.swift */,
 				60F967382B9125D100A4E95E /* Assets.xcassets */,
 				60F9673D2B9125D100A4E95E /* Info.plist */,
@@ -146,7 +149,7 @@
 			packageProductDependencies = (
 				60F967462B91264B00A4E95E /* Splash */,
 				60F967492B91265B00A4E95E /* MarkdownUI */,
-				60F9674D2B91269D00A4E95E /* Tracking */,
+				60B151FA2BAB4AA9003C4726 /* DataPipelines */,
 			);
 			productName = VisionOS;
 			productReference = 60F9672D2B9125D000A4E95E /* VisionOS.app */;
@@ -205,6 +208,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6023AD372B9137F0001540EF /* AppDelegate.swift in Sources */,
 				60F967602B912E2E00A4E95E /* InlineNavigationLink.swift in Sources */,
 				60F9675C2B912C1000A4E95E /* SplashCodeSyntaxHighlighter.swift in Sources */,
 				60F967542B91288400A4E95E /* Payloads.swift in Sources */,
@@ -434,6 +438,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		60B151FA2BAB4AA9003C4726 /* DataPipelines */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DataPipelines;
+		};
 		60F967462B91264B00A4E95E /* Splash */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 60F967452B91264B00A4E95E /* XCRemoteSwiftPackageReference "Splash" */;
@@ -443,10 +451,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 60F967482B91265B00A4E95E /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
-		};
-		60F9674D2B91269D00A4E95E /* Tracking */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Tracking;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
