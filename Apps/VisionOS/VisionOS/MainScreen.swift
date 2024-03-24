@@ -57,7 +57,16 @@ struct MainScreen: View {
                     CustomerIO.shared.flush()
                 }
             case .track:
-                Text("Track")
+                TrackEventsView { event in
+                    CustomerIO.shared.track(
+                        name: event.name,
+                        properties: event.properties
+                    )
+
+                    viewModel.successMessage = "Track API has been executed successfully"
+                    // For debug purpose only
+                    CustomerIO.shared.flush()
+                }
             case .profileAttributes:
                 Text("Profile Attribute")
             }
