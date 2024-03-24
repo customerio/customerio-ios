@@ -60,6 +60,8 @@ extension [Property] {
     }
 }
 
+typealias Attribute = Property
+
 struct Event: Codable {
     var name: String
     var properties: [Property] = []
