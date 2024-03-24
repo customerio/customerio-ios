@@ -59,3 +59,8 @@ extension [Property] {
         return res
     }
 }
+
+struct Event: Codable {
+    var name: String
+    var properties: [Property] = []
+}
