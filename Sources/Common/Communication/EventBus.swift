@@ -26,7 +26,7 @@ public protocol EventBus: AutoMockable {
     /// Removes all observers from the EventBus.
     ///
     /// The function can be used for cleaning up or resetting the event handling system.
-    func removeAllObservers() async
+    func removeAllObservers()
 }
 
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
@@ -121,7 +121,7 @@ actor SharedEventBus: EventBus {
         }
     }
 
-    func removeAllObservers() async {
+    nonisolated func removeAllObservers() {
         holder.removeAllObservers()
     }
 }
