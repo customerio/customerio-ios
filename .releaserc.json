@@ -2,6 +2,7 @@
     "tagFormat": "${version}",
     "branches": [
         "main",
+        { "name": "v2", "range": "2.x" },
         { "name": "beta", "prerelease": true },
         { "name": "alpha", "prerelease": true }
     ],
