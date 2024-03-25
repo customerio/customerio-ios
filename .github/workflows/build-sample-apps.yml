@@ -123,6 +123,32 @@ jobs:
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+
+    - name: Setup to determine binary size of SDK
+      working-directory: Apps/${{ matrix.sample-app }}/build/    
+      run: |
+        brew install bloaty
+        mv *.xcarchive App.xcarchive # rename the file to a static value. Bloaty requires a hard-coded path to files to work. 
+
+    - name: Print the binary size of our SDK in an app, minus dependencies      
+      # We only need to run bloaty on 1 app.
+      if: ${{ matrix.sample-app == 'APN-UIKit' }}
+      working-directory: Apps/${{ matrix.sample-app }}/build/
+      run: |
+        bloaty --source-filter ".*(customerio-ios\/Sources).*" \
+          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+          -n 0
+    
+    - name: Print the binary size of our SDK in an app, including dependencies
+      # We only need to run bloaty on 1 app.
+      if: ${{ matrix.sample-app == 'APN-UIKit' }}
+      working-directory: Apps/${{ matrix.sample-app }}/build/
+      run: |
+        bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
+          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+          -n 0
     
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
