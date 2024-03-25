@@ -101,6 +101,11 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // Clean up the test environment by releasing resources, clearing mocks, and resetting states during teardown.
     open func cleanupTestEnvironment() {
+        // need to remove the observers for integration tests that utilizes actual NotificationCenter
+        // otherwise, results are flaky
+//     https://linear.app/customerio/issue/MBL-208/possible-memory-leak-in-datapipelinesimplementation
+        diGraphShared.eventBusHandler.removeAllObservers()
+
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistentData()
         // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
@@ -112,9 +117,6 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // All data that the SDK writes, delete it here so each test function has a clean environment to run and does not depend on the result of the previous test.
     open func deleteAllPersistentData() {
-        // need to remove the observers for integration tests that utilizes actual NotificationCenter
-        // otherwise, results are flaky
-        Task { await diGraphShared.eventBusHandler.removeAllObservers() }
         deleteAllFiles()
         deleteKeyValueStoredData()
     }

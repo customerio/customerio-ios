@@ -26,7 +26,7 @@ public protocol EventBus: AutoMockable {
     /// Removes all observers from the EventBus.
     ///
     /// The function can be used for cleaning up or resetting the event handling system.
-    func removeAllObservers() async
+    func removeAllObservers()
 }
 
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
@@ -42,7 +42,7 @@ class EventBusObserversHolder {
 
     /// Dictionary holding arrays of observer tokens for each event type.
     /// The keys are event types (as String), and the values are arrays of NotificationCenter tokens.
-    var observers: [String: [NSObjectProtocol]] = [:]
+    @Atomic var observers: [String: [NSObjectProtocol]] = [:]
 
     /// Removes all observers from the EventBus.
     ///
@@ -69,8 +69,8 @@ class EventBusObserversHolder {
 // sourcery: InjectRegisterShared = "EventBus"
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
-actor SharedEventBus: EventBus {
-    private let holder = EventBusObserversHolder()
+class SharedEventBus: EventBus {
+    @Atomic private var holder = EventBusObserversHolder()
 
     init() {
         DIGraphShared.shared.logger.debug("SharedEventBus initialized")
@@ -121,7 +121,7 @@ actor SharedEventBus: EventBus {
         }
     }
 
-    func removeAllObservers() async {
+    func removeAllObservers() {
         holder.removeAllObservers()
     }
 }
