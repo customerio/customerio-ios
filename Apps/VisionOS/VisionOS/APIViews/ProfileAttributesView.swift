@@ -1,13 +1,14 @@
 import MarkdownUI
 import SwiftUI
 
-private func profileAttributeCodeSnippet(_ attribute: Attribute) -> String {
-    if attribute.key.isEmpty || attribute.value.isEmpty {
-        return "// enter both key and values"
+private func profileAttributeCodeSnippet(_ attributes: [Attribute]) -> String {
+    if attributes.isEmpty {
+        return "// enter profile attributes"
     } else {
+        let attributesStr = propertiesToTutorialString(attributes)
         return
             """
-            CustomerIO.shared.profileAttributes["\(attribute.key)"] = "\(attribute.value)"
+            CustomerIO.shared.profileAttributes = \(attributesStr)
             """
     }
 }
@@ -15,9 +16,9 @@ private func profileAttributeCodeSnippet(_ attribute: Attribute) -> String {
 struct ProfileAttributesView: View {
     @ObservedObject var state = AppState.shared
 
-    @State private var attribute = Attribute(key: "", value: "")
-
-    let onSuccess: (_ profileAttribute: Attribute) -> Void
+    @State private var attributes: [Attribute] = []
+    
+    let onSuccess: (_ profileAttributes: [Attribute]) -> Void
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -29,30 +30,16 @@ struct ProfileAttributesView: View {
                 [click here](https://customer.io/docs/journeys/attributes/#attribute-segment).
 
                 ```swift
-                \(profileAttributeCodeSnippet(attribute))
+                \(profileAttributeCodeSnippet(attributes))
                 ```
-
                 """
             }
 
-            HStack(alignment: .bottom) {
-                FloatingTitleTextField(
-                    title: "Attribute name",
-                    text: $attribute.key
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-                FloatingTitleTextField(
-                    title: "Attribute value",
-                    text: $attribute.value
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            }
+            
+            PropertiesInputView(terminology: .attributes, properties: $attributes)
 
             Button("Set/Update profile attribute") {
-                onSuccess(attribute)
+                onSuccess(attributes)
             }
         }
     }
