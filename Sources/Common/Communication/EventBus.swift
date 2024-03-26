@@ -121,6 +121,7 @@ actor SharedEventBus: EventBus {
         }
     }
 
+    // Using nonisolated for testing to bypass actor isolation ensures synchronous clarity for observer cleanup, crucial in a codebase with both sync and async components.
     nonisolated func removeAllObservers() {
         holder.removeAllObservers()
     }
