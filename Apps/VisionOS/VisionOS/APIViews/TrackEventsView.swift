@@ -37,8 +37,11 @@ struct TrackEventsView: View {
         VStack(alignment: .leading) {
             Markdown {
                 """
-                Using CustomerIO you can track events for the identified person using the `track` API.
-                An event must have a name. Optionally, you can add any properties payload to the event as long
+                Using CustomerIO you can track any events. If there is an identified user, these events will be
+                attributed to them or to an annonymouse user otherwise.
+                An event must have a name.
+                
+                Optionally, you can add any properties payload to the event as long
                 as the payload type conforms to the Codable protocol.
                 [Learn more](https://customer.io/docs/sdk/ios/tracking/track-events/)
 
