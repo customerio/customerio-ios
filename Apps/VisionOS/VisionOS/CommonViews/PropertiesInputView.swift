@@ -2,7 +2,7 @@ import MarkdownUI
 import SwiftUI
 
 enum PropertiesTerminology: String {
-    case properties, traits
+    case properties, traits, attributes
 
     var capitalize: String {
         "\(self)".capitalized

@@ -68,7 +68,12 @@ struct MainScreen: View {
                     CustomerIO.shared.flush()
                 }
             case .profileAttributes:
-                Text("Profile Attribute")
+                ProfileAttributesView { attributes in
+                    CustomerIO.shared.profileAttributes = attributes.toDictionary()
+                    viewModel.successMessage = "Profile attributes set successfully"
+                    // For debug purpose only
+                    CustomerIO.shared.flush()
+                }
             }
         }
     }
