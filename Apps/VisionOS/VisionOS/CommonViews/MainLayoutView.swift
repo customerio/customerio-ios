@@ -20,10 +20,8 @@ enum CIOExample: String, CaseIterable {
         switch self {
         case .initialize:
             return true
-        case .identify:
+        case .identify, .track, .profileAttributes:
             return AppState.shared.workspaceSettings.isSet()
-        case .track, .profileAttributes:
-            return AppState.shared.workspaceSettings.isSet() && AppState.shared.profile.loggedIn
         }
     }
 }
