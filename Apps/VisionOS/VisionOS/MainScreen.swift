@@ -60,7 +60,7 @@ struct MainScreen: View {
                 TrackEventsView { event in
                     CustomerIO.shared.track(
                         name: event.name,
-                        properties: event.properties
+                        properties: event.properties.toDictionary()
                     )
 
                     viewModel.successMessage = "Track API has been executed successfully"

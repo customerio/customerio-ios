@@ -17,7 +17,7 @@ struct ProfileAttributesView: View {
     @ObservedObject var state = AppState.shared
 
     @State private var attributes: [Attribute] = []
-    
+
     let onSuccess: (_ profileAttributes: [Attribute]) -> Void
 
     var body: some View {
@@ -35,7 +35,6 @@ struct ProfileAttributesView: View {
                 """
             }
 
-            
             PropertiesInputView(terminology: .attributes, properties: $attributes)
 
             Button("Set/Update profile attribute") {

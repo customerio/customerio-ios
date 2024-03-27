@@ -19,7 +19,8 @@ extension UserDefaultsCodable {
     static func loadFromStorage() -> Self {
         if let data =
             UserDefaults.standard.object(forKey: storageKey()) as? Data,
-            let storedInstance = from(data) {
+            let storedInstance = from(data)
+        {
             return storedInstance
         }
 

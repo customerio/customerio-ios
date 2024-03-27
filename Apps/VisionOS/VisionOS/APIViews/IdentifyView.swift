@@ -12,7 +12,7 @@ private func identifyCodeSnippet(_ profile: Profile) -> String {
         return
             """
             CustomerIO.shared.identify(
-                userId: ""\(profile.userId)"",
+                userId: "\(profile.userId)",
                 traits: \(propertiesStr)
             )
             """
@@ -20,7 +20,7 @@ private func identifyCodeSnippet(_ profile: Profile) -> String {
         return
             """
             CustomerIO.shared.identify(
-                userId: ""\(profile.userId)""
+                userId: "\(profile.userId)"
             )
             """
     } else if !profile.traits.isEmpty {
