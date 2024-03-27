@@ -23,10 +23,6 @@ public protocol EventBus: AutoMockable {
     ///
     /// - Parameter eventType: The event type for which to remove observers.
     func removeObserver(for eventType: String) async
-    /// Removes all observers from the EventBus.
-    ///
-    /// The function can be used for cleaning up or resetting the event handling system.
-    func removeAllObservers()
 }
 
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
@@ -36,6 +32,8 @@ public protocol EventBus: AutoMockable {
 ///
 /// - Note: This class should remain private to SharedEventBus and not be exposed
 ///         or used externally to maintain encapsulation and thread safety.
+// sourcery: InjectRegisterShared = "EventBusObserversHolder"
+// sourcery: InjectSingleton
 class EventBusObserversHolder {
     /// NotificationCenter instance used for observer management.
     let notificationCenter: NotificationCenter = .default
@@ -53,12 +51,6 @@ class EventBusObserversHolder {
         }
         observers.removeAll()
     }
-
-    /// Deinitializer for EventBusObserversHolder.
-    /// Ensures that all observers are removed from NotificationCenter upon deinitialization.
-    deinit {
-        self.removeAllObservers()
-    }
 }
 
 // swiftlint:disable orphaned_doc_comment
@@ -70,9 +62,11 @@ class EventBusObserversHolder {
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
 actor SharedEventBus: EventBus {
-    private let holder = EventBusObserversHolder()
+    private let holder: EventBusObserversHolder
 
-    init() {
+    init(holder: EventBusObserversHolder) {
+        self.holder = holder
+
         DIGraphShared.shared.logger.debug("SharedEventBus initialized")
     }
 
@@ -119,10 +113,5 @@ actor SharedEventBus: EventBus {
             }
             holder.observers[eventType] = nil
         }
-    }
-
-    // Using nonisolated for testing to bypass actor isolation ensures synchronous clarity for observer cleanup, crucial in a codebase with both sync and async components.
-    nonisolated func removeAllObservers() {
-        holder.removeAllObservers()
     }
 }

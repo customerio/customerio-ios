@@ -8,7 +8,6 @@ public protocol EventBusHandler {
     func postEvent<E: EventRepresentable>(_ event: E)
     func postEventAndWait<E: EventRepresentable>(_ event: E) async
     func removeFromStorage<E: EventRepresentable>(_ event: E) async
-    func removeAllObservers()
 }
 
 // swiftlint:disable orphaned_doc_comment
@@ -140,10 +139,5 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameter event: The event to remove.
     public func removeFromStorage<E: EventRepresentable>(_ event: E) async {
         await eventStorage.remove(ofType: event.key, withStorageId: event.storageId)
-    }
-
-    /// Resets the EventBus to initial state by removing all observers and stored events.
-    public func removeAllObservers() {
-        eventBus.removeAllObservers()
     }
 }
