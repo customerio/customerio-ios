@@ -1,35 +1,28 @@
-import CioTracking
 import Foundation
 
-extension Region: CaseIterable, Codable {
-    public static var allCases: [Region] = [.EU, .US]
-}
-
 struct WorkspaceSettings: UserDefaultsCodable {
-    var siteId: String
-    var apiKey: String
-    var region: Region = .EU
+    var cdpApiKy: String
 
     static func storageKey() -> String {
         "UserDefaultsCodable"
     }
 
     static func empty() -> Self {
-        WorkspaceSettings(siteId: "", apiKey: "")
+        WorkspaceSettings(cdpApiKy: "")
     }
 
     func isSet() -> Bool {
-        !siteId.isEmpty && !apiKey.isEmpty
+        !cdpApiKy.isEmpty
     }
 }
 
 struct Profile: UserDefaultsCodable {
-    var id: String
-    var properties: [Property]
+    var userId: String
+    var traits: [Property]
     var loggedIn: Bool
 
     static func empty() -> Profile {
-        Profile(id: UUID().uuidString, properties: [], loggedIn: false)
+        Profile(userId: "", traits: [], loggedIn: false)
     }
 
     static func storageKey() -> String {
@@ -39,16 +32,18 @@ struct Profile: UserDefaultsCodable {
 
 struct Property: Codable, Identifiable, Comparable, Equatable {
     static func < (lhs: Property, rhs: Property) -> Bool {
-        lhs.name == rhs.name
+        lhs.key == rhs.key
     }
 
-    let id: String
-    var name: String
+    var id: String {
+        key
+    }
+
+    var key: String
     var value: String
 
-    init(name: String, value: String) {
-        self.id = UUID().uuidString
-        self.name = name
+    init(key: String, value: String) {
+        self.key = key
         self.value = value
     }
 }
@@ -57,10 +52,17 @@ extension [Property] {
     func toDictionary() -> [String: String] {
         var res: [String: String] = [:]
         forEach { p in
-            if !p.name.isEmpty {
-                res[p.name] = p.value
+            if !p.key.isEmpty {
+                res[p.key] = p.value
             }
         }
         return res
     }
+}
+
+typealias Attribute = Property
+
+struct Event: Codable {
+    var name: String
+    var properties: [Property] = []
 }
