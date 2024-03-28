@@ -18,7 +18,7 @@ To run the app, follow these steps:
    ```
    git clone https://github.com/customerio/customerio-ios
    ```
-2. Navigate to `<REPO_ROOT_DIR>/Apps/VisionOs` and open the `VisionOs.xcodeproj` file with Xcode.
+2. Navigate to `<REPO_ROOT_DIR>/Apps/VisionOS` and open the `VisionOS.xcodeproj` file with Xcode.
 3. Ensure the `VisionOS` scheme is selected and set to run on either the simulator or your device.
 4. Click the run button in Xcode or press `CMD+R`.
 
