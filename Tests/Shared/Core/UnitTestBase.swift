@@ -95,6 +95,10 @@ open class UnitTestBase<Component>: XCTestCase {
     open func initializeSDKComponents() -> Component? { nil }
 
     override open func tearDown() {
+        // need to remove the observers for integration tests that utilizes actual NotificationCenter
+        // otherwise, results are flaky
+        diGraphShared.eventBusObserversHolder.removeAllObservers()
+
         cleanupTestEnvironment()
         super.tearDown()
     }
@@ -112,9 +116,6 @@ open class UnitTestBase<Component>: XCTestCase {
 
     // All data that the SDK writes, delete it here so each test function has a clean environment to run and does not depend on the result of the previous test.
     open func deleteAllPersistentData() {
-        // need to remove the observers for integration tests that utilizes actual NotificationCenter
-        // otherwise, results are flaky
-        Task { await diGraphShared.eventBusHandler.removeAllObservers() }
         deleteAllFiles()
         deleteKeyValueStoredData()
     }

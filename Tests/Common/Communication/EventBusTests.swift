@@ -7,7 +7,7 @@ class EventBusTests: UnitTest {
 
     override func setUp() {
         super.setUp()
-        eventBus = SharedEventBus()
+        eventBus = SharedEventBus(holder: diGraphShared.eventBusObserversHolder)
     }
 
     override func tearDown() {
