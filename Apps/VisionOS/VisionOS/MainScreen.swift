@@ -2,15 +2,14 @@ import CioDataPipelines
 import MarkdownUI
 import SwiftUI
 
+// MARK: MainScreen View
+
 /**
  This file is the main place for example CustomerIO usage
  Its main objectives are:
  - Basic logic to switch between different view
  - Show all the calls to CustomerIO in one place for simplicity
  */
-
-// MARK: MainScreen View
-
 private func getFirstScreen() -> CIOExample {
     let state = AppState.shared
     if state.workspaceSettings.isSet(), state.profile.loggedIn {
