@@ -32,7 +32,7 @@ To run the app, follow these steps:
 `MainScreen.swift` contains the executable code samples that the app's UI will use during interaction. Place breakpoints in the `switch` case within this file to inspect any action performed by the app.
 
 ### AppDelegate.swift
-The SDK is initialized when you enter the `CDP API key` and tap the `Initialize` button on the **Initialize** screen. In a production app, you would typically initialize the SDK in your `AppDelegate`. Therefore, you will find SDK initialization code in both `MainScreen.swift` and `AppDelegate.swift`.
+The SDK is initialized when you enter the `CDP API key` and tap the `Initialize` button on the **Initialize** screen. In a production app, you would typically initialize the SDK in your `AppDelegate`. Therefore, you will find SDK initialization code in both `MainScreen.swift` and `AppDelegate.swift`. Moreover, if you don't want to set the CDP API Key in the UI, you can hardcode it in the app delegate while you are exploring other APIs in the app.
 
 ### The UI
 The app features a navigation menu that allows you to move between different examples:
