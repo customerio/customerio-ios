@@ -25,5 +25,5 @@ Pod::Spec.new do |spec|
   spec.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
 
   # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
-  spec.dependency 'AnalyticsSwiftCIO', '= 1.5.5-cio.1'
+  spec.dependency 'AnalyticsSwiftCIO', '= 1.5.9+cio.2'
 end
