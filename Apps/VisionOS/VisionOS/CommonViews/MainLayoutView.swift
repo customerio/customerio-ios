@@ -46,12 +46,13 @@ struct MainLayoutView<ContentView: View>: View {
         ZStack {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .center) {
-                    Text("Customer.io &")
+                    Logo()
+                    Text("&")
                         .font(.extraLargeTitle)
                     Image(systemName: "visionpro.fill")
                         .font(.extraLargeTitle)
+                        .foregroundColor(.accentColor)
                     Spacer()
-                    Logo()
                 }
                 .frame(height: 50)
                 .clipped()
