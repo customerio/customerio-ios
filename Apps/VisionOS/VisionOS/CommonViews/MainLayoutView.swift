@@ -2,7 +2,7 @@ import MarkdownUI
 import SwiftUI
 
 enum CIOExample: String, CaseIterable {
-    case initialize, identify, track, profileAttributes
+    case initialize, identify, track, profileAttributes, deviceAttributes
     var title: String {
         switch self {
         case .initialize:
@@ -13,6 +13,8 @@ enum CIOExample: String, CaseIterable {
             "Event Tracking"
         case .profileAttributes:
             "Profile Attributes"
+        case .deviceAttributes:
+            "Device Attributes"
         }
     }
 
@@ -20,7 +22,7 @@ enum CIOExample: String, CaseIterable {
         switch self {
         case .initialize:
             return true
-        case .identify, .track, .profileAttributes:
+        case .identify, .track, .profileAttributes, .deviceAttributes:
             return AppState.shared.workspaceSettings.isSet()
         }
     }

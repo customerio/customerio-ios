@@ -73,6 +73,15 @@ struct MainScreen: View {
                     // For debug purpose only
                     CustomerIO.shared.flush()
                 }
+                
+            case .deviceAttributes:
+                DeviceAttributesView { deviceAttributes in
+                    CustomerIO.shared.deviceAttributes = deviceAttributes.toDictionary()
+                    
+                    viewModel.successMessage = "Device attributes set successfully"
+                    // For debug purpose only
+                    CustomerIO.shared.flush()
+                }
             }
         }
     }
