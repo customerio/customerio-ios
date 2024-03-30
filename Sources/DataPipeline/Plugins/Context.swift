@@ -1,5 +1,5 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
-import Segment
 
 /// Plugin class that update the context properties in the request payload
 class Context: Plugin {

@@ -475,6 +475,9 @@
 				Base,
 			);
 			mainGroup = 46D5D97429E459D600EAF40B;
+			packageReferences = (
+				301A7CF52BB80A1E007AF8A5 /* XCRemoteSwiftPackageReference "analytics-swift" */,
+			);
 			productRefGroup = 46D5D97E29E459D600EAF40B /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -993,6 +996,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		301A7CF52BB80A1E007AF8A5 /* XCRemoteSwiftPackageReference "analytics-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/segmentio/analytics-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.9;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		4650330C29F69374001B6552 /* MessagingPushAPN */ = {

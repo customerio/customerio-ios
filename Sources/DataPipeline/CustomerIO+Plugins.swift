@@ -1,6 +1,6 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import Foundation
-import Segment
 
 public extension CustomerIO {
     /**

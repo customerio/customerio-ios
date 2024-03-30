@@ -1,14 +1,14 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import Foundation
-import Segment
 
 /// This class serves as a centralized hub for dispatching events generated from DataPipeline module.
 /// It is designed to reduce redundancy and enhance maintainability by funneling these operations through a single plugin.
 /// This plugin allows for decoupled modules to subscribe and react to these events.
 class DataPipelinePublishedEvents: EventPlugin {
-    var type: Segment.PluginType = .before
+    var type: CDPAnalyticsSwift.PluginType = .before
 
-    var analytics: Segment.Analytics?
+    var analytics: CDPAnalyticsSwift.Analytics?
     var eventBusHandler: EventBusHandler
 
     public required init(diGraph: DIGraphShared) {

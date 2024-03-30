@@ -1,6 +1,6 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import CioTrackingMigration
-import Segment
 
 public protocol DataPipelineInstance: CustomerIOInstance, DataPipelineMigrationAction {
     var analytics: Analytics { get }
@@ -11,7 +11,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
      ModuleTopLevelObject is intentionally designed to allow null implementations, matching our requirements overall. Customer who have correctly initialized the SDK will consistently find the implementation set correctly and operational. However, customers who attempt to use functions dependent on this implementation without initializing the SDK may not see the desired results, which is an expected behavior. To align our SDK with Segment API practices (e.g., add(Plugin)), which require returning non-null objects, we face a challenge when the SDK is not initialized.
      To avoid force unwrapping and to maintain consistency with Segment APIs, we’ve introduced a ‘dead instance’ to handle these edge cases. This implementation acts as a safeguard, capturing calls made without SDK initialization and logging a warning, yet it does not perform any operations for these calls. This approach ensures stability and consistency in the API’s behavior.
      */
-    public var analytics: Segment.Analytics {
+    public var analytics: CDPAnalyticsSwift.Analytics {
         implementation?.analytics ?? Analytics(configuration: Configuration(writeKey: "DEADINSTANCE"))
     }
 

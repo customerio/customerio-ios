@@ -1,6 +1,6 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import Foundation
-import Segment
 
 /*
  Contains public aliases to expose public structures/protocols from the 'Segment' module
@@ -8,25 +8,25 @@ import Segment
  the 'Segment' module in their code.
  */
 
-public typealias Plugin = Segment.Plugin
-public typealias PluginType = Segment.PluginType
-public typealias EventPlugin = Segment.EventPlugin
-public typealias DestinationPlugin = Segment.DestinationPlugin
-public typealias UtilityPlugin = Segment.UtilityPlugin
-public typealias VersionedPlugin = Segment.VersionedPlugin
+public typealias Plugin = CDPAnalyticsSwift.Plugin
+public typealias PluginType = CDPAnalyticsSwift.PluginType
+public typealias EventPlugin = CDPAnalyticsSwift.EventPlugin
+public typealias DestinationPlugin = CDPAnalyticsSwift.DestinationPlugin
+public typealias UtilityPlugin = CDPAnalyticsSwift.UtilityPlugin
+public typealias VersionedPlugin = CDPAnalyticsSwift.VersionedPlugin
 
-public typealias Analytics = Segment.Analytics
+public typealias Analytics = CDPAnalyticsSwift.Analytics
 
-public typealias RawEvent = Segment.RawEvent
-public typealias TrackEvent = Segment.TrackEvent
-public typealias ScreenEvent = Segment.ScreenEvent
-public typealias AliasEvent = Segment.AliasEvent
-public typealias GroupEvent = Segment.GroupEvent
-public typealias IdentifyEvent = Segment.IdentifyEvent
+public typealias RawEvent = CDPAnalyticsSwift.RawEvent
+public typealias TrackEvent = CDPAnalyticsSwift.TrackEvent
+public typealias ScreenEvent = CDPAnalyticsSwift.ScreenEvent
+public typealias AliasEvent = CDPAnalyticsSwift.AliasEvent
+public typealias GroupEvent = CDPAnalyticsSwift.GroupEvent
+public typealias IdentifyEvent = CDPAnalyticsSwift.IdentifyEvent
 
-public typealias Settings = Segment.Settings
-public typealias FlushPolicy = Segment.FlushPolicy
-public typealias OperatingMode = Segment.OperatingMode
+public typealias Settings = CDPAnalyticsSwift.Settings
+public typealias FlushPolicy = CDPAnalyticsSwift.FlushPolicy
+public typealias OperatingMode = CDPAnalyticsSwift.OperatingMode
 
 public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO

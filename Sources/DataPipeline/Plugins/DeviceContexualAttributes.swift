@@ -1,5 +1,5 @@
+import CDPAnalyticsSwift
 import Foundation
-import Segment
 
 // This plugin is used to add contextual data to the device attributes
 class DeviceContexualAttributes: EventPlugin {

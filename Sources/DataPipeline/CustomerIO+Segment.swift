@@ -1,6 +1,6 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import Foundation
-import Segment
 
 // MARK: - System Modifiers
 
@@ -75,7 +75,7 @@ extension DataPipelineConfigOptions {
         result.defaultSettings(nil)
         // Force set to false as we will never add Segment destination
         // User can disable CIO destination to achieve same results
-        result.autoAddSegmentDestination(false)
+        result.autoAddSegmentDestination(true)
         result.apiHost(apiHost)
         result.cdnHost(cdnHost)
         result.flushPolicies(flushPolicies)

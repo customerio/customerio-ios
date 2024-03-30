@@ -1,6 +1,6 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
 import Foundation
-import Segment
 
 /// Defines configuration options for the Customer.io Data Pipeline module.
 ///

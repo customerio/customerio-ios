@@ -1,5 +1,5 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
-import Segment
 
 /// Logger plugin for logging all requests sent to analytics
 class ConsoleLogger: Plugin {

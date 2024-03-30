@@ -1,5 +1,5 @@
+import CDPAnalyticsSwift
 import CioInternalCommon
-import Segment
 
 class DataPipelineImplementation: DataPipelineInstance {
     private let moduleConfig: DataPipelineConfigOptions
@@ -36,11 +36,11 @@ class DataPipelineImplementation: DataPipelineInstance {
         Analytics.debugLogsEnabled = logger.logLevel == .debug
 
         // add CustomerIO destination plugin
-        if moduleConfig.autoAddCustomerIODestination {
-            let customerIODestination = CustomerIODestination()
-            customerIODestination.analytics = analytics
-            analytics.add(plugin: customerIODestination)
-        }
+//        if moduleConfig.autoAddCustomerIODestination {
+//            let customerIODestination = CustomerIODestination()
+//            customerIODestination.analytics = analytics
+//            analytics.add(plugin: customerIODestination)
+//        }
 
         // plugin to add contextual information to device attributes
         if moduleConfig.autoTrackDeviceAttributes {
