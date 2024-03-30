@@ -1,5 +1,5 @@
+import CioAnalytics
 import CioInternalCommon
-import Segment
 
 class DataPipelineImplementation: DataPipelineInstance {
     private let moduleConfig: DataPipelineConfigOptions

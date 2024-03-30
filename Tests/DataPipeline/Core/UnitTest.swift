@@ -1,7 +1,7 @@
+@testable import CioAnalytics
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 import Foundation
-@testable import Segment
 import SharedTests
 
 /// Base class for unit testing within the module, extending `UnitTestBase` with setup and utilities
