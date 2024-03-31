@@ -13,8 +13,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
          You will need cdpApiKey to initialize CustomerIO
          Learn more about it here: https://customer.io/docs/sdk/ios/quick-start-guide/#prerequisites
          */
-
-        let workspaceSettings = AppState.shared.workspaceSettings
+        
+        // Uncomment the following line and set CDP API Key if it is more convenient than setting it in the UI
+        // AppState.shared.workspaceSettings.cdpApiKy = "CDP_API_KEY"
+        
+        var workspaceSettings = AppState.shared.workspaceSettings
         if workspaceSettings.isSet() {
             CustomerIO.initialize(
                 withConfig:
