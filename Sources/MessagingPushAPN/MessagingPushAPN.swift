@@ -97,7 +97,9 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
 
     /// MessagingPushAPN initializer for Notification Service Extension
     @available(iOS, unavailable)
+    @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         let implementation = MessagingPush.initializeForExtension(withConfig: config)
