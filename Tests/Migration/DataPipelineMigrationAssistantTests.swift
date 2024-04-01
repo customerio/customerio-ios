@@ -71,11 +71,8 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
         let givenType = QueueTaskType.identifyProfile
-        guard let _ = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+        backgroundQueueMock.getAllStoredTasksReturnValue = []
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
@@ -145,10 +142,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenIdentifyProfileWithoutBody_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.identifyProfile
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackDeliveryMetricData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "")
 
@@ -165,12 +159,6 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenIdentifyProfileWithBody_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.identifyProfile
-
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
-
         let identifyProfileData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "{\"foo\": \"bar\"}")
 
         guard let jsonData = try? JSONEncoder().encode(identifyProfileData) else {
@@ -180,6 +168,8 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
 
+        let givenCreatedTask = QueueTaskMetadata.random
+
         XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
     }
@@ -187,10 +177,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenTrackDeliveryMetric_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.trackDeliveryMetric
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackDeliveryMetricData = TrackDeliveryEventRequestBody(type: .inApp, payload: DeliveryPayload(deliveryId: String.random, event: .clicked, timestamp: dateUtilStub.now, metaData: ["foo": "bar"]))
 
@@ -208,10 +195,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenTrackDeliveryMetric_expectTaskFailToProcess() {
         let givenType = QueueTaskType.trackDeliveryMetric
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
@@ -222,10 +206,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenTrackEvent_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.trackEvent
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackEventAttributedJSON = TrackEventTypeForAnalytics(type: .event, name: String.random, timestamp: dateUtilStub.now)
         let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: jsonAdapter.toJsonString(trackEventAttributedJSON)!)
@@ -244,10 +225,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenScreenTrackEvent_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.trackEvent
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackEventAttributedJSON = TrackEventTypeForAnalytics(type: .screen, name: String.random, timestamp: dateUtilStub.now)
         let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: jsonAdapter.toJsonString(trackEventAttributedJSON)!)
@@ -266,10 +244,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenRegisterPushToken_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.registerPushToken
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let pushTokenTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: "{\"device\": {\"id\" : \"\(String.random)\", \"attributes\": {\"foo\":\"bar\"}}}")
 
@@ -287,10 +262,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenDeletePushToken_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.deletePushToken
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let pushTokenTaskData = DeletePushNotificationQueueTaskData(profileIdentifier: String.random, deviceToken: String.random)
 
@@ -308,10 +280,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenTrackPushMetric_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.trackPushMetric
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackPushMetricData = MetricRequest(deliveryId: String.random, event: .opened, deviceToken: String.random, timestamp: dateUtilStub.now)
 
@@ -330,10 +299,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenInvalidTrackDeliveryMetric_expectTaskNotProcessed() {
         let givenType = QueueTaskType.trackDeliveryMetric
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
@@ -342,10 +308,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     func test_givenInvalidTrackEvent_expectTaskNotProcessed() {
         let givenType = QueueTaskType.trackEvent
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
@@ -355,10 +318,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenInvalidTrackTypeEvent_expectTaskNotProcessed() {
         let givenType = QueueTaskType.trackEvent
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: "")
 
@@ -374,10 +334,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenInvalidRegisterPushToken_expectTaskNotProcessed() {
         let givenType = QueueTaskType.registerPushToken
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         // When data is not found in the task
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
@@ -412,10 +369,7 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_givenInvalidDeletePushToken_expectTaskNotProcessed() {
         let givenType = QueueTaskType.deletePushToken
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
 
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
@@ -426,32 +380,10 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     func test_InvalidTrackPushMetric_expectTaskNotProcessed() {
         let givenType = QueueTaskType.trackPushMetric
 
-        guard let givenCreatedTask = createTaskAndStoreInInventory(forType: givenType) else {
-            XCTFail("Failed to create task")
-            return
-        }
+        let givenCreatedTask = QueueTaskMetadata.random
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
 
         XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
-    }
-}
-
-extension DataPipelineMigrationAssistantTests {
-    private func createTaskAndStoreInInventory(forType type: QueueTaskType) -> QueueTaskMetadata? {
-        guard let fileManagerQueueStorage = queueStorage as? FileManagerQueueStorage else {
-            XCTFail("queueStorage could not be cast to FileManagerQueueStorage")
-            return nil
-        }
-
-        guard let givenCreatedTask = fileManagerQueueStorage.create(siteId: testSiteId, type: type.rawValue, data: Data(), groupStart: nil, blockingGroups: nil).createdTask else {
-            XCTFail("Failed to create task")
-            return nil
-        }
-        var inventory: [QueueTaskMetadata] = []
-        inventory.append(givenCreatedTask)
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
-
-        return givenCreatedTask
     }
 }
