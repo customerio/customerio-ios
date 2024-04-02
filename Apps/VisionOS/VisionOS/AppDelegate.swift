@@ -17,7 +17,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Uncomment the following line and set CDP API Key if it is more convenient than setting it in the UI
         // AppState.shared.workspaceSettings.cdpApiKy = "CDP_API_KEY"
 
-        var workspaceSettings = AppState.shared.workspaceSettings
+        let workspaceSettings = AppState.shared.workspaceSettings
         if workspaceSettings.isSet() {
             CustomerIO.initialize(
                 withConfig:
