@@ -50,7 +50,7 @@ struct MainScreen: View {
                         CustomerIO.shared.identify(traits: profile.traits.toDictionary())
                     }
 
-                    viewModel.successMessage = "Now you can use other features such as event tracking"
+                    viewModel.successMessage = "Any subsequent activities will be attributed to the identified profile"
 
                     // For debug purpose only
                     CustomerIO.shared.flush()
