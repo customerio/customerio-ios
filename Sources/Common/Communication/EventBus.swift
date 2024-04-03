@@ -51,6 +51,12 @@ class EventBusObserversHolder {
         }
         observers.removeAll()
     }
+
+    /// Deinitializer for EventBusObserversHolder.
+    /// Ensures that all observers are removed from NotificationCenter upon deinitialization.
+    deinit {
+        self.removeAllObservers()
+    }
 }
 
 // swiftlint:disable orphaned_doc_comment
