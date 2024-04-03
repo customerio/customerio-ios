@@ -7,7 +7,7 @@
 	This section is describing what information our SDK collects about the app user. 
 	
 	It's my understanding that this section is for what our SDK collects automatically, not the data a customer passes to our SDK. Therefore, if a piece of data is passed to our SDK, use `false`.
-	Customers must create their own privacy file for what their app does and provide that to Apple. That's where customers report what they might be using our SDK for. 
+	Customers must create their own privacy file for what their app collects and provide that to Apple. That's where customers report what data they are passing to our SDK. 
    -->   
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
