@@ -6,7 +6,7 @@
 	Docs for this section: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
 	This section is describing what information our SDK collects about the app user. 
 	
-	It's my understanding that this section is for what our SDK requires, not what a customer can do with our SDK. Therefore, if something is optional, use `false`.
+	It's my understanding that this section is for what our SDK collects automatically, not the data a customer passes to our SDK. Therefore, if a piece of data is passed to our SDK, use `false`.
 	Customers must create their own privacy file for what their app does and provide that to Apple. That's where customers report what they might be using our SDK for. 
    -->   
 	<key>NSPrivacyCollectedDataTypes</key>
