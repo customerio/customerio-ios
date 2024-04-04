@@ -34,6 +34,13 @@ class Context: Plugin {
                 workingEvent.context = try JSON(context)
             }
 
+            // Our push logic is currently hardcoded against ios
+            // this is the current mitigation to ensure push notification
+            // works for visionos till the backend handles "visionos"
+            if context[keyPath: "device.type"] as? String == "visionos" {
+                context[keyPath: "device.type"] = "ios"
+            }
+
             // set the user agent
             context["userAgent"] = userAgentUtil.getUserAgentHeaderValue()
 
