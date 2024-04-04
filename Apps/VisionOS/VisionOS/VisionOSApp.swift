@@ -8,6 +8,13 @@ struct VisionOSApp: App {
         WindowGroup {
             MainScreen()
                 .environmentObject(viewModel)
+                .onAppear {
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { success, error in
+                        if !success {
+                            print("NotificationError: \(String(describing: error))")
+                        }
+                    }
+                }
         }
     }
 }

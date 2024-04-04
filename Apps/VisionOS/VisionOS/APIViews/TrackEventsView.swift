@@ -26,15 +26,35 @@ private func eventAsCodeSnippet(_ event: Event) -> String {
     return "// enter event name"
 }
 
+@ViewBuilder
+private func eventInputView(_ event: Binding<Event>) -> some View {
+    FloatingTitleTextField(title: "Event name", text: event.name)
+        .textInputAutocapitalization(.never)
+    PropertiesInputView(
+        terminology: .properties,
+        properties: event.properties
+    )
+}
+
 struct TrackEventsView: View {
     @EnvironmentObject private var viewModel: ViewModel
+    
+    @State private var usePushEvent = false
 
     @State private var event = Event(name: "", properties: [])
+    @State private var pushEvent = Event(name: "push", properties: [
+        Property(key: "title", value: "Push title!"),
+        Property(key: "content", value: "The nicely customized push title")
+    ])
 
     let onSuccess: (_ event: Event) -> Void
 
     var body: some View {
         VStack(alignment: .leading) {
+            Toggle(isOn: $usePushEvent, label: {
+                Text("Push event?")
+                    .font(.largeTitle)
+            })
             Markdown {
                 """
                 Using CustomerIO you can track any events. If there is an identified user, these events will be
@@ -46,19 +66,15 @@ struct TrackEventsView: View {
                 [Learn more](https://customer.io/docs/sdk/ios/tracking/track-events/)
 
                 ```swift
-                \(eventAsCodeSnippet(event))
+                \(eventAsCodeSnippet(usePushEvent ? pushEvent : event))
                 ```
                 """
             }
 
-            FloatingTitleTextField(title: "Event name", text: $event.name)
-                .textInputAutocapitalization(.never)
-            PropertiesInputView(
-                terminology: .properties,
-                properties: $event.properties
-            )
+            eventInputView(usePushEvent ? $pushEvent : $event)
 
             Button("Send event") {
+                let event = usePushEvent ? pushEvent : event
                 if event.name.isEmpty {
                     viewModel.errorMessage = "Please enter an event name"
                     return

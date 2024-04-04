@@ -23,7 +23,7 @@ public class UserAgentUtilImpl: UserAgentUtil {
      * `Customer.io iOS Client/1.0.0-alpha.16`
      */
     public func getUserAgentHeaderValue() -> String {
-        var userAgent = "Customer.io \(deviceInfo.osName ?? "iOS") Client/\(deviceInfo.sdkVersion)"
+        var userAgent = "Customer.io \(deviceInfo.osName ?? "iOS" ) Client/\(deviceInfo.sdkVersion)"
 
         if let deviceModel = deviceInfo.deviceModel,
            let deviceOsVersion = deviceInfo.osVersion,
