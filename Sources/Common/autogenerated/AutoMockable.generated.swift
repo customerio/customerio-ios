@@ -978,9 +978,6 @@ public class EventBusMock: EventBus, Mock {
         removeObserverReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        removeAllObserversCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - post
@@ -1067,27 +1064,6 @@ public class EventBusMock: EventBus, Mock {
         removeObserverReceivedArguments = eventType
         removeObserverReceivedInvocations.append(eventType)
         removeObserverClosure?(eventType)
-    }
-
-    // MARK: - removeAllObservers
-
-    /// Number of times the function was called.
-    @Atomic public private(set) var removeAllObserversCallsCount = 0
-    /// `true` if the function was ever called.
-    public var removeAllObserversCalled: Bool {
-        removeAllObserversCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var removeAllObserversClosure: (() -> Void)?
-
-    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func removeAllObservers() {
-        mockCalled = true
-        removeAllObserversCallsCount += 1
-        removeAllObserversClosure?()
     }
 }
 
