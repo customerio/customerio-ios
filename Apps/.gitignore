@@ -6,3 +6,4 @@ Pods/
 **/fastlane/report.xml
 **/fastlane/README.md
 BuildEnvironment.swift
+build/

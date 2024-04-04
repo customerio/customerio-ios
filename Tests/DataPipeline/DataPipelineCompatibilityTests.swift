@@ -477,16 +477,21 @@ private extension DataPipelineCompatibilityTests {
     }
 
     func readTypeFromStorage(cdpApiKey: String? = nil, key: Storage.Constants) -> [SavedEvent] {
-        guard let results = storage.read(key) else { return [] }
+        guard let results = storage.read(key),
+              let files = results.dataFiles else { return [] }
 
-        return results.flatMap { result -> [SavedEvent] in
+        return files.flatMap { result -> [SavedEvent] in
             guard let content = readFileFromURL(result),
                   let dict = convertJSONStringToSavedEvent(content),
-                  let batch = dict["batch"] as? [SavedEvent],
-                  cdpApiKey == nil || cdpApiKey == dict["writeKey"] as? String
+                  let batch = dict["batch"] as? [SavedEvent]
             else {
                 return []
             }
+
+            if let apiKey = cdpApiKey, apiKey != dict["writeKey"] as? String {
+                return []
+            }
+
             return batch
         }
     }

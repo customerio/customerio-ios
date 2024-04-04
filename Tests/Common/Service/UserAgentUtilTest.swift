@@ -39,4 +39,19 @@ class UserAgentUtilTest: UnitTest {
 
         XCTAssertEqual(expected, actual)
     }
+
+    func test_getUserAgent_givenDeviceInfoAvailable_expectLongVisonOsUserAgent() {
+        let expected = "Customer.io visionOS Client/3.0.1 (Apple Vision Pro; visionOS 1.1) io.customer.visionos-sample-app.VisionOS/1.0"
+        deviceInfoMock.underlyingSdkVersion = "3.0.1"
+        deviceInfoMock.underlyingDeviceModel = "Apple Vision Pro"
+        deviceInfoMock.underlyingOsVersion = "1.1"
+        deviceInfoMock.underlyingOsName = "visionOS"
+        deviceInfoMock.underlyingCustomerAppName = "VisionOS"
+        deviceInfoMock.underlyingCustomerBundleId = "io.customer.visionos-sample-app.VisionOS"
+        deviceInfoMock.underlyingCustomerAppVersion = "1.0"
+
+        let actual = userAgentUtil.getUserAgentHeaderValue()
+
+        XCTAssertEqual(expected, actual)
+    }
 }

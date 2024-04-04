@@ -64,10 +64,13 @@ platform :ios do
     # prevents builds from being flaky. As app sizese get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
     ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "10" 
 
+    # Make sure that builds generated include dSYM files. This is needed for CI to parse the builds for tracking SDK size and debugging errors during testing. 
+    # In XCode, set the build setting to "DWARF with dSYM File": https://stackoverflow.com/a/31511058 
     build_ios_app(
       export_method: "ad-hoc",
       configuration: "Release",
-      xcodebuild_formatter: "xcbeautify"
+      xcodebuild_formatter: "xcbeautify",
+      build_path: "build" # Save derived data to Apps/X/build folder. CI will parse this folder later for tracking SDK size. 
     )
 
     # function 'setup_google_bucket_access' is a re-usable function inside of apple-code-signing Fastfile that we imported. 

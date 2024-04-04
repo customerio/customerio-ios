@@ -69,7 +69,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     /// MessagingPush initializer for Notification Service Extension
     @available(iOS, unavailable)
+    @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
