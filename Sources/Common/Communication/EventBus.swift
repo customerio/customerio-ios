@@ -25,6 +25,7 @@ public protocol EventBus: AutoMockable {
     func removeObserver(for eventType: String) async
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
 /// It manages observers for different event types and interacts with NotificationCenter.
 /// This class is intended to be used exclusively by SharedEventBus to encapsulate
@@ -34,6 +35,7 @@ public protocol EventBus: AutoMockable {
 ///         or used externally to maintain encapsulation and thread safety.
 // sourcery: InjectRegisterShared = "EventBusObserversHolder"
 // sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 class EventBusObserversHolder {
     /// NotificationCenter instance used for observer management.
     let notificationCenter: NotificationCenter = .default
