@@ -72,6 +72,7 @@ jobs:
       run: |
         brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
         brew install xcbeautify # used by fastlane for output 
+        brew install bloaty # used to generate SDK binary size reports 
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@v1
@@ -124,11 +125,10 @@ jobs:
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
 
-    - name: Setup to determine binary size of SDK
-      working-directory: Apps/${{ matrix.sample-app }}/build/    
-      run: |
-        brew install bloaty
-        mv *.xcarchive App.xcarchive # rename the file to a static value. Bloaty requires a hard-coded path to files to work. 
+    # xcodebuild creates builds that include a timestamp in the name. In order for bloaty to read the build, we need to rename it to a static name.
+    - name: Rename the same app build to a static name that bloaty can understand  
+      working-directory: Apps/${{ matrix.sample-app }}/build/
+      run: mv *.xcarchive App.xcarchive
 
     - name: Print the binary size of our SDK in an app, minus dependencies      
       # We only need to run bloaty on 1 app.
@@ -149,6 +149,25 @@ jobs:
           -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
           App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
           -n 0
+
+    # If we are on the main branch, we want to cache the sample app build (.xcarchive directory) for later use.
+    # The main branch contains the latest version of our code. So, it's the new baseline that we compare all PRs against. 
+    # By saving the sample app build, we can perform comparisons such as binary size changes between the main branch and the PR branch.
+
+    - name: Prepare the sample app build to be cached, if this is a main branch build
+      if: github.ref == 'refs/heads/main' 
+      working-directory: Apps/${{ matrix.sample-app }}/build/
+      run: |
+        mv App.xcarchive MainBranchApp.xcarchive # Rename the app build to identify it and re-use it later. 
+
+    - name: Cache the sample app build, if this is a main branch build 
+      if: github.ref == 'refs/heads/main'   
+      uses: actions/cache/save@v4
+      with:
+        # the key must be unique. caches are immutable so the key must always be unique. 
+        # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
+        key: ${{ matrix.sample-app }}-build-main-${{ github.run_id }}
+        path: Apps/${{ matrix.sample-app }}/build/MainBranchApp.xcarchive
     
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
