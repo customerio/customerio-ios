@@ -18,9 +18,9 @@ You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios]
 
 **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 
-### Using version 1 of our SDK? 
+### Migrating from an older SDK version? 
 
-It's recommended to upgrade to using version 2 of the iOS SDK. [Check out our migration docs to learn how to update your app.](https://customer.io/docs/sdk/ios/migrate-upgrade/)
+Please follow the relevant migration guide for your current SDK version in our [migration docs](https://customer.io/docs/sdk/ios/migrate-upgrade/).
 
 ## Summary
 
@@ -47,4 +47,3 @@ Thanks for taking an interest in our project! We welcome your contributions. Che
 # License
 
 [MIT](LICENSE)
-

@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIODataPipelines"
-  spec.version      = "3.0.1" # Don't modify this line - it's automatically updated
+  spec.version      = "3.0.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -28,5 +28,5 @@ Pod::Spec.new do |spec|
   spec.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
 
   # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
-  spec.dependency 'AnalyticsSwiftCIO', '= 1.5.5-cio.1'
+  spec.dependency 'AnalyticsSwiftCIO', '= 1.5.9+cio.2'
 end

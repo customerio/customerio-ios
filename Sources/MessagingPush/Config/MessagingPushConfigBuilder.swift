@@ -44,7 +44,9 @@ public class MessagingPushConfigBuilder {
     }
 
     @available(iOS, unavailable)
+    @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
     /// Initializes new `MessagingPushConfigBuilder` with required configuration options.
     /// - Parameters:
     ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
@@ -56,7 +58,9 @@ public class MessagingPushConfigBuilder {
     /// verbosity to help setup and debugging
     @discardableResult
     @available(iOS, unavailable)
+    @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
     public func logLevel(_ logLevel: CioLogLevel) -> MessagingPushConfigBuilder {
         self.logLevel = logLevel
         return self
