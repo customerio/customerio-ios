@@ -1,5 +1,4 @@
 import CioDataPipelines // do not use `@testable` so we can test functions are made public and not `internal`.
-import CioInternalCommon
 import Foundation
 import Segment
 import SharedTests
@@ -21,9 +20,6 @@ class DataPipelineAPITest: UnitTest {
     let codedData = CodableExample(foo: "")
     let exampleURL = URL(string: "https://example.com")!
 
-    // Test that public functions are accessible by mocked instances
-    let mock = CustomerIOInstanceMock()
-
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
     func test_allPublicFunctions() throws {
@@ -34,52 +30,37 @@ class DataPipelineAPITest: UnitTest {
 
         // Identify
         CustomerIO.shared.identify(userId: "")
-        mock.identify(userId: "", traits: nil)
         CustomerIO.shared.identify(userId: "", traits: dictionaryData)
-        mock.identify(userId: "", traits: dictionaryData)
         CustomerIO.shared.identify(userId: "", traits: codedData)
-        mock.identify(userId: "", traits: codedData)
 
         // clear identify
         CustomerIO.shared.clearIdentify()
-        mock.clearIdentify()
 
         // event tracking
         CustomerIO.shared.track(name: "")
-        mock.track(name: "", properties: nil)
         CustomerIO.shared.track(name: "", properties: dictionaryData)
-        mock.track(name: "", properties: dictionaryData)
         CustomerIO.shared.track(name: "", properties: codedData)
-        mock.track(name: "", properties: codedData)
 
         // screen tracking
         CustomerIO.shared.screen(title: "")
-        mock.screen(title: "", properties: nil)
         CustomerIO.shared.screen(title: "", properties: dictionaryData)
-        mock.screen(title: "", properties: dictionaryData)
         CustomerIO.shared.screen(title: "", properties: codedData)
-        mock.screen(title: "", properties: codedData)
 
         // register push token
         CustomerIO.shared.registerDeviceToken("")
-        mock.registerDeviceToken("")
 
         // delete push token
         CustomerIO.shared.deleteDeviceToken()
-        mock.deleteDeviceToken()
 
         // track push metric
         let metric = Metric.delivered
         CustomerIO.shared.trackMetric(deliveryID: "", event: metric, deviceToken: "")
-        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
 
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
-        mock.profileAttributes = dictionaryData
 
         // device attributes
         CustomerIO.shared.deviceAttributes = dictionaryData
-        mock.deviceAttributes = dictionaryData
 
         // plugins
         CustomerIO.shared.apply { (_: Plugin) in }
@@ -110,6 +91,7 @@ class DataPipelineAPITest: UnitTest {
         try skipRunningTest()
 
         _ = SDKConfigBuilder(cdpApiKey: .random)
+            .region(.US)
             .logLevel(.info)
             .apiHost("")
             .cdnHost("")
