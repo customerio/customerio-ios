@@ -124,14 +124,19 @@ jobs:
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
-
+    
     # xcodebuild creates builds that include a timestamp in the name. In order for bloaty to read the build, we need to rename it to a static name.
     - name: Rename the same app build to a static name that bloaty can understand  
       working-directory: Apps/${{ matrix.sample-app }}/build/
-      run: mv *.xcarchive App.xcarchive
+      run: mv *.xcarchive App.xcarchive 
+  
+    #############
+    # Generate SDK size reports for the SDK size at this commit 
+    #############         
 
-    - name: Print the binary size of our SDK in an app, minus dependencies      
-      # We only need to run bloaty on 1 app.
+    # We only need to run bloaty on 1 app. Therefore, we are hard-coding APN-UIKit into these steps below.
+
+    - name: Print the binary size of our SDK in an app, minus dependencies
       if: ${{ matrix.sample-app == 'APN-UIKit' }}
       working-directory: Apps/${{ matrix.sample-app }}/build/
       run: |
@@ -141,7 +146,6 @@ jobs:
           -n 0
     
     - name: Print the binary size of our SDK in an app, including dependencies
-      # We only need to run bloaty on 1 app.
       if: ${{ matrix.sample-app == 'APN-UIKit' }}
       working-directory: Apps/${{ matrix.sample-app }}/build/
       run: |
@@ -150,9 +154,13 @@ jobs:
           App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
           -n 0
 
+    #############
+    #  Cache main builds for later use
+    #############
+
     # If we are on the main branch, we want to cache the sample app build (.xcarchive directory) for later use.
     # The main branch contains the latest version of our code. So, it's the new baseline that we compare all PRs against. 
-    # By saving the sample app build, we can perform comparisons such as binary size changes between the main branch and the PR branch.
+    # By saving the sample app build, we can perform comparisons such as binary size changes between the main branch and the PR branch.    
 
     - name: Prepare the sample app build to be cached, if this is a main branch build
       if: github.ref == 'refs/heads/main' 
@@ -168,7 +176,7 @@ jobs:
         # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
         key: ${{ matrix.sample-app }}-build-main-${{ github.run_id }}
         path: Apps/${{ matrix.sample-app }}/build/MainBranchApp.xcarchive
-    
+
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
       uses: peter-evans/create-or-update-comment@v4
@@ -189,3 +197,37 @@ jobs:
         body: |
           * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
         edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
+
+    #############
+    # Generate SDK size diff report between main branch and PR
+    #############    
+
+    # We want to determine if the SDK's binary size will change after merging the PR. 
+    # To do that, we take the latest sample app build from the main branch and the PR branch and compare the SDK sizes between them. 
+    # 
+    # Note: We only need to use 1 sample app build to generate the SDK size diff report. Therefore, we are hard-coding APN-UIKit into these steps below. 
+
+    - name: Download latest main sample app build to generate SDK size diff report 
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'
+      uses: actions/cache/restore@v4
+      with:
+        # key param is required for this action to run, but the value has no effect. Therefore, the value is a placeholder value. 
+        # The restore-keys param is what will download the latest cache version for us.
+        key: ThisWillNotMatchAnything-ButValueIsRequiredHere
+        path: Apps/${{ matrix.sample-app }}/build/MainBranchApp.xcarchive
+        # The restore key is what will download the latest cache entry for us. 
+        # 
+        # "If there are multiple partial matches for a restore key, the action returns the most recently created cache."
+        # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#matching-a-cache-key
+        restore-keys: |
+          ${{ matrix.sample-app }}-build-main-
+
+    - name: Generate SDK binary diff report between main branch and PR
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'      
+      working-directory: Apps/${{ matrix.sample-app }}/build/
+      run: |
+        bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
+          --debug-file="MainBranchApp.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+          --debug-file="App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+          "App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "MainBranchApp.xcarchive/Products/Applications/APN UIKit.app/APN UIKit"
+  
