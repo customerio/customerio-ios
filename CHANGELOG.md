@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/customerio/customerio-ios/compare/3.0.1...3.0.2) (2024-04-09)
+
+
+### Bug Fixes
+
+* [visionos] Minor project cleanup ([#688](https://github.com/customerio/customerio-ios/issues/688)) ([d2934fe](https://github.com/customerio/customerio-ios/commit/d2934fe1ad5255f35568411ee0c5362c052cd7ed))
+
 ## [3.0.2](https://github.com/customerio/customerio-ios/compare/3.0.1...3.0.2) (2024-04-05)
 
 
