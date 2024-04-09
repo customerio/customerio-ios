@@ -12,9 +12,9 @@ struct SDKInitializationView: View {
             VStack(alignment: .leading) {
                 Markdown {
                     """
-                    You must have a cdp api key in order to initialize and use the SDK.
-                    Click [here](https://customer.io/docs/sdk/ios/quick-start-guide/#prerequisites) to learn more
-                    about the prerequisites.
+                    You must have a CDP API key to initialize and use the SDK.
+                    Click [here](https://customer.io/docs/sdk/ios/getting-started/auth/#get-your-write-key) to learn more how to set 
+                    up your source and get your CDP API key.
 
                     ```swift
                     CustomerIO.initialize(withConfig:
@@ -29,7 +29,7 @@ struct SDKInitializationView: View {
 
                 Button("Initialize") {
                     if !workspaceSettings.isSet() {
-                        viewModel.errorMessage = "Please make sure to enter the CDP API Key"
+                        viewModel.errorMessage = "You must enter your CDP API Key"
                         return
                     }
                     AppState.shared.workspaceSettings = workspaceSettings
