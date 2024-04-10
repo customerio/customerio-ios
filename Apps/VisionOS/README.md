@@ -57,3 +57,11 @@ As you interact with different SDK APIs, you should see the corresponding data i
 
 **Bonus:**
 Try connecting your source to a destination and observe how the data is mapped from the Vision Pro source to the destination platform where you'll use that data.
+
+## Support and limitations
+
+We've only tested our SDK with visionOS using Swift Package Manager. If you use CocoaPods, everything might work but we can't guarantee it. 
+
+visionOS support has some known limitations:
+* We don't support the `MessagingPushFCM` package for visionOS. You must send push notifications over APNS.
+* We don't support in-app messaging (the `MessagingInApp` package) for visionOS.

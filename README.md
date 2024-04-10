@@ -40,7 +40,11 @@ This SDK supports visionOS. We have a handy [sample app](Apps/VisionOS/README.md
 
 We've only tested our SDK with visionOS using Swift Package Manager. If you use CocoaPods, everything might work, but we can't guarantee it. 
 
-Also, for now, we *only* support Apple's Push Notification Service (APNS) for visionOS. You won't be able to send push notifications to Vision Pro devices using Firebase Cloud Messaging (FCM).
+### visionOS Limitations
+
+While our SDK supports visionOS, there are some limitations:
+* We don't support the `MessagingPushFCM` package for visionOS. You must send push notifications over APNS.
+* We don't support in-app messaging (the `MessagingInApp` package) for visionOS.
 
 # Getting started 
 
