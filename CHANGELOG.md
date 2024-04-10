@@ -1,3 +1,10 @@
+## [2.13.0](https://github.com/customerio/customerio-ios/compare/2.12.5...2.13.0) (2024-04-10)
+
+
+### Features
+
+* privacy manifest files ([#679](https://github.com/customerio/customerio-ios/issues/679)) ([c801004](https://github.com/customerio/customerio-ios/commit/c801004b42b092d88be7f9f586ad59d5f23e4b86))
+
 ## [2.12.5](https://github.com/customerio/customerio-ios/compare/2.12.4...2.12.5) (2024-03-18)
 
 
