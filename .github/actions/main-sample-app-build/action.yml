@@ -1,0 +1,69 @@
+name: Get or save latest main branch sample app build
+description: Use to either save or get the latest sample app build for the APN sample app, from the main branch. The build is used to generate the SDK size diff reports. 
+
+inputs:
+  # If you want to save a new build, pass in this input. If you want to get the latest build, leave this input out.
+  set-latest-main-build:
+    description: 'The name of the xcarchive for the APN sample app to save. Example: "App.xcarchive"'
+    type: string
+    required: false 
+    default: ''
+
+outputs:
+  apn-app-xcarchive-path:
+    description: 'The full relative path to the xcarchive for the APN sample app. Example: "Apps/APN-UIKit/build/MainBranchApp.xcarchive"'
+    value: ${{ steps.set-action-outputs.outputs.apn-app-xcarchive-path }}
+  apn-app-xcarchive-name:
+    description: 'The name of the xcarchive for the APN sample app. Example: "MainBranchApp.xcarchive"'
+    value: ${{ steps.set-action-outputs.outputs.apn-app-xcarchive-name }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setting environment variables for convenience in future steps 
+      shell: bash
+      # Use each of the set variables in future steps like: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}      
+      run: |
+        echo "APN_SAMPLE_APP_BUILD_PATH=Apps/APN-UIKit/build" >> $GITHUB_ENV
+        echo "BUILD_FILE_NAME=MainBranchApp.xcarchive" >> $GITHUB_ENV
+        echo "CACHE_KEY_BASE=APN-UIKit-build-main-" >> $GITHUB_ENV
+
+    - name: Download latest main sample app build to compare against 
+      if: ${{ inputs.set-latest-main-build == '' }}
+      uses: actions/cache/restore@v4
+      with:
+        # The key input is required for this action to run. But whatever value we pass in, it will not work for our use case. Therefore, this value is a placeholder value. 
+        # The restore-keys param is what will download the latest cache version for us.
+        key: this-is-a-placeholder-because-value-required-by-action
+        path: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}/${{ env.BUILD_FILE_NAME }} # the path where the build will be restored to 
+        # The restore key is what will download the latest cache entry for us. 
+        # 
+        # How it works: "If there are multiple partial matches for a restore key, the action returns the most recently created cache."
+        # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#matching-a-cache-key
+        restore-keys: |
+          ${{ env.CACHE_KEY_BASE }}
+    
+    # It's easiest if the latest main build always has the same name that easily identifies it. 
+    # Therefore, we take the input build and copy it to have the name that we expect to upload.
+    - name: If saving a new build, create copy that we will save. 
+      if: ${{ inputs.set-latest-main-build != '' }}
+      working-directory: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}
+      shell: bash
+      run: |
+        cp -r ${{ inputs.set-latest-main-build }} ${{ env.BUILD_FILE_NAME }}
+
+    - name: Save latest main sample app build
+      if: ${{ inputs.set-latest-main-build != '' }}
+      uses: actions/cache/save@v4
+      with:
+        # the key must be unique. caches are immutable so the key must always be unique. 
+        # https://github.com/actions/cache/blob/main/tips-and-workarounds.md#update-a-cache
+        key: ${{ env.CACHE_KEY_BASE }}${{ github.run_id }}
+        path: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}/${{ env.BUILD_FILE_NAME }}        
+
+    - name: Set action output values
+      id: set-action-outputs
+      shell: bash
+      run: |
+        echo "apn-app-xcarchive-path=$(echo ${{ env.APN_SAMPLE_APP_BUILD_PATH }}/${{ env.BUILD_FILE_NAME }})" >> $GITHUB_OUTPUT
+        echo "apn-app-xcarchive-name=$(echo ${{ env.BUILD_FILE_NAME }})" >> $GITHUB_OUTPUT
