@@ -136,23 +136,35 @@ jobs:
 
     # We only need to run bloaty on 1 app. Therefore, we are hard-coding APN-UIKit into these steps below.
 
-    - name: Print the binary size of our SDK in an app, minus dependencies
+    - name: Get the binary size of our SDK in an app, minus dependencies
+      id: sdk-size-report-minus-dependencies
       if: ${{ matrix.sample-app == 'APN-UIKit' }}
       working-directory: Apps/${{ matrix.sample-app }}/build/
       run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
+        {
+          echo 'report<<EOF'
+          bloaty --source-filter ".*(customerio-ios\/Sources).*" \
+            -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+            App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+            -n 0
+          echo EOF
+        } >> "$GITHUB_OUTPUT" 
     
-    - name: Print the binary size of our SDK in an app, including dependencies
+    - name: Get the binary size of our SDK in an app, including dependencies
+      id: sdk-size-report-including-dependencies
       if: ${{ matrix.sample-app == 'APN-UIKit' }}
       working-directory: Apps/${{ matrix.sample-app }}/build/
+      # Run bloaty to generate report. The report is the STDOUT of the bloaty command. We save that into a GitHub Actions Env variable so we can use it later. 
+      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#example-of-a-multiline-string
       run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
+        {
+          echo 'report<<EOF'
+          bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
+            -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+            App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+            -n 0
+          echo EOF
+        } >> "$GITHUB_OUTPUT"        
 
     #############
     #  Cache main builds for later use
@@ -223,11 +235,62 @@ jobs:
           ${{ matrix.sample-app }}-build-main-
 
     - name: Generate SDK binary diff report between main branch and PR
+      id: generate-sdk-size-diff-report
       if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'      
       working-directory: Apps/${{ matrix.sample-app }}/build/
       run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
-          --debug-file="MainBranchApp.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
-          --debug-file="App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
-          "App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "MainBranchApp.xcarchive/Products/Applications/APN UIKit.app/APN UIKit"
-  
+        {
+          echo 'report<<EOF'
+          bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
+            --debug-file="MainBranchApp.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+            --debug-file="App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+            "App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "MainBranchApp.xcarchive/Products/Applications/APN UIKit.app/APN UIKit"
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
+    
+    - name: Find existing SDK size report comment, if there is one. 
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'
+      uses: peter-evans/find-comment@v3
+      id: find-sdk-size-report-comment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: <!-- sdk size reports -->
+
+    - name: Send SDK size reports to the PR for convenient viewing 
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body: |
+          <!-- sdk size reports -->
+          # SDK binary size reports 📊
+
+          <details>
+          <summary>SDK binary size of this PR, including dependencies</summary>
+
+          ```  
+          ${{ steps.sdk-size-report-including-dependencies.outputs.report }}
+          ```
+
+          </details>
+
+          <details>
+          <summary>SDK binary size of this PR, minus dependencies</summary>
+          
+          ``` 
+          ${{ steps.sdk-size-report-minus-dependencies.outputs.report }}
+          ```
+
+          </details>
+
+          <details>
+          <summary>SDK binary size diff report between this PR and the main branch</summary>
+
+          ``` 
+          ${{ steps.generate-sdk-size-diff-report.outputs.report }}
+          ```
+          
+          </details>
