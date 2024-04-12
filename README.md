@@ -34,6 +34,18 @@ We've separated our SDK into packages to minimize our impact on your app's size.
 | MessagingPushAPN | No | [Push](https://customer.io/docs/sdk/ios/push/) and [rich push](https://customer.io/docs/sdk/ios/rich-push/) notifications using Apple's Push Notification service (APNs). |
 | MessagingPushFCM | No | [Push](https://customer.io/docs/sdk/ios/push/) and [rich push](https://customer.io/docs/sdk/ios/rich-push/) notifications using Firebase Cloud Messaging (FCM). |
 
+## visionOS Support
+
+This SDK supports visionOS. We have a handy [sample app](Apps/VisionOS/README.md) that demonstrates how to use the Customer.io iOS/Swift SDK. You can find the sample app in the `Apps/VisionOS` directory.
+
+We've only tested our SDK with visionOS using Swift Package Manager. If you use CocoaPods, everything might work, but we can't guarantee it. 
+
+### visionOS Limitations
+
+While our SDK supports visionOS, there are some limitations:
+* We don't support the `MessagingPushFCM` package for visionOS. You must send push notifications over APNS.
+* We don't support in-app messaging (the `MessagingInApp` package) for visionOS.
+
 # Getting started 
 
 See our complete SDK documentation at [https://customer.io/docs/sdk/ios/](https://customer.io/docs/sdk/ios/)
