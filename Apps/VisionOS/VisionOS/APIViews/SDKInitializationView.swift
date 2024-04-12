@@ -13,7 +13,7 @@ struct SDKInitializationView: View {
                 Markdown {
                     """
                     You must have a CDP API key to initialize and use the SDK.
-                    Click [here](https://customer.io/docs/sdk/ios/getting-started/auth/#get-your-write-key) to learn more how to set 
+                    Click [here](https://customer.io/docs/sdk/ios/getting-started/auth/#get-your-write-key) to learn more how to set
                     up your source and get your CDP API key.
 
                     ```swift
