@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/customerio/customerio-ios/compare/3.1.0...3.1.1) (2024-04-15)
+
+
+### Bug Fixes
+
+* added alias for Region ([#693](https://github.com/customerio/customerio-ios/issues/693)) ([1619c72](https://github.com/customerio/customerio-ios/commit/1619c72e9acbf0b95fa0d7e5f8e25bf4fd2fc1d2))
+
 ## [3.1.0](https://github.com/customerio/customerio-ios/compare/3.0.2...3.1.0) (2024-04-10)
 
 
