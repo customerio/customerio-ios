@@ -139,12 +139,30 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
     // MARK: getAndProcessTask
 
-    func test_givenIdentifyProfileWithoutBody_expectTaskRunAndProcessedDeleted() {
+    func test_givenIdentifyProfileWithEmptyBody_expectTaskRunAndProcessedDeleted() {
         let givenType = QueueTaskType.identifyProfile
 
         let givenCreatedTask = QueueTaskMetadata.random
 
         let trackDeliveryMetricData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "")
+
+        guard let jsonData = try? JSONEncoder().encode(trackDeliveryMetricData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenIdentifyProfileWithoutBody_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.identifyProfile
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackDeliveryMetricData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil)
 
         guard let jsonData = try? JSONEncoder().encode(trackDeliveryMetricData) else {
             XCTFail("Failed to create task data")

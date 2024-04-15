@@ -108,15 +108,15 @@ public class DataPipelineMigrationAssistant {
         guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
             return false
         }
-        if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
+
+        // If there are no profile attributes or profile attributes not in a valid format, JSON adapter will return nil and we will perform a migration without the profile attributes.
+        guard let profileAttributesString: String = trackTaskData.attributesJsonString, let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(profileAttributesString) else {
             migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
             return true
         }
-        guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
-            return true
-        }
+
         migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
+
         return true
     }
 
