@@ -123,33 +123,26 @@ jobs:
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
-
-    - name: Setup to determine binary size of SDK
-      working-directory: Apps/${{ matrix.sample-app }}/build/    
-      run: |
-        brew install bloaty
-        mv *.xcarchive App.xcarchive # rename the file to a static value. Bloaty requires a hard-coded path to files to work. 
-
-    - name: Print the binary size of our SDK in an app, minus dependencies      
-      # We only need to run bloaty on 1 app.
-      if: ${{ matrix.sample-app == 'APN-UIKit' }}
-      working-directory: Apps/${{ matrix.sample-app }}/build/
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
     
-    - name: Print the binary size of our SDK in an app, including dependencies
-      # We only need to run bloaty on 1 app.
-      if: ${{ matrix.sample-app == 'APN-UIKit' }}
+    # xcodebuild creates builds that include a timestamp in the name. In order for bloaty to read the build, we need to rename it to a static name.
+    - name: Rename the same app build to a static name that we can generate SDK size reports with
       working-directory: Apps/${{ matrix.sample-app }}/build/
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
-    
+      run: mv *.xcarchive App.xcarchive 
+
+    - name: Generate SDK size reports 
+      uses: ./.github/actions/generate-sdk-size-report      
+      if: ${{ matrix.sample-app == 'APN-UIKit' }}
+      id: generate-sdk-size-report
+      with:
+        apn-app-xcarchive-name: App.xcarchive
+        generate-main-diff-report: ${{ github.event_name == 'pull_request' }}
+  
+    - name: Save the sample app build, if this is a main branch build 
+      if: github.ref == 'refs/heads/main'   
+      uses: ./.github/actions/main-sample-app-build 
+      with:
+        apn-app-xcarchive-name: App.xcarchive
+
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
       uses: peter-evans/create-or-update-comment@v4
@@ -170,3 +163,50 @@ jobs:
         body: |
           * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
         edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
+
+    - name: Find existing SDK size report comment, if there is one. 
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'
+      uses: peter-evans/find-comment@v3
+      id: find-sdk-size-report-comment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: <!-- sdk size reports -->
+
+    - name: Send SDK size reports to the PR for convenient viewing 
+      if: github.event_name == 'pull_request' && matrix.sample-app == 'APN-UIKit'
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body: |
+          <!-- sdk size reports -->
+          # SDK binary size reports 📊
+
+          <details>
+          <summary>SDK binary size of this PR</summary>
+
+          ```  
+          ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
+          ```
+
+          </details>
+
+          <details>
+          <summary>SDK binary size of this PR, including dependencies</summary>
+          
+          ```  
+          ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
+          ```
+
+          </details>
+
+          <details>
+          <summary>SDK binary size diff report between this PR and the main branch</summary>
+          
+          ``` 
+          ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
+          ```
+          
+          </details>

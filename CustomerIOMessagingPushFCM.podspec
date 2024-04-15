@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPushFCM"
-  spec.version      = "3.0.2" # Don't modify this line - it's automatically updated
+  spec.version      = "3.1.0" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -17,8 +17,12 @@ Pod::Spec.new do |spec|
   # spec.osx.deployment_target = "10.15"
   # spec.tvos.deployment_target = '13.0'
 
-  spec.source_files  = "Sources/MessagingPushFCM/**/*"
-  spec.exclude_files = "Sources/**/*{.md}"
+  path_to_source_for_module = "Sources/MessagingPushFCM"
+  spec.source_files = "#{path_to_source_for_module}/**/*{.swift}"
+  spec.resource_bundle = {
+    "#{spec.module_name}_Privacy" => "#{path_to_source_for_module}/Resources/PrivacyInfo.xcprivacy"
+  }
+  
   spec.module_name = "CioMessagingPushFCM" # the `import X` name when using SDK in Swift files 
   
   spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"  
