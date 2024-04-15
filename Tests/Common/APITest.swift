@@ -13,6 +13,12 @@ import XCTest
 class CommonAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = CustomerIOInstanceMock()
+    let dictionaryData: [String: Any] = ["foo": true, "bar": ""]
+    struct CodableExample: Codable {
+        let foo: String
+    }
+
+    let codedData = CodableExample(foo: "")
 
     func test_allPublicStaticPropertiesAvailable() throws {
         try skipRunningTest()
@@ -28,6 +34,39 @@ class CommonAPITest: UnitTest {
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
         let _: CioLogLevel = .debug
+
+        mock.identify(userId: "", traits: nil)
+        mock.identify(userId: "", traits: dictionaryData)
+        mock.identify(userId: "", traits: codedData)
+
+        // clear identify
+        mock.clearIdentify()
+
+        // event tracking
+        mock.track(name: "", properties: nil)
+        mock.track(name: "", properties: dictionaryData)
+        mock.track(name: "", properties: codedData)
+
+        // screen tracking
+        mock.screen(title: "", properties: nil)
+        mock.screen(title: "", properties: dictionaryData)
+        mock.screen(title: "", properties: codedData)
+
+        // register push token
+        mock.registerDeviceToken("")
+
+        // delete push token
+        mock.deleteDeviceToken()
+
+        // track push metric
+        let metric = Metric.delivered
+        mock.trackMetric(deliveryID: "", event: metric, deviceToken: "")
+
+        // profile attributes
+        mock.profileAttributes = dictionaryData
+
+        // device attributes
+        mock.deviceAttributes = dictionaryData
     }
 
     // This function checks that SdkConfig is accessible and can be created using the factory.

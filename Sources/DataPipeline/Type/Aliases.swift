@@ -31,3 +31,4 @@ public typealias OperatingMode = Segment.OperatingMode
 public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO
 public typealias CioLogLevel = CioInternalCommon.CioLogLevel
+public typealias Region = CioInternalCommon.Region
