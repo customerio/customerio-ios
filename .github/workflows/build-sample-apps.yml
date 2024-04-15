@@ -194,15 +194,6 @@ jobs:
           </details>
 
           <details>
-          <summary>SDK binary size of this PR, including dependencies</summary>
-          
-          ```  
-          ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
-          ```
-
-          </details>
-
-          <details>
           <summary>SDK binary size diff report between this PR and the main branch</summary>
           
           ``` 
