@@ -199,5 +199,7 @@ jobs:
           ``` 
           ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
           ```
+
+          > Note: The SDK diff report above may indicate that the SDK binary size will increase or decrease even if no source code was changed in the PR. See ticket MBL-249 that is tracking this known behavior.  
           
           </details>
