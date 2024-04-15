@@ -91,7 +91,7 @@ class DataPipelineAPITest: UnitTest {
         try skipRunningTest()
 
         _ = SDKConfigBuilder(cdpApiKey: .random)
-            .region(.US)
+            .region(Region.US)
             .logLevel(.info)
             .apiHost("")
             .cdnHost("")
