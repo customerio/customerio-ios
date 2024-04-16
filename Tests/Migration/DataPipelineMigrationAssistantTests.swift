@@ -359,6 +359,18 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
 
+        // When data is found but attributes are null
+        let pushTokenTaskDataWithNilAttributesString = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: nil)
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskDataWithNilAttributesString) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+
         // When data is found but attributes are invalid
         let pushTokenTaskDataWithEmptyJsonString = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: "")
 
