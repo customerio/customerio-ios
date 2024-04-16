@@ -147,7 +147,7 @@ public class DataPipelineMigrationAssistant {
         guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
             return false
         }
-        guard let allAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
+        guard let attributesJsonString = registerPushTaskData.attributesJsonString, let allAttributes: [String: Any] = jsonAdapter.fromJsonString(attributesJsonString) else {
             return false
         }
         guard let device = allAttributes["device"] as? [String: Any] else {
