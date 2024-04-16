@@ -1,3 +1,10 @@
+## [3.1.2](https://github.com/customerio/customerio-ios/compare/3.1.1...3.1.2) (2024-04-16)
+
+
+### Bug Fixes
+
+* track bq migration for identify profile events with no attributes ([2fb4827](https://github.com/customerio/customerio-ios/commit/2fb4827ff0e59329e5bb2fc185b0e5781544c58a))
+
 ## [3.1.1](https://github.com/customerio/customerio-ios/compare/3.1.0...3.1.1) (2024-04-15)
 
 
