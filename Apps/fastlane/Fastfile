@@ -33,11 +33,17 @@ end
 
 # Functions specific to iOS go in the platform block. 
 platform :ios do 
-  lane :build do
+  # Builds the iOS app and uploads compiled app for internal testing. 
+  # Build will only be uploaded if the environment variables for uploading are set.
+  #
+  # Usage: 
+  # `fastlane ios build` <-- if you want to generate a new build number and app version. Common to use for creating unique QA builds. Each build number is guaranteed to be unique.
+  # `fastlane ios build build_number:123 app_version:1.2.3` <-- if you want to specify the build number and app version.   
+  lane :build do |arguments|    
     download_ci_code_signing_files
     
-    new_app_version = get_new_app_version()
-    new_build_number = get_new_build_version()
+    new_build_number = arguments[:build_number] || get_new_build_version()
+    new_app_version = arguments[:app_version] || get_new_app_version()
     build_notes = get_build_notes()
     test_groups = get_build_test_groups()
 
@@ -70,22 +76,28 @@ platform :ios do
       export_method: "ad-hoc",
       configuration: "Release",
       xcodebuild_formatter: "xcbeautify",
-      build_path: "build" # Save derived data to Apps/X/build folder. CI will parse this folder later for tracking SDK size. 
+      build_path: "build", # Save derived data to Apps/X/build folder. CI will parse this folder later for tracking SDK size. 
+      cloned_source_packages_path: "spm_packages", # Save SPM dependencies to Apps/X/spm_packages folder. We can cache this folder to speed up builds on CI. 
     )
 
-    # function 'setup_google_bucket_access' is a re-usable function inside of apple-code-signing Fastfile that we imported. 
-    # This allows you to create a temporary file from a GitHub secret for added convenience. 
-    # When uploading the build to Firebase App Distribution, the CI server needs to authenticate with Firebase. This is done with a 
-    # Google Cloud Service Account json creds file. The base64 encoded value of this service account file is stored as this secret.  
-    service_credentials_file_path = setup_google_bucket_access(
-      environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
-    )
-    
-    firebase_app_distribution(
-      service_credentials_file: service_credentials_file_path,
-      groups: test_groups,
-      release_notes: build_notes
-    )
+    are_environment_variables_set_for_build_uploading = !ENV["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"].empty?
+    if !are_environment_variables_set_for_build_uploading
+      UI.important("Environment variables required for uploading QA builds are not set. Therefore, not uploading build to Firebase App Distribution.")
+    else 
+      # function 'setup_google_bucket_access' is a re-usable function inside of apple-code-signing Fastfile that we imported. 
+      # This allows you to create a temporary file from a GitHub secret for added convenience. 
+      # When uploading the build to Firebase App Distribution, the CI server needs to authenticate with Firebase. This is done with a 
+      # Google Cloud Service Account json creds file. The base64 encoded value of this service account file is stored as this secret.  
+      service_credentials_file_path = setup_google_bucket_access(
+        environment_variable_key: "FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"
+      )
+      
+      firebase_app_distribution(
+        service_credentials_file: service_credentials_file_path,
+        groups: test_groups,
+        release_notes: build_notes
+      )
+    end 
   end
 
   lane :update_ios_app_versions do |arguments| 

@@ -1,0 +1,123 @@
+name: Build one of the sample apps
+description: Encapsulate all the logic needed to compile a sample app. 
+
+inputs:
+  # If you want to save a new build, pass in this input. If you want to get the latest build, leave this input out.
+  apn-or-fcm:
+    description: 'Defines which push service to build the sample app for. Either "APN" or "FCM".'
+    type: string
+    required: true
+  sample-app:
+    description: 'The name of the sample app to build. Provide name of 1 of the directories in the Apps/ directory. Example: "CocoaPods-FCM"'
+    type: string
+    required: true
+  # The action we use to interact with Fastlane requires a JSON object for arguments, https://github.com/maierj/fastlane-action?tab=readme-ov-file#inputs
+  fastlane-build-args:
+    description: 'Arguments to pass to the Fastlane build command. Example: "{ "option1": "value1", "option2": "value2" }"'
+    type: string
+    required: false
+    default: '{}'
+  customerio-workspace-siteid:
+    description: 'The site ID for a workspace in Customer.io to set as default in compiled app, probably a secret.'
+    type: string
+    required: true 
+  customerio-workspace-cdp-api-key:
+    description: 'The CDP API key for a workspace in Customer.io to set as default in compiled app, probably a secret.'
+    type: string
+    required: true
+  GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
+    description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
+    type: string
+    required: true
+  FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64:
+    description: 'Set this input, only if you want to upload app for internal testing. Maps to the secret, FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64. Used for uploading compiled apps for testing. See the Fastlane config files to learn more.'
+    type: string
+    required: false
+    default: ''
+
+outputs:
+  app-xcarchive-path:
+    description: 'The full relative path to the xcarchive for the built sample app. Example: "Apps/APN-UIKit/build/App.xcarchive"'
+    value: ${{ steps.set-action-outputs.outputs.app-xcarchive-path }}
+  app-xcarchive-name:
+    description: 'The name of the xcarchive for the sample app build. Example: "App.xcarchive"'
+    value: ${{ steps.set-action-outputs.outputs.app-xcarchive-name }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-ios
+
+    - name: Install CLI tools used in CI script 
+      shell: bash
+      run: |
+        brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
+        brew install xcbeautify # used by fastlane for output 
+    
+    - name: Install tools from Gemfile (ruby language) used for building our apps with 
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+        bundler-cache: true # cache tools to make builds faster in future 
+    
+    - name: Setup build environment to prepare for building
+      shell: bash
+      run: |
+        make setup_sample_app app=${{ inputs.sample-app }}
+        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ inputs.customerio-workspace-siteid }} "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ inputs.customerio-workspace-cdp-api-key }} "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+
+    - name: Does ${{ inputs.sample-app }} use CocoaPods? 
+      id: check_podfile_exists
+      uses: andstor/file-existence-action@v3
+      with:
+        files: "Apps/${{ inputs.sample-app }}/Podfile"
+
+    - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      uses: actions/cache@v4
+      with:
+        path: Apps/${{ inputs.sample-app }}/Pods
+        key: ${{ runner.os }}-${{ inputs.sample-app}}-Pods-${{ github.ref }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.sample-app}}-Pods
+
+    - name: Cache SPM downloaded dependencies for faster builds in the future 
+      if: steps.check_podfile_exists.outputs.files_exists == 'false'
+      uses: actions/cache@v4
+      with:
+        path: Apps/${{ inputs.sample-app }}/spm_packages
+        key: ${{ runner.os }}-${{ inputs.sample-app}}-SPMPackages-${{ github.ref }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.sample-app}}-SPMPackages
+
+    - name: Run pod install if using CocoaPods 
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      shell: bash
+      run: make install_cocoapods_dependencies app=${{ inputs.sample-app }}
+
+    - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
+      shell: bash
+      run: cat $GITHUB_EVENT_PATH
+
+    - name: Build app via Fastlane 
+      uses: maierj/fastlane-action@v3.1.0
+      with:
+        lane: "ios build"
+        subdirectory: "Apps/${{ inputs.sample-app }}"
+        options: ${{ inputs.fastlane-build-args }}
+      env: 
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ inputs.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+    
+    # xcodebuild creates builds that include a timestamp in the name. In order for bloaty to read the build, we need to rename it to a static name.
+    - name: Rename the same app build to a static name that we can generate SDK size reports with
+      shell: bash
+      run: mv Apps/${{ inputs.sample-app }}/build/*.xcarchive Apps/${{ inputs.sample-app }}/build/App.xcarchive 
+
+    - name: Set action output values
+      id: set-action-outputs
+      shell: bash
+      run: |
+        echo "app-xcarchive-path=$(echo Apps/${{ inputs.sample-app }}/build/App.xcarchive)" >> $GITHUB_OUTPUT
+        echo "app-xcarchive-name=$(echo App.xcarchive)" >> $GITHUB_OUTPUT
