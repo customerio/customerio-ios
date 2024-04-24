@@ -1,3 +1,10 @@
+## [3.1.3](https://github.com/customerio/customerio-ios/compare/3.1.2...3.1.3) (2024-04-24)
+
+
+### Bug Fixes
+
+* update segment internal SPM dependencies with fixed version ([#708](https://github.com/customerio/customerio-ios/issues/708)) ([c02742e](https://github.com/customerio/customerio-ios/commit/c02742eed420bd40d87bf4bf22d6a7e7727cdaab))
+
 ## [3.1.2](https://github.com/customerio/customerio-ios/compare/3.1.1...3.1.2) (2024-04-16)
 
 
