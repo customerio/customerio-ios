@@ -28,15 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download the latest main sample app build to generate SDK size diff report       
-        id: main-sample-app-build
-        uses: ./.github/actions/main-sample-app-build
-
-      - uses: ./.github/actions/generate-sdk-size-report      
+      - uses: ./.github/actions/generate-sdk-size-report
         id: generate-sdk-size-report
         with:
-          apn-app-xcarchive-name: ${{ steps.main-sample-app-build.outputs.apn-app-xcarchive-name }}
-          generate-main-diff-report: false
+          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }} 
 
   deploy-git-tag:
     name: Deploy git tag
