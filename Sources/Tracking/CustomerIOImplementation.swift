@@ -161,7 +161,7 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func identify(identifier: String, body: [String: Any]) {
-        identify(identifier: identifier, body: StringAnyEncodable(logger: logger, body))
+        identify(identifier: identifier, body: StringAnyEncodable(body))
     }
 
     public func clearIdentify() {
@@ -195,11 +195,11 @@ class CustomerIOImplementation: CustomerIOInstance {
     }
 
     public func track(name: String, data: [String: Any]) {
-        track(name: name, data: StringAnyEncodable(logger: logger, data))
+        track(name: name, data: StringAnyEncodable(data))
     }
 
     public func screen(name: String, data: [String: Any]) {
-        screen(name: name, data: StringAnyEncodable(logger: logger, data))
+        screen(name: name, data: StringAnyEncodable(data))
     }
 
     public func screen<RequestBody: Encodable>(
@@ -255,7 +255,7 @@ class CustomerIOImplementation: CustomerIOInstance {
         deviceAttributesProvider.getDefaultDeviceAttributes { defaultDeviceAttributes in
             let deviceAttributes = defaultDeviceAttributes.mergeWith(customAttributes)
 
-            let encodableBody = StringAnyEncodable(logger: self.logger, deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
+            let encodableBody = StringAnyEncodable(deviceAttributes) // makes [String: Any] Encodable to use in JSON body.
             let requestBody = RegisterDeviceRequest(device: Device(
                 token: deviceToken,
                 platform: deviceOsName,
