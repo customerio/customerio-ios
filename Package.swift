@@ -44,7 +44,7 @@ let package = Package(
         // Update to exact version until wrapper SDKs become part of testing pipeline.
         .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
 
-        // The version is a git commit hash. Make sure the commit is the same as what the DataPipelines CocoaPods is using.
+        // Make sure the version number is same for DataPipelines cocoapods.
         .package(name: "CDPAnalyticsSwift", url: "https://github.com/customerio/cdp-analytics-swift.git", .branch("shahroz/different-target"))
     ],
     targets: [ 
@@ -81,8 +81,11 @@ let package = Package(
         
         // Data Pipeline
         .target(name: "CioDataPipelines",
-                dependencies: ["CioInternalCommon", "CioTrackingMigration", .product(name: "CDPAnalyticsSwift", package: "CDPAnalyticsSwift")],
-                path: "Sources/DataPipeline"),
+                dependencies: ["CioInternalCommon", "CioTrackingMigration", 
+                    .product(name: "CDPAnalyticsSwift", package: "CDPAnalyticsSwift")],
+                path: "Sources/DataPipeline", resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
         .testTarget(name: "DataPipelineTests",
                     dependencies: ["CioDataPipelines", "SharedTests"],
                     path: "Tests/DataPipeline"),
@@ -90,14 +93,20 @@ let package = Package(
         // APN
         .target(name: "CioMessagingPushAPN",
                 dependencies: ["CioMessagingPush"],
-                path: "Sources/MessagingPushAPN"),
+                path: "Sources/MessagingPushAPN",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN"),
         // FCM 
         .target(name: "CioMessagingPushFCM",
                 dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
-                path: "Sources/MessagingPushFCM"),
+                path: "Sources/MessagingPushFCM",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
                     path: "Tests/MessagingPushFCM"),
@@ -105,7 +114,10 @@ let package = Package(
         // Messaging in-app
         .target(name: "CioMessagingInApp",
                 dependencies: ["CioInternalCommon"],
-                path: "Sources/MessagingInApp"),
+                path: "Sources/MessagingInApp",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
                     path: "Tests/MessagingInApp"),

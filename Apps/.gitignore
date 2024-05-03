@@ -7,3 +7,4 @@ Pods/
 **/fastlane/README.md
 BuildEnvironment.swift
 build/
+spm_packages/

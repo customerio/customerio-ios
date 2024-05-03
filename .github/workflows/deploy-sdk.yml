@@ -15,8 +15,27 @@ permissions:
   contents: write # access to push the git tag
 
 jobs:
+  # We can only generate SDK size reports on macOS and we prefer to run deployments on Linux because macOS resources are limited. 
+  # Therefore, generating SDK reports is a separate job that runs before deployment.
+  generate-sdk-size-report:
+    name: Generate SDK size report to attach to the release 
+    runs-on: macos-14
+    # In order to pass data from 1 action to another, you use outputs. 
+    # These are the generated reports that the deployment action depends on. 
+    outputs:
+      sdk-size-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
+      sdk-size-including-dependencies-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/generate-sdk-size-report
+        id: generate-sdk-size-report
+        with:
+          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }} 
+
   deploy-git-tag:
     name: Deploy git tag
+    needs: [generate-sdk-size-report]
     runs-on: ubuntu-latest
     outputs:
       new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
@@ -31,6 +50,21 @@ jobs:
         # uses: kenji-miyake/setup-sd@v1
         uses: levibostian/setup-sd@add-file-extension # Using fork until upstream Action has bug fixed in it.
 
+      # We want to track the SDK binary size for each release. 
+      # The reports is pushed by semantic-release action below by including files listed in the `assets` array in the `.releaserc` file.
+      - name: Write SDK size reports to file to include in the release
+        run: |
+          mkdir -p reports
+          echo "${{ needs.generate-sdk-size-report.outputs.sdk-size-report }}" > reports/sdk-binary-size.txt
+          echo "${{ needs.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}" > reports/sdk-binary-size-including-dependencies.txt
+
+          echo "Verifying the reports got written to the file system. If the files are not empty, they were generated successfully..."
+          echo "SDK binary size report:"
+          head reports/sdk-binary-size.txt
+    
+          echo "SDK binary size including dependencies report:"
+          head reports/sdk-binary-size-including-dependencies.txt   
+    
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
       #    For example, if the last deployment you made was version 1.3.5 and you are releasing a new feature

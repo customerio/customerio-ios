@@ -70,23 +70,9 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     }
 
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {
-        var inventory: [QueueTaskMetadata] = []
         let givenType = QueueTaskType.identifyProfile
-
-        guard let fileManagerQueueStorage = queueStorage as? FileManagerQueueStorage else {
-            XCTFail("queueStorage could not be cast to FileManagerQueueStorage")
-            return
-        }
-
-        guard let givenCreatedTask = fileManagerQueueStorage.create(siteId: testSiteId, type: givenType.rawValue, data: Data(), groupStart: nil, blockingGroups: nil).createdTask else {
-            XCTFail("Failed to create task")
-            return
-        }
-
-        inventory.append(givenCreatedTask)
-
-        backgroundQueueMock.getAllStoredTasksReturnValue = inventory
         backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+        backgroundQueueMock.getAllStoredTasksReturnValue = []
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
@@ -149,5 +135,285 @@ class DataPipelineMigrationAssistantTests: UnitTest {
         XCTAssertNotNil(migrationAssistant.handleAlreadyIdentifiedMigratedUser(siteId: testSiteId))
         XCTAssertNil(profileStoreMock.getProfileId(siteId: testSiteId))
         XCTAssertEqual(profileStoreMock.deleteProfileIdCallsCount, 1)
+    }
+
+    // MARK: getAndProcessTask
+
+    func test_givenIdentifyProfileWithEmptyBody_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.identifyProfile
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackDeliveryMetricData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "")
+
+        guard let jsonData = try? JSONEncoder().encode(trackDeliveryMetricData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenIdentifyProfileWithoutBody_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.identifyProfile
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackDeliveryMetricData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: nil)
+
+        guard let jsonData = try? JSONEncoder().encode(trackDeliveryMetricData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenIdentifyProfileWithBody_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.identifyProfile
+        let identifyProfileData = IdentifyProfileQueueTaskData(identifier: String.random, attributesJsonString: "{\"foo\": \"bar\"}")
+
+        guard let jsonData = try? JSONEncoder().encode(identifyProfileData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenTrackDeliveryMetric_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.trackDeliveryMetric
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackDeliveryMetricData = TrackDeliveryEventRequestBody(type: .inApp, payload: DeliveryPayload(deliveryId: String.random, event: .clicked, timestamp: dateUtilStub.now, metaData: ["foo": "bar"]))
+
+        guard let jsonData = try? JSONEncoder().encode(trackDeliveryMetricData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenTrackDeliveryMetric_expectTaskFailToProcess() {
+        let givenType = QueueTaskType.trackDeliveryMetric
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_givenTrackEvent_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.trackEvent
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackEventAttributedJSON = TrackEventTypeForAnalytics(type: .event, name: String.random, timestamp: dateUtilStub.now)
+        let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: jsonAdapter.toJsonString(trackEventAttributedJSON)!)
+
+        guard let jsonData = try? JSONEncoder().encode(trackEventData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenScreenTrackEvent_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.trackEvent
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackEventAttributedJSON = TrackEventTypeForAnalytics(type: .screen, name: String.random, timestamp: dateUtilStub.now)
+        let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: jsonAdapter.toJsonString(trackEventAttributedJSON)!)
+
+        guard let jsonData = try? JSONEncoder().encode(trackEventData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenRegisterPushToken_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.registerPushToken
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let pushTokenTaskData = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: "{\"device\": {\"id\" : \"\(String.random)\", \"attributes\": {\"foo\":\"bar\"}}}")
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenDeletePushToken_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.deletePushToken
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let pushTokenTaskData = DeletePushNotificationQueueTaskData(profileIdentifier: String.random, deviceToken: String.random)
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    func test_givenTrackPushMetric_expectTaskRunAndProcessedDeleted() {
+        let givenType = QueueTaskType.trackPushMetric
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackPushMetricData = MetricRequest(deliveryId: String.random, event: .opened, deviceToken: String.random, timestamp: dateUtilStub.now)
+
+        guard let jsonData = try? JSONEncoder().encode(trackPushMetricData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 1)
+    }
+
+    // MARK: Cases that do not process tasks
+
+    func test_givenInvalidTrackDeliveryMetric_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.trackDeliveryMetric
+        let givenCreatedTask = QueueTaskMetadata.random
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_givenInvalidTrackEvent_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.trackEvent
+        let givenCreatedTask = QueueTaskMetadata.random
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_givenInvalidTrackTypeEvent_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.trackEvent
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        let trackEventData = TrackEventQueueTaskData(identifier: String.random, attributesJsonString: "")
+
+        guard let jsonData = try? JSONEncoder().encode(trackEventData) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_givenInvalidRegisterPushToken_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.registerPushToken
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        // When data is not found in the task
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+
+        // When data is found but attributes are null
+        let pushTokenTaskDataWithNilAttributesString = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: nil)
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskDataWithNilAttributesString) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+
+        // When data is found but attributes are invalid
+        let pushTokenTaskDataWithEmptyJsonString = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: "")
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskDataWithEmptyJsonString) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+
+        // When device attribute is invalid
+        let pushTokenTaskDataWithInvalidJsonString = RegisterPushNotificationQueueTaskData(profileIdentifier: String.random, attributesJsonString: "{\"foo\": \"bar\"}")
+
+        guard let jsonData = try? JSONEncoder().encode(pushTokenTaskDataWithInvalidJsonString) else {
+            XCTFail("Failed to create task data")
+            return
+        }
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: jsonData, taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_givenInvalidDeletePushToken_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.deletePushToken
+
+        let givenCreatedTask = QueueTaskMetadata.random
+
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
+    }
+
+    func test_InvalidTrackPushMetric_expectTaskNotProcessed() {
+        let givenType = QueueTaskType.trackPushMetric
+
+        let givenCreatedTask = QueueTaskMetadata.random
+        backgroundQueueMock.getTaskDetailReturnValue = TaskDetail(data: Data(), taskType: givenType, timestamp: dateUtilStub.now)
+
+        XCTAssertNotNil(migrationAssistant.getAndProcessTask(for: givenCreatedTask, siteId: testSiteId))
+        XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, 0)
     }
 }

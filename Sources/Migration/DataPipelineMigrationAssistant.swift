@@ -66,7 +66,7 @@ public class DataPipelineMigrationAssistant {
      Retrieves a task from the queue based on its metadata.
      Fetches `type` of the task and processes accordingly
      */
-    private func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
+    func getAndProcessTask(for task: QueueTaskMetadata, siteId: String) {
         guard let taskDetail = backgroundQueue.getTaskDetail(task, siteId: siteId) else { return }
         let taskData = taskDetail.data
         let timestamp = taskDetail.timestamp.string(format: .iso8601WithMilliseconds)
@@ -93,7 +93,7 @@ public class DataPipelineMigrationAssistant {
         }
     }
 
-    // Processes in-app metric trackin
+    // Processes in-app metric tracking
     private func processTrackDeliveryMetric(taskData: Data, timestamp: String) -> Bool {
         guard let trackInappTaskData: TrackDeliveryEventRequestBody = jsonAdapter.fromJson(taskData) else {
             return false
@@ -108,15 +108,15 @@ public class DataPipelineMigrationAssistant {
         guard let trackTaskData: IdentifyProfileQueueTaskData = jsonAdapter.fromJson(taskData) else {
             return false
         }
-        if let attributedString = trackTaskData.attributesJsonString, attributedString.contains("null") {
+
+        // If there are no profile attributes or profile attributes not in a valid format, JSON adapter will return nil and we will perform a migration without the profile attributes.
+        guard let profileAttributesString: String = trackTaskData.attributesJsonString, let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(profileAttributesString) else {
             migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
             return true
         }
-        guard let profileAttributes: [String: Any] = jsonAdapter.fromJsonString(trackTaskData.attributesJsonString!) else {
-            migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: nil)
-            return true
-        }
+
         migrationHandler.processIdentifyFromBGQ(identifier: trackTaskData.identifier, timestamp: timestamp, body: profileAttributes)
+
         return true
     }
 
@@ -147,7 +147,7 @@ public class DataPipelineMigrationAssistant {
         guard let registerPushTaskData: RegisterPushNotificationQueueTaskData = jsonAdapter.fromJson(taskData) else {
             return false
         }
-        guard let allAttributes: [String: Any] = jsonAdapter.fromJsonString(registerPushTaskData.attributesJsonString!) else {
+        guard let attributesJsonString = registerPushTaskData.attributesJsonString, let allAttributes: [String: Any] = jsonAdapter.fromJsonString(attributesJsonString) else {
             return false
         }
         guard let device = allAttributes["device"] as? [String: Any] else {

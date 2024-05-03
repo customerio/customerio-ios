@@ -24,10 +24,9 @@ struct ProfileAttributesView: View {
         VStack(alignment: .leading) {
             Markdown {
                 """
-                You can set/update user attributes at any point in your app by setting values in the
+                You can set/update user traits at any point in your app by setting values in the
                 `CustomerIO.shared.profileAttributes` dictionary.
-                If you are interested to learn about how profile attributes is being used,
-                [click here](https://customer.io/docs/journeys/attributes/#attribute-segment).
+                [Click here](https://customer.io/docs/journeys/attributes/#attribute-segment) to learn about how profile traits (sometimes called "attributes") are used in Customer.io.
 
                 ```swift
                 \(profileAttributeCodeSnippet(attributes))

@@ -66,90 +66,17 @@ jobs:
     name: Building app...${{ matrix.sample-app }}
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-ios
 
-    - name: Install CLI tools used in CI script 
-      run: |
-        brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
-        brew install xcbeautify # used by fastlane for output 
-    
-    - name: Install tools from Gemfile (ruby language) used for building our apps with 
-      uses: ruby/setup-ruby@v1
+    - name: Build and upload app build for QA testing 
+      uses: ./.github/actions/build-sample-app
       with:
-        ruby-version: '3.0'
-        bundler-cache: true # cache tools to make builds faster in future 
-    
-    - name: Setup APN build environment to prepare for building
-      if: ${{ matrix.apn-or-fcm == 'APN' }}
-      run: |
-        make setup_sample_app app=${{ matrix.sample-app }}
-        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-
-    - name: Setup FCM build environment to prepare for building
-      if: ${{ matrix.apn-or-fcm == 'FCM' }}
-      run: |
-        make setup_sample_app app=${{ matrix.sample-app }}
-        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }} "Apps/${{ matrix.sample-app }}/BuildEnvironment.swift"
-
-    - name: Does ${{ matrix.sample-app }} use CocoaPods? 
-      id: check_podfile_exists
-      uses: andstor/file-existence-action@v3
-      with:
-        files: "Apps/${{ matrix.sample-app }}/Podfile"
-
-    - name: Cache CocoaPods downloaded dependencies for faster builds in the future 
-      if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      uses: actions/cache@v4
-      with:
-        path: "Apps/${{ matrix.sample-app }}/Pods"
-        key: ${{ runner.os }}-${{ matrix.sample-app}}-Pods
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.sample-app}}-Pods
-
-    - name: Run pod install if using CocoaPods 
-      if: steps.check_podfile_exists.outputs.files_exists == 'true'
-      run: make install_cocoapods_dependencies app=CocoaPods-FCM
-
-    - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
-      run: cat $GITHUB_EVENT_PATH
-
-    - name: Build app via Fastlane 
-      uses: maierj/fastlane-action@v3.1.0
-      with:
-        lane: "ios build"
-        subdirectory: "Apps/${{ matrix.sample-app }}"
-      env: 
+        apn-or-fcm: ${{ matrix.apn-or-fcm }}
+        sample-app: ${{ matrix.sample-app }}
+        customerio-workspace-siteid: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_SITE_ID', matrix.apn-or-fcm)] }}
+        customerio-workspace-cdp-api-key: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_CDP_API_KEY', matrix.apn-or-fcm)] }}
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
 
-    - name: Setup to determine binary size of SDK
-      working-directory: Apps/${{ matrix.sample-app }}/build/    
-      run: |
-        brew install bloaty
-        mv *.xcarchive App.xcarchive # rename the file to a static value. Bloaty requires a hard-coded path to files to work. 
-
-    - name: Print the binary size of our SDK in an app, minus dependencies      
-      # We only need to run bloaty on 1 app.
-      if: ${{ matrix.sample-app == 'APN-UIKit' }}
-      working-directory: Apps/${{ matrix.sample-app }}/build/
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
-    
-    - name: Print the binary size of our SDK in an app, including dependencies
-      # We only need to run bloaty on 1 app.
-      if: ${{ matrix.sample-app == 'APN-UIKit' }}
-      working-directory: Apps/${{ matrix.sample-app }}/build/
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
-          -d compileunits --debug-file=App.xcarchive/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          App.xcarchive/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0
-    
     - name: Update sample builds PR comment with build information 
       if: ${{ github.event_name == 'pull_request' }}
       uses: peter-evans/create-or-update-comment@v4
@@ -170,3 +97,54 @@ jobs:
         body: |
           * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
         edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
+
+  generate-sdk-size-reports:
+    runs-on: macos-14
+    permissions:
+      pull-requests: write # to be able to comment on PR
+    name: Generate SDK size reports 
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: ./.github/actions/generate-sdk-size-report
+      id: generate-sdk-size-report
+      with:
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+    
+    - name: Find existing SDK size report comment, if there is one. 
+      if: github.event_name == 'pull_request'
+      uses: peter-evans/find-comment@v3
+      id: find-sdk-size-report-comment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: <!-- sdk size reports -->
+
+    - name: Send SDK size reports to the PR for convenient viewing 
+      if: github.event_name == 'pull_request'
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body: |
+          <!-- sdk size reports -->
+          # SDK binary size reports 📊
+
+          <details>
+          <summary>SDK binary size of this PR</summary>
+
+          ```  
+          ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
+          ```
+
+          </details>
+
+          <details>
+          <summary>SDK binary size diff report between this PR and the main branch</summary>
+          
+          ``` 
+          ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
+          ```
+          
+          </details>

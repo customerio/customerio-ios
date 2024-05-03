@@ -31,3 +31,4 @@ public typealias OperatingMode = CDPAnalyticsSwift.OperatingMode
 public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO
 public typealias CioLogLevel = CioInternalCommon.CioLogLevel
+public typealias Region = CioInternalCommon.Region

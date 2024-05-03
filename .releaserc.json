@@ -19,7 +19,7 @@
             "changelogFile": "CHANGELOG.md"
         }],
         ["@semantic-release/git", {
-            "assets": ["CHANGELOG.md", "Sources/Common/Version.swift", "*.podspec"],
+            "assets": ["CHANGELOG.md", "Sources/Common/Version.swift", "*.podspec", "reports/*"],
             "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}"
         }],
         ["@semantic-release/github", {

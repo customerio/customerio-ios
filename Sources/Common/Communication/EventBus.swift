@@ -23,12 +23,9 @@ public protocol EventBus: AutoMockable {
     ///
     /// - Parameter eventType: The event type for which to remove observers.
     func removeObserver(for eventType: String) async
-    /// Removes all observers from the EventBus.
-    ///
-    /// The function can be used for cleaning up or resetting the event handling system.
-    func removeAllObservers() async
 }
 
+// swiftlint:disable orphaned_doc_comment
 /// EventBusObserversHolder is a private helper class used within SharedEventBus.
 /// It manages observers for different event types and interacts with NotificationCenter.
 /// This class is intended to be used exclusively by SharedEventBus to encapsulate
@@ -36,6 +33,9 @@ public protocol EventBus: AutoMockable {
 ///
 /// - Note: This class should remain private to SharedEventBus and not be exposed
 ///         or used externally to maintain encapsulation and thread safety.
+// sourcery: InjectRegisterShared = "EventBusObserversHolder"
+// sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 class EventBusObserversHolder {
     /// NotificationCenter instance used for observer management.
     let notificationCenter: NotificationCenter = .default
@@ -70,9 +70,11 @@ class EventBusObserversHolder {
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
 actor SharedEventBus: EventBus {
-    private let holder = EventBusObserversHolder()
+    private let holder: EventBusObserversHolder
 
-    init() {
+    init(holder: EventBusObserversHolder) {
+        self.holder = holder
+
         DIGraphShared.shared.logger.debug("SharedEventBus initialized")
     }
 
@@ -119,9 +121,5 @@ actor SharedEventBus: EventBus {
             }
             holder.observers[eventType] = nil
         }
-    }
-
-    func removeAllObservers() async {
-        holder.removeAllObservers()
     }
 }

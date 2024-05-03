@@ -54,6 +54,7 @@
 		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraphShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraphShared.swift */; };
 		F78934242A168E09005D3DF7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F78934232A168E08005D3DF7 /* GoogleService-Info.plist */; };
+		F7D35F0A2BC9869900D25BC2 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = F7D35F092BC9869900D25BC2 /* MessagingPushFCM */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -159,6 +160,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F7D35F0A2BC9869900D25BC2 /* MessagingPushFCM in Frameworks */,
 				A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */,
 				46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */,
 				46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */,
@@ -399,6 +401,7 @@
 				46EE275429E9E2960068F9A3 /* MessagingInApp */,
 				46EE275629E9E2960068F9A3 /* MessagingPushAPN */,
 				A776886D2B9875D0004F2A49 /* DataPipelines */,
+				F7D35F092BC9869900D25BC2 /* MessagingPushFCM */,
 			);
 			productName = "APN UIKit";
 			productReference = 46D5D97D29E459D600EAF40B /* APN UIKit.app */;
@@ -1028,6 +1031,10 @@
 		A776886D2B9875D0004F2A49 /* DataPipelines */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DataPipelines;
+		};
+		F7D35F092BC9869900D25BC2 /* MessagingPushFCM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MessagingPushFCM;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

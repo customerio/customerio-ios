@@ -1,3 +1,45 @@
+## [3.1.3](https://github.com/customerio/customerio-ios/compare/3.1.2...3.1.3) (2024-04-24)
+
+
+### Bug Fixes
+
+* update segment internal SPM dependencies with fixed version ([#708](https://github.com/customerio/customerio-ios/issues/708)) ([c02742e](https://github.com/customerio/customerio-ios/commit/c02742eed420bd40d87bf4bf22d6a7e7727cdaab))
+
+## [3.1.2](https://github.com/customerio/customerio-ios/compare/3.1.1...3.1.2) (2024-04-16)
+
+
+### Bug Fixes
+
+* track bq migration for identify profile events with no attributes ([2fb4827](https://github.com/customerio/customerio-ios/commit/2fb4827ff0e59329e5bb2fc185b0e5781544c58a))
+
+## [3.1.1](https://github.com/customerio/customerio-ios/compare/3.1.0...3.1.1) (2024-04-15)
+
+
+### Bug Fixes
+
+* added alias for Region ([#693](https://github.com/customerio/customerio-ios/issues/693)) ([1619c72](https://github.com/customerio/customerio-ios/commit/1619c72e9acbf0b95fa0d7e5f8e25bf4fd2fc1d2))
+
+## [3.1.0](https://github.com/customerio/customerio-ios/compare/3.0.2...3.1.0) (2024-04-10)
+
+
+### Features
+
+* privacy manifest files ([#677](https://github.com/customerio/customerio-ios/issues/677)) ([e5c6dc7](https://github.com/customerio/customerio-ios/commit/e5c6dc7b6841ca31c02f2bd61cd49dc9c6604055))
+
+## [3.0.2](https://github.com/customerio/customerio-ios/compare/3.0.1...3.0.2) (2024-04-09)
+
+
+### Bug Fixes
+
+* [visionos] Minor project cleanup ([#688](https://github.com/customerio/customerio-ios/issues/688)) ([d2934fe](https://github.com/customerio/customerio-ios/commit/d2934fe1ad5255f35568411ee0c5362c052cd7ed))
+
+## [3.0.2](https://github.com/customerio/customerio-ios/compare/3.0.1...3.0.2) (2024-04-05)
+
+
+### Bug Fixes
+
+* [visionos] Minor project cleanup ([#688](https://github.com/customerio/customerio-ios/issues/688)) ([d2934fe](https://github.com/customerio/customerio-ios/commit/d2934fe1ad5255f35568411ee0c5362c052cd7ed))
+
 ## [3.0.1](https://github.com/customerio/customerio-ios/compare/3.0.0...3.0.1) (2024-03-21)
 
 

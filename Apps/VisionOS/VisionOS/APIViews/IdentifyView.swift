@@ -46,9 +46,9 @@ struct IdentifyView: View {
             VStack(alignment: .leading) {
                 Markdown {
                     """
-                    If you want to be able to associate events, device or traits to your user, you need to identify this user.
-                    Otherwise, any other activities you track will be associated with an annonymouse user.
-                    To identify a user, you must set a userId or traits or both.
+                    You must identify a user to associate events, device information, or traits to that user.
+                    Before you identify a user, any activities you track are associated with an anonymous user.
+                    To identify a user, you must set a userId, traits, or both.
                     [Learn more](https://customer.io/docs/journeys/identifying-people/#identifiers).
 
                     ```swift
