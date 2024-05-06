@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 import Foundation
 
@@ -8,25 +8,25 @@ import Foundation
  the 'Segment' module in their code.
  */
 
-public typealias Plugin = CDPAnalyticsSwift.Plugin
-public typealias PluginType = CDPAnalyticsSwift.PluginType
-public typealias EventPlugin = CDPAnalyticsSwift.EventPlugin
-public typealias DestinationPlugin = CDPAnalyticsSwift.DestinationPlugin
-public typealias UtilityPlugin = CDPAnalyticsSwift.UtilityPlugin
-public typealias VersionedPlugin = CDPAnalyticsSwift.VersionedPlugin
+public typealias Plugin = CioAnalytics.Plugin
+public typealias PluginType = CioAnalytics.PluginType
+public typealias EventPlugin = CioAnalytics.EventPlugin
+public typealias DestinationPlugin = CioAnalytics.DestinationPlugin
+public typealias UtilityPlugin = CioAnalytics.UtilityPlugin
+public typealias VersionedPlugin = CioAnalytics.VersionedPlugin
 
-public typealias Analytics = CDPAnalyticsSwift.Analytics
+public typealias Analytics = CioAnalytics.Analytics
 
-public typealias RawEvent = CDPAnalyticsSwift.RawEvent
-public typealias TrackEvent = CDPAnalyticsSwift.TrackEvent
-public typealias ScreenEvent = CDPAnalyticsSwift.ScreenEvent
-public typealias AliasEvent = CDPAnalyticsSwift.AliasEvent
-public typealias GroupEvent = CDPAnalyticsSwift.GroupEvent
-public typealias IdentifyEvent = CDPAnalyticsSwift.IdentifyEvent
+public typealias RawEvent = CioAnalytics.RawEvent
+public typealias TrackEvent = CioAnalytics.TrackEvent
+public typealias ScreenEvent = CioAnalytics.ScreenEvent
+public typealias AliasEvent = CioAnalytics.AliasEvent
+public typealias GroupEvent = CioAnalytics.GroupEvent
+public typealias IdentifyEvent = CioAnalytics.IdentifyEvent
 
-public typealias Settings = CDPAnalyticsSwift.Settings
-public typealias FlushPolicy = CDPAnalyticsSwift.FlushPolicy
-public typealias OperatingMode = CDPAnalyticsSwift.OperatingMode
+public typealias Settings = CioAnalytics.Settings
+public typealias FlushPolicy = CioAnalytics.FlushPolicy
+public typealias OperatingMode = CioAnalytics.OperatingMode
 
 public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO

@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 
 /// Plugin class that update the context properties in the request payload

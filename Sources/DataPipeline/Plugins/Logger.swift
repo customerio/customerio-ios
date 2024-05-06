@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 
 /// Logger plugin for logging all requests sent to analytics

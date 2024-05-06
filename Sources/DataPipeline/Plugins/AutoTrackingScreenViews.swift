@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 import Foundation
 #if canImport(UIKit)
@@ -11,7 +11,7 @@ import UIKit
 public class AutoTrackingScreenViews: UtilityPlugin {
     public let type = PluginType.utility
 
-    public var analytics: CDPAnalyticsSwift.Analytics?
+    public var analytics: CioAnalytics.Analytics?
     public var diGraph: DIGraphShared {
         DIGraphShared.shared
     }

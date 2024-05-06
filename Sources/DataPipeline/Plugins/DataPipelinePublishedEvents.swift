@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 import Foundation
 
@@ -6,9 +6,9 @@ import Foundation
 /// It is designed to reduce redundancy and enhance maintainability by funneling these operations through a single plugin.
 /// This plugin allows for decoupled modules to subscribe and react to these events.
 class DataPipelinePublishedEvents: EventPlugin {
-    var type: CDPAnalyticsSwift.PluginType = .before
+    var type: CioAnalytics.PluginType = .before
 
-    var analytics: CDPAnalyticsSwift.Analytics?
+    var analytics: CioAnalytics.Analytics?
     var eventBusHandler: EventBusHandler
 
     public required init(diGraph: DIGraphShared) {

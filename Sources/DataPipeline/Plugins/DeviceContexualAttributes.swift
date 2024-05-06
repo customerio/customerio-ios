@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import Foundation
 
 // This plugin is used to add contextual data to the device attributes

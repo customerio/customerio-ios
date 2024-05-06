@@ -1,4 +1,4 @@
-import CDPAnalyticsSwift
+import CioAnalytics
 import CioInternalCommon
 
 class DataPipelineImplementation: DataPipelineInstance {
