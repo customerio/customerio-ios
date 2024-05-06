@@ -1,7 +1,7 @@
+@testable import CioAnalytics
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 import Foundation
-@testable import Segment
 @testable import SharedTests
 import XCTest
 
