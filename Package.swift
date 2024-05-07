@@ -45,7 +45,7 @@ let package = Package(
         .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
 
         // Make sure the version number is same for DataPipelines cocoapods.
-        .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .branch("shahroz/different-target"))
+        .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .revision("e350caad196b29ff3231b71d239c73d9bd3487a9"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
