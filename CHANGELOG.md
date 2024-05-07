@@ -1,3 +1,10 @@
+## [3.2.0](https://github.com/customerio/customerio-ios/compare/3.1.3...3.2.0) (2024-05-07)
+
+
+### Features
+
+* segment compatibility ([#685](https://github.com/customerio/customerio-ios/issues/685)) ([7298783](https://github.com/customerio/customerio-ios/commit/7298783adb888c014f30f04eb4d20e4bc6e9d810))
+
 ## [3.1.3](https://github.com/customerio/customerio-ios/compare/3.1.2...3.1.3) (2024-04-24)
 
 
