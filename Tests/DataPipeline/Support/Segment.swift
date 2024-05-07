@@ -1,6 +1,6 @@
+@testable import CioAnalytics
 @testable import CioDataPipelines
 import Foundation
-@testable import Segment
 import XCTest
 
 // MARK: - Helper Plugins

@@ -1,6 +1,6 @@
+import CioAnalytics
 import CioInternalCommon
 import Foundation
-import Segment
 
 public extension CustomerIO {
     /**

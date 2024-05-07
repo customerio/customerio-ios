@@ -1,6 +1,6 @@
+import CioAnalytics
 import CioDataPipelines // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
-import Segment
 import SharedTests
 import XCTest
 

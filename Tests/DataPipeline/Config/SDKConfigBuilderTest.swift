@@ -1,5 +1,5 @@
+@testable import CioAnalytics
 @testable import CioDataPipelines
-@testable import Segment
 import SharedTests
 import XCTest
 
