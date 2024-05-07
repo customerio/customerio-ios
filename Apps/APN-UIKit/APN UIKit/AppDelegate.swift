@@ -1,14 +1,12 @@
 import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushAPN
-import Segment
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
-    var analytics: Analytics?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -63,13 +61,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         CustomerIO.initialize(withConfig: config.build())
 
-        let configuration = Configuration(writeKey: "WRITE_KEY")
-            .trackApplicationLifecycleEvents(true)
-            .flushInterval(10)
-
-        analytics = Analytics(configuration: configuration)
-        analytics?.add(plugin: SegmentTestPlugin())
-
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
@@ -106,16 +97,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
-    }
-}
-
-class SegmentTestPlugin: Plugin {
-    var type: PluginType = .enrichment
-
-    var analytics: Analytics?
-
-    func execute<T>(event: T?) -> T? where T: RawEvent {
-        print("TestPlugin: \(String(describing: event))") as? T
     }
 }
 

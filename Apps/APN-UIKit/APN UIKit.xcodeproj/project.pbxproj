@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		30678B7D2BE9647E000C3E2D /* Segment in Frameworks */ = {isa = PBXBuildFile; productRef = 30678B7C2BE9647E000C3E2D /* Segment */; };
 		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
@@ -162,7 +161,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F7D35F0A2BC9869900D25BC2 /* MessagingPushFCM in Frameworks */,
-				30678B7D2BE9647E000C3E2D /* Segment in Frameworks */,
 				A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */,
 				46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */,
 				46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */,
@@ -404,7 +402,6 @@
 				46EE275629E9E2960068F9A3 /* MessagingPushAPN */,
 				A776886D2B9875D0004F2A49 /* DataPipelines */,
 				F7D35F092BC9869900D25BC2 /* MessagingPushFCM */,
-				30678B7C2BE9647E000C3E2D /* Segment */,
 			);
 			productName = "APN UIKit";
 			productReference = 46D5D97D29E459D600EAF40B /* APN UIKit.app */;
@@ -482,7 +479,6 @@
 			);
 			mainGroup = 46D5D97429E459D600EAF40B;
 			packageReferences = (
-				30678B7B2BE9647E000C3E2D /* XCRemoteSwiftPackageReference "analytics-swift" */,
 			);
 			productRefGroup = 46D5D97E29E459D600EAF40B /* Products */;
 			projectDirPath = "";
@@ -1003,23 +999,7 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		30678B7B2BE9647E000C3E2D /* XCRemoteSwiftPackageReference "analytics-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/segmentio/analytics-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.5.11;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		30678B7C2BE9647E000C3E2D /* Segment */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 30678B7B2BE9647E000C3E2D /* XCRemoteSwiftPackageReference "analytics-swift" */;
-			productName = Segment;
-		};
 		4650330C29F69374001B6552 /* MessagingPushAPN */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MessagingPushAPN;
