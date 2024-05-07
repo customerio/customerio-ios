@@ -10,8 +10,6 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
-  # verified it via local path as CustomerIODataPipelines dependent version isn't uploaded on cocoapods
-  # pod 'AnalyticsSwiftCIO', :path => '/Users/shahrozali/iOSProjects/cdp-analytics-swift'
 
   # Adding APN for internal testing, only. Code from this pod is not used at runtime. 
   # We need to confirm that cocoapods customers can compile their apps with this pod installed. 
