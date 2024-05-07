@@ -82,7 +82,7 @@ jobs:
           # because previous version had a bug in commit analyzer
           semantic_version: latest
           extra_plugins: |
-            conventional-changelog-conventionalcommits
+            conventional-changelog-conventionalcommits@7
             @semantic-release/github
             @semantic-release/exec
         env:
