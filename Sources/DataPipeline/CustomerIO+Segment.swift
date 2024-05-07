@@ -75,7 +75,7 @@ extension DataPipelineConfigOptions {
         result.defaultSettings(nil)
         // Force set to false as we will never add Segment destination
         // User can disable CIO destination to achieve same results
-        result.autoAddSegmentDestination(true)
+        result.autoAddSegmentDestination(false)
         result.apiHost(apiHost)
         result.cdnHost(cdnHost)
         result.flushPolicies(flushPolicies)
