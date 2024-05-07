@@ -6,7 +6,7 @@ sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 
 target 'test cocoapods' do
   pod 'CustomerIOCommon', :path => sdk_local_path
-  pod 'AnalyticsSwiftCIO', :git => 'https://github.com/customerio/cdp-analytics-swift.git', :branch => 'shahroz/different-target'
+  pod 'AnalyticsSwiftCIO', :git => 'https://github.com/customerio/cdp-analytics-swift.git', :tag => '1.5.12+cio.1'
   pod 'CustomerIODataPipelines', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
