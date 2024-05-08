@@ -22,12 +22,12 @@ public class Message {
     public let priority: Int?
     public let messageId: String
     public private(set) var gistProperties: GistProperties
+    public var isInline: Bool {
+        gistProperties.elementId != nil
+    }
+    
 
     var properties = [String: Any]()
-
-    public var isEmbedded: Bool {
-        Gist.shared.messageManager(instanceId: instanceId)?.isMessageEmbed ?? false
-    }
 
     public init(messageId: String) {
         self.queueId = nil

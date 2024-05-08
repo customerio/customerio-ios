@@ -63,7 +63,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 }
 
 extension MessagingInAppImplementation: GistDelegate {
-    public func embedMessage(message: Message, elementId: String) {}
 
     // Aka: message opened
     public func messageShown(message: Message) {
@@ -103,6 +102,10 @@ extension MessagingInAppImplementation: GistDelegate {
             actionValue: action,
             actionName: name
         )
+    }
+    
+    func inlineMessageLoaded(message: Message, gistView: GistView) {
+        // no-op
     }
 
     private func getDeliveryId(from message: Message) -> String? {

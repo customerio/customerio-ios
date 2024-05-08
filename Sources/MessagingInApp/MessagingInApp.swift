@@ -74,4 +74,5 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     public func dismissMessage() {
         implementation?.dismissMessage()
     }
+
 }

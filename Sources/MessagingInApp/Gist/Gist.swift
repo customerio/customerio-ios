@@ -9,6 +9,7 @@ public class Gist: GistDelegate {
     public var dataCenter: String = ""
 
     public weak var delegate: GistDelegate?
+    var inlineMessagesListener: InlineMessagesListener?
 
     public static let shared = Gist()
 
@@ -25,7 +26,7 @@ public class Gist: GistDelegate {
         messageQueueManager.setup()
 
         // Initialising Gist web with an empty message to fetch fonts and other assets.
-        _ = Gist.shared.getMessageView(Message(messageId: ""))
+        Gist.shared.prepareWebEngine()
     }
 
     // MARK: User
@@ -57,7 +58,7 @@ public class Gist: GistDelegate {
     // MARK: Message Actions
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-        if let messageManager = getModalMessageManager() {
+        if let messageManager = getMessageManager() {
             Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
@@ -67,9 +68,16 @@ public class Gist: GistDelegate {
         return false
     }
 
-    public func getMessageView(_ message: Message) -> GistView {
-        let messageManager = createMessageManager(siteId: siteId, message: message)
-        return messageManager.getMessageView()
+    public func getMessageView(_ elementId: String) -> GistView? {
+        inlineMessageManager(elementId: elementId)?.getMessageView()
+    }
+    
+    public func getMessageSwiftUIView(_ elementId: String) -> InlineGistSwiftView? {
+        if let view = getMessageView(elementId) {
+            return InlineGistSwiftView(gistView: view)
+        }
+        
+        return nil
     }
 
     public func dismissMessage(instanceId: String? = nil, completionHandler: (() -> Void)? = nil) {
@@ -77,11 +85,15 @@ public class Gist: GistDelegate {
             messageManager.removePersistentMessage()
             messageManager.dismissMessage(completionHandler: completionHandler)
         } else {
-            getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
+            getMessageManager()?.dismissMessage(completionHandler: completionHandler)
         }
     }
 
     // MARK: Events
+    
+    public func inlineMessageLoaded(message: Message, gistView: GistView) {
+        inlineMessagesListener?.onDidLoadInlineMessage(withElementId: message.gistProperties.elementId!, view: gistView)
+    }
 
     public func messageShown(message: Message) {
         Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
@@ -108,10 +120,6 @@ public class Gist: GistDelegate {
         delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 
-    public func embedMessage(message: Message, elementId: String) {
-        delegate?.embedMessage(message: message, elementId: elementId)
-    }
-
     func logMessageView(message: Message) {
         messageQueueManager.removeMessageFromLocalStore(message: message)
         if let queueId = message.queueId {
@@ -134,9 +142,17 @@ public class Gist: GistDelegate {
         messageManagers.append(messageManager)
         return messageManager
     }
+    
+    private func prepareWebEngine() {
+        _ = MessageManager.createEngineWeb(withMessage: Message(messageId: ""))
+    }
 
-    private func getModalMessageManager() -> MessageManager? {
-        messageManagers.first(where: { !$0.isMessageEmbed })
+    private func getMessageManager() -> MessageManager? {
+        messageManagers.first(where: { !$0.currentMessage.isInline })
+    }
+    
+    private func inlineMessageManager(elementId: String) -> MessageManager? {
+        messageManagers.first(where: { $0.currentMessage.isInline && $0.currentMessage.gistProperties.elementId == elementId })
     }
 
     func messageManager(instanceId: String) -> MessageManager? {

@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		60089CDC2BEC07C000327D30 /* InlineInAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60089CDB2BEC07C000327D30 /* InlineInAppView.swift */; };
+		60BC92002BED5EBA00E94898 /* TopBannerDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BC91FF2BED5EBA00E94898 /* TopBannerDemo.swift */; };
+		60BC92022BED5EC300E94898 /* ContentDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BC92012BED5EC300E94898 /* ContentDemo.swift */; };
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
 		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
@@ -73,6 +76,9 @@
 		0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_test_cocoapods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Rich_Push_Notification_Service_Extension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
+		60089CDB2BEC07C000327D30 /* InlineInAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppView.swift; sourceTree = "<group>"; };
+		60BC91FF2BED5EBA00E94898 /* TopBannerDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBannerDemo.swift; sourceTree = "<group>"; };
+		60BC92012BED5EC300E94898 /* ContentDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDemo.swift; sourceTree = "<group>"; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
 		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
@@ -137,6 +143,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		60BC91FA2BED568400E94898 /* InlineInAppMessages */ = {
+			isa = PBXGroup;
+			children = (
+				60089CDB2BEC07C000327D30 /* InlineInAppView.swift */,
+				60BC91FF2BED5EBA00E94898 /* TopBannerDemo.swift */,
+				60BC92012BED5EC300E94898 /* ContentDemo.swift */,
+			);
+			path = InlineInAppMessages;
+			sourceTree = "<group>";
+		};
 		715CE3C48BF069905F784336 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -171,6 +187,7 @@
 				F70F4CDC2A3B91DA00037B91 /* Appium.swift */,
 				F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */,
 				F72212142A422D72003AE5A1 /* CustomEventView.swift */,
+				60BC91FA2BED568400E94898 /* InlineInAppMessages */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -354,6 +371,7 @@
 			);
 			mainGroup = F73134572919570600CD43D9;
 			packageReferences = (
+				60089CDD2BEC0BC700327D30 /* XCRemoteSwiftPackageReference "UIKitViews" */,
 			);
 			productRefGroup = F73134612919570600CD43D9 /* Products */;
 			projectDirPath = "";
@@ -464,14 +482,17 @@
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */,
 				F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */,
+				60BC92002BED5EBA00E94898 /* TopBannerDemo.swift in Sources */,
 				F73134662919570600CD43D9 /* DashboardView.swift in Sources */,
 				F7029EC829F2B64100411BCC /* StringExtensions.swift in Sources */,
 				F73134642919570600CD43D9 /* App.swift in Sources */,
 				F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */,
 				F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
+				60089CDC2BEC07C000327D30 /* InlineInAppView.swift in Sources */,
 				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
+				60BC92022BED5EC300E94898 /* ContentDemo.swift in Sources */,
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
 				F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
@@ -634,7 +655,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -673,7 +694,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -788,6 +809,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		60089CDD2BEC0BC700327D30 /* XCRemoteSwiftPackageReference "UIKitViews" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/dankinsoid/UIKitViews.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = F73134582919570600CD43D9 /* Project object */;
 }

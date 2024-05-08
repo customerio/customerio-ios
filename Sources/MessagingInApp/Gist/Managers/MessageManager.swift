@@ -11,7 +11,6 @@ class MessageManager: EngineWebDelegate {
     private var messagePosition: MessagePosition = .top
     private var messageLoaded = false
     private var modalViewManager: ModalViewManager?
-    var isMessageEmbed = false
     let currentMessage: Message
     var gistView: GistView!
     private var currentRoute: String
@@ -23,6 +22,14 @@ class MessageManager: EngineWebDelegate {
         self.currentMessage = message
         self.currentRoute = message.messageId
 
+        let engine = Self.createEngineWeb(withMessage: message)
+        engine.delegate = self
+        self.engine = engine
+        self.gistView = GistView(message: currentMessage, engineView: engine.view)
+        
+    }
+    
+    static func createEngineWeb(withMessage message: Message) -> EngineWeb {
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
@@ -32,11 +39,7 @@ class MessageManager: EngineWebDelegate {
             properties: message.toEngineRoute().properties
         )
 
-        self.engine = EngineWeb(configuration: engineWebConfiguration)
-        if let engine = engine {
-            engine.delegate = self
-            self.gistView = GistView(message: currentMessage, engineView: engine.view)
-        }
+        return EngineWeb(configuration: engineWebConfiguration)
     }
 
     func showMessage(position: MessagePosition) {
@@ -45,7 +48,6 @@ class MessageManager: EngineWebDelegate {
     }
 
     func getMessageView() -> GistView {
-        isMessageEmbed = true
         return gistView
     }
 
@@ -105,7 +107,7 @@ class MessageManager: EngineWebDelegate {
                     UIApplication.shared.open(pageUrl)
                 }
             case "showMessage":
-                if currentMessage.isEmbedded {
+                if currentMessage.isInline {
                     showNewMessage(url: url)
                 } else {
                     dismissMessage {
@@ -210,8 +212,8 @@ class MessageManager: EngineWebDelegate {
         currentRoute = route
         if route == currentMessage.messageId, !messageLoaded {
             messageLoaded = true
-            if isMessageEmbed {
-                delegate?.messageShown(message: currentMessage)
+            if currentMessage.isInline {
+                delegate?.inlineMessageLoaded(message: currentMessage, gistView: gistView)
             } else {
                 if UIApplication.shared.applicationState == .active {
                     loadModalMessage()

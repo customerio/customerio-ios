@@ -15,6 +15,7 @@ class GistInAppProvider: InAppProvider {
     func initialize(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool = false) {
         Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue, logging: enableLogging)
         Gist.shared.delegate = delegate
+        Gist.shared.inlineMessagesListener = InlineMessagesFactory.instance
     }
 
     func setProfileIdentifier(_ id: String) {

@@ -1,4 +1,36 @@
 import SwiftUI
+import CioDataPipelines
+
+enum NavScreen: Int {
+    case inAppDemo, bannerDemo, contentDemo
+}
+
+
+@ViewBuilder
+func rootScrren(navPath: Binding<[NavScreen]>, userManager: UserManager) -> some View {
+    ZStack {
+        Rectangle()
+            .onTapGesture(count: 2) {
+                navPath.wrappedValue.append(.inAppDemo)
+            }
+            .foregroundStyle(.background)
+            
+        DashboardView()
+            .environmentObject(userManager)
+    }
+}
+
+@ViewBuilder
+func demo(screen: NavScreen, navPath: Binding<[NavScreen]>) -> some View {
+    switch screen {
+        case .inAppDemo:
+            InlineInAppView(navPath: navPath)
+        case .bannerDemo:
+            TopBannerDemo()
+        case .contentDemo:
+            ContentDemo(navPath: navPath)
+    }
+}
 
 @main
 struct MainApp: App {
@@ -7,16 +39,30 @@ struct MainApp: App {
     @StateObject var userManager: UserManager = .init()
 
     @State private var settingsScreen: SettingsView?
+    
+    @State private var navPath: [NavScreen] = []
 
     var body: some Scene {
         WindowGroup {
-            HStack {
+            Group {
                 if let settingsScreen = settingsScreen {
                     settingsScreen
                         .environmentObject(userManager)
                 } else if userManager.isUserLoggedIn {
-                    DashboardView()
-                        .environmentObject(userManager)
+                    NavigationStack(path: $navPath) {
+                        rootScrren(navPath: $navPath, userManager: userManager)
+                            .navigationDestination(for: NavScreen.self) { screen in
+                                switch screen {
+                                    case .inAppDemo:
+                                        InlineInAppView(navPath: $navPath)
+                                    case .bannerDemo:
+                                        TopBannerDemo()
+                                    case .contentDemo:
+                                        ContentDemo(navPath: $navPath)
+                                }
+                            }
+                    }
+                    
                 } else {
                     LoginView()
                         .environmentObject(userManager)
@@ -60,6 +106,9 @@ struct MainApp: App {
                         default: break
                         }
                     }
+                }.onAppear {
+                    CustomerIO.shared.track(name: "in-app-demo")
+                    CustomerIO.shared.flush()
                 }
         }
     }

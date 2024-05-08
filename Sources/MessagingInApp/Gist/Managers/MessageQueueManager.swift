@@ -123,12 +123,6 @@ class MessageQueueManager {
             }
         }
 
-        if let elementId = message.gistProperties.elementId {
-            Logger.instance.info(message: "Embedding message with Element Id \(elementId)")
-            Gist.shared.embedMessage(message: message, elementId: elementId)
-            return
-        } else {
-            _ = Gist.shared.showMessage(message, position: position)
-        }
+        _ = Gist.shared.showMessage(message, position: position)
     }
 }
