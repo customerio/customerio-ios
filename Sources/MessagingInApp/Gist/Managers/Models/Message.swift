@@ -25,10 +25,6 @@ public class Message {
 
     var properties = [String: Any]()
 
-    public var isEmbedded: Bool {
-        Gist.shared.messageManager(instanceId: instanceId)?.isMessageEmbed ?? false
-    }
-
     public init(messageId: String) {
         self.queueId = nil
         self.priority = nil

@@ -23,12 +23,18 @@ public class InAppMessageView: UIView {
         DIGraphShared.shared.messageQueueManager
     }
 
+    private var gist: GistInstance {
+        DIGraphShared.shared.gist
+    }
+
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
             checkIfMessageAvailableToDisplay()
         }
     }
+
+    private var inlineMessageManager: InlineMessageManager?
 
     public init(elementId: String) {
         super.init(frame: .zero)
@@ -63,6 +69,32 @@ public class InAppMessageView: UIView {
             return // no messages to display, exit early. In the future we will dismiss the View.
         }
 
-        // next, display the message
+        displayInAppMessage(messageToDisplay)
+    }
+
+    private func displayInAppMessage(_ message: Message) {
+        guard inlineMessageManager == nil else {
+            // We are already displaying a messsage. In the future, we are planning on swapping the web content if there is another message in the local queue to display
+            // and an inline message is dismissed. Until we add this feature, exit early.
+            return
+        }
+
+        // Create a new manager for this new message to display and then display the manager's WebView.
+        let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
+        newInlineMessageManager.inlineMessageDelegate = self
+
+        guard let inlineView = newInlineMessageManager.inlineMessageView else {
+            return // we dont expect this to happen, but better to handle it gracefully instead of force unwrapping
+        }
+        addSubview(inlineView)
+
+        inlineMessageManager = newInlineMessageManager
+    }
+}
+
+extension InAppMessageView: InlineMessageManagerDelegate {
+    // This function is called by WebView when the content's size changes.
+    public func sizeChanged(width: CGFloat, height: CGFloat) {
+        // In a future commit, we will change the height of the View to display the web content.
     }
 }

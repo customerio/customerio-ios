@@ -95,7 +95,45 @@ class GistInstanceMock: GistInstance, Mock {
         Mocks.shared.add(mock: self)
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    var underlyingSiteId: String!
+    /// `true` if the getter or setter of property is called at least once.
+    var siteIdCalled: Bool {
+        siteIdGetCalled || siteIdSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    var siteIdGetCalled: Bool {
+        siteIdGetCallsCount > 0
+    }
+
+    var siteIdGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    var siteIdSetCalled: Bool {
+        siteIdSetCallsCount > 0
+    }
+
+    var siteIdSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    var siteId: String {
+        get {
+            mockCalled = true
+            siteIdGetCallsCount += 1
+            return underlyingSiteId
+        }
+        set(value) {
+            mockCalled = true
+            siteIdSetCallsCount += 1
+            underlyingSiteId = value
+        }
+    }
+
     public func resetMock() {
+        siteIdGetCallsCount = 0
+        siteIdSetCallsCount = 0
         showMessageCallsCount = 0
         showMessageReceivedArguments = nil
         showMessageReceivedInvocations = []
@@ -500,10 +538,8 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
         intervalGetCallsCount = 0
         intervalSetCallsCount = 0
         setupCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
-        setupSkipQueueCheckReceivedArguments = nil
-        setupSkipQueueCheckReceivedInvocations = []
+        setupReceivedArguments = nil
+        setupReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         fetchUserMessagesFromLocalStoreCallsCount = 0
@@ -533,36 +569,22 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
         setupCallsCount > 0
     }
 
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    var setupClosure: (() -> Void)?
-
-    /// Mocked function for `setup()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func setup() {
-        mockCalled = true
-        setupCallsCount += 1
-        setupClosure?()
-    }
-
-    // MARK: - setup
-
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var setupSkipQueueCheckReceivedArguments: Bool?
+    @Atomic private(set) var setupReceivedArguments: Bool?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var setupSkipQueueCheckReceivedInvocations: [Bool] = []
+    @Atomic private(set) var setupReceivedInvocations: [Bool] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var setupSkipQueueCheckClosure: ((Bool) -> Void)?
+    var setupClosure: ((Bool) -> Void)?
 
     /// Mocked function for `setup(skipQueueCheck: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
     func setup(skipQueueCheck: Bool) {
         mockCalled = true
         setupCallsCount += 1
-        setupSkipQueueCheckReceivedArguments = skipQueueCheck
-        setupSkipQueueCheckReceivedInvocations.append(skipQueueCheck)
-        setupSkipQueueCheckClosure?(skipQueueCheck)
+        setupReceivedArguments = skipQueueCheck
+        setupReceivedInvocations.append(skipQueueCheck)
+        setupClosure?(skipQueueCheck)
     }
 
     // MARK: - fetchUserMessagesFromLocalStore
