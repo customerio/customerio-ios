@@ -8,11 +8,13 @@ class MessageQueueManagerTest: UnitTest {
     private var manager: MessageQueueManagerImpl!
 
     private let gistMock = GistInstanceMock()
+    private let eventBusMock = EventBusHandlerMock()
 
     override func setUp() {
         super.setUp()
 
         DIGraphShared.shared.override(value: gistMock, forType: GistInstance.self)
+        DIGraphShared.shared.override(value: eventBusMock, forType: EventBusHandler.self)
 
         manager = MessageQueueManagerImpl()
     }
@@ -88,6 +90,15 @@ class MessageQueueManagerTest: UnitTest {
 
         XCTAssertEqual(modalMessageProcessed.count, 1)
         XCTAssertTrue(inlineMessagesProcessed.isEmpty)
+    }
+
+    func test_processFetchedMessages_expectSendEventBusEventAfterProcessing() {
+        XCTAssertEqual(eventBusMock.postEventCallsCount, 0)
+
+        manager.processFetchedMessages([Message.randomInline])
+
+        XCTAssertEqual(eventBusMock.postEventCallsCount, 1)
+        XCTAssertTrue(eventBusMock.postEventArguments is InAppMessagesFetchedEvent)
     }
 }
 
