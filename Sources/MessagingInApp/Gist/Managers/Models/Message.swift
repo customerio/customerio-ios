@@ -18,7 +18,7 @@ public class GistProperties {
 
 public class Message {
     public private(set) var instanceId = UUID().uuidString.lowercased()
-    public let queueId: String?
+    public let queueId: String? // uniquely identifies an in-app message in the backend system
     public let priority: Int?
     public let messageId: String
     public private(set) var gistProperties: GistProperties
@@ -90,5 +90,20 @@ public class Message {
             }
         }
         return engineRoute
+    }
+}
+
+// Convenient functions for Inline message feature
+extension Message {
+    var elementId: String? {
+        gistProperties.elementId
+    }
+
+    var isInlineMessage: Bool {
+        elementId != nil
+    }
+
+    var isModalMessage: Bool {
+        !isInlineMessage
     }
 }

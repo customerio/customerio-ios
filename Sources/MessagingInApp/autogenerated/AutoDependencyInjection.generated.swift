@@ -57,6 +57,9 @@ extension DIGraphShared {
         _ = inAppProvider
         countDependenciesResolved += 1
 
+        _ = messageQueueManager
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -69,6 +72,16 @@ extension DIGraphShared {
 
     private var newInAppProvider: InAppProvider {
         GistInAppProvider()
+    }
+
+    // MessageQueueManager
+    var messageQueueManager: MessageQueueManager {
+        getOverriddenInstance() ??
+            newMessageQueueManager
+    }
+
+    private var newMessageQueueManager: MessageQueueManager {
+        MessageQueueManagerImpl()
     }
 }
 
