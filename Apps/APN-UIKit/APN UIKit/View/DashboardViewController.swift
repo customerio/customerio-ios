@@ -32,24 +32,22 @@ class DashboardViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // In a future PR, we will remove the asyncAfter(). this is only for testing in sample apps because when app opens, the local queue is empty. so wait to check messages until first fetch is done.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [self] in
-            inlineInAppView.elementId = "dashboard-announcement"
+        // For inline Views added with Storyboard, set the elementId to finish setup of the View and begin showing messages.
+        inlineInAppView.elementId = "dashboard-announcement"
 
-            // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
-            // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
-            let newInlineViewUsingUIAsCode = InAppMessageView(elementId: "dashboard-announcement-code")
-            // Add the View to the screen.
-            view.addSubview(newInlineViewUsingUIAsCode)
+        // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
+        // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
+        let newInlineViewUsingUIAsCode = InAppMessageView(elementId: "dashboard-announcement-code")
+        // Add the View to the screen.
+        view.addSubview(newInlineViewUsingUIAsCode)
 
-            // We are adding the new View between 2 Buttons in the StackView. No specific reason why, not sure where else to put it.
-            newInlineViewUsingUIAsCode.widthAnchor.constraint(equalToConstant: UIScreen.main.bounds.width).isActive = true
-            newInlineViewUsingUIAsCode.topAnchor.constraint(equalTo: randomEventButton.bottomAnchor).isActive = true
-            newInlineViewUsingUIAsCode.bottomAnchor.constraint(equalTo: customEventButton.topAnchor).isActive = true
-            newInlineViewUsingUIAsCode.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
-            newInlineViewUsingUIAsCode.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
-            newInlineViewUsingUIAsCode.centerXAnchor.constraint(equalTo: randomEventButton.centerXAnchor).isActive = true
-        }
+        // We are adding the new View between 2 Buttons in the StackView. No specific reason why, not sure where else to put it.
+        newInlineViewUsingUIAsCode.widthAnchor.constraint(equalToConstant: UIScreen.main.bounds.width).isActive = true
+        newInlineViewUsingUIAsCode.topAnchor.constraint(equalTo: randomEventButton.bottomAnchor).isActive = true
+        newInlineViewUsingUIAsCode.bottomAnchor.constraint(equalTo: customEventButton.topAnchor).isActive = true
+        newInlineViewUsingUIAsCode.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
+        newInlineViewUsingUIAsCode.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+        newInlineViewUsingUIAsCode.centerXAnchor.constraint(equalTo: randomEventButton.centerXAnchor).isActive = true
 
         configureDashboardRouter()
         addNotifierObserver()

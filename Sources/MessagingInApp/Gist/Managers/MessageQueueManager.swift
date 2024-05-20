@@ -26,6 +26,10 @@ class MessageQueueManagerImpl: MessageQueueManager {
         DIGraphShared.shared.gist
     }
 
+    private var eventBus: EventBusHandler {
+        DIGraphShared.shared.eventBusHandler
+    }
+
     func setup() {
         setup(skipQueueCheck: false)
     }
@@ -136,6 +140,10 @@ class MessageQueueManagerImpl: MessageQueueManager {
         for message in fetchedMessages {
             handleMessage(message: message)
         }
+
+        // Notify observers that a fetch has completed and the local queue has been modified.
+        // This is useful for inline Views that may need to display or dismiss messages.
+        eventBus.postEvent(InAppMessagesFetchedEvent())
     }
 
     private func handleMessage(message: Message) {
@@ -144,12 +152,6 @@ class MessageQueueManagerImpl: MessageQueueManager {
             // So, add the message to the local store and when inline Views are constructed, they will check the store.
 
             addMessageToLocalStore(message: message)
-
-            // In a future PR, we will want to notify all currently visible inline Views that new messages are available in local store.
-            //
-            // At that time, we may decide we do not need these lines anymore. Keeping them in until we implement this notify piece.
-            //            Logger.instance.info(message: "Found a message meant to be shown inline. Element Id \(elementId)")
-            //            Gist.shared.embedMessage(message: message, elementId: elementId)
 
             return
         }
