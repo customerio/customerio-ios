@@ -3,13 +3,14 @@ import Foundation
 import UIKit
 
 protocol GistInstance: AutoMockable {
+    var siteId: String { get }
     func showMessage(_ message: Message, position: MessagePosition) -> Bool
 }
 
 public class Gist: GistInstance, GistDelegate {
     var messageQueueManager: MessageQueueManager = DIGraphShared.shared.messageQueueManager
     var shownModalMessageQueueIds: Set<String> = [] // all modal messages that have been shown in the app already.
-    private var messageManagers: [MessageManager] = []
+    private var messageManagers: [ModalMessageManager] = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
@@ -141,8 +142,8 @@ public class Gist: GistInstance, GistDelegate {
 
     // Message Manager
 
-    private func createMessageManager(siteId: String, message: Message) -> MessageManager {
-        let messageManager = MessageManager(siteId: siteId, message: message)
+    private func createMessageManager(siteId: String, message: Message) -> ModalMessageManager {
+        let messageManager = ModalMessageManager(siteId: siteId, message: message)
         messageManager.delegate = self
         messageManagers.append(messageManager)
         return messageManager

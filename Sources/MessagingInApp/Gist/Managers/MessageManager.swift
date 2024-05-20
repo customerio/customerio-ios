@@ -5,12 +5,81 @@ public enum GistMessageActions: String {
     case close = "gist://close"
 }
 
+/**
+ Class that implements the business logic for a inline message being displayed.
+ */
+class InlineMessageManager: MessageManager {}
+
+/**
+ Class that implements the business logic for a modal message being displayed.
+ */
+class ModalMessageManager: MessageManager {
+    private var messageLoaded = false
+    private var modalViewManager: ModalViewManager?
+    var messagePosition: MessagePosition = .top
+
+    override func routeLoaded(route: String) {
+        super.routeLoaded(route: route)
+
+        if route == currentMessage.messageId, !messageLoaded {
+            messageLoaded = true
+            if isMessageEmbed {
+                delegate?.messageShown(message: currentMessage)
+            } else {
+                if UIApplication.shared.applicationState == .active {
+                    loadModalMessage()
+                } else {
+                    Gist.shared.removeMessageManager(instanceId: currentMessage.instanceId)
+                }
+            }
+        }
+    }
+
+    func showMessage(position: MessagePosition) {
+        startLoadingMessage()
+        messagePosition = position
+    }
+
+    override func dismissMessage(completionHandler: (() -> Void)? = nil) {
+        if let modalViewManager = modalViewManager {
+            modalViewManager.dismissModalView { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.messageDismissed(message: self.currentMessage)
+                completionHandler?()
+            }
+        }
+    }
+
+    private func loadModalMessage() {
+        if messageLoaded {
+            modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
+            modalViewManager?.showModalView { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.messageShown(message: self.currentMessage)
+                self.doneLoadingMessage()
+            }
+        }
+    }
+}
+
+/**
+ Class that handles a lot of the business logic for modal and inline in-app messages.
+
+ This class is meant to be extended and not constructed directly. It holds the common logic between all in-app message types.
+
+ Usage:
+ * When you have a Message that should be displayed, create a new instance of manager. You create 1 manager instance per 1 in-app message to display:
+ ```
+ // Keep a strong reference to manager instance.
+ let messageManager = MessageManager(siteId: Gist.shared.siteId, message: message)
+ ```
+ * Get the WebView instance that displays the in-app message: `messageManager.gistView`
+ * Set the delegate to listen for events from the WebView: `messageManager.gistView.delegate = self`
+ * Display the WebView in your view: `addSubview(messageManager.gistView)`
+ */
 class MessageManager: EngineWebDelegate {
     private var engine: EngineWeb?
     private let siteId: String
-    private var messagePosition: MessagePosition = .top
-    private var messageLoaded = false
-    private var modalViewManager: ModalViewManager?
     var isMessageEmbed = false
     let currentMessage: Message
     var gistView: GistView!
@@ -39,9 +108,16 @@ class MessageManager: EngineWebDelegate {
         }
     }
 
-    func showMessage(position: MessagePosition) {
-        elapsedTimer.start(title: "Displaying modal for message: \(currentMessage.messageId)")
-        messagePosition = position
+    // MARK: Timer determining how long message took to load.
+
+    // The manager subclasses are expected to call these functions to determine how long the messages took to load.
+
+    func startLoadingMessage() {
+        elapsedTimer.start(title: "Loading message with id: \(currentMessage.messageId)")
+    }
+
+    func doneLoadingMessage() {
+        elapsedTimer.end()
     }
 
     func getMessageView() -> GistView {
@@ -49,25 +125,8 @@ class MessageManager: EngineWebDelegate {
         return gistView
     }
 
-    private func loadModalMessage() {
-        if messageLoaded {
-            modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
-            modalViewManager?.showModalView { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.messageShown(message: self.currentMessage)
-                self.elapsedTimer.end()
-            }
-        }
-    }
-
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
-        if let modalViewManager = modalViewManager {
-            modalViewManager.dismissModalView { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.messageDismissed(message: self.currentMessage)
-                completionHandler?()
-            }
-        }
+        // expect subclass implements this.
     }
 
     func removePersistentMessage() {
@@ -208,18 +267,6 @@ class MessageManager: EngineWebDelegate {
         Logger.instance.info(message: "Message loaded with route: \(route)")
 
         currentRoute = route
-        if route == currentMessage.messageId, !messageLoaded {
-            messageLoaded = true
-            if isMessageEmbed {
-                delegate?.messageShown(message: currentMessage)
-            } else {
-                if UIApplication.shared.applicationState == .active {
-                    loadModalMessage()
-                } else {
-                    Gist.shared.removeMessageManager(instanceId: currentMessage.instanceId)
-                }
-            }
-        }
     }
 
     deinit {

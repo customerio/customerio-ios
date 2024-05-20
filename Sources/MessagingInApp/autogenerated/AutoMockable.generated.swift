@@ -95,7 +95,45 @@ class GistInstanceMock: GistInstance, Mock {
         Mocks.shared.add(mock: self)
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    var underlyingSiteId: String!
+    /// `true` if the getter or setter of property is called at least once.
+    var siteIdCalled: Bool {
+        siteIdGetCalled || siteIdSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    var siteIdGetCalled: Bool {
+        siteIdGetCallsCount > 0
+    }
+
+    var siteIdGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    var siteIdSetCalled: Bool {
+        siteIdSetCallsCount > 0
+    }
+
+    var siteIdSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    var siteId: String {
+        get {
+            mockCalled = true
+            siteIdGetCallsCount += 1
+            return underlyingSiteId
+        }
+        set(value) {
+            mockCalled = true
+            siteIdSetCallsCount += 1
+            underlyingSiteId = value
+        }
+    }
+
     public func resetMock() {
+        siteIdGetCallsCount = 0
+        siteIdSetCallsCount = 0
         showMessageCallsCount = 0
         showMessageReceivedArguments = nil
         showMessageReceivedInvocations = []

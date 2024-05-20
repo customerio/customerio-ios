@@ -43,4 +43,37 @@ class InAppMessageViewTest: UnitTest {
         let actualElementId = queueMock.getInlineMessagesReceivedArguments
         XCTAssertEqual(actualElementId, givenElementId)
     }
+
+    // MARK: Display in-app message
+
+    func test_displayInAppMessage_givenNoMessageAvailable_expectDoNotDisplayAMessage() {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let inlineView = InAppMessageView(elementId: .random)
+
+        XCTAssertNil(getInAppMessageWebView(fromInlineView: inlineView))
+    }
+
+    func test_displayInAppMessage_givenMessageAvailable_expectDisplayMessage() {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+
+        XCTAssertNotNil(getInAppMessageWebView(fromInlineView: inlineView))
+    }
+}
+
+extension InAppMessageViewTest {
+    func getInAppMessageWebView(fromInlineView view: InAppMessageView) -> GistView? {
+        let gistViews: [GistView] = view.subviews.map { $0 as? GistView }.mapNonNil()
+
+        if gistViews.isEmpty {
+            return nil
+        }
+
+        XCTAssertEqual(gistViews.count, 1)
+
+        return gistViews.first
+    }
 }

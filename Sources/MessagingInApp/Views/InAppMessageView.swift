@@ -23,12 +23,18 @@ public class InAppMessageView: UIView {
         DIGraphShared.shared.messageQueueManager
     }
 
+    private var gist: GistInstance {
+        DIGraphShared.shared.gist
+    }
+
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
             checkIfMessageAvailableToDisplay()
         }
     }
+
+    private var inlineMessageManager: InlineMessageManager?
 
     public init(elementId: String) {
         super.init(frame: .zero)
@@ -65,5 +71,36 @@ public class InAppMessageView: UIView {
         //      }
     }
 
-    private func displayInAppMessage(_ message: Message) {}
+    private func displayInAppMessage(_ message: Message) {
+        // There might already be a message displayed. If so, remove it and cleanup the resources.
+        // First, remove the subview that the inline manager has a reference to.
+        // Lastly, cleanup the inline manager.
+        subviews.first?.removeFromSuperview()
+        inlineMessageManager = nil
+
+        // Create a new manager for this new message to display and then display the manager's WebView.
+        let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
+        newInlineMessageManager.startLoadingMessage()
+
+        guard let webView = newInlineMessageManager.gistView else {
+            return // we dont expect this to happen, but better to handle it gracefully instead of force unwrapping
+        }
+
+        webView.delegate = self
+        addSubview(webView)
+
+        inlineMessageManager = newInlineMessageManager
+    }
+}
+
+extension InAppMessageView: GistViewDelegate {
+    // This function is called by WebView when the content's size changes.
+    public func sizeChanged(message: Message, width: CGFloat, height: CGFloat) {
+        // When this function is called, it's an indicator that the web content has been loaded into the WebView. Report to the manager that we are done loading the message.
+        inlineMessageManager?.doneLoadingMessage()
+
+        // In a future commit, we will change the height of the View to display the web content.
+    }
+
+    public func action(message: Message, currentRoute: String, action: String, name: String) {}
 }
