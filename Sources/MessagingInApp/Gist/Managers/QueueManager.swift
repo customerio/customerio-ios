@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 
 class QueueManager {
@@ -55,10 +56,10 @@ class QueueManager {
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
         if let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
            let newPollingInterval = Double(newPollingIntervalString),
-           newPollingInterval != Gist.shared.messageQueueManager.interval {
+           newPollingInterval != DIGraphShared.shared.messageQueueManager.getInterval() {
             DispatchQueue.main.async {
-                Gist.shared.messageQueueManager.interval = newPollingInterval
-                Gist.shared.messageQueueManager.setup(skipQueueCheck: true)
+                DIGraphShared.shared.messageQueueManager.setInterval(newPollingInterval)
+                DIGraphShared.shared.messageQueueManager.setup(skipQueueCheck: true)
                 Logger.instance.info(message: "Polling interval changed to: \(newPollingInterval) seconds")
             }
         }

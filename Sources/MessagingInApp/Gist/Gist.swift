@@ -8,8 +8,11 @@ protocol GistInstance: AutoMockable {
 }
 
 public class Gist: GistInstance, GistDelegate {
-    var messageQueueManager: MessageQueueManager = DIGraphShared.shared.messageQueueManager
     var shownModalMessageQueueIds: Set<String> = [] // all modal messages that have been shown in the app already.
+    var messageQueueManager: MessageQueueManager {
+        DIGraphShared.shared.messageQueueManager
+    }
+
     private var messageManagers: [ModalMessageManager] = []
     public var siteId: String = ""
     public var dataCenter: String = ""

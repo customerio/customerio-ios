@@ -34,6 +34,19 @@ public class InAppMessageView: UIView {
         }
     }
 
+    var heightConstraint: NSLayoutConstraint!
+
+    // Get the View's current height or change the height by setting a new value.
+    private var viewHeight: CGFloat {
+        get {
+            heightConstraint.constant
+        }
+        set {
+            heightConstraint.constant = newValue
+            layoutIfNeeded()
+        }
+    }
+
     private var inlineMessageManager: InlineMessageManager?
 
     public init(elementId: String) {
@@ -53,11 +66,28 @@ public class InAppMessageView: UIView {
         // An element id will not be set yet. No need to check for messages to display.
     }
 
-    private func setupView() {}
+    private func setupView() {
+        // Enable auto layout constraints
+        translatesAutoresizingMaskIntoConstraints = false
+
+        // Remove any existing height constraints added by customer.
+        // This is required as only 1 height constraint can be active at a time. Our height constraint will be ignored
+        // if we do not do this.
+        for existingViewConstraint in constraints where existingViewConstraint.firstAnchor == heightAnchor {
+            existingViewConstraint.isActive = false
+        }
+
+        // Create a view constraint for the height of the View.
+        // This allows us to dynamically update the height at a later time.
+        //
+        // Set the initial height of the view to 0 so it's not visible.
+        heightConstraint = heightAnchor.constraint(equalToConstant: 0)
+        heightConstraint.priority = .required
+        heightConstraint.isActive = true
+        layoutIfNeeded()
+    }
 
     private func checkIfMessageAvailableToDisplay() {
-        // In a future PR, we will remove the asyncAfter(). this is only for testing in sample apps because when app opens, the local queue is empty. so wait to check messages until first fetch is done.
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [self] in
         guard let elementId = elementId else {
             return
         }
@@ -68,7 +98,6 @@ public class InAppMessageView: UIView {
         }
 
         displayInAppMessage(messageToDisplay)
-        //      }
     }
 
     private func displayInAppMessage(_ message: Message) {
@@ -89,6 +118,15 @@ public class InAppMessageView: UIView {
         webView.delegate = self
         addSubview(webView)
 
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        // Setup the WebView to be the same size as this View. When this View changes size, the WebView will change, too.
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: topAnchor),
+            webView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            webView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+
         inlineMessageManager = newInlineMessageManager
     }
 }
@@ -99,7 +137,9 @@ extension InAppMessageView: GistViewDelegate {
         // When this function is called, it's an indicator that the web content has been loaded into the WebView. Report to the manager that we are done loading the message.
         inlineMessageManager?.doneLoadingMessage()
 
-        // In a future commit, we will change the height of the View to display the web content.
+        // We keep the width the same to what the customer set it as.
+        // Update the height to match the aspect ratio of the web content.
+        viewHeight = height
     }
 
     public func action(message: Message, currentRoute: String, action: String, name: String) {}

@@ -3,7 +3,8 @@ import Foundation
 import UIKit
 
 protocol MessageQueueManager: AutoMockable {
-    var interval: Double { get set }
+    func getInterval() -> Double
+    func setInterval(_ newInterval: Double)
     func setup()
     // sourcery:Name=setupSkipQueueCheck
     // sourcery:DuplicateMethod=setup
@@ -15,8 +16,9 @@ protocol MessageQueueManager: AutoMockable {
 }
 
 // sourcery: InjectRegisterShared = "MessageQueueManager"
+// sourcery: InjectSingleton
 class MessageQueueManagerImpl: MessageQueueManager {
-    var interval: Double = 600
+    private var interval: Double = 600
     private var queueTimer: Timer?
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match and inline messages.
     var localMessageStore: [String: Message] = [:]
@@ -26,6 +28,14 @@ class MessageQueueManagerImpl: MessageQueueManager {
 
     func setup() {
         setup(skipQueueCheck: false)
+    }
+
+    func getInterval() -> Double {
+        interval
+    }
+
+    func setInterval(_ newInterval: Double) {
+        interval = newInterval
     }
 
     func setup(skipQueueCheck: Bool) {
