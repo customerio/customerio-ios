@@ -38,17 +38,11 @@ public class InAppMessageView: UIView {
         }
     }
 
-    var heightConstraint: NSLayoutConstraint!
+    var runningHeightChangeAnimation: UIViewPropertyAnimator?
 
-    // Get the View's current height or change the height by setting a new value.
-    private var viewHeight: CGFloat {
-        get {
-            heightConstraint.constant
-        }
-        set {
-            heightConstraint.constant = newValue
-            layoutIfNeeded()
-        }
+    // Get the height constraint for the View. Convenient to modify the height of the View.
+    var viewHeightConstraint: NSLayoutConstraint? {
+        constraints.first { $0.firstAnchor == heightAnchor }
     }
 
     private var inlineMessageManager: InlineMessageManager?
@@ -71,25 +65,22 @@ public class InAppMessageView: UIView {
     }
 
     private func setupView() {
-        // Remove any existing height constraints added by customer.
-        // This is required as only 1 height constraint can be active at a time. Our height constraint will be ignored
-        // if we do not do this.
-        for existingViewConstraint in constraints where existingViewConstraint.firstAnchor == heightAnchor {
-            existingViewConstraint.isActive = false
+        // Customer did not set a height constraint. Create one so the View has one.
+        // It's important to have only 1 active constraint for height or UIKit will ignore some constraints.
+        // Try to re-use a constraint is one is already added instead of replacing it. Some scenarios such as
+        // when UIView is nested in a UIStackView and distribution is .fillProportionally, the height constraint StackView adds is important to keep.
+        if viewHeightConstraint == nil {
+            heightAnchor.constraint(equalToConstant: 0).isActive = true
         }
 
-        // Create a view constraint for the height of the View.
-        // This allows us to dynamically update the height at a later time.
-        //
-        // Set the initial height of the view to 0 so it's not visible.
-        heightConstraint = heightAnchor.constraint(equalToConstant: 0)
-        heightConstraint.priority = .required
-        heightConstraint.isActive = true
-        layoutIfNeeded()
+        viewHeightConstraint?.priority = .required
+        viewHeightConstraint?.constant = 0 // start at height 0 so the View does not show.
+        getRootSuperview()?.layoutIfNeeded() // Since we modified constraint, perform a UI refresh to apply the change.
 
         // Begin listening to the queue for new messages.
         eventBus.addObserver(InAppMessagesFetchedEvent.self) { [weak self] _ in
-            // We are unsure what thread this code will run on. We want to ensure that the View is updated on the main thread.
+            // EventBus callback function might not be on UI thread.
+            // Switch to UI thread to update UI.
             Task { @MainActor in
                 self?.checkIfMessageAvailableToDisplay()
             }
@@ -146,8 +137,27 @@ public class InAppMessageView: UIView {
 extension InAppMessageView: InlineMessageManagerDelegate {
     // This function is called by WebView when the content's size changes.
     public func sizeChanged(width: CGFloat, height: CGFloat) {
-        // We keep the width the same to what the customer set it as.
-        // Update the height to match the aspect ratio of the web content.
-        viewHeight = height
+        Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.
+            // this function can be called multiple times in short period of time so we could be in the middle of 1 animation. Cancel the current one and start new.
+            runningHeightChangeAnimation?.stopAnimation(true)
+
+            runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
+                // We keep the width the same to what the customer set it as.
+                // Update the height to match the aspect ratio of the web content.
+                self.viewHeightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
+
+                // Since we modified constraint, perform a UI refresh to apply the change.
+                // It's important that we call layoutIfNeeded on the topmost superview in the hierarchy. During development, there were animiation issues if layoutIfNeeded was called on a different superview then the root.
+                // Example, given this UI:
+                // UIViewController
+                // └── UIStackView
+                //    └── InAppMessageView
+                // ...If we call layoutIfNeeded on superview (UIStackView), the animation will not work as expected.
+                // This is also why it's important that we do QA testing on the inline View when it's nested in a UIStackView.
+                self.getRootSuperview()?.layoutIfNeeded()
+            })
+
+            runningHeightChangeAnimation?.startAnimation()
+        }
     }
 }
