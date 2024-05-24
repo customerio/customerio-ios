@@ -1,13 +1,29 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-class MessageQueueManager {
-    var interval: Double = 600
-    private var queueTimer: Timer?
-    // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
-    private var localMessageStore: [String: Message] = [:]
+protocol MessageQueueManager: AutoMockable {
+    var interval: Double { get set }
+    func setup(skipQueueCheck: Bool)
+    func fetchUserMessagesFromLocalStore()
+    func removeMessageFromLocalStore(message: Message)
+    func clearUserMessagesFromLocalStore()
+    func getInlineMessages(forElementId elementId: String) -> [Message]
+}
 
-    func setup(skipQueueCheck: Bool = false) {
+// sourcery: InjectRegisterShared = "MessageQueueManager"
+class MessageQueueManagerImpl: MessageQueueManager {
+    @Atomic var interval: Double = 600
+    private var queueTimer: Timer?
+
+    // The local message store is used to keep messages that can't be displayed because the route rule doesnt match and inline messages.
+    @Atomic var localMessageStore: [String: Message] = [:]
+
+    private var gist: GistInstance {
+        DIGraphShared.shared.gist
+    }
+
+    func setup(skipQueueCheck: Bool) {
         queueTimer?.invalidate()
         queueTimer = nil
 
@@ -30,21 +46,8 @@ class MessageQueueManager {
 
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
-        let sortedMessages = localMessageStore.sorted {
-            switch ($0.value.priority, $1.value.priority) {
-            case (let priority0?, let priority1?):
-                // Both messages have a priority, so we compare them.
-                return priority0 < priority1
-            case (nil, _):
-                // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
-                return false
-            case (_, nil):
-                // The second message has no priority, the first message should be ordered first.
-                return true
-            }
-        }
-        sortedMessages.forEach { message in
-            handleMessage(message: message.value)
+        localMessageStore.map(\.value).sortByMessagePriority().forEach { message in
+            handleMessage(message: message)
         }
     }
 
@@ -59,7 +62,11 @@ class MessageQueueManager {
         localMessageStore.removeValue(forKey: queueId)
     }
 
-    private func addMessageToLocalStore(message: Message) {
+    func getInlineMessages(forElementId elementId: String) -> [Message] {
+        localMessageStore.filter { $0.value.elementId == elementId }.map(\.value).sortByMessagePriority()
+    }
+
+    func addMessageToLocalStore(message: Message) {
         guard let queueId = message.queueId else {
             return
         }
@@ -80,13 +87,8 @@ class MessageQueueManager {
                             guard let responses else {
                                 return
                             }
-                            // To prevent us from showing expired / revoked messages, clear user messages from local queue.
-                            self.clearUserMessagesFromLocalStore()
-                            Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
-                            for queueMessage in responses {
-                                let message = queueMessage.toMessage()
-                                self.handleMessage(message: message)
-                            }
+
+                            self.processFetchedMessages(responses.map { $0.toMessage() })
                         case .failure(let error):
                             Logger.instance.error(message: "Error fetching messages from Gist queue service. \(error.localizedDescription)")
                         }
@@ -99,9 +101,28 @@ class MessageQueueManager {
         }
     }
 
+    func processFetchedMessages(_ fetchedMessages: [Message]) {
+        // To prevent us from showing expired / revoked messages, clear user messages from local queue.
+        clearUserMessagesFromLocalStore()
+        Logger.instance.info(message: "Gist queue service found \(fetchedMessages.count) new messages")
+        for message in fetchedMessages {
+            handleMessage(message: message)
+        }
+    }
+
     private func handleMessage(message: Message) {
-        // Skip shown messages
-        if let queueId = message.queueId, Gist.shared.shownMessageQueueIds.contains(queueId) {
+        if message.isInlineMessage {
+            // Inline Views show inline messages by getting messages stored in the local queue on device.
+            // So, add the message to the local store and when inline Views are constructed, they will check the store.
+            addMessageToLocalStore(message: message)
+
+            return
+        }
+
+        // Rest of logic of function is for Modal messages
+
+        // Skip showing Modal messages if already shown.
+        if let queueId = message.queueId, Gist.shared.shownModalMessageQueueIds.contains(queueId) {
             Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
             return
         }
@@ -123,12 +144,6 @@ class MessageQueueManager {
             }
         }
 
-        if let elementId = message.gistProperties.elementId {
-            Logger.instance.info(message: "Embedding message with Element Id \(elementId)")
-            Gist.shared.embedMessage(message: message, elementId: elementId)
-            return
-        } else {
-            _ = Gist.shared.showMessage(message, position: position)
-        }
+        _ = gist.showMessage(message, position: position)
     }
 }
