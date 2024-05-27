@@ -1,3 +1,10 @@
+## [3.2.1](https://github.com/customerio/customerio-ios/compare/3.2.0...3.2.1) (2024-05-27)
+
+
+### Bug Fixes
+
+* crash on emulator while development ([#725](https://github.com/customerio/customerio-ios/issues/725)) ([7ca2dc2](https://github.com/customerio/customerio-ios/commit/7ca2dc2fb8b65bb5f01dbbe7fc14ec2c0b1b7031))
+
 ## [3.2.0](https://github.com/customerio/customerio-ios/compare/3.1.3...3.2.0) (2024-05-07)
 
 
