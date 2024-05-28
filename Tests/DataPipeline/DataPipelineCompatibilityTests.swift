@@ -416,8 +416,8 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         let givenDeliveryID = String.random
         let givenMetric = Metric.delivered.rawValue
         let givenMetaData: [String: String] = [
-            "action_name": "TestClick",
-            "action_value": "Test"
+            "actionName": "TestClick",
+            "actionValue": "Test"
         ]
 
         let expectedData: [String: Any] = [

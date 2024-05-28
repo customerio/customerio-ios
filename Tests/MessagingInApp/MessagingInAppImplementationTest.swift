@@ -261,7 +261,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let givenCurrentRoute = String.random
         let givenAction = String.random
         let givenName = String.random
-        let givenMetaData = ["action_name": givenName, "action_value": givenAction]
+        let givenMetaData = ["actionName": givenName, "actionValue": givenAction]
 
         messagingInApp.action(
             message: givenGistMessage,
