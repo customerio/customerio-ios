@@ -152,3 +152,9 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
         }
     }
 }
+
+extension UNUserNotificationCenterDelegateWrapper: CustomStringConvertible {
+    var description: String {
+        String(describing: delegate)
+    }
+}
