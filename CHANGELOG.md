@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/customerio/customerio-ios/compare/3.2.1...3.2.2) (2024-05-29)
+
+
+### Bug Fixes
+
+* action tracking for in-app ([#728](https://github.com/customerio/customerio-ios/issues/728)) ([c1f69c1](https://github.com/customerio/customerio-ios/commit/c1f69c167205238673265eda60aa5183bf14181a))
+
 ## [3.2.1](https://github.com/customerio/customerio-ios/compare/3.2.0...3.2.1) (2024-05-27)
 
 
