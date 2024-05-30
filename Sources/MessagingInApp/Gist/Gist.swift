@@ -1,9 +1,14 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-public class Gist: GistDelegate {
-    var messageQueueManager = MessageQueueManager()
-    var shownMessageQueueIds: Set<String> = []
+protocol GistInstance: AutoMockable {
+    func showMessage(_ message: Message, position: MessagePosition) -> Bool
+}
+
+public class Gist: GistInstance, GistDelegate {
+    var messageQueueManager: MessageQueueManager = DIGraphShared.shared.messageQueueManager
+    var shownModalMessageQueueIds: Set<String> = [] // all modal messages that have been shown in the app already.
     private var messageManagers: [MessageManager] = []
     public var siteId: String = ""
     public var dataCenter: String = ""
@@ -22,7 +27,7 @@ public class Gist: GistDelegate {
         self.siteId = siteId
         self.dataCenter = dataCenter
         Logger.instance.enabled = logging
-        messageQueueManager.setup()
+        messageQueueManager.setup(skipQueueCheck: false)
 
         // Initialising Gist web with an empty message to fetch fonts and other assets.
         _ = Gist.shared.getMessageView(Message(messageId: ""))
@@ -56,7 +61,7 @@ public class Gist: GistDelegate {
 
     // MARK: Message Actions
 
-    public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
+    public func showMessage(_ message: Message, position: MessagePosition) -> Bool {
         if let messageManager = getModalMessageManager() {
             Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
@@ -65,6 +70,10 @@ public class Gist: GistDelegate {
             return true
         }
         return false
+    }
+
+    public func showMessage(_ message: Message) -> Bool {
+        showMessage(message, position: .center)
     }
 
     public func getMessageView(_ message: Message) -> GistView {
@@ -113,9 +122,16 @@ public class Gist: GistDelegate {
     }
 
     func logMessageView(message: Message) {
+        // This function body reports metrics and makes sure that messages are not shown 2+ times.
+        // For inline messages, we have not yet implemented either of these features.
+        // Therefore, if the message is not a modal, exit early.
+        guard message.isModalMessage else {
+            return
+        }
+
         messageQueueManager.removeMessageFromLocalStore(message: message)
         if let queueId = message.queueId {
-            shownMessageQueueIds.insert(queueId)
+            shownModalMessageQueueIds.insert(queueId)
         }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
@@ -145,5 +161,16 @@ public class Gist: GistDelegate {
 
     func removeMessageManager(instanceId: String) {
         messageManagers.removeAll(where: { $0.currentMessage.instanceId == instanceId })
+    }
+}
+
+// Convenient way for other modules to access instance as well as being able to mock instance in tests.
+extension DIGraphShared {
+    var gist: GistInstance {
+        if let override: GistInstance = getOverriddenInstance() {
+            return override
+        }
+
+        return Gist.shared
     }
 }
