@@ -35,7 +35,7 @@ public class Gist: GistInstance, GistDelegate {
 
         // To finish initializing of Gist, we want to fetch fonts and other assets for HTML in-app messages.
         // To do that, we try to display a message with an empty message id.
-        _ = InlineMessageManager(siteId: self.siteId, message: Message(messageId: ""))
+        _ = InlineMessageManager(siteId: self.siteId, message: Message(templateId: ""))
     }
 
     // For testing to reset the singleton state
@@ -83,7 +83,7 @@ public class Gist: GistInstance, GistDelegate {
 
     public func showMessage(_ message: Message, position: MessagePosition) -> Bool {
         if let messageManager = getModalMessageManager() {
-            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
+            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.templateId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
@@ -108,7 +108,7 @@ public class Gist: GistInstance, GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
+        Logger.instance.debug(message: "Message with route: \(message.templateId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
         } else {
@@ -118,7 +118,7 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func messageDismissed(message: Message) {
-        Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
+        Logger.instance.debug(message: "Message with id: \(message.templateId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
 
@@ -143,14 +143,14 @@ public class Gist: GistInstance, GistDelegate {
         }
 
         messageQueueManager.removeMessageFromLocalStore(message: message)
-        if let queueId = message.queueId {
-            shownModalMessageQueueIds.insert(queueId)
+        if let id = message.id {
+            shownModalMessageQueueIds.insert(id)
         }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
             .logView(message: message, userToken: userToken) { response in
                 if case .failure(let error) = response {
-                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+                    Logger.instance.error(message: "Failed to log view for message: \(message.templateId) with error: \(error)")
                 }
             }
     }

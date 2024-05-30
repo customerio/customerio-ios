@@ -32,7 +32,7 @@ class ModalMessageManager: MessageManager {
     }
 
     override func onDoneLoadingMessage(routeLoaded: String, onComplete: @escaping () -> Void) {
-        if routeLoaded == currentMessage.messageId, !messageLoaded {
+        if routeLoaded == currentMessage.templateId, !messageLoaded {
             messageLoaded = true
 
             if UIApplication.shared.applicationState == .active {
