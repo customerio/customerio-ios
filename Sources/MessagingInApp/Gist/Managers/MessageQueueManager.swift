@@ -70,7 +70,7 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     func removeMessageFromLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
+        guard let queueId = message.id else {
             return
         }
         localMessageStore.removeValue(forKey: queueId)
@@ -81,10 +81,10 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     func addMessageToLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
+        guard let id = message.id else {
             return
         }
-        localMessageStore.updateValue(message, forKey: queueId)
+        localMessageStore.updateValue(message, forKey: id)
     }
 
     @objc
@@ -140,8 +140,8 @@ class MessageQueueManagerImpl: MessageQueueManager {
         // Rest of logic of function is for Modal messages
 
         // Skip showing Modal messages if already shown.
-        if let queueId = message.queueId, Gist.shared.shownModalMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
+        if let id = message.id, Gist.shared.shownModalMessageQueueIds.contains(id) {
+            Logger.instance.info(message: "Message with id: \(id) already shown, skipping.")
             return
         }
 

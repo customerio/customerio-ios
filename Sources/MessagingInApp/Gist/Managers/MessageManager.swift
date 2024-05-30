@@ -26,21 +26,21 @@ class MessageManager {
     init(siteId: String, message: Message) {
         self.siteId = siteId
         self.currentMessage = message
-        self.currentRoute = message.messageId
+        self.currentRoute = message.templateId
 
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
             instanceId: message.instanceId,
             endpoint: Settings.Network.engineAPI,
-            messageId: message.messageId,
+            messageId: message.templateId,
             properties: message.toEngineRoute().properties
         )
 
         // When EngineWeb instance is constructed, it will begin the rendering process for the in-app message.
         // This means that the message begins the process of loading.
         // Start a timer that helps us determine how long a message took to load/render.
-        elapsedTimer.start(title: "Loading message with id: \(currentMessage.messageId)")
+        elapsedTimer.start(title: "Loading message with id: \(currentMessage.templateId)")
         self.engine = EngineWeb(configuration: engineWebConfiguration)
 
         if let engine = engine {
@@ -84,7 +84,7 @@ extension MessageManager: EngineWebDelegate {
         Logger.instance.debug(message: "Bourbon Engine bootstrapped")
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
-        if currentMessage.messageId == "" {
+        if currentMessage.templateId == "" {
             engine?.cleanEngineWeb()
         }
     }
@@ -193,7 +193,7 @@ extension MessageManager: EngineWebDelegate {
     }
 
     func error() {
-        Logger.instance.error(message: "Error loading message with id: \(currentMessage.messageId)")
+        Logger.instance.error(message: "Error loading message with id: \(currentMessage.templateId)")
         delegate?.messageError(message: currentMessage)
     }
 
