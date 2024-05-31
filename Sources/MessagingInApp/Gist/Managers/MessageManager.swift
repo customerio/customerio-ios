@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
@@ -6,10 +7,10 @@ public enum GistMessageActions: String {
 }
 
 class MessageManager: EngineWebDelegate {
-    private var engine: EngineWeb?
+    private var engine: EngineWebInstance
     private let siteId: String
     private var messagePosition: MessagePosition = .top
-    private var messageLoaded = false
+    var messageLoaded = false
     private var modalViewManager: ModalViewManager?
     var isMessageEmbed = false
     let currentMessage: Message
@@ -17,6 +18,7 @@ class MessageManager: EngineWebDelegate {
     private var currentRoute: String
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
+    private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
@@ -32,11 +34,17 @@ class MessageManager: EngineWebDelegate {
             properties: message.toEngineRoute().properties
         )
 
-        self.engine = EngineWeb(configuration: engineWebConfiguration)
-        if let engine = engine {
-            engine.delegate = self
-            self.gistView = GistView(message: currentMessage, engineView: engine.view)
+        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
+        engine.delegate = self
+        self.gistView = GistView(message: currentMessage, engineView: engine.view)
+    }
+
+    var isShowingMessage: Bool {
+        guard let modalViewManager = modalViewManager else {
+            return false
         }
+
+        return modalViewManager.isShowingMessage
     }
 
     func showMessage(position: MessagePosition) {
@@ -58,6 +66,16 @@ class MessageManager: EngineWebDelegate {
                 self.elapsedTimer.end()
             }
         }
+    }
+
+    func cancelShowingMessage() {
+        if messageLoaded {
+            return // if message has already finished loading, do not cancel. Keep it shown.
+        }
+
+        engine.delegate = nil // to make sure we do not get a callback when message loaded and we try to show it.
+
+        dismissMessage() // to gracefully animate the removal of modal from UI if it began to show before.
     }
 
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
@@ -82,7 +100,7 @@ class MessageManager: EngineWebDelegate {
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
         if currentMessage.messageId == "" {
-            engine?.cleanEngineWeb()
+            engine.cleanEngineWeb()
         }
     }
 
@@ -223,8 +241,7 @@ class MessageManager: EngineWebDelegate {
     }
 
     deinit {
-        engine?.cleanEngineWeb()
-        engine = nil
+        engine.cleanEngineWeb()
     }
 
     private func showNewMessage(url: URL) {

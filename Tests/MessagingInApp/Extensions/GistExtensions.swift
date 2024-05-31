@@ -2,14 +2,17 @@
 import Foundation
 
 extension Message {
-    convenience init(messageId: String, campaignId: String) {
-        let gistProperties = [
+    convenience init(messageId: String, campaignId: String, pageRule: String? = nil, queueId: String? = .random) {
+        var gistProperties = [
             "gist": [
                 "campaignId": campaignId
             ]
         ]
+        if let pageRule = pageRule {
+            gistProperties["gist"]?["routeRuleApple"] = pageRule
+        }
 
-        self.init(messageId: messageId, properties: gistProperties)
+        self.init(queueId: queueId, messageId: messageId, properties: gistProperties)
     }
 
     static var random: Message {

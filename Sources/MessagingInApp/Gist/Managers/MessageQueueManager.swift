@@ -28,6 +28,10 @@ class MessageQueueManager {
         }
     }
 
+    deinit {
+        queueTimer?.invalidate()
+    }
+
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
         let sortedMessages = localMessageStore.sorted {
@@ -44,7 +48,7 @@ class MessageQueueManager {
             }
         }
         sortedMessages.forEach { message in
-            handleMessage(message: message.value)
+            showMessageIfMeetsCriteria(message: message.value)
         }
     }
 
@@ -59,11 +63,13 @@ class MessageQueueManager {
         localMessageStore.removeValue(forKey: queueId)
     }
 
-    private func addMessageToLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
-            return
+    func addMessagesToLocalStore(messages: [Message]) {
+        messages.forEach { message in
+            guard let queueId = message.queueId else {
+                return
+            }
+            localMessageStore.updateValue(message, forKey: queueId)
         }
-        localMessageStore.updateValue(message, forKey: queueId)
     }
 
     @objc
@@ -80,13 +86,10 @@ class MessageQueueManager {
                             guard let responses else {
                                 return
                             }
-                            // To prevent us from showing expired / revoked messages, clear user messages from local queue.
-                            self.clearUserMessagesFromLocalStore()
+
                             Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
-                            for queueMessage in responses {
-                                let message = queueMessage.toMessage()
-                                self.handleMessage(message: message)
-                            }
+
+                            self.processFetchResponse(responses.map { $0.toMessage() })
                         case .failure(let error):
                             Logger.instance.error(message: "Error fetching messages from Gist queue service. \(error.localizedDescription)")
                         }
@@ -99,7 +102,18 @@ class MessageQueueManager {
         }
     }
 
-    private func handleMessage(message: Message) {
+    func processFetchResponse(_ fetchedMessages: [Message]) {
+        // To prevent us from showing expired / revoked messages, reset the local queue with the latest queue from the backend service.
+        // The backend service is the single-source-of-truth for in-app messages for each user.
+        clearUserMessagesFromLocalStore()
+        addMessagesToLocalStore(messages: fetchedMessages)
+
+        for message in fetchedMessages {
+            showMessageIfMeetsCriteria(message: message)
+        }
+    }
+
+    private func showMessageIfMeetsCriteria(message: Message) {
         // Skip shown messages
         if let queueId = message.queueId, Gist.shared.shownMessageQueueIds.contains(queueId) {
             Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
@@ -114,12 +128,11 @@ class MessageQueueManager {
                 let range = NSRange(location: 0, length: Gist.shared.getCurrentRoute().utf16.count)
                 if regex.firstMatch(in: Gist.shared.getCurrentRoute(), options: [], range: range) == nil {
                     Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanRouteRule)")
-                    addMessageToLocalStore(message: message)
-                    return
+                    return // exit early to not show the message since page rule doesnt match
                 }
             } else {
                 Logger.instance.info(message: "Problem processing route rule message regex: \(cleanRouteRule)")
-                return
+                return // exit early to not show the message since we cannot parse the page rule for message.
             }
         }
 

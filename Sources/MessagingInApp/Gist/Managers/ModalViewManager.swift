@@ -7,9 +7,12 @@ public enum MessagePosition: String {
 }
 
 class ModalViewManager {
-    var window: UIWindow!
+    var window: UIWindow?
     var viewController: GistModalViewController!
     var position: MessagePosition
+    var isShowingMessage: Bool {
+        window != nil
+    }
 
     init(gistView: GistView, position: MessagePosition) {
         self.viewController = GistModalViewController()
@@ -21,8 +24,8 @@ class ModalViewManager {
     func showModalView(completionHandler: @escaping () -> Void) {
         viewController.view.isHidden = true
         window = getUIWindow()
-        window.rootViewController = viewController
-        window.isHidden = false
+        window?.rootViewController = viewController
+        window?.isHidden = false
         var finalPosition: CGFloat = 0
 
         switch position {
@@ -69,6 +72,7 @@ class ModalViewManager {
                 self.window?.isHidden = false
                 self.viewController.removeFromParent()
                 self.window = nil
+
                 completionHandler()
             })
         })

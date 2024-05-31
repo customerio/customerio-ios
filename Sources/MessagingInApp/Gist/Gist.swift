@@ -28,6 +28,14 @@ public class Gist: GistDelegate {
         _ = Gist.shared.getMessageView(Message(messageId: ""))
     }
 
+    // For testing to reset the singleton state
+    func reset() {
+        clearUserToken()
+        messageQueueManager = MessageQueueManager()
+        messageManagers = []
+        RouteManager.clearCurrentRoute()
+    }
+
     // MARK: User
 
     public func setUserToken(_ userToken: String) {
@@ -46,6 +54,11 @@ public class Gist: GistDelegate {
     }
 
     public func setCurrentRoute(_ currentRoute: String) {
+        if RouteManager.getCurrentRoute() == currentRoute {
+            return // ignore request, route has not changed.
+        }
+
+        cancelLoadingModalMessage()
         RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
     }
@@ -126,6 +139,41 @@ public class Gist: GistDelegate {
             }
     }
 
+    // If someone sets a page rule on a message, they want the message to show on that screen. Because messages can take multiple seconds to finish rendering, there is a chance that
+    // a user navigates away fron a screen when the rendering finishes. To fix this, cancel showing a modal message if a message is still loading.
+    //
+    // Like dismiss message, but does not call event listener.
+    // Dismiss the currently shown message, if there is one, and then remove message manager allowing us to show a message again in the future.
+    func cancelLoadingModalMessage() {
+        guard let messageManagerToCancel = getModalMessageManager() else {
+            return // no message being shown or loading.
+        }
+        let currentMessage = messageManagerToCancel.currentMessage
+
+        if messageManagerToCancel.isShowingMessage {
+            // The modal is already visible, don't cancel it.
+            // This can prevent an infinite loop scenario:
+            // * page rule changed and that triggers showing a Modal
+            // * Modal message is displayed on screen
+            // * Modal being displayed triggers an auto screenview tracking event. This triggers a SDK page route change
+            // * Request to cancel modal message
+            // * Back to the foreground screen that originally triggered showing a Modal message...repeat...
+            return
+        }
+
+        guard currentMessage.gistProperties.routeRule != nil else {
+            // The message does not have page rules setup so do not cancel showing it. Let it proceed.
+            return
+        }
+
+        Logger.instance.debug(message: "Cancelled showing message with id: \(currentMessage.messageId). Will try to show message again in future.")
+
+        removeMessageManager(instanceId: currentMessage.instanceId) // allows us to display a message in the future. Important to do this immediately instead of waiting for current message to dismiss.
+
+        // dismiss to smoothly transition off screen.
+        messageManagerToCancel.cancelShowingMessage()
+    }
+
     // Message Manager
 
     private func createMessageManager(siteId: String, message: Message) -> MessageManager {
@@ -135,7 +183,7 @@ public class Gist: GistDelegate {
         return messageManager
     }
 
-    private func getModalMessageManager() -> MessageManager? {
+    func getModalMessageManager() -> MessageManager? {
         messageManagers.first(where: { !$0.isMessageEmbed })
     }
 
