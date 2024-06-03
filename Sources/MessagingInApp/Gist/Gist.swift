@@ -150,17 +150,6 @@ public class Gist: GistDelegate {
         }
         let currentMessage = messageManagerToCancel.currentMessage
 
-        if messageManagerToCancel.isShowingMessage {
-            // The modal is already visible, don't cancel it.
-            // This can prevent an infinite loop scenario:
-            // * page rule changed and that triggers showing a Modal
-            // * Modal message is displayed on screen
-            // * Modal being displayed triggers an auto screenview tracking event. This triggers a SDK page route change
-            // * Request to cancel modal message
-            // * Back to the foreground screen that originally triggered showing a Modal message...repeat...
-            return
-        }
-
         guard currentMessage.gistProperties.routeRule != nil else {
             // The message does not have page rules setup so do not cancel showing it. Let it proceed.
             return
