@@ -85,6 +85,11 @@ public class InAppMessageView: UIView {
                 self?.checkIfMessageAvailableToDisplay()
             }
         }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            print("InAppMessageView: Simulating message expired and is gone now.")
+            Gist.shared.messageQueueManager.processFetchedMessages([]) // simulate message expired and is gone now.
+        }
     }
 
     private func checkIfMessageAvailableToDisplay() {
@@ -93,19 +98,21 @@ public class InAppMessageView: UIView {
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        guard let messageToDisplay = queueOfMessagesForGivenElementId.first else {
-            return // no messages to display, exit early. In the future we will dismiss the View.
-        }
+        let messageToDisplay = queueOfMessagesForGivenElementId.first
 
-        // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
-        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.messageId == messageToDisplay.messageId {
-            return // already showing this message, exit early.
+        if let messageToDisplay {
+            displayInAppMessage(messageToDisplay)
+        } else {
+            dismissInAppMessage()
         }
-
-        displayInAppMessage(messageToDisplay)
     }
 
     private func displayInAppMessage(_ message: Message) {
+        // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
+        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.messageId == message.messageId {
+            return // already showing this message, exit early.
+        }
+
         guard inlineMessageManager == nil else {
             // We are already displaying a messsage. In the future, we are planning on swapping the web content if there is another message in the local queue to display
             // and an inline message is dismissed. Until we add this feature, exit early.
@@ -131,26 +138,37 @@ public class InAppMessageView: UIView {
         ])
 
         inlineMessageManager = newInlineMessageManager
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            self.dismissInAppMessage()
-        }
     }
 
     private func dismissInAppMessage() {
+        // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the dismiss animation does not look as expected.
+        // To fix this, exit early if dimiss has already been triggered.
+        if inlineMessageManager?.inlineMessageDelegate == nil {
+            return // dismiss already triggered, exit early
+        }
+
         inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could canel the dismiss animation and stop the dismiss action.
 
+        animateHeight(to: 0)
+    }
+
+    private func animateHeight(to height: CGFloat) {
+        // this function can be called multiple times in short period of time so we could be in the middle of 1 animation. Cancel the current one and start new.
         runningHeightChangeAnimation?.stopAnimation(true)
 
         runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
-            self.viewHeightConstraint?.constant = 0 // Changing the height in animation block indicates we want to animate the height change.
+            self.viewHeightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
+
+            // Since we modified constraint, perform a UI refresh to apply the change.
+            // It's important that we call layoutIfNeeded on the topmost superview in the hierarchy. During development, there were animiation issues if layoutIfNeeded was called on a different superview then the root.
+            // Example, given this UI:
+            // UIViewController
+            // └── UIStackView
+            //    └── InAppMessageView
+            // ...If we call layoutIfNeeded on superview (UIStackView), the animation will not work as expected.
+            // This is also why it's important that we do QA testing on the inline View when it's nested in a UIStackView.
             self.getRootSuperview()?.layoutIfNeeded()
         })
-        runningHeightChangeAnimation?.addCompletion { _ in
-            // Remove child WebView and cleanup resources.
-            self.inlineMessageManager = nil
-            self.subviews.forEach { $0.removeFromSuperview() }
-        }
 
         runningHeightChangeAnimation?.startAnimation()
     }
@@ -160,26 +178,9 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     // This function is called by WebView when the content's size changes.
     public func sizeChanged(width: CGFloat, height: CGFloat) {
         Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.
-            // this function can be called multiple times in short period of time so we could be in the middle of 1 animation. Cancel the current one and start new.
-            runningHeightChangeAnimation?.stopAnimation(true)
-
-            runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
-                // We keep the width the same to what the customer set it as.
-                // Update the height to match the aspect ratio of the web content.
-                self.viewHeightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
-
-                // Since we modified constraint, perform a UI refresh to apply the change.
-                // It's important that we call layoutIfNeeded on the topmost superview in the hierarchy. During development, there were animiation issues if layoutIfNeeded was called on a different superview then the root.
-                // Example, given this UI:
-                // UIViewController
-                // └── UIStackView
-                //    └── InAppMessageView
-                // ...If we call layoutIfNeeded on superview (UIStackView), the animation will not work as expected.
-                // This is also why it's important that we do QA testing on the inline View when it's nested in a UIStackView.
-                self.getRootSuperview()?.layoutIfNeeded()
-            })
-
-            runningHeightChangeAnimation?.startAnimation()
+            // We keep the width the same to what the customer set it as.
+            // Update the height to match the aspect ratio of the web content.
+            self.animateHeight(to: height)
         }
     }
 }
