@@ -195,7 +195,6 @@ class InAppMessageViewTest: UnitTest {
 
 extension InAppMessageViewTest {
     // Call when the in-app webview rendering process has finished.
-    @MainActor
     func onDoneRenderingInAppMessage(_ message: Message) async {
         // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
         // To mock the web server call with a successful response back, call these delegate functions:
@@ -203,9 +202,7 @@ extension InAppMessageViewTest {
         engineWebMock.delegate?.sizeChanged(width: 100, height: 100)
 
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
-        // To give that new task time to execute, yield the current task.
-        // After yield is finished, we can expect that the inline View's sizeChanged logic is finished.
-        await Task.yield()
+        await waitForMainThreadToFinishPendingTasks()
     }
 
     func isDisplayingInAppMessage(_ view: InAppMessageView) -> Bool {
