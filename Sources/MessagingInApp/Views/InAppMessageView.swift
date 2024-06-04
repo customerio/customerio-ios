@@ -131,6 +131,28 @@ public class InAppMessageView: UIView {
         ])
 
         inlineMessageManager = newInlineMessageManager
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            self.dismissInAppMessage()
+        }
+    }
+
+    private func dismissInAppMessage() {
+        inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could canel the dismiss animation and stop the dismiss action.
+
+        runningHeightChangeAnimation?.stopAnimation(true)
+
+        runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
+            self.viewHeightConstraint?.constant = 0 // Changing the height in animation block indicates we want to animate the height change.
+            self.getRootSuperview()?.layoutIfNeeded()
+        })
+        runningHeightChangeAnimation?.addCompletion { _ in
+            // Remove child WebView and cleanup resources.
+            self.inlineMessageManager = nil
+            self.subviews.forEach { $0.removeFromSuperview() }
+        }
+
+        runningHeightChangeAnimation?.startAnimation()
     }
 }
 
