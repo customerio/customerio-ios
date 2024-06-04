@@ -122,7 +122,7 @@ class InAppMessageViewTest: UnitTest {
     }
 
     @MainActor
-    func test_givenAlreadyShowingInAppMessage_whenNewMessageFetched_expectDoNotReplaceContents() async {
+    func test_givenAlreadyShowingInAppMessage_whenNewMessageFetched_expectShowNewMessage() async {
         let givenOldInlineMessage = Message.randomInline
         queueMock.getInlineMessagesReturnValue = [givenOldInlineMessage]
 
@@ -137,7 +137,7 @@ class InAppMessageViewTest: UnitTest {
         let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
 
         // If the WebViews are different, it means the message was reloaded.
-        XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
+        XCTAssertTrue(webViewBeforeFetch !== webViewAfterFetch)
     }
 
     @MainActor
