@@ -498,45 +498,15 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
         Mocks.shared.add(mock: self)
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    var underlyingInterval: Double!
-    /// `true` if the getter or setter of property is called at least once.
-    var intervalCalled: Bool {
-        intervalGetCalled || intervalSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    var intervalGetCalled: Bool {
-        intervalGetCallsCount > 0
-    }
-
-    var intervalGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    var intervalSetCalled: Bool {
-        intervalSetCallsCount > 0
-    }
-
-    var intervalSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    var interval: Double {
-        get {
-            mockCalled = true
-            intervalGetCallsCount += 1
-            return underlyingInterval
-        }
-        set(value) {
-            mockCalled = true
-            intervalSetCallsCount += 1
-            underlyingInterval = value
-        }
-    }
-
     public func resetMock() {
-        intervalGetCallsCount = 0
-        intervalSetCallsCount = 0
+        getIntervalCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        setIntervalCallsCount = 0
+        setIntervalReceivedArguments = nil
+        setIntervalReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         setupCallsCount = 0
         setupReceivedArguments = nil
         setupReceivedInvocations = []
@@ -558,6 +528,58 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
         getInlineMessagesReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - getInterval
+
+    /// Number of times the function was called.
+    @Atomic private(set) var getIntervalCallsCount = 0
+    /// `true` if the function was ever called.
+    var getIntervalCalled: Bool {
+        getIntervalCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    var getIntervalReturnValue: Double!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getIntervalReturnValue`
+     */
+    var getIntervalClosure: (() -> Double)?
+
+    /// Mocked function for `getInterval()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func getInterval() -> Double {
+        mockCalled = true
+        getIntervalCallsCount += 1
+        return getIntervalClosure.map { $0() } ?? getIntervalReturnValue
+    }
+
+    // MARK: - setInterval
+
+    /// Number of times the function was called.
+    @Atomic private(set) var setIntervalCallsCount = 0
+    /// `true` if the function was ever called.
+    var setIntervalCalled: Bool {
+        setIntervalCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic private(set) var setIntervalReceivedArguments: Double?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic private(set) var setIntervalReceivedInvocations: [Double] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var setIntervalClosure: ((Double) -> Void)?
+
+    /// Mocked function for `setInterval(_ newInterval: Double)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func setInterval(_ newInterval: Double) {
+        mockCalled = true
+        setIntervalCallsCount += 1
+        setIntervalReceivedArguments = newInterval
+        setIntervalReceivedInvocations.append(newInterval)
+        setIntervalClosure?(newInterval)
     }
 
     // MARK: - setup

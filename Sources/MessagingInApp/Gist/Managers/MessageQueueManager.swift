@@ -3,7 +3,8 @@ import Foundation
 import UIKit
 
 protocol MessageQueueManager: AutoMockable {
-    var interval: Double { get set }
+    func getInterval() -> Double
+    func setInterval(_ newInterval: Double)
     func setup(skipQueueCheck: Bool)
     func fetchUserMessagesFromLocalStore()
     func removeMessageFromLocalStore(message: Message)
@@ -12,8 +13,9 @@ protocol MessageQueueManager: AutoMockable {
 }
 
 // sourcery: InjectRegisterShared = "MessageQueueManager"
+// sourcery: InjectSingleton
 class MessageQueueManagerImpl: MessageQueueManager {
-    @Atomic var interval: Double = 600
+    @Atomic private var interval: Double = 600
     private var queueTimer: Timer?
 
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match and inline messages.
@@ -21,6 +23,14 @@ class MessageQueueManagerImpl: MessageQueueManager {
 
     private var gist: GistInstance {
         DIGraphShared.shared.gist
+    }
+
+    func getInterval() -> Double {
+        interval
+    }
+
+    func setInterval(_ newInterval: Double) {
+        interval = newInterval
     }
 
     func setup(skipQueueCheck: Bool) {
