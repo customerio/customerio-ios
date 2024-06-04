@@ -14,6 +14,7 @@ class InAppMessageViewTest: UnitTest {
     override func setUp() {
         super.setUp()
 
+        // Code expects Engine to return a View that displays in-app message. Return any View to get code under test to run.
         engineWebMock.view = UIView()
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
