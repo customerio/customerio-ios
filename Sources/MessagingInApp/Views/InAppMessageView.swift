@@ -139,10 +139,10 @@ public class InAppMessageView: UIView {
         // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the dismiss animation does not look as expected.
         // To fix this, exit early if dimiss has already been triggered.
         if inlineMessageManager?.inlineMessageDelegate == nil {
-            return // dismiss already triggered, exit early
+            return
         }
 
-        inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could canel the dismiss animation and stop the dismiss action.
+        inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could cancel the dismiss animation and stop the dismiss action.
 
         animateHeight(to: 0)
     }
