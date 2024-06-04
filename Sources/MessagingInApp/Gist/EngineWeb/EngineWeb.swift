@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 import WebKit
@@ -12,7 +13,13 @@ public protocol EngineWebDelegate: AnyObject {
     func error()
 }
 
-public class EngineWeb: NSObject {
+protocol EngineWebInstance: AutoMockable {
+    var delegate: EngineWebDelegate? { get set }
+    var view: UIView { get }
+    func cleanEngineWeb()
+}
+
+public class EngineWeb: NSObject, EngineWebInstance {
     private var _currentRoute = ""
     private var _timeoutTimer: Timer?
     private var _elapsedTimer = ElapsedTimer()

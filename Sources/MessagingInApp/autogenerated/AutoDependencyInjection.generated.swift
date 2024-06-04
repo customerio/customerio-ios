@@ -4,6 +4,7 @@
 
 import CioInternalCommon
 import Foundation
+import UIKit
 
 /**
  ######################################################
@@ -54,6 +55,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = engineWebProvider
+        countDependenciesResolved += 1
+
         _ = inAppProvider
         countDependenciesResolved += 1
 
@@ -64,6 +68,16 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // EngineWebProvider
+    var engineWebProvider: EngineWebProvider {
+        getOverriddenInstance() ??
+            newEngineWebProvider
+    }
+
+    private var newEngineWebProvider: EngineWebProvider {
+        EngineWebProviderImpl()
+    }
+
     // InAppProvider
     var inAppProvider: InAppProvider {
         getOverriddenInstance() ??

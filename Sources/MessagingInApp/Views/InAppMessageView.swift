@@ -85,11 +85,6 @@ public class InAppMessageView: UIView {
                 self?.checkIfMessageAvailableToDisplay()
             }
         }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-            print("InAppMessageView: Simulating message expired and is gone now.")
-            Gist.shared.messageQueueManager.processFetchedMessages([]) // simulate message expired and is gone now.
-        }
     }
 
     private func checkIfMessageAvailableToDisplay() {
