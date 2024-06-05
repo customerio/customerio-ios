@@ -47,14 +47,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // Set visible window based on user login status
     func setVisibleWindow() {
         // If previous user is not a guest login and credentials were used to login into the app
-        if let _ = storage.userEmailId {
-            let navigationController = UINavigationController(rootViewController: DashboardViewController
-                .newInstance())
-            window?.rootViewController = navigationController
-        } else {
-            let navigationController = UINavigationController(rootViewController: LoginViewController.newInstance())
-            window?.rootViewController = navigationController
-        }
+//        if let _ = storage.userEmailId {
+//            let navigationController = UINavigationController(rootViewController: DashboardViewController
+//                .newInstance())
+//            window?.rootViewController = navigationController
+//        } else {
+//            let navigationController = UINavigationController(rootViewController: LoginViewController.newInstance())
+//            window?.rootViewController = navigationController
+//        }
+        window?.rootViewController = FullScreenTableViewController()
         window?.makeKeyAndVisible()
     }
 
@@ -75,5 +76,73 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
 
         _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+    }
+}
+
+import CioMessagingInApp
+
+class FullScreenTableViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+    let tableView = UITableView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupTableView()
+    }
+
+    private func setupTableView() {
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 500 // An estimated height for your cells
+        tableView.separatorStyle = .none
+
+        view.addSubview(tableView)
+
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+
+    // MARK: - UITableViewDataSource
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        10
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+
+        // Remove existing subview if any (to avoid overlapping views in reused cells)
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+
+        let messageView = InAppMessageView(elementId: "dashboard-announcement")
+
+        cell.contentView.addSubview(messageView)
+
+        messageView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            messageView.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
+            messageView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+            messageView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
+            messageView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
+        ])
+
+        messageView.delegate = self
+
+        return cell
+    }
+}
+
+extension FullScreenTableViewController: InAppMessageViewDelegate {
+    func onHeightUpdate(newHeight: CGFloat) {
+        // Update the height of the cell
+        tableView.beginUpdates()
+        tableView.endUpdates()
     }
 }

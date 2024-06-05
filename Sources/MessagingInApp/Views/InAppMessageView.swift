@@ -2,6 +2,10 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
+public protocol InAppMessageViewDelegate: AnyObject {
+    func onHeightUpdate(newHeight: CGFloat)
+}
+
 /**
  View that can be added to a customer's app UI to display inline in-app messages.
 
@@ -19,6 +23,8 @@ import UIKit
  2. Position and set size of the View in app's UI. The View will adjust it's height automatically, but all other constraints are the responsibilty of app developer. You can set a height constraint if you want autolayout warnings to go away but know that the View will ignore this set height.
  */
 public class InAppMessageView: UIView {
+    public weak var delegate: InAppMessageViewDelegate?
+
     private var localMessageQueue: MessageQueueManager {
         DIGraphShared.shared.messageQueueManager
     }
@@ -84,6 +90,11 @@ public class InAppMessageView: UIView {
             Task { @MainActor in
                 self?.checkIfMessageAvailableToDisplay()
             }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            print("expiring message")
+            (Gist.shared.messageQueueManager as! MessageQueueManagerImpl).processFetchedMessages([]) // expire
         }
     }
 
@@ -151,7 +162,7 @@ public class InAppMessageView: UIView {
         // this function can be called multiple times in short period of time so we could be in the middle of 1 animation. Cancel the current one and start new.
         runningHeightChangeAnimation?.stopAnimation(true)
 
-        runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
+        runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 2.0, curve: .easeIn, animations: {
             self.viewHeightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
 
             // Since we modified constraint, perform a UI refresh to apply the change.
@@ -163,9 +174,12 @@ public class InAppMessageView: UIView {
             // ...If we call layoutIfNeeded on superview (UIStackView), the animation will not work as expected.
             // This is also why it's important that we do QA testing on the inline View when it's nested in a UIStackView.
             self.getRootSuperview()?.layoutIfNeeded()
+            self.delegate?.onHeightUpdate(newHeight: height)
         })
 
         runningHeightChangeAnimation?.startAnimation()
+
+//        delegate?.onHeightUpdate(newHeight: height)
     }
 }
 
