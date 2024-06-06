@@ -192,6 +192,22 @@ class InAppMessageViewTest: UnitTest {
         await simulateSdkFetchedMessages([Message.randomInline]) // simulate new message fetched
         XCTAssertFalse(isDisplayingInAppMessage(inlineView)) // expect ignore new message, stay dismissed.
     }
+
+    // MARK: close action button
+
+    @MainActor
+    func test_onCloseAction_givenCloseActionClickedOnInAppMessage_expectDismissInlineView() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage)
+        XCTAssertTrue(isDisplayingInAppMessage(inlineView))
+
+        await onCloseActionButtonPressed()
+
+        XCTAssertFalse(isDisplayingInAppMessage(inlineView))
+    }
 }
 
 extension InAppMessageViewTest {
@@ -203,6 +219,15 @@ extension InAppMessageViewTest {
         engineWebMock.delegate?.sizeChanged(width: 100, height: 100)
 
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    func onCloseActionButtonPressed() async {
+        // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        engineWebMock.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
+
+        // When onCloseAction() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
         await waitForMainThreadToFinishPendingTasks()
     }
 
