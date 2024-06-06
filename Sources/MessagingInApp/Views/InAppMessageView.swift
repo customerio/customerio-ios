@@ -178,4 +178,10 @@ extension InAppMessageView: InlineMessageManagerDelegate {
             self.animateHeight(to: height)
         }
     }
+
+    func onCloseAction() {
+        Task { @MainActor in
+            self.dismissInAppMessage()
+        }
+    }
 }

@@ -3,6 +3,7 @@ import Foundation
 // Callbacks specific to inline message events.
 protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
+    func onCloseAction()
 }
 
 /**
@@ -38,7 +39,7 @@ class InlineMessageManager: MessageManager {
     }
 
     override func onCloseAction() {
-        // Not yet implemented. Planned in future update.
+        inlineMessageDelegate?.onCloseAction()
     }
 }
 
