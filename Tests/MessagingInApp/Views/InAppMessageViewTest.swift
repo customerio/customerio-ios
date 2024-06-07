@@ -208,6 +208,23 @@ class InAppMessageViewTest: UnitTest {
 
         XCTAssertFalse(isDisplayingInAppMessage(inlineView))
     }
+
+    // Once an in-app message has been closed it will not be replaced with another message.
+    // We plan to change this behavior in the future. Test function can be modified to match the new behavior at that time.
+    @MainActor
+    func test_onCloseAction_givenMessageClosed_givenNewMessageFetched_expectIgnoreMessage() async {
+        let givenMessageThatGetsClosed = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessageThatGetsClosed]
+
+        let inlineView = InAppMessageView(elementId: givenMessageThatGetsClosed.elementId!)
+        await onDoneRenderingInAppMessage(givenMessageThatGetsClosed)
+        XCTAssertTrue(isDisplayingInAppMessage(inlineView))
+        await onCloseActionButtonPressed()
+        XCTAssertFalse(isDisplayingInAppMessage(inlineView))
+
+        await simulateSdkFetchedMessages([Message.randomInline]) // simulate new message fetched
+        XCTAssertFalse(isDisplayingInAppMessage(inlineView)) // expect ignore new message, stay dismissed.
+    }
 }
 
 extension InAppMessageViewTest {
