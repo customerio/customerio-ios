@@ -30,6 +30,9 @@ class IOSPushEventListener: PushEventHandler {
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
+
+            // We expect this function to only be called by a 3rd party SDK that forwarded the push event to our SDK.
+            // Call the completionHandler so the 3rd party SDK knows we are done processing it.
             completionHandler()
             return
         }
@@ -75,6 +78,11 @@ class IOSPushEventListener: PushEventHandler {
 
         guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
+
+            // We expect this function to only be called by a 3rd party SDK that forwarded the push event to our SDK.
+            // Call the completionHandler so the 3rd party SDK knows we are done processing it.
+            //
+            // For push notifications sent from CIO, the completionHandler return value is irrelevant. For those sent by third-party SDKs, it's up to that SDK to use the return value or not.
             completionHandler(false)
             return
         }
