@@ -30,6 +30,7 @@ class IOSPushEventListener: PushEventHandler {
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
+            completionHandler()
             return
         }
 
@@ -74,8 +75,7 @@ class IOSPushEventListener: PushEventHandler {
 
         guard !pushHistory.hasHandledPush(pushEvent: .willPresent, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
-
-            // See notes in didReceive function to learn more about this logic of exiting early when we already have handled a push.
+            completionHandler(false)
             return
         }
 
