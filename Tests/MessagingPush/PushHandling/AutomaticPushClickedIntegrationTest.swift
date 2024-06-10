@@ -230,6 +230,59 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
         pushClickHandler.assertDidNotHandlePushClick() // CIO SDK should not handle push.
     }
 
+    /*
+        Some 3rd party SDKs (such as rnfirebase) when they handle a push event, they call the async completionHandler more then one time. The CIO SDK expects to only
+     receive the completionHandler once, but it needs to handle the scenario where a 3rd party SDK calls it multiple times otherwise the SDK could crash.
+
+     References:
+     1. rnfirebase push event handler (RNFBMessagingUNUserNotificationCenter) can call the completionHandler twice:
+     https://github.com/invertase/react-native-firebase/blob/d849667a1b3614c4a938c1f2bea892758831b368/packages/messaging/ios/RNFBMessaging/RNFBMessaging%2BUNUserNotificationCenter.m#L139
+     https://github.com/invertase/react-native-firebase/blob/d849667a1b3614c4a938c1f2bea892758831b368/packages/messaging/ios/RNFBMessaging/RNFBMessaging%2BUNUserNotificationCenter.m#L143-L145 (when the CIO SDK gets called as original delegate)
+     */
+
+    func test_onPushAction_givenMultiplePushClickHandlers_thirdPartySdkCallsCompletionHandlerTwice_expectSdkDoesNotCrash() {
+        let givenPush = PushNotificationStub.getPushNotSentFromCIO()
+        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenPushClickAction = PushNotificationActionStub(push: givenPush, didClickOnPush: true)
+
+        let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
+        expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 1 // the other push click handler should only be called once, indicating an infinite loop is not created.
+        givenOtherPushHandler.onPushActionClosure = { _, onComplete in
+            expectOtherClickHandlerHandlesPush.fulfill()
+
+            onComplete() // First, call the completion handler.
+            self.performPushAction(givenPushClickAction, withCompletionHandler: onComplete) // Second, the CIO SDK will call it when it is called.
+        }
+        addOtherPushEventHandler(givenOtherPushHandler)
+
+        performPushAction(givenPushClickAction)
+
+        waitForExpectations()
+
+        // If the test succeeds without crashing and all expectations fulfilled, it's a successful test.
+    }
+
+    func test_shouldDisplayPushAppInForeground_givenMultiplePushClickHandlers_thirdPartySdkCallsCompletionHandlerTwice_expectSdkDoesNotCrash() {
+        let givenPush = PushNotificationStub.getPushNotSentFromCIO()
+        let givenOtherPushHandler = PushEventHandlerMock()
+
+        let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
+        expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 1 // the other push click handler should only be called once, indicating an infinite loop is not created.
+        givenOtherPushHandler.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
+            expectOtherClickHandlerHandlesPush.fulfill()
+
+            onComplete(false) // First, call the completion handler.
+            self.sendPushEventShouldShowPushAppInForeground(givenPush, withCompletionHandler: onComplete) // Second, the CIO SDK will call it when it is called.
+        }
+        addOtherPushEventHandler(givenOtherPushHandler)
+
+        sendPushEventShouldShowPushAppInForeground(givenPush)
+
+        waitForExpectations()
+
+        // If the test succeeds without crashing and all expectations fulfilled, it's a successful test.
+    }
+
     // MARK: local push notification support
 
     func test_givenClickOnLocalPush_expectEventHandled() {

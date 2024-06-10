@@ -50,6 +50,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // Each iteration of the loop waits for the push event to be processed by the delegate.
             for delegate in nestedDelegates.values {
                 await withCheckedContinuation { continuation in
+                    // Some SDKs, like the rn-firebase SDK (RNFBMessagingUNUserNotificationCenter), will call the completionHandler twice.
+                    // Handle that by only responding to the first call and ignoring the rest.
+                    var hasResumed = false
+
                     let nameOfDelegateClass: String = .init(describing: delegate)
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
@@ -57,9 +61,15 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
                     self.logger.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.onPushAction(pushAction) {
-                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+                        Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
+                            self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
 
-                        continuation.resume()
+                            if !hasResumed {
+                                hasResumed = true
+
+                                continuation.resume()
+                            }
+                        }
                     }
                 }
             }
@@ -91,6 +101,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // Each iteration of the loop waits for the push event to be processed by the delegate.
             for delegate in nestedDelegates.values {
                 await withCheckedContinuation { continuation in
+                    // Some SDKs, like the rn-firebase SDK (RNFBMessagingUNUserNotificationCenter), will call the completionHandler twice.
+                    // Handle that by only responding to the first call and ignoring the rest.
+                    var hasResumed = false
+
                     let nameOfDelegateClass: String = .init(describing: delegate)
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
@@ -98,13 +112,19 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
                     self.logger.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
-                        self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+                        Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
+                            self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
 
-                        if delegateShouldDisplayPushResult {
-                            shouldDisplayPush = true
+                            if !hasResumed {
+                                hasResumed = true
+
+                                if delegateShouldDisplayPushResult {
+                                    shouldDisplayPush = true
+                                }
+
+                                continuation.resume()
+                            }
                         }
-
-                        continuation.resume()
                     })
                 }
             }
