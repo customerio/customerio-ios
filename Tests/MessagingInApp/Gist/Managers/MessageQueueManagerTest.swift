@@ -61,7 +61,7 @@ class MessageQueueManagerTest: UnitTest {
 
         let actualMessages = manager.getInlineMessages(forElementId: givenElementId)
 
-        XCTAssertEqual(actualMessages.map(\.messageId), [givenMessage2.messageId, givenMessage1.messageId, givenMessage3.messageId])
+        XCTAssertEqual(actualMessages.map(\.id), [givenMessage2.id, givenMessage1.id, givenMessage3.id])
     }
 
     // MARK: - processFetchedMessages
