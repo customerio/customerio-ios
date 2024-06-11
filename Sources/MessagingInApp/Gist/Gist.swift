@@ -117,10 +117,6 @@ public class Gist: GistInstance, GistDelegate {
         delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 
-    public func embedMessage(message: Message, elementId: String) {
-        delegate?.embedMessage(message: message, elementId: elementId)
-    }
-
     func logMessageView(message: Message) {
         // This function body reports metrics and makes sure that messages are not shown 2+ times.
         // For inline messages, we have not yet implemented either of these features.

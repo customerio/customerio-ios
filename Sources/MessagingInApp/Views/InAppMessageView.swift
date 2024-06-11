@@ -27,6 +27,10 @@ public class InAppMessageView: UIView {
         DIGraphShared.shared.gist
     }
 
+    private var eventBus: EventBusHandler {
+        DIGraphShared.shared.eventBusHandler
+    }
+
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
@@ -82,6 +86,14 @@ public class InAppMessageView: UIView {
         heightConstraint.priority = .required
         heightConstraint.isActive = true
         layoutIfNeeded()
+
+        // Begin listening to the queue for new messages.
+        eventBus.addObserver(InAppMessagesFetchedEvent.self) { [weak self] _ in
+            // We are unsure what thread this code will run on. We want to ensure that the View is updated on the main thread.
+            Task { @MainActor in
+                self?.checkIfMessageAvailableToDisplay()
+            }
+        }
     }
 
     private func checkIfMessageAvailableToDisplay() {
@@ -92,6 +104,11 @@ public class InAppMessageView: UIView {
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
         guard let messageToDisplay = queueOfMessagesForGivenElementId.first else {
             return // no messages to display, exit early. In the future we will dismiss the View.
+        }
+
+        // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
+        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.queueId == messageToDisplay.queueId {
+            return // already showing this message, exit early.
         }
 
         displayInAppMessage(messageToDisplay)

@@ -25,6 +25,10 @@ class MessageQueueManagerImpl: MessageQueueManager {
         DIGraphShared.shared.gist
     }
 
+    private var eventBus: EventBusHandler {
+        DIGraphShared.shared.eventBusHandler
+    }
+
     func getInterval() -> Double {
         interval
     }
@@ -118,6 +122,10 @@ class MessageQueueManagerImpl: MessageQueueManager {
         for message in fetchedMessages {
             handleMessage(message: message)
         }
+
+        // Notify observers that a fetch has completed and the local queue has been modified.
+        // This is useful for inline Views that may need to display or dismiss messages.
+        eventBus.postEvent(InAppMessagesFetchedEvent())
     }
 
     private func handleMessage(message: Message) {
