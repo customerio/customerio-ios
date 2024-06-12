@@ -173,6 +173,81 @@ class InAppMessageViewTest: UnitTest {
         await simulateSdkFetchedMessages([Message.randomInline]) // simulate new message fetched
         XCTAssertFalse(isDisplayingInAppMessage(inlineView)) // expect ignore new message, stay dismissed.
     }
+
+    // MARK: Async fetching of in-app messages
+
+    // The in-app SDK fetches for new messages in the background in an async manner.
+    // We need to test that the View is updated when new messages are fetched.
+
+    func test_givenInAppMessageFetchedAfterViewConstructed_expectShowInAppMessageFetched() {
+        // start with no messages available.
+        queueMock.getInlineMessagesReturnValue = []
+
+        let view = InAppMessageView(elementId: .random)
+        XCTAssertNil(getInAppMessageWebView(fromInlineView: view))
+
+        // Modify queue to return a message after the UI has been constructed and not showing a WebView.
+        simulateSdkFetchedMessages([Message.random])
+
+        XCTAssertNotNil(getInAppMessageWebView(fromInlineView: view))
+    }
+
+    // Test that the eventbus listening does not impact memory management of the View instance.
+    func test_deinit_givenObservingEventBusEvent_expectNoMemoryLeaks() {
+        // Before we try to deinit the View, make sure the eventbus observer has executed at least once.
+        // This is important if the observer holds a strong reference to something preventing the View deinit.
+        let expectToCheckIfInAppMessagesAvailableToDisplay = expectation(description: "expect to check for in-app messages")
+        expectToCheckIfInAppMessagesAvailableToDisplay.expectedFulfillmentCount = 2 // once on View init() and once on observer action.
+        queueMock.getInlineMessagesClosure = { _ in
+            expectToCheckIfInAppMessagesAvailableToDisplay.fulfill()
+            return []
+        }
+
+        var view: InAppMessageView? = InAppMessageView(elementId: .random)
+
+        DIGraphShared.shared.eventBusHandler.postEvent(InAppMessagesFetchedEvent())
+
+        // Wait for the observer to be called.
+        waitForExpectations()
+
+        // Deinit the View and asert deinit actually cleared the instance.
+        view = nil
+        XCTAssertNil(view)
+    }
+
+    func test_givenAlreadyShowingInAppMessage_whenNewMessageFetched_expectDoNotReplaceContents() {
+        let givenOldInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenOldInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenOldInlineMessage.elementId!)
+        let webViewBeforeFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        // Make sure message is unique, but has same elementId.
+        let givenNewInlineMessage = Message(messageId: .random, campaignId: .random, elementId: givenOldInlineMessage.elementId)
+
+        simulateSdkFetchedMessages([givenNewInlineMessage])
+
+        let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        // If the WebViews are different, it means the message was reloaded.
+        XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
+    }
+
+    func test_givenAlreadyShowingMessage_whenSameMessageFetched_expectDoNotReloadTheMessageAgain() {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+
+        let webViewBeforeFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        simulateSdkFetchedMessages([givenInlineMessage])
+
+        let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        // If the WebViews are the same instance, it means the message was not reloaded.
+        XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
+    }
 }
 
 extension InAppMessageViewTest {
