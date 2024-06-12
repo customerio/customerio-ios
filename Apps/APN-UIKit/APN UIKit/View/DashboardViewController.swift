@@ -39,8 +39,8 @@ class DashboardViewController: BaseViewController {
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
         let newInlineViewUsingUIAsCode = InAppMessageView(elementId: "dashboard-announcement-code")
-        // Because the Dashboard screen contains a lot of Views and it's designed using Storyboard, we are
-        // adding this inline View into the UI by adding to a StackView. This allows us to dyanamically add to the Dashboard screen without complexity or breaking any of the constraints set in Storyboard.
+        // Add the View to the screen.
+        // It's important that we test inline Views that are nested in a UIStackView. See comments in inline View code to learn more.
         buttonStackView.addArrangedSubview(newInlineViewUsingUIAsCode)
 
         // Customers are responsible for setting the width of the View.
