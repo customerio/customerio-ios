@@ -1,3 +1,9 @@
+## [2.13.1](https://github.com/customerio/customerio-ios/compare/2.13.0...2.13.1) (2024-06-12)
+
+### Bug Fixes
+
+* 3rd party SDK compatibility when SDK forwards push events back to us ([#735](https://github.com/customerio/customerio-ios/issues/735)) ([b0a7772](https://github.com/customerio/customerio-ios/commit/b0a7772e85864c7d9e4294858dcde0bc3175f75f))
+
 ## [2.13.0](https://github.com/customerio/customerio-ios/compare/2.12.5...2.13.0) (2024-04-10)
 
 
