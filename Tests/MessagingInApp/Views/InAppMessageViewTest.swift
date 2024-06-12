@@ -138,6 +138,25 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
     }
 
+    @MainActor
+    func test_givenAlreadyShowingInAppMessage_whenNewMessageFetched_expectDoNotReplaceContents() async {
+        let givenOldInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenOldInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenOldInlineMessage.elementId!)
+        let webViewBeforeFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        // Make sure message is unique, but has same elementId.
+        let givenNewInlineMessage = Message(messageId: .random, campaignId: .random, elementId: givenOldInlineMessage.elementId)
+
+        await simulateSdkFetchedMessages([givenNewInlineMessage])
+
+        let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
+
+        // If the WebViews are different, it means the message was reloaded.
+        XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
+    }
+
     // MARK: expiration of in-app messages
 
     @MainActor

@@ -67,7 +67,7 @@ public class InAppMessageView: UIView {
     private func setupView() {
         // Customer did not set a height constraint. Create one so the View has one.
         // It's important to have only 1 active constraint for height or UIKit will ignore some constraints.
-        // Try to re-use a constraint is one is already added instead of replacing it. Some scenarios such as
+        // Try to re-use a constraint if one is already added instead of replacing it. Some scenarios such as
         // when UIView is nested in a UIStackView and distribution is .fillProportionally, the height constraint StackView adds is important to keep.
         if viewHeightConstraint == nil {
             heightAnchor.constraint(equalToConstant: 0).isActive = true
@@ -104,7 +104,7 @@ public class InAppMessageView: UIView {
 
     private func displayInAppMessage(_ message: Message) {
         // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
-        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.queueId == messageToDisplay.queueId {
+        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.queueId == message.queueId {
             return // already showing this message, exit early.
         }
 
