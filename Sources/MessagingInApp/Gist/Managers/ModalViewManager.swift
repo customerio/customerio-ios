@@ -52,6 +52,11 @@ class ModalViewManager {
         viewController.view.isHidden = false
     }
 
+    // Like dismiss, but no animation. Instantly removes the view from the screen.
+    func cancel() {
+        removeModalViewFromScreen()
+    }
+
     func dismissModalView(completionHandler: @escaping () -> Void) {
         var finalPosition: CGFloat = 0
         switch position {
@@ -69,16 +74,21 @@ class ModalViewManager {
             UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
                 self.viewController.view.center.y = finalPosition
             }, completion: { _ in
-                self.window?.isHidden = false
-                self.viewController.removeFromParent()
-                self.window = nil
+                self.removeModalViewFromScreen()
 
                 completionHandler()
             })
         })
     }
 
-    func getUIWindow() -> UIWindow {
+    private func removeModalViewFromScreen() {
+        viewController?.view.isHidden = true
+        window?.isHidden = true
+        viewController.removeFromParent()
+        window = nil
+    }
+
+    private func getUIWindow() -> UIWindow {
         var modalWindow = UIWindow(frame: UIScreen.main.bounds)
         if #available(iOS 13.0, *) {
             for connectedScene in UIApplication.shared.connectedScenes

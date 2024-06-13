@@ -58,7 +58,24 @@ public class Gist: GistDelegate {
             return // ignore request, route has not changed.
         }
 
-        cancelLoadingModalMessage()
+        // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
+        // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
+        if let messageManager = getModalMessageManager() {
+            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
+
+            if modalMessageLoadingOrDisplayed.doesHavePageRule() {
+                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+
+                // Stop showing the current message synchronously meaning to remove from UI instantly.
+                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
+                messageManager.cancelShowingMessage()
+
+                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
+                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
+            }
+        }
+
         RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
     }
@@ -137,30 +154,6 @@ public class Gist: GistDelegate {
                     Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
                 }
             }
-    }
-
-    // If someone sets a page rule on a message, they want the message to show on that screen. Because messages can take multiple seconds to finish rendering, there is a chance that
-    // a user navigates away fron a screen when the rendering finishes. To fix this, cancel showing a modal message if a message is still loading.
-    //
-    // Like dismiss message, but does not call event listener.
-    // Dismiss the currently shown message, if there is one, and then remove message manager allowing us to show a message again in the future.
-    func cancelLoadingModalMessage() {
-        guard let messageManagerToCancel = getModalMessageManager() else {
-            return // no message being shown or loading.
-        }
-        let currentMessage = messageManagerToCancel.currentMessage
-
-        guard currentMessage.gistProperties.routeRule != nil else {
-            // The message does not have page rules setup so do not cancel showing it. Let it proceed.
-            return
-        }
-
-        Logger.instance.debug(message: "Cancelled showing message with id: \(currentMessage.messageId). Will try to show message again in future.")
-
-        removeMessageManager(instanceId: currentMessage.instanceId) // allows us to display a message in the future. Important to do this immediately instead of waiting for current message to dismiss.
-
-        // dismiss to smoothly transition off screen.
-        messageManagerToCancel.cancelShowingMessage()
     }
 
     // Message Manager

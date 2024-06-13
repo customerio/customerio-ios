@@ -92,3 +92,9 @@ public class Message {
         return engineRoute
     }
 }
+
+extension Message {
+    func doesHavePageRule() -> Bool {
+        gistProperties.routeRule != nil
+    }
+}
