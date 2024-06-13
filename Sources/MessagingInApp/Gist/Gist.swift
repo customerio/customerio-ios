@@ -4,7 +4,7 @@ import UIKit
 public class Gist: GistDelegate {
     var messageQueueManager = MessageQueueManager()
     var shownMessageQueueIds: Set<String> = []
-    private var messageManagers: [MessageManager] = []
+    var messageManagers: [MessageManager] = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
@@ -32,7 +32,11 @@ public class Gist: GistDelegate {
     func reset() {
         clearUserToken()
         messageQueueManager = MessageQueueManager()
-        messageManagers = []
+
+        for messageManager in messageManagers {
+            removeMessageManager(instanceId: messageManager.currentMessage.instanceId)
+        }
+
         RouteManager.clearCurrentRoute()
     }
 

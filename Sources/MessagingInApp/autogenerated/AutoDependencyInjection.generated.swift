@@ -61,6 +61,9 @@ extension DIGraphShared {
         _ = inAppProvider
         countDependenciesResolved += 1
 
+        _ = viewAnimationRunner
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -83,6 +86,16 @@ extension DIGraphShared {
 
     private var newInAppProvider: InAppProvider {
         GistInAppProvider()
+    }
+
+    // ViewAnimationRunner
+    var viewAnimationRunner: ViewAnimationRunner {
+        getOverriddenInstance() ??
+            newViewAnimationRunner
+    }
+
+    private var newViewAnimationRunner: ViewAnimationRunner {
+        ViewAnimationRunnerImpl()
     }
 }
 

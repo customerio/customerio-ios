@@ -10,9 +10,16 @@ import XCTest
 open class IntegrationTest: UnitTest {
     // Use minimal mocks/stubs in integration tests to closely match production behavior.
 
+    var viewAnimationRunnerStub: ViewAnimationRunnerStub!
+
     override open func initializeSDKComponents() -> MessagingInAppInstance? {
         // Initialize and configure MessagingPush for testing to closely resemble actual app setup
         MessagingInApp.setUpSharedInstanceForIntegrationTest(diGraphShared: diGraphShared, config: messagingInAppConfigOptions)
+
+        viewAnimationRunnerStub = ViewAnimationRunnerStub()
+
+        // Disables UIKit animations to make tests run instantly and synchronously. Making tests faster, easier to write, and more reliable.
+        diGraphShared.override(value: viewAnimationRunnerStub, forType: ViewAnimationRunner.self)
 
         return MessagingInApp.shared
     }

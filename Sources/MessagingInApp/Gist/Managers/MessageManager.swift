@@ -11,7 +11,7 @@ class MessageManager: EngineWebDelegate {
     private let siteId: String
     private var messagePosition: MessagePosition = .top
     var messageLoaded = false
-    private var modalViewManager: ModalViewManager?
+    var modalViewManager: ModalViewManager?
     var isMessageEmbed = false
     let currentMessage: Message
     var gistView: GistView!

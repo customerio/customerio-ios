@@ -47,6 +47,48 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         XCTAssertFalse(didCallGlobalEventListener)
     }
 
+    func test_givenNavigateToDifferentScreenWhileMessageAnimatingIntoView_expectDoNotShowModalMessage() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+        ]
+
+        let expectToBeginAnimation = expectation(description: "Begin animation")
+        viewAnimationRunnerStub.animateClosure = { _ in
+            expectToBeginAnimation.fulfill()
+            // do not call completion handler to not finish the animation.
+        }
+
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        waitForExpectations() // asseret that the animation has begun before we move screens
+
+        navigateToScreen(screenName: "Settings") // during animation, we navigate to another screen.
+
+        XCTAssertFalse(isCurrentlyLoadingMessage)
+        XCTAssertNil(currentlyShownModalMessage)
+        XCTAssertFalse(didCallGlobalEventListener)
+    }
+
+    func test_givenNavigateToDifferentScreenAfterMessageDisplayed_expectDoNotShowModalMessage() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+        ]
+
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        XCTAssertEqual(currentlyShownModalMessage?.instanceId, givenMessages[0].instanceId)
+
+        navigateToScreen(screenName: "Settings")
+
+        XCTAssertFalse(isCurrentlyLoadingMessage)
+        XCTAssertNil(currentlyShownModalMessage)
+        XCTAssertFalse(didCallGlobalEventListener)
+    }
+
     func test_givenUserStillOnSameScreenAfterMessageLoads_expectShowModalMessage() {
         navigateToScreen(screenName: "Home")
 
@@ -132,15 +174,22 @@ extension MessagingInAppIntegrationTest {
         return true
     }
 
+    /*
+     The goal of this function is to determine the message that is visible on the screen to the user.
+     To try and make the tests the most accurate, access the currently displayed message from the UI layer of the code instead of business logic.
+     */
     var currentlyShownModalMessage: Message? {
-        guard let messageManager = Gist.shared.getModalMessageManager() else {
-            return nil // no modal message shown or loading
+        // Unfortunately, this method of determining visible modals is not 100% reliable because it still uses the view manager to access the
+        // currently visible ViewController. It would be best if we could directly talk to UIKit to access the currently visible ViewController but that's not
+        // possible with the current implementation of displaying and dismissing modals in the SDK.
+        guard let modalViewManager = Gist.shared.getModalMessageManager()?.modalViewManager else {
+            return nil
         }
-        if !messageManager.isShowingMessage {
-            return nil // message not loaded yet.
+        if !modalViewManager.isShowingMessage {
+            return nil
         }
 
-        return messageManager.currentMessage
+        return modalViewManager.viewController.gistView.message
     }
 
     var didCallGlobalEventListener: Bool {
