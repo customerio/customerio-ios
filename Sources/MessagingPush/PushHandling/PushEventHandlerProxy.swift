@@ -62,7 +62,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     delegate.onPushAction(pushAction) {
                         Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
-                            self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+                            self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
 
                             if !hasResumed {
                                 hasResumed = true
@@ -113,7 +113,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
                         Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
-                            self.logger?.info("Received async completion handler from \(nameOfDelegateClass).")
+                            self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
 
                             if !hasResumed {
                                 hasResumed = true
