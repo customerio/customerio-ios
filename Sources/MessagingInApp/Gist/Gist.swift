@@ -43,6 +43,7 @@ public class Gist: GistDelegate {
     }
 
     public func clearUserToken() {
+        cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
         UserManager().clearUserToken()
         messageQueueManager.clearUserMessagesFromLocalStore()
     }
@@ -58,23 +59,7 @@ public class Gist: GistDelegate {
             return // ignore request, route has not changed.
         }
 
-        // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
-        // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
-        if let messageManager = getModalMessageManager() {
-            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
-
-            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: currentRoute) {
-                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
-
-                // Stop showing the current message synchronously meaning to remove from UI instantly.
-                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
-                messageManager.cancelShowingMessage()
-
-                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
-                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
-            }
-        }
+        cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
 
         RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
@@ -154,6 +139,26 @@ public class Gist: GistDelegate {
                     Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
                 }
             }
+    }
+
+    // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
+    // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
+    private func cancelModalMessage(ifDoesNotMatchRoute newRoute: String) {
+        if let messageManager = getModalMessageManager() {
+            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
+
+            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
+                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+
+                // Stop showing the current message synchronously meaning to remove from UI instantly.
+                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
+                messageManager.cancelShowingMessage()
+
+                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
+                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
+            }
+        }
     }
 
     // Message Manager

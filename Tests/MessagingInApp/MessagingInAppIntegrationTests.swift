@@ -141,6 +141,40 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         // because the message is identical, it was not canceled when the page route changed.
         XCTAssertEqual(messageShownBeforeNavigate?.instanceId, currentlyShownModalMessage?.instanceId)
     }
+
+    // MARK: clearUserToken
+
+    // Code that runs when the profile is logged out of the SDK
+
+    func test_clearUserToken_givenModalMessageShown_givenModalHasPageRuleSet_expectDismissModal() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
+        ]
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        XCTAssertNotNil(currentlyShownModalMessage)
+
+        Gist.shared.clearUserToken()
+
+        XCTAssertNil(currentlyShownModalMessage)
+    }
+
+    func test_clearUserToken_givenModalMessageShown_givenModalHasNoPageRuleSet_expectDoNotDismissModal() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: nil)
+        ]
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        XCTAssertNotNil(currentlyShownModalMessage)
+
+        Gist.shared.clearUserToken()
+
+        XCTAssertNotNil(currentlyShownModalMessage)
+    }
 }
 
 extension MessagingInAppIntegrationTest {
