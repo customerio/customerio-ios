@@ -175,6 +175,63 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         XCTAssertNotNil(currentlyShownModalMessage)
     }
+
+    // MARK: action buttons
+
+    func test_onCloseButton_expectShowNextMessageInQueue() {
+        XCTSkip("The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(pageRule: "^(Home)$"),
+            Message(pageRule: "^(Home)$"),
+            Message(pageRule: nil)
+        ]
+
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+
+        onCloseActionButtonPressed()
+
+        doneLoadingMessage(givenMessages[1])
+
+        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[1].queueId)
+
+        onCloseActionButtonPressed()
+
+        doneLoadingMessage(givenMessages[2])
+
+        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[2].queueId)
+
+        onCloseActionButtonPressed()
+
+        XCTAssertNil(currentlyShownModalMessage)
+    }
+
+    func test_onCloseButton_givenNextMessageDoesNotMatchPageRule_expectDoNotShowNextMessageInQueue() {
+        XCTSkip("The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(pageRule: "^(Home)$"),
+            Message(pageRule: "^(Settings)$") // expect to not show this message on close.
+        ]
+
+        onDoneFetching(messages: givenMessages)
+        doneLoadingMessage(givenMessages[0])
+        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+
+        onCloseActionButtonPressed()
+
+        XCTAssertFalse(isCurrentlyLoadingMessage) // expect to not being loading a new message.
+
+        navigateToScreen(screenName: "Settings")
+
+        XCTAssertTrue(isCurrentlyLoadingMessage) // When page rule matches, we expect to load new message.
+    }
 }
 
 extension MessagingInAppIntegrationTest {
@@ -214,5 +271,11 @@ extension MessagingInAppIntegrationTest {
 
     func doneLoadingMessage(_ message: Message) {
         engineWebMock.underlyingDelegate?.routeLoaded(route: message.messageId)
+    }
+
+    func onCloseActionButtonPressed() {
+        // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        engineWebMock.underlyingDelegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
     }
 }

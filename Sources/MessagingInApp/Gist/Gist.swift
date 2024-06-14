@@ -112,6 +112,8 @@ public class Gist: GistDelegate {
         Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
+
+        messageQueueManager.fetchUserMessagesFromLocalStore()
     }
 
     public func messageError(message: Message) {
