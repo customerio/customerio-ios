@@ -48,7 +48,10 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         eventBusHandler.addObserver(ResetEvent.self) { _ in
             self.logger.debug("removing profile for in-app")
 
-            self.inAppProvider.clearIdentify()
+            // Gist may dismiss a modal if it's displayed. Run on main thread to call UI code.
+            self.threadUtil.runMain {
+                self.inAppProvider.clearIdentify()
+            }
         }
     }
 
