@@ -63,7 +63,7 @@ public class Gist: GistDelegate {
         if let messageManager = getModalMessageManager() {
             let modalMessageLoadingOrDisplayed = messageManager.currentMessage
 
-            if modalMessageLoadingOrDisplayed.doesHavePageRule() {
+            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: currentRoute) {
                 // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
                 Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
 
