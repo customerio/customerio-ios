@@ -178,8 +178,9 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
     // MARK: action buttons
 
-    func test_onCloseButton_expectShowNextMessageInQueue() {
-        XCTSkip("The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+    func test_onCloseButton_expectShowNextMessageInQueue() throws {
+        // The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+        try skipRunningTest()
 
         navigateToScreen(screenName: "Home")
 
@@ -210,8 +211,9 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         XCTAssertNil(currentlyShownModalMessage)
     }
 
-    func test_onCloseButton_givenNextMessageDoesNotMatchPageRule_expectDoNotShowNextMessageInQueue() {
-        XCTSkip("The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+    func test_onCloseButton_givenNextMessageDoesNotMatchPageRule_expectDoNotShowNextMessageInQueue() throws {
+        // The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
+        try skipRunningTest()
 
         navigateToScreen(screenName: "Home")
 
