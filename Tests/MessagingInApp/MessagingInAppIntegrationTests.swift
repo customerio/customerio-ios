@@ -32,7 +32,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
 
         onDoneFetching(messages: givenMessages)
@@ -93,7 +93,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
         onDoneFetching(messages: givenMessages)
         XCTAssertTrue(isCurrentlyLoadingMessage)
@@ -108,7 +108,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random)
+            Message(pageRule: nil)
         ]
         onDoneFetching(messages: givenMessages)
         XCTAssertTrue(isCurrentlyLoadingMessage)
@@ -118,7 +118,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         doneLoadingMessage(givenMessages[0])
 
-        XCTAssertNotNil(currentlyShownModalMessage)
+        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
         XCTAssertFalse(didCallGlobalEventListener)
     }
 
@@ -126,7 +126,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
         onDoneFetching(messages: givenMessages)
         XCTAssertTrue(isCurrentlyLoadingMessage)
@@ -147,7 +147,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
         onDoneFetching(messages: givenMessages)
 
@@ -159,6 +159,29 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         XCTAssertNotNil(currentlyShownModalMessage)
         XCTAssertFalse(didCallGlobalEventListener)
+    }
+
+    // page routes can contain regex which could make the message match the next screen navigated to.
+    func test_givenChangedRouteButMessageStillMatchesNewRoute_expectDoNotDismissModal() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$")
+        ]
+        onDoneFetching(messages: givenMessages)
+
+        doneLoadingMessage(givenMessages[0])
+
+        XCTAssertNotNil(currentlyShownModalMessage)
+
+        let messageShownBeforeNavigate = currentlyShownModalMessage
+
+        navigateToScreen(screenName: "HomeSettings")
+
+        XCTAssertNotNil(currentlyShownModalMessage)
+
+        // because the message is identical, it was not canceled when the page route changed.
+        XCTAssertEqual(messageShownBeforeNavigate?.instanceId, currentlyShownModalMessage?.instanceId)
     }
 }
 
