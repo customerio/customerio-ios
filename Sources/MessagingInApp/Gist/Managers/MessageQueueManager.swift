@@ -122,17 +122,10 @@ class MessageQueueManager {
 
         let position = message.gistProperties.position
 
-        if let routeRule = message.gistProperties.routeRule {
-            let cleanRouteRule = routeRule.replacingOccurrences(of: "\\", with: "/")
-            if let regex = try? NSRegularExpression(pattern: cleanRouteRule) {
-                let range = NSRange(location: 0, length: Gist.shared.getCurrentRoute().utf16.count)
-                if regex.firstMatch(in: Gist.shared.getCurrentRoute(), options: [], range: range) == nil {
-                    Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanRouteRule)")
-                    return // exit early to not show the message since page rule doesnt match
-                }
-            } else {
-                Logger.instance.info(message: "Problem processing route rule message regex: \(cleanRouteRule)")
-                return // exit early to not show the message since we cannot parse the page rule for message.
+        if message.doesHavePageRule(), let cleanPageRule = message.cleanPageRule {
+            if !message.doesPageRuleMatch(route: Gist.shared.getCurrentRoute()) {
+                Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanPageRule)")
+                return // exit early to not show the message since page rule doesnt match
             }
         }
 
