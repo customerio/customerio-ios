@@ -1,7 +1,11 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-class GistModalViewController: UIViewController, GistViewDelegate {
+/*
+ Important that automatic screenview events are not tracked when Modal is showing on screen. Automatic screenview events sets the page rule route in the in-app SDK. When the page rule route changes, our SDK performs logic such as dismissing in-app messages.
+ */
+class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScreenViewEvent {
     var currentHeight: CGFloat = 0.0
     weak var gistView: GistView!
     var position: MessagePosition!
