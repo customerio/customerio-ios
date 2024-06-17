@@ -1,3 +1,9 @@
+## [3.3.0](https://github.com/customerio/customerio-ios/compare/3.2.3...3.3.0) (2024-06-17)
+
+### Features
+
+* do not show modal message if change screens and page rule enabled ([#731](https://github.com/customerio/customerio-ios/issues/731)) ([cb1d014](https://github.com/customerio/customerio-ios/commit/cb1d014d52f7c53af6650e185857ba0e5468db49))
+
 ## [3.2.3](https://github.com/customerio/customerio-ios/compare/3.2.2...3.2.3) (2024-06-13)
 
 ### Bug Fixes
