@@ -37,7 +37,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     }
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
-        nestedDelegates[String(describing: newHandler)] = newHandler
+        nestedDelegates[newHandler.identifier] = newHandler
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {

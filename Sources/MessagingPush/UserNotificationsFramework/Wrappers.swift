@@ -120,6 +120,10 @@ public struct UNNotificationWrapper: PushNotification {
 class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
     private let delegate: UNUserNotificationCenterDelegate
 
+    var identifier: String {
+        String(describing: delegate)
+    }
+
     init(delegate: UNUserNotificationCenterDelegate) {
         self.delegate = delegate
     }
