@@ -69,13 +69,13 @@ class MessageManager: EngineWebDelegate {
     }
 
     func cancelShowingMessage() {
-        if messageLoaded {
-            return // if message has already finished loading, do not cancel. Keep it shown.
+        guard let modalViewManager = modalViewManager else {
+            return // no message being shown to cancel
         }
 
         engine.delegate = nil // to make sure we do not get a callback when message loaded and we try to show it.
 
-        dismissMessage() // to gracefully animate the removal of modal from UI if it began to show before.
+        modalViewManager.cancel()
     }
 
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
