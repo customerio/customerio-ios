@@ -92,3 +92,44 @@ public class Message {
         return engineRoute
     }
 }
+
+extension Message {
+    func doesHavePageRule() -> Bool {
+        gistProperties.routeRule != nil
+    }
+
+    var cleanPageRule: String? {
+        guard let routeRule = gistProperties.routeRule else {
+            return nil
+        }
+        return routeRule.replacingOccurrences(of: "\\", with: "/")
+    }
+
+    /*
+     The HTTP response to get messages formats the page rules as regex.
+
+     You can expect to see the following options.
+     1. In Fly, if you use "Contains", the page rule will be formatted as ^(.*home.*)$ where "home" is what is entered in as the page rule. No matter if wildcards are used before or after "home" in Fly, the pattern will always be formatted as ^(.*N.*)$
+     2. In Fly, if you use "Equals", the page rule will be formatted as ^(home)$ where "home" is what is entered in as the page rule. If wildcards are entered, they will be included in the pattern. Example: "home*" will be formatted as ^(home.*)$
+
+     You can also use "OR" in Fly.
+     Example OR: `^(home)|(settings)$`, if "home" and "settings" are entered in as the page rule using equals.
+     */
+    func doesPageRuleMatch(route: String) -> Bool {
+        guard let cleanRouteRule = cleanPageRule else {
+            return false
+        }
+
+        if let regex = try? NSRegularExpression(pattern: cleanRouteRule) {
+            let range = NSRange(location: 0, length: route.utf16.count)
+            if regex.firstMatch(in: route, options: [], range: range) == nil {
+                return false // exit early to not show the message since page rule doesnt match
+            }
+        } else {
+            Logger.instance.info(message: "Problem processing route rule message regex: \(cleanRouteRule)")
+            return false // exit early to not show the message since we cannot parse the page rule for message.
+        }
+
+        return true
+    }
+}
