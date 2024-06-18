@@ -27,7 +27,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     public static let shared = PushEventHandlerProxyImpl()
 
     // Use a map so that we only save 1 instance of a given handler.
-    @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
+    @Atomic var nestedDelegates: [String: PushEventHandler] = [:]
 
     private let logger: Logger?
 
