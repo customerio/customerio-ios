@@ -106,8 +106,8 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     // Important to test that 2+ 3rd party push handlers for some use cases.
     func test_givenMultiplePushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
-        let expectOtherPushHandlersCalled = expectation(description: "Receive a callback")
-        expectOtherPushHandlersCalled.expectedFulfillmentCount = 2
+        let expectHandler1Called = expectation(description: "Receive a callback")
+        let expectHandler2Called = expectation(description: "Receive a callback")
 
         // In order to add 2+ push handlers to SDK, each class needs to have a unique name.
         // The SDK only accepts unique push event handlers. Creating this class makes each push handler unique.
@@ -116,11 +116,11 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
         let givenOtherPushHandler1 = PushEventHandlerMock()
         let givenOtherPushHandler2 = PushEventHandlerMock2()
         givenOtherPushHandler1.onPushActionClosure = { _, onComplete in
-            expectOtherPushHandlersCalled.fulfill()
+            expectHandler1Called.fulfill()
             onComplete()
         }
         givenOtherPushHandler2.onPushActionClosure = { _, onComplete in
-            expectOtherPushHandlersCalled.fulfill()
+            expectHandler2Called.fulfill()
             onComplete()
         }
         addOtherPushEventHandler(givenOtherPushHandler1)
