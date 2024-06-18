@@ -67,7 +67,11 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
             name: "push clicked",
-            data: ["push": response.notification.request.content.userInfo]
+            data: ["push": [
+                "title": response.notification.request.content.title,
+                "body": response.notification.request.content.body,
+                "userInfo": response.notification.request.content.userInfo
+            ]]
         )
 
         completionHandler()
@@ -76,7 +80,19 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // For QA testing, it's suggested to not implement this optional function.
     // The SDK contains logic that handles when this optional function is implemented in a host iOS app, or not. Do not implement it to test the use case.
     //
-//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        CustomerIO.shared.track(
+            name: "push should show app in foreground",
+            data: ["push": [
+                "title": notification.request.content.title,
+                "body": notification.request.content.body,
+                "userInfo": notification.request.content.userInfo
+            ]]
+        )
+
+        completionHandler([.banner, .badge, .sound])
+    }
 }
 
 extension AppDelegate: InAppEventListener {

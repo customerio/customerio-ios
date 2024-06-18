@@ -124,6 +124,15 @@ struct DashboardView: View {
                             }
                         }
                     }.setAppiumId("Show Push Prompt Button")
+
+                    ColorButton("Send local push") {
+                        let content = UNMutableNotificationContent()
+                        content.title = "local push"
+                        content.body = "Try clicking me and see host app handle the push instead of Customer.io SDK"
+                        let request = UNNotificationRequest(identifier: "local-push-not-from-cio", content: content, trigger: nil)
+                        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+                    }.setAppiumId("Send Local Push Button")
+
                     ColorButton("Logout") {
                         CustomerIO.shared.clearIdentify()
 
