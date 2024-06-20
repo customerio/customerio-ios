@@ -117,8 +117,14 @@ public struct UNNotificationWrapper: PushNotification {
     }
 }
 
-class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
+class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringConvertible {
     private let delegate: UNUserNotificationCenterDelegate
+
+    var description: String {
+        let nestedDelegateDescription = String(describing: delegate)
+
+        return "Cio.NotificationCenterDelegateWrapper(\(nestedDelegateDescription))"
+    }
 
     var identifier: String {
         String(describing: delegate)
