@@ -1587,10 +1587,49 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
         }
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingInAppUserQueueFetchCachedResponse: Data? = nil
+    /// `true` if the getter or setter of property is called at least once.
+    public var inAppUserQueueFetchCachedResponseCalled: Bool {
+        inAppUserQueueFetchCachedResponseGetCalled || inAppUserQueueFetchCachedResponseSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var inAppUserQueueFetchCachedResponseGetCalled: Bool {
+        inAppUserQueueFetchCachedResponseGetCallsCount > 0
+    }
+
+    public var inAppUserQueueFetchCachedResponseGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var inAppUserQueueFetchCachedResponseSetCalled: Bool {
+        inAppUserQueueFetchCachedResponseSetCallsCount > 0
+    }
+
+    public var inAppUserQueueFetchCachedResponseSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var inAppUserQueueFetchCachedResponse: Data? {
+        get {
+            mockCalled = true
+            inAppUserQueueFetchCachedResponseGetCallsCount += 1
+            return underlyingInAppUserQueueFetchCachedResponse
+        }
+        set(value) {
+            mockCalled = true
+            inAppUserQueueFetchCachedResponseSetCallsCount += 1
+            underlyingInAppUserQueueFetchCachedResponse = value
+        }
+    }
+
     public func resetMock() {
         pushDeviceToken = nil
         pushDeviceTokenGetCallsCount = 0
         pushDeviceTokenSetCallsCount = 0
+        inAppUserQueueFetchCachedResponse = nil
+        inAppUserQueueFetchCachedResponseGetCallsCount = 0
+        inAppUserQueueFetchCachedResponseSetCallsCount = 0
         deleteAllCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true

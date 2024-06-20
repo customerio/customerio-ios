@@ -18,7 +18,7 @@ open class UnitTestBase<Component>: XCTestCase {
     // Overriding it will work the same way as overriding the shared instance of the SDK.
     public let diGraphShared: DIGraphShared = .shared
     public var log: Logger { diGraphShared.logger }
-    public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
+    public lazy var globalDataStore: GlobalDataStore = diGraphShared.globalDataStore
 
     public let testSiteId = "testing"
     public var sdkConfig: SdkConfig!
