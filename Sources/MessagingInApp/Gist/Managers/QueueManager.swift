@@ -1,8 +1,10 @@
+import CioInternalCommon
 import Foundation
 
 class QueueManager {
     let siteId: String
     let dataCenter: String
+    var globalDataStore: GlobalDataStore = DIGraphShared.shared.globalDataStore
 
     init(siteId: String, dataCenter: String) {
         self.siteId = siteId
@@ -12,22 +14,30 @@ class QueueManager {
     func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
             try GistQueueNetwork(siteId: siteId, dataCenter: dataCenter, userToken: userToken)
-                .request(QueueEndpoint.getUserQueue, completionHandler: { response in
+                .request(QueueEndpoint.getUserQueue, completionHandler: { [weak self] response in
+                    guard let self = self else { return }
+
                     switch response {
                     case .success(let (data, response)):
                         self.updatePollingInterval(headers: response.allHeaderFields)
                         switch response.statusCode {
                         case 204:
+                            self.globalDataStore.inAppUserQueueFetchCachedResponse = nil
                             completionHandler(.success([]))
-                        case 304:
-                            // No changes to the remote queue, returning nil so we don't clear local store.
-                            completionHandler(.success(nil))
                         default:
+                            var httpResponseBody = data
+
+                            if response.statusCode == 304, let lastCachedResponse = self.globalDataStore.inAppUserQueueFetchCachedResponse {
+                                httpResponseBody = lastCachedResponse
+                            } else {
+                                self.globalDataStore.inAppUserQueueFetchCachedResponse = httpResponseBody
+                            }
+
                             do {
                                 var userQueue = [UserQueueResponse]()
                                 if let userQueueResponse =
                                     try JSONSerialization.jsonObject(
-                                        with: data,
+                                        with: httpResponseBody,
                                         options: .allowFragments
                                     ) as? [[String: Any?]] {
                                     userQueueResponse.forEach { item in
