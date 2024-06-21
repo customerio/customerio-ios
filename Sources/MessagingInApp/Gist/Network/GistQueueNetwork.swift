@@ -1,20 +1,25 @@
+import CioInternalCommon
 import Foundation
 
-class GistQueueNetwork {
-    let siteId: String
-    let dataCenter: String
-    let userToken: String?
+protocol GistQueueNetwork: AutoMockable {
+    func request(
+        siteId: String,
+        dataCenter: String,
+        userToken: String?,
+        request: GistNetworkRequest,
+        completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void
+    ) throws
+}
 
-    init(siteId: String, dataCenter: String, userToken: String? = nil) {
-        self.siteId = siteId
-        self.dataCenter = dataCenter
-        self.userToken = userToken
-    }
-
+// sourcery: InjectRegisterShared = "GistQueueNetwork"
+class GistQueueNetworkImpl: GistQueueNetwork {
     typealias GistNetworkResponse = (Data, HTTPURLResponse)
 
     func request(
-        _ request: GistNetworkRequest,
+        siteId: String,
+        dataCenter: String,
+        userToken: String?,
+        request: GistNetworkRequest,
         completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void
     ) throws {
         guard let baseURL = URL(string: Settings.Network.queueAPI) else {
