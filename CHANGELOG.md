@@ -1,3 +1,9 @@
+## [2.13.2](https://github.com/customerio/customerio-ios/compare/2.13.1...2.13.2) (2024-06-21)
+
+### Bug Fixes
+
+* differentiate every push event handler installed in app ([#743](https://github.com/customerio/customerio-ios/issues/743)) ([c3573fc](https://github.com/customerio/customerio-ios/commit/c3573fcc79b7dc540805e51e55aadc2f5e7d452b))
+
 ## [2.13.1](https://github.com/customerio/customerio-ios/compare/2.13.0...2.13.1) (2024-06-12)
 
 ### Bug Fixes
