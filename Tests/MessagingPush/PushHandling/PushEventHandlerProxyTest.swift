@@ -3,7 +3,7 @@ import Foundation
 import SharedTests
 import XCTest
 
-class PushEventHandlerProxyTest: UnitTest {
+class PushEventHandlerProxyTest: IntegrationTest {
     private var proxy: PushEventHandlerProxyImpl!
 
     override func setUp() {
@@ -12,13 +12,47 @@ class PushEventHandlerProxyTest: UnitTest {
         proxy = PushEventHandlerProxyImpl()
     }
 
+    // MARK: addPushEventHandler
+
+    func test_addPushEventHandler_givenMultipleNotificationCenterDelegateWrapperClasses_expectSaveBothDelegates() {
+        class Delegate1: NSObject, UNUserNotificationCenterDelegate {}
+        class Delegate2: NSObject, UNUserNotificationCenterDelegate {}
+
+        XCTAssertEqual(proxy.nestedDelegates.count, 0)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: Delegate1()))
+        XCTAssertEqual(proxy.nestedDelegates.count, 1)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: Delegate2()))
+        XCTAssertEqual(proxy.nestedDelegates.count, 2)
+    }
+
+    func test_addPushEventHandler_givenIdenticalNotificationCenterDelegates_expectSaveOnly1Delegate() {
+        class Delegate: NSObject, UNUserNotificationCenterDelegate {}
+
+        let instance = Delegate()
+
+        XCTAssertEqual(proxy.nestedDelegates.count, 0)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: instance))
+        XCTAssertEqual(proxy.nestedDelegates.count, 1)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: instance))
+        XCTAssertEqual(proxy.nestedDelegates.count, 1)
+    }
+
+    func test_addPushEventHandler_givenNewInstancesSameObjectNotificationCenterDelegateWrappers_expectSaveBothDelegate() {
+        class Delegate: NSObject, UNUserNotificationCenterDelegate {}
+
+        XCTAssertEqual(proxy.nestedDelegates.count, 0)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: Delegate()))
+        XCTAssertEqual(proxy.nestedDelegates.count, 1)
+        proxy.addPushEventHandler(UNUserNotificationCenterDelegateWrapper(delegate: Delegate()))
+        XCTAssertEqual(proxy.nestedDelegates.count, 2)
+    }
+
     // MARK: thread safety
 
     func test_onPushAction_ensureThreadSafetyCallingDelegates() {
         runTest(numberOfTimes: 100) { // Ensure no race conditions by running test many times.
-            let delegate1 = PushEventHandlerMock()
-            class PushEventHandlerMock2: PushEventHandlerMock {}
-            let delegate2 = PushEventHandlerMock2()
+            let delegate1 = getNewPushEventHandler()
+            let delegate2 = getNewPushEventHandler()
 
             let expectDelegatesReceiveEvent = expectation(description: "delegate1 received event")
             expectDelegatesReceiveEvent.expectedFulfillmentCount = 2 // 1 for each delegate. We do not care what order the delegates get called as long as all get called.
@@ -57,9 +91,8 @@ class PushEventHandlerProxyTest: UnitTest {
         runTest(numberOfTimes: 100) { // Ensure no race conditions by running test many times.
             let givenPush = PushNotificationStub.getPushSentFromCIO()
 
-            let delegate1 = PushEventHandlerMock()
-            class PushEventHandlerMock2: PushEventHandlerMock {}
-            let delegate2 = PushEventHandlerMock2()
+            let delegate1 = getNewPushEventHandler()
+            let delegate2 = getNewPushEventHandler()
 
             let expectDelegatesReceiveEvent = expectation(description: "delegate1 received event")
             expectDelegatesReceiveEvent.expectedFulfillmentCount = 2 // 1 for each delegate. We do not care what order the delegates get called as long as all get called.
@@ -114,7 +147,7 @@ class PushEventHandlerProxyTest: UnitTest {
         let push = PushNotificationStub.getPushSentFromCIO()
         var actual: Bool!
 
-        let handler = PushEventHandlerMock()
+        let handler = getNewPushEventHandler()
         handler.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             onComplete(true)
         }
@@ -138,7 +171,7 @@ class PushEventHandlerProxyTest: UnitTest {
 
         // First, test that `false` is the default return result.
 
-        let handler1 = PushEventHandlerMock()
+        let handler1 = getNewPushEventHandler()
         handler1.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             onComplete(false)
         }
@@ -155,8 +188,7 @@ class PushEventHandlerProxyTest: UnitTest {
 
         // Next, add another push handler that's return result is `true`.
         // We expect return result to now be `true`, since 1 handler returned `true`.
-        class PushEventHandlerMock2: PushEventHandlerMock {}
-        let handler2 = PushEventHandlerMock2()
+        let handler2 = getNewPushEventHandler()
         handler2.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             onComplete(true)
         }
@@ -171,8 +203,7 @@ class PushEventHandlerProxyTest: UnitTest {
         XCTAssertTrue(actual)
 
         // Finally, check that once 1 handler returns `true`, the return result is always `true`.
-        class PushEventHandlerMock3: PushEventHandlerMock {}
-        let handler3 = PushEventHandlerMock3()
+        let handler3 = getNewPushEventHandler()
         handler3.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             onComplete(false)
         }

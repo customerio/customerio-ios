@@ -52,7 +52,7 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
         var otherPushHandlerCalled = false
 
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         givenOtherPushHandler.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             otherPushHandlerCalled = true
 
@@ -70,7 +70,7 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
         let givenPush = PushNotificationStub.getPushSentFromCIO()
         let expectOtherPushHandlerCallbackCalled = expectation(description: "Expect other push handler callback called")
 
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         givenOtherPushHandler.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             // We expect that other push handler gets callback of push event from CIO push
             expectOtherPushHandlerCallbackCalled.fulfill()
@@ -95,12 +95,8 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
         let expectOtherPushHandlerCallbackCalled = expectation(description: "Expect other push handler callback called")
         expectOtherPushHandlerCallbackCalled.expectedFulfillmentCount = 2
 
-        // In order to add 2+ push handlers to SDK, each class needs to have a unique name.
-        // The SDK only accepts unique push event handlers. Creating this class makes each push handler unique.
-        class PushEventHandlerMock2: PushEventHandlerMock {}
-
-        let givenOtherPushHandler1 = PushEventHandlerMock()
-        let givenOtherPushHandler2 = PushEventHandlerMock2()
+        let givenOtherPushHandler1 = getNewPushEventHandler()
+        let givenOtherPushHandler2 = getNewPushEventHandler()
         givenOtherPushHandler1.shouldDisplayPushAppInForegroundClosure = { _, onComplete in
             expectOtherPushHandlerCallbackCalled.fulfill()
 
@@ -126,7 +122,7 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
 
         let expectOtherClickHandlerToGetCallback = expectation(description: "Receive a callback")
         let givenPush = PushNotificationStub.getPushSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
 
         givenOtherPushHandler.shouldDisplayPushAppInForegroundClosure = { _, _ in
             // Do not call completion handler.

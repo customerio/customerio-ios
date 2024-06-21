@@ -563,7 +563,45 @@ class PushEventHandlerMock: PushEventHandler, Mock {
         Mocks.shared.add(mock: self)
     }
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    var underlyingIdentifier: String!
+    /// `true` if the getter or setter of property is called at least once.
+    var identifierCalled: Bool {
+        identifierGetCalled || identifierSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    var identifierGetCalled: Bool {
+        identifierGetCallsCount > 0
+    }
+
+    var identifierGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    var identifierSetCalled: Bool {
+        identifierSetCallsCount > 0
+    }
+
+    var identifierSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    var identifier: String {
+        get {
+            mockCalled = true
+            identifierGetCallsCount += 1
+            return underlyingIdentifier
+        }
+        set(value) {
+            mockCalled = true
+            identifierSetCallsCount += 1
+            underlyingIdentifier = value
+        }
+    }
+
     public func resetMock() {
+        identifierGetCallsCount = 0
+        identifierSetCallsCount = 0
         onPushActionCallsCount = 0
         onPushActionReceivedArguments = nil
         onPushActionReceivedInvocations = []
