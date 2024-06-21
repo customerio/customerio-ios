@@ -7,7 +7,7 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
     var manager: MessageQueueManager!
 
     var sampleFetchResponseBody: String {
-        SampleDataFilesUtil(fileStore: diGraphShared.fileStorage).readFileContents(fileName: "fetch_response.json", subdirectory: "InAppUserQueue")
+        readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")
     }
 
     override func setUp() {

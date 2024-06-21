@@ -22,6 +22,10 @@ class QueueManager {
         self.dataCenter = dataCenter
     }
 
+    func clearCachedUserQueue() {
+        cachedFetchUserQueueResponse = nil
+    }
+
     func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
             try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { response in

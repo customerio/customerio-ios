@@ -196,4 +196,9 @@ open class UnitTestBase<Component>: XCTestCase {
             }
         }
     }
+
+    // You can store static files in Tests/Shared/SampleDataFiles and read those files with this function.
+    public func readSampleDataFile(subdirectory: String, fileName: String) -> String {
+        SampleDataFilesUtil(fileStore: diGraphShared.fileStorage).readFileContents(fileName: fileName, subdirectory: subdirectory)
+    }
 }
