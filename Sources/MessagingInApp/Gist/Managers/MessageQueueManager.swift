@@ -28,6 +28,11 @@ class MessageQueueManager {
         }
     }
 
+    func clearLocalStore() {
+        localMessageStore = [:]
+        QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter).clearCachedUserQueue()
+    }
+
     deinit {
         queueTimer?.invalidate()
     }
