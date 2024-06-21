@@ -28,7 +28,7 @@ public class SampleDataFilesUtil {
     private let sampleDataFilesRootDirectoryName = "SampleDataFiles"
 }
 
-private extension SampleDataFilesUtil {
+public extension SampleDataFilesUtil {
     func saveFilesInDirectoryAssertSuccess(
         siteId: String,
         type: FileType,

@@ -4,8 +4,17 @@ import Foundation
 class QueueManager {
     let siteId: String
     let dataCenter: String
-    var globalDataStore: GlobalDataStore = DIGraphShared.shared.globalDataStore
+    var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
     let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
+
+    private var cachedFetchUserQueueResponse: Data? {
+        get {
+            keyValueStore.data(.inAppUserQueueFetchCachedResponse)
+        }
+        set {
+            keyValueStore.setData(newValue, forKey: .inAppUserQueueFetchCachedResponse)
+        }
+    }
 
     init(siteId: String, dataCenter: String) {
         self.siteId = siteId
@@ -14,18 +23,16 @@ class QueueManager {
 
     func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
-            try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { [weak self] response in
-                guard let self = self else { return }
-
+            try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)
                     switch response.statusCode {
                     case 204:
-                        self.globalDataStore.inAppUserQueueFetchCachedResponse = nil
+                        self.cachedFetchUserQueueResponse = nil
                         completionHandler(.success([]))
                     case 304:
-                        guard let lastCachedResponse = self.globalDataStore.inAppUserQueueFetchCachedResponse else {
+                        guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
                             return completionHandler(.success(nil))
                         }
 
@@ -42,7 +49,7 @@ class QueueManager {
                         do {
                             let userQueue = try self.parseResponseBody(data)
 
-                            self.globalDataStore.inAppUserQueueFetchCachedResponse = data
+                            self.cachedFetchUserQueueResponse = data
 
                             DispatchQueue.main.async {
                                 completionHandler(.success(userQueue))
@@ -61,20 +68,15 @@ class QueueManager {
     }
 
     private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {
-        var userQueue = [UserQueueResponse]()
         if let userQueueResponse =
             try JSONSerialization.jsonObject(
                 with: responseBody,
                 options: .allowFragments
             ) as? [[String: Any?]] {
-            userQueueResponse.forEach { item in
-                if let userQueueItem = UserQueueResponse(dictionary: item) {
-                    userQueue.append(userQueueItem)
-                }
-            }
+            return userQueueResponse.map { UserQueueResponse(dictionary: $0) }.mapNonNil()
         }
 
-        return userQueue
+        return []
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
