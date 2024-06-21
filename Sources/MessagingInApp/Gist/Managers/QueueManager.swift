@@ -6,6 +6,7 @@ class QueueManager {
     let dataCenter: String
     var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
     let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
+    let threadUtil: ThreadUtil = DIGraphShared.shared.threadUtil
 
     private var cachedFetchUserQueueResponse: Data? {
         get {
@@ -39,7 +40,7 @@ class QueueManager {
                         do {
                             let userQueue = try self.parseResponseBody(lastCachedResponse)
 
-                            DispatchQueue.main.async {
+                            self.threadUtil.runMain {
                                 completionHandler(.success(userQueue))
                             }
                         } catch {
@@ -51,7 +52,7 @@ class QueueManager {
 
                             self.cachedFetchUserQueueResponse = data
 
-                            DispatchQueue.main.async {
+                            self.threadUtil.runMain {
                                 completionHandler(.success(userQueue))
                             }
                         } catch {

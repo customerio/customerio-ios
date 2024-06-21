@@ -5,7 +5,7 @@ class MessageQueueManager {
     var interval: Double = 600
     private var queueTimer: Timer?
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
-    private var localMessageStore: [String: Message] = [:]
+    var localMessageStore: [String: Message] = [:]
 
     func setup(skipQueueCheck: Bool = false) {
         queueTimer?.invalidate()
@@ -73,7 +73,7 @@ class MessageQueueManager {
     }
 
     @objc
-    private func fetchUserMessages() {
+    func fetchUserMessages() {
         if UIApplication.shared.applicationState != .background {
             Logger.instance.info(message: "Checking Gist queue service")
             if let userToken = UserManager().getUserToken() {
