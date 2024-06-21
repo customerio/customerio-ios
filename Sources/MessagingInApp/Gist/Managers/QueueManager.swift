@@ -1,8 +1,19 @@
+import CioInternalCommon
 import Foundation
 
 class QueueManager {
     let siteId: String
     let dataCenter: String
+    var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
+
+    private var cachedFetchUserQueueResponse: Data? {
+        get {
+            keyValueStore.data(.inAppUserQueueFetchCachedResponse)
+        }
+        set {
+            keyValueStore.setData(newValue, forKey: .inAppUserQueueFetchCachedResponse)
+        }
+    }
 
     init(siteId: String, dataCenter: String) {
         self.siteId = siteId
@@ -18,24 +29,28 @@ class QueueManager {
                         self.updatePollingInterval(headers: response.allHeaderFields)
                         switch response.statusCode {
                         case 204:
+                            self.cachedFetchUserQueueResponse = nil
                             completionHandler(.success([]))
                         case 304:
-                            // No changes to the remote queue, returning nil so we don't clear local store.
-                            completionHandler(.success(nil))
+                            guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
+                                return completionHandler(.success(nil))
+                            }
+
+                            do {
+                                let userQueue = try self.parseResponseBody(lastCachedResponse)
+
+                                DispatchQueue.main.async {
+                                    completionHandler(.success(userQueue))
+                                }
+                            } catch {
+                                completionHandler(.failure(error))
+                            }
                         default:
                             do {
-                                var userQueue = [UserQueueResponse]()
-                                if let userQueueResponse =
-                                    try JSONSerialization.jsonObject(
-                                        with: data,
-                                        options: .allowFragments
-                                    ) as? [[String: Any?]] {
-                                    userQueueResponse.forEach { item in
-                                        if let userQueueItem = UserQueueResponse(dictionary: item) {
-                                            userQueue.append(userQueueItem)
-                                        }
-                                    }
-                                }
+                                let userQueue = try self.parseResponseBody(data)
+
+                                self.cachedFetchUserQueueResponse = data
+
                                 DispatchQueue.main.async {
                                     completionHandler(.success(userQueue))
                                 }
@@ -50,6 +65,18 @@ class QueueManager {
         } catch {
             completionHandler(.failure(error))
         }
+    }
+
+    private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {
+        if let userQueueResponse =
+            try JSONSerialization.jsonObject(
+                with: responseBody,
+                options: .allowFragments
+            ) as? [[String: Any?]] {
+            return userQueueResponse.map { UserQueueResponse(dictionary: $0) }.mapNonNil()
+        }
+
+        return []
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
