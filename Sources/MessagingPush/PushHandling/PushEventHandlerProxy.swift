@@ -21,7 +21,7 @@ protocol PushEventHandlerProxy: AutoMockable {
 // sourcery: InjectSingleton
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     // Use a map so that we only save 1 instance of a given handler.
-    @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
+    @Atomic var nestedDelegates: [String: PushEventHandler] = [:]
 
     private let logger: Logger
 
@@ -30,7 +30,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     }
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
-        nestedDelegates[String(describing: newHandler)] = newHandler
+        nestedDelegates[newHandler.identifier] = newHandler
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
