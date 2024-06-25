@@ -61,6 +61,9 @@ extension DIGraphShared {
         _ = inAppProvider
         countDependenciesResolved += 1
 
+        _ = gistQueueNetwork
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -83,6 +86,16 @@ extension DIGraphShared {
 
     private var newInAppProvider: InAppProvider {
         GistInAppProvider()
+    }
+
+    // GistQueueNetwork
+    var gistQueueNetwork: GistQueueNetwork {
+        getOverriddenInstance() ??
+            newGistQueueNetwork
+    }
+
+    private var newGistQueueNetwork: GistQueueNetwork {
+        GistQueueNetworkImpl()
     }
 }
 
