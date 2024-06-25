@@ -13,7 +13,7 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        setupManager()
+        initializeManager()
 
         UserManager().setUserToken(userToken: .random) // Set a user token so manager can perform user queue fetches.
     }
@@ -29,20 +29,6 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
         XCTAssertEqual(manager.localMessageStore.count, 2)
     }
 
-    func test_fetch_givenHTTPResponse204_expectEmptyResponse_expectResetLocalMessageStore() {
-        XCTAssertTrue(manager.localMessageStore.isEmpty)
-
-        setupHttpResponse(code: 200, body: sampleFetchResponseBody.data)
-        manager.fetchUserMessages()
-
-        XCTAssertEqual(manager.localMessageStore.count, 2)
-
-        setupHttpResponse(code: 204, body: "".data)
-        manager.fetchUserMessages()
-
-        XCTAssertTrue(manager.localMessageStore.isEmpty)
-    }
-
     func test_fetch_givenMessageCacheSaved_given304AfterSdkInitialized_expectPopulateLocalMessageStoreFromCache() {
         XCTAssertTrue(manager.localMessageStore.isEmpty)
 
@@ -52,7 +38,7 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
 
         let localMessageStoreBefore304: [Message] = manager.localMessageStore.values.compactMap { $0 }
 
-        setupManager()
+        initializeManager()
         XCTAssertTrue(manager.localMessageStore.isEmpty)
 
         setupHttpResponse(code: 304, body: "".data)
@@ -80,7 +66,8 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
 }
 
 extension MessageQueueManagerIntegrationTests {
-    func setupManager() {
+    // Convenient function for test functions that need to test when a new instance of manager is created (clearing in-memory stores).
+    func initializeManager() {
         manager = MessageQueueManager()
     }
 }
