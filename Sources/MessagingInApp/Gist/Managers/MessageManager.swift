@@ -16,7 +16,7 @@ public enum GistMessageActions: String {
  * Override any of the abstract functions in class to implement custom logic for when certain events happen. Depending on the type of message you are displaying, you may want to handle events differently.
  */
 class MessageManager {
-    private var engine: EngineWebInstance
+    var engine: EngineWebInstance
     private let siteId: String
     let currentMessage: Message
     var gistView: GistView!
@@ -43,7 +43,6 @@ class MessageManager {
         // This means that the message begins the process of loading.
         // Start a timer that helps us determine how long a message took to load/render.
         elapsedTimer.start(title: "Loading message with id: \(currentMessage.messageId)")
-
         self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
         engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)

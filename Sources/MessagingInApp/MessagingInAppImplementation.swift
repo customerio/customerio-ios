@@ -48,7 +48,10 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         eventBusHandler.addObserver(ResetEvent.self) { _ in
             self.logger.debug("removing profile for in-app")
 
-            self.inAppProvider.clearIdentify()
+            // Gist may dismiss a modal if it's displayed. Run on main thread to call UI code.
+            self.threadUtil.runMain {
+                self.inAppProvider.clearIdentify()
+            }
         }
     }
 
@@ -92,7 +95,7 @@ extension MessagingInAppImplementation: GistDelegate {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: message) {
-                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["action_name": name, "action_value": action]))
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
             }
         }
 

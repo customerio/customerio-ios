@@ -43,6 +43,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     static func resetTestEnvironment() {
         shared = MessagingInApp()
+        Gist.shared.reset()
     }
     #endif
 
