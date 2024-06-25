@@ -28,9 +28,6 @@ class QueueManager {
                     case .success(let (data, response)):
                         self.updatePollingInterval(headers: response.allHeaderFields)
                         switch response.statusCode {
-                        case 204:
-                            self.cachedFetchUserQueueResponse = nil
-                            completionHandler(.success([]))
                         case 304:
                             guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
                                 return completionHandler(.success(nil))
