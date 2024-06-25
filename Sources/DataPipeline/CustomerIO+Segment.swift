@@ -20,7 +20,7 @@ public extension CustomerIO {
         DataPipeline.shared.analytics.userId
     }
 
-    /// Tells this instance of Analytics to flush any queued events up to Segment.com.  This command will also
+    /// Tells this instance of CustomerIO to flush any queued events. This command will also
     /// be sent to each plugin present in the system.  A completion handler can be optionally given and will be
     /// called when flush has completed.
     func flush(completion: (() -> Void)? = nil) {
@@ -35,7 +35,7 @@ public extension CustomerIO {
 }
 
 public extension CustomerIO {
-    /// Determine if there are any events that have yet to be sent to Segment
+    /// Determine if there are any events that have yet to be sent
     var hasUnsentEvents: Bool {
         DataPipeline.shared.analytics.hasUnsentEvents
     }

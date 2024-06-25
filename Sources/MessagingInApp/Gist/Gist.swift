@@ -38,6 +38,13 @@ public class Gist: GistInstance, GistDelegate {
         _ = InlineMessageManager(siteId: self.siteId, message: Message(messageId: ""))
     }
 
+    // For testing to reset the singleton state
+    func reset() {
+        clearUserToken()
+        messageManagers = []
+        RouteManager.clearCurrentRoute()
+    }
+
     // MARK: User
 
     public func setUserToken(_ userToken: String) {
@@ -45,6 +52,7 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func clearUserToken() {
+        cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
         UserManager().clearUserToken()
         messageQueueManager.clearUserMessagesFromLocalStore()
     }
@@ -56,6 +64,12 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func setCurrentRoute(_ currentRoute: String) {
+        if RouteManager.getCurrentRoute() == currentRoute {
+            return // ignore request, route has not changed.
+        }
+
+        cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
+
         RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
     }
@@ -106,6 +120,8 @@ public class Gist: GistInstance, GistDelegate {
         Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
+
+        messageQueueManager.fetchUserMessagesFromLocalStore()
     }
 
     public func messageError(message: Message) {
@@ -138,6 +154,26 @@ public class Gist: GistInstance, GistDelegate {
             }
     }
 
+    // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
+    // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
+    private func cancelModalMessage(ifDoesNotMatchRoute newRoute: String) {
+        if let messageManager = getModalMessageManager() {
+            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
+
+            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
+                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+
+                // Stop showing the current message synchronously meaning to remove from UI instantly.
+                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
+                messageManager.cancelShowingMessage()
+
+                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
+                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
+            }
+        }
+    }
+
     // Message Manager
 
     private func createMessageManager(siteId: String, message: Message) -> ModalMessageManager {
@@ -147,7 +183,7 @@ public class Gist: GistInstance, GistDelegate {
         return messageManager
     }
 
-    private func getModalMessageManager() -> ModalMessageManager? {
+    func getModalMessageManager() -> ModalMessageManager? {
         messageManagers.first
     }
 

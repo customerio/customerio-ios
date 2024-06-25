@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
@@ -15,13 +16,14 @@ public enum GistMessageActions: String {
  * Override any of the abstract functions in class to implement custom logic for when certain events happen. Depending on the type of message you are displaying, you may want to handle events differently.
  */
 class MessageManager {
-    private var engine: EngineWeb?
+    var engine: EngineWebInstance
     private let siteId: String
     let currentMessage: Message
     var gistView: GistView!
     private var currentRoute: String
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
+    private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
@@ -41,17 +43,13 @@ class MessageManager {
         // This means that the message begins the process of loading.
         // Start a timer that helps us determine how long a message took to load/render.
         elapsedTimer.start(title: "Loading message with id: \(currentMessage.messageId)")
-        self.engine = EngineWeb(configuration: engineWebConfiguration)
-
-        if let engine = engine {
-            engine.delegate = self
-            self.gistView = GistView(message: currentMessage, engineView: engine.view)
-        }
+        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
+        engine.delegate = self
+        self.gistView = GistView(message: currentMessage, engineView: engine.view)
     }
 
     deinit {
-        engine?.cleanEngineWeb()
-        engine = nil
+        engine.cleanEngineWeb()
     }
 
     // MARK: event listeners that subclasses override to handle events.
@@ -85,7 +83,7 @@ extension MessageManager: EngineWebDelegate {
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
         if currentMessage.messageId == "" {
-            engine?.cleanEngineWeb()
+            engine.cleanEngineWeb()
         }
     }
 
