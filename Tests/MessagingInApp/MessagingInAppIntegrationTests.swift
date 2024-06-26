@@ -264,6 +264,7 @@ extension MessagingInAppIntegrationTest {
     }
 
     func onDoneFetching(messages: [Message]) {
+        // swiftlint:disable:next force_cast
         (Gist.shared.messageQueueManager as! MessageQueueManagerImpl).processFetchedMessages(messages)
     }
 
