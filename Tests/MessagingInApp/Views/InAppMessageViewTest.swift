@@ -42,6 +42,19 @@ class InAppMessageViewTest: UnitTest {
     }
 
     @MainActor
+    func test_whenViewConstructedUsingStoryboards_expectStartDismissedAfterConstructed() {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let view = InAppMessageView(coder: EmptyNSCoder())!
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View is in dismissed state
+
+        view.elementId = .random
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View remains dismissed after setting element id.
+    }
+
+    @MainActor
     func test_whenViewConstructedViaCode_expectCheckForMessagesToDisplay() {
         let givenElementId = String.random
         queueMock.getInlineMessagesReturnValue = []
@@ -52,6 +65,15 @@ class InAppMessageViewTest: UnitTest {
 
         let actualElementId = queueMock.getInlineMessagesReceivedArguments
         XCTAssertEqual(actualElementId, givenElementId)
+    }
+
+    @MainActor
+    func test_whenViewConstructedViaCode_expectStartDismissedAfterConstructed() {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let view = InAppMessageView(elementId: .random)
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View is in dismissed state
     }
 
     // MARK: Display in-app message
