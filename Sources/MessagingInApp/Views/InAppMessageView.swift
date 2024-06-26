@@ -40,11 +40,6 @@ public class InAppMessageView: UIView {
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
 
-    // Get the height constraint for the View. Convenient to modify the height of the View.
-    var viewHeightConstraint: NSLayoutConstraint? {
-        constraints.first { $0.firstAnchor == heightAnchor }
-    }
-
     private var inlineMessageManager: InlineMessageManager?
 
     public init(elementId: String) {
@@ -65,16 +60,18 @@ public class InAppMessageView: UIView {
     }
 
     private func setupView() {
-        // Customer did not set a height constraint. Create one so the View has one.
         // It's important to have only 1 active constraint for height or UIKit will ignore some constraints.
         // Try to re-use a constraint if one is already added instead of replacing it. Some scenarios such as
         // when UIView is nested in a UIStackView and distribution is .fillProportionally, the height constraint StackView adds is important to keep.
-        if viewHeightConstraint == nil {
-            heightAnchor.constraint(equalToConstant: 0).isActive = true
+
+        if heightConstraint == nil {
+            // Customer did not set a height constraint. Create one so the View has one.
+            let heightConstraint = heightAnchor.constraint(equalToConstant: 0)
+            heightConstraint.priority = .required // in case a customer sets a height constraint, by us setting the highest priority, we try to have this constraint be used.
+            heightConstraint.isActive = true // set isActive as the last step.
         }
 
-        viewHeightConstraint?.priority = .required
-        viewHeightConstraint?.constant = 0 // start at height 0 so the View does not show.
+        heightConstraint?.constant = 0 // start at height 0 so the View does not show.
         getRootSuperview()?.layoutIfNeeded() // Since we modified constraint, perform a UI refresh to apply the change.
 
         // Begin listening to the queue for new messages.
@@ -152,7 +149,7 @@ public class InAppMessageView: UIView {
         runningHeightChangeAnimation?.stopAnimation(true)
 
         runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
-            self.viewHeightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
+            self.heightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
 
             // Since we modified constraint, perform a UI refresh to apply the change.
             // It's important that we call layoutIfNeeded on the topmost superview in the hierarchy. During development, there were animiation issues if layoutIfNeeded was called on a different superview then the root.
