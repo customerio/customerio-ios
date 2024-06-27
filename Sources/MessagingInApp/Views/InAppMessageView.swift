@@ -101,7 +101,7 @@ public class InAppMessageView: UIView {
 
     private func displayInAppMessage(_ message: Message) {
         // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
-        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.queueId == message.queueId {
+        if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.id == message.id {
             return // already showing this message, exit early.
         }
 
