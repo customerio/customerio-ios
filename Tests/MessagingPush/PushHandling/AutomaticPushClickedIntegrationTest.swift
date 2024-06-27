@@ -73,7 +73,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     func test_givenOtherPushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
         let expectOtherClickHandlerToGetCallback = expectation(description: "Receive a callback")
 
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         givenOtherPushHandler.onPushActionClosure = { _, onComplete in
             expectOtherClickHandlerToGetCallback.fulfill()
             onComplete()
@@ -90,7 +90,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_givenOtherPushHandlers_givenClickedOnPushNotSentFromCio_expectPushClickHandledByOtherHandler() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
 
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
         givenOtherPushHandler.onPushActionClosure = { _, onComplete in
@@ -108,21 +108,17 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     // Important to test that 2+ 3rd party push handlers for some use cases.
     func test_givenMultiplePushHandlers_givenClickedOnCioPush_expectPushClickHandledByCioSdk() {
-        let expectOtherPushHandlersCalled = expectation(description: "Receive a callback")
-        expectOtherPushHandlersCalled.expectedFulfillmentCount = 2
+        let expectHandler1Called = expectation(description: "Receive a callback")
+        let expectHandler2Called = expectation(description: "Receive a callback")
 
-        // In order to add 2+ push handlers to SDK, each class needs to have a unique name.
-        // The SDK only accepts unique push event handlers. Creating this class makes each push handler unique.
-        class PushEventHandlerMock2: PushEventHandlerMock {}
-
-        let givenOtherPushHandler1 = PushEventHandlerMock()
-        let givenOtherPushHandler2 = PushEventHandlerMock2()
+        let givenOtherPushHandler1 = getNewPushEventHandler()
+        let givenOtherPushHandler2 = getNewPushEventHandler()
         givenOtherPushHandler1.onPushActionClosure = { _, onComplete in
-            expectOtherPushHandlersCalled.fulfill()
+            expectHandler1Called.fulfill()
             onComplete()
         }
         givenOtherPushHandler2.onPushActionClosure = { _, onComplete in
-            expectOtherPushHandlersCalled.fulfill()
+            expectHandler2Called.fulfill()
             onComplete()
         }
         addOtherPushEventHandler(givenOtherPushHandler1)
@@ -144,7 +140,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     func test_givenMultiplePushHandlers_givenClickedOnCioPush_givenOtherPushHandlerDoesNotCallCompletionHandler_expectCompletionHandlerDoesNotGetCalled() {
         let expectOtherClickHandlerToGetCallback = expectation(description: "Receive a callback")
         let givenPush = PushNotificationStub.getPushSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
 
         givenOtherPushHandler.onPushActionClosure = { _, _ in
             // Do not call completion handler.
@@ -163,7 +159,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_givenMultiplePushHandlers_givenClickedOnCioPush_givenOtherPushHandlerCallsCompletionHandler_expectCioSdkHandlesPush() {
         let givenPush = PushNotificationStub.getPushSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         givenOtherPushHandler.onPushActionClosure = { _, onComplete in
             onComplete()
         }
@@ -189,7 +185,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_onPushAction_givenMultiplePushClickHandlers_simulateFcmSdkSwizzlingBehavior_expectNoInfiniteLoop() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         let givenPushClickAction = PushNotificationActionStub(push: givenPush, didClickOnPush: true)
 
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
@@ -211,7 +207,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_shouldDisplayPushAppInForeground_givenMultiplePushClickHandlers_simulateFcmSdkSwizzlingBehavior_expectNoInfiniteLoop() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
 
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
         expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 1 // the other push click handler should only be called once, indicating an infinite loop is not created.
@@ -242,7 +238,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_onPushAction_givenMultiplePushClickHandlers_thirdPartySdkCallsCompletionHandlerTwice_expectSdkDoesNotCrash() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         let givenPushClickAction = PushNotificationActionStub(push: givenPush, didClickOnPush: true)
 
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
@@ -264,7 +260,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
 
     func test_shouldDisplayPushAppInForeground_givenMultiplePushClickHandlers_thirdPartySdkCallsCompletionHandlerTwice_expectSdkDoesNotCrash() {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
 
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
         expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 1 // the other push click handler should only be called once, indicating an infinite loop is not created.
@@ -296,7 +292,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     func test_givenClickOnLocalPush_expectOtherClickHandlerHandlesClickEvent() {
         let givenLocalPush = PushNotificationStub.getLocalPush(pushId: .random)
 
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
         expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 1
         givenOtherPushHandler.onPushActionClosure = { _, onComplete in
@@ -316,7 +312,7 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
         let givenLocalPush = PushNotificationStub.getLocalPush(pushId: givenHardCodedPushId)
         let givenSecondLocalPush = PushNotificationStub.getLocalPush(pushId: givenHardCodedPushId)
 
-        let givenOtherPushHandler = PushEventHandlerMock()
+        let givenOtherPushHandler = getNewPushEventHandler()
         let expectOtherClickHandlerHandlesPush = expectation(description: "Other push handler should handle push.")
         expectOtherClickHandlerHandlesPush.expectedFulfillmentCount = 2 // Expect click handler to be able to handle both pushes, because each push is unique.
         givenOtherPushHandler.onPushActionClosure = { _, onComplete in
