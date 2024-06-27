@@ -163,7 +163,7 @@ public class Gist: GistInstance, GistDelegate {
 
             if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
                 // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.templateId)")
 
                 // Stop showing the current message synchronously meaning to remove from UI instantly.
                 // We want to be sure the message is gone when this function returns and be ready to display another message if needed.

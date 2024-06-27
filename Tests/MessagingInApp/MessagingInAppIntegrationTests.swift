@@ -80,7 +80,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         doneLoadingMessage(givenMessages[0])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
         XCTAssertFalse(didCallGlobalEventListener)
     }
 
@@ -217,19 +217,19 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         onDoneFetching(messages: givenMessages)
         doneLoadingMessage(givenMessages[0])
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
 
         onCloseActionButtonPressed()
 
         doneLoadingMessage(givenMessages[1])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[1].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[1])
 
         onCloseActionButtonPressed()
 
         doneLoadingMessage(givenMessages[2])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[2].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[2])
 
         onCloseActionButtonPressed()
 
@@ -249,7 +249,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         onDoneFetching(messages: givenMessages)
         doneLoadingMessage(givenMessages[0])
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
 
         onCloseActionButtonPressed()
 
@@ -298,7 +298,7 @@ extension MessagingInAppIntegrationTest {
     }
 
     func doneLoadingMessage(_ message: Message) {
-        engineWebMock.underlyingDelegate?.routeLoaded(route: message.messageId)
+        engineWebMock.underlyingDelegate?.routeLoaded(route: message.templateId)
     }
 
     func onCloseActionButtonPressed() {

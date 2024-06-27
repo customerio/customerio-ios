@@ -284,7 +284,7 @@ extension InAppMessageViewTest {
     func onDoneRenderingInAppMessage(_ message: Message, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
         // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
         // To mock the web server call with a successful response back, call these delegate functions:
-        engineWebMock.delegate?.routeLoaded(route: message.messageId)
+        engineWebMock.delegate?.routeLoaded(route: message.templateId)
         engineWebMock.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
 
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
