@@ -4,53 +4,81 @@ import Foundation
 class QueueManager {
     let siteId: String
     let dataCenter: String
+    var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
+    let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
+    let threadUtil: ThreadUtil = DIGraphShared.shared.threadUtil
+
+    private var cachedFetchUserQueueResponse: Data? {
+        get {
+            keyValueStore.data(.inAppUserQueueFetchCachedResponse)
+        }
+        set {
+            keyValueStore.setData(newValue, forKey: .inAppUserQueueFetchCachedResponse)
+        }
+    }
 
     init(siteId: String, dataCenter: String) {
         self.siteId = siteId
         self.dataCenter = dataCenter
     }
 
+    func clearCachedUserQueue() {
+        cachedFetchUserQueueResponse = nil
+    }
+
     func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
-            try GistQueueNetwork(siteId: siteId, dataCenter: dataCenter, userToken: userToken)
-                .request(QueueEndpoint.getUserQueue, completionHandler: { response in
-                    switch response {
-                    case .success(let (data, response)):
-                        self.updatePollingInterval(headers: response.allHeaderFields)
-                        switch response.statusCode {
-                        case 204:
-                            completionHandler(.success([]))
-                        case 304:
-                            // No changes to the remote queue, returning nil so we don't clear local store.
-                            completionHandler(.success(nil))
-                        default:
-                            do {
-                                var userQueue = [UserQueueResponse]()
-                                if let userQueueResponse =
-                                    try JSONSerialization.jsonObject(
-                                        with: data,
-                                        options: .allowFragments
-                                    ) as? [[String: Any?]] {
-                                    userQueueResponse.forEach { item in
-                                        if let userQueueItem = UserQueueResponse(dictionary: item) {
-                                            userQueue.append(userQueueItem)
-                                        }
-                                    }
-                                }
-                                DispatchQueue.main.async {
-                                    completionHandler(.success(userQueue))
-                                }
-                            } catch {
-                                completionHandler(.failure(error))
-                            }
+            try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { response in
+                switch response {
+                case .success(let (data, response)):
+                    self.updatePollingInterval(headers: response.allHeaderFields)
+                    switch response.statusCode {
+                    case 304:
+                        guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
+                            return completionHandler(.success(nil))
                         }
-                    case .failure(let error):
-                        completionHandler(.failure(error))
+
+                        do {
+                            let userQueue = try self.parseResponseBody(lastCachedResponse)
+
+                            self.threadUtil.runMain {
+                                completionHandler(.success(userQueue))
+                            }
+                        } catch {
+                            completionHandler(.failure(error))
+                        }
+                    default:
+                        do {
+                            let userQueue = try self.parseResponseBody(data)
+
+                            self.cachedFetchUserQueueResponse = data
+
+                            self.threadUtil.runMain {
+                                completionHandler(.success(userQueue))
+                            }
+                        } catch {
+                            completionHandler(.failure(error))
+                        }
                     }
-                })
+                case .failure(let error):
+                    completionHandler(.failure(error))
+                }
+            })
         } catch {
             completionHandler(.failure(error))
         }
+    }
+
+    private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {
+        if let userQueueResponse =
+            try JSONSerialization.jsonObject(
+                with: responseBody,
+                options: .allowFragments
+            ) as? [[String: Any?]] {
+            return userQueueResponse.map { UserQueueResponse(dictionary: $0) }.mapNonNil()
+        }
+
+        return []
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {

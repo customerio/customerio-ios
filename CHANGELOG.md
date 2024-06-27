@@ -1,3 +1,9 @@
+## [3.3.1](https://github.com/customerio/customerio-ios/compare/3.3.0...3.3.1) (2024-06-25)
+
+### Bug Fixes
+
+* display in-app messages with page rules set and kill/re-open app ([#746](https://github.com/customerio/customerio-ios/issues/746)) ([cfae57d](https://github.com/customerio/customerio-ios/commit/cfae57d1b675865ca980c22f52abaeee9c9baa33))
+
 ## [3.3.0](https://github.com/customerio/customerio-ios/compare/3.2.3...3.3.0) (2024-06-17)
 
 ### Features

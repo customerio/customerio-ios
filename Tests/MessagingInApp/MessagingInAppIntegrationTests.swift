@@ -12,6 +12,10 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
     private let globalEventListener = InAppEventListenerMock()
 
+    private var messageQueueManager: MessageQueueManagerImpl {
+        Gist.shared.messageQueueManager as! MessageQueueManagerImpl
+    }
+
     override func setUp() {
         super.setUp()
 
@@ -174,6 +178,27 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         Gist.shared.clearUserToken()
 
         XCTAssertNotNil(currentlyShownModalMessage)
+    }
+
+    // The in-app SDK maintains a cache of messages that are returned from the backend. When a profile is logged out of the SDK, we expect the message cache is cleared otherwise we run the risk of displaying messages meant for profile A to profile B.
+    func test_clearUserToken_givenProfileLoggedOutAndNewProfileLoggedIn_expectLocalMessageCacheCleared() {
+        Gist.shared.setUserToken("profile-A")
+
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
+        setupHttpResponse(code: 200, body: readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json").data)
+        messageQueueManager.fetchUserMessages()
+        XCTAssertFalse(messageQueueManager.localMessageStore.isEmpty)
+
+        // Expect no messages immediately after logging into another profile.
+        Gist.shared.clearUserToken()
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
+        Gist.shared.setUserToken("profile-B")
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
+
+        // Expect that after first fetch with new profile logged in, the message cache remains empty.
+        setupHttpResponse(code: 304, body: "".data)
+        messageQueueManager.fetchUserMessages()
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
     }
 
     // MARK: action buttons

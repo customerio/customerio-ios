@@ -3,6 +3,7 @@ import Foundation
 import UIKit
 
 protocol MessageQueueManager: AutoMockable {
+    func clearLocalStore()
     func getInterval() -> Double
     func setInterval(_ newInterval: Double)
     func setup(skipQueueCheck: Bool)
@@ -58,6 +59,11 @@ class MessageQueueManagerImpl: MessageQueueManager {
         }
     }
 
+    func clearLocalStore() {
+        localMessageStore = [:]
+        QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter).clearCachedUserQueue()
+    }
+
     deinit {
         queueTimer?.invalidate()
     }
@@ -94,7 +100,7 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     @objc
-    private func fetchUserMessages() {
+    func fetchUserMessages() {
         if UIApplication.shared.applicationState != .background {
             Logger.instance.info(message: "Checking Gist queue service")
             if let userToken = UserManager().getUserToken() {
