@@ -620,6 +620,14 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
     }
 
     public func resetMock() {
+        resetCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        processFetchedMessagesCallsCount = 0
+        processFetchedMessagesReceivedArguments = nil
+        processFetchedMessagesReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         getIntervalCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -649,6 +657,54 @@ class MessageQueueManagerMock: MessageQueueManager, Mock {
         getInlineMessagesReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - reset
+
+    /// Number of times the function was called.
+    @Atomic private(set) var resetCallsCount = 0
+    /// `true` if the function was ever called.
+    var resetCalled: Bool {
+        resetCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var resetClosure: (() -> Void)?
+
+    /// Mocked function for `reset()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func reset() {
+        mockCalled = true
+        resetCallsCount += 1
+        resetClosure?()
+    }
+
+    // MARK: - processFetchedMessages
+
+    /// Number of times the function was called.
+    @Atomic private(set) var processFetchedMessagesCallsCount = 0
+    /// `true` if the function was ever called.
+    var processFetchedMessagesCalled: Bool {
+        processFetchedMessagesCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic private(set) var processFetchedMessagesReceivedArguments: [Message]?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic private(set) var processFetchedMessagesReceivedInvocations: [[Message]] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var processFetchedMessagesClosure: (([Message]) -> Void)?
+
+    /// Mocked function for `processFetchedMessages(_ fetchedMessages: [Message])`. Your opportunity to return a mocked value and check result of mock in test code.
+    func processFetchedMessages(_ fetchedMessages: [Message]) {
+        mockCalled = true
+        processFetchedMessagesCallsCount += 1
+        processFetchedMessagesReceivedArguments = fetchedMessages
+        processFetchedMessagesReceivedInvocations.append(fetchedMessages)
+        processFetchedMessagesClosure?(fetchedMessages)
     }
 
     // MARK: - getInterval

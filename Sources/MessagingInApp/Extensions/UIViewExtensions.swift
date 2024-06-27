@@ -16,4 +16,20 @@ extension UIView {
             }
         }
     }
+
+    var heightConstraints: [NSLayoutConstraint] {
+        constraints.filter { $0.firstAnchor == heightAnchor }
+    }
+
+    var widthConstraints: [NSLayoutConstraint] {
+        constraints.filter { $0.firstAnchor == widthAnchor }
+    }
+
+    var heightConstraint: NSLayoutConstraint? {
+        heightConstraints.first
+    }
+
+    var widthConstraint: NSLayoutConstraint? {
+        widthConstraints.first
+    }
 }
