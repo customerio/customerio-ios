@@ -164,7 +164,16 @@ extension Array where Element == Message {
             switch ($0.priority, $1.priority) {
             case (let priority0?, let priority1?):
                 // Both messages have a priority, so we compare them.
-                return priority0 < priority1
+
+                // if the messages do not have the same priority, sort by the priority.
+                if priority0 != priority1 {
+                    return priority0 < priority1
+                }
+
+                // If messages have same priority, sort by something else to assert that the function return value is always the same no matter if the order of the input array is different.
+
+                // Because the priorities are the same, it doesn't matter what message is next. Use a unique value to perform the comparison.
+                return $0.instanceId < $1.instanceId
             case (nil, _):
                 // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
                 return false
