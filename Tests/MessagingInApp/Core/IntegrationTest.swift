@@ -13,9 +13,15 @@ open class IntegrationTest: UnitTest {
     // Mock HTTP requests to Gist backend services.
     let gistQueueNetworkMock = GistQueueNetworkMock()
 
+    var viewAnimationRunnerStub: ViewAnimationRunnerStub!
+
     override open func setUp() {
         super.setUp()
 
+        viewAnimationRunnerStub = ViewAnimationRunnerStub()
+
+        // Disables UIKit animations to make tests run instantly and synchronously. Making tests faster, easier to write, and more reliable.
+        diGraphShared.override(value: viewAnimationRunnerStub, forType: ViewAnimationRunner.self)
         diGraphShared.override(value: gistQueueNetworkMock, forType: GistQueueNetwork.self)
     }
 

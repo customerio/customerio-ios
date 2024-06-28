@@ -1,3 +1,4 @@
+import CioInternalCommon
 import UIKit
 
 public enum MessagePosition: String {
@@ -10,8 +11,10 @@ class ModalViewManager {
     var window: UIWindow?
     var viewController: GistModalViewController!
     var position: MessagePosition
-    var isShowingMessage: Bool {
-        window != nil
+    var isShowingMessage: Bool = false // true if the modal is visible to the user. Meaning, all operations are complete including animations.
+
+    var animationRunner: ViewAnimationRunner {
+        DIGraphShared.shared.viewAnimationRunner
     }
 
     init(gistView: GistView, position: MessagePosition) {
@@ -40,13 +43,15 @@ class ModalViewManager {
             finalPosition = viewController.view.center.y - viewController.view.bounds.height
         }
 
-        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
+        animationRunner.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
             self.viewController.view.center.y = finalPosition
         }, completion: { _ in
-            UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
+            self.animationRunner.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
                 self.viewController.view.backgroundColor = UIColor.black.withAlphaComponent(0.2)
-            }, completion: nil)
-            completionHandler()
+            }, completion: { _ in
+                self.isShowingMessage = true
+                completionHandler()
+            })
         })
 
         viewController.view.isHidden = false
@@ -68,10 +73,10 @@ class ModalViewManager {
             finalPosition = viewController.view.center.y + viewController.view.bounds.height
         }
 
-        UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
+        animationRunner.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
             self.viewController.view.backgroundColor = UIColor.black.withAlphaComponent(0)
         }, completion: { _ in
-            UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
+            self.animationRunner.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
                 self.viewController.view.center.y = finalPosition
             }, completion: { _ in
                 self.removeModalViewFromScreen()
@@ -86,6 +91,8 @@ class ModalViewManager {
         window?.isHidden = true
         viewController.removeFromParent()
         window = nil
+
+        isShowingMessage = false
     }
 
     private func getUIWindow() -> UIWindow {
