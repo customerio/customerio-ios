@@ -43,6 +43,7 @@ class MessageManager {
         // This means that the message begins the process of loading.
         // Start a timer that helps us determine how long a message took to load/render.
         elapsedTimer.start(title: "Loading message with id: \(currentMessage.templateId)")
+
         self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
         engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
