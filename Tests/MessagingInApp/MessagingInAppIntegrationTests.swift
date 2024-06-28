@@ -13,6 +13,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
     private let globalEventListener = InAppEventListenerMock()
 
     private var messageQueueManager: MessageQueueManagerImpl {
+        // swiftlint:disable:next force_cast
         Gist.shared.messageQueueManager as! MessageQueueManagerImpl
     }
 
