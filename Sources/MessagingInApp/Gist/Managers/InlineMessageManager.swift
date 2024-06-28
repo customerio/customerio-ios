@@ -18,9 +18,11 @@ protocol InlineMessageManagerDelegate: AnyObject {
  */
 class InlineMessageManager: MessageManager {
     var inlineMessageView: GistView? {
-        let view = super.gistView
-        view?.delegate = self
-        return view
+        if super.gistView.delegate == nil {
+            super.gistView.delegate = self
+        }
+
+        return super.gistView
     }
 
     weak var inlineMessageDelegate: InlineMessageManagerDelegate?

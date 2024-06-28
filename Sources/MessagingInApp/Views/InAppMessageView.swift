@@ -116,11 +116,11 @@ public class InAppMessageView: UIView {
             return // already showing this message, exit early.
         }
 
-        guard inlineMessageManager == nil else {
-            // We are already displaying a messsage. In the future, we are planning on swapping the web content if there is another message in the local queue to display
-            // and an inline message is dismissed. Until we add this feature, exit early.
-            return
-        }
+        // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
+        // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
+        inlineMessageManager?.stopAndCleanup()
+        inlineMessageManager?.inlineMessageView?.removeFromSuperview()
+        inlineMessageManager = nil
 
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
