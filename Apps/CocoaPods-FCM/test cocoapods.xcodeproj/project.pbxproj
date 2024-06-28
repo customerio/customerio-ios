@@ -31,6 +31,7 @@
 		F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAA2A5C8C1F00C5C952 /* Toast.swift */; };
 		F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
+		F78B1ED62C2B399400D0C80A /* AnotherPushEventHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78B1ED52C2B399400D0C80A /* AnotherPushEventHandler.swift */; };
 		F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D762A05588E00641391 /* ColorExtensions.swift */; };
 		F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E3D782A058B5000641391 /* SettingsButton.swift */; };
 		F7BAFCBA2919586400DFAC6E /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */; };
@@ -102,6 +103,7 @@
 		F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUITimer.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F78793A9291D5D8100115DB8 /* CioTracking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioTracking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F78B1ED52C2B399400D0C80A /* AnotherPushEventHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnotherPushEventHandler.swift; sourceTree = "<group>"; };
 		F78E3D762A05588E00641391 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
 		F78E3D782A058B5000641391 /* SettingsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsButton.swift; sourceTree = "<group>"; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -261,6 +263,7 @@
 				F731346C2919570700CD43D9 /* test_cocoapods.entitlements */,
 				F73134692919570700CD43D9 /* Preview Content */,
 				F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */,
+				F78B1ED52C2B399400D0C80A /* AnotherPushEventHandler.swift */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -469,6 +472,7 @@
 				F73134642919570600CD43D9 /* App.swift in Sources */,
 				F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */,
 				F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */,
+				F78B1ED62C2B399400D0C80A /* AnotherPushEventHandler.swift in Sources */,
 				F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */,
 				F78E3D792A058B5000641391 /* SettingsButton.swift in Sources */,
 				F7029ECC29F2C0C300411BCC /* LoginView.swift in Sources */,
