@@ -13,7 +13,7 @@ class LogManager {
 
     func logView(message: Message, userToken: String?, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         do {
-            if let queueId = message.queueId, let userToken = userToken {
+            if let queueId = message.id, let userToken = userToken {
                 try gistQueueNetwork.request(
                     siteId: siteId,
                     dataCenter: dataCenter,
@@ -38,7 +38,7 @@ class LogManager {
                     dataCenter: dataCenter,
                     userToken: nil,
 
-                    request: LogEndpoint.logMessageView(messageId: message.messageId),
+                    request: LogEndpoint.logMessageView(messageId: message.templateId),
                     completionHandler: { response in
                         switch response {
                         case .success(let (_, response)):

@@ -12,6 +12,11 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
     private let globalEventListener = InAppEventListenerMock()
 
+    private var messageQueueManager: MessageQueueManagerImpl {
+        // swiftlint:disable:next force_cast
+        Gist.shared.messageQueueManager as! MessageQueueManagerImpl
+    }
+
     override func setUp() {
         super.setUp()
 
@@ -76,7 +81,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         doneLoadingMessage(givenMessages[0])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
         XCTAssertFalse(didCallGlobalEventListener)
     }
 
@@ -180,21 +185,21 @@ class MessagingInAppIntegrationTest: IntegrationTest {
     func test_clearUserToken_givenProfileLoggedOutAndNewProfileLoggedIn_expectLocalMessageCacheCleared() {
         Gist.shared.setUserToken("profile-A")
 
-        XCTAssertTrue(Gist.shared.messageQueueManager.localMessageStore.isEmpty)
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
         setupHttpResponse(code: 200, body: readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json").data)
-        Gist.shared.messageQueueManager.fetchUserMessages()
-        XCTAssertFalse(Gist.shared.messageQueueManager.localMessageStore.isEmpty)
+        messageQueueManager.fetchUserMessages()
+        XCTAssertFalse(messageQueueManager.localMessageStore.isEmpty)
 
         // Expect no messages immediately after logging into another profile.
         Gist.shared.clearUserToken()
-        XCTAssertTrue(Gist.shared.messageQueueManager.localMessageStore.isEmpty)
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
         Gist.shared.setUserToken("profile-B")
-        XCTAssertTrue(Gist.shared.messageQueueManager.localMessageStore.isEmpty)
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
 
         // Expect that after first fetch with new profile logged in, the message cache remains empty.
         setupHttpResponse(code: 304, body: "".data)
-        Gist.shared.messageQueueManager.fetchUserMessages()
-        XCTAssertTrue(Gist.shared.messageQueueManager.localMessageStore.isEmpty)
+        messageQueueManager.fetchUserMessages()
+        XCTAssertTrue(messageQueueManager.localMessageStore.isEmpty)
     }
 
     // MARK: action buttons
@@ -213,19 +218,19 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         onDoneFetching(messages: givenMessages)
         doneLoadingMessage(givenMessages[0])
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
 
         onCloseActionButtonPressed()
 
         doneLoadingMessage(givenMessages[1])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[1].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[1])
 
         onCloseActionButtonPressed()
 
         doneLoadingMessage(givenMessages[2])
 
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[2].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[2])
 
         onCloseActionButtonPressed()
 
@@ -245,7 +250,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
 
         onDoneFetching(messages: givenMessages)
         doneLoadingMessage(givenMessages[0])
-        XCTAssertEqual(currentlyShownModalMessage?.queueId, givenMessages[0].queueId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
 
         onCloseActionButtonPressed()
 
@@ -285,7 +290,8 @@ extension MessagingInAppIntegrationTest {
     }
 
     func onDoneFetching(messages: [Message]) {
-        Gist.shared.messageQueueManager.processFetchResponse(messages)
+        // swiftlint:disable:next force_cast
+        (Gist.shared.messageQueueManager as! MessageQueueManagerImpl).processFetchedMessages(messages)
     }
 
     func navigateToScreen(screenName: String) {
@@ -293,7 +299,7 @@ extension MessagingInAppIntegrationTest {
     }
 
     func doneLoadingMessage(_ message: Message) {
-        engineWebMock.underlyingDelegate?.routeLoaded(route: message.messageId)
+        engineWebMock.underlyingDelegate?.routeLoaded(route: message.templateId)
     }
 
     func onCloseActionButtonPressed() {

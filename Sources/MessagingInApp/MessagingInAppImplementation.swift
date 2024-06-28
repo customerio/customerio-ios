@@ -66,8 +66,6 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 }
 
 extension MessagingInAppImplementation: GistDelegate {
-    public func embedMessage(message: Message, elementId: String) {}
-
     // Aka: message opened
     public func messageShown(message: Message) {
         logger.debug("in-app message opened. \(message.describeForLogs)")

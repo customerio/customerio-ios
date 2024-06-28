@@ -1,10 +1,19 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-public class Gist: GistDelegate {
-    var messageQueueManager = MessageQueueManager()
-    var shownMessageQueueIds: Set<String> = []
-    private var messageManagers: [MessageManager] = []
+protocol GistInstance: AutoMockable {
+    var siteId: String { get }
+    func showMessage(_ message: Message, position: MessagePosition) -> Bool
+}
+
+public class Gist: GistInstance, GistDelegate {
+    var shownModalMessageQueueIds: Set<String> = [] // all modal messages that have been shown in the app already.
+    var messageQueueManager: MessageQueueManager {
+        DIGraphShared.shared.messageQueueManager
+    }
+
+    private var messageManagers: [ModalMessageManager] = []
     public var siteId: String = ""
     public var dataCenter: String = ""
 
@@ -22,16 +31,16 @@ public class Gist: GistDelegate {
         self.siteId = siteId
         self.dataCenter = dataCenter
         Logger.instance.enabled = logging
-        messageQueueManager.setup()
+        messageQueueManager.setup(skipQueueCheck: false)
 
-        // Initialising Gist web with an empty message to fetch fonts and other assets.
-        _ = Gist.shared.getMessageView(Message(messageId: ""))
+        // To finish initializing of Gist, we want to fetch fonts and other assets for HTML in-app messages.
+        // To do that, we try to display a message with an empty message id.
+        _ = InlineMessageManager(siteId: self.siteId, message: Message(templateId: ""))
     }
 
     // For testing to reset the singleton state
     func reset() {
         clearUserToken()
-        messageQueueManager = MessageQueueManager()
         messageManagers = []
         RouteManager.clearCurrentRoute()
     }
@@ -72,9 +81,9 @@ public class Gist: GistDelegate {
 
     // MARK: Message Actions
 
-    public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
+    public func showMessage(_ message: Message, position: MessagePosition) -> Bool {
         if let messageManager = getModalMessageManager() {
-            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
+            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.templateId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
@@ -83,9 +92,8 @@ public class Gist: GistDelegate {
         return false
     }
 
-    public func getMessageView(_ message: Message) -> GistView {
-        let messageManager = createMessageManager(siteId: siteId, message: message)
-        return messageManager.getMessageView()
+    public func showMessage(_ message: Message) -> Bool {
+        showMessage(message, position: .center)
     }
 
     public func dismissMessage(instanceId: String? = nil, completionHandler: (() -> Void)? = nil) {
@@ -100,7 +108,7 @@ public class Gist: GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
+        Logger.instance.debug(message: "Message with route: \(message.templateId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
         } else {
@@ -110,7 +118,7 @@ public class Gist: GistDelegate {
     }
 
     public func messageDismissed(message: Message) {
-        Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
+        Logger.instance.debug(message: "Message with id: \(message.templateId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
 
@@ -126,20 +134,23 @@ public class Gist: GistDelegate {
         delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 
-    public func embedMessage(message: Message, elementId: String) {
-        delegate?.embedMessage(message: message, elementId: elementId)
-    }
-
     func logMessageView(message: Message) {
+        // This function body reports metrics and makes sure that messages are not shown 2+ times.
+        // For inline messages, we have not yet implemented either of these features.
+        // Therefore, if the message is not a modal, exit early.
+        guard message.isModalMessage else {
+            return
+        }
+
         messageQueueManager.removeMessageFromLocalStore(message: message)
-        if let queueId = message.queueId {
-            shownMessageQueueIds.insert(queueId)
+        if let id = message.id {
+            shownModalMessageQueueIds.insert(id)
         }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
             .logView(message: message, userToken: userToken) { response in
                 if case .failure(let error) = response {
-                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+                    Logger.instance.error(message: "Failed to log view for message: \(message.templateId) with error: \(error)")
                 }
             }
     }
@@ -152,7 +163,7 @@ public class Gist: GistDelegate {
 
             if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
                 // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.templateId)")
 
                 // Stop showing the current message synchronously meaning to remove from UI instantly.
                 // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
@@ -166,22 +177,33 @@ public class Gist: GistDelegate {
 
     // Message Manager
 
-    private func createMessageManager(siteId: String, message: Message) -> MessageManager {
-        let messageManager = MessageManager(siteId: siteId, message: message)
+    private func createMessageManager(siteId: String, message: Message) -> ModalMessageManager {
+        let messageManager = ModalMessageManager(siteId: siteId, message: message)
         messageManager.delegate = self
         messageManagers.append(messageManager)
         return messageManager
     }
 
-    func getModalMessageManager() -> MessageManager? {
-        messageManagers.first(where: { !$0.isMessageEmbed })
+    func getModalMessageManager() -> ModalMessageManager? {
+        messageManagers.first
     }
 
-    func messageManager(instanceId: String) -> MessageManager? {
+    func messageManager(instanceId: String) -> ModalMessageManager? {
         messageManagers.first(where: { $0.currentMessage.instanceId == instanceId })
     }
 
     func removeMessageManager(instanceId: String) {
         messageManagers.removeAll(where: { $0.currentMessage.instanceId == instanceId })
+    }
+}
+
+// Convenient way for other modules to access instance as well as being able to mock instance in tests.
+extension DIGraphShared {
+    var gist: GistInstance {
+        if let override: GistInstance = getOverriddenInstance() {
+            return override
+        }
+
+        return Gist.shared
     }
 }
