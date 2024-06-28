@@ -119,16 +119,14 @@ public class InAppMessageView: UIView {
         // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
         // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
         inlineMessageManager?.stopAndCleanup()
-        inlineMessageManager?.inlineMessageView?.removeFromSuperview()
+        inlineMessageManager?.inlineMessageView.removeFromSuperview()
         inlineMessageManager = nil
 
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
 
-        guard let inlineView = newInlineMessageManager.inlineMessageView else {
-            return // we dont expect this to happen, but better to handle it gracefully instead of force unwrapping
-        }
+        let inlineView = newInlineMessageManager.inlineMessageView
         addSubview(inlineView)
 
         // Setup the WebView to be the same size as this View. When this View changes size, the WebView will change, too.

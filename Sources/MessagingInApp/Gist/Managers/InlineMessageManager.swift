@@ -17,7 +17,7 @@ protocol InlineMessageManagerDelegate: AnyObject {
  ```
  */
 class InlineMessageManager: MessageManager {
-    var inlineMessageView: GistView? {
+    var inlineMessageView: GistView {
         if super.gistView.delegate == nil {
             super.gistView.delegate = self
         }
