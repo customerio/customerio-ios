@@ -1,0 +1,30 @@
+[
+  {
+    "queueId": "e972deff-caa5-4b4c-be22-824fe323781d",
+    "messageId": "levi-load-page-button",
+    "priority": 5,
+    "properties": {
+      "gist": {
+        "position": "center",
+        "routeRuleAndroid": "^DO_NOT_DISPLAY_IN_APP$",
+        "routeRuleApple": "^(.*Dashboard.*)$",
+        "routeRuleWeb": "^DO_NOT_DISPLAY_IN_APP$"
+      },
+      "name": "okFNkDksSc@customer.io"
+    }
+  },
+  {
+    "queueId": "fa98672f-9537-40d4-9391-db5594dd8425",
+    "messageId": "levi-load-page-button",
+    "priority": 5,
+    "properties": {
+      "gist": {
+        "position": "center",
+        "routeRuleAndroid": "^DO_NOT_DISPLAY_IN_APP$",
+        "routeRuleApple": "^(.*Dashboard.*)$",
+        "routeRuleWeb": "^DO_NOT_DISPLAY_IN_APP$"
+      },
+      "name": "okFNkDksSc@customer.io"
+    }
+  }
+]
