@@ -117,8 +117,18 @@ public struct UNNotificationWrapper: PushNotification {
     }
 }
 
-class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
+class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringConvertible {
     private let delegate: UNUserNotificationCenterDelegate
+
+    var description: String {
+        let nestedDelegateDescription = String(describing: delegate)
+
+        return "Cio.NotificationCenterDelegateWrapper(\(nestedDelegateDescription))"
+    }
+
+    var identifier: String {
+        String(describing: delegate)
+    }
 
     init(delegate: UNUserNotificationCenterDelegate) {
         self.delegate = delegate
@@ -150,11 +160,5 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler {
         if delegateGotCalled == nil { // delegate did not implement this optional method. Call the completionHandler for them.
             completionHandler(false)
         }
-    }
-}
-
-extension UNUserNotificationCenterDelegateWrapper: CustomStringConvertible {
-    var description: String {
-        String(describing: delegate)
     }
 }

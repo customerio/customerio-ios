@@ -1,3 +1,21 @@
+## [3.3.2](https://github.com/customerio/customerio-ios/compare/3.3.1...3.3.2) (2024-06-27)
+
+### Bug Fixes
+
+* differentiate every push event handler installed in app ([#751](https://github.com/customerio/customerio-ios/issues/751)) ([ca5abb3](https://github.com/customerio/customerio-ios/commit/ca5abb349f4006a6de5f5b9c1355c7f422877c7c))
+
+## [3.3.1](https://github.com/customerio/customerio-ios/compare/3.3.0...3.3.1) (2024-06-25)
+
+### Bug Fixes
+
+* display in-app messages with page rules set and kill/re-open app ([#746](https://github.com/customerio/customerio-ios/issues/746)) ([cfae57d](https://github.com/customerio/customerio-ios/commit/cfae57d1b675865ca980c22f52abaeee9c9baa33))
+
+## [3.3.0](https://github.com/customerio/customerio-ios/compare/3.2.3...3.3.0) (2024-06-17)
+
+### Features
+
+* do not show modal message if change screens and page rule enabled ([#731](https://github.com/customerio/customerio-ios/issues/731)) ([cb1d014](https://github.com/customerio/customerio-ios/commit/cb1d014d52f7c53af6650e185857ba0e5468db49))
+
 ## [3.2.3](https://github.com/customerio/customerio-ios/compare/3.2.2...3.2.3) (2024-06-13)
 
 ### Bug Fixes

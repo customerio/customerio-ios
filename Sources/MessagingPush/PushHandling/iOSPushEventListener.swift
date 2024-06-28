@@ -20,6 +20,10 @@ class IOSPushEventListener: PushEventHandler {
         self.logger = logger
     }
 
+    var identifier: String {
+        "Cio.iOSPushEventListener"
+    }
+
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
         guard let dateWhenPushDelivered = pushAction.push.deliveryDate else {
             logger.debug("[onPushAction] early exist due to missing deliveryDate for action: \(pushAction)")
