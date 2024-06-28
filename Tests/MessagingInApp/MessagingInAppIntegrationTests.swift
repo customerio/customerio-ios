@@ -189,8 +189,8 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home"),
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Settings")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$"),
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Settings.*)$")
         ]
         onDoneFetching(messages: givenMessages)
 
@@ -208,8 +208,8 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home"),
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$"),
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$")
         ]
         onDoneFetching(messages: givenMessages)
 
