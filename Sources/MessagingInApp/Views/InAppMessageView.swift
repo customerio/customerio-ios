@@ -38,6 +38,13 @@ public class InAppMessageView: UIView {
         }
     }
 
+    // Inline messages that have already been shown by this View instance.
+    // This is used to prevent showing the same message multiple times when the close button is pressed.
+    //
+    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
+    // replaced with a global list of shown messages.
+    var previouslyShownMessages: [Message] = []
+
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
 
     private var inlineMessageManager: InlineMessageManager?
@@ -90,7 +97,11 @@ public class InAppMessageView: UIView {
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageToDisplay = queueOfMessagesForGivenElementId.first
+        let messageToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
+            let didPreviouslyShowMessage = previouslyShownMessages.contains(where: { $0.id == potentialMessageToDisplay.id })
+
+            return !didPreviouslyShowMessage
+        }
 
         if let messageToDisplay {
             displayInAppMessage(messageToDisplay)
@@ -178,7 +189,11 @@ extension InAppMessageView: InlineMessageManagerDelegate {
 
     func onCloseAction() {
         Task { @MainActor in
-            self.dismissInAppMessage()
+            if let currentlyShownMessage = inlineMessageManager?.currentMessage {
+                previouslyShownMessages.append(currentlyShownMessage)
+            }
+
+            self.checkIfMessageAvailableToDisplay()
         }
     }
 }
