@@ -4,6 +4,10 @@ import Foundation
 // A protocol that can handle push notification events. Such as when a push is received on the device or when a push is clicked on.
 // Note: This is meant to be an abstraction of the iOS `UNUserNotificationCenterDelegate` protocol.
 protocol PushEventHandler: AutoMockable {
+    // The SDK manages multiple push event handlers. We need a way to differentiate them between one another.
+    // The return value should uniquely identify the handler from other handlers installed in the app.
+    var identifier: String { get }
+
     // Called when a push notification was acted upon. Either clicked or swiped away.
     //
     // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void)`

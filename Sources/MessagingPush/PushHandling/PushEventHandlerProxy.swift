@@ -21,7 +21,7 @@ protocol PushEventHandlerProxy: AutoMockable {
 // sourcery: InjectSingleton
 class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     // Use a map so that we only save 1 instance of a given handler.
-    @Atomic private var nestedDelegates: [String: PushEventHandler] = [:]
+    @Atomic var nestedDelegates: [String: PushEventHandler] = [:]
 
     private let logger: Logger
 
@@ -30,7 +30,7 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
     }
 
     func addPushEventHandler(_ newHandler: PushEventHandler) {
-        nestedDelegates[String(describing: newHandler)] = newHandler
+        nestedDelegates[newHandler.identifier] = newHandler
     }
 
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
@@ -58,11 +58,11 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
                     // These logs could help in debuggging to determine what delegate did not call the completion handler.
-                    self.logger.info("Sending push notification, \(pushAction.push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+                    self.logger.info("Sending push notification, \(pushAction.push.title), action event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.onPushAction(pushAction) {
                         Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
-                            self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+                            self.logger.info("Received async completion handler from \(nameOfDelegateClass) for action push event.")
 
                             if !hasResumed {
                                 hasResumed = true
@@ -109,11 +109,11 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
 
                     // Using logs to give feedback to customer if 1 or more delegates do not call the async completion handler.
                     // These logs could help in debuggging to determine what delegate did not call the completion handler.
-                    self.logger.info("Sending push notification, \(push.title), event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
+                    self.logger.info("Sending push notification, \(push.title), will display event to: \(nameOfDelegateClass)). Customer.io SDK will wait for async completion handler to be called...")
 
                     delegate.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
                         Task { @MainActor in // in case the delegate calls the completion handler on a background thread, we need to switch back to the main thread.
-                            self.logger.info("Received async completion handler from \(nameOfDelegateClass).")
+                            self.logger.info("Received async completion handler from \(nameOfDelegateClass) for will display event.")
 
                             if !hasResumed {
                                 hasResumed = true
