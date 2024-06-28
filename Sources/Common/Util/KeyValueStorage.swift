@@ -12,6 +12,8 @@ public protocol SharedKeyValueStorage {
     func setString(_ value: String?, forKey key: KeyValueStorageKey)
     func date(_ key: KeyValueStorageKey) -> Date?
     func setDate(_ value: Date?, forKey key: KeyValueStorageKey)
+    func data(_ key: KeyValueStorageKey) -> Data?
+    func setData(_ value: Data?, forKey key: KeyValueStorageKey)
     func deleteAll()
 }
 
@@ -129,6 +131,14 @@ public class UserDefaultsSharedKeyValueStorage: SharedKeyValueStorage {
 
     public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
         userDefaults?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
+    }
+
+    public func data(_ key: KeyValueStorageKey) -> Data? {
+        userDefaults?.data(forKey: key.rawValue)
+    }
+
+    public func setData(_ value: Data?, forKey key: KeyValueStorageKey) {
+        userDefaults?.set(value, forKey: key.rawValue)
     }
 
     public func deleteAll() {

@@ -9,12 +9,30 @@ class ModalMessageManager: MessageManager {
     private var modalViewManager: ModalViewManager?
     var messagePosition: MessagePosition = .top
 
+    var isShowingMessage: Bool {
+        guard let modalViewManager = modalViewManager else {
+            return false
+        }
+
+        return modalViewManager.isShowingMessage
+    }
+
+    func cancelShowingMessage() {
+        guard let modalViewManager = modalViewManager else {
+            return // no message being shown to cancel
+        }
+
+        engine.delegate = nil // to make sure we do not get a callback when message loaded and we try to show it.
+
+        modalViewManager.cancel()
+    }
+
     func showMessage(position: MessagePosition) {
         messagePosition = position
     }
 
     override func onDoneLoadingMessage(routeLoaded: String, onComplete: @escaping () -> Void) {
-        if routeLoaded == currentMessage.messageId, !messageLoaded {
+        if routeLoaded == currentMessage.templateId, !messageLoaded {
             messageLoaded = true
 
             if UIApplication.shared.applicationState == .active {

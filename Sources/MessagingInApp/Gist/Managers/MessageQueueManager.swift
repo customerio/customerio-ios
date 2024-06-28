@@ -3,6 +3,7 @@ import Foundation
 import UIKit
 
 protocol MessageQueueManager: AutoMockable {
+    func clearLocalStore()
     func getInterval() -> Double
     func setInterval(_ newInterval: Double)
     func setup(skipQueueCheck: Bool)
@@ -58,10 +59,19 @@ class MessageQueueManagerImpl: MessageQueueManager {
         }
     }
 
+    func clearLocalStore() {
+        localMessageStore = [:]
+        QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter).clearCachedUserQueue()
+    }
+
+    deinit {
+        queueTimer?.invalidate()
+    }
+
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
         localMessageStore.map(\.value).sortByMessagePriority().forEach { message in
-            handleMessage(message: message)
+            showMessageIfMeetsCriteria(message: message)
         }
     }
 
@@ -70,7 +80,7 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     func removeMessageFromLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
+        guard let queueId = message.id else {
             return
         }
         localMessageStore.removeValue(forKey: queueId)
@@ -80,15 +90,17 @@ class MessageQueueManagerImpl: MessageQueueManager {
         localMessageStore.filter { $0.value.elementId == elementId }.map(\.value).sortByMessagePriority()
     }
 
-    func addMessageToLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
-            return
+    func addMessagesToLocalStore(messages: [Message]) {
+        messages.forEach { message in
+            guard let queueId = message.id else {
+                return
+            }
+            localMessageStore.updateValue(message, forKey: queueId)
         }
-        localMessageStore.updateValue(message, forKey: queueId)
     }
 
     @objc
-    private func fetchUserMessages() {
+    func fetchUserMessages() {
         if UIApplication.shared.applicationState != .background {
             Logger.instance.info(message: "Checking Gist queue service")
             if let userToken = UserManager().getUserToken() {
@@ -116,11 +128,14 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     func processFetchedMessages(_ fetchedMessages: [Message]) {
-        // To prevent us from showing expired / revoked messages, clear user messages from local queue.
+        // To prevent us from showing expired / revoked messages, reset the local queue with the latest queue from the backend service.
+        // The backend service is the single-source-of-truth for in-app messages for each user.
         clearUserMessagesFromLocalStore()
+        addMessagesToLocalStore(messages: fetchedMessages)
         Logger.instance.info(message: "Gist queue service found \(fetchedMessages.count) new messages")
+
         for message in fetchedMessages {
-            handleMessage(message: message)
+            showMessageIfMeetsCriteria(message: message)
         }
 
         // Notify observers that a fetch has completed and the local queue has been modified.
@@ -128,37 +143,26 @@ class MessageQueueManagerImpl: MessageQueueManager {
         eventBus.postEvent(InAppMessagesFetchedEvent())
     }
 
-    private func handleMessage(message: Message) {
+    private func showMessageIfMeetsCriteria(message: Message) {
         if message.isInlineMessage {
             // Inline Views show inline messages by getting messages stored in the local queue on device.
-            // So, add the message to the local store and when inline Views are constructed, they will check the store.
-            addMessageToLocalStore(message: message)
-
             return
         }
 
         // Rest of logic of function is for Modal messages
 
         // Skip showing Modal messages if already shown.
-        if let queueId = message.queueId, Gist.shared.shownModalMessageQueueIds.contains(queueId) {
+        if let queueId = message.id, Gist.shared.shownModalMessageQueueIds.contains(queueId) {
             Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
             return
         }
 
         let position = message.gistProperties.position
 
-        if let routeRule = message.gistProperties.routeRule {
-            let cleanRouteRule = routeRule.replacingOccurrences(of: "\\", with: "/")
-            if let regex = try? NSRegularExpression(pattern: cleanRouteRule) {
-                let range = NSRange(location: 0, length: Gist.shared.getCurrentRoute().utf16.count)
-                if regex.firstMatch(in: Gist.shared.getCurrentRoute(), options: [], range: range) == nil {
-                    Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanRouteRule)")
-                    addMessageToLocalStore(message: message)
-                    return
-                }
-            } else {
-                Logger.instance.info(message: "Problem processing route rule message regex: \(cleanRouteRule)")
-                return
+        if message.doesHavePageRule(), let cleanPageRule = message.cleanPageRule {
+            if !message.doesPageRuleMatch(route: Gist.shared.getCurrentRoute()) {
+                Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanPageRule)")
+                return // exit early to not show the message since page rule doesnt match
             }
         }
 

@@ -83,6 +83,13 @@ extension AutoTrackingScreenViews {
             return
         }
 
+        // View is an internal Cio View, ignore event.
+        // This logic needs to exist outside of the `filterAutoScreenViewEvents` feature because customers can override the event filter.
+        // There are side effects (such as infinite loops) caused when our SDK tracks screenview events for internal classes.
+        if viewController is DoNotTrackScreenViewEvent {
+            return
+        }
+
         // Before we track event, apply a filter to remove events that could be unhelpful.
         let customerOverridenFilter = filterAutoScreenViewEvents
         let defaultSdkFilter: (UIViewController) -> Bool = { viewController in

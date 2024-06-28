@@ -42,6 +42,19 @@ class InAppMessageViewTest: UnitTest {
     }
 
     @MainActor
+    func test_whenViewConstructedUsingStoryboards_expectStartDismissedAfterConstructed() {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let view = InAppMessageView(coder: EmptyNSCoder())!
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View is in dismissed state
+
+        view.elementId = .random
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View remains dismissed after setting element id.
+    }
+
+    @MainActor
     func test_whenViewConstructedViaCode_expectCheckForMessagesToDisplay() {
         let givenElementId = String.random
         queueMock.getInlineMessagesReturnValue = []
@@ -52,6 +65,15 @@ class InAppMessageViewTest: UnitTest {
 
         let actualElementId = queueMock.getInlineMessagesReceivedArguments
         XCTAssertEqual(actualElementId, givenElementId)
+    }
+
+    @MainActor
+    func test_whenViewConstructedViaCode_expectStartDismissedAfterConstructed() {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let view = InAppMessageView(elementId: .random)
+
+        XCTAssertFalse(isDisplayingInAppMessage(view)) // Assert View is in dismissed state
     }
 
     // MARK: Display in-app message
@@ -82,7 +104,7 @@ class InAppMessageViewTest: UnitTest {
     // We need to test that the View is updated when new messages are fetched.
 
     @MainActor
-    func test_givenInAppMessageFetchedAfterViewConstructed_expectShowInAppMessageFetched() async {
+    func test_givenFirstFetchDoesNotContainAnyMessage_givenInAppMessageFetchedAfterViewConstructed_expectShowInAppMessageFetched() async {
         // start with no messages available.
         queueMock.getInlineMessagesReturnValue = []
 
@@ -225,15 +247,78 @@ class InAppMessageViewTest: UnitTest {
         await simulateSdkFetchedMessages([Message.randomInline]) // simulate new message fetched
         XCTAssertFalse(isDisplayingInAppMessage(inlineView)) // expect ignore new message, stay dismissed.
     }
+
+    // MARK: height and width constriants
+
+    // When the View is constructed, the SDK will add a constraint or it will modify the existing height constraint.
+    // A View should not have multiple height constraints, which is why we document the SDK behavior around height constraints.
+    //
+    // This test function hightlights a behavior that could happen, but we don't expect it to according to our documentation of the inline View.
+    @MainActor
+    func test_heightAndWidth_givenUserSetsHeightConstraint_expectSdkAddsASeparateConstraint() async {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let givenHeightUserSetsOnView: CGFloat = 100
+        let givenWidthUserSetsOnView: CGFloat = 100
+
+        let view = InAppMessageView(elementId: .random)
+        // After the constructor is called, the SDK has already created a height constraint if one does not yet exist.
+        // Then, the customer may decide to create another one, although our documentation suggests not to.
+        NSLayoutConstraint.activate([view.heightAnchor.constraint(equalToConstant: givenHeightUserSetsOnView)])
+        NSLayoutConstraint.activate([view.widthAnchor.constraint(equalToConstant: givenWidthUserSetsOnView)])
+
+        await simulateSdkFetchedMessages([])
+
+        // Expects that the View has 2 height constraints: Sdk added and customer added.
+        XCTAssertEqual(view.heightConstraints.map(\.constant), [0, 100])
+        XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
+    }
+
+    @MainActor
+    func test_heightAndWidth_givenViewDisplaysMessage_expectSdkModifiesTheHeightToSizeOfMessage() async {
+        queueMock.getInlineMessagesReturnValue = [] // start with no messages available
+
+        let givenWidthUserSetsOnView: CGFloat = 100
+
+        let view = InAppMessageView(elementId: .random)
+        NSLayoutConstraint.activate([view.widthAnchor.constraint(equalToConstant: givenWidthUserSetsOnView)])
+
+        // The SDK fetches a message and renders it. We expect the View displays this message.
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage])
+        // The width of the rendered message is expected to equal what the customer sets the View for. We do not modify the View's width.
+        // Notice the height of the rendered Message is different from what the customer set the View.
+        await onDoneRenderingInAppMessage(givenInlineMessage, heightOfRenderedMessage: 300, widthOfRenderedMessage: givenWidthUserSetsOnView)
+
+        // We expect the SDK modifies the View's height, but not the width.
+        // We expect to see 1 height constraint which is the one added by the SDK.
+        XCTAssertEqual(view.heightConstraints.map(\.constant), [300])
+        XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
+    }
+
+    @MainActor
+    func test_heightAndWidth_givenNoMessageToDisplay_expectSdkModifiesTheHeightToNotShowView() async {
+        queueMock.getInlineMessagesReturnValue = []
+
+        let givenWidthUserSetsOnView: CGFloat = 100
+
+        let view = InAppMessageView(elementId: .random)
+        NSLayoutConstraint.activate([view.widthAnchor.constraint(equalToConstant: givenWidthUserSetsOnView)])
+
+        // We expect the SDK modifies the View's height, but not the width.
+        // We expect to see 1 height constraint which is the one added by the SDK.
+        XCTAssertEqual(view.heightConstraints.map(\.constant), [0])
+        XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
+    }
 }
 
 extension InAppMessageViewTest {
     // Call when the in-app webview rendering process has finished.
-    func onDoneRenderingInAppMessage(_ message: Message) async {
+    func onDoneRenderingInAppMessage(_ message: Message, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
         // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
         // To mock the web server call with a successful response back, call these delegate functions:
-        engineWebMock.delegate?.routeLoaded(route: message.messageId)
-        engineWebMock.delegate?.sizeChanged(width: 100, height: 100)
+        engineWebMock.delegate?.routeLoaded(route: message.templateId)
+        engineWebMock.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
 
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
         await waitForMainThreadToFinishPendingTasks()
@@ -249,7 +334,7 @@ extension InAppMessageViewTest {
     }
 
     func isDisplayingInAppMessage(_ view: InAppMessageView) -> Bool {
-        guard let viewHeightConstraint = view.viewHeightConstraint else {
+        guard let viewHeightConstraint = view.heightConstraint else {
             return false
         }
 

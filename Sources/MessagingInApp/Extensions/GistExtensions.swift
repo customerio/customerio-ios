@@ -5,6 +5,6 @@ extension Message {
     //
     // We are logging the Gist campaign id as delivery id because we call it delivery id on our system.
     var describeForLogs: String {
-        "id: \(messageId), queueId: \(queueId ?? "none"), deliveryId: \(gistProperties.campaignId ?? "none")"
+        "id: \(id ?? "none"), templateId: \(templateId), deliveryId: \(gistProperties.campaignId ?? "none")"
     }
 }

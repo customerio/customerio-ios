@@ -1,3 +1,35 @@
+## [3.3.1](https://github.com/customerio/customerio-ios/compare/3.3.0...3.3.1) (2024-06-25)
+
+### Bug Fixes
+
+* display in-app messages with page rules set and kill/re-open app ([#746](https://github.com/customerio/customerio-ios/issues/746)) ([cfae57d](https://github.com/customerio/customerio-ios/commit/cfae57d1b675865ca980c22f52abaeee9c9baa33))
+
+## [3.3.0](https://github.com/customerio/customerio-ios/compare/3.2.3...3.3.0) (2024-06-17)
+
+### Features
+
+* do not show modal message if change screens and page rule enabled ([#731](https://github.com/customerio/customerio-ios/issues/731)) ([cb1d014](https://github.com/customerio/customerio-ios/commit/cb1d014d52f7c53af6650e185857ba0e5468db49))
+
+## [3.2.3](https://github.com/customerio/customerio-ios/compare/3.2.2...3.2.3) (2024-06-13)
+
+### Bug Fixes
+
+* 3rd party SDK compatibility when SDK forwards push events back to us ([#736](https://github.com/customerio/customerio-ios/issues/736)) ([ccb0f47](https://github.com/customerio/customerio-ios/commit/ccb0f47297cca52c5023d149a325d9099dbdccd8))
+
+## [3.2.2](https://github.com/customerio/customerio-ios/compare/3.2.1...3.2.2) (2024-05-29)
+
+
+### Bug Fixes
+
+* action tracking for in-app ([#728](https://github.com/customerio/customerio-ios/issues/728)) ([c1f69c1](https://github.com/customerio/customerio-ios/commit/c1f69c167205238673265eda60aa5183bf14181a))
+
+## [3.2.1](https://github.com/customerio/customerio-ios/compare/3.2.0...3.2.1) (2024-05-27)
+
+
+### Bug Fixes
+
+* crash on emulator while development ([#725](https://github.com/customerio/customerio-ios/issues/725)) ([7ca2dc2](https://github.com/customerio/customerio-ios/commit/7ca2dc2fb8b65bb5f01dbbe7fc14ec2c0b1b7031))
+
 ## [3.2.0](https://github.com/customerio/customerio-ios/compare/3.1.3...3.2.0) (2024-05-07)
 
 

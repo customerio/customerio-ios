@@ -107,6 +107,14 @@ class DataPipelineScreenViewsTest: IntegrationTest {
         assertEventTracked(numberOfEventsAdded: 1)
     }
 
+    func test_performScreenTracking_givenScreenInheritsDoNotTrackScreenViewEvent_expectNoTracking() {
+        class DoNotTrackScreen: UIViewController, DoNotTrackScreenViewEvent {}
+
+        autoTrackingScreenViews.performScreenTracking(onViewController: DoNotTrackScreen())
+
+        assertNoEventTracked()
+    }
+
     // MARK: getNameForAutomaticScreenViewTracking
 
     func test_getNameForAutomaticScreenViewTracking_givenViewWithNoTitle_expectNil() {

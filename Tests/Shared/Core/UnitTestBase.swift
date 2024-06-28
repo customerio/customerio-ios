@@ -205,4 +205,9 @@ open class UnitTestBase<Component>: XCTestCase {
             // If we are not already on the main thread, task will wait until this Task is executed on the main thread, indicating that all other tasks queued on the main thread have finished.
         }.value // synchronously wait for this Task to finish before returning from this function.
     }
+
+    // You can store static files in Tests/Shared/SampleDataFiles and read those files with this function.
+    public func readSampleDataFile(subdirectory: String, fileName: String) -> String {
+        SampleDataFilesUtil(fileStore: diGraphShared.fileStorage).readFileContents(fileName: fileName, subdirectory: subdirectory)
+    }
 }

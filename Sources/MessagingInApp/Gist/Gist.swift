@@ -35,7 +35,14 @@ public class Gist: GistInstance, GistDelegate {
 
         // To finish initializing of Gist, we want to fetch fonts and other assets for HTML in-app messages.
         // To do that, we try to display a message with an empty message id.
-        _ = InlineMessageManager(siteId: self.siteId, message: Message(messageId: ""))
+        _ = InlineMessageManager(siteId: self.siteId, message: Message(templateId: ""))
+    }
+
+    // For testing to reset the singleton state
+    func reset() {
+        clearUserToken()
+        messageManagers = []
+        RouteManager.clearCurrentRoute()
     }
 
     // MARK: User
@@ -45,6 +52,8 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func clearUserToken() {
+        cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
+        messageQueueManager.clearLocalStore()
         UserManager().clearUserToken()
         messageQueueManager.clearUserMessagesFromLocalStore()
     }
@@ -56,6 +65,12 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func setCurrentRoute(_ currentRoute: String) {
+        if RouteManager.getCurrentRoute() == currentRoute {
+            return // ignore request, route has not changed.
+        }
+
+        cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
+
         RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
     }
@@ -68,7 +83,7 @@ public class Gist: GistInstance, GistDelegate {
 
     public func showMessage(_ message: Message, position: MessagePosition) -> Bool {
         if let messageManager = getModalMessageManager() {
-            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
+            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.templateId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
@@ -93,7 +108,7 @@ public class Gist: GistInstance, GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
+        Logger.instance.debug(message: "Message with route: \(message.templateId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
         } else {
@@ -103,9 +118,11 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     public func messageDismissed(message: Message) {
-        Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
+        Logger.instance.debug(message: "Message with id: \(message.templateId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
+
+        messageQueueManager.fetchUserMessagesFromLocalStore()
     }
 
     public func messageError(message: Message) {
@@ -126,16 +143,36 @@ public class Gist: GistInstance, GistDelegate {
         }
 
         messageQueueManager.removeMessageFromLocalStore(message: message)
-        if let queueId = message.queueId {
-            shownModalMessageQueueIds.insert(queueId)
+        if let id = message.id {
+            shownModalMessageQueueIds.insert(id)
         }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
             .logView(message: message, userToken: userToken) { response in
                 if case .failure(let error) = response {
-                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+                    Logger.instance.error(message: "Failed to log view for message: \(message.templateId) with error: \(error)")
                 }
             }
+    }
+
+    // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
+    // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
+    private func cancelModalMessage(ifDoesNotMatchRoute newRoute: String) {
+        if let messageManager = getModalMessageManager() {
+            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
+
+            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
+                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
+                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.templateId)")
+
+                // Stop showing the current message synchronously meaning to remove from UI instantly.
+                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
+                messageManager.cancelShowingMessage()
+
+                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
+                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
+            }
+        }
     }
 
     // Message Manager
@@ -147,7 +184,7 @@ public class Gist: GistInstance, GistDelegate {
         return messageManager
     }
 
-    private func getModalMessageManager() -> ModalMessageManager? {
+    func getModalMessageManager() -> ModalMessageManager? {
         messageManagers.first
     }
 
