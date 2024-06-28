@@ -51,7 +51,7 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
 
         let expectToBeginAnimation = expectation(description: "Begin animation")
@@ -75,12 +75,12 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
-            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "Home")
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(Home)$")
         ]
 
         onDoneFetching(messages: givenMessages)
         doneLoadingMessage(givenMessages[0])
-        XCTAssertEqual(currentlyShownModalMessage?.instanceId, givenMessages[0].instanceId)
+        XCTAssertEqual(currentlyShownModalMessage, givenMessages[0])
 
         navigateToScreen(screenName: "Settings")
 
