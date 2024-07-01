@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioMessagingInApp
 import UIKit
 
 enum CustomDataSource {
@@ -29,7 +30,17 @@ class CustomDataViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        setupInlineInAppMessage()
         addAccessibilityIdentifiersForAppium()
+    }
+
+    func setupInlineInAppMessage() {
+        let inlineInAppMessageView = InAppMessageView(elementId: "custom-screen")
+        view.addSubview(inlineInAppMessageView)
+        inlineInAppMessageView.backgroundColor = UIColor.brown
+        inlineInAppMessageView.translatesAutoresizingMaskIntoConstraints = false
+        inlineInAppMessageView.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
     }
 
     func addAccessibilityIdentifiersForAppium() {
