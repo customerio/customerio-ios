@@ -27,6 +27,12 @@ class InlineMessageManager: MessageManager {
 
     weak var inlineMessageDelegate: InlineMessageManagerDelegate?
 
+    override func stopAndCleanup() {
+        inlineMessageDelegate = nil
+
+        super.stopAndCleanup()
+    }
+
     override func onReplaceMessage(newMessageToShow: Message) {
         // Not yet implemented. Planned in future update.
     }

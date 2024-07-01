@@ -8,7 +8,7 @@ public protocol GistViewDelegate: AnyObject {
 
 public class GistView: UIView {
     public weak var delegate: GistViewDelegate?
-    private var message: Message?
+    var message: Message?
 
     convenience init(message: Message, engineView: UIView) {
         self.init()
