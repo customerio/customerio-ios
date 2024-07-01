@@ -75,9 +75,9 @@ class MessageQueueManagerTest: UnitTest {
 
         // Get the output 1 time to get a sample to compare against.
         manager.localMessageStore = [
-            .random: givenMessage1,
-            .random: givenMessage2,
-            .random: givenMessage3
+            "1": givenMessage1,
+            "2": givenMessage2,
+            "3": givenMessage3
         ]
         let expectedOrder = manager.getInlineMessages(forElementId: givenElementId)
 
@@ -87,7 +87,7 @@ class MessageQueueManagerTest: UnitTest {
 
             // Shuffle the order of the message store dictionary.
             manager.localMessageStore = [:]
-            for (_, message) in shuffled.enumerated() {
+            for message in shuffled {
                 manager.localMessageStore[.random] = message.value
             }
 
