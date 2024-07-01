@@ -87,7 +87,16 @@ class MessageQueueManagerImpl: MessageQueueManager {
     }
 
     func getInlineMessages(forElementId elementId: String) -> [Message] {
-        localMessageStore.filter { $0.value.elementId == elementId }.map(\.value).sortByMessagePriority()
+        let messages = localMessageStore.filter {
+            if $0.value.elementId == elementId {
+                if $0.value.doesHavePageRule() {
+                    return $0.value.doesPageRuleMatch(route: Gist.shared.getCurrentRoute())
+                }
+                return true
+            }
+            return false
+        }.map(\.value).sortByMessagePriority()
+        return messages
     }
 
     func addMessagesToLocalStore(messages: [Message]) {
