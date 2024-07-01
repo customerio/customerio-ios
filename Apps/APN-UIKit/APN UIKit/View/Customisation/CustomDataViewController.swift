@@ -30,7 +30,6 @@ class CustomDataViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
         setupInlineInAppMessage()
         addAccessibilityIdentifiersForAppium()
     }
