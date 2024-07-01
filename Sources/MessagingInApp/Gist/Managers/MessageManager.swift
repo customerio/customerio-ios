@@ -19,7 +19,7 @@ class MessageManager {
     var engine: EngineWebInstance
     private let siteId: String
     let currentMessage: Message
-    var gistView: GistView!
+    let gistView: GistView
     private var currentRoute: String
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
@@ -45,11 +45,22 @@ class MessageManager {
         elapsedTimer.start(title: "Loading message with id: \(currentMessage.templateId)")
 
         self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
-        engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
+        engine.delegate = self
     }
 
     deinit {
+        self.stopAndCleanup()
+    }
+
+    // The manager instance is no longer needed. Create a new instance when you want to display another message.
+    // Note: This function does not remove the WebView from the view hierarchy. Do that from the UI layer.
+    func stopAndCleanup() {
+        // First, stop sending events to the delegates.
+        delegate = nil
+        gistView.delegate = nil
+
+        // Then, cleanup resources.
         engine.cleanEngineWeb()
     }
 

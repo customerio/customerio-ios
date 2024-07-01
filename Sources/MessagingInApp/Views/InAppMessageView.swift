@@ -38,9 +38,16 @@ public class InAppMessageView: UIView {
         }
     }
 
+    // Inline messages that have already been shown by this View instance.
+    // This is used to prevent showing the same message multiple times when the close button is pressed.
+    //
+    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
+    // replaced with a global list of shown messages.
+    var previouslyShownMessages: [Message] = []
+
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
 
-    private var inlineMessageManager: InlineMessageManager?
+    var inlineMessageManager: InlineMessageManager?
 
     public init(elementId: String) {
         super.init(frame: .zero)
@@ -90,7 +97,11 @@ public class InAppMessageView: UIView {
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageToDisplay = queueOfMessagesForGivenElementId.first
+        let messageToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
+            let didPreviouslyShowMessage = previouslyShownMessages.contains(where: { $0.id == potentialMessageToDisplay.id })
+
+            return !didPreviouslyShowMessage
+        }
 
         if let messageToDisplay {
             displayInAppMessage(messageToDisplay)
@@ -105,19 +116,13 @@ public class InAppMessageView: UIView {
             return // already showing this message, exit early.
         }
 
-        guard inlineMessageManager == nil else {
-            // We are already displaying a messsage. In the future, we are planning on swapping the web content if there is another message in the local queue to display
-            // and an inline message is dismissed. Until we add this feature, exit early.
-            return
-        }
+        stopShowingMessageAndCleanup()
 
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
 
-        guard let inlineView = newInlineMessageManager.inlineMessageView else {
-            return // we dont expect this to happen, but better to handle it gracefully instead of force unwrapping
-        }
+        let inlineView = newInlineMessageManager.inlineMessageView
         addSubview(inlineView)
 
         // Setup the WebView to be the same size as this View. When this View changes size, the WebView will change, too.
@@ -132,14 +137,22 @@ public class InAppMessageView: UIView {
         inlineMessageManager = newInlineMessageManager
     }
 
+    private func stopShowingMessageAndCleanup() {
+        // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
+        // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
+        inlineMessageManager?.stopAndCleanup()
+        inlineMessageManager?.inlineMessageView.removeFromSuperview()
+        inlineMessageManager = nil
+    }
+
     private func dismissInAppMessage() {
         // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the dismiss animation does not look as expected.
-        // To fix this, exit early if dimiss has already been triggered.
+        // To fix this, exit early if dismiss has already been triggered.
         if inlineMessageManager?.inlineMessageDelegate == nil {
             return
         }
 
-        inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could cancel the dismiss animation and stop the dismiss action.
+        stopShowingMessageAndCleanup()
 
         animateHeight(to: 0)
     }
@@ -178,7 +191,11 @@ extension InAppMessageView: InlineMessageManagerDelegate {
 
     func onCloseAction() {
         Task { @MainActor in
-            self.dismissInAppMessage()
+            if let currentlyShownMessage = inlineMessageManager?.currentMessage {
+                previouslyShownMessages.append(currentlyShownMessage)
+            }
+
+            self.checkIfMessageAvailableToDisplay()
         }
     }
 }
