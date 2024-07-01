@@ -13,9 +13,14 @@ open class IntegrationTest: UnitTest {
     // Mock HTTP requests to Gist backend services.
     let gistQueueNetworkMock = GistQueueNetworkMock()
 
+    private var engineProvider: EngineWebProviderStub!
+
     override open func setUp() {
         super.setUp()
 
+        engineProvider = EngineWebProviderStub()
+
+        diGraphShared.override(value: engineProvider, forType: EngineWebProvider.self)
         diGraphShared.override(value: gistQueueNetworkMock, forType: GistQueueNetwork.self)
     }
 
@@ -32,5 +37,63 @@ open class IntegrationTest: UnitTest {
 
             completionHandler(.success((body, response)))
         }
+    }
+}
+
+// MARK: utility functions for inline views
+
+@MainActor
+extension IntegrationTest {
+    func onCloseActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
+        // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
+
+        // When onCloseAction() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    // Call when the in-app webview rendering process has finished.
+    func onDoneRenderingInAppMessage(_ message: Message, insideOfInlineView inlineView: InAppMessageView, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
+        // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
+        // To mock the web server call with a successful response back, call these delegate functions:
+        getWebEngineForInlineView(inlineView)?.delegate?.routeLoaded(route: message.templateId)
+        getWebEngineForInlineView(inlineView)?.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
+
+        // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
+        view.inlineMessageManager?.engine
+    }
+}
+
+// MARK: utility functions for modal views
+
+@MainActor
+extension IntegrationTest {
+    func onCloseActionButtonPressedOnModal() async {
+        // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        getWebEngineForModalView()?.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
+
+        // When onCloseAction() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    // Call when the in-app webview rendering process has finished.
+    func onDoneRenderingInAppMessageOnModal(_ message: Message, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
+        // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
+        // To mock the web server call with a successful response back, call these delegate functions:
+        getWebEngineForModalView()?.delegate?.routeLoaded(route: message.templateId)
+        getWebEngineForModalView()?.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
+
+        // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    func getWebEngineForModalView() -> EngineWebInstance? {
+        Gist.shared.getModalMessageManager()?.engine
     }
 }
