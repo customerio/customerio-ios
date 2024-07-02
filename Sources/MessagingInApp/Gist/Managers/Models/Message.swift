@@ -162,18 +162,23 @@ extension Array where Element == Message {
     func sortByMessagePriority() -> [Message] {
         sorted {
             switch ($0.priority, $1.priority) {
+            // Both messages have a priority, so we compare them.
             case (let priority0?, let priority1?):
-                // Both messages have a priority, so we compare them.
-
                 // if the messages do not have the same priority, sort by the priority.
                 if priority0 != priority1 {
                     return priority0 < priority1
                 }
 
-                // If messages have same priority, sort by something else to assert that the function return value is always the same no matter if the order of the input array is different.
+                // If messages have same priority, sort by something else to assert that the function return value has a consistent output order.
 
-                // Because the priorities are the same, it doesn't matter what message is next. Use a unique value to perform the comparison.
-                return $0.instanceId < $1.instanceId
+                // first try the id because it's set by the backend and is unique.
+                if let id0 = $0.id, let id1 = $1.id {
+                    return id0 < id1
+                }
+
+                // If the id values are nil, unfortunately, there is no other property of Messages that are consistent.
+
+                return $0.instanceId < $1.instanceId // fallback to instanceid which is unique, but are generated for each new instance of Message created.
             case (nil, _):
                 // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
                 return false

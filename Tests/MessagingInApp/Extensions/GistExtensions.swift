@@ -2,7 +2,7 @@
 import Foundation
 
 extension Message {
-    convenience init(messageId: String = .random, campaignId: String = .random, pageRule: String? = nil, queueId: String = .random, elementId: String? = nil, priority: Int? = nil) {
+    convenience init(messageId: String = .random, campaignId: String = .random, pageRule: String? = nil, queueId: String? = .random, elementId: String? = nil, priority: Int? = nil) {
         var gistProperties = [
             "campaignId": campaignId
         ]
