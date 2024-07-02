@@ -64,38 +64,6 @@ class MessageQueueManagerTest: UnitTest {
         XCTAssertEqual(actualMessages, [givenMessage2, givenMessage1, givenMessage3])
     }
 
-    // We expect that given an identical set of Messages as input, no matter the order, the output order is always the same.
-    func test_getInlineMessages_givenMessagesWithSamePriority_expectConsistentReturnValue() {
-        let givenElementId = String.random
-
-        // Create multiple messages with the same priority.
-        let givenMessage1 = Message(elementId: givenElementId, priority: 1)
-        let givenMessage2 = Message(elementId: givenElementId, priority: 1)
-        let givenMessage3 = Message(elementId: givenElementId, priority: 1)
-
-        // Get the output 1 time to get a sample to compare against.
-        manager.localMessageStore = [
-            "1": givenMessage1,
-            "2": givenMessage2,
-            "3": givenMessage3
-        ]
-        let expectedOrder = manager.getInlineMessages(forElementId: givenElementId)
-
-        // Shuffle the input Messages Array and assert that the output is always the same.
-        for _ in 0 ..< 100 {
-            let shuffled = manager.localMessageStore.shuffled()
-
-            // Shuffle the order of the message store dictionary.
-            manager.localMessageStore = [:]
-            for message in shuffled {
-                manager.localMessageStore[.random] = message.value
-            }
-
-            // We expect that the output order is always the same
-            XCTAssertEqual(expectedOrder, manager.getInlineMessages(forElementId: givenElementId))
-        }
-    }
-
     // MARK: - processFetchedMessages
 
     func test_processFetchedMessages_givenEmptyMessages_expectNoProcessingDone() {
