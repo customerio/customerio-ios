@@ -9,6 +9,7 @@ enum CustomDataSource {
 }
 
 class CustomDataViewController: BaseViewController {
+    @IBOutlet var inlineInAppMessageView: InAppMessageView!
     @IBOutlet var eventNameTextField: ThemeTextField!
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
@@ -35,11 +36,7 @@ class CustomDataViewController: BaseViewController {
     }
 
     func setupInlineInAppMessage() {
-        let inlineInAppMessageView = InAppMessageView(elementId: "custom-screen")
-        view.addSubview(inlineInAppMessageView)
-        inlineInAppMessageView.backgroundColor = UIColor.brown
-        inlineInAppMessageView.translatesAutoresizingMaskIntoConstraints = false
-        inlineInAppMessageView.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
+        inlineInAppMessageView.elementId = "custom-screen"
     }
 
     func addAccessibilityIdentifiersForAppium() {
