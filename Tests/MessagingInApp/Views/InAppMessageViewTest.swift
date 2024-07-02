@@ -195,7 +195,24 @@ class InAppMessageViewTest: UnitTest {
     }
 
     @MainActor
-    func test_expiration_givenMessageExpired_givenNewMessageFetched_expectDisplayNextMessage() async {
+    func test_expiration_givenMessageExpired_expectDisplayNextMessageInLocalQueue() async {
+        let givenElementId = String.random
+        let givenMessageThatExpires = Message(elementId: givenElementId)
+        let givenNextMessageInQueue = Message(elementId: givenElementId)
+        queueMock.getInlineMessagesReturnValue = [givenMessageThatExpires, givenNextMessageInQueue]
+
+        let inlineView = InAppMessageView(elementId: givenElementId)
+        await onDoneRenderingInAppMessage(givenMessageThatExpires, insideOfInlineView: inlineView)
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        await simulateSdkFetchedMessages([givenNextMessageInQueue]) // simulate a message expires.
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenNextMessageInQueue) // expect View is rending a new message
+
+        await onDoneRenderingInAppMessage(givenNextMessageInQueue, insideOfInlineView: inlineView)
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+    }
+
+    @MainActor
+    func test_expiration_givenMessageExpired_givenNewMessageFetched_expectDisplayFetchedMessage() async {
         let givenElementId = String.random
         let givenMessageThatExpires = Message(elementId: givenElementId)
         let givenNewMessageFetched = Message(elementId: givenElementId)
