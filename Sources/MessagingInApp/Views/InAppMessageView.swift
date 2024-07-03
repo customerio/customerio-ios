@@ -34,7 +34,7 @@ public class InAppMessageView: UIView {
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
-            checkIfMessageAvailableToDisplay()
+            refreshView()
         }
     }
 
@@ -58,13 +58,18 @@ public class InAppMessageView: UIView {
 
     var inlineMessageManager: InlineMessageManager?
 
+    // Determines if the View is already trying to show a message or not.
+    private var isRenderingOrDisplayingAMessage: Bool {
+        inlineMessageManager != nil
+    }
+
     public init(elementId: String) {
         super.init(frame: .zero)
         self.elementId = elementId
 
         // Setup the View and display a message, if one available. Since an elementId has been set.
         setupView()
-        checkIfMessageAvailableToDisplay()
+        refreshView()
     }
 
     // This is called when the View is created from a Storyboard.
@@ -95,34 +100,43 @@ public class InAppMessageView: UIView {
             // EventBus callback function might not be on UI thread.
             // Switch to UI thread to update UI.
             Task { @MainActor in
-                self?.checkIfMessageAvailableToDisplay()
+                self?.refreshView()
             }
         }
     }
 
-    private func checkIfMessageAvailableToDisplay() {
+    // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
+    private func refreshView(forceShowNextMessage: Bool = false) {
         guard let elementId = elementId else {
-            return
+            return // we cannot check if a message is available until element id set on View.
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
+        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
             let didPreviouslyShowMessage = previouslyShownMessages.contains(where: { $0.id == potentialMessageToDisplay.id })
 
             return !didPreviouslyShowMessage
         }
 
-        if let messageToDisplay {
-            displayInAppMessage(messageToDisplay)
+        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
+            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
+            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
+            // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
+            return
+        }
+
+        if let messageAvailableToDisplay {
+            displayInAppMessage(messageAvailableToDisplay)
         } else {
             dismissInAppMessage()
         }
     }
 
     private func displayInAppMessage(_ message: Message) {
-        // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
+        // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the display animation does not look as expected.
+        // To fix this, exit early if display has already been triggered.
         if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.id == message.id {
-            return // already showing this message, exit early.
+            return // already showing this message or in the process of showing it.
         }
 
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
@@ -269,7 +283,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
                 previouslyShownMessages.append(currentlyShownMessage)
             }
 
-            self.checkIfMessageAvailableToDisplay()
+            self.refreshView(forceShowNextMessage: true)
         }
     }
 }
