@@ -177,7 +177,7 @@ class InAppMessageViewTest: UnitTest {
     // MARK: expiration of in-app messages
 
     @MainActor
-    func test_expiration_givenDisplayedMessageExpires_expectDismissView() async {
+    func test_expiration_givenDisplayedMessageExpires_expectContinueShowingMessageUntilClose() async {
         let givenInlineMessage = Message.randomInline
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
@@ -186,32 +186,19 @@ class InAppMessageViewTest: UnitTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
 
         // Simulate message expiration.
         await simulateSdkFetchedMessages([])
 
-        XCTAssertFalse(isInlineViewVisible(inlineView))
-        XCTAssertNil(getInAppMessage(forView: inlineView))
-    }
-
-    @MainActor
-    func test_expiration_givenMessageExpired_givenNewMessageFetched_expectDisplayNextMessage() async {
-        let givenElementId = String.random
-        let givenMessageThatExpires = Message(elementId: givenElementId)
-        let givenNewMessageFetched = Message(elementId: givenElementId)
-        queueMock.getInlineMessagesReturnValue = [givenMessageThatExpires]
-
-        let inlineView = InAppMessageView(elementId: givenElementId)
-        await onDoneRenderingInAppMessage(givenMessageThatExpires, insideOfInlineView: inlineView)
+        // Expect still showing the same message as before the fetch call.
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        await simulateSdkFetchedMessages([]) // simulate expiration
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
+
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+
         XCTAssertFalse(isInlineViewVisible(inlineView))
         XCTAssertNil(getInAppMessage(forView: inlineView))
-
-        await simulateSdkFetchedMessages([givenNewMessageFetched]) // simulate new message fetched
-        XCTAssertEqual(getInAppMessage(forView: inlineView), givenNewMessageFetched) // expect to begin rendering new message
-        await onDoneRenderingInAppMessage(givenNewMessageFetched, insideOfInlineView: inlineView)
-        XCTAssertTrue(isInlineViewVisible(inlineView)) // expect show next message once it's done rendering
     }
 
     // MARK: close action button
@@ -410,8 +397,10 @@ extension InAppMessageViewTest {
     func simulateSdkFetchedMessages(_ messages: [Message]) async {
         // Because eventbus operations are async, use an expectation that waits until eventbus event is posted and observer is called.
         let expectToCheckIfInAppMessagesAvailableToDisplay = expectation(description: "expect to check for in-app messages")
-        queueMock.getInlineMessagesClosure = { _ in
-            expectToCheckIfInAppMessagesAvailableToDisplay.fulfill()
+
+        queueMock.getInlineMessagesClosure = { [weak expectToCheckIfInAppMessagesAvailableToDisplay] _ in
+            expectToCheckIfInAppMessagesAvailableToDisplay?.fulfill()
+
             return messages
         }
         // Imagine the in-app SDK has fetched new messages. It sends an event to the eventbus.
