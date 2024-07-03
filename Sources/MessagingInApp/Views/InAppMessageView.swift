@@ -97,7 +97,7 @@ public class InAppMessageView: UIView {
     }
 
     // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
-    private func refreshView(showNextMessage: Bool = false) {
+    private func refreshView(forceShowNextMessage: Bool = false) {
         guard let elementId = elementId else {
             return // we cannot check if a message is available until element id set on View.
         }
@@ -109,8 +109,7 @@ public class InAppMessageView: UIView {
             return !didPreviouslyShowMessage
         }
 
-        let shouldCheckIfAlreadyShowingAMessage = !showNextMessage
-        if shouldCheckIfAlreadyShowingAMessage, isRenderingOrDisplayingAMessage {
+        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
             // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
             // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
@@ -210,7 +209,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
                 previouslyShownMessages.append(currentlyShownMessage)
             }
 
-            self.refreshView(showNextMessage: true)
+            self.refreshView(forceShowNextMessage: true)
         }
     }
 }
