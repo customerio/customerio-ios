@@ -82,6 +82,42 @@ class MessageQueueManagerTest: UnitTest {
         XCTAssertEqual(actualMessages, [givenMessage1, givenMessage2, givenMessage3])
     }
 
+    func test_getInlineMessages_givenQueueMessageHasPageRule_pageRuleMisMatch_expectInlineMessageWithoutPageRule() {
+        let givenElementId = String.random
+        let currentRoute = "^(Dashboard)$"
+
+        let givenMessage1 = Message(pageRule: currentRoute, elementId: givenElementId, priority: 0)
+        let givenMessage2 = Message(pageRule: currentRoute, elementId: givenElementId, priority: 1)
+        let givenMessage3 = Message(elementId: givenElementId, priority: nil)
+
+        manager.localMessageStore = [
+            "1": givenMessage1,
+            "2": givenMessage2,
+            "3": givenMessage3
+        ]
+        Gist.shared.setCurrentRoute("Home")
+        let actualMessages = manager.getInlineMessages(forElementId: givenElementId)
+        XCTAssertEqual(actualMessages, [givenMessage3])
+    }
+
+    func test_getInlineMessages_givenQueueMessageHasPageRule_pageRuleMisMatch_expectEmptyArray() {
+        let givenElementId = String.random
+        let currentRoute = "^(Dashboard)$"
+
+        let givenMessage1 = Message(pageRule: currentRoute, elementId: givenElementId, priority: 0)
+        let givenMessage2 = Message(pageRule: currentRoute, elementId: givenElementId, priority: 1)
+        let givenMessage3 = Message(pageRule: currentRoute, elementId: givenElementId, priority: nil)
+
+        manager.localMessageStore = [
+            "1": givenMessage1,
+            "2": givenMessage2,
+            "3": givenMessage3
+        ]
+        Gist.shared.setCurrentRoute("Home")
+        let actualMessages = manager.getInlineMessages(forElementId: givenElementId)
+        XCTAssertEqual(actualMessages, [])
+    }
+
     func test_getInlineMessages_givenQueueMessageHasPageRule_givenNoSetCurrentRoute_expectEmptyArray() {
         let givenElementId1 = String.random
         let givenElementId2 = String.random
