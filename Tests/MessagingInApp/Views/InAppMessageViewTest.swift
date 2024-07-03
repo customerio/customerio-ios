@@ -221,6 +221,32 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertNil(getInAppMessage(forView: inlineView))
     }
 
+    @MainActor
+    func test_expiration_givenExpiredMessageNotYetDisplayed_expectDoNotDisplayMessage() async {
+        let givenMessageDisplayed = Message(elementId: .random)
+        let givenMessageThatExpires = Message(elementId: .random)
+        queueMock.getInlineMessagesReturnValue = [givenMessageDisplayed, givenMessageThatExpires]
+
+        let inlineView = InAppMessageView(elementId: givenMessageDisplayed.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessageDisplayed, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenMessageDisplayed)
+
+        // Simulate message expiration.
+        await simulateSdkFetchedMessages([givenMessageDisplayed])
+
+        // Expect still showing the same message as before the fetch call.
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenMessageDisplayed)
+
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+
+        // Expect we do not show the expired message but instead close the View.
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+        XCTAssertNil(getInAppMessage(forView: inlineView))
+    }
+
     // MARK: close action button
 
     @MainActor
