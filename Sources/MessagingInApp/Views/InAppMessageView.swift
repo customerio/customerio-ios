@@ -46,6 +46,15 @@ public class InAppMessageView: UIView {
     var previouslyShownMessages: [Message] = []
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
+    var runningCrossFadeAnimation: UIViewPropertyAnimator?
+
+    var messageRenderingLoadingView: UIView? {
+        subviews.first { $0 is UIActivityIndicatorView }
+    }
+
+    var inAppMessageView: UIView? {
+        subviews.first { $0 == inlineMessageManager?.inlineMessageView }
+    }
 
     var inlineMessageManager: InlineMessageManager?
 
@@ -103,11 +112,7 @@ public class InAppMessageView: UIView {
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
-            let didPreviouslyShowMessage = previouslyShownMessages.contains(where: { $0.id == potentialMessageToDisplay.id })
-
-            return !didPreviouslyShowMessage
-        }
+        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { !hasBeenPreviouslyShown($0) }
 
         if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
@@ -123,6 +128,11 @@ public class InAppMessageView: UIView {
         }
     }
 
+    // Function to check if a message has been previously shown
+    func hasBeenPreviouslyShown(_ message: Message) -> Bool {
+        previouslyShownMessages.contains { $0.id == message.id }
+    }
+
     private func displayInAppMessage(_ message: Message) {
         // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the display animation does not look as expected.
         // To fix this, exit early if display has already been triggered.
@@ -130,13 +140,44 @@ public class InAppMessageView: UIView {
             return // already showing this message or in the process of showing it.
         }
 
-        stopShowingMessageAndCleanup()
+        // If a different message is currently being shown, we want to replace the currently shown message with new message.
+        if let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil {
+            // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
+            let activityIndicator = UIActivityIndicatorView(style: .large)
+            activityIndicator.startAnimating()
+            activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
 
+            addSubview(activityIndicator)
+            assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
+
+            // Set autolayout constraints to position the activity indicator.
+            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+                activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+                activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
+                activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
+            ])
+
+            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+                // After animation is over, cleanup resources and begin rendering of the next message.
+                self.stopShowingMessageAndCleanup()
+                self.beginShowing(message: message)
+            }
+        } else {
+            beginShowing(message: message)
+        }
+    }
+
+    // Call when you want to begin the process of showing a new message.
+    private func beginShowing(message: Message) {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
 
         let inlineView = newInlineMessageManager.inlineMessageView
+        inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
+
         addSubview(inlineView)
 
         // Setup the WebView to be the same size as this View. When this View changes size, the WebView will change, too.
@@ -191,6 +232,28 @@ public class InAppMessageView: UIView {
 
         runningHeightChangeAnimation?.startAnimation()
     }
+
+    // Takes in 2 Views. In 1 single animation, fades in 1 View while fading out the other.
+    private func animateFadeInOutInlineView(fromView: UIView, toView: UIView, onComplete: (() -> Void)?) {
+        runningCrossFadeAnimation?.stopAnimation(true) // cancel previous fade animation if there is one to assert this one will be called.
+
+        // Set an initial state for `toView` to begin the animation. Make sure the View is not hidden and is fully opaque.
+        toView.isHidden = false
+        toView.alpha = 0
+
+        // These are the final values that we are looking for after the animation.
+        runningCrossFadeAnimation = UIViewPropertyAnimator(duration: 0.1, curve: .linear, animations: {
+            fromView.alpha = 0
+            toView.alpha = 1
+        })
+
+        runningCrossFadeAnimation?.addCompletion { _ in
+            fromView.isHidden = true
+            onComplete?()
+        }
+
+        runningCrossFadeAnimation?.startAnimation()
+    }
 }
 
 extension InAppMessageView: InlineMessageManagerDelegate {
@@ -199,7 +262,19 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.
             // We keep the width the same to what the customer set it as.
             // Update the height to match the aspect ratio of the web content.
+
+            guard let inAppMessageView = self.inAppMessageView else {
+                return
+            }
+
+            inAppMessageView.isHidden = false
             self.animateHeight(to: height)
+
+            if let messageRenderingLoadingView = self.messageRenderingLoadingView {
+                animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
+                    messageRenderingLoadingView.removeFromSuperview()
+                }
+            }
         }
     }
 
