@@ -112,11 +112,7 @@ public class InAppMessageView: UIView {
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { potentialMessageToDisplay in
-            let didPreviouslyShowMessage = previouslyShownMessages.contains(where: { $0.id == potentialMessageToDisplay.id })
-
-            return !didPreviouslyShowMessage
-        }
+        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { !hasBeenPreviouslyShown($0) }
 
         if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
@@ -130,6 +126,11 @@ public class InAppMessageView: UIView {
         } else {
             dismissInAppMessage()
         }
+    }
+
+    // Function to check if a message has been previously shown
+    func hasBeenPreviouslyShown(_ message: Message) -> Bool {
+        previouslyShownMessages.contains { $0.id == message.id }
     }
 
     private func displayInAppMessage(_ message: Message) {
