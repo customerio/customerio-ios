@@ -181,4 +181,8 @@ extension InAppMessageView: InlineMessageManagerDelegate {
             self.dismissInAppMessage()
         }
     }
+
+    func onInlineButtonAction() {
+        print("This did something")
+    }
 }

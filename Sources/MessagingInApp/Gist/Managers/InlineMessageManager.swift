@@ -4,6 +4,7 @@ import Foundation
 protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
     func onCloseAction()
+    func onInlineButtonAction()
 }
 
 /**
@@ -41,6 +42,10 @@ class InlineMessageManager: MessageManager {
     override func onCloseAction() {
         inlineMessageDelegate?.onCloseAction()
     }
+
+    override func onInlineButtonAction() {
+        inlineMessageDelegate?.onInlineButtonAction()
+    }
 }
 
 extension InlineMessageManager: GistViewDelegate {
@@ -50,5 +55,6 @@ extension InlineMessageManager: GistViewDelegate {
 
     func action(message: Message, currentRoute: String, action: String, name: String) {
         // Action button handling is processed by the superclass. Ignore this callback and instead use one of the superclass event callback functions.
+//        inlineMessageDelegate?.onInlineButtonAction()
     }
 }
