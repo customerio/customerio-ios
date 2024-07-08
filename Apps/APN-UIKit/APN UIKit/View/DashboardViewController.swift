@@ -37,7 +37,7 @@ class DashboardViewController: BaseViewController {
         inlineInAppViewCreatedInStoryboard.elementId = "dashboard-announcement"
 
         // (Optional) Set delegate for custom button action callback
-        inlineInAppViewCreatedInStoryboard.inlineMessageDelegate = self
+//        inlineInAppViewCreatedInStoryboard.inlineMessageDelegate = self
 
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.

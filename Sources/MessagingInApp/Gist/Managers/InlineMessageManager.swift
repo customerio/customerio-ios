@@ -54,7 +54,6 @@ extension InlineMessageManager: GistViewDelegate {
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {
-        // Action button handling is processed by the superclass. Ignore this callback and instead use one of the superclass event callback functions.
         inlineMessageDelegate?.onInlineButtonAction(message: message, action: action, name: name)
     }
 }
