@@ -158,7 +158,7 @@ public class InAppMessageView: UIView {
                 activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
             ])
 
-            animateCrossFade(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
                 // After animation is over, cleanup resources and begin rendering of the next message.
                 self.stopShowingMessageAndCleanup()
                 self.beginShowing(message: message)
@@ -233,7 +233,7 @@ public class InAppMessageView: UIView {
     }
 
     // Takes in 2 Views. In 1 single animation, fades in 1 View while fading out the other.
-    private func animateCrossFade(fromView: UIView, toView: UIView, onComplete: (() -> Void)?) {
+    private func animateFadeInOutInlineView(fromView: UIView, toView: UIView, onComplete: (() -> Void)?) {
         runningCrossFadeAnimation?.stopAnimation(true) // cancel previous fade animation if there is one to assert this one will be called.
 
         // Set an initial state for `toView` to begin the animation. Make sure the View is not hidden and is fully opaque.
@@ -270,7 +270,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
             self.animateHeight(to: height)
 
             if let messageRenderingLoadingView = self.messageRenderingLoadingView {
-                animateCrossFade(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
+                animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
                     messageRenderingLoadingView.removeFromSuperview()
                 }
             }
