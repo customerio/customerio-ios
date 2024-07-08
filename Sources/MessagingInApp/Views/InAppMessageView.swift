@@ -34,13 +34,34 @@ public class InAppMessageView: UIView {
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
-            checkIfMessageAvailableToDisplay()
+            refreshView()
         }
     }
 
-    var runningHeightChangeAnimation: UIViewPropertyAnimator?
+    // Inline messages that have already been shown by this View instance.
+    // This is used to prevent showing the same message multiple times when the close button is pressed.
+    //
+    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
+    // replaced with a global list of shown messages.
+    var previouslyShownMessages: [Message] = []
 
-    private var inlineMessageManager: InlineMessageManager?
+    var runningHeightChangeAnimation: UIViewPropertyAnimator?
+    var runningCrossFadeAnimation: UIViewPropertyAnimator?
+
+    var messageRenderingLoadingView: UIView? {
+        subviews.first { $0 is UIActivityIndicatorView }
+    }
+
+    var inAppMessageView: UIView? {
+        subviews.first { $0 == inlineMessageManager?.inlineMessageView }
+    }
+
+    var inlineMessageManager: InlineMessageManager?
+
+    // Determines if the View is already trying to show a message or not.
+    private var isRenderingOrDisplayingAMessage: Bool {
+        inlineMessageManager != nil
+    }
 
     public init(elementId: String) {
         super.init(frame: .zero)
@@ -48,7 +69,7 @@ public class InAppMessageView: UIView {
 
         // Setup the View and display a message, if one available. Since an elementId has been set.
         setupView()
-        checkIfMessageAvailableToDisplay()
+        refreshView()
     }
 
     // This is called when the View is created from a Storyboard.
@@ -79,45 +100,84 @@ public class InAppMessageView: UIView {
             // EventBus callback function might not be on UI thread.
             // Switch to UI thread to update UI.
             Task { @MainActor in
-                self?.checkIfMessageAvailableToDisplay()
+                self?.refreshView()
             }
         }
     }
 
-    private func checkIfMessageAvailableToDisplay() {
+    // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
+    private func refreshView(forceShowNextMessage: Bool = false) {
         guard let elementId = elementId else {
-            return
+            return // we cannot check if a message is available until element id set on View.
         }
 
         let queueOfMessagesForGivenElementId = localMessageQueue.getInlineMessages(forElementId: elementId)
-        let messageToDisplay = queueOfMessagesForGivenElementId.first
+        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { !hasBeenPreviouslyShown($0) }
 
-        if let messageToDisplay {
-            displayInAppMessage(messageToDisplay)
+        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
+            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
+            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
+            // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
+            return
+        }
+
+        if let messageAvailableToDisplay {
+            displayInAppMessage(messageAvailableToDisplay)
         } else {
             dismissInAppMessage()
         }
     }
 
+    // Function to check if a message has been previously shown
+    func hasBeenPreviouslyShown(_ message: Message) -> Bool {
+        previouslyShownMessages.contains { $0.id == message.id }
+    }
+
     private func displayInAppMessage(_ message: Message) {
-        // Do not re-show the existing message if already shown to prevent the UI from flickering as it loads the same message again.
+        // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the display animation does not look as expected.
+        // To fix this, exit early if display has already been triggered.
         if let currentlyShownMessage = inlineMessageManager?.currentMessage, currentlyShownMessage.id == message.id {
-            return // already showing this message, exit early.
+            return // already showing this message or in the process of showing it.
         }
 
-        guard inlineMessageManager == nil else {
-            // We are already displaying a messsage. In the future, we are planning on swapping the web content if there is another message in the local queue to display
-            // and an inline message is dismissed. Until we add this feature, exit early.
-            return
-        }
+        // If a different message is currently being shown, we want to replace the currently shown message with new message.
+        if let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil {
+            // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
+            let activityIndicator = UIActivityIndicatorView(style: .large)
+            activityIndicator.startAnimating()
+            activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
 
+            addSubview(activityIndicator)
+            assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
+
+            // Set autolayout constraints to position the activity indicator.
+            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+                activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+                activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
+                activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
+            ])
+
+            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+                // After animation is over, cleanup resources and begin rendering of the next message.
+                self.stopShowingMessageAndCleanup()
+                self.beginShowing(message: message)
+            }
+        } else {
+            beginShowing(message: message)
+        }
+    }
+
+    // Call when you want to begin the process of showing a new message.
+    private func beginShowing(message: Message) {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
 
-        guard let inlineView = newInlineMessageManager.inlineMessageView else {
-            return // we dont expect this to happen, but better to handle it gracefully instead of force unwrapping
-        }
+        let inlineView = newInlineMessageManager.inlineMessageView
+        inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
+
         addSubview(inlineView)
 
         // Setup the WebView to be the same size as this View. When this View changes size, the WebView will change, too.
@@ -132,14 +192,22 @@ public class InAppMessageView: UIView {
         inlineMessageManager = newInlineMessageManager
     }
 
+    private func stopShowingMessageAndCleanup() {
+        // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
+        // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
+        inlineMessageManager?.stopAndCleanup()
+        inlineMessageManager?.inlineMessageView.removeFromSuperview()
+        inlineMessageManager = nil
+    }
+
     private func dismissInAppMessage() {
         // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the dismiss animation does not look as expected.
-        // To fix this, exit early if dimiss has already been triggered.
+        // To fix this, exit early if dismiss has already been triggered.
         if inlineMessageManager?.inlineMessageDelegate == nil {
             return
         }
 
-        inlineMessageManager?.inlineMessageDelegate = nil // remove the delegate to prevent any further callbacks from the WebView. If delegate events continue to come, this could cancel the dismiss animation and stop the dismiss action.
+        stopShowingMessageAndCleanup()
 
         animateHeight(to: 0)
     }
@@ -164,6 +232,28 @@ public class InAppMessageView: UIView {
 
         runningHeightChangeAnimation?.startAnimation()
     }
+
+    // Takes in 2 Views. In 1 single animation, fades in 1 View while fading out the other.
+    private func animateFadeInOutInlineView(fromView: UIView, toView: UIView, onComplete: (() -> Void)?) {
+        runningCrossFadeAnimation?.stopAnimation(true) // cancel previous fade animation if there is one to assert this one will be called.
+
+        // Set an initial state for `toView` to begin the animation. Make sure the View is not hidden and is fully opaque.
+        toView.isHidden = false
+        toView.alpha = 0
+
+        // These are the final values that we are looking for after the animation.
+        runningCrossFadeAnimation = UIViewPropertyAnimator(duration: 0.1, curve: .linear, animations: {
+            fromView.alpha = 0
+            toView.alpha = 1
+        })
+
+        runningCrossFadeAnimation?.addCompletion { _ in
+            fromView.isHidden = true
+            onComplete?()
+        }
+
+        runningCrossFadeAnimation?.startAnimation()
+    }
 }
 
 extension InAppMessageView: InlineMessageManagerDelegate {
@@ -172,13 +262,29 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.
             // We keep the width the same to what the customer set it as.
             // Update the height to match the aspect ratio of the web content.
+
+            guard let inAppMessageView = self.inAppMessageView else {
+                return
+            }
+
+            inAppMessageView.isHidden = false
             self.animateHeight(to: height)
+
+            if let messageRenderingLoadingView = self.messageRenderingLoadingView {
+                animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
+                    messageRenderingLoadingView.removeFromSuperview()
+                }
+            }
         }
     }
 
     func onCloseAction() {
         Task { @MainActor in
-            self.dismissInAppMessage()
+            if let currentlyShownMessage = inlineMessageManager?.currentMessage {
+                previouslyShownMessages.append(currentlyShownMessage)
+            }
+
+            self.refreshView(forceShowNextMessage: true)
         }
     }
 }
