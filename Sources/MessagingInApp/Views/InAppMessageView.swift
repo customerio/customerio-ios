@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 public protocol InlineMessageDelegate: AnyObject {
-    func onInlineCustomButtonAction()
+    func onInlineCustomButtonAction(message: Message, action: String, name: String)
 }
 
 /**
@@ -188,7 +188,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         }
     }
 
-    func onInlineButtonAction() {
-        inlineMessageDelegate?.onInlineCustomButtonAction()
+    func onInlineButtonAction(message: Message, action: String, name: String) {
+        inlineMessageDelegate?.onInlineCustomButtonAction(message: message, action: action, name: name)
     }
 }

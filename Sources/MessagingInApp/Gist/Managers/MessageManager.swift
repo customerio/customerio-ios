@@ -60,7 +60,7 @@ class MessageManager {
         // Expect subclass implements this.
     }
 
-    func onInlineButtonAction() {
+    func onInlineButtonAction(message: Message, action: String, name: String) {
         // Expect subclass implements this.
     }
 
