@@ -2,6 +2,10 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
+public protocol InlineMessageDelegate: AnyObject {
+    func onInlineCustomButtonAction()
+}
+
 /**
  View that can be added to a customer's app UI to display inline in-app messages.
 
@@ -37,6 +41,8 @@ public class InAppMessageView: UIView {
             checkIfMessageAvailableToDisplay()
         }
     }
+
+    public var inlineMessageDelegate: InlineMessageDelegate?
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
 
@@ -183,6 +189,6 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     }
 
     func onInlineButtonAction() {
-        print("This did something")
+        inlineMessageDelegate?.onInlineCustomButtonAction()
     }
 }

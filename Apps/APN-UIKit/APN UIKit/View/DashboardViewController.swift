@@ -36,6 +36,7 @@ class DashboardViewController: BaseViewController {
         // For inline Views added with Storyboard, set the elementId to finish setup of the View and begin showing messages.
         inlineInAppViewCreatedInStoryboard.elementId = "dashboard-announcement"
 
+        inlineInAppViewCreatedInStoryboard.inlineMessageDelegate = self
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
         let newInlineViewUsingUIAsCode = InAppMessageView(elementId: "dashboard-announcement-code")
@@ -170,5 +171,11 @@ class DashboardViewController: BaseViewController {
         content.body = "Try clicking me and see host app handle the push instead of Customer.io SDK"
         let request = UNNotificationRequest(identifier: "local-push-not-from-cio", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+}
+
+extension DashboardViewController: InlineMessageDelegate {
+    func onInlineCustomButtonAction() {
+        print("Customer can perform any action here, params to be provided")
     }
 }
