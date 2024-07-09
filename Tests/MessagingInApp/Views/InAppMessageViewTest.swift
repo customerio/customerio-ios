@@ -7,6 +7,7 @@ import XCTest
 class InAppMessageViewTest: UnitTest {
     private let queueMock = MessageQueueManagerMock()
     private let engineWebMock = EngineWebInstanceMock()
+    private let inlineMessageDelegateMock = InlineMessageDelegateMock()
     private var engineProvider: EngineWebProviderStub {
         EngineWebProviderStub(engineWebMock: engineWebMock)
     }
@@ -19,6 +20,7 @@ class InAppMessageViewTest: UnitTest {
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
         DIGraphShared.shared.override(value: engineProvider, forType: EngineWebProvider.self)
+        DIGraphShared.shared.override(value: inlineMessageDelegateMock, forType: InlineMessageDelegate.self)
     }
 
     // MARK: View constructed
@@ -310,6 +312,40 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertEqual(view.heightConstraints.map(\.constant), [0])
         XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
     }
+
+    // MARK: - onInlineButtonAction
+
+    @MainActor
+    func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        inlineView.inlineMessageDelegate = inlineMessageDelegateMock
+        await onDoneRenderingInAppMessage(givenInlineMessage)
+
+        XCTAssertTrue(isDisplayingInAppMessage(inlineView))
+        await onCustomActionButtonPressed()
+
+        XCTAssertTrue(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
+        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.message, givenInlineMessage)
+        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.action, "Test")
+        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.name, "")
+    }
+
+    @MainActor
+    func test_onInlineButtonAction_givenDelegateNotSet_expectGlobalCallback() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage)
+
+        XCTAssertTrue(isDisplayingInAppMessage(inlineView))
+        await onCustomActionButtonPressed()
+
+        XCTAssertFalse(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
+    }
 }
 
 extension InAppMessageViewTest {
@@ -330,6 +366,12 @@ extension InAppMessageViewTest {
         engineWebMock.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
 
         // When onCloseAction() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    func onCustomActionButtonPressed() async {
+        engineWebMock.delegate?.tap(name: "", action: "Test", system: false)
+
         await waitForMainThreadToFinishPendingTasks()
     }
 
