@@ -325,7 +325,7 @@ class InAppMessageViewTest: UnitTest {
         await onDoneRenderingInAppMessage(givenInlineMessage)
 
         XCTAssertTrue(isDisplayingInAppMessage(inlineView))
-        await onCustomActionButtonPressed()
+        onCustomActionButtonPressed()
 
         XCTAssertTrue(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
         XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.message, givenInlineMessage)
@@ -369,10 +369,10 @@ extension InAppMessageViewTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
-    func onCustomActionButtonPressed() async {
+    func onCustomActionButtonPressed() {
+        // Triggering the custom action button on inline message from the web engine
+        // mocks the user tap on custom action button
         engineWebMock.delegate?.tap(name: "", action: "Test", system: false)
-
-        await waitForMainThreadToFinishPendingTasks()
     }
 
     func isDisplayingInAppMessage(_ view: InAppMessageView) -> Bool {
