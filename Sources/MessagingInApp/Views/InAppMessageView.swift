@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 // To handle inline custom button actions.
-public protocol InlineMessageDelegate: AnyObject {
+public protocol InlineMessageDelegate: AnyObject, AutoMockable {
     // This method is called when a custom button is tapped in an inline message.
     func onInlineCustomButtonAction(message: Message, action: String, name: String)
 }
