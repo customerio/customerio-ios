@@ -2,7 +2,9 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
+// To handle inline custom button actions.
 public protocol InlineMessageDelegate: AnyObject {
+    // This method is called when a custom button is tapped in an inline message.
     func onInlineCustomButtonAction(message: Message, action: String, name: String)
 }
 
@@ -42,6 +44,7 @@ public class InAppMessageView: UIView {
         }
     }
 
+    // Delegate to handle custom action button tap.
     public var inlineMessageDelegate: InlineMessageDelegate?
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
@@ -188,7 +191,10 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         }
     }
 
+    // This method is called by InlineMessageManager when custom action button is tapped
+    // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        // If delegate is not set then call the global `messageActionTaken` method
         guard let inlineMessageDelegate = inlineMessageDelegate else {
             Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
             return

@@ -60,6 +60,7 @@ class MessageManager {
         // Expect subclass implements this.
     }
 
+    // Called when custom action button is tapped.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
         // Expect subclass implements this.
     }

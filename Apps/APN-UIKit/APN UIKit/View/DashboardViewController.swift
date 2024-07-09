@@ -36,8 +36,10 @@ class DashboardViewController: BaseViewController {
         // For inline Views added with Storyboard, set the elementId to finish setup of the View and begin showing messages.
         inlineInAppViewCreatedInStoryboard.elementId = "dashboard-announcement"
 
-        // (Optional) Set delegate for custom button action callback
-//        inlineInAppViewCreatedInStoryboard.inlineMessageDelegate = self
+        // This is optional. If set, the delegate method `onInlineCustomButtonAction`
+        // will receive callbacks.
+        // If not set, the global method `messageActionTaken` will handle the callbacks.
+        inlineInAppViewCreatedInStoryboard.inlineMessageDelegate = self
 
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
@@ -178,6 +180,11 @@ class DashboardViewController: BaseViewController {
 
 extension DashboardViewController: InlineMessageDelegate {
     func onInlineCustomButtonAction(message: Message, action: String, name: String) {
-        print("Customer can perform any action here")
+        print("You can perform any action here. For instance, we are tracking the custom button tap.")
+        CustomerIO.shared.track(name: "inline custom button action", properties: [
+            "message-id": message.id ?? "(none)",
+            "action-value": action,
+            "action-name": name
+        ])
     }
 }
