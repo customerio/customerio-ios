@@ -20,10 +20,10 @@ extension Message {
     }
 
     static var random: Message {
-        Message(messageId: .random, campaignId: .random)
+        Message(elementId: nil)
     }
 
     static var randomInline: Message {
-        Message(messageId: .random, campaignId: .random, elementId: .random)
+        Message(elementId: .random)
     }
 }
