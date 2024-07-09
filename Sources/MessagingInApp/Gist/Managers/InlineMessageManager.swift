@@ -18,13 +18,21 @@ protocol InlineMessageManagerDelegate: AnyObject {
  ```
  */
 class InlineMessageManager: MessageManager {
-    var inlineMessageView: GistView? {
-        let view = super.gistView
-        view?.delegate = self
-        return view
+    var inlineMessageView: GistView {
+        if super.gistView.delegate == nil {
+            super.gistView.delegate = self
+        }
+
+        return super.gistView
     }
 
     weak var inlineMessageDelegate: InlineMessageManagerDelegate?
+
+    override func stopAndCleanup() {
+        inlineMessageDelegate = nil
+
+        super.stopAndCleanup()
+    }
 
     override func onReplaceMessage(newMessageToShow: Message) {
         // Not yet implemented. Planned in future update.
