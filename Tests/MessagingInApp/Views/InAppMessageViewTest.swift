@@ -342,7 +342,7 @@ class InAppMessageViewTest: UnitTest {
         await onDoneRenderingInAppMessage(givenInlineMessage)
 
         XCTAssertTrue(isDisplayingInAppMessage(inlineView))
-        await onCustomActionButtonPressed()
+        onCustomActionButtonPressed()
 
         XCTAssertFalse(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
     }
