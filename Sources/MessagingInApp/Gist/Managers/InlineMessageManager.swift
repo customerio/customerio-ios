@@ -4,7 +4,7 @@ import Foundation
 protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
     func onCloseAction()
-    func onInlineButtonAction(message: Message, action: String, name: String)
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String)
 }
 
 /**
@@ -43,8 +43,8 @@ class InlineMessageManager: MessageManager {
         inlineMessageDelegate?.onCloseAction()
     }
 
-    override func onInlineButtonAction(message: Message, action: String, name: String) {
-        inlineMessageDelegate?.onInlineButtonAction(message: message, action: action, name: name)
+    override func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 }
 
@@ -54,6 +54,6 @@ extension InlineMessageManager: GistViewDelegate {
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {
-        inlineMessageDelegate?.onInlineButtonAction(message: message, action: action, name: name)
+        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 }

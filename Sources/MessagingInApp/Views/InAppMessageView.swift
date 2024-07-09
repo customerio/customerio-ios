@@ -188,7 +188,11 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         }
     }
 
-    func onInlineButtonAction(message: Message, action: String, name: String) {
-        inlineMessageDelegate?.onInlineCustomButtonAction(message: message, action: action, name: name)
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        guard let inlineMessageDelegate = inlineMessageDelegate else {
+            Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
+            return
+        }
+        inlineMessageDelegate.onInlineCustomButtonAction(message: message, action: action, name: name)
     }
 }
