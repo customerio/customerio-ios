@@ -4,17 +4,13 @@ import Foundation
 import SharedTests
 import XCTest
 
-class InAppMessageViewTest: UnitTest {
+class InAppMessageViewTest: IntegrationTest {
     private let queueMock = MessageQueueManagerMock()
-    private var engineProvider: EngineWebProviderStub2!
 
     override func setUp() {
         super.setUp()
 
-        engineProvider = EngineWebProviderStub2()
-
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
-        DIGraphShared.shared.override(value: engineProvider, forType: EngineWebProvider.self)
     }
 
     // MARK: View constructed
@@ -437,30 +433,6 @@ extension InAppMessageViewTest {
     // Tells you the message the Inline View is either rendering or has already rendered.
     func getInAppMessage(forView view: InAppMessageView) -> Message? {
         (view.inAppMessageView as? GistView)?.message
-    }
-
-    func onCloseActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
-        // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
-        // This behaves more like an integration test because we are also able to test the message manager, too.
-        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
-
-        // When onCloseAction() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
-        await waitForMainThreadToFinishPendingTasks()
-    }
-
-    // Call when the in-app webview rendering process has finished.
-    func onDoneRenderingInAppMessage(_ message: Message, insideOfInlineView inlineView: InAppMessageView, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
-        // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
-        // To mock the web server call with a successful response back, call these delegate functions:
-        getWebEngineForInlineView(inlineView)?.delegate?.routeLoaded(route: message.templateId)
-        getWebEngineForInlineView(inlineView)?.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
-
-        // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
-        await waitForMainThreadToFinishPendingTasks()
-    }
-
-    func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
-        view.inlineMessageManager?.engine
     }
 
     func assert(view: UIView?, isShowing: Bool, inInlineView inlineView: InAppMessageView, file: StaticString = #file, line: UInt = #line) {
