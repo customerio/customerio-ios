@@ -85,6 +85,12 @@ class MessageManager {
     func onReplaceMessage(newMessageToShow: Message) {
         // subclass should implement
     }
+
+    // In-app messages have the ability to show different messages. The HTML message handles showing the next message. This is simply a callback function that's called when
+    // this event gets triggered and a new message will be shown.
+    func willChangeMessage(newTemplateId: String) {
+        // subclass should implement
+    }
 }
 
 // The main logic of this class is being the delegate for the EngineWeb instance.
@@ -190,6 +196,8 @@ extension MessageManager: EngineWebDelegate {
 
     func routeChanged(newRoute: String) {
         Logger.instance.info(message: "Message route changed to: \(newRoute)")
+
+        willChangeMessage(newTemplateId: newRoute)
     }
 
     func sizeChanged(width: CGFloat, height: CGFloat) {

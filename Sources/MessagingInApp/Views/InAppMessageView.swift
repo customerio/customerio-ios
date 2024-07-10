@@ -141,31 +141,44 @@ public class InAppMessageView: UIView {
         }
 
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
-        if let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil {
-            // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.startAnimating()
-            activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
-
-            addSubview(activityIndicator)
-            assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
-
-            // Set autolayout constraints to position the activity indicator.
-            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
-                activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
-                activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
-                activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
-            ])
-
-            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
-                // After animation is over, cleanup resources and begin rendering of the next message.
+        if isRenderingOrDisplayingAMessage {
+            showLoadingView {
+                // After animation is over, cleanup resources since we no longer need to show the previous message.
                 self.stopShowingMessageAndCleanup()
                 self.beginShowing(message: message)
             }
         } else {
             beginShowing(message: message)
+        }
+    }
+
+    // Call when you want to show the loading View, indicating to the app user that a new message is being loaded.
+    private func showLoadingView(onComplete: @escaping () -> Void) {
+        // Before we begin showing loading view, check to see if we are in the correct state that we should perform this change.
+        // This is a safety check in case this function gets called multiple times. We don't want the UI to flicker by changing multiple times.
+        guard let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil else {
+            return onComplete()
+        }
+
+        // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.startAnimating()
+        activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
+
+        addSubview(activityIndicator)
+        assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
+
+        // Set autolayout constraints to position the activity indicator.
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+            activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
+            activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
+        ])
+
+        animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+            onComplete()
         }
     }
 
@@ -286,5 +299,9 @@ extension InAppMessageView: InlineMessageManagerDelegate {
 
             self.refreshView(forceShowNextMessage: true)
         }
+    }
+
+    func willChangeMessage(newTemplateId: String) {
+        showLoadingView {}
     }
 }

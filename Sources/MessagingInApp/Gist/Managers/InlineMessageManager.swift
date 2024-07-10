@@ -4,6 +4,7 @@ import Foundation
 protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
     func onCloseAction()
+    func willChangeMessage(newTemplateId: String)
 }
 
 /**
@@ -44,6 +45,10 @@ class InlineMessageManager: MessageManager {
 
     override func onDeepLinkOpened() {
         // Do not do anything. Continue showing the in-app message.
+    }
+
+    override func willChangeMessage(newTemplateId: String) {
+        inlineMessageDelegate?.willChangeMessage(newTemplateId: newTemplateId)
     }
 
     override func onCloseAction() {
