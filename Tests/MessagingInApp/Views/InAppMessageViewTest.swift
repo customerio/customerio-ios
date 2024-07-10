@@ -7,7 +7,7 @@ import XCTest
 class InAppMessageViewTest: UnitTest {
     private let queueMock = MessageQueueManagerMock()
     private let engineWebMock = EngineWebInstanceMock()
-    private let inlineMessageDelegateMock = InlineMessageDelegateMock()
+    private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
     private var engineProvider: EngineWebProviderStub2!
 
     override func setUp() {
@@ -17,7 +17,7 @@ class InAppMessageViewTest: UnitTest {
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
         DIGraphShared.shared.override(value: engineProvider, forType: EngineWebProvider.self)
-        DIGraphShared.shared.override(value: inlineMessageDelegateMock, forType: InlineMessageDelegate.self)
+        DIGraphShared.shared.override(value: inlineMessageDelegateMock, forType: InAppMessageViewActionDelegate.self)
     }
 
     // MARK: View constructed
@@ -395,6 +395,7 @@ class InAppMessageViewTest: UnitTest {
     @MainActor
     func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
         let givenInlineMessage = Message.randomInline
+        let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
@@ -404,10 +405,10 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertTrue(isInlineViewVisible(inlineView))
         onCustomActionButtonPressed(onInlineView: inlineView)
 
-        XCTAssertTrue(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
-        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.message, givenInlineMessage)
-        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.action, "Test")
-        XCTAssertEqual(inlineMessageDelegateMock.onInlineCustomButtonActionReceivedArguments?.name, "")
+        XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.message, gistInAppInlineMessage)
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionValue, "Test")
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionName, "")
     }
 
     @MainActor
@@ -421,7 +422,7 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertTrue(isInlineViewVisible(inlineView))
         onCustomActionButtonPressed(onInlineView: inlineView)
 
-        XCTAssertFalse(inlineMessageDelegateMock.onInlineCustomButtonActionCalled)
+        XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
     }
 }
 
