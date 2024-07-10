@@ -334,7 +334,7 @@ class CustomerIOImplementationTest: UnitTest {
                 platform: "iOS",
                 lastUsed: dateUtilStub
                     .givenNow,
-                attributes: StringAnyEncodable(logger: log, givenDefaultAttributes)
+                attributes: StringAnyEncodable(givenDefaultAttributes)
             )
         ))
         XCTAssertEqual(actualQueueTaskData?.attributesJsonString, expectedJsonString)

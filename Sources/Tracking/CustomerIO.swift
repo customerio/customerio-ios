@@ -382,7 +382,7 @@ public class CustomerIO: CustomerIOInstance {
         guard let logger = diGraph?.logger else {
             return
         }
-        automaticScreenView(name: name, data: StringAnyEncodable(logger: logger, data))
+        automaticScreenView(name: name, data: StringAnyEncodable(data))
     }
 
     // Designed to be called from swizzled methods for automatic screen tracking.
