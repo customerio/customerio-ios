@@ -31,7 +31,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": Unencodable(data: 12345)] as [String: Any]
 
-        let json = StringAnyEncodable(logger: log, data)
+        let json = StringAnyEncodable(data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -46,7 +46,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": "bar"] as [String: String]
 
-        let json = StringAnyEncodable(logger: log, data)
+        let json = StringAnyEncodable(data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -61,7 +61,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": 1.2] as [String: Double]
 
-        let json = StringAnyEncodable(logger: log, data)
+        let json = StringAnyEncodable(data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -76,7 +76,7 @@ class StringAnyEncodableTest: UnitTest {
 
         let data = ["fooBar": ["bar": 1000] as [String: Int]] as [String: Any]
 
-        let json = StringAnyEncodable(logger: log, data)
+        let json = StringAnyEncodable(data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
@@ -99,7 +99,7 @@ class StringAnyEncodableTest: UnitTest {
             "dictWithArray": ["color": ["Red", "Green", "Blue"]] as [String: [Any]]
         ] as [String: Any]
 
-        let json = StringAnyEncodable(logger: log, data)
+        let json = StringAnyEncodable(data)
 
         guard let actual = jsonAdapter.toJson(json) else {
             XCTFail("couldn't encode to JSON")
