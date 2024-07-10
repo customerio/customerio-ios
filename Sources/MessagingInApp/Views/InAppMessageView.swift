@@ -3,9 +3,9 @@ import Foundation
 import UIKit
 
 // To handle inline custom button actions.
-public protocol InlineMessageDelegate: AnyObject, AutoMockable {
+public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
     // This method is called when a custom button is tapped in an inline message.
-    func onInlineCustomButtonAction(message: Message, action: String, name: String)
+    func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
 
 /**
@@ -45,7 +45,7 @@ public class InAppMessageView: UIView {
     }
 
     // Delegate to handle custom action button tap.
-    public var inlineMessageDelegate: InlineMessageDelegate?
+    public weak var onActionDelegate: InAppMessageViewActionDelegate?
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
@@ -301,10 +301,10 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
         // If delegate is not set then call the global `messageActionTaken` method
-        guard let inlineMessageDelegate = inlineMessageDelegate else {
+        guard let onActionDelegate = onActionDelegate else {
             Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
             return
         }
-        inlineMessageDelegate.onInlineCustomButtonAction(message: message, action: action, name: name)
+        onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
     }
 }

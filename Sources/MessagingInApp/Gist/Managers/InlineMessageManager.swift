@@ -51,7 +51,7 @@ class InlineMessageManager: MessageManager {
         inlineMessageDelegate?.onCloseAction()
     }
 
-    override func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
         inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 }
