@@ -8,6 +8,8 @@ import SampleAppsCommon
 import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    let anotherPushEventHandler = AnotherPushEventHandler()
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Follow setup guide for setting up FCM push: https://firebase.google.com/docs/cloud-messaging/ios/client
         // The FCM SDK provides a device token to the app that you then send to the Customer.io SDK.
@@ -49,6 +51,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
         Messaging.messaging().delegate = self
+
+        /*
+         Next line of code for internal testing purposes only.
+
+         When the host app receives a push notification event such as a push being clicked, the Customer.io SDK forwards these events to all `UNUserNotificationCenterDelegate` instances (including 3rd party SDKs and the host iOS app).
+
+         In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
+         */
+        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
         /**
          Registers the `AppDelegate` class to handle when a push notification gets clicked.

@@ -44,6 +44,7 @@ public class Gist: GistDelegate {
 
     public func clearUserToken() {
         cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
+        messageQueueManager.clearLocalStore()
         UserManager().clearUserToken()
         messageQueueManager.clearUserMessagesFromLocalStore()
     }
