@@ -184,6 +184,46 @@ class MessagingInAppIntegrationTest: IntegrationTest {
         XCTAssertEqual(messageShownBeforeNavigate?.instanceId, currentlyShownModalMessage?.instanceId)
     }
 
+    // We need to verify, if we change route before rendering is done, what message is being displayed then according to page rule?
+    func test_givenMultipleMessagesSentToDevice_givenNavigateToDifferentScreen_expectToDisplayMessageForChangedScreen() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$"),
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Settings.*)$")
+        ]
+        onDoneFetching(messages: givenMessages)
+
+        navigateToScreen(screenName: "Settings")
+
+        // Let's say that the Home screen message finished rendering after we navigate to another screen.
+        // When we navigate to the Settings screen, both messages finish rendering after a few seconds on the Settings screen.
+        doneLoadingMessage(givenMessages[0])
+        doneLoadingMessage(givenMessages[1])
+
+        XCTAssertEqual(currentlyShownModalMessage?.gistProperties.routeRule, "Settings")
+    }
+
+    func test_givenMultipleMessagesSentToDevice_givenMessagesWithSamePageRule_givenNavigateToDifferentScreen_expectToNotDisplayMessageOnDifferentPage() {
+        navigateToScreen(screenName: "Home")
+
+        let givenMessages = [
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$"),
+            Message(messageId: "welcome-banner", campaignId: .random, pageRule: "^(.*Home.*)$")
+        ]
+        onDoneFetching(messages: givenMessages)
+
+        navigateToScreen(screenName: "Settings")
+
+        // Let's say that the Home screen message finished rendering after we navigate to another screen.
+        // When we navigate to the Settings screen, both messages finish rendering after a few seconds on the Settings screen.
+        doneLoadingMessage(givenMessages[0])
+        doneLoadingMessage(givenMessages[1])
+
+        XCTAssertNil(currentlyShownModalMessage)
+        XCTAssertFalse(isCurrentlyLoadingMessage)
+    }
+
     // MARK: clearUserToken
 
     // Code that runs when the profile is logged out of the SDK
@@ -242,9 +282,6 @@ class MessagingInAppIntegrationTest: IntegrationTest {
     // MARK: action buttons
 
     func test_onCloseButton_expectShowNextMessageInQueue() throws {
-        // The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
-        try skipRunningTest()
-
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
@@ -275,9 +312,6 @@ class MessagingInAppIntegrationTest: IntegrationTest {
     }
 
     func test_onCloseButton_givenNextMessageDoesNotMatchPageRule_expectDoNotShowNextMessageInQueue() throws {
-        // The test fails because it expects synchronous code, but there is async code. Another PR (https://github.com/customerio/customerio-ios/pull/738) makes tests synchronous. Once merged, we can remove this skip.")
-        try skipRunningTest()
-
         navigateToScreen(screenName: "Home")
 
         let givenMessages = [
