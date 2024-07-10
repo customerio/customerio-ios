@@ -398,7 +398,7 @@ class InAppMessageViewTest: UnitTest {
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
-        inlineView.inlineMessageDelegate = inlineMessageDelegateMock
+        inlineView.onActionDelegate = inlineMessageDelegateMock
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
