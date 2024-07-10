@@ -71,10 +71,10 @@ class MessageManager {
         // Expect subclass implements this.
     }
 
-    // Called when custom action button is tapped.
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
-        // Expect subclass implements this.
-    }
+//    // Called when custom action button is tapped.
+//    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+//        // Expect subclass implements this.
+//    }
 
     // Called when a deep link action button was clicked in a message and the SDK opened the deep link.
     func onDeepLinkOpened() {
