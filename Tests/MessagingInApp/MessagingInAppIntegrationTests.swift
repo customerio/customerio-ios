@@ -316,9 +316,10 @@ extension MessagingInAppIntegrationTest {
      To try and make the tests the most accurate, access the currently displayed message from the UI layer of the code instead of business logic.
      */
     var currentlyShownModalMessage: Message? {
-        // Unfortunately, this method of determining visible modals is not 100% reliable because it still uses the view manager to access the
-        // currently visible ViewController. It would be best if we could directly talk to UIKit to access the currently visible ViewController but that's not
-        // possible with the current implementation of displaying and dismissing modals in the SDK.
+        // Unfortunately, this method of determining visible modals is not 100% reliable.
+        // We are accessing the visible ViewController by getting manager instances from the Gist class and the Gist class destroys and creates
+        // instances of managers.
+        // It would be better if we could talk directly to the UI layer to get the visible ViewController or Gist has only 1 modal manager like the Android SDK days.
         guard let modalViewManager = Gist.shared.getModalMessageManager()?.modalViewManager else {
             return nil
         }
