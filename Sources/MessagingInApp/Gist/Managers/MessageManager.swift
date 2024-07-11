@@ -197,6 +197,8 @@ extension MessageManager: EngineWebDelegate {
     func routeChanged(newRoute: String) {
         Logger.instance.info(message: "Message route changed to: \(newRoute)")
 
+        // Update the GistView's Message for our tests to verify the message being displayed.
+        gistView.message = Message(templateId: newRoute)
         willChangeMessage(newTemplateId: newRoute)
     }
 
