@@ -146,35 +146,6 @@ extension MessageManager: EngineWebDelegate {
         }
     }
 
-    // Check if deep link can be handled in the host app. By using NSUserActivity, our SDK can handle Universal Links.
-    private func continueNSUserActivity(webpageURL: URL) -> Bool {
-        guard #available(iOS 10.0, *) else {
-            return false
-        }
-        guard isLinkValidNSUserActivityLink(webpageURL) else {
-            return false
-        }
-
-        let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        openLinkInHostAppActivity.webpageURL = webpageURL
-
-        let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
-
-        return didHostAppHandleLink
-    }
-
-    // The NSUserActivity.webpageURL property permits only specific URL schemes. This function exists to validate the scheme and prevent potential exceptions due to incompatible URL formats.
-    private func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
-        guard let schemeOfUrl = url.scheme else {
-            return false
-        }
-
-        // Constants to hold allowed URL schemes
-        let allowedSchemes = ["http", "https"]
-
-        return allowedSchemes.contains(schemeOfUrl)
-    }
-
     func routeChanged(newRoute: String) {
         Logger.instance.info(message: "Message route changed to: \(newRoute)")
     }
