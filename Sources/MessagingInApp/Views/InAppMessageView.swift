@@ -156,7 +156,7 @@ public class InAppMessageView: UIView {
     private func showLoadingView(onComplete: @escaping () -> Void) {
         // Before we begin showing loading view, check to see if we are in the correct state that we should perform this change.
         // This is a safety check in case this function gets called multiple times. We don't want the UI to flicker by changing multiple times.
-        guard let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil else {
+        guard let currentlyDisplayedInAppWebView = inAppMessageView, messageRenderingLoadingView == nil else {
             return onComplete()
         }
 
@@ -302,6 +302,8 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     }
 
     func willChangeMessage(newTemplateId: String) {
-        showLoadingView {}
+        Task { @MainActor in
+            self.showLoadingView {}
+        }
     }
 }
