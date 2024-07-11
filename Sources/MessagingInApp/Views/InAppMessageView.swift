@@ -301,9 +301,14 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         }
     }
 
+    // Called when "show another message" action button is clicked.
     func willChangeMessage(newTemplateId: String) {
         Task { @MainActor in
-            self.showLoadingView {}
+            // Animate in a loading view while the next message is being rendered.
+            self.showLoadingView {
+                // Nothing to do when the animation is complete.
+                // the sizeChanged function will be called when the next message is rendered. sizeChanged will animate in the message for us.
+            }
         }
     }
 }
