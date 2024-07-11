@@ -24,13 +24,13 @@ class MessageManager {
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
-    private var deeplinkUtil: DeepLinkUtil
+    private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
         self.currentMessage = message
         self.currentRoute = message.templateId
-        self.deeplinkUtil = DIGraphShared.shared.deepLinkUtil
+//        self.deeplinkUtil = DIGraphShared.shared.deepLinkUtil
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
