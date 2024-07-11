@@ -10,10 +10,6 @@ class InAppMessageViewTest: UnitTest {
     private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
     private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
-    private var messagingInApp: MessagingInAppImplementation {
-        // get MessagingInAppImplementation instance so we can call its methods directly
-        (MessagingInApp.shared.implementation as! MessagingInAppImplementation) // swiftlint:disable:this force_cast
-    }
 
     override func setUp() {
         super.setUp()
@@ -22,7 +18,6 @@ class InAppMessageViewTest: UnitTest {
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
         DIGraphShared.shared.override(value: engineProvider, forType: EngineWebProvider.self)
-        DIGraphShared.shared.override(value: inlineMessageDelegateMock, forType: InAppMessageViewActionDelegate.self)
     }
 
     // MARK: View constructed
@@ -399,7 +394,7 @@ class InAppMessageViewTest: UnitTest {
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
-        messagingInApp.setEventListener(eventListenerMock)
+        messagingInAppImplementation.setEventListener(eventListenerMock)
 
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
@@ -423,7 +418,7 @@ class InAppMessageViewTest: UnitTest {
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateNotSet_expectGlobalCallback() async {
-        messagingInApp.setEventListener(eventListenerMock)
+        messagingInAppImplementation.setEventListener(eventListenerMock)
 
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
@@ -444,7 +439,7 @@ class InAppMessageViewTest: UnitTest {
 
     @MainActor
     func test_onInlineButtonAction_multipleInlineMessages_givenDelegateSetForAll_expectSingleCustomCallback() async {
-        messagingInApp.setEventListener(eventListenerMock)
+        messagingInAppImplementation.setEventListener(eventListenerMock)
 
         let givenInlineMessage1 = Message.randomInline
         let gistInAppInlineMessage1 = InAppMessage(gistMessage: givenInlineMessage1)
@@ -452,11 +447,13 @@ class InAppMessageViewTest: UnitTest {
         let givenInlineMessage2 = Message.randomInline
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage1, givenInlineMessage2]
 
-        // Create two inline in app views
+        let inlineActionDelegate1 = InAppMessageViewActionDelegateMock()
+        let inlineActionDelegate2 = InAppMessageViewActionDelegateMock()
+        // Create two inline in app views and assign individual delegates
         let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
-        inlineView1.onActionDelegate = inlineMessageDelegateMock
+        inlineView1.onActionDelegate = inlineActionDelegate1
         let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
-        inlineView2.onActionDelegate = inlineMessageDelegateMock
+        inlineView2.onActionDelegate = inlineActionDelegate2
 
         // Render both the views
         await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
@@ -469,14 +466,18 @@ class InAppMessageViewTest: UnitTest {
         // Trigger button tap on one of the views
         onCustomActionButtonPressed(onInlineView: inlineView1)
 
+        // Check that only inlineActionDelegate1's delegate method is called
+        XCTAssertFalse(inlineActionDelegate2.mockCalled)
+        XCTAssertTrue(inlineActionDelegate1.onActionClickCalled)
+
         // Check that the button is called once and values received as parameters
         // match the view that triggered the button tap
-        XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickCallsCount, 1)
+        XCTAssertTrue(inlineActionDelegate1.onActionClickCalled)
+        XCTAssertEqual(inlineActionDelegate1.onActionClickCallsCount, 1)
         XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.message, gistInAppInlineMessage1)
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionValue, "Test")
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionName, "")
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.message, gistInAppInlineMessage1)
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionValue, "Test")
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionName, "")
     }
 }
 
