@@ -24,12 +24,12 @@ class MessageManager {
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
+    private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
         self.currentMessage = message
         self.currentRoute = message.templateId
-
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
@@ -121,7 +121,7 @@ extension MessageManager: EngineWebDelegate {
             }
         } else {
             if system {
-                if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
+                if let url = URL(string: action) {
                     /*
                      There are 2 types of deep links:
                      1. Universal Links which give URL format of a webpage using `http://` or `https://`
@@ -138,54 +138,11 @@ extension MessageManager: EngineWebDelegate {
                      ```
                      3. Customer returned `false` from ^^^ function.
                      */
-                    let handledByUserActivity = continueNSUserActivity(webpageURL: url)
-
-                    if !handledByUserActivity {
-                        // If `continueNSUserActivity` could not handle the URL, try opening it directly.
-                        UIApplication.shared.open(url) { handled in
-                            if handled {
-                                Logger.instance.info(message: "Dismissing from system action: \(action)")
-                                self.onDeepLinkOpened()
-                            } else {
-                                Logger.instance.info(message: "System action not handled")
-                            }
-                        }
-                    } else {
-                        Logger.instance.info(message: "Handled by NSUserActivity")
-                        onDeepLinkOpened()
-                    }
+                    deeplinkUtil.handleDeepLink(url)
+                    onDeepLinkOpened()
                 }
             }
         }
-    }
-
-    // Check if deep link can be handled in the host app. By using NSUserActivity, our SDK can handle Universal Links.
-    private func continueNSUserActivity(webpageURL: URL) -> Bool {
-        guard #available(iOS 10.0, *) else {
-            return false
-        }
-        guard isLinkValidNSUserActivityLink(webpageURL) else {
-            return false
-        }
-
-        let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        openLinkInHostAppActivity.webpageURL = webpageURL
-
-        let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
-
-        return didHostAppHandleLink
-    }
-
-    // The NSUserActivity.webpageURL property permits only specific URL schemes. This function exists to validate the scheme and prevent potential exceptions due to incompatible URL formats.
-    private func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
-        guard let schemeOfUrl = url.scheme else {
-            return false
-        }
-
-        // Constants to hold allowed URL schemes
-        let allowedSchemes = ["http", "https"]
-
-        return allowedSchemes.contains(schemeOfUrl)
     }
 
     func routeChanged(newRoute: String) {
