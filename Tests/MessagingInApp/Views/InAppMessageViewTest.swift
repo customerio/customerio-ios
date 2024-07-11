@@ -6,7 +6,10 @@ import XCTest
 
 class InAppMessageViewTest: UnitTest {
     private let queueMock = MessageQueueManagerMock()
+    private let engineWebMock = EngineWebInstanceMock()
+    private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
     private var engineProvider: EngineWebProviderStub2!
+    private let eventListenerMock = InAppEventListenerMock()
 
     override func setUp() {
         super.setUp()
@@ -386,10 +389,106 @@ class InAppMessageViewTest: UnitTest {
         XCTAssertEqual(view.heightConstraints.map(\.constant), [0])
         XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
     }
+
+    // MARK: - onInlineButtonAction
+
+    @MainActor
+    func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+
+        let givenInlineMessage = Message.randomInline
+        let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        inlineView.onActionDelegate = inlineMessageDelegateMock
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        onCustomActionButtonPressed(onInlineView: inlineView)
+
+        XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.message, gistInAppInlineMessage)
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionValue, "Test")
+        XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionName, "")
+
+        // Also check that the global listener is not called
+        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
+    }
+
+    @MainActor
+    func test_onInlineButtonAction_givenDelegateNotSet_expectGlobalCallback() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+
+        let givenInlineMessage = Message.randomInline
+        let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        onCustomActionButtonPressed(onInlineView: inlineView)
+
+        XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
+        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.message, gistInAppInlineMessage)
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionValue, "Test")
+        XCTAssertEqual(eventListenerMock.messageActionTakenReceivedArguments?.actionName, "")
+    }
+
+    @MainActor
+    func test_onInlineButtonAction_multipleInlineMessages_givenDelegateSetForAll_expectSingleCustomCallback() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+
+        let givenInlineMessage1 = Message.randomInline
+        let gistInAppInlineMessage1 = InAppMessage(gistMessage: givenInlineMessage1)
+
+        let givenInlineMessage2 = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage1, givenInlineMessage2]
+
+        let inlineActionDelegate1 = InAppMessageViewActionDelegateMock()
+        let inlineActionDelegate2 = InAppMessageViewActionDelegateMock()
+        // Create two inline in app views and assign individual delegates
+        let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
+        inlineView1.onActionDelegate = inlineActionDelegate1
+        let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
+        inlineView2.onActionDelegate = inlineActionDelegate2
+
+        // Render both the views
+        await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
+        await onDoneRenderingInAppMessage(givenInlineMessage2, insideOfInlineView: inlineView2)
+
+        // Both are visible
+        XCTAssertTrue(isInlineViewVisible(inlineView1))
+        XCTAssertTrue(isInlineViewVisible(inlineView2))
+
+        // Trigger button tap on one of the views
+        onCustomActionButtonPressed(onInlineView: inlineView1)
+
+        // Check that only inlineActionDelegate1's delegate method is called
+        XCTAssertFalse(inlineActionDelegate2.mockCalled)
+        XCTAssertTrue(inlineActionDelegate1.onActionClickCalled)
+
+        // Check that the button is called once and values received as parameters
+        // match the view that triggered the button tap
+        XCTAssertTrue(inlineActionDelegate1.onActionClickCalled)
+        XCTAssertEqual(inlineActionDelegate1.onActionClickCallsCount, 1)
+        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.message, gistInAppInlineMessage1)
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionValue, "Test")
+        XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionName, "")
+    }
 }
 
 @MainActor
 extension InAppMessageViewTest {
+    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) {
+        // Triggering the custom action button on inline message from the web engine
+        // mocks the user tap on custom action button
+        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
+    }
+
     // Only tells you if the View is visible in the UI to the user. Does not tell you if the View is in the process of rendering a message.
     func isInlineViewVisible(_ view: InAppMessageView) -> Bool {
         guard let viewHeightConstraint = view.heightConstraint else {
