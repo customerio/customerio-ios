@@ -5,6 +5,7 @@ protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
     func onCloseAction()
     func willChangeMessage(newTemplateId: String)
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String)
 }
 
 /**
@@ -54,6 +55,10 @@ class InlineMessageManager: MessageManager {
     override func onCloseAction() {
         inlineMessageDelegate?.onCloseAction()
     }
+
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
+    }
 }
 
 extension InlineMessageManager: GistViewDelegate {
@@ -62,6 +67,6 @@ extension InlineMessageManager: GistViewDelegate {
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {
-        // Action button handling is processed by the superclass. Ignore this callback and instead use one of the superclass event callback functions.
+        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 }
