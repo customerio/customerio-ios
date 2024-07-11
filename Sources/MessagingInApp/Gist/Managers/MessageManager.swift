@@ -24,12 +24,13 @@ class MessageManager {
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
+    private var deeplinkUtil: DeepLinkUtil
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
         self.currentMessage = message
         self.currentRoute = message.templateId
-
+        self.deeplinkUtil = DIGraphShared.shared.deepLinkUtil
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
@@ -121,7 +122,7 @@ extension MessageManager: EngineWebDelegate {
             }
         } else {
             if system {
-                if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
+                if let url = URL(string: action) {
                     /*
                      There are 2 types of deep links:
                      1. Universal Links which give URL format of a webpage using `http://` or `https://`
@@ -138,29 +139,8 @@ extension MessageManager: EngineWebDelegate {
                      ```
                      3. Customer returned `false` from ^^^ function.
                      */
-                    let handledByUserActivity = continueNSUserActivity(webpageURL: url)
-
-                    if !handledByUserActivity {
-                        // If `continueNSUserActivity` could not handle the URL, try opening it directly.
-                        UIApplication.shared.open(url) { handled in
-                            if handled {
-                                Logger.instance.info(message: "Dismissing from system action: \(action)")
-                                self.onDeepLinkOpened()
-                            } else {
-                                Logger.instance.info(message: "System action not handled")
-                            }
-                        }
-                    } else {
-                        Logger.instance.info(message: "Handled by NSUserActivity")
-                        onDeepLinkOpened()
-                    }
-                } else {
-                    // Since XCTest doesn’t support opening URLs directly,
-                    // we'll mock simulation if a specific name is received
-                    // as the parameter
-                    if name == "xctest-simulation" {
-                        onDeepLinkOpened()
-                    }
+                    deeplinkUtil.handleDeepLink(url)
+                    onDeepLinkOpened()
                 }
             }
         }
