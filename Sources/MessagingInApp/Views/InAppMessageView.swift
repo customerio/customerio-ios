@@ -320,7 +320,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
             }
         }
     }
-  
+
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
