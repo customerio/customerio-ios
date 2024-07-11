@@ -489,7 +489,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView, isSystem: true, action: "https://customer.io")
+        onDeepLinkActionButtonPressed(onInlineView: inlineView, deeplink: "https://customer.io")
 
         // Since a system call, hence no delegate is called
         XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
@@ -511,7 +511,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView, isSystem: true, action: "ht!tp://invalid-url")
+        onDeepLinkActionButtonPressed(onInlineView: inlineView, deeplink: "ht!tp://invalid-url")
 
         // Since a system call, hence no delegate is called
         XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
@@ -526,10 +526,16 @@ class InAppMessageViewTest: IntegrationTest {
 
 @MainActor
 extension InAppMessageViewTest {
-    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView, isSystem: Bool = false, action: String = "Test") {
+    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
-        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: action, system: isSystem)
+        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
+    }
+
+    func onDeepLinkActionButtonPressed(onInlineView inlineView: InAppMessageView, deeplink: String) {
+        // Triggering the custom action button on inline message from the web engine
+        // mocks the user tap on custom action button
+        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: deeplink, system: true)
     }
 
     // Only tells you if the View is visible in the UI to the user. Does not tell you if the View is in the process of rendering a message.

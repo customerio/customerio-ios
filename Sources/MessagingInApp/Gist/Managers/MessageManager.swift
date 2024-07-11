@@ -30,7 +30,6 @@ class MessageManager {
         self.siteId = siteId
         self.currentMessage = message
         self.currentRoute = message.templateId
-//        self.deeplinkUtil = DIGraphShared.shared.deepLinkUtil
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
