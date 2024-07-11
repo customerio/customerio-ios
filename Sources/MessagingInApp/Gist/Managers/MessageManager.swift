@@ -6,17 +6,6 @@ public enum GistMessageActions: String {
     case close = "gist://close"
 }
 
-protocol URLOpening: AutoMockable {
-    func canOpenURL(_ url: URL) -> Bool
-    func open(_ url: URL, completionHandler: @escaping (Bool) -> Void)
-}
-
-extension UIApplication: URLOpening {
-    func open(_ url: URL, completionHandler: @escaping (Bool) -> Void) {
-        print("Something")
-    }
-}
-
 /**
  Handles business logic for in-app message events such as loading messages and handling when action buttons are clicked.
 
@@ -27,7 +16,6 @@ extension UIApplication: URLOpening {
  * Override any of the abstract functions in class to implement custom logic for when certain events happen. Depending on the type of message you are displaying, you may want to handle events differently.
  */
 class MessageManager {
-    var urlOpener: URLOpening = UIApplication.shared
     var engine: EngineWebInstance
     private let siteId: String
     let currentMessage: Message
@@ -133,7 +121,7 @@ extension MessageManager: EngineWebDelegate {
             }
         } else {
             if system {
-                if let url = URL(string: action), urlOpener.canOpenURL(url) {
+                if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
                     /*
                      There are 2 types of deep links:
                      1. Universal Links which give URL format of a webpage using `http://` or `https://`
@@ -154,7 +142,7 @@ extension MessageManager: EngineWebDelegate {
 
                     if !handledByUserActivity {
                         // If `continueNSUserActivity` could not handle the URL, try opening it directly.
-                        urlOpener.open(url) { handled in
+                        UIApplication.shared.open(url) { handled in
                             if handled {
                                 Logger.instance.info(message: "Dismissing from system action: \(action)")
                                 self.onDeepLinkOpened()

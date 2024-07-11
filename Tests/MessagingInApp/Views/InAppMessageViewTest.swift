@@ -10,7 +10,6 @@ class InAppMessageViewTest: IntegrationTest {
     private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
     private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
-//    private let uiKitMock = UIKitWrapperMock()
 
     override func setUp() {
         super.setUp()
