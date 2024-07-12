@@ -336,10 +336,15 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     func trackInlineInAppMessage(message: Message, metric: InlineInAppMetric) {
         // If not tracked already
         if !isMessageAlreadyTracked(forMetric: metric, message: message) {
-            // Retrieve the delivery ID from the message's gistProperties
+            // Add the message to the list of previously processed messages for the given metric
+            previouslyProcessedMessages[metric, default: []].append(message)
+
+            if metric == .opened {
+                Gist.shared.messageShown(message: message)
+                return
+            }
+            // For `clicked` metrics, retrieve the delivery ID from the message's gistProperties
             if let deliveryId = message.gistProperties.campaignId {
-                // Add the message to the list of previously processed messages for the given metric
-                previouslyProcessedMessages[metric, default: []].append(message)
                 // Posts an event to track the metric using the event bus
                 eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
             }
