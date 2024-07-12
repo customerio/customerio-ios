@@ -48,6 +48,8 @@ class InlineMessageManager: MessageManager {
     }
 
     override func onCloseAction() {
+        super.onCloseAction()
+
         inlineMessageDelegate?.onCloseAction()
     }
 
