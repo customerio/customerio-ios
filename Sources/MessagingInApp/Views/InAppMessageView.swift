@@ -200,10 +200,8 @@ public class InAppMessageView: UIView {
 
         inlineMessageManager = newInlineMessageManager
 
-        // Track opened metric for inline inapp message
-        if let deliveryId = message.gistProperties.campaignId {
-            eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
-        }
+        // Track `opened` metric for inline inapp message
+        trackInlineInAppMessage(message: message, metric: .opened)
     }
 
     private func stopShowingMessageAndCleanup() {
@@ -305,11 +303,21 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        // Track `clicked` metric for inline inapp message
+        // in both cases, delegate set or not set
+        trackInlineInAppMessage(message: message, metric: .clicked)
+
         // If delegate is not set then call the global `messageActionTaken` method
         guard let onActionDelegate = onActionDelegate else {
             Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
             return
         }
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
+    }
+
+    private func trackInlineInAppMessage(message: Message, metric: InAppMetric) {
+        if let deliveryId = message.gistProperties.campaignId {
+            eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
+        }
     }
 }
