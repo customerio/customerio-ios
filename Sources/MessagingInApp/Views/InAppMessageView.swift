@@ -183,6 +183,9 @@ public class InAppMessageView: UIView {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
+
+        // Gist class is what Modal messages use as the modal message manager delegate.
+        // So we can re-use modal message logic, set the Gist class for inline managers, too.
         newInlineMessageManager.delegate = Gist.shared
 
         let inlineView = newInlineMessageManager.inlineMessageView
