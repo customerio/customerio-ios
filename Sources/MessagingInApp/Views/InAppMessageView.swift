@@ -8,6 +8,18 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
 
+enum InlineInAppMetric: String, Codable {
+    case displayed
+    case opened
+    case clicked
+
+    enum CodingKeys: String, CodingKey {
+        case displayed
+        case opened
+        case clicked
+    }
+}
+
 /**
  View that can be added to a customer's app UI to display inline in-app messages.
 
@@ -52,9 +64,7 @@ public class InAppMessageView: UIView {
     //
     // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
     // replaced with a global list of shown messages.
-    var previouslyShownMessages: [Message] = []
-
-    var previouslyTrackedMessage: [InAppMetric: [Message]] = [:]
+    var previouslyProcessedMessages: [InlineInAppMetric: [Message]] = [:]
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
@@ -141,7 +151,10 @@ public class InAppMessageView: UIView {
 
     // Function to check if a message has been previously shown
     func hasBeenPreviouslyShown(_ message: Message) -> Bool {
-        previouslyShownMessages.contains { $0.id == message.id }
+        guard let displayedMessagesList = previouslyProcessedMessages[.displayed] else {
+            return false
+        }
+        return displayedMessagesList.contains { $0.id == message.id }
     }
 
     private func displayInAppMessage(_ message: Message) {
@@ -295,7 +308,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     func onCloseAction() {
         Task { @MainActor in
             if let currentlyShownMessage = inlineMessageManager?.currentMessage {
-                previouslyShownMessages.append(currentlyShownMessage)
+                previouslyProcessedMessages[.displayed, default: []].append(currentlyShownMessage)
             }
 
             self.refreshView(forceShowNextMessage: true)
@@ -317,20 +330,19 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
     }
 
-    private func trackInlineInAppMessage(message: Message, metric: InAppMetric) {
+    func trackInlineInAppMessage(message: Message, metric: InlineInAppMetric) {
         if !isMessageAlreadyTracked(forMetric: metric, message: message) {
             if let deliveryId = message.gistProperties.campaignId {
-                previouslyTrackedMessage[metric, default: []].append(message)
+                previouslyProcessedMessages[metric, default: []].append(message)
                 eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
             }
         }
     }
 
-    private func isMessageAlreadyTracked(forMetric metric: InAppMetric, message: Message) -> Bool {
-        if let trackMetricList = previouslyTrackedMessage[metric] {
-            let value = trackMetricList.contains { $0.id == message.id }
-            return value
+    func isMessageAlreadyTracked(forMetric metric: InlineInAppMetric, message: Message) -> Bool {
+        guard let trackMetricList = previouslyProcessedMessages[metric] else {
+            return false
         }
-        return false
+        return trackMetricList.contains { $0.id == message.id }
     }
 }
