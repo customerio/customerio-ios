@@ -54,6 +54,8 @@ public class InAppMessageView: UIView {
     // replaced with a global list of shown messages.
     var previouslyShownMessages: [Message] = []
 
+    var previouslyTrackedMessage: [InAppMetric: [Message]] = [:]
+
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
 
@@ -316,8 +318,19 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     }
 
     private func trackInlineInAppMessage(message: Message, metric: InAppMetric) {
-        if let deliveryId = message.gistProperties.campaignId {
-            eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
+        if !isMessageAlreadyTracked(forMetric: metric, message: message) {
+            if let deliveryId = message.gistProperties.campaignId {
+                previouslyTrackedMessage[metric, default: []].append(message)
+                eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
+            }
         }
+    }
+
+    private func isMessageAlreadyTracked(forMetric metric: InAppMetric, message: Message) -> Bool {
+        if let trackMetricList = previouslyTrackedMessage[metric] {
+            let value = trackMetricList.contains { $0.id == message.id }
+            return value
+        }
+        return false
     }
 }
