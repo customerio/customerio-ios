@@ -89,6 +89,7 @@ class MessageQueueManagerImpl: MessageQueueManager {
     func getInlineMessages(forElementId elementId: String) -> [Message] {
         let messages = localMessageStore
             .filter { $0.value.elementId == elementId } // Only get messages for a specific elementid.
+            .filter { !hasMessageBeenShown($0.value) } // If we have already shown message, do not show again.
             .filter {
                 // if page rule is enabled, filter what matches
                 if $0.value.doesHavePageRule() {
@@ -100,6 +101,14 @@ class MessageQueueManagerImpl: MessageQueueManager {
             .map(\.value) // give us the message from dictionary
             .sortByMessagePriority() // sorts based on messages priorities
         return messages
+    }
+
+    private func hasMessageBeenShown(_ message: Message) -> Bool {
+        guard let queueId = message.id else {
+            return false
+        }
+
+        return Gist.shared.shownMessageQueueIds.contains(queueId)
     }
 
     func addMessagesToLocalStore(messages: [Message]) {
@@ -164,8 +173,8 @@ class MessageQueueManagerImpl: MessageQueueManager {
         // Rest of logic of function is for Modal messages
 
         // Skip showing Modal messages if already shown.
-        if let queueId = message.id, Gist.shared.shownModalMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
+        if hasMessageBeenShown(message) {
+            Logger.instance.info(message: "Message with queueId: \(message.id ?? "(null)") already shown, skipping.")
             return
         }
 

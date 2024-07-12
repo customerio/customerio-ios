@@ -8,7 +8,7 @@ protocol GistInstance: AutoMockable {
 }
 
 public class Gist: GistInstance, GistDelegate {
-    var shownModalMessageQueueIds: Set<String> = [] // all modal messages that have been shown in the app already.
+    var shownMessageQueueIds: Set<String> = [] // all messages that have been shown in the app already.
     var messageQueueManager: MessageQueueManager {
         DIGraphShared.shared.messageQueueManager
     }
@@ -135,16 +135,9 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     func logMessageView(message: Message) {
-        // This function body reports metrics and makes sure that messages are not shown 2+ times.
-        // For inline messages, we have not yet implemented either of these features.
-        // Therefore, if the message is not a modal, exit early.
-        guard message.isModalMessage else {
-            return
-        }
-
         messageQueueManager.removeMessageFromLocalStore(message: message)
         if let id = message.id {
-            shownModalMessageQueueIds.insert(id)
+            shownMessageQueueIds.insert(id)
         }
         let userToken = UserManager().getUserToken()
         LogManager(siteId: siteId, dataCenter: dataCenter)
