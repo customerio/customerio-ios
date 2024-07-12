@@ -199,6 +199,11 @@ public class InAppMessageView: UIView {
         ])
 
         inlineMessageManager = newInlineMessageManager
+
+        // Track opened metric for inline inapp message
+        if let deliveryId = message.gistProperties.campaignId {
+            eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+        }
     }
 
     private func stopShowingMessageAndCleanup() {
