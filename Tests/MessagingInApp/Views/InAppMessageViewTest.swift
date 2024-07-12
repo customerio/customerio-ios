@@ -10,11 +10,12 @@ class InAppMessageViewTest: IntegrationTest {
     private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
     private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
-
+    private let deeplinkUtilMock = DeepLinkUtilMock()
     override func setUp() {
         super.setUp()
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
+        DIGraphShared.shared.override(value: deeplinkUtilMock, forType: DeepLinkUtil.self)
     }
 
     // MARK: View constructed
@@ -590,6 +591,51 @@ class InAppMessageViewTest: IntegrationTest {
         await simulateSdkFetchedMessages([Message.randomInline])
         XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
     }
+  
+    // MARK: - Deeplinks
+
+    @MainActor
+    func test_deeplinks_givenButtonTappedWithValidDeeplink_expectOpenDeeplink() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        onDeepLinkActionButtonPressed(onInlineView: inlineView, deeplink: "https://customer.io")
+
+        // Since a system call, hence no delegate is called
+        XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
+
+        // Do not dismiss inline message when deep link is opened
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+
+        // If url is valid, check if `handleDeepLink` method is called
+        XCTAssertTrue(deeplinkUtilMock.handleDeepLinkCalled)
+        XCTAssertEqual(deeplinkUtilMock.handleDeepLinkReceivedArguments?.absoluteString, "https://customer.io")
+    }
+
+    @MainActor
+    func test_deeplinks_givenButtonTappedWithInValidDeeplink_expectOpenDeeplink() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        onDeepLinkActionButtonPressed(onInlineView: inlineView, deeplink: "ht!tp://invalid-url")
+
+        // Since a system call, hence no delegate is called
+        XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
+
+        // Do not dismiss inline message when deep link is opened
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+
+        // If url is valid, check if `handleDeepLink` method is called
+        XCTAssertFalse(deeplinkUtilMock.handleDeepLinkCalled)
+    }
 }
 
 @MainActor
@@ -598,6 +644,12 @@ extension InAppMessageViewTest {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
+    }
+
+    func onDeepLinkActionButtonPressed(onInlineView inlineView: InAppMessageView, deeplink: String) {
+        // Triggering the custom action button on inline message from the web engine
+        // mocks the user tap on custom action button
+        getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: deeplink, system: true)
     }
 
     // Only tells you if the View is visible in the UI to the user. Does not tell you if the View is in the process of rendering a message.
