@@ -8,6 +8,11 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
 
+// Enum representing metrics for inline in-app messages.
+//
+// - displayed: When the in-app message is displayed. This is only for internal tracking of messages already shown.
+// - opened: Metric for when the in-app message is opened/shown.
+// - clicked: Metric for when the in-app message is clicked.
 enum InlineInAppMetric: String, Codable {
     case displayed
     case opened
@@ -61,9 +66,6 @@ public class InAppMessageView: UIView {
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
-    //
-    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
-    // replaced with a global list of shown messages.
     var previouslyProcessedMessages: [InlineInAppMetric: [Message]] = [:]
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
@@ -318,8 +320,8 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
-        // Track `clicked` metric for inline inapp message
-        // in both cases, delegate set or not set
+        // Track the `clicked` metric for inline in-app messages
+        // regardless of whether the delegate is set.
         trackInlineInAppMessage(message: message, metric: .clicked)
 
         // If delegate is not set then call the global `messageActionTaken` method
@@ -330,15 +332,21 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
     }
 
+    // Tracks the specified metric for an inline in-app message if it hasn't been tracked already.
     func trackInlineInAppMessage(message: Message, metric: InlineInAppMetric) {
+        // If not tracked already
         if !isMessageAlreadyTracked(forMetric: metric, message: message) {
+            // Retrieve the delivery ID from the message's gistProperties
             if let deliveryId = message.gistProperties.campaignId {
+                // Add the message to the list of previously processed messages for the given metric
                 previouslyProcessedMessages[metric, default: []].append(message)
+                // Posts an event to track the metric using the event bus
                 eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: metric.rawValue))
             }
         }
     }
 
+    // Checks if the specified message has already been tracked for a given metric.
     func isMessageAlreadyTracked(forMetric metric: InlineInAppMetric, message: Message) -> Bool {
         guard let trackMetricList = previouslyProcessedMessages[metric] else {
             return false
