@@ -316,6 +316,9 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
     func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+        // Track only custom button clicks. Do not track `close` action.
+        if action == GistMessageActions.close.rawValue { return }
+
         let isMessageAlreadyTracked = isMessageAlreadyTracked(forMetric: .clicked, message: message)
         // If delegate is not set then call the global `messageActionTaken` method
         guard let onActionDelegate = onActionDelegate else {
