@@ -135,6 +135,7 @@ public class Gist: GistInstance, GistDelegate {
     }
 
     func logMessageView(message: Message) {
+        // This function body reports metrics and makes sure that messages are not shown 2+ times.
         messageQueueManager.removeMessageFromLocalStore(message: message)
         if let id = message.id {
             shownModalMessageQueueIds.insert(id)

@@ -101,6 +101,8 @@ extension MessageManager: EngineWebDelegate {
 
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
+        // This condition executes only for modal messages and not inline messages.
+        // For inline messages, it prevents duplicate tracking and avoids making multiple event listener calls to delegate methods.
         if currentMessage.isModalMessage {
             delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name, shouldTrackMetric: true)
         }

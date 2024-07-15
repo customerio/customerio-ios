@@ -197,6 +197,8 @@ public class InAppMessageView: UIView {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
+        // Set delegate to track `opened` metric for inline messages
+        // just like modal inapp messages.
         newInlineMessageManager.delegate = Gist.shared
         let inlineView = newInlineMessageManager.inlineMessageView
         inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
