@@ -101,7 +101,9 @@ extension MessageManager: EngineWebDelegate {
 
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
-        delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        if currentMessage.isModalMessage {
+            delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name, shouldTrackMetric: true)
+        }
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {

@@ -39,7 +39,7 @@ class DashboardViewController: BaseViewController {
         // This is optional. If set, the delegate method `onActionClick`
         // will receive callbacks.
         // If not set, the global method `messageActionTaken` will handle the callbacks.
-        inlineInAppViewCreatedInStoryboard.onActionDelegate = self
+//        inlineInAppViewCreatedInStoryboard.onActionDelegate = self
 
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
