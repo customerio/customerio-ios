@@ -9,7 +9,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
-    let eventBusHandler: EventBusHandler
+    var eventBusHandler: EventBusHandler
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -58,6 +58,14 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     func setEventListener(_ eventListener: InAppEventListener?) {
         self.eventListener = eventListener
     }
+
+    // Sets a custom event bus handler for unit testing.
+    // Do not use it in production.
+    #if DEBUG
+    func setEventBusHandler(_ eventBusHandler: EventBusHandler) {
+        self.eventBusHandler = eventBusHandler
+    }
+    #endif
 
     // Dismiss in-app message
     func dismissMessage() {
