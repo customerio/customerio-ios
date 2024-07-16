@@ -11,6 +11,7 @@ class InAppMessageViewTest: IntegrationTest {
     private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
     private let deeplinkUtilMock = DeepLinkUtilMock()
+    private let eventBusHandlerMock = EventBusHandlerMock()
     override func setUp() {
         super.setUp()
 
@@ -521,6 +522,21 @@ class InAppMessageViewTest: IntegrationTest {
 
         // If url is valid, check if `handleDeepLink` method is called
         XCTAssertFalse(deeplinkUtilMock.handleDeepLinkCalled)
+    }
+
+    @MainActor
+    func test_onInlineMessageShown_expectTrackOpenedMetric_expectGlobalMessageShownCallback() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+        XCTAssertTrue(eventListenerMock.messageShownCalled)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
     }
 }
 
