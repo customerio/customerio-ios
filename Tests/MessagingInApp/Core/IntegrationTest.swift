@@ -64,6 +64,14 @@ extension IntegrationTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
+    // Call when the in-app webview rendering process has finished with error
+    func onDoneRenderingInAppMessageWithError(_ message: Message, insideOfInlineView inlineView: InAppMessageView) async {
+        // To mock the web server call with a failed response back, call routeError delegate function:
+        getWebEngineForInlineView(inlineView)?.delegate?.routeError(route: message.templateId)
+
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
     func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
         view.inlineMessageManager?.engine
     }

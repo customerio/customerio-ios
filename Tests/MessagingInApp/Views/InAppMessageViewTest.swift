@@ -522,6 +522,67 @@ class InAppMessageViewTest: IntegrationTest {
         // If url is valid, check if `handleDeepLink` method is called
         XCTAssertFalse(deeplinkUtilMock.handleDeepLinkCalled)
     }
+
+    // MARK: - Send events to Gist event listeners
+
+    // errorWithMessage
+    @MainActor
+    func test_givenAttemptToShowInlineMessage_EventListenerSet_expectFailToShow_expectRouteError() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Inline message does not display
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+
+        // errorWithMessage called
+        XCTAssertTrue(eventListenerMock.errorWithMessageCalled)
+        XCTAssertEqual(eventListenerMock.errorWithMessageCallsCount, 1)
+        XCTAssertEqual(eventListenerMock.errorWithMessageReceivedArguments, InAppMessage(gistMessage: givenInlineMessage))
+    }
+
+    @MainActor
+    func test_givenAttemptToShowInlineMessage_EventListenerNotSet_expectFailToShow_expectNoCallback() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Inline message does not display
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+
+        // errorWithMessage not called as eventListener is not set
+        XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
+    }
+
+    // messageActionTaken when close button is tapped
+    @MainActor
+    func test_givenShowInlineMessage_givenTapCloseButton_expectInlineToHide_expectMessageActionTakenCalled() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        XCTAssertTrue(isInlineViewVisible(inlineView))
+
+        // Tap close button on inline message
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+
+        // Inline message is dismissed
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+        XCTAssertNil(getInAppMessage(forView: inlineView))
+
+        // messageActionTaken called
+        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
+        XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
+        XCTAssertEqual(eventListenerMock.messageShownReceivedArguments, InAppMessage(gistMessage: givenInlineMessage))
+    }
 }
 
 @MainActor
