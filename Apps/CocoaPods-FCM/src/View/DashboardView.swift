@@ -6,13 +6,30 @@ import UserNotifications
 
 struct InAppMessageViewRepresentable: UIViewRepresentable {
     var elementId: String
-
     func makeUIView(context: Context) -> InAppMessageView {
-        let newInlineViewUsingUIAsCode = InAppMessageView(elementId: elementId)
-        return newInlineViewUsingUIAsCode
+        let inlineMessageView = InAppMessageView(elementId: elementId)
+        inlineMessageView.onActionDelegate = context.coordinator
+        return inlineMessageView
     }
 
     func updateUIView(_ uiView: InAppMessageView, context: Context) {}
+
+    // Add a coordinator to handle delegate `InAppMessageViewActionDelegate`
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, InAppMessageViewActionDelegate {
+        var parent: InAppMessageViewRepresentable
+
+        init(_ parent: InAppMessageViewRepresentable) {
+            self.parent = parent
+        }
+
+        func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
+            print("This method received a callback on button click")
+        }
+    }
 }
 
 struct DashboardView: View {
