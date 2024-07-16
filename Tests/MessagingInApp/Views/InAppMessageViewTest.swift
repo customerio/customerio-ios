@@ -513,6 +513,107 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionName, "")
     }
 
+    // MARK: "Show another message" action buttons
+
+    @MainActor
+    func test_showAnotherMessageAction_givenClickActionButton_expectShowLoadingViewAfterClickButton() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view)
+
+        // Expect that the loading view is shown after click button.
+        assert(view: view.messageRenderingLoadingView, isShowing: true, inInlineView: view)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenNewMessageFinishesRendering_expectToDisplayMessage() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after done rendering, we display the new message.
+        assert(view: view.messageRenderingLoadingView, isShowing: false, inInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenCloseNewMessage_expectShowNextMessageInQueue() async {
+        let givenMessage = Message.randomInline
+        let givenNextMessageInQueue = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage, givenNextMessageInQueue]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // We expect that when we click the close action button on the new message that is being shown, we do not show the first message again. Instead, we expect to show the next message in the local queue.
+        await onCloseActionButtonPressed(onInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view), givenNextMessageInQueue)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenShowingNewMessage_givenNewMessagesFetched_expectContinueShowingMessage() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after a fetch, we do not change what message is being displayed.
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+        await simulateSdkFetchedMessages([Message.randomInline])
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenMultipleShowAnotherMessageActions_expectShowNextMessages() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        var givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+
+        // Click the "Show next action" button on the message we are currently displaying
+        let given2ndNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: given2ndNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(given2ndNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, given2ndNewMessageToShow.templateId)
+    }
+
     // MARK: - Deeplinks
 
     @MainActor
