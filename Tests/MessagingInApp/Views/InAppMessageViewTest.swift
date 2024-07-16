@@ -592,6 +592,28 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
     }
 
+    @MainActor
+    func test_showAnotherMessageAction_givenMultipleShowAnotherMessageActions_expectShowNextMessages() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        var givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+
+        // Click the "Show next action" button on the message we are currently displaying
+        let given2ndNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: given2ndNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(given2ndNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, given2ndNewMessageToShow.templateId)
+    }
+
     // MARK: - Deeplinks
 
     @MainActor
