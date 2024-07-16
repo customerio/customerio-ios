@@ -1,6 +1,19 @@
 import CioDataPipelines
+import CioMessagingInApp
 import SwiftUI
+import UIKit
 import UserNotifications
+
+struct InAppMessageViewRepresentable: UIViewRepresentable {
+    var elementId: String
+
+    func makeUIView(context: Context) -> InAppMessageView {
+        let newInlineViewUsingUIAsCode = InAppMessageView(elementId: elementId)
+        return newInlineViewUsingUIAsCode
+    }
+
+    func updateUIView(_ uiView: InAppMessageView, context: Context) {}
+}
 
 struct DashboardView: View {
     enum Subscreen: String {
@@ -47,8 +60,9 @@ struct DashboardView: View {
                     Text(loggedInUserEmail)
                 }
                 Text("What would you like to test?")
-
                 Group {
+                    InAppMessageViewRepresentable(elementId: "dashboard-announcement")
+                        .frame(width: 300, height: 200)
                     ColorButton("Send Random Event") {
                         switch Int.random(in: 0 ..< 3) {
                         case 0:
