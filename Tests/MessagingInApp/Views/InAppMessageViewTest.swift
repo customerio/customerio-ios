@@ -591,7 +591,7 @@ class InAppMessageViewTest: IntegrationTest {
         await simulateSdkFetchedMessages([Message.randomInline])
         XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
     }
-  
+
     // MARK: - Deeplinks
 
     @MainActor
