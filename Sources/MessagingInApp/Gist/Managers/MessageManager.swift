@@ -103,7 +103,7 @@ extension MessageManager: EngineWebDelegate {
     func trackClickedMetric(action: String, name: String) {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
-            if let deliveryId = getDeliveryId(from: currentMessage) {
+            if let deliveryId = currentMessage.deliveryId {
                 eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
             }
         }
@@ -211,13 +211,5 @@ extension MessageManager: EngineWebDelegate {
             }
         }
         return nil
-    }
-
-    private func getDeliveryId(from message: Message) -> String? {
-        guard let deliveryId = message.gistProperties.campaignId else {
-            return nil
-        }
-
-        return deliveryId
     }
 }

@@ -72,7 +72,7 @@ extension MessagingInAppImplementation: GistDelegate {
 
         eventListener?.messageShown(message: InAppMessage(gistMessage: message))
 
-        if let deliveryId = getDeliveryId(from: message) {
+        if let deliveryId = message.deliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
@@ -97,13 +97,5 @@ extension MessagingInAppImplementation: GistDelegate {
             actionValue: action,
             actionName: name
         )
-    }
-
-    private func getDeliveryId(from message: Message) -> String? {
-        guard let deliveryId = message.gistProperties.campaignId else {
-            return nil
-        }
-
-        return deliveryId
     }
 }
