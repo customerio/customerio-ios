@@ -229,7 +229,6 @@ extension MessageManager: EngineWebDelegate {
         return nil
     }
 
-    // Move this to a common place
     private func getDeliveryId(from message: Message) -> String? {
         guard let deliveryId = message.gistProperties.campaignId else {
             return nil
