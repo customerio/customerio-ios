@@ -21,10 +21,12 @@ class MessageManager {
     let currentMessage: Message
     let gistView: GistView
     private var currentRoute: String
+    private var previouslyProcessedMessages: [Message] = []
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
     private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
+    let eventBusHandler: EventBusHandler = DIGraphShared.shared.eventBusHandler
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
@@ -99,12 +101,36 @@ extension MessageManager: EngineWebDelegate {
         }
     }
 
+    // Function to check if a message has been previously clicked tracked
+    // If not, then track once & store in previouslyProcessedMessages
+    func trackInlineMessageIfNotPreviouslyTracked(action: String, name: String) {
+        let hasBeenTracked = previouslyProcessedMessages.contains { $0.id == currentMessage.id }
+        if !hasBeenTracked {
+            // Add the message to the list of previously processed messages
+            previouslyProcessedMessages.append(currentMessage)
+            trackTapAction(action: action, name: name)
+        }
+    }
+
+    func trackTapAction(action: String, name: String) {
+        // a close action does not count as a clicked action.
+        if action != "gist://close" {
+            if let deliveryId = getDeliveryId(from: currentMessage) {
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+            }
+        }
+    }
+
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
         // This condition executes only for modal messages and not inline messages.
-        // For inline messages, it prevents duplicate tracking and avoids making multiple event listener calls to delegate methods.
         if currentMessage.isModalMessage {
-            delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name, shouldTrackMetric: true)
+            delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+            trackTapAction(action: action, name: name)
+        } else {
+            // For inline messages, it prevents duplicate tracking and
+            // avoids making multiple event listener calls to delegate methods.
+            trackInlineMessageIfNotPreviouslyTracked(action: action, name: name)
         }
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
@@ -201,5 +227,14 @@ extension MessageManager: EngineWebDelegate {
             }
         }
         return nil
+    }
+
+    // Move this to a common place
+    private func getDeliveryId(from message: Message) -> String? {
+        guard let deliveryId = message.gistProperties.campaignId else {
+            return nil
+        }
+
+        return deliveryId
     }
 }
