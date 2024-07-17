@@ -9,6 +9,9 @@ struct InAppMessageViewRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> InAppMessageView {
         let inlineMessageView = InAppMessageView(elementId: elementId)
         inlineMessageView.onActionDelegate = context.coordinator
+        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
+        inlineMessageView.backgroundColor = UIColor.darkGray
+//        inlineMessageView.widthAnchor.constraint(equalTo: View.widthAnchor).isActive = true
         return inlineMessageView
     }
 
@@ -79,7 +82,6 @@ struct DashboardView: View {
                 Text("What would you like to test?")
                 Group {
                     InAppMessageViewRepresentable(elementId: "dashboard-announcement")
-                        .frame(width: 300, height: 200)
                     ColorButton("Send Random Event") {
                         switch Int.random(in: 0 ..< 3) {
                         case 0:
