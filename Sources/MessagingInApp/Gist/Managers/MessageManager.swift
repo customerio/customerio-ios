@@ -21,7 +21,6 @@ class MessageManager {
     let currentMessage: Message
     let gistView: GistView
     private var currentRoute: String
-    private var previouslyProcessedMessages: [Message] = []
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
@@ -101,18 +100,7 @@ extension MessageManager: EngineWebDelegate {
         }
     }
 
-    // Function to check if a message has been previously clicked tracked
-    // If not, then track once & store in previouslyProcessedMessages
-    func trackInlineMessageIfNotPreviouslyTracked(action: String, name: String) {
-        let hasBeenTracked = previouslyProcessedMessages.contains { $0.id == currentMessage.id }
-        if !hasBeenTracked {
-            // Add the message to the list of previously processed messages
-            previouslyProcessedMessages.append(currentMessage)
-            trackTapAction(action: action, name: name)
-        }
-    }
-
-    func trackTapAction(action: String, name: String) {
+    func trackClickedMetric(action: String, name: String) {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
             if let deliveryId = getDeliveryId(from: currentMessage) {
@@ -126,12 +114,8 @@ extension MessageManager: EngineWebDelegate {
         // This condition executes only for modal messages and not inline messages.
         if currentMessage.isModalMessage {
             delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
-            trackTapAction(action: action, name: name)
-        } else {
-            // For inline messages, it prevents duplicate tracking and
-            // avoids making multiple event listener calls to delegate methods.
-            trackInlineMessageIfNotPreviouslyTracked(action: action, name: name)
         }
+        trackClickedMetric(action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {
