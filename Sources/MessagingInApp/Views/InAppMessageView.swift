@@ -49,7 +49,7 @@ public class InAppMessageView: UIView {
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
-    var previouslyProcessedMessages: [Message] = []
+    var previouslyShownMessages: [Message] = []
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
@@ -136,7 +136,7 @@ public class InAppMessageView: UIView {
 
     // Function to check if a message has been previously shown
     func hasBeenPreviouslyShown(_ message: Message) -> Bool {
-        previouslyProcessedMessages.contains { $0.id == message.id }
+        previouslyShownMessages.contains { $0.id == message.id }
     }
 
     private func displayInAppMessage(_ message: Message) {
@@ -289,7 +289,7 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     func onCloseAction() {
         Task { @MainActor in
             if let currentlyShownMessage = inlineMessageManager?.currentMessage {
-                previouslyProcessedMessages.append(currentlyShownMessage)
+                previouslyShownMessages.append(currentlyShownMessage)
             }
 
             self.refreshView(forceShowNextMessage: true)
