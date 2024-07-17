@@ -535,13 +535,28 @@ class InAppMessageViewTest: IntegrationTest {
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
 
-        // Inline message does not display
-        XCTAssertFalse(isInlineViewVisible(inlineView))
-
         // errorWithMessage called
         XCTAssertTrue(eventListenerMock.errorWithMessageCalled)
         XCTAssertEqual(eventListenerMock.errorWithMessageCallsCount, 1)
         XCTAssertEqual(eventListenerMock.errorWithMessageReceivedArguments, InAppMessage(gistMessage: givenInlineMessage))
+
+        // Other listeners not called
+        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
+        XCTAssertFalse(eventListenerMock.messageShownCalled)
+        XCTAssertFalse(eventListenerMock.messageDismissedCalled)
+    }
+
+    @MainActor
+    func test_givenAttemptToShowInlineMessageFails_expectMessageNotShown() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Inline message does not display
+        XCTAssertFalse(isInlineViewVisible(inlineView))
     }
 
     @MainActor
@@ -581,7 +596,6 @@ class InAppMessageViewTest: IntegrationTest {
         // messageActionTaken called
         XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
-        XCTAssertEqual(eventListenerMock.messageShownReceivedArguments, InAppMessage(gistMessage: givenInlineMessage))
     }
 }
 
