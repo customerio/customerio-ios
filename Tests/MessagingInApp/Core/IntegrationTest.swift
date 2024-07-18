@@ -64,6 +64,15 @@ extension IntegrationTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
+    func onShowAnotherMessageActionButtonPressed(onInlineView inlineView: InAppMessageView, newMessageTemplateId: String = .random) async {
+        // Triggering the button from the web engine simulates the user tapping the button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        getWebEngineForInlineView(inlineView)?.delegate?.routeChanged(newRoute: newMessageTemplateId)
+
+        // When willChangeMessage() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
     func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
         view.inlineMessageManager?.engine
     }
