@@ -4,7 +4,7 @@ import Foundation
 protocol InlineMessageManagerDelegate: AnyObject {
     func sizeChanged(width: CGFloat, height: CGFloat)
     func onCloseAction()
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String)
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool
 }
 
 /**
@@ -51,8 +51,13 @@ class InlineMessageManager: MessageManager {
         inlineMessageDelegate?.onCloseAction()
     }
 
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
-        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
+    override func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        let didInlineViewHandleActionTapped = inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name) ?? false
+
+        // Only forward the event to the delegate if the View did not handle that for us.
+        if !didInlineViewHandleActionTapped {
+            delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
+        }
     }
 }
 
@@ -62,6 +67,6 @@ extension InlineMessageManager: GistViewDelegate {
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {
-        inlineMessageDelegate?.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
+        // Handing event in the manager onTapAction() function.
     }
 }

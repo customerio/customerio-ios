@@ -298,12 +298,12 @@ extension InAppMessageView: InlineMessageManagerDelegate {
 
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool {
         // If delegate is not set then call the global `messageActionTaken` method
         guard let onActionDelegate = onActionDelegate else {
-            Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
-            return
+            return false
         }
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
+        return true
     }
 }

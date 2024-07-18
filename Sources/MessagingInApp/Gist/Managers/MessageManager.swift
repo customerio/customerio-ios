@@ -86,6 +86,10 @@ class MessageManager {
     func onReplaceMessage(newMessageToShow: Message) {
         // subclass should implement
     }
+
+    func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        // subclass should implement
+    }
 }
 
 // The main logic of this class is being the delegate for the EngineWeb instance.
@@ -111,10 +115,7 @@ extension MessageManager: EngineWebDelegate {
 
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
-        // This condition executes only for modal messages and not inline messages.
-        if currentMessage.isModalMessage {
-            delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
-        }
+        onTapAction(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
         trackClickedMetric(action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
