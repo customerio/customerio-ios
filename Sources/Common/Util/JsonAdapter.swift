@@ -59,17 +59,42 @@ public class JsonAdapter {
         self.log = log
     }
 
-    public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any]) -> T? {
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: dictionary)
+    // MARK: Dictionary to JSON
 
-            return fromJson(jsonData)
-        } catch {
-            log.error("\(error.localizedDescription), dictionary: \(dictionary)")
+    public func fromDictionary<T: Decodable>(_ dictionary: [AnyHashable: Any]) -> T? {
+        commonDecodeDictionary(dictionary)
+    }
+
+    public func fromDictionary<T: Decodable>(_ dictionary: [[AnyHashable: Any]]) -> T? {
+        commonDecodeDictionary(dictionary)
+    }
+
+    public func fromDictionary(_ dictionary: [AnyHashable: Any]) -> Data? {
+        commonDecodeDictionaryToData(dictionary)
+    }
+
+    public func fromDictionary(_ dictionary: [[AnyHashable: Any]]) -> Data? {
+        commonDecodeDictionaryToData(dictionary)
+    }
+
+    private func commonDecodeDictionary<T: Decodable>(_ dictionary: Any) -> T? {
+        guard let data = commonDecodeDictionaryToData(dictionary) else {
+            return nil
         }
 
+        return fromJson(data)
+    }
+
+    private func commonDecodeDictionaryToData(_ dictionary: Any) -> Data? {
+        do {
+            return try JSONSerialization.data(withJSONObject: dictionary)
+        } catch {
+            log.error("\(error.localizedDescription), object: \(dictionary)")
+        }
         return nil
     }
+
+    // MARK: JSON to Dictionary
 
     public func toDictionary<T: Encodable>(_ obj: T) -> [AnyHashable: Any]? {
         guard let data = toJson(obj) else {

@@ -47,6 +47,13 @@ public class InAppMessageView: UIView {
     // Delegate to handle custom action button tap.
     public weak var onActionDelegate: InAppMessageViewActionDelegate?
 
+    // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
+    // There is currently no easy way to know when the inline View has finished processing the fetch.
+    // This listener is a hack for our automated tests to know when the inline View has finished processing the fetch.
+    //
+    // See linear ticket MBL-427 to learn more about this limitation in our tests.
+    var refreshViewListener: (() -> Void)?
+
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
     //
@@ -117,6 +124,7 @@ public class InAppMessageView: UIView {
     // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
     private func refreshView(forceShowNextMessage: Bool = false) {
         guard let elementId = elementId else {
+            refreshViewListener?()
             return // we cannot check if a message is available until element id set on View.
         }
 
@@ -127,6 +135,7 @@ public class InAppMessageView: UIView {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
             // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
             // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
+            refreshViewListener?()
             return
         }
 
@@ -135,6 +144,8 @@ public class InAppMessageView: UIView {
         } else {
             dismissInAppMessage()
         }
+
+        refreshViewListener?()
     }
 
     // Function to check if a message has been previously shown
