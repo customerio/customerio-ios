@@ -28,9 +28,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
-        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
-            config.logLevel(CioLogLevel.debug)
-        }
+//        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
+        config.logLevel(CioLogLevel.debug)
+//        }
         if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
             config.apiHost(apiHost)
         }

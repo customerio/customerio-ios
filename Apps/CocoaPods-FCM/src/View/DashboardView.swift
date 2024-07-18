@@ -6,16 +6,25 @@ import UserNotifications
 
 struct InAppMessageViewRepresentable: UIViewRepresentable {
     var elementId: String
+    @Binding var containerWidth: CGFloat
     func makeUIView(context: Context) -> InAppMessageView {
         let inlineMessageView = InAppMessageView(elementId: elementId)
         inlineMessageView.onActionDelegate = context.coordinator
         inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
+
+        let widthConstraint = inlineMessageView.widthAnchor.constraint(equalToConstant: containerWidth)
+        widthConstraint.isActive = true
+        widthConstraint.isActive = true
         inlineMessageView.backgroundColor = UIColor.darkGray
 //        inlineMessageView.widthAnchor.constraint(equalTo: View.widthAnchor).isActive = true
         return inlineMessageView
     }
 
-    func updateUIView(_ uiView: InAppMessageView, context: Context) {}
+    func updateUIView(_ uiView: InAppMessageView, context: Context) {
+        if let widthConstraint = uiView.constraints.first(where: { $0.firstAttribute == .width }) {
+            widthConstraint.constant = containerWidth
+        }
+    }
 
     // Add a coordinator to handle delegate `InAppMessageViewActionDelegate`
     func makeCoordinator() -> Coordinator {
@@ -36,6 +45,7 @@ struct InAppMessageViewRepresentable: UIViewRepresentable {
 }
 
 struct DashboardView: View {
+    @State private var containerWidth: CGFloat = 0
     enum Subscreen: String {
         case customEvent
         case profileAttribute
@@ -76,12 +86,17 @@ struct DashboardView: View {
             }
 
             VStack(spacing: 15) {
+                InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth)
+                    .background(GeometryReader { geometry in
+                        Color.clear.onAppear {
+                            containerWidth = geometry.size.width
+                        }
+                    })
                 if let loggedInUserEmail = userManager.email {
                     Text(loggedInUserEmail)
                 }
                 Text("What would you like to test?")
                 Group {
-                    InAppMessageViewRepresentable(elementId: "dashboard-announcement")
                     ColorButton("Send Random Event") {
                         switch Int.random(in: 0 ..< 3) {
                         case 0:
