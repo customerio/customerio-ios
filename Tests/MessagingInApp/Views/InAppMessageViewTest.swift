@@ -306,7 +306,7 @@ class InAppMessageViewTest: IntegrationTest {
     func test_onCloseAction_givenMultipleMessagesInQueue_expectShowLoadingViewWhileRenderingNextMessage() async {
         let givenElementId = String.random
         let givenMessages = [Message(elementId: givenElementId), Message(elementId: givenElementId)]
-        queueMock.getInlineMessagesReturnValue = givenMessages
+        await simulateSdkFetchedMessages(givenMessages, verifyInlineViewNotifiedOfFetch: nil)
 
         let view = InAppMessageView(elementId: givenElementId)
 
