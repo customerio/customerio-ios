@@ -81,6 +81,9 @@ open class IntegrationTest: UnitTest {
             if let campaignIdValue = message.gistProperties.campaignId {
                 gistProperties["campaignId"] = campaignIdValue
             }
+            if let persistentValue = message.gistProperties.persistent {
+                gistProperties["persistent"] = persistentValue
+            }
 
             let messageDict: [String: Any] = [
                 "queueId": message.id!,
