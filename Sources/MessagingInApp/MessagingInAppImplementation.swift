@@ -72,7 +72,7 @@ extension MessagingInAppImplementation: GistDelegate {
 
         eventListener?.messageShown(message: InAppMessage(gistMessage: message))
 
-        if let deliveryId = getDeliveryId(from: message) {
+        if let deliveryId = message.deliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
@@ -89,30 +89,13 @@ extension MessagingInAppImplementation: GistDelegate {
         eventListener?.errorWithMessage(message: InAppMessage(gistMessage: message))
     }
 
-    public func action(message: Message, currentRoute: String, action: String, name: String, shouldTrackMetric: Bool = true) {
+    public func action(message: Message, currentRoute: String, action: String, name: String) {
         logger.debug("in-app action made. \(action), \(message.describeForLogs)")
-
-        // a close action does not count as a clicked action.
-        // shouldTrackMetric when `false` prevents multiple
-        // metric tracking of inline messages.
-        if action != "gist://close", shouldTrackMetric {
-            if let deliveryId = getDeliveryId(from: message) {
-                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
-            }
-        }
 
         eventListener?.messageActionTaken(
             message: InAppMessage(gistMessage: message),
             actionValue: action,
             actionName: name
         )
-    }
-
-    private func getDeliveryId(from message: Message) -> String? {
-        guard let deliveryId = message.gistProperties.campaignId else {
-            return nil
-        }
-
-        return deliveryId
     }
 }

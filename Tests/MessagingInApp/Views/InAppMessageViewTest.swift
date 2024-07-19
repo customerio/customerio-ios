@@ -95,6 +95,7 @@ class InAppMessageViewTest: IntegrationTest {
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
+        assert(view: inlineView.inAppMessageView, isShowing: true, inInlineView: inlineView)
     }
 
     @MainActor
@@ -104,10 +105,12 @@ class InAppMessageViewTest: IntegrationTest {
         queueMock.getInlineMessagesReturnValue = givenInlineMessages
 
         let inlineView = InAppMessageView(elementId: givenElementId)
+
         await onDoneRenderingInAppMessage(givenInlineMessages[0], insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessages[0])
+        assert(view: inlineView.inAppMessageView, isShowing: true, inInlineView: inlineView)
     }
 
     // MARK: Async fetching of in-app messages
@@ -132,6 +135,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: view)
 
         XCTAssertTrue(isInlineViewVisible(view))
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
     }
 
     // Test that the eventbus listening does not impact memory management of the View instance.
@@ -165,11 +169,11 @@ class InAppMessageViewTest: IntegrationTest {
 
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
 
-        let webViewBeforeFetch = getInAppMessageWebView(fromInlineView: inlineView)
+        let webViewBeforeFetch = inlineView.inAppMessageView
 
         await simulateSdkFetchedMessages([givenInlineMessage])
 
-        let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
+        let webViewAfterFetch = inlineView.inAppMessageView
 
         // If the WebViews are the same instance, it means the message was not reloaded.
         XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
@@ -181,14 +185,14 @@ class InAppMessageViewTest: IntegrationTest {
         queueMock.getInlineMessagesReturnValue = [givenOldInlineMessage]
 
         let inlineView = InAppMessageView(elementId: givenOldInlineMessage.elementId!)
-        let webViewBeforeFetch = getInAppMessageWebView(fromInlineView: inlineView)
+        let webViewBeforeFetch = inlineView.inAppMessageView
 
         // Make sure message is a new message, but has same elementId.
         let givenNewInlineMessage = Message(queueId: .random, elementId: givenOldInlineMessage.elementId)
 
         await simulateSdkFetchedMessages([givenNewInlineMessage])
 
-        let webViewAfterFetch = getInAppMessageWebView(fromInlineView: inlineView)
+        let webViewAfterFetch = inlineView.inAppMessageView
 
         // If the WebViews are different, it means the message was reloaded.
         XCTAssertTrue(webViewBeforeFetch === webViewAfterFetch)
@@ -285,6 +289,37 @@ class InAppMessageViewTest: IntegrationTest {
         await onCloseActionButtonPressed(onInlineView: view)
         XCTAssertFalse(isInlineViewVisible(view))
         XCTAssertNil(getInAppMessage(forView: view))
+    }
+
+    @MainActor
+    func test_onCloseAction_givenMultipleMessagesInQueue_expectShowLoadingViewWhileRenderingNextMessage() async {
+        let givenElementId = String.random
+        let givenMessages = [Message(elementId: givenElementId), Message(elementId: givenElementId)]
+        queueMock.getInlineMessagesReturnValue = givenMessages
+
+        let view = InAppMessageView(elementId: givenElementId)
+
+        // On first message, expect the loading view to be hidden
+        await onDoneRenderingInAppMessage(givenMessages[0], insideOfInlineView: view)
+        XCTAssertTrue(isInlineViewVisible(view))
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+        assert(view: view.messageRenderingLoadingView, isShowing: false, inInlineView: view)
+
+        // On close, expect the loading view to be shown while rendering the next message
+        await onCloseActionButtonPressed(onInlineView: view)
+        XCTAssertTrue(isInlineViewVisible(view))
+        assert(view: view.messageRenderingLoadingView, isShowing: true, inInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: false, inInlineView: view)
+
+        // After rendering the next message, expect the loading view to be hidden
+        await onDoneRenderingInAppMessage(givenMessages[1], insideOfInlineView: view)
+        XCTAssertTrue(isInlineViewVisible(view))
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+        assert(view: view.messageRenderingLoadingView, isShowing: false, inInlineView: view)
+
+        // On close, expect the inline view to be hidden
+        await onCloseActionButtonPressed(onInlineView: view)
+        XCTAssertFalse(isInlineViewVisible(view))
     }
 
     @MainActor
@@ -478,6 +513,107 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionName, "")
     }
 
+    // MARK: "Show another message" action buttons
+
+    @MainActor
+    func test_showAnotherMessageAction_givenClickActionButton_expectShowLoadingViewAfterClickButton() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view)
+
+        // Expect that the loading view is shown after click button.
+        assert(view: view.messageRenderingLoadingView, isShowing: true, inInlineView: view)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenNewMessageFinishesRendering_expectToDisplayMessage() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after done rendering, we display the new message.
+        assert(view: view.messageRenderingLoadingView, isShowing: false, inInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenCloseNewMessage_expectShowNextMessageInQueue() async {
+        let givenMessage = Message.randomInline
+        let givenNextMessageInQueue = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage, givenNextMessageInQueue]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // We expect that when we click the close action button on the new message that is being shown, we do not show the first message again. Instead, we expect to show the next message in the local queue.
+        await onCloseActionButtonPressed(onInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view), givenNextMessageInQueue)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenShowingNewMessage_givenNewMessagesFetched_expectContinueShowingMessage() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after a fetch, we do not change what message is being displayed.
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+        await simulateSdkFetchedMessages([Message.randomInline])
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenMultipleShowAnotherMessageActions_expectShowNextMessages() async {
+        let givenMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenMessage]
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        var givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+
+        // Click the "Show next action" button on the message we are currently displaying
+        let given2ndNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: given2ndNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(given2ndNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, given2ndNewMessageToShow.templateId)
+    }
+
     // MARK: - Deeplinks
 
     @MainActor
@@ -624,19 +760,40 @@ extension InAppMessageViewTest {
 
     // Tells you the message the Inline View is either rendering or has already rendered.
     func getInAppMessage(forView view: InAppMessageView) -> Message? {
-        getInAppMessageWebView(fromInlineView: view)?.message
+        (view.inAppMessageView as? GistView)?.message
     }
 
-    func getInAppMessageWebView(fromInlineView view: InAppMessageView) -> GistView? {
-        let gistViews: [GistView] = view.subviews.map { $0 as? GistView }.mapNonNil()
+    func assert(view: UIView?, isShowing: Bool, inInlineView inlineView: InAppMessageView, file: StaticString = #file, line: UInt = #line) {
+        if isShowing {
+            guard let view = view else {
+                XCTFail("View is nil, therefore it is not showing", file: file, line: line)
+                return
+            }
 
-        if gistViews.isEmpty {
-            return nil
+            if view.isHidden {
+                XCTFail("View is hidden, therefore it is not showing", file: file, line: line)
+                return // it's hidden which is enough proof that it's not showing.
+            }
+
+            if !inlineView.subviews.contains(view) {
+                XCTFail("View is not a subview of the inline view, therefore it is not showing", file: file, line: line)
+            }
+        } else { // is not showing
+            guard let view = view else {
+                // if View is nil, then it's not showing.
+                return
+            }
+
+            if view.isHidden {
+                return // it's hidden which is enough proof that it's not showing
+            }
+
+            if !inlineView.subviews.contains(view) {
+                return // it's a subview of the inline view which means it's showing
+            }
+
+            XCTFail("View \(String(describing: view)) is showing inside of \(String(describing: inlineView))", file: file, line: line)
         }
-
-        XCTAssertEqual(gistViews.count, 1)
-
-        return gistViews.first
     }
 
     func simulateSdkFetchedMessages(_ messages: [Message]) async {
