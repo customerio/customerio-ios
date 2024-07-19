@@ -603,7 +603,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
 
         // Click the "Show next action" button on the currently displayed message.
-        var givenNewMessageToShow = Message(templateId: .random)
+        let givenNewMessageToShow = Message(templateId: .random)
         await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
         await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
         XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
@@ -675,6 +675,46 @@ class InAppMessageViewTest: IntegrationTest {
         // Also check for postEvent calls
         XCTAssertTrue(eventBusHandlerMock.postEventCalled)
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+    }
+
+    @MainActor
+    func test_givenMultipleInlineMessageInQueue_BothDisplayedAndOneDismissed_expectTrackMultipleMessageShownListenerCalls() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+        messagingInAppImplementation.setEventBusHandler(eventBusHandlerMock)
+
+        let givenInlineMessage1 = Message.randomInline
+        let givenInlineMessage2 = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage1, givenInlineMessage2]
+
+        let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
+        let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
+
+        // Render only inlineView1
+        await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
+
+        // inlineView1 is only visible
+        XCTAssertTrue(isInlineViewVisible(inlineView1))
+        XCTAssertFalse(isInlineViewVisible(inlineView2))
+
+        // Check if messageShown is called
+        XCTAssertTrue(eventListenerMock.messageShownCalled)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
+
+        // Also check for postEvent calls
+        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
+
+        // Dismiss inlineView1 and show inlineView2
+        await onCloseActionButtonPressed(onInlineView: inlineView1)
+        await onDoneRenderingInAppMessage(givenInlineMessage2, insideOfInlineView: inlineView2)
+
+        // Check messageShownCalled called again
+        XCTAssertTrue(eventListenerMock.messageShownCalled)
+        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 2)
+
+        // Also check for postEvent calls
+        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
     }
 
     // MARK: - Track click
