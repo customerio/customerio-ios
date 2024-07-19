@@ -8,20 +8,6 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
 
-// Enum representing metrics for inline in-app messages.
-//
-// - displayed: When the in-app message is displayed. This is only for internal tracking of messages already shown.
-// - clicked: Metric for when the in-app message is clicked.
-enum InlineInAppMetric: String, Codable {
-    case displayed
-    case clicked
-
-    enum CodingKeys: String, CodingKey {
-        case displayed
-        case clicked
-    }
-}
-
 /**
  View that can be added to a customer's app UI to display inline in-app messages.
 
@@ -63,7 +49,7 @@ public class InAppMessageView: UIView {
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
-    var previouslyProcessedMessages: [InlineInAppMetric: [Message]] = [:]
+    var previouslyShownMessages: [Message] = []
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
@@ -150,10 +136,7 @@ public class InAppMessageView: UIView {
 
     // Function to check if a message has been previously shown
     func hasBeenPreviouslyShown(_ message: Message) -> Bool {
-        guard let displayedMessagesList = previouslyProcessedMessages[.displayed] else {
-            return false
-        }
-        return displayedMessagesList.contains { $0.id == message.id }
+        previouslyShownMessages.contains { $0.id == message.id }
     }
 
     private func displayInAppMessage(_ message: Message) {
@@ -164,31 +147,44 @@ public class InAppMessageView: UIView {
         }
 
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
-        if let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil {
-            // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.startAnimating()
-            activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
-
-            addSubview(activityIndicator)
-            assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
-
-            // Set autolayout constraints to position the activity indicator.
-            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
-                activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
-                activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
-                activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
-            ])
-
-            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
-                // After animation is over, cleanup resources and begin rendering of the next message.
+        if isRenderingOrDisplayingAMessage {
+            showLoadingView {
+                // After animation is over, cleanup resources since we no longer need to show the previous message.
                 self.stopShowingMessageAndCleanup()
                 self.beginShowing(message: message)
             }
         } else {
             beginShowing(message: message)
+        }
+    }
+
+    // Call when you want to show the loading View, indicating to the app user that a new message is being loaded.
+    private func showLoadingView(onComplete: @escaping () -> Void) {
+        // Before we begin showing loading view, check to see if we are in the correct state that we should perform this change.
+        // This is a safety check in case this function gets called multiple times. We don't want the UI to flicker by changing multiple times.
+        guard let currentlyDisplayedInAppWebView = inAppMessageView, messageRenderingLoadingView == nil else {
+            return onComplete()
+        }
+
+        // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.startAnimating()
+        activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
+
+        addSubview(activityIndicator)
+        assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
+
+        // Set autolayout constraints to position the activity indicator.
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+            activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
+            activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
+        ])
+
+        animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+            onComplete()
         }
     }
 
@@ -306,40 +302,32 @@ extension InAppMessageView: InlineMessageManagerDelegate {
     func onCloseAction() {
         Task { @MainActor in
             if let currentlyShownMessage = inlineMessageManager?.currentMessage {
-                previouslyProcessedMessages[.displayed, default: []].append(currentlyShownMessage)
+                previouslyShownMessages.append(currentlyShownMessage)
             }
 
             self.refreshView(forceShowNextMessage: true)
         }
     }
 
-    // This method is called by InlineMessageManager when custom action button is tapped
-    // on an inline in-app message.
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
-        let isMessageAlreadyTracked = isMessageAlreadyTracked(forMetric: .clicked, message: message)
-        // If delegate is not set then call the global `messageActionTaken` method
-        guard let onActionDelegate = onActionDelegate else {
-            Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name, shouldTrackMetric: !isMessageAlreadyTracked)
-            return
-        }
-
-        if !isMessageAlreadyTracked {
-            // For `clicked` metrics, retrieve the delivery ID from the message's gistProperties
-            if let deliveryId = message.gistProperties.campaignId {
-                // Posts an event to track the metric using the event bus
-                eventBus.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue))
+    // Called when "show another message" action button is clicked.
+    func willChangeMessage(newTemplateId: String) {
+        Task { @MainActor in
+            // Animate in a loading view while the next message is being rendered.
+            self.showLoadingView {
+                // Nothing to do when the animation is complete.
+                // the sizeChanged function will be called when the next message is rendered. sizeChanged will animate in the message for us.
             }
         }
-        onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
     }
 
-    // Checks if the specified message has already been tracked for a given metric.
-    func isMessageAlreadyTracked(forMetric metric: InlineInAppMetric, message: Message) -> Bool {
-        guard let trackMetricList = previouslyProcessedMessages[metric] else {
-            // Add the message to the list of previously processed messages for the given metric
-            previouslyProcessedMessages[metric, default: []].append(message)
+    // This method is called by InlineMessageManager when custom action button is tapped
+    // on an inline in-app message.
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool {
+        // If delegate is not set then call the global `messageActionTaken` method
+        guard let onActionDelegate = onActionDelegate else {
             return false
         }
-        return trackMetricList.contains { $0.id == message.id }
+        onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
+        return true
     }
 }

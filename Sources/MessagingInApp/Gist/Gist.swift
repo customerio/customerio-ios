@@ -130,8 +130,8 @@ public class Gist: GistInstance, GistDelegate {
         delegate?.messageError(message: message)
     }
 
-    public func action(message: Message, currentRoute: String, action: String, name: String, shouldTrackMetric: Bool = true) {
-        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name, shouldTrackMetric: shouldTrackMetric)
+    public func action(message: Message, currentRoute: String, action: String, name: String) {
+        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 
     func logMessageView(message: Message) {
