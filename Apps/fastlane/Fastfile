@@ -66,6 +66,9 @@ platform :ios do
     )
     
     are_environment_variables_set_for_build_uploading = ENV["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"]
+
+    environment_variables_required_for_build_uploading = ["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"] # array of keys 
+    are_environment_variables_set_for_build_uploading = environment_variables_required_for_build_uploading.all? { |key| ENV[key] != nil && !ENV[key].empty? } # check if all environment variables are set and not empty 
     if !are_environment_variables_set_for_build_uploading
       UI.important("Environment variables required for uploading QA builds are not set. Therefore, not uploading build to Firebase App Distribution.")
     else 
