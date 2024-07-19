@@ -100,7 +100,14 @@ runs:
       shell: bash
       run: cat $GITHUB_EVENT_PATH
 
-    - name: Build app via Fastlane 
+    - name: Update app version to uniquely identify build for easier finding later. 
+      uses: maierj/fastlane-action@v3.1.0
+      with:
+        lane: "iossdk_update_app_version"
+        subdirectory: "Apps/${{ inputs.sample-app }}"
+        options: ${{ inputs.fastlane-build-args }}
+
+    - name: Build app and upload for testing
       uses: maierj/fastlane-action@v3.1.0
       with:
         lane: "ios build"

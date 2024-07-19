@@ -33,41 +33,26 @@ end
 
 # Functions specific to iOS go in the platform block. 
 platform :ios do 
-  # Builds the iOS app and uploads compiled app for internal testing. 
+  # Builds the iOS app and (optionally) uploads compiled app for internal testing. 
   # Build will only be uploaded if the environment variables for uploading are set.
   #
+  # Pre-requisites:
+  # 1. Assumes the build and app version are set in the Xcode project.
+  # 2. Assumes that the CIO workspace environment files are generated (Env.swift, for example). 
+  #
   # Usage: 
-  # `fastlane ios build` <-- if you want to generate a new build number and app version. Common to use for creating unique QA builds. Each build number is guaranteed to be unique.
-  # `fastlane ios build build_number:123 app_version:1.2.3` <-- if you want to specify the build number and app version.   
+  # `fastlane ios build` 
   lane :build do |arguments|    
-    download_ci_code_signing_files
-    
-    new_build_number = arguments[:build_number] || get_new_build_version()
-    new_app_version = arguments[:app_version] || get_new_app_version()
-    build_notes = get_build_notes()
-    test_groups = get_build_test_groups()
-
-    # Modify the source code with the new app version and build number before we compile the iOS app. This is a good idea to do to make installing builds on a test device easier. 
-    # The iOS OS might give errors when trying to install a build of an app if the app is already installed on the device. Having unique build number or app version can avoid those errors. 
-    update_ios_app_versions(
-      build_number: new_build_number,
-      app_version: new_app_version
-    )
-    
-    version_update_script_path = '../../../scripts/update-version.sh'
-    # Since this Fastfile is used by SDK wrapper projects that might not contain this script file, we skip running it if the file does not exist. 
-    if File.exist?(version_update_script_path)
-      UI.important("Updating the SDK's source code version to non-production version. This allows the sample apps to show the SDK version at runtime for app user to better understand the version of the SDK they are running.")
-
-      sh("#{version_update_script_path} \"#{new_app_version}.#{new_build_number}\"")
-    end 
-
-    uses_cocoapods = File.exists?("../Podfile")
-    if uses_cocoapods 
-      UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
+    # For fastlane to build and sign the app, it needs the code signing files.
+    # Even if you already have them downloaded to your computer, we need to run the functions again because when 
+    # the code signing functions run, fastlane sets up the environment it uses later to sign the app.
+    if ENV["CI"]
+      download_ci_code_signing_files
+    else 
+      download_development_code_signing
     end 
     
-    # prevents builds from being flaky. As app sizese get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
+    # prevents builds from being flaky. As app sizes get bigger, it takes fastlane longer to initialize the build process. Increase this value to compensate for that. 
     ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] = "10" 
 
     # Make sure that builds generated include dSYM files. This is needed for CI to parse the builds for tracking SDK size and debugging errors during testing. 
@@ -79,8 +64,8 @@ platform :ios do
       build_path: "build", # Save derived data to Apps/X/build folder. CI will parse this folder later for tracking SDK size. 
       cloned_source_packages_path: "spm_packages", # Save SPM dependencies to Apps/X/spm_packages folder. We can cache this folder to speed up builds on CI. 
     )
-
-    are_environment_variables_set_for_build_uploading = !ENV["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"].empty?
+    
+    are_environment_variables_set_for_build_uploading = ENV["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"]
     if !are_environment_variables_set_for_build_uploading
       UI.important("Environment variables required for uploading QA builds are not set. Therefore, not uploading build to Firebase App Distribution.")
     else 
@@ -94,13 +79,18 @@ platform :ios do
       
       firebase_app_distribution(
         service_credentials_file: service_credentials_file_path,
-        groups: test_groups,
-        release_notes: build_notes
+        groups: get_build_test_groups(),
+        release_notes: get_build_notes()
       )
     end 
-  end
-
-  lane :update_ios_app_versions do |arguments| 
+  end  
+  
+  # Given app and build version, update the Xcode project. Usually you call this before building the app. 
+  # There are multiple places to modify the version numbers. This function's job is guarantee when function is done, the version numbers are updated.
+  #
+  # Usage:
+  # `fastlane ios update_app_version build_number:123 app_version:1.2.3`
+  lane :update_app_version do |arguments| 
     new_build_number = arguments[:build_number]
     new_app_version = arguments[:app_version]
 
@@ -139,6 +129,25 @@ platform :ios do
       end
     end
     project.save  
+  end 
+end 
+
+# Functions specific to just the iOS SDK repo can go here: 
+
+lane :iossdk_update_app_version do |arguments| 
+  new_build_number = arguments[:build_number] || get_new_build_version()
+  new_app_version = arguments[:app_version] || get_new_app_version()  
+
+  # Modify the source code with the new app version and build number before we compile the iOS app. This is a good idea to do to make installing builds on a test device easier. 
+  # The iOS OS might give errors when trying to install a build of an app if the app is already installed on the device. Having unique build number or app version can avoid those errors. 
+  update_app_version(
+    build_number: new_build_number,
+    app_version: new_app_version
+  )
+    
+  version_update_script_path = '../../../scripts/update-version.sh'
+
+  sh("#{version_update_script_path} \"#{new_app_version}.#{new_build_number}\"")
   end 
 end 
 
