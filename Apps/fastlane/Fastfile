@@ -148,7 +148,6 @@ lane :iossdk_update_app_version do |arguments|
   version_update_script_path = '../../../scripts/update-version.sh'
 
   sh("#{version_update_script_path} \"#{new_app_version}.#{new_build_number}\"")
-  end 
 end 
 
 # Functions not specific to iOS go below. 
