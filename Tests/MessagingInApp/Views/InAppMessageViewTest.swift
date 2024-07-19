@@ -524,8 +524,10 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertFalse(deeplinkUtilMock.handleDeepLinkCalled)
     }
 
+    // MARK: - Track open
+
     @MainActor
-    func test_onInlineMessageShown_givenDelegateNotSet_expectTrackOpenedMetric_expectGlobalMessageShownCallback() async {
+    func test_onInlineMessageShown_expectTrackOpenedMetric_expectGlobalMessageShownListener() async {
         let inlineView = await showInlineMessageForMetrics()
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
@@ -539,15 +541,23 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
     }
 
+    // MARK: - Track click
+
     @MainActor
     func test_onInlineMessageShown_givenDelegateNotSet_onSingleButtonTap_expectTrackClickedMetric_expectGlobalMessageActionTakenCallback() async {
         let inlineView = await showInlineMessageForMetrics()
         XCTAssertTrue(isInlineViewVisible(inlineView))
+
+        // Tap button once
         onCustomActionButtonPressed(onInlineView: inlineView)
 
         // Check if messageActionTaken is called
         XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
         XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
+
+        // Check other handlers are not called
+        XCTAssertFalse(eventListenerMock.messageDismissedCalled)
+        XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
 
         // Also check for postEvent calls
         XCTAssertTrue(eventBusHandlerMock.postEventCalled)
@@ -557,7 +567,7 @@ class InAppMessageViewTest: IntegrationTest {
     }
 
     @MainActor
-    func test_onInlineMessageShown_givenDelegateNotSet_onMultipleButtonTap_expectSingleTrackClickedMetric_expectGlobalMessageActionTakenCallback() async {
+    func test_onInlineMessageShown_givenDelegateNotSet_onMultipleButtonTap_expectGlobalMessageActionTakenCallback() async {
         let inlineView = await showInlineMessageForMetrics()
         XCTAssertTrue(isInlineViewVisible(inlineView))
         onCustomActionButtonPressed(onInlineView: inlineView)
@@ -572,9 +582,10 @@ class InAppMessageViewTest: IntegrationTest {
         // and the second post call is triggered by the button click action.
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
 
+        onCustomActionButtonPressed(onInlineView: inlineView)
+        XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 2)
         // Tap the button again and verify that
         // the count of post calls to track metrics does not increase
-        onCustomActionButtonPressed(onInlineView: inlineView)
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
     }
 
