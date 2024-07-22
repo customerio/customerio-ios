@@ -8,15 +8,25 @@ class InAppMessageViewTest: IntegrationTest {
     private let queueMock = MessageQueueManagerMock()
     private let engineWebMock = EngineWebInstanceMock()
     private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
-    private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
     private let deeplinkUtilMock = DeepLinkUtilMock()
-    private var eventBusHandlerMock = EventBusHandlerMock()
+
+    private var eventBusMetricsTracked: [TrackInAppMetricEvent] = []
+
     override func setUp() {
+        // We want to assert metrics are tracked, but we don't want to mock the eventbus for our integration test in this class.
+        // Therefore, listen for real events being posted to verify in the test functions.
+        eventBusMetricsTracked = []
+        diGraphShared.eventBusHandler.addObserver(TrackInAppMetricEvent.self) { event in
+            self.eventBusMetricsTracked.append(event)
+        }
+
         super.setUp()
 
         DIGraphShared.shared.override(value: queueMock, forType: MessageQueueManager.self)
         DIGraphShared.shared.override(value: deeplinkUtilMock, forType: DeepLinkUtil.self)
+
+        messagingInAppImplementation.setEventListener(eventListenerMock)
     }
 
     // MARK: View constructed
@@ -424,12 +434,10 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
     }
 
-    // MARK: - onInlineButtonAction
+    // MARK: - custom action button
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
@@ -439,7 +447,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
+        await onCustomActionButtonPressed(onInlineView: inlineView)
 
         XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
         XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.message, gistInAppInlineMessage)
@@ -452,8 +460,6 @@ class InAppMessageViewTest: IntegrationTest {
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateNotSet_expectGlobalCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
@@ -462,7 +468,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
+        await onCustomActionButtonPressed(onInlineView: inlineView)
 
         XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
         XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
@@ -473,8 +479,6 @@ class InAppMessageViewTest: IntegrationTest {
 
     @MainActor
     func test_onInlineButtonAction_multipleInlineMessages_givenDelegateSetForAll_expectSingleCustomCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage1 = Message.randomInline
         let gistInAppInlineMessage1 = InAppMessage(gistMessage: givenInlineMessage1)
 
@@ -498,7 +502,7 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertTrue(isInlineViewVisible(inlineView2))
 
         // Trigger button tap on one of the views
-        onCustomActionButtonPressed(onInlineView: inlineView1)
+        await onCustomActionButtonPressed(onInlineView: inlineView1)
 
         // Check that only inlineActionDelegate1's delegate method is called
         XCTAssertFalse(inlineActionDelegate2.mockCalled)
@@ -664,45 +668,79 @@ class InAppMessageViewTest: IntegrationTest {
 
     @MainActor
     func test_onInlineMessageRenderingNotShown_expectShouldNotTrackOpenedMetric() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-        messagingInAppImplementation.setEventBusHandler(eventBusHandlerMock)
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
+        _ = InAppMessageView(elementId: givenInlineMessage.elementId!)
+
+        assert(message: givenInlineMessage, didTrack: false, metric: "opened")
+    }
+
+    @MainActor
+    func test_onInlineMessageShown_expectTrackOpenedMetric() async {
         let givenInlineMessage = Message.randomInline
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
-        XCTAssertFalse(eventBusHandlerMock.postEventCalled)
-        XCTAssertFalse(isInlineViewVisible(inlineView))
+        assert(message: givenInlineMessage, didTrack: true, metric: "opened")
+    }
+
+    // MARK: - Track click
+
+    @MainActor
+    func test_onInlineMessageShown_onButtonTap_expectTrackClickedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked")
     }
 
     @MainActor
-    func test_onInlineMessageShown_expectTrackOpenedMetric_expectGlobalMessageShownListener() async {
-        let inlineView = await showInlineMessageForMetrics()
+    func test_onInlineMessageShown_onMultipleButtonTap_expectMultipleTrackClickedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
-        XCTAssertTrue(isInlineViewVisible(inlineView))
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
-        // Check if messageShown is called
-        XCTAssertTrue(eventListenerMock.messageShownCalled)
-        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
+        assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked")
 
-        // Also check for postEvent calls
-        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-        XCTAssertNotNil(eventBusHandlerMock.postEventArguments)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? TrackInAppMetricEvent else {
-            XCTFail("Expected TrackInAppMetricEvent as arguments")
-            return
-        }
-        XCTAssertEqual(postEventArgument.event, "opened")
+        // Tap the button again and verify that we tracked another event
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked", expectedNumberOfEvents: 2)
+    }
+
+    // MARK: global event listener
+
+    @MainActor
+    func test_onInlineMessageShown_expectGlobalMessageShownListener() async {
+        let givenInlineMessage = Message.randomInline
+        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
     }
 
     // Tests a scenario where multiple inline messages are displayed to the user,
     // then expect multiple MessageShown global event listeners to be called for each message shown.
     @MainActor
-    func test_givenMultipleInlineMessageRendered_givenOneDismissed_expectTrackMultipleMessageShownListenerCalls() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-        messagingInAppImplementation.setEventBusHandler(eventBusHandlerMock)
+    func test_givenMultipleInlineMessageRendered_expectTrackMultipleMessageShownListenerCalls() async {
+        // FIXME: This test is failing because the queueMock is being mocked and is not a real instance.
+        // the queue's real instance is able to return a message by elemenetid. when you mock the queue, it will
+        // ignore the elementid and always return the same message.
+        // So, this test wants each inline View to have a separate message but instead each view will get the same message.
+        // PR that would fix this test: https://github.com/customerio/customerio-ios/pull/776
 
         let givenInlineMessage1 = Message.randomInline
         let givenInlineMessage2 = Message.randomInline
@@ -711,165 +749,27 @@ class InAppMessageViewTest: IntegrationTest {
         let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
         let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
 
-        // Render only inlineView1
         await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
 
-        // inlineView1 is only visible
-        XCTAssertTrue(isInlineViewVisible(inlineView1))
-        XCTAssertFalse(isInlineViewVisible(inlineView2))
+        assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+        assert(message: givenInlineMessage2, didCallMessageShownEventListener: false)
 
-        // Check if messageShown is called
-        XCTAssertTrue(eventListenerMock.messageShownCalled)
-        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 1)
-
-        // Also check for postEvent calls
-        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-
-        // Dismiss inlineView1 and show inlineView2
-        await onCloseActionButtonPressed(onInlineView: inlineView1)
         await onDoneRenderingInAppMessage(givenInlineMessage2, insideOfInlineView: inlineView2)
 
-        // Check messageShownCalled called again
-        XCTAssertTrue(eventListenerMock.messageShownCalled)
-        XCTAssertEqual(eventListenerMock.messageShownCallsCount, 2)
-
-        // Also check for postEvent calls
-        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
-
-        XCTAssertNotNil(eventBusHandlerMock.postEventArguments)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? TrackInAppMetricEvent else {
-            XCTFail("Expected TrackInAppMetricEvent as arguments")
-            return
-        }
-        XCTAssertEqual(postEventArgument.event, "opened")
-    }
-
-    // MARK: - Track click
-
-    @MainActor
-    func test_onInlineMessageShown_onButtonTap_expectTrackClickedMetric() async {
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        let inlineView = await showInlineMessageForMetrics()
-        XCTAssertTrue(isInlineViewVisible(inlineView))
-
-        // Tap button once
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        XCTAssertTrue(eventBusHandlerMock.postEventCalled)
-        // The first post call occurs when the message is shown,
-        // and the second post call is triggered by the button click action.
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
-
-        XCTAssertNotNil(eventBusHandlerMock.postEventArguments)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? TrackInAppMetricEvent else {
-            XCTFail("Expected TrackInAppMetricEvent as arguments")
-            return
-        }
-        XCTAssertEqual(postEventArgument.event, "clicked")
-    }
-
-    @MainActor
-    func test_onInlineMessageShown_givenDelegateNotSet_onSingleButtonTap_expectGlobalMessageActionTakenCallback() async {
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        let inlineView = await showInlineMessageForMetrics()
-        XCTAssertTrue(isInlineViewVisible(inlineView))
-
-        // Tap button once
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        // Check if messageActionTaken is called
-        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
-        XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
-
-        // Check other handlers are not called
-        XCTAssertFalse(eventListenerMock.messageDismissedCalled)
-        XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
-    }
-
-    @MainActor
-    func test_onInlineMessageShown_givenDelegateNotSet_onMultipleButtonTap_expectGlobalMessageActionTakenCallback() async {
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        let inlineView = await showInlineMessageForMetrics()
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-        XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        // Check if messageActionTaken is called
-        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
-        XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 1)
-
-        // Check other listeners are not called except shown
-        XCTAssertTrue(eventListenerMock.messageShownCalled)
-        XCTAssertFalse(eventListenerMock.messageDismissedCalled)
-        XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
-
-        // Tap button again
-        onCustomActionButtonPressed(onInlineView: inlineView)
-        XCTAssertEqual(eventListenerMock.messageActionTakenCallsCount, 2)
-    }
-
-    @MainActor
-    func test_onInlineMessageShown_givenDelegateSet_onMultipleButtonTap_expectSingleTrackClickedMetric() async {
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-
-        let inlineView = await showInlineMessageForMetrics(setDelegate: true)
-        XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
-
-        // Tap the button again and verify that
-        // the call to onActionClick updates
-        onCustomActionButtonPressed(onInlineView: inlineView)
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 3)
-    }
-
-    @MainActor
-    func test_onInlineMessageShown_givenDelegateSet_onMultipleButtonTap_expectGlobalMessageActionTakenCallback() async {
-        DIGraphShared.shared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-
-        let inlineView = await showInlineMessageForMetrics(setDelegate: true)
-        XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickCallsCount, 1)
-
-        // Tap the button again and verify that
-        // the call to onActionClick updates
-        onCustomActionButtonPressed(onInlineView: inlineView)
-
-        XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
-        XCTAssertEqual(inlineMessageDelegateMock.onActionClickCallsCount, 2)
-        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
-    }
-
-    @MainActor
-    func showInlineMessageForMetrics(setDelegate: Bool = false) async -> InAppMessageView {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-        messagingInAppImplementation.setEventBusHandler(eventBusHandlerMock)
-
-        let givenInlineMessage = Message.randomInline
-        queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
-
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
-        if setDelegate {
-            inlineView.onActionDelegate = inlineMessageDelegateMock
-        }
-        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
-
-        return inlineView
+        assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+        assert(message: givenInlineMessage2, didCallMessageShownEventListener: true)
     }
 }
 
 @MainActor
 extension InAppMessageViewTest {
-    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) {
+    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
+
+        // when a button is pressed, an eventbus event is posted for metrics tracking. Return function after the tracked event is posted.
+        await waitForEventBusEventsToPost()
     }
 
     func onDeepLinkActionButtonPressed(onInlineView inlineView: InAppMessageView, deeplink: String) {
@@ -922,6 +822,26 @@ extension InAppMessageViewTest {
             }
 
             XCTFail("View \(String(describing: view)) is showing inside of \(String(describing: inlineView))", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didTrack: Bool, metric: String, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundMetrics = eventBusMetricsTracked.filter { $0.event == metric && $0.deliveryID == message.deliveryId }
+
+        if didTrack {
+            XCTAssertEqual(foundMetrics.count, expectedNumberOfEvents, "Expected to find metric \(metric) \(expectedNumberOfEvents) number of times, but it was tracked \(foundMetrics.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundMetrics.isEmpty, "Expected not to find metric \(metric) but it was tracked.", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didCallMessageShownEventListener: Bool, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundEvents = eventListenerMock.messageShownReceivedInvocations.filter { $0.deliveryId == message.deliveryId }
+
+        if didCallMessageShownEventListener {
+            XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected messageShown listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundEvents.isEmpty, "Expected not to find messageShown listener called, but it was.", file: file, line: line)
         }
     }
 

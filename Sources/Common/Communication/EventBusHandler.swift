@@ -22,7 +22,7 @@ public class CioEventBusHandler: EventBusHandler {
     let eventStorage: EventStorage
     let logger: Logger
 
-    @Atomic private var taskBag: TaskBag = []
+    @Atomic var taskBag: TaskBag = []
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
     /// - Parameters:
