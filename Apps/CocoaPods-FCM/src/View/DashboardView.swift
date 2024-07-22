@@ -116,18 +116,18 @@ struct DashboardView: View {
 
             ScrollView {
                 VStack(spacing: 15) {
-                    InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth, heightTracker: heightTracker)
-                        .frame(height: heightTracker.subviewHeight)
-                        .background(GeometryReader { geometry in
-                            Color.clear.onAppear {
-                                containerWidth = geometry.size.width
-                            }
-                        })
                     if let loggedInUserEmail = userManager.email {
                         Text(loggedInUserEmail)
                     }
                     Text("What would you like to test?")
                     Group {
+                        InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth, heightTracker: heightTracker)
+                            .frame(height: heightTracker.subviewHeight)
+                            .background(GeometryReader { geometry in
+                                Color.clear.onAppear {
+                                    containerWidth = geometry.size.width
+                                }
+                            })
                         ColorButton("Send Random Event") {
                             switch Int.random(in: 0 ..< 3) {
                             case 0:
