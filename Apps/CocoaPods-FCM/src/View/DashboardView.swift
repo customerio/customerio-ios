@@ -4,41 +4,54 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+class HeightTracker: ObservableObject {
+    @Published var subviewHeight: CGFloat = 0
+}
+
+private var heightTrackerKey: UInt8 = 0
+private var maxHeight: CGFloat = 0
+
+extension InAppMessageView {
+    var heightTracker: HeightTracker? {
+        get {
+            objc_getAssociatedObject(self, &heightTrackerKey) as? HeightTracker
+        }
+        set {
+            objc_setAssociatedObject(self, &heightTrackerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+
+        print("Height of tracker \(String(describing: heightTracker?.subviewHeight))")
+        if frame.height >= maxHeight {
+            maxHeight = frame.height
+            heightTracker?.subviewHeight = frame.height
+        }
+    }
+}
+
 struct InAppMessageViewRepresentable: UIViewRepresentable {
     var elementId: String
     @Binding var containerWidth: CGFloat
-    func makeUIView(context: Context) -> UIView {
+    @ObservedObject var heightTracker: HeightTracker
+    func makeUIView(context: Context) -> InAppMessageView {
         let inlineMessageView = InAppMessageView(elementId: elementId)
         inlineMessageView.onActionDelegate = context.coordinator
-//                inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
-
+        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
+        inlineMessageView.heightTracker = heightTracker
         let widthConstraint = inlineMessageView.widthAnchor.constraint(equalToConstant: containerWidth)
         widthConstraint.isActive = true
-        widthConstraint.isActive = true
-        inlineMessageView.backgroundColor = UIColor.darkGray
-        //        inlineMessageView.widthAnchor.constraint(equalTo: View.widthAnchor).isActive = true
-
-        //        addSubview(inlineMessageView)
-        //        return inlineMessageView
-
-        let view = UIView()
-        let label = UILabel()
-        label.text = "This is a UILabel from UIKit"
-        label.textColor = .black
-        view.backgroundColor = UIColor.green
-        view.addSubview(inlineMessageView)
-        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
-        inlineMessageView.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
-//        NSLayoutConstraint.activate([
-//            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-//            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-//        ])
-        return view
+        return inlineMessageView
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
+    func updateUIView(_ uiView: InAppMessageView, context: Context) {
         if let widthConstraint = uiView.constraints.first(where: { $0.firstAttribute == .width }) {
             widthConstraint.constant = containerWidth
+        }
+        if let heightConstraint = uiView.constraints.first(where: { $0.firstAttribute == .height }) {
+            heightConstraint.constant = heightTracker.subviewHeight
         }
     }
 
@@ -62,8 +75,6 @@ struct InAppMessageViewRepresentable: UIViewRepresentable {
 
 struct DashboardView: View {
     @State private var containerWidth: CGFloat = 0
-    @State private var inAppMessageHeight: CGFloat = 0
-
     enum Subscreen: String {
         case customEvent
         case profileAttribute
@@ -86,9 +97,8 @@ struct DashboardView: View {
     @State private var blockingAlert: BlockingAlert?
 
     @EnvironmentObject var userManager: UserManager
-
+    @StateObject private var heightTracker = HeightTracker()
     var body: some View {
-//        ScrollView {
         ZStack {
             VStack {
                 SettingsButton {
@@ -103,12 +113,14 @@ struct DashboardView: View {
                     subscreenShown = nil
                 }
             }
+
             ScrollView {
                 VStack(spacing: 15) {
-                    InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth)
-                        .background(GeometryReader { _ in
+                    InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth, heightTracker: heightTracker)
+                        .frame(height: heightTracker.subviewHeight)
+                        .background(GeometryReader { geometry in
                             Color.clear.onAppear {
-                                //                                containerWidth = geometry.size.width
+                                containerWidth = geometry.size.width
                             }
                         })
                     if let loggedInUserEmail = userManager.email {
@@ -200,11 +212,9 @@ struct DashboardView: View {
 
                     EnvironmentText()
                 }
+                .padding()
             }
-            .padding()
         }
-//        }
-        .setBackgroundColor(.orange)
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
         .alert(isPresented: .notNil(blockingAlert)) {
             if let alertCallToAction = blockingAlert!.callToActionButton {
