@@ -47,18 +47,6 @@ runs:
   using: "composite"
   steps:
     - uses: ./.github/actions/setup-ios
-
-    - name: Install CLI tools used in CI script 
-      shell: bash
-      run: |
-        brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
-        brew install xcbeautify # used by fastlane for output 
-    
-    - name: Install tools from Gemfile (ruby language) used for building our apps with 
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true # cache tools to make builds faster in future 
     
     - name: Setup build environment to prepare for building
       shell: bash

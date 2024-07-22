@@ -21,12 +21,6 @@ jobs:
     - name: Get XCode schemes 
       run: xcrun xcodebuild -list
 
-    - name: Setup Ruby to run Fastlane 
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        bundler-cache: true # install dependencies in Gemfile, including Fastlane. 
-
     - name: Run tests 
       uses: maierj/fastlane-action@v3.1.0
       with:

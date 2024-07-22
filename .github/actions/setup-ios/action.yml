@@ -1,10 +1,33 @@
 name: Setup iOS
 description: Setup CI with iOS development tools to compile and test iOS source code. 
 
+inputs:
+  xcode-version:
+    description: 'The version of XCode to install'
+    required: true
+    default: '15.3'
+  gemfile-directory:
+    description: 'The directory where the Gemfile is located. Used to install tools from Gemfile.'
+    required: false
+    default: '.'
+
 runs:
   using: "composite"
   steps:
   - name: Install XCode 
     uses: maxim-lobanov/setup-xcode@v1
     with:
-      xcode-version: "15.3"
+      xcode-version: ${{ inputs.xcode-version }}
+
+  - name: Install CLI tools used in CI script 
+    shell: bash
+    run: |
+      brew install sd # used in CI script as an easier to use sed CLI. Replaces text in files. 
+      brew install xcbeautify # used by fastlane for output 
+    
+  - name: Install tools from Gemfile (ruby language) used for building our apps with 
+    uses: ruby/setup-ruby@v1
+    with:
+      working-directory: ${{ inputs.gemfile-directory }}
+      ruby-version: '3.0'
+      bundler-cache: true # cache tools to make builds faster in future 
