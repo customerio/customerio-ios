@@ -60,6 +60,7 @@ extension IntegrationTest {
         getWebEngineForInlineView(inlineView)?.delegate?.routeLoaded(route: message.templateId)
         getWebEngineForInlineView(inlineView)?.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
 
+        await waitForEventBusEventsToPost()
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
         await waitForMainThreadToFinishPendingTasks()
     }
