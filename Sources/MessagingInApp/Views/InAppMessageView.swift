@@ -49,9 +49,6 @@ public class InAppMessageView: UIView {
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
-    //
-    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
-    // replaced with a global list of shown messages.
     var previouslyShownMessages: [Message] = []
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
@@ -196,7 +193,9 @@ public class InAppMessageView: UIView {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
-
+        // Set delegate to track `opened` metric for inline messages
+        // just like modal inapp messages.
+        newInlineMessageManager.delegate = Gist.shared
         let inlineView = newInlineMessageManager.inlineMessageView
         inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
 
@@ -323,12 +322,12 @@ extension InAppMessageView: InlineMessageManagerDelegate {
 
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool {
         // If delegate is not set then call the global `messageActionTaken` method
         guard let onActionDelegate = onActionDelegate else {
-            Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
-            return
+            return false
         }
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
+        return true
     }
 }

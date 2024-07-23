@@ -25,6 +25,7 @@ class MessageManager {
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
     private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
+    let eventBusHandler: EventBusHandler = DIGraphShared.shared.eventBusHandler
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
@@ -86,6 +87,10 @@ class MessageManager {
         // subclass should implement
     }
 
+    func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        // subclass should implement
+    }
+
     // In-app messages have the ability to show different messages. The HTML message handles showing the next message. This is simply a callback function that's called when
     // this event gets triggered and a new message will be shown.
     func willChangeMessage(newTemplateId: String) {
@@ -105,9 +110,19 @@ extension MessageManager: EngineWebDelegate {
         }
     }
 
+    func trackClickedMetric(action: String, name: String) {
+        // a close action does not count as a clicked action.
+        if action != "gist://close" {
+            if let deliveryId = currentMessage.deliveryId {
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+            }
+        }
+    }
+
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
-        delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        onTapAction(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        trackClickedMetric(action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {
