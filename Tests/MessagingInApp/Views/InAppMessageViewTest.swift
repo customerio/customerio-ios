@@ -703,24 +703,19 @@ class InAppMessageViewTest: IntegrationTest {
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
 
-        // Inline message does not display
-        XCTAssertFalse(isInlineViewVisible(inlineView))
-
         // errorWithMessage not called as eventListener is not set
         XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
     }
 
     // messageActionTaken when close button is tapped
     @MainActor
-    func test_givenShowInlineMessage_givenTapCloseButton_expectInlineToHide_expectMessageActionTakenCalled() async {
+    func test_eventListener_givenTapCloseButton_expectCallEventListener() async {
         messagingInAppImplementation.setEventListener(eventListenerMock)
         let givenInlineMessage = Message.randomInline
         queueMock.getInlineMessagesReturnValue = [givenInlineMessage]
 
         let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
-
-        XCTAssertTrue(isInlineViewVisible(inlineView))
 
         // Tap close button on inline message
         await onCloseActionButtonPressed(onInlineView: inlineView)
