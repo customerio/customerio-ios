@@ -352,7 +352,6 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
         // will receive callbacks.
         // If not set, the global method `messageActionTaken` will handle the callbacks.
         inlineMessageView.onActionDelegate = context.coordinator
-        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
         return InAppMessageView(elementId: elementId)
     }
 
