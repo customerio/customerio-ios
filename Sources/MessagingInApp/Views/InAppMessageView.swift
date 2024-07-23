@@ -332,3 +332,57 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
     }
 }
+
+// SwiftUI
+#if canImport(SwiftUI)
+import SwiftUI
+@available(iOS 13.0, *)
+public struct InAppMessageViewRepresentable: UIViewRepresentable {
+    public var elementId: String
+    public var onActionClick: (InAppMessage, String, String) -> Void
+
+    public init(elementId: String, onActionClick: @escaping (InAppMessage, String, String) -> Void) {
+        self.elementId = elementId
+        self.onActionClick = onActionClick
+    }
+
+    public func makeUIView(context: Context) -> InAppMessageView {
+        let inlineMessageView = InAppMessageView(elementId: elementId)
+        // This is optional. If set, the delegate method `onActionClick`
+        // will receive callbacks.
+        // If not set, the global method `messageActionTaken` will handle the callbacks.
+        inlineMessageView.onActionDelegate = context.coordinator
+        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
+        return InAppMessageView(elementId: elementId)
+    }
+
+    public func updateUIView(_ uiView: InAppMessageView, context: Context) {
+        // Update your view here if needed
+    }
+
+//     Coordinator to handle delegate `InAppMessageViewActionDelegate`
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    public class Coordinator: NSObject, InAppMessageViewActionDelegate {
+        var parent: InAppMessageViewRepresentable
+
+        init(_ parent: InAppMessageViewRepresentable) {
+            self.parent = parent
+        }
+
+        // Delegate method for handling custom button action clicks
+        public func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
+//            return self.onActionClick(message: message, actionValue: actionValue, actionName: actionName)
+            print("You can perform any action here. For instance, we are tracking the custom button tap.")
+            CustomerIO.shared.track(name: "inline custom button action", properties: [
+                "delivery-id": message.deliveryId ?? "(none)",
+                "message-id": message.messageId,
+                "action-value": actionValue,
+                "action-name": actionName
+            ])
+        }
+    }
+}
+#endif
