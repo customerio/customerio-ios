@@ -7,17 +7,27 @@ import XCTest
 class InAppMessageViewTest: IntegrationTest {
     private let engineWebMock = EngineWebInstanceMock()
     private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
-    private var engineProvider: EngineWebProviderStub2!
     private let eventListenerMock = InAppEventListenerMock()
     private let deeplinkUtilMock = DeepLinkUtilMock()
 
+    private var eventBusMetricsTracked: [TrackInAppMetricEvent] = []
+
     override func setUp() {
+        // We want to assert metrics are tracked, but we don't want to mock the eventbus for our integration test in this class.
+        // Therefore, listen for real events being posted to verify in the test functions.
+        eventBusMetricsTracked = []
+        diGraphShared.eventBusHandler.addObserver(TrackInAppMetricEvent.self) { event in
+            self.eventBusMetricsTracked.append(event)
+        }
+
         super.setUp()
 
         // Set a random user token so that the SDK can perform fetches for user messages.
         UserManager().setUserToken(userToken: .random)
 
         DIGraphShared.shared.override(value: deeplinkUtilMock, forType: DeepLinkUtil.self)
+
+        messagingInAppImplementation.setEventListener(eventListenerMock)
     }
 
     // MARK: View constructed
@@ -437,12 +447,10 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(view.widthConstraints.map(\.constant), [givenWidthUserSetsOnView])
     }
 
-    // MARK: - onInlineButtonAction
+    // MARK: - custom action button
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateSet_expectCustomCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
@@ -452,23 +460,19 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
+        await onCustomActionButtonPressed(onInlineView: inlineView)
 
         XCTAssertTrue(inlineMessageDelegateMock.onActionClickCalled)
         XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.message, gistInAppInlineMessage)
         XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionValue, "Test")
         XCTAssertEqual(inlineMessageDelegateMock.onActionClickReceivedArguments?.actionName, "")
 
-        // FIXME: The global listener should not be called when the delegate is set.
-
         // Also check that the global listener is not called
-        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
+        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
     }
 
     @MainActor
     func test_onInlineButtonAction_givenDelegateNotSet_expectGlobalCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage = Message.randomInline
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
@@ -477,7 +481,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
-        onCustomActionButtonPressed(onInlineView: inlineView)
+        await onCustomActionButtonPressed(onInlineView: inlineView)
 
         XCTAssertFalse(inlineMessageDelegateMock.onActionClickCalled)
         XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
@@ -488,8 +492,6 @@ class InAppMessageViewTest: IntegrationTest {
 
     @MainActor
     func test_onInlineButtonAction_multipleInlineMessages_givenDelegateSetForAll_expectSingleCustomCallback() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-
         let givenInlineMessage1 = Message.randomInline
         let gistInAppInlineMessage1 = InAppMessage(gistMessage: givenInlineMessage1)
 
@@ -513,7 +515,7 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertTrue(isInlineViewVisible(inlineView2))
 
         // Trigger button tap on one of the views
-        onCustomActionButtonPressed(onInlineView: inlineView1)
+        await onCustomActionButtonPressed(onInlineView: inlineView1)
 
         // Check that only inlineActionDelegate1's delegate method is called
         XCTAssertFalse(inlineActionDelegate2.mockCalled)
@@ -524,12 +526,112 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertTrue(inlineActionDelegate1.onActionClickCalled)
         XCTAssertEqual(inlineActionDelegate1.onActionClickCallsCount, 1)
 
-        // FIXME: The global listener should not be called when the delegate is set.
-        XCTAssertTrue(eventListenerMock.messageActionTakenCalled)
+        XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
 
         XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.message, gistInAppInlineMessage1)
         XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionValue, "Test")
         XCTAssertEqual(inlineActionDelegate1.onActionClickReceivedArguments?.actionName, "")
+    }
+
+    // MARK: "Show another message" action buttons
+
+    @MainActor
+    func test_showAnotherMessageAction_givenClickActionButton_expectShowLoadingViewAfterClickButton() async {
+        let givenMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view)
+
+        // Expect that the loading view is shown after click button.
+        assert(view: view.messageRenderingLoadingView, isShowing: true, inInlineView: view)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenNewMessageFinishesRendering_expectToDisplayMessage() async {
+        let givenMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after done rendering, we display the new message.
+        assert(view: view.messageRenderingLoadingView, isShowing: false, inInlineView: view)
+        assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenCloseNewMessage_expectShowNextMessageInQueue() async {
+        let givenMessage = Message.randomInline
+        let givenNextMessageInQueue = Message.randomInline
+        await simulateSdkFetchedMessages([givenMessage, givenNextMessageInQueue], verifyInlineViewNotifiedOfFetch: nil)
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // We expect that when we click the close action button on the new message that is being shown, we do not show the first message again. Instead, we expect to show the next message in the local queue.
+        await onCloseActionButtonPressed(onInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view), givenNextMessageInQueue)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenShowingNewMessage_givenNewMessagesFetched_expectContinueShowingMessage() async {
+        let givenMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+
+        // Expect that after a fetch, we do not change what message is being displayed.
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+        await simulateSdkFetchedMessages([Message.randomInline], verifyInlineViewNotifiedOfFetch: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+    }
+
+    @MainActor
+    func test_showAnotherMessageAction_givenMultipleShowAnotherMessageActions_expectShowNextMessages() async {
+        let givenMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let view = InAppMessageView(elementId: givenMessage.elementId!)
+
+        await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
+
+        // Click the "Show next action" button on the currently displayed message.
+        let givenNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: givenNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(givenNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, givenNewMessageToShow.templateId)
+
+        // Click the "Show next action" button on the message we are currently displaying
+        let given2ndNewMessageToShow = Message(templateId: .random)
+        await onShowAnotherMessageActionButtonPressed(onInlineView: view, newMessageTemplateId: given2ndNewMessageToShow.templateId)
+        await onDoneRenderingInAppMessage(given2ndNewMessageToShow, insideOfInlineView: view)
+        XCTAssertEqual(getInAppMessage(forView: view)?.templateId, given2ndNewMessageToShow.templateId)
     }
 
     // MARK: - Deeplinks
@@ -576,6 +678,102 @@ class InAppMessageViewTest: IntegrationTest {
         // If url is valid, check if `handleDeepLink` method is called
         XCTAssertFalse(deeplinkUtilMock.handleDeepLinkCalled)
     }
+
+    // MARK: - Track open
+
+    @MainActor
+    func test_onInlineMessageRenderingNotShown_expectShouldNotTrackOpenedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        _ = InAppMessageView(elementId: givenInlineMessage.elementId!)
+
+        assert(message: givenInlineMessage, didTrack: false, metric: "opened")
+    }
+
+    @MainActor
+    func test_onInlineMessageShown_expectTrackOpenedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didTrack: true, metric: "opened")
+    }
+
+    // MARK: - Track click
+
+    @MainActor
+    func test_onInlineMessageShown_onButtonTap_expectTrackClickedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked")
+    }
+
+    @MainActor
+    func test_onInlineMessageShown_onMultipleButtonTap_expectMultipleTrackClickedMetric() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked")
+
+        // Tap the button again and verify that we tracked another event
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+        assert(message: givenInlineMessage, didTrack: true, metric: "clicked", expectedNumberOfEvents: 2)
+    }
+
+    // MARK: global event listener
+
+    @MainActor
+    func test_onInlineMessageShown_expectGlobalMessageShownListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
+    }
+
+    // Tests a scenario where multiple inline messages are displayed to the user,
+    // then expect multiple MessageShown global event listeners to be called for each message shown.
+    /* @MainActor
+     func test_givenMultipleInlineMessageRendered_expectTrackMultipleMessageShownListenerCalls() async {
+         // FIXME: This test is failing because the queueMock is being mocked and is not a real instance.
+         // the queue's real instance is able to return a message by elemenetid. when you mock the queue, it will
+         // ignore the elementid and always return the same message.
+         // So, this test wants each inline View to have a separate message but instead each view will get the same message.
+         // PR that would fix this test: https://github.com/customerio/customerio-ios/pull/776
+
+         let givenInlineMessage1 = Message.randomInline
+         let givenInlineMessage2 = Message.randomInline
+         queueMock.getInlineMessagesReturnValue = [givenInlineMessage1, givenInlineMessage2]
+
+         let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
+         let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
+
+         await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
+
+         assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+         assert(message: givenInlineMessage2, didCallMessageShownEventListener: false)
+
+         await onDoneRenderingInAppMessage(givenInlineMessage2, insideOfInlineView: inlineView2)
+
+         assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+         assert(message: givenInlineMessage2, didCallMessageShownEventListener: true)
+     }*/
 }
 
 @MainActor
@@ -632,6 +830,26 @@ extension InAppMessageViewTest {
             }
 
             XCTFail("View \(String(describing: view)) is showing inside of \(String(describing: inlineView))", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didTrack: Bool, metric: String, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundMetrics = eventBusMetricsTracked.filter { $0.event == metric && $0.deliveryID == message.deliveryId }
+
+        if didTrack {
+            XCTAssertEqual(foundMetrics.count, expectedNumberOfEvents, "Expected to find metric \(metric) \(expectedNumberOfEvents) number of times, but it was tracked \(foundMetrics.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundMetrics.isEmpty, "Expected not to find metric \(metric) but it was tracked.", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didCallMessageShownEventListener: Bool, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundEvents = eventListenerMock.messageShownReceivedInvocations.filter { $0.deliveryId == message.deliveryId }
+
+        if didCallMessageShownEventListener {
+            XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected messageShown listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundEvents.isEmpty, "Expected not to find messageShown listener called, but it was.", file: file, line: line)
         }
     }
 }

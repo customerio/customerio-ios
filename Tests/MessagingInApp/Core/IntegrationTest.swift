@@ -145,7 +145,17 @@ extension IntegrationTest {
         getWebEngineForInlineView(inlineView)?.delegate?.routeLoaded(route: message.templateId)
         getWebEngineForInlineView(inlineView)?.delegate?.sizeChanged(width: widthOfRenderedMessage, height: heightOfRenderedMessage)
 
+        await waitForEventBusEventsToPost()
         // When sizeChanged() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
+        await waitForMainThreadToFinishPendingTasks()
+    }
+
+    func onShowAnotherMessageActionButtonPressed(onInlineView inlineView: InAppMessageView, newMessageTemplateId: String = .random) async {
+        // Triggering the button from the web engine simulates the user tapping the button on the in-app WebView.
+        // This behaves more like an integration test because we are also able to test the message manager, too.
+        getWebEngineForInlineView(inlineView)?.delegate?.routeChanged(newRoute: newMessageTemplateId)
+
+        // When willChangeMessage() is called on the inline View, it adds a task to the main thread queue. Our test wants to wait until this task is done running.
         await waitForMainThreadToFinishPendingTasks()
     }
 
@@ -158,10 +168,13 @@ extension IntegrationTest {
 
 @MainActor
 extension IntegrationTest {
-    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) {
+    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
+
+        // when a button is pressed, an eventbus event is posted for metrics tracking. Return function after the tracked event is posted.
+        await waitForEventBusEventsToPost()
     }
 
     func onDeepLinkActionButtonPressed(onInlineView inlineView: InAppMessageView, deeplink: String) {

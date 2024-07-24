@@ -108,6 +108,10 @@ extension Message {
         gistProperties.routeRule != nil
     }
 
+    var deliveryId: String? {
+        gistProperties.campaignId
+    }
+
     var cleanPageRule: String? {
         guard let routeRule = gistProperties.routeRule else {
             return nil
