@@ -1,102 +1,9 @@
 import CioDataPipelines
 import CioMessagingInApp
 import SwiftUI
-import UIKit
 import UserNotifications
 
-// ObservableObject that tracks the height of a subview
-class HeightTracker: ObservableObject {
-    @Published var subviewHeight: CGFloat = 0
-}
-
-// Used for associating the height tracker with InAppMessageView
-private var heightTrackerKey: UInt8 = 0
-private var maxHeight: CGFloat = 0
-
-extension InAppMessageView {
-    var heightTracker: HeightTracker? {
-        get {
-            objc_getAssociatedObject(self, &heightTrackerKey) as? HeightTracker
-        }
-        set {
-            objc_setAssociatedObject(self, &heightTrackerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        }
-    }
-
-    // Tracks and update the height
-    override public func layoutSubviews() {
-        super.layoutSubviews()
-
-        print("Height of tracker \(String(describing: heightTracker?.subviewHeight))")
-
-        // Update maxHeight and notify heightTracker if the frame height changes
-        // The height fluctuates, increasing and then decreasing.
-        // To prevent this behavior, we constrain it to the maximum height achieved by the subview.
-        if frame.height >= maxHeight {
-            maxHeight = frame.height
-            heightTracker?.subviewHeight = frame.height
-        }
-    }
-}
-
-struct InAppMessageViewRepresentable: UIViewRepresentable {
-    var elementId: String
-    @Binding var containerWidth: CGFloat
-    @ObservedObject var heightTracker: HeightTracker
-    func makeUIView(context: Context) -> InAppMessageView {
-        let inlineMessageView = InAppMessageView(elementId: elementId)
-
-        // This is optional. If set, the delegate method `onActionClick`
-        // will receive callbacks.
-        // If not set, the global method `messageActionTaken` will handle the callbacks.
-        inlineMessageView.onActionDelegate = context.coordinator
-        inlineMessageView.translatesAutoresizingMaskIntoConstraints = false
-        inlineMessageView.heightTracker = heightTracker
-
-        // Add a width constraint based on the containerWidth
-        let widthConstraint = inlineMessageView.widthAnchor.constraint(equalToConstant: containerWidth)
-        widthConstraint.isActive = true
-        return inlineMessageView
-    }
-
-    func updateUIView(_ uiView: InAppMessageView, context: Context) {
-        // Update the width constraint if it exists
-        if let widthConstraint = uiView.constraints.first(where: { $0.firstAttribute == .width }) {
-            widthConstraint.constant = containerWidth
-        }
-        // Update the height constraint if it exists
-        if let heightConstraint = uiView.constraints.first(where: { $0.firstAttribute == .height }) {
-            heightConstraint.constant = heightTracker.subviewHeight
-        }
-    }
-
-    // Coordinator to handle delegate `InAppMessageViewActionDelegate`
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, InAppMessageViewActionDelegate {
-        var parent: InAppMessageViewRepresentable
-
-        init(_ parent: InAppMessageViewRepresentable) {
-            self.parent = parent
-        }
-
-        // Delegate method for handling custom button action clicks
-        func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
-            print("You can perform any action here. For instance, we are tracking the custom button tap.")
-            CustomerIO.shared.track(name: "inline custom button action", properties: [
-                "delivery-id": message.deliveryId ?? "(none)",
-                "message-id": message.messageId,
-                "action-value": actionValue,
-                "action-name": actionName
-            ])
-        }
-    }
-}
-
 struct DashboardView: View {
-    @State private var containerWidth: CGFloat = 0
     enum Subscreen: String {
         case customEvent
         case profileAttribute
@@ -119,7 +26,6 @@ struct DashboardView: View {
     @State private var blockingAlert: BlockingAlert?
 
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var heightTracker = HeightTracker()
     var body: some View {
         ZStack {
             VStack {
@@ -143,17 +49,8 @@ struct DashboardView: View {
                     }
                     Text("What would you like to test?")
                     Group {
-                        // ---- In-app Inline View ----
-                        InAppMessageViewRepresentable(elementId: "dashboard-announcement", containerWidth: $containerWidth, heightTracker: heightTracker)
-                            // Set the height of the view based on the height tracked
-                            .frame(height: heightTracker.subviewHeight)
-                            // GeometryReader to track the size of the container
-                            .background(GeometryReader { geometry in
-                                Color.clear.onAppear {
-                                    containerWidth = geometry.size.width
-                                }
-                            })
-                        // ---- In-app Inline View ----
+                        InAppMessageViewRepresentable(elementId: "dashboard-announcement")
+                            .frame(height: 350)
                         ColorButton("Send Random Event") {
                             switch Int.random(in: 0 ..< 3) {
                             case 0:
