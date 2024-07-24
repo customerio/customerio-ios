@@ -56,9 +56,6 @@ public class InAppMessageView: UIView {
 
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
-    //
-    // When persistent vs non-persistent messages and metrics features are implemented in the SDK, this array may be
-    // replaced with a global list of shown messages.
     var previouslyShownMessages: [Message] = []
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
@@ -123,8 +120,12 @@ public class InAppMessageView: UIView {
 
     // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
     private func refreshView(forceShowNextMessage: Bool = false) {
-        guard let elementId = elementId else {
+        defer {
+            // Always call the refreshViewListener at the end of the function to know processing is done.
             refreshViewListener?()
+        }
+
+        guard let elementId = elementId else {
             return // we cannot check if a message is available until element id set on View.
         }
 
@@ -135,7 +136,6 @@ public class InAppMessageView: UIView {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
             // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
             // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
-            refreshViewListener?()
             return
         }
 
@@ -144,8 +144,6 @@ public class InAppMessageView: UIView {
         } else {
             dismissInAppMessage()
         }
-
-        refreshViewListener?()
     }
 
     // Function to check if a message has been previously shown
@@ -161,26 +159,9 @@ public class InAppMessageView: UIView {
         }
 
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
-        if let currentlyDisplayedInAppWebView = inlineMessageManager?.inlineMessageView, messageRenderingLoadingView == nil {
-            // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
-            let activityIndicator = UIActivityIndicatorView(style: .large)
-            activityIndicator.startAnimating()
-            activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
-
-            addSubview(activityIndicator)
-            assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
-
-            // Set autolayout constraints to position the activity indicator.
-            activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
-                activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
-                activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
-                activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
-            ])
-
-            animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
-                // After animation is over, cleanup resources and begin rendering of the next message.
+        if isRenderingOrDisplayingAMessage {
+            showLoadingView {
+                // After animation is over, cleanup resources since we no longer need to show the previous message.
                 self.stopShowingMessageAndCleanup()
                 self.beginShowing(message: message)
             }
@@ -189,12 +170,41 @@ public class InAppMessageView: UIView {
         }
     }
 
+    // Call when you want to show the loading View, indicating to the app user that a new message is being loaded.
+    private func showLoadingView(onComplete: @escaping () -> Void) {
+        // Before we begin showing loading view, check to see if we are in the correct state that we should perform this change.
+        // This is a safety check in case this function gets called multiple times. We don't want the UI to flicker by changing multiple times.
+        guard let currentlyDisplayedInAppWebView = inAppMessageView, messageRenderingLoadingView == nil else {
+            return onComplete()
+        }
+
+        // To provide the user with feedback indicating a new message is being rendered, show an activity indicator while the new message is loading.
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.startAnimating()
+        activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
+
+        addSubview(activityIndicator)
+        assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
+
+        // Set autolayout constraints to position the activity indicator.
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+            activityIndicator.widthAnchor.constraint(equalTo: widthAnchor),
+            activityIndicator.heightAnchor.constraint(equalTo: heightAnchor)
+        ])
+
+        animateFadeInOutInlineView(fromView: currentlyDisplayedInAppWebView, toView: activityIndicator) {
+            onComplete()
+        }
+    }
+
     // Call when you want to begin the process of showing a new message.
     private func beginShowing(message: Message) {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
-
         // Gist class is what Modal messages use as the modal message manager delegate.
         // So we can re-use modal message logic, set the Gist class for inline managers, too.
         newInlineMessageManager.delegate = Gist.shared
@@ -312,14 +322,25 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         }
     }
 
+    // Called when "show another message" action button is clicked.
+    func willChangeMessage(newTemplateId: String) {
+        Task { @MainActor in
+            // Animate in a loading view while the next message is being rendered.
+            self.showLoadingView {
+                // Nothing to do when the animation is complete.
+                // the sizeChanged function will be called when the next message is rendered. sizeChanged will animate in the message for us.
+            }
+        }
+    }
+
     // This method is called by InlineMessageManager when custom action button is tapped
     // on an inline in-app message.
-    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) {
+    func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool {
         // If delegate is not set then call the global `messageActionTaken` method
         guard let onActionDelegate = onActionDelegate else {
-            Gist.shared.action(message: message, currentRoute: currentRoute, action: action, name: name)
-            return
+            return false
         }
         onActionDelegate.onActionClick(message: InAppMessage(gistMessage: message), actionValue: action, actionName: name)
+        return true
     }
 }
