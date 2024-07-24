@@ -339,9 +339,9 @@ import SwiftUI
 @available(iOS 13.0, *)
 public struct InAppMessageViewRepresentable: UIViewRepresentable {
     public var elementId: String
-    public var onActionClick: (InAppMessage, String, String) -> Void
+    public var onActionClick: ((InAppMessage, String, String) -> Void)?
 
-    public init(elementId: String, onActionClick: @escaping (InAppMessage, String, String) -> Void) {
+    public init(elementId: String, onActionClick: ((InAppMessage, String, String) -> Void)? = nil) {
         self.elementId = elementId
         self.onActionClick = onActionClick
     }
@@ -351,8 +351,10 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
         // This is optional. If set, the delegate method `onActionClick`
         // will receive callbacks.
         // If not set, the global method `messageActionTaken` will handle the callbacks.
-        inlineMessageView.onActionDelegate = context.coordinator
-        return InAppMessageView(elementId: elementId)
+        if let _ = onActionClick {
+            inlineMessageView.onActionDelegate = context.coordinator
+        }
+        return inlineMessageView
     }
 
     public func updateUIView(_ uiView: InAppMessageView, context: Context) {
@@ -373,14 +375,7 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
 
         // Delegate method for handling custom button action clicks
         public func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
-//            return self.onActionClick(message: message, actionValue: actionValue, actionName: actionName)
-            print("You can perform any action here. For instance, we are tracking the custom button tap.")
-            CustomerIO.shared.track(name: "inline custom button action", properties: [
-                "delivery-id": message.deliveryId ?? "(none)",
-                "message-id": message.messageId,
-                "action-value": actionValue,
-                "action-name": actionName
-            ])
+            parent.onActionClick?(message, actionValue, actionName)
         }
     }
 }
