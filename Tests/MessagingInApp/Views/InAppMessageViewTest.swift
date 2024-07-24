@@ -740,6 +740,26 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertNil(getInAppMessage(forView: differentView))
     }
 
+    @MainActor
+    func test_persistentAndNonPersistent_givenPersistentMessage_givenMessageExpires_expectContinueShowingIfAlreadyDisplayed_expectDoNotShowAgainInFuture() async {
+        let givenInlineMessage = Message(elementId: .random, persistent: true)
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Expire the message
+        await simulateSdkFetchedMessages([], verifyInlineViewNotifiedOfFetch: inlineView)
+
+        // We expect to continue displaying the expired message on inline View that already displayed it
+        XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
+
+        // Expect we will not show the message again in the future
+        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        XCTAssertNil(getInAppMessage(forView: differentView))
+    }
+
     // MARK: - Track open
 
     @MainActor
