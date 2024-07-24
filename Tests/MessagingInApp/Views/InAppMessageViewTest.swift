@@ -574,11 +574,12 @@ class InAppMessageViewTest: IntegrationTest {
 
     @MainActor
     func test_showAnotherMessageAction_givenCloseNewMessage_expectShowNextMessageInQueue() async {
-        let givenMessage = Message.randomInline
-        let givenNextMessageInQueue = Message.randomInline
+        let givenElementId = String.random
+        let givenMessage = Message(elementId: givenElementId)
+        let givenNextMessageInQueue = Message(elementId: givenElementId)
         await simulateSdkFetchedMessages([givenMessage, givenNextMessageInQueue], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenMessage.elementId!)
+        let view = InAppMessageView(elementId: givenElementId)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
 
