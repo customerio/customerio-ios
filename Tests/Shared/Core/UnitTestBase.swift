@@ -224,6 +224,7 @@ open class UnitTestBase<Component>: XCTestCase {
 
         // Loop through all pending tasks in the EventBus and wait for them to complete.
         for task in realInstanceEventBus.taskBag {
+            // swiftlint:disable:next force_try
             try! await task.value
         }
     }
