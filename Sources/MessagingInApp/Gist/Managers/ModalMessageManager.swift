@@ -71,4 +71,9 @@ class ModalMessageManager: MessageManager {
             _ = Gist.shared.showMessage(newMessageToShow)
         }
     }
+
+    override func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        // Forward event to delegate, allowing the customer to handle event if they choose.
+        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
+    }
 }
