@@ -47,6 +47,13 @@ public class InAppMessageView: UIView {
     // Delegate to handle custom action button tap.
     public weak var onActionDelegate: InAppMessageViewActionDelegate?
 
+    // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
+    // There is currently no easy way to know when the inline View has finished processing the fetch.
+    // This listener is a hack for our automated tests to know when the inline View has finished processing the fetch.
+    //
+    // See linear ticket MBL-427 to learn more about this limitation in our tests.
+    var refreshViewListener: (() -> Void)?
+
     // Inline messages that have already been shown by this View instance.
     // This is used to prevent showing the same message multiple times when the close button is pressed.
     var previouslyShownMessages: [Message] = []
@@ -113,6 +120,11 @@ public class InAppMessageView: UIView {
 
     // Updates the state of the View, if needed. Call as often as you need if an event happens that may cause the View to need to update.
     private func refreshView(forceShowNextMessage: Bool = false) {
+        defer {
+            // Always call the refreshViewListener at the end of the function to know processing is done.
+            refreshViewListener?()
+        }
+
         guard let elementId = elementId else {
             return // we cannot check if a message is available until element id set on View.
         }
@@ -193,9 +205,10 @@ public class InAppMessageView: UIView {
         // Create a new manager for this new message to display and then display the manager's WebView.
         let newInlineMessageManager = InlineMessageManager(siteId: gist.siteId, message: message)
         newInlineMessageManager.inlineMessageDelegate = self
-        // Set delegate to track `opened` metric for inline messages
-        // just like modal inapp messages.
+        // Gist class is what Modal messages use as the modal message manager delegate.
+        // So we can re-use modal message logic, set the Gist class for inline managers, too.
         newInlineMessageManager.delegate = Gist.shared
+
         let inlineView = newInlineMessageManager.inlineMessageView
         inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
 

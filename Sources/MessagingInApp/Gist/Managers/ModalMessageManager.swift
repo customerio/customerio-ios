@@ -51,15 +51,9 @@ class ModalMessageManager: MessageManager {
     }
 
     override func onCloseAction() {
-        removePersistentMessage()
-        dismissMessage()
-    }
+        super.onCloseAction()
 
-    func removePersistentMessage() {
-        if currentMessage.gistProperties.persistent == true {
-            Logger.instance.debug(message: "Persistent message dismissed, logging view")
-            Gist.shared.logMessageView(message: currentMessage)
-        }
+        dismissMessage()
     }
 
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
