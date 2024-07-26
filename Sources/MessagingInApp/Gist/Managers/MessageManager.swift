@@ -25,6 +25,7 @@ class MessageManager {
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
     private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
+    let eventBusHandler: EventBusHandler = DIGraphShared.shared.eventBusHandler
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
@@ -68,7 +69,10 @@ class MessageManager {
 
     // Called when close action button pressed.
     func onCloseAction() {
-        // Expect subclass implements this.
+        // Common logic for all types of messages when a close button is pressed.
+        removePersistentMessage()
+
+        // subclass can override method and call super method.
     }
 
     // Called when a deep link action button was clicked in a message and the SDK opened the deep link.
@@ -83,6 +87,17 @@ class MessageManager {
 
     // Called when an action button is clicked and the action is to show a different in-app message.
     func onReplaceMessage(newMessageToShow: Message) {
+        // subclass should implement
+    }
+
+    func removePersistentMessage() {
+        if currentMessage.gistProperties.persistent == true {
+            Logger.instance.debug(message: "Persistent message dismissed, logging view")
+            Gist.shared.logMessageView(message: currentMessage)
+        }
+    }
+
+    func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
         // subclass should implement
     }
 
@@ -105,9 +120,19 @@ extension MessageManager: EngineWebDelegate {
         }
     }
 
+    func trackClickedMetric(action: String, name: String) {
+        // a close action does not count as a clicked action.
+        if action != "gist://close" {
+            if let deliveryId = currentMessage.deliveryId {
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+            }
+        }
+    }
+
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
-        delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        onTapAction(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        trackClickedMetric(action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {

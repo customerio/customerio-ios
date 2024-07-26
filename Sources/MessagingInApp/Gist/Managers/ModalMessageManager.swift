@@ -51,15 +51,9 @@ class ModalMessageManager: MessageManager {
     }
 
     override func onCloseAction() {
-        removePersistentMessage()
-        dismissMessage()
-    }
+        super.onCloseAction()
 
-    func removePersistentMessage() {
-        if currentMessage.gistProperties.persistent == true {
-            Logger.instance.debug(message: "Persistent message dismissed, logging view")
-            Gist.shared.logMessageView(message: currentMessage)
-        }
+        dismissMessage()
     }
 
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
@@ -76,5 +70,10 @@ class ModalMessageManager: MessageManager {
         dismissMessage {
             _ = Gist.shared.showMessage(newMessageToShow)
         }
+    }
+
+    override func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        // Forward event to delegate, allowing the customer to handle event if they choose.
+        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
     }
 }
