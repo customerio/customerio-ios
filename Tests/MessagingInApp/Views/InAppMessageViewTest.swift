@@ -131,6 +131,19 @@ class InAppMessageViewTest: IntegrationTest {
         assert(view: inlineView.inAppMessageView, isShowing: true, inInlineView: inlineView)
     }
 
+    @MainActor
+    func test_givenAttemptToShowInlineMessageFails_expectMessageNotShown() async {
+        messagingInAppImplementation.setEventListener(eventListenerMock)
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Inline message does not display
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+    }
+
     // MARK: Async fetching of in-app messages
 
     // The in-app SDK fetches for new messages in the background in an async manner.
@@ -781,19 +794,6 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertFalse(eventListenerMock.messageActionTakenCalled)
         XCTAssertFalse(eventListenerMock.messageShownCalled)
         XCTAssertFalse(eventListenerMock.messageDismissedCalled)
-    }
-
-    @MainActor
-    func test_givenAttemptToShowInlineMessageFails_expectMessageNotShown() async {
-        messagingInAppImplementation.setEventListener(eventListenerMock)
-        let givenInlineMessage = Message.randomInline
-        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
-
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
-        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
-
-        // Inline message does not display
-        XCTAssertFalse(isInlineViewVisible(inlineView))
     }
 
     // messageActionTaken when close button is tapped
