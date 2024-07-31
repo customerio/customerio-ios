@@ -288,6 +288,23 @@ public class InAppMessageView: UIView {
 
         runningCrossFadeAnimation?.startAnimation()
     }
+
+    private var contentSize: CGSize = .zero {
+        didSet {
+            // Notify the system that the intrinsic content size has changed
+            invalidateIntrinsicContentSize()
+        }
+    }
+
+    override public var intrinsicContentSize: CGSize {
+        // Return the current content size
+        contentSize
+    }
+
+    func updateContentSize(_ newSize: CGSize) {
+        // Update the content size and invalidate the intrinsic content size
+        contentSize = newSize
+    }
 }
 
 extension InAppMessageView: InlineMessageManagerDelegate {
@@ -296,6 +313,8 @@ extension InAppMessageView: InlineMessageManagerDelegate {
         Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.
             // We keep the width the same to what the customer set it as.
             // Update the height to match the aspect ratio of the web content.
+
+            self.updateContentSize(.init(width: width, height: height))
 
             guard let inAppMessageView = self.inAppMessageView else {
                 return
@@ -391,4 +410,4 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
         }
     }
 }
-#endif
+#endif // swiftlint:disable:this file_length
