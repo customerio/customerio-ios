@@ -37,6 +37,13 @@ enum BaseNetwork {
                 completionHandler(.failure(GistNetworkError.serverError))
                 return
             }
+            var hasCookie = "NO"
+            if response.value(forHTTPHeaderField: "Set-Cookie") != nil {
+                hasCookie = "YES";
+            }
+            
+            NSLog("SESSIONAF: Has set cookie? " + hasCookie)
+            NSLog("SESSIONAF: Service status Code: " + String(response.statusCode))
             completionHandler(.success(GistNetworkResponse(data, response)))
         }).resume()
     }

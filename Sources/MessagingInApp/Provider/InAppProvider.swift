@@ -13,12 +13,12 @@ protocol InAppProvider: AutoMockable {
 // sourcery: InjectRegisterShared = "InAppProvider"
 class GistInAppProvider: InAppProvider {
     func initialize(siteId: String, region: Region, delegate: GistDelegate, enableLogging: Bool = false) {
-        Gist.shared.setup(siteId: siteId, dataCenter: region.rawValue, logging: enableLogging)
+        Gist.shared.setup(siteId: "38180e5d34fcae872aa7", dataCenter: region.rawValue, logging: enableLogging, env: .development)
         Gist.shared.delegate = delegate
     }
 
     func setProfileIdentifier(_ id: String) {
-        Gist.shared.setUserToken(id)
+        Gist.shared.setUserToken("ABC001")
     }
 
     func clearIdentify() {
