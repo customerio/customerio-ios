@@ -51,7 +51,7 @@ struct DashboardView: View {
                     Group {
                         InAppMessageViewRepresentable(elementId: "dashboard-announcement", onActionClick: { _, _, _ in
                             print("Custom callback received")
-                        }).frame(maxWidth: .infinity, minHeight: 0)
+                        }).frame(maxWidth: .infinity)
                         ColorButton("Send Random Event") {
                             switch Int.random(in: 0 ..< 3) {
                             case 0:
