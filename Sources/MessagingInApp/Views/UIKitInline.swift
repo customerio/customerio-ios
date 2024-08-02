@@ -8,6 +8,10 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
 
+public protocol InAppMessageViewSizeChangedDelegate: AnyObject {
+    func onSizeChanged(height: CGFloat, width: CGFloat)
+}
+
 /**
  View that can be added to a customer's app UI to display inline in-app messages.
 
@@ -46,6 +50,8 @@ public class InAppMessageView: UIView {
 
     // Delegate to handle custom action button tap.
     public weak var onActionDelegate: InAppMessageViewActionDelegate?
+
+    public weak var onSizeChangedDelegate: InAppMessageViewSizeChangedDelegate?
 
     // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
     // There is currently no easy way to know when the inline View has finished processing the fetch.
@@ -243,28 +249,7 @@ public class InAppMessageView: UIView {
 
         stopShowingMessageAndCleanup()
 
-        animateHeight(to: 0)
-    }
-
-    private func animateHeight(to height: CGFloat) {
-        // this function can be called multiple times in short period of time so we could be in the middle of 1 animation. Cancel the current one and start new.
-        runningHeightChangeAnimation?.stopAnimation(true)
-
-        runningHeightChangeAnimation = UIViewPropertyAnimator(duration: 0.3, curve: .easeIn, animations: {
-            self.heightConstraint?.constant = height // Changing the height in animation block indicates we want to animate the height change.
-
-            // Since we modified constraint, perform a UI refresh to apply the change.
-            // It's important that we call layoutIfNeeded on the topmost superview in the hierarchy. During development, there were animiation issues if layoutIfNeeded was called on a different superview then the root.
-            // Example, given this UI:
-            // UIViewController
-            // └── UIStackView
-            //    └── InAppMessageView
-            // ...If we call layoutIfNeeded on superview (UIStackView), the animation will not work as expected.
-            // This is also why it's important that we do QA testing on the inline View when it's nested in a UIStackView.
-            self.getRootSuperview()?.layoutIfNeeded()
-        })
-
-        runningHeightChangeAnimation?.startAnimation()
+        onSizeChangedDelegate?.onSizeChanged(height: 0, width: frame.width)
     }
 
     // Takes in 2 Views. In 1 single animation, fades in 1 View while fading out the other.
@@ -314,14 +299,14 @@ extension InAppMessageView: InlineMessageManagerDelegate {
             // We keep the width the same to what the customer set it as.
             // Update the height to match the aspect ratio of the web content.
 
-            self.updateContentSize(.init(width: width, height: height))
-
             guard let inAppMessageView = self.inAppMessageView else {
                 return
             }
 
             inAppMessageView.isHidden = false
-            self.animateHeight(to: height)
+
+            self.updateContentSize(.init(width: width, height: height))
+            self.onSizeChangedDelegate?.onSizeChanged(height: height, width: width)
 
             if let messageRenderingLoadingView = self.messageRenderingLoadingView {
                 animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
