@@ -48,34 +48,47 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
         self.onHeightChange = onHeightChange
     }
 
-    public func makeUIView(context: Context) -> InAppMessageView {
-        let inlineMessageView = InAppMessageView(elementId: elementId)
+    public func makeUIView(context: Context) -> GistInlineInAppMessageView {
+        let inlineMessageView = GistInlineInAppMessageView(elementId: elementId)
 
-        inlineMessageView.onActionDelegate = context.coordinator
-        inlineMessageView.onSizeChangedDelegate = context.coordinator
+        inlineMessageView.delegate = context.coordinator
 
         return inlineMessageView
     }
 
-    public func updateUIView(_ uiView: InAppMessageView, context: Context) {}
+    public func updateUIView(_ uiView: GistInlineInAppMessageView, context: Context) {}
 
     public func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    public class Coordinator: NSObject, InAppMessageViewActionDelegate, InAppMessageViewSizeChangedDelegate {
+    public class Coordinator: NSObject, GistInlineInAppMessageViewDelegate {
         var parent: InAppMessageViewRepresentable
 
         init(_ parent: InAppMessageViewRepresentable) {
             self.parent = parent
         }
 
-        public func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
-            parent.onActionClick?(message, actionValue, actionName)
+        public func onMessageRendered(width: CGFloat, height: CGFloat) {
+            parent.onHeightChange(height)
         }
 
-        public func onSizeChanged(height: CGFloat, width: CGFloat) {
-            parent.onHeightChange(height)
+        public func onNoMessageToDisplay() {
+            parent.onHeightChange(0)
+        }
+
+        public func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Bool {
+            guard let parent = parent.onActionClick else { return false }
+
+            parent(InAppMessage(gistMessage: message), action, name)
+
+            return true
+        }
+
+        public func willChangeMessage(newTemplateId: String, onComplete: () -> Void) {
+            // TODO: need to implement a actiivty indicator loading view
+
+            onComplete()
         }
     }
 }
