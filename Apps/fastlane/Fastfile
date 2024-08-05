@@ -94,8 +94,8 @@ platform :ios do
   # Usage:
   # `fastlane ios update_app_version build_number:123 app_version:1.2.3`
   lane :update_app_version do |arguments| 
-    new_build_number = arguments[:build_number]
-    new_app_version = arguments[:app_version]
+    new_build_number = arguments[:build_number].to_s
+    new_app_version = arguments[:app_version].to_s
 
     # We need to update the app before building with the new version and build numbers. This makes builds easier to find by team members and install them onto devices. 
     # This is usually done by updating Info.plist files. But Xcode 13 removed Info.plist files and made it part of the xcode project. 
