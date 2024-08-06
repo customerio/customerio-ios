@@ -19,7 +19,7 @@ public protocol GistInlineInAppMessageViewDelegate: AnyObject {
  UIView that can render and display an web in-app message.
 
  Responsibilities:
- * Given an elementId, it will get a message to display for that elemenetId.
+ * Given an elementId, it will get a message to display for that elementId.
  * Dynamically change the height and width of the UIView to match aspect ratio of the in-app message
  * Communicate events to a delegate. This allows you to customize the look of an inline message in your app!
 
