@@ -15,7 +15,7 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
  1. Create an instance of this View and add it to the customer's app UI.
  ```
  // you can construct an instance with code:
- let inAppMessageView = InAppMessageView(elementId: "elementId")
+ let inAppMessageView = InlineMessageUIView(elementId: "elementId")
  view.addSubView(inAppMessageView)
 
  // Or, if you use Storyboards:
@@ -24,7 +24,7 @@ public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
  ```
  2. Position and set size of the View in app's UI. The View will adjust it's height automatically, but all other constraints are the responsibilty of app developer. You can set a height constraint if you want autolayout warnings to go away but know that the View will ignore this set height.
  */
-public class InAppMessageView: UIView, GistInlineInAppMessageViewDelegate {
+public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {
@@ -42,8 +42,8 @@ public class InAppMessageView: UIView, GistInlineInAppMessageViewDelegate {
         subviews.first { $0 is UIActivityIndicatorView }
     }
 
-    var inAppMessageView: GistInlineInAppMessageView? {
-        subviews.map { $0 as? GistInlineInAppMessageView }.mapNonNil().first
+    var inAppMessageView: GistInlineMessageUIView? {
+        subviews.map { $0 as? GistInlineMessageUIView }.mapNonNil().first
     }
 
     public init(elementId: String) {
@@ -67,7 +67,7 @@ public class InAppMessageView: UIView, GistInlineInAppMessageViewDelegate {
             return // We are already setup. No need to do again.
         }
 
-        let inlineInAppMessageView = GistInlineInAppMessageView(elementId: elementId)
+        let inlineInAppMessageView = GistInlineMessageUIView(elementId: elementId)
         inlineInAppMessageView.delegate = self
         addSubview(inlineInAppMessageView)
 

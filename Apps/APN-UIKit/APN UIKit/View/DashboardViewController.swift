@@ -16,7 +16,7 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
-    @IBOutlet var inlineInAppViewCreatedInStoryboard: InAppMessageView!
+    @IBOutlet var inlineInAppViewCreatedInStoryboard: InlineMessageUIView!
     @IBOutlet var buttonStackView: UIStackView!
 
     var dashboardRouter: DashboardRouting?
@@ -43,7 +43,7 @@ class DashboardViewController: BaseViewController {
 
         // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
         // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
-        let newInlineViewUsingUIAsCode = InAppMessageView(elementId: "dashboard-announcement-code")
+        let newInlineViewUsingUIAsCode = InlineMessageUIView(elementId: "dashboard-announcement-code")
         // Add the View to the screen.
         // It's important that we test inline Views that are nested in a UIStackView. See comments in inline View code to learn more.
         buttonStackView.addArrangedSubview(newInlineViewUsingUIAsCode)
