@@ -38,6 +38,10 @@ public class GistInlineInAppMessageView: UIView {
         DIGraphShared.shared.eventBusHandler
     }
 
+    var inAppMessageView: GistView? {
+        subviews.map { $0 as? GistView }.mapNonNil().first
+    }
+
     // Can set in the constructor or can set later (like if you use Storyboards)
     public var elementId: String? {
         didSet {

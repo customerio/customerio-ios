@@ -872,7 +872,7 @@ extension InAppMessageViewTest {
 
     // Tells you the message the Inline View is either rendering or has already rendered.
     func getInAppMessage(forView view: InAppMessageView) -> Message? {
-        (view.inAppMessageView as? GistView)?.message
+        view.inAppMessageView?.inAppMessageView?.message
     }
 
     func assert(view: UIView?, isShowing: Bool, inInlineView inlineView: InAppMessageView, file: StaticString = #file, line: UInt = #line) {

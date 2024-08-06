@@ -113,7 +113,7 @@ extension IntegrationTest {
         let expectRefreshViewToBeCalled = expectation(description: "refreshViewToBeCalled")
         expectRefreshViewToBeCalled.assertForOverFulfill = false
 
-        if let inlineView = inlineView {
+        if let inlineView = inlineView?.inAppMessageView {
             inlineView.refreshViewListener = {
                 expectRefreshViewToBeCalled.fulfill()
             }
@@ -129,7 +129,7 @@ extension IntegrationTest {
 
         await fulfillment(of: [expectRefreshViewToBeCalled], timeout: 0.5)
 
-        inlineView?.refreshViewListener = nil
+        inlineView?.inAppMessageView?.refreshViewListener = nil
     }
 
     func onCloseActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
@@ -163,7 +163,7 @@ extension IntegrationTest {
     }
 
     func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
-        view.inlineMessageManager?.engine
+        view.inAppMessageView?.inlineMessageManager?.engine
     }
 }
 

@@ -35,13 +35,6 @@ public class InAppMessageView: UIView, GistInlineInAppMessageViewDelegate {
     // Delegate to handle custom action button tap.
     public weak var onActionDelegate: InAppMessageViewActionDelegate?
 
-    // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
-    // There is currently no easy way to know when the inline View has finished processing the fetch.
-    // This listener is a hack for our automated tests to know when the inline View has finished processing the fetch.
-    //
-    // See linear ticket MBL-427 to learn more about this limitation in our tests.
-    var refreshViewListener: (() -> Void)?
-
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
 
@@ -49,8 +42,8 @@ public class InAppMessageView: UIView, GistInlineInAppMessageViewDelegate {
         subviews.first { $0 is UIActivityIndicatorView }
     }
 
-    var inAppMessageView: UIView? {
-        subviews.first { $0 is GistInlineInAppMessageView }
+    var inAppMessageView: GistInlineInAppMessageView? {
+        subviews.map { $0 as? GistInlineInAppMessageView }.mapNonNil().first
     }
 
     public init(elementId: String) {
