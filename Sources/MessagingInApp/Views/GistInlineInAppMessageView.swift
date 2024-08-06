@@ -173,7 +173,6 @@ public class GistInlineInAppMessageView: UIView {
         newInlineMessageManager.delegate = Gist.shared
 
         let inlineView = newInlineMessageManager.inlineMessageView
-        inlineView.isHidden = true // start hidden while the message renders. When complete, it will show the View.
 
         addSubview(inlineView)
 
