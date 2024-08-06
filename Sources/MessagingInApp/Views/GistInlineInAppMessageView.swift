@@ -135,6 +135,7 @@ public class GistInlineInAppMessageView: UIView {
         if let messageAvailableToDisplay {
             displayInAppMessage(messageAvailableToDisplay)
         } else {
+            stopShowingMessageAndCleanup()
             delegate?.onNoMessageToDisplay()
         }
     }
