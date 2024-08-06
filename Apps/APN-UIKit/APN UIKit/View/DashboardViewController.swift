@@ -178,7 +178,7 @@ class DashboardViewController: BaseViewController {
     }
 }
 
-extension DashboardViewController: InAppMessageViewActionDelegate {
+extension DashboardViewController: InlineMessageUIViewDelegate {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
         print("You can perform any action here. For instance, we are tracking the custom button tap.")
         CustomerIO.shared.track(name: "inline custom button action", properties: [

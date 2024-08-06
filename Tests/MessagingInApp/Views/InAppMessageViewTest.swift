@@ -6,7 +6,7 @@ import XCTest
 
 class InAppMessageViewTest: IntegrationTest {
     private let engineWebMock = EngineWebInstanceMock()
-    private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
+    private let inlineMessageDelegateMock = InlineMessageUIViewDelegateMock()
     private let eventListenerMock = InAppEventListenerMock()
     private let deeplinkUtilMock = DeepLinkUtilMock()
 
@@ -498,8 +498,8 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage2 = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage1, givenInlineMessage2], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineActionDelegate1 = InAppMessageViewActionDelegateMock()
-        let inlineActionDelegate2 = InAppMessageViewActionDelegateMock()
+        let inlineActionDelegate1 = InlineMessageUIViewDelegateMock()
+        let inlineActionDelegate2 = InlineMessageUIViewDelegateMock()
         // Create two inline in app views and assign individual delegates
         let inlineView1 = InlineMessageUIView(elementId: givenInlineMessage1.elementId!)
         inlineView1.onActionDelegate = inlineActionDelegate1

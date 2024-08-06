@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 // To handle inline custom button actions.
-public protocol InAppMessageViewActionDelegate: AnyObject, AutoMockable {
+public protocol InlineMessageUIViewDelegate: AnyObject, AutoMockable {
     // This method is called when a custom button is tapped in an inline message.
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String)
 }
@@ -33,7 +33,7 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
     }
 
     // Delegate to handle custom action button tap.
-    public weak var onActionDelegate: InAppMessageViewActionDelegate?
+    public weak var onActionDelegate: InlineMessageUIViewDelegate?
 
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
