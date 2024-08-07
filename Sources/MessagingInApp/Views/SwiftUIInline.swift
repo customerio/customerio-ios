@@ -73,6 +73,10 @@ public struct InlineMessageUIViewRepresentable: UIViewRepresentable {
 
         inlineMessageView.delegate = context.coordinator
 
+        // Set the compression resistance of the content view to low so that the content view can be compressed to fit the available space.
+        // This fixes an issue where you rotate screen from portrait to landscape and back to portrait. Without this change, the view remains in landscape mode.
+        inlineMessageView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
         return inlineMessageView
     }
 
