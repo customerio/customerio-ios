@@ -109,11 +109,11 @@ open class IntegrationTest: UnitTest {
 extension IntegrationTest {
     // When testing inline Views, simulate a fetch of messages from Gist backend.
     // Given list of messages to return from fetch request, the function will return after the inline View has been notified about this fetch and has processed it.
-    func simulateSdkFetchedMessages(_ messages: [Message], verifyInlineViewNotifiedOfFetch inlineView: InAppMessageView?) async {
+    func simulateSdkFetchedMessages(_ messages: [Message], verifyInlineViewNotifiedOfFetch inlineView: InlineMessageUIView?) async {
         let expectRefreshViewToBeCalled = expectation(description: "refreshViewToBeCalled")
         expectRefreshViewToBeCalled.assertForOverFulfill = false
 
-        if let inlineView = inlineView {
+        if let inlineView = inlineView?.inAppMessageView {
             inlineView.refreshViewListener = {
                 expectRefreshViewToBeCalled.fulfill()
             }
@@ -129,10 +129,10 @@ extension IntegrationTest {
 
         await fulfillment(of: [expectRefreshViewToBeCalled], timeout: 0.5)
 
-        inlineView?.refreshViewListener = nil
+        inlineView?.inAppMessageView?.refreshViewListener = nil
     }
 
-    func onCloseActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
+    func onCloseActionButtonPressed(onInlineView inlineView: InlineMessageUIView) async {
         // Triggering the close button from the web engine simulates the user tapping the close button on the in-app WebView.
         // This behaves more like an integration test because we are also able to test the message manager, too.
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: GistMessageActions.close.rawValue, system: false)
@@ -142,7 +142,7 @@ extension IntegrationTest {
     }
 
     // Call when the in-app webview rendering process has finished.
-    func onDoneRenderingInAppMessage(_ message: Message, insideOfInlineView inlineView: InAppMessageView, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
+    func onDoneRenderingInAppMessage(_ message: Message, insideOfInlineView inlineView: InlineMessageUIView, heightOfRenderedMessage: CGFloat = 100, widthOfRenderedMessage: CGFloat = 100) async {
         // The engine is like a HTTP layer in that it calls the Gist web server to get back rendered in-app messages.
         // To mock the web server call with a successful response back, call these delegate functions:
         getWebEngineForInlineView(inlineView)?.delegate?.routeLoaded(route: message.templateId)
@@ -153,7 +153,7 @@ extension IntegrationTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
-    func onShowAnotherMessageActionButtonPressed(onInlineView inlineView: InAppMessageView, newMessageTemplateId: String = .random) async {
+    func onShowAnotherMessageActionButtonPressed(onInlineView inlineView: InlineMessageUIView, newMessageTemplateId: String = .random) async {
         // Triggering the button from the web engine simulates the user tapping the button on the in-app WebView.
         // This behaves more like an integration test because we are also able to test the message manager, too.
         getWebEngineForInlineView(inlineView)?.delegate?.routeChanged(newRoute: newMessageTemplateId)
@@ -162,8 +162,8 @@ extension IntegrationTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
-    func getWebEngineForInlineView(_ view: InAppMessageView) -> EngineWebInstance? {
-        view.inlineMessageManager?.engine
+    func getWebEngineForInlineView(_ view: InlineMessageUIView) -> EngineWebInstance? {
+        view.inAppMessageView?.inlineMessageManager?.engine
     }
 }
 
@@ -171,7 +171,7 @@ extension IntegrationTest {
 
 @MainActor
 extension IntegrationTest {
-    func onCustomActionButtonPressed(onInlineView inlineView: InAppMessageView) async {
+    func onCustomActionButtonPressed(onInlineView inlineView: InlineMessageUIView) async {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: "Test", system: false)
@@ -180,7 +180,7 @@ extension IntegrationTest {
         await waitForEventBusEventsToPost()
     }
 
-    func onDeepLinkActionButtonPressed(onInlineView inlineView: InAppMessageView, deeplink: String) {
+    func onDeepLinkActionButtonPressed(onInlineView inlineView: InlineMessageUIView, deeplink: String) {
         // Triggering the custom action button on inline message from the web engine
         // mocks the user tap on custom action button
         getWebEngineForInlineView(inlineView)?.delegate?.tap(name: "", action: deeplink, system: true)

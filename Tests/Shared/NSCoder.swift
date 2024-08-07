@@ -7,7 +7,7 @@ import Foundation
 
  Usage:
  ```
- let viewToTest = InAppMessageView(coder: EmptyNSCoder())!
+ let viewToTest = InlineMessageUIView(coder: EmptyNSCoder())!
  ```
  */
 public class EmptyNSCoder: NSCoder {
