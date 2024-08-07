@@ -131,6 +131,18 @@ class InAppMessageViewTest: IntegrationTest {
         assert(view: inlineView.inAppMessageView, isShowing: true, inInlineView: inlineView)
     }
 
+    @MainActor
+    func test_givenAttemptToShowInlineMessageFails_expectMessageNotShown() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Inline message does not display
+        XCTAssertFalse(isInlineViewVisible(inlineView))
+    }
+
     // MARK: Async fetching of in-app messages
 
     // The in-app SDK fetches for new messages in the background in an async manner.
@@ -760,6 +772,147 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertNil(getInAppMessage(forView: differentView))
     }
 
+    // MARK: - Send events to Gist event listeners
+
+    @MainActor
+    func test_eventListener_givenErrorWithMessage_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallErrorWithMessageEventListener: true)
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageDismissedEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+    }
+
+    @MainActor
+    func test_eventListener_givenMessageRendered_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+
+        // Expect do not call event listener yet
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: false)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        // Expect to call listener after message rendered.
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
+
+        // Expect to not call the other event listeners
+        assert(message: givenInlineMessage, didCallErrorWithMessageEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageDismissedEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+    }
+
+    @MainActor
+    func test_eventListener_givenShowPersistentMessage_expectCallEventListener() async {
+        let givenInlineMessage = Message(elementId: .random, persistent: true)
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
+        assert(message: givenInlineMessage, didCallErrorWithMessageEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageDismissedEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageDismissedEventListener: false)
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: true)
+    }
+
+    @MainActor
+    func test_eventListener_givenTapCloseButton_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: true)
+
+        // Expect to never call message dismissed. Even with inline View not visible anymore after closing.
+        assert(message: givenInlineMessage, didCallMessageDismissedEventListener: false)
+    }
+
+    @MainActor
+    func test_eventListener_givenShowNextMessageInQueue_expectCallEventListener() async {
+        let givenElementId = String.random
+        let givenInlineMessage1 = Message(elementId: givenElementId)
+        let givenInlineMessage2 = Message(elementId: givenElementId)
+        await simulateSdkFetchedMessages([givenInlineMessage1, givenInlineMessage2], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenElementId)
+        await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+
+        await onCloseActionButtonPressed(onInlineView: inlineView)
+        await onDoneRenderingInAppMessage(givenInlineMessage2, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage1, didCallMessageActionTakenEventListener: true)
+        assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
+        assert(message: givenInlineMessage2, didCallMessageShownEventListener: true)
+    }
+
+    @MainActor
+    func test_eventListener_givenTapCustomActionButton_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+
+        await onCustomActionButtonPressed(onInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: true)
+    }
+
+    @MainActor
+    func test_eventListener_givenTapDeepLinkButton_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+
+        onDeepLinkActionButtonPressed(onInlineView: inlineView, deeplink: "https://customer.io/mobile")
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: true)
+    }
+
+    @MainActor
+    func test_eventListener_givenTapShowAnotherActionButton_expectCallEventListener() async {
+        let givenInlineMessage = Message.randomInline
+        await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
+
+        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
+
+        await onShowAnotherMessageActionButtonPressed(onInlineView: inlineView)
+
+        // We expect to only call event listener once for the message.
+        assert(message: givenInlineMessage, didCallMessageShownEventListener: true, expectedNumberOfEvents: 1)
+
+        assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: true)
+    }
+
     // MARK: - Track open
 
     @MainActor
@@ -925,6 +1078,36 @@ extension InAppMessageViewTest {
             XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected messageShown listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
         } else {
             XCTAssertTrue(foundEvents.isEmpty, "Expected not to find messageShown listener called, but it was.", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didCallMessageActionTakenEventListener: Bool, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundEvents = eventListenerMock.messageActionTakenReceivedInvocations.filter { actualMessage, _, _ in actualMessage.deliveryId == message.deliveryId }
+
+        if didCallMessageActionTakenEventListener {
+            XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected messageActionTaken listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundEvents.isEmpty, "Expected not to find messageActionTaken listener called, but it was.", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didCallMessageDismissedEventListener: Bool, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundEvents = eventListenerMock.messageDismissedReceivedInvocations.filter { $0.deliveryId == message.deliveryId }
+
+        if didCallMessageDismissedEventListener {
+            XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected messageDismissed listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundEvents.isEmpty, "Expected not to find messageDismissed listener called, but it was.", file: file, line: line)
+        }
+    }
+
+    func assert(message: Message, didCallErrorWithMessageEventListener: Bool, expectedNumberOfEvents: Int = 1, file: StaticString = #file, line: UInt = #line) {
+        let foundEvents = eventListenerMock.errorWithMessageReceivedInvocations.filter { $0.deliveryId == message.deliveryId }
+
+        if didCallErrorWithMessageEventListener {
+            XCTAssertEqual(foundEvents.count, expectedNumberOfEvents, "Expected errorWithMessage listener called \(expectedNumberOfEvents) number of times, but it was called \(foundEvents.count) many times", file: file, line: line)
+        } else {
+            XCTAssertTrue(foundEvents.isEmpty, "Expected not to find errorWithMessage listener called, but it was.", file: file, line: line)
         }
     }
 }
