@@ -136,7 +136,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
 
         // Inline message does not display
@@ -779,7 +779,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessageWithError(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallErrorWithMessageEventListener: true)
@@ -793,7 +793,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
 
         // Expect do not call event listener yet
         assert(message: givenInlineMessage, didCallMessageShownEventListener: false)
@@ -813,7 +813,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: true)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
@@ -832,7 +832,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
@@ -852,7 +852,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage2 = Message(elementId: givenElementId)
         await simulateSdkFetchedMessages([givenInlineMessage1, givenInlineMessage2], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenElementId)
+        let inlineView = InlineMessageUIView(elementId: givenElementId)
         await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage1, didCallMessageShownEventListener: true)
@@ -870,7 +870,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
@@ -885,7 +885,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)
@@ -900,7 +900,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageActionTakenEventListener: false)

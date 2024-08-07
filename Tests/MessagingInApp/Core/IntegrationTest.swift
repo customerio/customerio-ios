@@ -153,6 +153,11 @@ extension IntegrationTest {
         await waitForMainThreadToFinishPendingTasks()
     }
 
+    func onDoneRenderingInAppMessageWithError(_ message: Message, insideOfInlineView inlineView: InlineMessageUIView) async {
+        // To mock the web server call with a failed response back, call routeError delegate function:
+        getWebEngineForInlineView(inlineView)?.delegate?.routeError(route: message.templateId)
+    }
+
     func onShowAnotherMessageActionButtonPressed(onInlineView inlineView: InlineMessageUIView, newMessageTemplateId: String = .random) async {
         // Triggering the button from the web engine simulates the user tapping the button on the in-app WebView.
         // This behaves more like an integration test because we are also able to test the message manager, too.
