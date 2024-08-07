@@ -9,7 +9,7 @@ enum CustomDataSource {
 }
 
 class CustomDataViewController: BaseViewController {
-    @IBOutlet var inlineInAppMessageView: InAppMessageView!
+    @IBOutlet var inlineInAppMessageView: InlineMessageUIView!
     @IBOutlet var eventNameTextField: ThemeTextField!
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
