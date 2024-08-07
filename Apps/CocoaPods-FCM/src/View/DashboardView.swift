@@ -27,31 +27,37 @@ struct DashboardView: View {
 
     @EnvironmentObject var userManager: UserManager
     var body: some View {
-        ZStack {
-            VStack {
-                SettingsButton {
-                    subscreenShown = .settings
+        ScrollView {
+            ZStack {
+                VStack {
+                    SettingsButton {
+                        subscreenShown = .settings
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 10)
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, 10)
-                Spacer()
-            }
-            .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
-                SettingsView {
-                    subscreenShown = nil
+                .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
+                    SettingsView {
+                        subscreenShown = nil
+                    }
                 }
-            }
 
-            ScrollView {
                 VStack(spacing: 15) {
                     if let loggedInUserEmail = userManager.email {
                         Text(loggedInUserEmail)
                     }
                     Text("What would you like to test?")
                     Group {
-                        InlineMessage(elementId: "dashboard-announcement", onActionClick: { _, _, _ in
-                            print("Custom callback received")
-                        }).frame(maxWidth: .infinity)
+                        InlineMessage(elementId: "dashboard-announcement", onActionClick: { message, actionValue, actionName in
+                            CustomerIO.shared.track(name: "inline custom button action", properties: [
+                                "source": "onActionClick View callback",
+                                "delivery-id": message.deliveryId ?? "(none)",
+                                "message-id": message.messageId,
+                                "action-value": actionValue,
+                                "action-name": actionName
+                            ])
+                        })
                         ColorButton("Send Random Event") {
                             switch Int.random(in: 0 ..< 3) {
                             case 0:
@@ -127,6 +133,9 @@ struct DashboardView: View {
                                 }
                             }
                         }.setAppiumId("Show Push Prompt Button")
+
+                        InlineMessage(elementId: "dashboard-announcement-code")
+
                         ColorButton("Logout") {
                             CustomerIO.shared.clearIdentify()
 
@@ -135,6 +144,9 @@ struct DashboardView: View {
                     }
 
                     EnvironmentText()
+
+                    Text("This screen contains inline in-app Views with elementIds: dashboard-announcement, dashboard-announcement-code")
+                        .font(.caption)
                 }
                 .padding()
             }
