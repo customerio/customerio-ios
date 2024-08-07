@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 // Event listener for interactions and state changes to an inline inapp message that's rendered.
-public protocol GistInlineInAppMessageViewDelegate: AnyObject {
+public protocol GistInlineMessageUIViewDelegate: AnyObject {
     // After a message is finished rendering and the size may have changed.
     func onMessageRendered(width: CGFloat, height: CGFloat)
     // If there is no longer any messages to be shown.
@@ -25,7 +25,7 @@ public protocol GistInlineInAppMessageViewDelegate: AnyObject {
 
  This UIView is designed to not be opinionated on how an inline in-app message is displayed in an app. Anyone (including customers) can create a wrapper around this UIView in their UIKit or SwiftUI app and modify how in-app messages are shown.
  */
-public class GistInlineInAppMessageView: UIView {
+public class GistInlineMessageUIView: UIView {
     private var localMessageQueue: MessageQueueManager {
         DIGraphShared.shared.messageQueueManager
     }
@@ -67,7 +67,7 @@ public class GistInlineInAppMessageView: UIView {
         contentSize = .init(width: newWidth, height: newHeight)
     }
 
-    public weak var delegate: GistInlineInAppMessageViewDelegate?
+    public weak var delegate: GistInlineMessageUIViewDelegate?
 
     // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
     // There is currently no easy way to know when the inline View has finished processing the fetch.
@@ -202,7 +202,7 @@ public class GistInlineInAppMessageView: UIView {
     }
 }
 
-extension GistInlineInAppMessageView: InlineMessageManagerDelegate {
+extension GistInlineMessageUIView: InlineMessageManagerDelegate {
     // This function is called by WebView when the content's size changes.
     public func sizeChanged(width: CGFloat, height: CGFloat) {
         Task { @MainActor in // only update UI on main thread. This delegate function may not get called from UI thread.

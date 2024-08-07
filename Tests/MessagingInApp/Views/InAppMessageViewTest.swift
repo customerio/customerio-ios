@@ -6,7 +6,7 @@ import XCTest
 
 class InAppMessageViewTest: IntegrationTest {
     private let engineWebMock = EngineWebInstanceMock()
-    private let inlineMessageDelegateMock = InAppMessageViewActionDelegateMock()
+    private let inlineMessageDelegateMock = InlineMessageUIViewDelegateMock()
     private let eventListenerMock = InAppEventListenerMock()
     private let deeplinkUtilMock = DeepLinkUtilMock()
 
@@ -36,7 +36,7 @@ class InAppMessageViewTest: IntegrationTest {
     func test_whenViewConstructedUsingStoryboards_expectCheckForMessagesToDisplay() {
         let queueMock = setupQueueMock()
 
-        let view = InAppMessageView(coder: EmptyNSCoder())!
+        let view = InlineMessageUIView(coder: EmptyNSCoder())!
 
         // We do not check messages until elementId is set.
         XCTAssertFalse(queueMock.mockCalled)
@@ -57,7 +57,7 @@ class InAppMessageViewTest: IntegrationTest {
         let queueMock = setupQueueMock()
         queueMock.getInlineMessagesReturnValue = []
 
-        let view = InAppMessageView(coder: EmptyNSCoder())!
+        let view = InlineMessageUIView(coder: EmptyNSCoder())!
 
         XCTAssertFalse(isInlineViewVisible(view)) // Assert View is in dismissed state
 
@@ -72,7 +72,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenElementId = String.random
         queueMock.getInlineMessagesReturnValue = []
 
-        _ = InAppMessageView(elementId: givenElementId)
+        _ = InlineMessageUIView(elementId: givenElementId)
 
         XCTAssertEqual(queueMock.getInlineMessagesCallsCount, 1)
 
@@ -85,7 +85,7 @@ class InAppMessageViewTest: IntegrationTest {
         let queueMock = setupQueueMock()
         queueMock.getInlineMessagesReturnValue = []
 
-        let view = InAppMessageView(elementId: .random)
+        let view = InlineMessageUIView(elementId: .random)
 
         XCTAssertFalse(isInlineViewVisible(view)) // Assert View is in dismissed state
     }
@@ -96,7 +96,7 @@ class InAppMessageViewTest: IntegrationTest {
     func test_displayInAppMessage_givenNoMessageAvailable_expectDoNotDisplayAMessage() async {
         await simulateSdkFetchedMessages([], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: .random)
+        let inlineView = InlineMessageUIView(elementId: .random)
 
         XCTAssertFalse(isInlineViewVisible(inlineView))
         XCTAssertNil(getInAppMessage(forView: inlineView)) // expect not in process of rendering a message
@@ -107,7 +107,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
@@ -122,7 +122,7 @@ class InAppMessageViewTest: IntegrationTest {
 
         await simulateSdkFetchedMessages(givenInlineMessages, verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenElementId)
+        let inlineView = InlineMessageUIView(elementId: givenElementId)
 
         await onDoneRenderingInAppMessage(givenInlineMessages[0], insideOfInlineView: inlineView)
 
@@ -142,7 +142,7 @@ class InAppMessageViewTest: IntegrationTest {
         // start with no messages available.
         await simulateSdkFetchedMessages([], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenElementId)
+        let view = InlineMessageUIView(elementId: givenElementId)
         XCTAssertFalse(isInlineViewVisible(view))
         XCTAssertNil(getInAppMessage(forView: view)) // expect no message rendering.
 
@@ -171,7 +171,7 @@ class InAppMessageViewTest: IntegrationTest {
             return []
         }
 
-        var view: InAppMessageView? = InAppMessageView(elementId: .random)
+        var view: InlineMessageUIView? = InlineMessageUIView(elementId: .random)
 
         DIGraphShared.shared.eventBusHandler.postEvent(InAppMessagesFetchedEvent())
 
@@ -188,7 +188,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
 
         let webViewBeforeFetch = inlineView.inAppMessageView
 
@@ -205,7 +205,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenOldInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenOldInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenOldInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenOldInlineMessage.elementId!)
         let webViewBeforeFetch = inlineView.inAppMessageView
 
         // Make sure message is a new message, but has same elementId.
@@ -227,7 +227,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
 
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
@@ -253,7 +253,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessageThatExpires = Message(elementId: .random)
         await simulateSdkFetchedMessages([givenMessageDisplayed, givenMessageThatExpires], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenMessageDisplayed.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenMessageDisplayed.elementId!)
 
         await onDoneRenderingInAppMessage(givenMessageDisplayed, insideOfInlineView: inlineView)
 
@@ -280,7 +280,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
         XCTAssertTrue(isInlineViewVisible(inlineView))
 
@@ -296,7 +296,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessages = [Message(elementId: givenElementId), Message(elementId: givenElementId)]
         await simulateSdkFetchedMessages(givenMessages, verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenElementId)
+        let view = InlineMessageUIView(elementId: givenElementId)
 
         await onDoneRenderingInAppMessage(givenMessages[0], insideOfInlineView: view)
         XCTAssertTrue(isInlineViewVisible(view))
@@ -318,7 +318,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessages = [Message(elementId: givenElementId), Message(elementId: givenElementId)]
         await simulateSdkFetchedMessages(givenMessages, verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenElementId)
+        let view = InlineMessageUIView(elementId: givenElementId)
 
         // On first message, expect the loading view to be hidden
         await onDoneRenderingInAppMessage(givenMessages[0], insideOfInlineView: view)
@@ -350,7 +350,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenNewMessageFetched = Message(elementId: givenElementId)
         await simulateSdkFetchedMessages([givenMessageThatGetsClosed], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenMessageThatGetsClosed.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenMessageThatGetsClosed.elementId!)
         await onDoneRenderingInAppMessage(givenMessageThatGetsClosed, insideOfInlineView: inlineView)
         XCTAssertTrue(isInlineViewVisible(inlineView))
         await onCloseActionButtonPressed(onInlineView: inlineView)
@@ -369,8 +369,8 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessages = [Message(elementId: givenElementId)]
         await simulateSdkFetchedMessages(givenMessages, verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView1 = InAppMessageView(elementId: givenElementId)
-        let inlineView2 = InAppMessageView(elementId: givenElementId)
+        let inlineView1 = InlineMessageUIView(elementId: givenElementId)
+        let inlineView2 = InlineMessageUIView(elementId: givenElementId)
 
         await onDoneRenderingInAppMessage(givenMessages[0], insideOfInlineView: inlineView1)
         await onDoneRenderingInAppMessage(givenMessages[0], insideOfInlineView: inlineView2)
@@ -395,7 +395,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenHeightUserSetsOnView: CGFloat = 100
         let givenWidthUserSetsOnView: CGFloat = 100
 
-        let view = InAppMessageView(elementId: .random)
+        let view = InlineMessageUIView(elementId: .random)
         // After the constructor is called, the SDK has already created a height constraint if one does not yet exist.
         // Then, the customer may decide to create another one, although our documentation suggests not to.
         NSLayoutConstraint.activate([view.heightAnchor.constraint(equalToConstant: givenHeightUserSetsOnView)])
@@ -416,7 +416,7 @@ class InAppMessageViewTest: IntegrationTest {
 
         let givenWidthUserSetsOnView: CGFloat = 100
 
-        let view = InAppMessageView(elementId: givenElementId)
+        let view = InlineMessageUIView(elementId: givenElementId)
         NSLayoutConstraint.activate([view.widthAnchor.constraint(equalToConstant: givenWidthUserSetsOnView)])
 
         // The SDK fetches a message and renders it. We expect the View displays this message.
@@ -438,7 +438,7 @@ class InAppMessageViewTest: IntegrationTest {
 
         let givenWidthUserSetsOnView: CGFloat = 100
 
-        let view = InAppMessageView(elementId: .random)
+        let view = InlineMessageUIView(elementId: .random)
         NSLayoutConstraint.activate([view.widthAnchor.constraint(equalToConstant: givenWidthUserSetsOnView)])
 
         // We expect the SDK modifies the View's height, but not the width.
@@ -455,7 +455,7 @@ class InAppMessageViewTest: IntegrationTest {
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         inlineView.onActionDelegate = inlineMessageDelegateMock
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
@@ -477,7 +477,7 @@ class InAppMessageViewTest: IntegrationTest {
         let gistInAppInlineMessage = InAppMessage(gistMessage: givenInlineMessage)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
@@ -498,12 +498,12 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage2 = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage1, givenInlineMessage2], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineActionDelegate1 = InAppMessageViewActionDelegateMock()
-        let inlineActionDelegate2 = InAppMessageViewActionDelegateMock()
+        let inlineActionDelegate1 = InlineMessageUIViewDelegateMock()
+        let inlineActionDelegate2 = InlineMessageUIViewDelegateMock()
         // Create two inline in app views and assign individual delegates
-        let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
+        let inlineView1 = InlineMessageUIView(elementId: givenInlineMessage1.elementId!)
         inlineView1.onActionDelegate = inlineActionDelegate1
-        let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
+        let inlineView2 = InlineMessageUIView(elementId: givenInlineMessage2.elementId!)
         inlineView2.onActionDelegate = inlineActionDelegate2
 
         // Render both the views
@@ -540,7 +540,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenMessage.elementId!)
+        let view = InlineMessageUIView(elementId: givenMessage.elementId!)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
         assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
@@ -556,7 +556,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenMessage.elementId!)
+        let view = InlineMessageUIView(elementId: givenMessage.elementId!)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
         assert(view: view.inAppMessageView, isShowing: true, inInlineView: view)
@@ -579,7 +579,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenNextMessageInQueue = Message(elementId: givenElementId)
         await simulateSdkFetchedMessages([givenMessage, givenNextMessageInQueue], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenElementId)
+        let view = InlineMessageUIView(elementId: givenElementId)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
 
@@ -598,7 +598,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenMessage.elementId!)
+        let view = InlineMessageUIView(elementId: givenMessage.elementId!)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
 
@@ -618,7 +618,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let view = InAppMessageView(elementId: givenMessage.elementId!)
+        let view = InlineMessageUIView(elementId: givenMessage.elementId!)
 
         await onDoneRenderingInAppMessage(givenMessage, insideOfInlineView: view)
 
@@ -642,7 +642,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
@@ -664,7 +664,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         XCTAssertTrue(isInlineViewVisible(inlineView))
@@ -687,12 +687,12 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: false)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         // Expect that when a new inline View is being constructed, it does not show the non-persistent message that has already been shown.
-        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let differentView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertNil(getInAppMessage(forView: differentView))
     }
 
@@ -701,11 +701,11 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: false)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
 
         // Expect that when a new inline View is being constructed, it shows the same non-persistent message that has not been shown yet.
-        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let differentView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: differentView), givenInlineMessage)
     }
 
@@ -714,12 +714,12 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: true)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         // Expect that when a new inline View is being constructed, it shows the persistent message that has already been shown.
-        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let differentView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: differentView), givenInlineMessage)
     }
 
@@ -728,7 +728,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: true)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
@@ -736,7 +736,7 @@ class InAppMessageViewTest: IntegrationTest {
         await onCloseActionButtonPressed(onInlineView: inlineView)
 
         // Expect that when a new inline View is being constructed, it does not show the persistent message that has already been shown.
-        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let differentView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertNil(getInAppMessage(forView: differentView))
     }
 
@@ -745,7 +745,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message(elementId: .random, persistent: true)
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
@@ -756,7 +756,7 @@ class InAppMessageViewTest: IntegrationTest {
         XCTAssertEqual(getInAppMessage(forView: inlineView), givenInlineMessage)
 
         // Expect we will not show the message again in the future
-        let differentView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let differentView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         XCTAssertNil(getInAppMessage(forView: differentView))
     }
 
@@ -767,7 +767,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        _ = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        _ = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
 
         assert(message: givenInlineMessage, didTrack: false, metric: "opened")
     }
@@ -777,7 +777,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didTrack: true, metric: "opened")
@@ -790,7 +790,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
@@ -803,7 +803,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didTrack: false, metric: "clicked")
@@ -822,7 +822,7 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView = InAppMessageView(elementId: givenInlineMessage.elementId!)
+        let inlineView = InlineMessageUIView(elementId: givenInlineMessage.elementId!)
         await onDoneRenderingInAppMessage(givenInlineMessage, insideOfInlineView: inlineView)
 
         assert(message: givenInlineMessage, didCallMessageShownEventListener: true)
@@ -836,8 +836,8 @@ class InAppMessageViewTest: IntegrationTest {
         let givenInlineMessage2 = Message.randomInline
         await simulateSdkFetchedMessages([givenInlineMessage1, givenInlineMessage2], verifyInlineViewNotifiedOfFetch: nil)
 
-        let inlineView1 = InAppMessageView(elementId: givenInlineMessage1.elementId!)
-        let inlineView2 = InAppMessageView(elementId: givenInlineMessage2.elementId!)
+        let inlineView1 = InlineMessageUIView(elementId: givenInlineMessage1.elementId!)
+        let inlineView2 = InlineMessageUIView(elementId: givenInlineMessage2.elementId!)
 
         await onDoneRenderingInAppMessage(givenInlineMessage1, insideOfInlineView: inlineView1)
 
@@ -862,7 +862,7 @@ extension InAppMessageViewTest {
     }
 
     // Only tells you if the View is visible in the UI to the user. Does not tell you if the View is in the process of rendering a message.
-    func isInlineViewVisible(_ view: InAppMessageView) -> Bool {
+    func isInlineViewVisible(_ view: InlineMessageUIView) -> Bool {
         guard let viewHeightConstraint = view.heightConstraint else {
             return false
         }
@@ -871,11 +871,11 @@ extension InAppMessageViewTest {
     }
 
     // Tells you the message the Inline View is either rendering or has already rendered.
-    func getInAppMessage(forView view: InAppMessageView) -> Message? {
+    func getInAppMessage(forView view: InlineMessageUIView) -> Message? {
         view.inAppMessageView?.inAppMessageView?.message
     }
 
-    func assert(view: UIView?, isShowing: Bool, inInlineView inlineView: InAppMessageView, file: StaticString = #file, line: UInt = #line) {
+    func assert(view: UIView?, isShowing: Bool, inInlineView inlineView: InlineMessageUIView, file: StaticString = #file, line: UInt = #line) {
         if isShowing {
             guard let view = view else {
                 XCTFail("View is nil, therefore it is not showing", file: file, line: line)

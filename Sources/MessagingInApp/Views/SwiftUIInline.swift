@@ -12,7 +12,7 @@ import SwiftUI
 
  This is the public View that customers use in their SwiftUI app.
  */
-public struct InlineInAppMessage: View {
+public struct InlineMessage: View {
     let elementId: String
     let onActionClick: ((InAppMessage, String, String) -> Void)?
 
@@ -30,7 +30,7 @@ public struct InlineInAppMessage: View {
 
         // The ZStack is used to overlay the loading indicator on top of the in-app message view.
         ZStack {
-            InAppMessageViewRepresentable(elementId: elementId, onActionClick: onActionClick, onHeightChange: { newHeight in
+            InlineMessageUIViewRepresentable(elementId: elementId, onActionClick: onActionClick, onHeightChange: { newHeight in
                 isChangingMessages = false // if the loading view is currently being shown, hide it.
 
                 withAnimation(.easeIn(duration: 0.3)) {
@@ -55,7 +55,7 @@ public struct InlineInAppMessage: View {
 
 // UIViewRepresentable to wrap the UIKit in-app message View. Required to use UIKit views in SwiftUI.
 // Mostly used to send events between the two frameworks: SwiftUI <--> UIKit.
-public struct InAppMessageViewRepresentable: UIViewRepresentable {
+public struct InlineMessageUIViewRepresentable: UIViewRepresentable {
     public var elementId: String
     public var onActionClick: ((InAppMessage, String, String) -> Void)?
     public var onHeightChange: (CGFloat) -> Void
@@ -68,24 +68,24 @@ public struct InAppMessageViewRepresentable: UIViewRepresentable {
         self.willChangeMessage = willChangeMessage
     }
 
-    public func makeUIView(context: Context) -> GistInlineInAppMessageView {
-        let inlineMessageView = GistInlineInAppMessageView(elementId: elementId)
+    public func makeUIView(context: Context) -> GistInlineMessageUIView {
+        let inlineMessageView = GistInlineMessageUIView(elementId: elementId)
 
         inlineMessageView.delegate = context.coordinator
 
         return inlineMessageView
     }
 
-    public func updateUIView(_ uiView: GistInlineInAppMessageView, context: Context) {}
+    public func updateUIView(_ uiView: GistInlineMessageUIView, context: Context) {}
 
     public func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    public class Coordinator: NSObject, GistInlineInAppMessageViewDelegate {
-        var parent: InAppMessageViewRepresentable
+    public class Coordinator: NSObject, GistInlineMessageUIViewDelegate {
+        var parent: InlineMessageUIViewRepresentable
 
-        init(_ parent: InAppMessageViewRepresentable) {
+        init(_ parent: InlineMessageUIViewRepresentable) {
             self.parent = parent
         }
 
