@@ -49,7 +49,7 @@ struct DashboardView: View {
                     }
                     Text("What would you like to test?")
                     Group {
-                        InAppMessageViewRepresentable(elementId: "dashboard-announcement", onActionClick: { _, _, _ in
+                        InlineMessage(elementId: "dashboard-announcement", onActionClick: { _, _, _ in
                             print("Custom callback received")
                         }).frame(maxWidth: .infinity)
                         ColorButton("Send Random Event") {
