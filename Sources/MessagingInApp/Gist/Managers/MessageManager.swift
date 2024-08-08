@@ -6,86 +6,88 @@ public enum GistMessageActions: String {
     case close = "gist://close"
 }
 
-class MessageManager: EngineWebDelegate {
-    private var engine: EngineWebInstance
+/**
+ Handles business logic for in-app message events such as loading messages and handling when action buttons are clicked.
+
+ This class is meant to be extended and not constructed directly. It holds the common logic between all in-app message types.
+
+ Usage:
+ * Extend class.
+ * Override any of the abstract functions in class to implement custom logic for when certain events happen. Depending on the type of message you are displaying, you may want to handle events differently.
+ */
+class MessageManager {
+    var engine: EngineWebInstance
     private let siteId: String
-    private var messagePosition: MessagePosition = .top
-    var messageLoaded = false
-    private var modalViewManager: ModalViewManager?
-    var isMessageEmbed = false
     let currentMessage: Message
-    var gistView: GistView!
+    let gistView: GistView
     private var currentRoute: String
     private var elapsedTimer = ElapsedTimer()
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
+    private var deeplinkUtil: DeepLinkUtil = DIGraphShared.shared.deepLinkUtil
+    let eventBusHandler: EventBusHandler = DIGraphShared.shared.eventBusHandler
 
     init(siteId: String, message: Message) {
         self.siteId = siteId
         self.currentMessage = message
-        self.currentRoute = message.messageId
-
+        self.currentRoute = message.templateId
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
             instanceId: message.instanceId,
             endpoint: Settings.Network.engineAPI,
-            messageId: message.messageId,
+            messageId: message.templateId,
             properties: message.toEngineRoute().properties
         )
 
+        // When EngineWeb instance is constructed, it will begin the rendering process for the in-app message.
+        // This means that the message begins the process of loading.
+        // Start a timer that helps us determine how long a message took to load/render.
+        elapsedTimer.start(title: "Loading message with id: \(currentMessage.templateId)")
+
         self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
-        engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
+        engine.delegate = self
     }
 
-    var isShowingMessage: Bool {
-        guard let modalViewManager = modalViewManager else {
-            return false
-        }
-
-        return modalViewManager.isShowingMessage
+    deinit {
+        self.stopAndCleanup()
     }
 
-    func showMessage(position: MessagePosition) {
-        elapsedTimer.start(title: "Displaying modal for message: \(currentMessage.messageId)")
-        messagePosition = position
+    // The manager instance is no longer needed. Create a new instance when you want to display another message.
+    // Note: This function does not remove the WebView from the view hierarchy. Do that from the UI layer.
+    func stopAndCleanup() {
+        // First, stop sending events to the delegates.
+        delegate = nil
+        gistView.delegate = nil
+
+        // Then, cleanup resources.
+        engine.cleanEngineWeb()
     }
 
-    func getMessageView() -> GistView {
-        isMessageEmbed = true
-        return gistView
+    // MARK: event listeners that subclasses override to handle events.
+
+    // Called when close action button pressed.
+    func onCloseAction() {
+        // Common logic for all types of messages when a close button is pressed.
+        removePersistentMessage()
+
+        // subclass can override method and call super method.
     }
 
-    private func loadModalMessage() {
-        if messageLoaded {
-            modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
-            modalViewManager?.showModalView { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.messageShown(message: self.currentMessage)
-                self.elapsedTimer.end()
-            }
-        }
+    // Called when a deep link action button was clicked in a message and the SDK opened the deep link.
+    func onDeepLinkOpened() {
+        // expect subclass implements this.
     }
 
-    func cancelShowingMessage() {
-        guard let modalViewManager = modalViewManager else {
-            return // no message being shown to cancel
-        }
-
-        engine.delegate = nil // to make sure we do not get a callback when message loaded and we try to show it.
-
-        modalViewManager.cancel()
+    // Called when the message has finished loading and the WebView is ready to display the message.
+    func onDoneLoadingMessage(routeLoaded: String, onComplete: @escaping () -> Void) {
+        // expect subclass implements this.
     }
 
-    func dismissMessage(completionHandler: (() -> Void)? = nil) {
-        if let modalViewManager = modalViewManager {
-            modalViewManager.dismissModalView { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.messageDismissed(message: self.currentMessage)
-                completionHandler?()
-            }
-        }
+    // Called when an action button is clicked and the action is to show a different in-app message.
+    func onReplaceMessage(newMessageToShow: Message) {
+        // subclass should implement
     }
 
     func removePersistentMessage() {
@@ -95,27 +97,49 @@ class MessageManager: EngineWebDelegate {
         }
     }
 
+    func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
+        // subclass should implement
+    }
+
+    // In-app messages have the ability to show different messages. The HTML message handles showing the next message. This is simply a callback function that's called when
+    // this event gets triggered and a new message will be shown.
+    func willChangeMessage(newTemplateId: String) {
+        // subclass should implement
+    }
+}
+
+// The main logic of this class is being the delegate for the EngineWeb instance.
+// This class's delegate responsibilities are to run the logic that's common to all types of in-app messages and call the event listeners that subclasses override.
+extension MessageManager: EngineWebDelegate {
     func bootstrapped() {
         Logger.instance.debug(message: "Bourbon Engine bootstrapped")
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
-        if currentMessage.messageId == "" {
+        if currentMessage.templateId == "" {
             engine.cleanEngineWeb()
         }
     }
 
-    // swiftlint:disable cyclomatic_complexity
+    func trackClickedMetric(action: String, name: String) {
+        // a close action does not count as a clicked action.
+        if action != "gist://close" {
+            if let deliveryId = currentMessage.deliveryId {
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+            }
+        }
+    }
+
     func tap(name: String, action: String, system: Bool) {
         Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
-        delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        onTapAction(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
+        trackClickedMetric(action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {
             switch url.host {
             case "close":
                 Logger.instance.info(message: "Dismissing from action: \(action)")
-                removePersistentMessage()
-                dismissMessage()
+                onCloseAction()
             case "loadPage":
                 if let page = url.queryParameters?["url"],
                    let pageUrl = URL(string: page),
@@ -123,18 +147,12 @@ class MessageManager: EngineWebDelegate {
                     UIApplication.shared.open(pageUrl)
                 }
             case "showMessage":
-                if currentMessage.isEmbedded {
-                    showNewMessage(url: url)
-                } else {
-                    dismissMessage {
-                        self.showNewMessage(url: url)
-                    }
-                }
+                showNewMessage(url: url)
             default: break
             }
         } else {
             if system {
-                if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
+                if let url = URL(string: action) {
                     /*
                      There are 2 types of deep links:
                      1. Universal Links which give URL format of a webpage using `http://` or `https://`
@@ -151,60 +169,19 @@ class MessageManager: EngineWebDelegate {
                      ```
                      3. Customer returned `false` from ^^^ function.
                      */
-                    let handledByUserActivity = continueNSUserActivity(webpageURL: url)
-
-                    if !handledByUserActivity {
-                        // If `continueNSUserActivity` could not handle the URL, try opening it directly.
-                        UIApplication.shared.open(url) { handled in
-                            if handled {
-                                Logger.instance.info(message: "Dismissing from system action: \(action)")
-                                self.dismissMessage()
-                            } else {
-                                Logger.instance.info(message: "System action not handled")
-                            }
-                        }
-                    } else {
-                        Logger.instance.info(message: "Handled by NSUserActivity")
-                        dismissMessage()
-                    }
+                    deeplinkUtil.handleDeepLink(url)
+                    onDeepLinkOpened()
                 }
             }
         }
     }
 
-    // swiftlint:enable cyclomatic_complexity
-
-    // Check if
-    func continueNSUserActivity(webpageURL: URL) -> Bool {
-        guard #available(iOS 10.0, *) else {
-            return false
-        }
-        guard isLinkValidNSUserActivityLink(webpageURL) else {
-            return false
-        }
-
-        let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        openLinkInHostAppActivity.webpageURL = webpageURL
-
-        let didHostAppHandleLink = UIApplication.shared.delegate?.application?(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in }) ?? false
-
-        return didHostAppHandleLink
-    }
-
-    // The NSUserActivity.webpageURL property permits only specific URL schemes. This function exists to validate the scheme and prevent potential exceptions due to incompatible URL formats.
-    func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
-        guard let schemeOfUrl = url.scheme else {
-            return false
-        }
-
-        // Constants to hold allowed URL schemes
-        let allowedSchemes = ["http", "https"]
-
-        return allowedSchemes.contains(schemeOfUrl)
-    }
-
     func routeChanged(newRoute: String) {
         Logger.instance.info(message: "Message route changed to: \(newRoute)")
+
+        // Update the GistView's Message for our tests to verify the message being displayed.
+        gistView.message = Message(templateId: newRoute)
+        willChangeMessage(newTemplateId: newRoute)
     }
 
     func sizeChanged(width: CGFloat, height: CGFloat) {
@@ -218,30 +195,18 @@ class MessageManager: EngineWebDelegate {
     }
 
     func error() {
-        Logger.instance.error(message: "Error loading message with id: \(currentMessage.messageId)")
+        Logger.instance.error(message: "Error loading message with id: \(currentMessage.templateId)")
         delegate?.messageError(message: currentMessage)
     }
 
     func routeLoaded(route: String) {
         Logger.instance.info(message: "Message loaded with route: \(route)")
-
         currentRoute = route
-        if route == currentMessage.messageId, !messageLoaded {
-            messageLoaded = true
-            if isMessageEmbed {
-                delegate?.messageShown(message: currentMessage)
-            } else {
-                if UIApplication.shared.applicationState == .active {
-                    loadModalMessage()
-                } else {
-                    Gist.shared.removeMessageManager(instanceId: currentMessage.instanceId)
-                }
-            }
-        }
-    }
 
-    deinit {
-        engine.cleanEngineWeb()
+        onDoneLoadingMessage(routeLoaded: currentRoute) {
+            self.delegate?.messageShown(message: self.currentMessage)
+            self.elapsedTimer.end()
+        }
     }
 
     private func showNewMessage(url: URL) {
@@ -253,9 +218,8 @@ class MessageManager: EngineWebDelegate {
            let convertedProps = convertToDictionary(text: decodedString) {
             properties = convertedProps
         }
-
         if let messageId = url.queryParameters?["messageId"] {
-            _ = Gist.shared.showMessage(Message(messageId: messageId, properties: properties))
+            onReplaceMessage(newMessageToShow: Message(messageId: messageId, properties: properties))
         }
     }
 

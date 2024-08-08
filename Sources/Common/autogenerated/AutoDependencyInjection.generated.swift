@@ -80,6 +80,9 @@ extension DIGraphShared {
         _ = logger
         countDependenciesResolved += 1
 
+        _ = deepLinkUtil
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -262,6 +265,18 @@ extension DIGraphShared {
 
     private func _get_logger() -> Logger {
         ConsoleLogger()
+    }
+
+    // DeepLinkUtil
+    @available(iOSApplicationExtension, unavailable)
+    public var deepLinkUtil: DeepLinkUtil {
+        getOverriddenInstance() ??
+            newDeepLinkUtil
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newDeepLinkUtil: DeepLinkUtil {
+        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 
     // DeviceMetricsGrabber

@@ -66,15 +66,13 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 }
 
 extension MessagingInAppImplementation: GistDelegate {
-    public func embedMessage(message: Message, elementId: String) {}
-
     // Aka: message opened
     public func messageShown(message: Message) {
         logger.debug("in-app message opened. \(message.describeForLogs)")
 
         eventListener?.messageShown(message: InAppMessage(gistMessage: message))
 
-        if let deliveryId = getDeliveryId(from: message) {
+        if let deliveryId = message.deliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
@@ -94,25 +92,10 @@ extension MessagingInAppImplementation: GistDelegate {
     public func action(message: Message, currentRoute: String, action: String, name: String) {
         logger.debug("in-app action made. \(action), \(message.describeForLogs)")
 
-        // a close action does not count as a clicked action.
-        if action != "gist://close" {
-            if let deliveryId = getDeliveryId(from: message) {
-                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
-            }
-        }
-
         eventListener?.messageActionTaken(
             message: InAppMessage(gistMessage: message),
             actionValue: action,
             actionName: name
         )
-    }
-
-    private func getDeliveryId(from message: Message) -> String? {
-        guard let deliveryId = message.gistProperties.campaignId else {
-            return nil
-        }
-
-        return deliveryId
     }
 }

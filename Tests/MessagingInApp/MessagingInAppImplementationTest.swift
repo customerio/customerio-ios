@@ -250,37 +250,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 0)
     }
 
-    func test_inAppTracking_givenCustomAction_expectBQTrackInAppClicked() async {
-        // override event bus handler to mock it so we can capture events
-        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
-
-        await waitForExpectations(initializeModule())
-
-        let givenGistMessage = Message.random
-        let expectedInAppMessage = InAppMessage(gistMessage: givenGistMessage)
-        let givenCurrentRoute = String.random
-        let givenAction = String.random
-        let givenName = String.random
-        let givenMetaData = ["actionName": givenName, "actionValue": givenAction]
-
-        messagingInApp.action(
-            message: givenGistMessage,
-            currentRoute: givenCurrentRoute,
-            action: givenAction,
-            name: givenName
-        )
-
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? TrackInAppMetricEvent else {
-            XCTFail("captured arguments must not be nil")
-            return
-        }
-
-        XCTAssertEqual(postEventArgument.deliveryID, expectedInAppMessage.deliveryId)
-        XCTAssertEqual(postEventArgument.event, InAppMetric.clicked.rawValue)
-        XCTAssertEqual(postEventArgument.params, givenMetaData)
-    }
-
     func test_dismissMessage_givenNoInAppMessage_expectNoError() async {
         await waitForExpectations(initializeModule())
 

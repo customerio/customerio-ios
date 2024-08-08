@@ -2,20 +2,29 @@
 import Foundation
 
 extension Message {
-    convenience init(messageId: String = .random, campaignId: String = .random, pageRule: String? = nil, queueId: String? = .random) {
+    convenience init(messageId: String = .random, campaignId: String = .random, pageRule: String? = nil, queueId: String = .random, elementId: String? = nil, priority: Int? = nil, persistent: Bool = false) {
         var gistProperties = [
-            "gist": [
-                "campaignId": campaignId
-            ]
-        ]
+            "campaignId": campaignId,
+            "persistent": persistent
+        ] as [String: Any]
+
+        if let elementId = elementId {
+            gistProperties["elementId"] = elementId
+        }
         if let pageRule = pageRule {
-            gistProperties["gist"]?["routeRuleApple"] = pageRule
+            gistProperties["routeRuleApple"] = pageRule
         }
 
-        self.init(queueId: queueId, messageId: messageId, properties: gistProperties)
+        self.init(queueId: queueId, priority: priority, messageId: messageId, properties: [
+            "gist": gistProperties
+        ])
     }
 
     static var random: Message {
-        Message(messageId: .random, campaignId: .random)
+        Message(elementId: nil)
+    }
+
+    static var randomInline: Message {
+        Message(elementId: .random)
     }
 }

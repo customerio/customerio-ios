@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioMessagingInApp
 import UIKit
 
 enum CustomDataSource {
@@ -8,6 +9,7 @@ enum CustomDataSource {
 }
 
 class CustomDataViewController: BaseViewController {
+    @IBOutlet var inlineInAppMessageView: InlineMessageUIView!
     @IBOutlet var eventNameTextField: ThemeTextField!
     @IBOutlet var propertyValueTextField: ThemeTextField!
     @IBOutlet var propertyNameTextField: ThemeTextField!
@@ -29,7 +31,12 @@ class CustomDataViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupInlineInAppMessage()
         addAccessibilityIdentifiersForAppium()
+    }
+
+    func setupInlineInAppMessage() {
+        inlineInAppMessageView.elementId = "custom-screen"
     }
 
     func addAccessibilityIdentifiersForAppium() {
