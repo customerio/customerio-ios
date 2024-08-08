@@ -1,3 +1,9 @@
+## [3.3.3](https://github.com/customerio/customerio-ios/compare/3.3.2...3.3.3) (2024-08-08)
+
+### Bug Fixes
+
+* tuist users not able to install CIO iOS SDK SPM manifest issue ([#791](https://github.com/customerio/customerio-ios/issues/791)) ([cd1346a](https://github.com/customerio/customerio-ios/commit/cd1346a8ee9bd7c0b81c7e92d4ffc7507a904d9f))
+
 ## [3.3.2](https://github.com/customerio/customerio-ios/compare/3.3.1...3.3.2) (2024-06-27)
 
 ### Bug Fixes
