@@ -64,6 +64,9 @@ extension DIGraphShared {
         _ = gistQueueNetwork
         countDependenciesResolved += 1
 
+        _ = viewAnimationRunner
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -96,6 +99,16 @@ extension DIGraphShared {
 
     private var newGistQueueNetwork: GistQueueNetwork {
         GistQueueNetworkImpl()
+    }
+
+    // ViewAnimationRunner
+    var viewAnimationRunner: ViewAnimationRunner {
+        getOverriddenInstance() ??
+            newViewAnimationRunner
+    }
+
+    private var newViewAnimationRunner: ViewAnimationRunner {
+        ViewAnimationRunnerImpl()
     }
 }
 
