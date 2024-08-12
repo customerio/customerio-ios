@@ -10,7 +10,7 @@ extension MessagingPushAPN: AppDelegateSwizzlerDelegate {
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
         // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
-        AppDelegateSwizzler.startSwizzlingIfPossible(self)
+        AppDelegateSwizzler.startSwizzling(self)
         // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method
         UIApplication.shared.registerForRemoteNotifications()
     }

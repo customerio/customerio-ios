@@ -21,7 +21,7 @@ extension MessagingPushFCM: AppDelegateSwizzlerDelegate {
 
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
-        AppDelegateSwizzler.startSwizzlingIfPossible(self)
+        AppDelegateSwizzler.startSwizzling(self)
         UIApplication.shared.registerForRemoteNotifications()
     }
 }
