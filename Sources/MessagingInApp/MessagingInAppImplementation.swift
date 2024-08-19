@@ -28,6 +28,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     func initialize() {
+        logger.debug("initializing in-app messaging with region: \(region)")
         inAppProvider.initialize(siteId: siteId, region: region, delegate: self, enableLogging: logLevel == .debug)
 
         // if identifier is already present, set the userToken again so in case if the customer was already identified and

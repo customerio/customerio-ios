@@ -19,6 +19,7 @@ class ModalViewManager {
     }
 
     func showModalView(completionHandler: @escaping () -> Void) {
+        Logger.instance.debug(message: "Showing modal view")
         viewController.view.isHidden = true
         window = getUIWindow()
         window.rootViewController = viewController
@@ -43,6 +44,7 @@ class ModalViewManager {
             UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
                 self.viewController.view.backgroundColor = UIColor.black.withAlphaComponent(0.2)
             }, completion: nil)
+            Logger.instance.debug(message: "Modal view shown")
             completionHandler()
         })
 
@@ -50,6 +52,7 @@ class ModalViewManager {
     }
 
     func dismissModalView(completionHandler: @escaping () -> Void) {
+        Logger.instance.debug(message: "Dismissing modal view")
         var finalPosition: CGFloat = 0
         switch position {
         case .top:
@@ -69,6 +72,7 @@ class ModalViewManager {
                 self.window?.isHidden = false
                 self.viewController.removeFromParent()
                 self.window = nil
+                Logger.instance.debug(message: "Modal view dismissed")
                 completionHandler()
             })
         })

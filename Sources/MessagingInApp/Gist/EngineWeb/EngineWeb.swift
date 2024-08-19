@@ -75,6 +75,7 @@ public class EngineWeb: NSObject {
     }
 
     public func cleanEngineWeb() {
+        Logger.instance.debug(message: "Cleaning EngineWeb")
         webView.removeFromSuperview()
         webView.configuration.userContentController.removeAllUserScripts()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gist")
