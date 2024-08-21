@@ -1,3 +1,9 @@
+## [2.14.1](https://github.com/customerio/customerio-ios/compare/2.14.0...2.14.1) (2024-08-21)
+
+### Bug Fixes
+
+* fetch remote messages on main queue ([#795](https://github.com/customerio/customerio-ios/issues/795)) ([9fc527b](https://github.com/customerio/customerio-ios/commit/9fc527b2f8feb0e5c2d2438f8d0a950cf17ab00f))
+
 ## [2.14.0](https://github.com/customerio/customerio-ios/compare/2.13.2...2.14.0) (2024-08-21)
 
 ### Features
