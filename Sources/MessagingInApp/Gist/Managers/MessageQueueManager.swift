@@ -70,6 +70,8 @@ class MessageQueueManager {
     }
 
     func fetchUserMessagesFromRemoteQueue() {
+        // Fetching user messages from remote queue should be done on main thread as it directly interacts with WebViews.
+        // Not doing so can cause crashes on wrapper frameworks like React Native.
         DispatchQueue.main.async {
             Logger.instance.debug(message: "Fetching user messages from remote queue")
             self.fetchUserMessages()
