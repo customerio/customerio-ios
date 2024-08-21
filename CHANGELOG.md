@@ -1,3 +1,9 @@
+## [2.14.0](https://github.com/customerio/customerio-ios/compare/2.13.2...2.14.0) (2024-08-21)
+
+### Features
+
+* fetch in-app messages on new profile identification ([#794](https://github.com/customerio/customerio-ios/issues/794)) ([13032c6](https://github.com/customerio/customerio-ios/commit/13032c6cbb3ea9ee11ca2a55aef322537c147525))
+
 ## [2.13.2](https://github.com/customerio/customerio-ios/compare/2.13.1...2.13.2) (2024-06-21)
 
 ### Bug Fixes
