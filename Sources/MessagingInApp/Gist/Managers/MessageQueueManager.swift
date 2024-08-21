@@ -70,8 +70,10 @@ class MessageQueueManager {
     }
 
     func fetchUserMessagesFromRemoteQueue() {
-        Logger.instance.debug(message: "Fetching user messages from remote queue")
-        fetchUserMessages()
+        DispatchQueue.main.async {
+            Logger.instance.debug(message: "Fetching user messages from remote queue")
+            self.fetchUserMessages()
+        }
     }
 
     @objc
