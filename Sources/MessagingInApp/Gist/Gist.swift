@@ -32,6 +32,7 @@ public class Gist: GistDelegate {
 
     public func setUserToken(_ userToken: String) {
         UserManager().setUserToken(userToken: userToken)
+        messageQueueManager.fetchUserMessagesFromRemoteQueue()
     }
 
     public func clearUserToken() {

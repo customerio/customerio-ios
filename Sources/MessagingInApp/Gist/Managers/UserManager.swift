@@ -9,10 +9,12 @@ class UserManager {
     }
 
     func setUserToken(userToken: String) {
+        Logger.instance.info(message: "User token set: \(userToken)")
         defaults.set(userToken, forKey: userTokenKey)
     }
 
     func clearUserToken() {
+        Logger.instance.info(message: "User token cleared")
         defaults.removeObject(forKey: userTokenKey)
     }
 }

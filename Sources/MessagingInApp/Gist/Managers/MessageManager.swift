@@ -50,6 +50,8 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func loadModalMessage() {
+        Logger.instance.debug(message: "Loading modal message with id: \(currentMessage.messageId), messageLoaded: \(messageLoaded)")
+
         if messageLoaded {
             modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
             modalViewManager?.showModalView { [weak self] in
@@ -61,6 +63,8 @@ class MessageManager: EngineWebDelegate {
     }
 
     func dismissMessage(completionHandler: (() -> Void)? = nil) {
+        Logger.instance.debug(message: "Dismissing message with id: \(currentMessage.messageId)")
+
         if let modalViewManager = modalViewManager {
             modalViewManager.dismissModalView { [weak self] in
                 guard let self = self else { return }
@@ -71,6 +75,8 @@ class MessageManager: EngineWebDelegate {
     }
 
     func removePersistentMessage() {
+        Logger.instance.debug(message: "Removing persistent message with id: \(currentMessage.messageId)")
+
         if currentMessage.gistProperties.persistent == true {
             Logger.instance.debug(message: "Persistent message dismissed, logging view")
             Gist.shared.logMessageView(message: currentMessage)

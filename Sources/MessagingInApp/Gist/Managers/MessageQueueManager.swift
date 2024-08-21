@@ -11,6 +11,7 @@ class MessageQueueManager {
         queueTimer?.invalidate()
         queueTimer = nil
 
+        Logger.instance.debug(message: "Scheduling fetch messages after interval \(interval) with skipQueueCheck \(skipQueueCheck)")
         queueTimer = Timer.scheduledTimer(
             timeInterval: interval,
             target: self,
@@ -23,6 +24,7 @@ class MessageQueueManager {
             // Since on app launch there's a short period where the applicationState is still set to "background"
             // We wait 1 second for the app to become active before checking for messages.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                Logger.instance.info(message: "Fetching user messages on setup")
                 self.fetchUserMessages()
             }
         }
@@ -61,9 +63,15 @@ class MessageQueueManager {
 
     private func addMessageToLocalStore(message: Message) {
         guard let queueId = message.queueId else {
+            Logger.instance.debug(message: "Message has no queueId, skipping.")
             return
         }
         localMessageStore.updateValue(message, forKey: queueId)
+    }
+
+    func fetchUserMessagesFromRemoteQueue() {
+        Logger.instance.debug(message: "Fetching user messages from remote queue")
+        fetchUserMessages()
     }
 
     @objc
@@ -78,9 +86,11 @@ class MessageQueueManager {
                             Logger.instance.info(message: "No changes to remote queue")
                         case .success(let responses):
                             guard let responses else {
+                                Logger.instance.error(message: "No responses found in remote queue")
                                 return
                             }
                             // To prevent us from showing expired / revoked messages, clear user messages from local queue.
+                            Logger.instance.info(message: "Clearing local store with \(self.localMessageStore.count) messages")
                             self.clearUserMessagesFromLocalStore()
                             Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
                             for queueMessage in responses {
@@ -128,6 +138,7 @@ class MessageQueueManager {
             Gist.shared.embedMessage(message: message, elementId: elementId)
             return
         } else {
+            Logger.instance.info(message: "Showing message with position \(position)")
             _ = Gist.shared.showMessage(message, position: position)
         }
     }
