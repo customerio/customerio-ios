@@ -43,6 +43,7 @@ public class Message {
         if let props = properties {
             self.properties = props
         }
+        self.gistProperties = gistProperties ?? GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
     }
 
     public convenience init(messageId: String, properties: [String: Any]?) {
