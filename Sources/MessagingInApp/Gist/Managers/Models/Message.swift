@@ -43,7 +43,36 @@ public class Message {
         if let props = properties {
             self.properties = props
         }
-        self.gistProperties = gistProperties ?? GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
+    }
+
+    public convenience init(messageId: String, properties: [String: Any]?) {
+        self.init(
+            queueId: properties?["queueId"] as? String,
+            priority: properties?["priority"] as? Int,
+            messageId: messageId,
+            gistProperties: Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        )
+    }
+
+    private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
+        let defaultPosition = MessagePosition.center
+        guard let gist = gist else {
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false)
+        }
+
+        let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
+        let routeRule = gist["routeRuleApple"] as? String
+        let elementId = gist["elementId"] as? String
+        let campaignId = gist["campaignId"] as? String
+        let persistent = gist["persistent"] as? Bool ?? false
+
+        return GistProperties(
+            routeRule: routeRule,
+            elementId: elementId,
+            campaignId: campaignId,
+            position: position,
+            persistent: persistent
+        )
     }
 
     public convenience init(messageId: String, properties: [String: Any]?) {
