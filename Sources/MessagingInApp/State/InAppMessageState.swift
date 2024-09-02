@@ -89,6 +89,35 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     }
 }
 
+extension InAppMessageState {
+    /// Returns a dictionary of differences between the previous state and the current state.
+    /// It is useful for logging and debugging purposes.
+    static func changes(from previousState: InAppMessageState, to currentState: InAppMessageState) -> [String: Any] {
+        var diffs: [String: Any] = [:]
+
+        // Helper function to put a key-value pair in diffs if the value is different in current state.
+        func putIfDifferent<T: Equatable>(_ keyPath: KeyPath<InAppMessageState, T>, as key: String) {
+            if previousState[keyPath: keyPath] != currentState[keyPath: keyPath] {
+                diffs[key] = currentState[keyPath: keyPath]
+            }
+        }
+
+        // Put all the properties from InAppMessageState here to compare them.
+
+        putIfDifferent(\.siteId, as: "siteId")
+        putIfDifferent(\.dataCenter, as: "dataCenter")
+        putIfDifferent(\.environment, as: "environment")
+        putIfDifferent(\.pollInterval, as: "pollInterval")
+        putIfDifferent(\.userId, as: "userId")
+        putIfDifferent(\.currentRoute, as: "currentRoute")
+        putIfDifferent(\.currentMessageState, as: "currentMessageState")
+        putIfDifferent(\.messagesInQueue, as: "messagesInQueue")
+        putIfDifferent(\.shownMessageQueueIds, as: "shownMessageQueueIds")
+
+        return diffs
+    }
+}
+
 /// Represents various states an in-app message can be in.
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
 enum MessageState: Equatable, CustomStringConvertible {
