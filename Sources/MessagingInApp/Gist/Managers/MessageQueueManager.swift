@@ -1,11 +1,17 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
 class MessageQueueManager {
+    private let logger: Logger
     var interval: Double = 600
     private var queueTimer: Timer?
     // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
     var localMessageStore: [String: Message] = [:]
+
+    init() {
+        self.logger = DIGraphShared.shared.logger
+    }
 
     func setup(skipQueueCheck: Bool = false) {
         queueTimer?.invalidate()
@@ -38,7 +44,7 @@ class MessageQueueManager {
     }
 
     func fetchUserMessagesFromLocalStore() {
-        Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
+        logger.info("Checking local store with \(localMessageStore.count) messages")
         let sortedMessages = localMessageStore.sorted {
             switch ($0.value.priority, $1.value.priority) {
             case (let priority0?, let priority1?):
@@ -80,30 +86,30 @@ class MessageQueueManager {
     @objc
     func fetchUserMessages() {
         if UIApplication.shared.applicationState != .background {
-            Logger.instance.info(message: "Checking Gist queue service")
+            logger.info("Checking Gist queue service")
             if let userToken = UserManager().getUserToken() {
                 QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter)
                     .fetchUserQueue(userToken: userToken, completionHandler: { response in
                         switch response {
                         case .success(nil):
-                            Logger.instance.info(message: "No changes to remote queue")
+                            self.logger.info("No changes to remote queue")
                         case .success(let responses):
                             guard let responses else {
                                 return
                             }
 
-                            Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
+                            self.logger.info("Gist queue service found \(responses.count) new messages")
 
                             self.processFetchResponse(responses.map { $0.toMessage() })
                         case .failure(let error):
-                            Logger.instance.error(message: "Error fetching messages from Gist queue service. \(error.localizedDescription)")
+                            self.logger.error("Error fetching messages from Gist queue service. \(error.localizedDescription)")
                         }
                     })
             } else {
-                Logger.instance.debug(message: "User token not set, skipping fetch user queue.")
+                logger.debug("User token not set, skipping fetch user queue.")
             }
         } else {
-            Logger.instance.info(message: "Application in background, skipping queue check.")
+            logger.info("Application in background, skipping queue check.")
         }
     }
 
@@ -121,7 +127,7 @@ class MessageQueueManager {
     private func showMessageIfMeetsCriteria(message: Message) {
         // Skip shown messages
         if let queueId = message.queueId, Gist.shared.shownMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
+            logger.info("Message with queueId: \(queueId) already shown, skipping.")
             return
         }
 
@@ -129,13 +135,13 @@ class MessageQueueManager {
 
         if message.doesHavePageRule(), let cleanPageRule = message.cleanPageRule {
             if !message.doesPageRuleMatch(route: Gist.shared.getCurrentRoute()) {
-                Logger.instance.debug(message: "Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanPageRule)")
+                logger.debug("Current route is \(Gist.shared.getCurrentRoute()), needed \(cleanPageRule)")
                 return // exit early to not show the message since page rule doesnt match
             }
         }
 
         if let elementId = message.gistProperties.elementId {
-            Logger.instance.info(message: "Embedding message with Element Id \(elementId)")
+            logger.info("Embedding message with Element Id \(elementId)")
             Gist.shared.embedMessage(message: message, elementId: elementId)
             return
         } else {

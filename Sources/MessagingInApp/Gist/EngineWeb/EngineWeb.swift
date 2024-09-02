@@ -20,6 +20,7 @@ protocol EngineWebInstance: AutoMockable {
 }
 
 public class EngineWeb: NSObject, EngineWebInstance {
+    private let logger: Logger = DIGraphShared.shared.logger
     private var _currentRoute = ""
     private var _timeoutTimer: Timer?
     private var _elapsedTimer = ElapsedTimer()
@@ -66,7 +67,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
            let options = jsonString.data(using: .utf8)?.base64EncodedString()
            .addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
             let url = "\(Settings.Network.renderer)/index.html?options=\(options)"
-            Logger.instance.info(message: "Loading URL: \(url)")
+            logger.info("Loading URL: \(url)")
             if let link = URL(string: url) {
                 self._timeoutTimer = Timer.scheduledTimer(
                     timeInterval: 5.0,
@@ -89,7 +90,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
     @objc
     func forcedTimeout() {
-        Logger.instance.info(message: "Timeout triggered, triggering message error.")
+        logger.info("Timeout triggered, triggering message error.")
         delegate?.error()
     }
 }

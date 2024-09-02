@@ -8,18 +8,16 @@ import Foundation
 /// It is also responsible for initializing the store with the required middleware and reducer.
 /// It also makes asynchronous calls convenient by wrapping them in non-async methods.
 public class InAppMessageManager {
-    private let logger: CioInternalCommon.Logger
+    private let logger: Logger
     private let store: InAppMessageStore
 
     var state: InAppMessageState {
         get async { await store.state }
     }
 
-    init(threadUtil: ThreadUtil) {
+    init(logger: Logger, threadUtil: ThreadUtil) {
         // swiftlint:disable todo
-        // TODO: Remove this shared instance and use DI once Gist Logger is removed.
-        let diGraph = DIGraphShared.shared
-        self.logger = diGraph.logger
+        self.logger = logger
         self.store = InAppMessageStore(
             reducer: inAppMessageReducer(logger: logger),
             state: InAppMessageState(),

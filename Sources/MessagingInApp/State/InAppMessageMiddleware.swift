@@ -24,7 +24,7 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
     }
 }
 
-func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMiddleware {
+func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { dispatch, getState, next, action in
         let state = getState()
         // Check for page rule match if the action is setting new route and userId is set.
@@ -51,7 +51,7 @@ func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMi
     }
 }
 
-func modalMessageDisplayStateMiddleware(logger: CioInternalCommon.Logger, threadUtil: ThreadUtil) -> InAppMessageMiddleware {
+func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         // Continue to next middleware if action is not loadMessage
         guard case .loadMessage(let message, let position) = action else {
@@ -76,7 +76,7 @@ func modalMessageDisplayStateMiddleware(logger: CioInternalCommon.Logger, thread
     }
 }
 
-private func logMessageView(logger: CioInternalCommon.Logger, state: InAppMessageState, message: Message) {
+private func logMessageView(logger: Logger, state: InAppMessageState, message: Message) {
     LogManager(siteId: state.siteId, dataCenter: state.dataCenter).logView(
         message: message, userToken: state.userId
     ) { response in
@@ -86,7 +86,7 @@ private func logMessageView(logger: CioInternalCommon.Logger, state: InAppMessag
     }
 }
 
-func messageMetricsMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMiddleware {
+func messageMetricsMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
         switch action {
@@ -121,7 +121,7 @@ func messageMetricsMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageM
     }
 }
 
-func messageQueueProcessorMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMiddleware {
+func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { dispatch, getState, next, action in
         // Continue to next middleware if action is not processMessageQueue or if messages are empty
         guard case .processMessageQueue(let messages) = action, !messages.isEmpty else {
@@ -218,7 +218,7 @@ func messageEventCallbacksMiddleware(delegate: GistDelegate?) -> InAppMessageMid
     }
 }
 
-func errorReportingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMiddleware {
+func errorReportingMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Log error messages for reportError actions only
         if case .reportError(let message) = action {

@@ -6,7 +6,7 @@ import ReSwift
 /// The wrapper function logs the action and state before and after the reducer is called.
 /// Also, it ensures that the action is of type InAppMessageAction and utilizes custom defined types instead
 /// of referring to ReSwift's Action type directly.
-func inAppMessageReducer(logger: CioInternalCommon.Logger) -> InAppMessageReducer {
+func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
     { action, state in
         // Avoid force unwrapping the action as InAppMessageAction to prevent unexpected crashes.
         guard let action = action as? InAppMessageAction else {
