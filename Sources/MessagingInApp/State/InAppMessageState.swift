@@ -175,6 +175,19 @@ extension MessageState {
         }
     }
 
+    /// Returns the message associated with the state only if the state is `loading` or `displayed`.
+    var activeModalMessage: Message? {
+        switch self {
+        case .initial,
+             .embedded,
+             .dismissed:
+            return nil
+        case .loading(let message),
+             .displayed(let message):
+            return message
+        }
+    }
+
     var isLoading: Bool {
         if case .loading = self {
             return true

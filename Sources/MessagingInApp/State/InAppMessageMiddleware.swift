@@ -11,15 +11,16 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
              .setUserIdentifier,
              .setPageRoute,
              .resetState:
-            break
+            return next(action)
 
         default:
-            if let userId = state.userId, userId.isBlankOrEmpty() {
-                return next(.reportError(message: "[InApp] Blocked action: \(action) because userId (\(userId)) is invalid"))
+            let userId = state.userId
+            guard let userId = userId, !userId.isBlankOrEmpty() else {
+                return next(.reportError(message: "[InApp] Blocked action: \(action) because userId (\(String(describing: userId))) is invalid"))
             }
-        }
 
-        return next(action)
+            return next(action)
+        }
     }
 }
 
@@ -36,10 +37,10 @@ func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMi
 
         // Check if there is a message currently displayed and if it has a page rule
         let currentRoute = state.currentRoute
-        let currentMessage: Message? = state.currentMessageState.message
-        let doesCurrentMessageRouteMatch: Bool =
-            currentMessage?.doesHavePageRule() == true &&
-            currentRoute.map { currentMessage?.doesPageRuleMatch(route: $0) ?? false } ?? true
+        let currentMessage: Message? = state.currentMessageState.activeModalMessage
+        let doesCurrentMessageRouteMatch: Bool = currentMessage.flatMap { message in
+            message.doesHavePageRule() && (currentRoute.flatMap(message.doesPageRuleMatch) ?? true)
+        } ?? true
 
         // Dismiss the message if updated route does not match message's page rule
         if let message = currentMessage, !doesCurrentMessageRouteMatch {
@@ -52,7 +53,7 @@ func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMi
     }
 }
 
-func messageStateMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMiddleware {
+func modalMessageDisplayStateMiddleware(logger: CioInternalCommon.Logger, threadUtil: ThreadUtil) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         // Continue to next middleware if action is not loadMessage
         guard case .loadMessage(let message, let position) = action else {
@@ -68,7 +69,7 @@ func messageStateMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMid
 
         logger.debug("[InApp] Showing message: \(message.describeForLogs) with position: \(String(describing: position))")
         // Show message on main thread to avoid unexpected crashes
-        DispatchQueue.main.async {
+        threadUtil.runMain {
             let messageManager = MessageManager(siteId: state.siteId, message: message)
             messageManager.showMessage(position: position ?? .center)
         }
@@ -92,9 +93,8 @@ func messageMetricsMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageM
         let state = getState()
         switch action {
         case .displayMessage(let message):
-            let properties = message.gistProperties
             // Log message view only if message is not persistent
-            if properties.persistent != true {
+            if message.gistProperties.persistent != true {
                 logger.debug("[InApp] Message shown, logging view for message: \(message.describeForLogs)")
                 logMessageView(logger: logger, state: state, message: message)
             } else {
@@ -104,10 +104,9 @@ func messageMetricsMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageM
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
             guard shouldLog else { return }
 
-            let properties = message.gistProperties
             // Log message close only if message was dismissed via close action
             if viaCloseAction {
-                if properties.persistent == true {
+                if message.gistProperties.persistent == true {
                     logger.debug("[InApp] Persistent message dismissed, logging view for message: \(message.describeForLogs)")
                 } else {
                     logger.debug("[InApp] Dismissed message, logging view for message: \(message.describeForLogs)")
@@ -135,22 +134,16 @@ func messageQueueProcessorMiddleware(logger: CioInternalCommon.Logger) -> InAppM
         // Filter out messages with valid queueId that have not been shown yet and sort by priority
         let notShownMessages = messages
             .filter { message in
-                if let queueId = message.queueId {
-                    return !state.shownMessageQueueIds.contains(queueId)
-                }
-                return false
+                guard let queueId = message.queueId else { return false }
+
+                return !state.shownMessageQueueIds.contains(queueId)
             }
             .reduce(into: [Message]()) { result, message in
                 if !result.contains(where: { $0.queueId == message.queueId }) {
                     result.append(message)
                 }
             }
-            .sorted {
-                guard let priority1 = $0.priority, let priority2 = $1.priority else {
-                    return $0.priority != nil
-                }
-                return priority1 < priority2
-            }
+            .sorted { ($0.priority ?? Int.max) < ($1.priority ?? Int.max) }
 
         // Find the first message that matches the current route or has no page rule
         // Since messages are sorted by priority, the first message will be the one with the highest priority
@@ -220,15 +213,7 @@ func messageEventCallbacksMiddleware(delegate: GistDelegate?) -> InAppMessageMid
                 delegate?.messageError(message: message)
             }
 
-        case .initialize,
-             .setPollingInterval,
-             .setUserIdentifier,
-             .setPageRoute,
-             .processMessageQueue,
-             .clearMessageQueue,
-             .loadMessage,
-             .reportError,
-             .resetState:
+        default:
             break
         }
         next(action)
