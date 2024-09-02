@@ -2,195 +2,59 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
-public class Gist: GistDelegate {
-    private let logger: Logger
-    var messageQueueManager = MessageQueueManager()
-    var shownMessageQueueIds: Set<String> = []
-    private var messageManagers: [MessageManager] = []
-    public var siteId: String = ""
-    public var dataCenter: String = ""
+// sourcery: InjectRegisterShared = "Gist"
+// sourcery: InjectSingleton
+public class Gist {
+    private let gistDelegate: GistDelegate
+    private let inAppMessageManager: InAppMessageManager
+    private let messageQueueManager: MessageQueueManager
 
-    public weak var delegate: GistDelegate?
-
-    public static let shared = Gist()
-
-    init() {
-        self.logger = DIGraphShared.shared.logger
-    }
-
-    public func setup(
-        siteId: String,
-        dataCenter: String,
-        logging: Bool = false,
-        env: GistEnvironment = .production
+    init(
+        gistDelegate: GistDelegate,
+        inAppMessageManager: InAppMessageManager,
+        messageQueueManager: MessageQueueManager
     ) {
-        self.siteId = siteId
-        self.dataCenter = dataCenter
-        messageQueueManager.setup()
-
-        // Initialising Gist web with an empty message to fetch fonts and other assets.
-        _ = Gist.shared.getMessageView(Message(messageId: ""))
+        self.gistDelegate = gistDelegate
+        self.inAppMessageManager = inAppMessageManager
+        self.messageQueueManager = messageQueueManager
     }
 
-    // For testing to reset the singleton state
-    func reset() {
-        clearUserToken()
-        messageQueueManager = MessageQueueManager()
-        messageManagers = []
-        // RouteManager.clearCurrentRoute()
+    public func resetState() {
+        inAppMessageManager.dispatch(action: .resetState)
     }
 
-    public func resetState() {}
-
-    public func setEventListener(_ eventListener: (any InAppEventListener)?) {}
-
-    // MARK: User
+    func setEventListener(_ eventListener: InAppEventListener?) {
+        gistDelegate.setEventListener(eventListener)
+    }
 
     public func setUserToken(_ userToken: String) {
-        // UserManager().setUserToken(userToken: userToken)
-    }
+        inAppMessageManager.fetchState { [self] state in
+            if state.userId == userToken {
+                return
+            }
 
-    public func clearUserToken() {
-        cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
-        messageQueueManager.clearLocalStore()
-        // UserManager().clearUserToken()
-        messageQueueManager.clearUserMessagesFromLocalStore()
-    }
-
-    // MARK: Route
-
-    public func getCurrentRoute() -> String {
-        // RouteManager.getCurrentRoute()
-        ""
+            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
+            messageQueueManager.setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
     }
 
     public func setCurrentRoute(_ currentRoute: String) {
-//        if RouteManager.getCurrentRoute() == currentRoute {
-//            return // ignore request, route has not changed.
-//        }
-
-        cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
-
-        // RouteManager.setCurrentRoute(currentRoute)
-        messageQueueManager.fetchUserMessagesFromLocalStore()
-    }
-
-    public func clearCurrentRoute() {
-        // RouteManager.clearCurrentRoute()
-    }
-
-    // MARK: Message Actions
-
-    public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-        if let messageManager = getModalMessageManager() {
-            logger.info("Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
-        } else {
-            let messageManager = createMessageManager(siteId: siteId, message: message)
-            messageManager.showMessage(position: position)
-            return true
-        }
-        return false
-    }
-
-    public func getMessageView(_ message: Message) -> GistView {
-        let messageManager = createMessageManager(siteId: siteId, message: message)
-        return messageManager.getMessageView()
-    }
-
-    public func dismissMessage(instanceId: String? = nil, completionHandler: (() -> Void)? = nil) {
-        if let id = instanceId, let messageManager = messageManager(instanceId: id) {
-            messageManager.removePersistentMessage()
-            messageManager.dismissMessage(completionHandler: completionHandler)
-        } else {
-            getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
-        }
-    }
-
-    // MARK: Events
-
-    public func messageShown(message: Message) {
-        logger.debug("Message with route: \(message.messageId) shown")
-        if message.gistProperties.persistent != true {
-            logMessageView(message: message)
-        } else {
-            logger.debug("Persistent message shown, skipping logging view")
-        }
-        delegate?.messageShown(message: message)
-    }
-
-    public func messageDismissed(message: Message) {
-        logger.debug("Message with id: \(message.messageId) dismissed")
-        removeMessageManager(instanceId: message.instanceId)
-        delegate?.messageDismissed(message: message)
-
-        messageQueueManager.fetchUserMessagesFromLocalStore()
-    }
-
-    public func messageError(message: Message) {
-        removeMessageManager(instanceId: message.instanceId)
-        delegate?.messageError(message: message)
-    }
-
-    public func action(message: Message, currentRoute: String, action: String, name: String) {
-        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
-    }
-
-    public func embedMessage(message: Message, elementId: String) {
-        delegate?.embedMessage(message: message, elementId: elementId)
-    }
-
-    func logMessageView(message: Message) {
-        messageQueueManager.removeMessageFromLocalStore(message: message)
-        if let queueId = message.queueId {
-            shownMessageQueueIds.insert(queueId)
-        }
-        let state = InAppMessageState()
-        DIGraphShared.shared.logManager
-            .logView(state: state, message: message) { response in
-                if case .failure(let error) = response {
-                    self.logger.error("Failed to log view for message: \(message.messageId) with error: \(error)")
-                }
+        inAppMessageManager.fetchState { [self] state in
+            if state.currentRoute == currentRoute {
+                return // ignore request, route has not changed.
             }
-    }
 
-    // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
-    // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
-    private func cancelModalMessage(ifDoesNotMatchRoute newRoute: String) {
-        if let messageManager = getModalMessageManager() {
-            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
-
-            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
-                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                logger.debug("Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
-
-                // Stop showing the current message synchronously meaning to remove from UI instantly.
-                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
-                messageManager.cancelShowingMessage()
-
-                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
-                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
-            }
+            inAppMessageManager.dispatch(action: .setPageRoute(route: currentRoute))
         }
     }
 
-    // Message Manager
+    public func dismissMessage() {
+        inAppMessageManager.fetchState { [self] state in
+            guard case .displayed(let message) = state.currentMessageState else {
+                return
+            }
 
-    private func createMessageManager(siteId: String, message: Message) -> MessageManager {
-        let messageManager = MessageManager(state: InAppMessageState(), message: message)
-        messageManager.delegate = self
-        messageManagers.append(messageManager)
-        return messageManager
-    }
-
-    func getModalMessageManager() -> MessageManager? {
-        messageManagers.first(where: { !$0.isMessageEmbed })
-    }
-
-    func messageManager(instanceId: String) -> MessageManager? {
-        messageManagers.first(where: { $0.currentMessage.instanceId == instanceId })
-    }
-
-    func removeMessageManager(instanceId: String) {
-        messageManagers.removeAll(where: { $0.currentMessage.instanceId == instanceId })
+            inAppMessageManager.dispatch(action: .dismissMessage(message: message))
+        }
     }
 }
