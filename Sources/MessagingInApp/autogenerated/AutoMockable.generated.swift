@@ -235,24 +235,24 @@ class GistQueueNetworkMock: GistQueueNetwork, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var requestReceivedArguments: (siteId: String, dataCenter: String, userToken: String?, request: GistNetworkRequest, completionHandler: (Result<GistNetworkResponse, Error>) -> Void)?
+    @Atomic private(set) var requestReceivedArguments: (state: InAppMessageState, request: GistNetworkRequest, completionHandler: (Result<GistNetworkResponse, Error>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var requestReceivedInvocations: [(siteId: String, dataCenter: String, userToken: String?, request: GistNetworkRequest, completionHandler: (Result<GistNetworkResponse, Error>) -> Void)] = []
+    @Atomic private(set) var requestReceivedInvocations: [(state: InAppMessageState, request: GistNetworkRequest, completionHandler: (Result<GistNetworkResponse, Error>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var requestClosure: ((String, String, String?, GistNetworkRequest, @escaping (Result<GistNetworkResponse, Error>) -> Void) throws -> Void)?
+    var requestClosure: ((InAppMessageState, GistNetworkRequest, @escaping (Result<GistNetworkResponse, Error>) -> Void) throws -> Void)?
 
-    /// Mocked function for `request(siteId: String, dataCenter: String, userToken: String?, request: GistNetworkRequest, completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func request(siteId: String, dataCenter: String, userToken: String?, request: GistNetworkRequest, completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void) throws {
+    /// Mocked function for `request(state: InAppMessageState, request: GistNetworkRequest, completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func request(state: InAppMessageState, request: GistNetworkRequest, completionHandler: @escaping (Result<GistNetworkResponse, Error>) -> Void) throws {
         if let error = requestThrowableError {
             throw error
         }
         mockCalled = true
         requestCallsCount += 1
-        requestReceivedArguments = (siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: request, completionHandler: completionHandler)
-        requestReceivedInvocations.append((siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: request, completionHandler: completionHandler))
-        try requestClosure?(siteId, dataCenter, userToken, request, completionHandler)
+        requestReceivedArguments = (state: state, request: request, completionHandler: completionHandler)
+        requestReceivedInvocations.append((state: state, request: request, completionHandler: completionHandler))
+        try requestClosure?(state, request, completionHandler)
     }
 }
 

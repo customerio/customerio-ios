@@ -24,7 +24,6 @@ public class Gist: GistDelegate {
         logging: Bool = false,
         env: GistEnvironment = .production
     ) {
-        Settings.Environment = env
         self.siteId = siteId
         self.dataCenter = dataCenter
         messageQueueManager.setup()
@@ -38,41 +37,42 @@ public class Gist: GistDelegate {
         clearUserToken()
         messageQueueManager = MessageQueueManager()
         messageManagers = []
-        RouteManager.clearCurrentRoute()
+        // RouteManager.clearCurrentRoute()
     }
 
     // MARK: User
 
     public func setUserToken(_ userToken: String) {
-        UserManager().setUserToken(userToken: userToken)
+        // UserManager().setUserToken(userToken: userToken)
     }
 
     public func clearUserToken() {
         cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
         messageQueueManager.clearLocalStore()
-        UserManager().clearUserToken()
+        // UserManager().clearUserToken()
         messageQueueManager.clearUserMessagesFromLocalStore()
     }
 
     // MARK: Route
 
     public func getCurrentRoute() -> String {
-        RouteManager.getCurrentRoute()
+        // RouteManager.getCurrentRoute()
+        ""
     }
 
     public func setCurrentRoute(_ currentRoute: String) {
-        if RouteManager.getCurrentRoute() == currentRoute {
-            return // ignore request, route has not changed.
-        }
+//        if RouteManager.getCurrentRoute() == currentRoute {
+//            return // ignore request, route has not changed.
+//        }
 
         cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
 
-        RouteManager.setCurrentRoute(currentRoute)
+        // RouteManager.setCurrentRoute(currentRoute)
         messageQueueManager.fetchUserMessagesFromLocalStore()
     }
 
     public func clearCurrentRoute() {
-        RouteManager.clearCurrentRoute()
+        // RouteManager.clearCurrentRoute()
     }
 
     // MARK: Message Actions
@@ -140,9 +140,9 @@ public class Gist: GistDelegate {
         if let queueId = message.queueId {
             shownMessageQueueIds.insert(queueId)
         }
-        let userToken = UserManager().getUserToken()
-        LogManager(siteId: siteId, dataCenter: dataCenter)
-            .logView(message: message, userToken: userToken) { response in
+        let state = InAppMessageState()
+        DIGraphShared.shared.logManager
+            .logView(state: state, message: message) { response in
                 if case .failure(let error) = response {
                     self.logger.error("Failed to log view for message: \(message.messageId) with error: \(error)")
                 }
@@ -172,7 +172,7 @@ public class Gist: GistDelegate {
     // Message Manager
 
     private func createMessageManager(siteId: String, message: Message) -> MessageManager {
-        let messageManager = MessageManager(siteId: siteId, message: message)
+        let messageManager = MessageManager(state: InAppMessageState(), message: message)
         messageManager.delegate = self
         messageManagers.append(messageManager)
         return messageManager

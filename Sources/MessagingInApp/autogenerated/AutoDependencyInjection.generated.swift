@@ -67,6 +67,9 @@ extension DIGraphShared {
         _ = inAppMessageManager
         countDependenciesResolved += 1
 
+        _ = logManager
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -122,7 +125,17 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageManager(logger: logger, threadUtil: threadUtil)
+        InAppMessageManager(logger: logger, threadUtil: threadUtil, logManager: logManager)
+    }
+
+    // LogManager
+    var logManager: LogManager {
+        getOverriddenInstance() ??
+            newLogManager
+    }
+
+    private var newLogManager: LogManager {
+        LogManager(gistQueueNetwork: gistQueueNetwork)
     }
 }
 

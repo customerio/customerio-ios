@@ -68,7 +68,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
         logger.debug("[InApp] Showing message: \(message.describeForLogs) with position: \(String(describing: position))")
         // Show message on main thread to avoid unexpected crashes
         threadUtil.runMain {
-            let messageManager = MessageManager(siteId: state.siteId, message: message)
+            let messageManager = MessageManager(state: state, message: message)
             messageManager.showMessage(position: position ?? .center)
         }
 
@@ -76,17 +76,15 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
     }
 }
 
-private func logMessageView(logger: Logger, state: InAppMessageState, message: Message) {
-    LogManager(siteId: state.siteId, dataCenter: state.dataCenter).logView(
-        message: message, userToken: state.userId
-    ) { response in
+private func logMessageView(logger: Logger, logManager: LogManager, state: InAppMessageState, message: Message) {
+    logManager.logView(state: state, message: message) { response in
         if case .failure(let error) = response {
             logger.error("[InApp] Failed to log message view: \(error) for message: \(message.describeForLogs)")
         }
     }
 }
 
-func messageMetricsMiddleware(logger: Logger) -> InAppMessageMiddleware {
+func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
         switch action {
@@ -94,7 +92,7 @@ func messageMetricsMiddleware(logger: Logger) -> InAppMessageMiddleware {
             // Log message view only if message is not persistent
             if message.gistProperties.persistent != true {
                 logger.debug("[InApp] Message shown, logging view for message: \(message.describeForLogs)")
-                logMessageView(logger: logger, state: state, message: message)
+                logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
                 logger.debug("[InApp] Persistent message shown, not logging view for message: \(message.describeForLogs)")
             }
@@ -109,7 +107,7 @@ func messageMetricsMiddleware(logger: Logger) -> InAppMessageMiddleware {
                 } else {
                     logger.debug("[InApp] Dismissed message, logging view for message: \(message.describeForLogs)")
                 }
-                logMessageView(logger: logger, state: state, message: message)
+                logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
                 logger.debug("[InApp] Message dismissed without close action, not logging view for message: \(message.describeForLogs)")
             }

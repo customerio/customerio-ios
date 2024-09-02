@@ -41,7 +41,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
         }
     }
 
-    init(configuration: EngineWebConfiguration) {
+    init(configuration: EngineWebConfiguration, state: InAppMessageState) {
         super.init()
 
         _elapsedTimer.start(title: "Engine render for message: \(configuration.messageId)")
@@ -66,7 +66,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
            let jsonString = String(data: jsonData, encoding: .utf8),
            let options = jsonString.data(using: .utf8)?.base64EncodedString()
            .addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
-            let url = "\(Settings.Network.renderer)/index.html?options=\(options)"
+            let url = "\(state.environment.networkSettings.renderer)/index.html?options=\(options)"
             logger.info("Loading URL: \(url)")
             if let link = URL(string: url) {
                 self._timeoutTimer = Timer.scheduledTimer(

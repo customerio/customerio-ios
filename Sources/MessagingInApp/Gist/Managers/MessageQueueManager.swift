@@ -85,11 +85,12 @@ class MessageQueueManager {
 
     @objc
     func fetchUserMessages() {
+        let state = InAppMessageState()
         if UIApplication.shared.applicationState != .background {
             logger.info("Checking Gist queue service")
-            if let userToken = UserManager().getUserToken() {
+            if let userToken = state.userId {
                 QueueManager(siteId: Gist.shared.siteId, dataCenter: Gist.shared.dataCenter)
-                    .fetchUserQueue(userToken: userToken, completionHandler: { response in
+                    .fetchUserQueue(state: state, completionHandler: { response in
                         switch response {
                         case .success(nil):
                             self.logger.info("No changes to remote queue")
