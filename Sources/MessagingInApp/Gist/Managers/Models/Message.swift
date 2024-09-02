@@ -36,9 +36,9 @@ public class Message {
         properties: [String: Any]? = nil,
         gistProperties: GistProperties? = nil
     ) {
-        self.messageId = messageId
         self.queueId = queueId
         self.priority = priority
+        self.messageId = messageId
         self.gistProperties = gistProperties ?? Message.parseGistProperties(from: properties)
         if let props = properties {
             self.properties = props
