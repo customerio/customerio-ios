@@ -45,3 +45,22 @@ func middleware(
     }
     }
 }
+
+// MARK: - StoreSubscriber
+
+/// StoreSubscriber implementation for InAppMessage store with custom defined types
+/// - Parameter stateHandler: Closure to handle new state
+/// - Returns: InAppMessageStoreSubscriber instance
+class InAppMessageStoreSubscriber: StoreSubscriber {
+    typealias StoreSubscriberStateType = InAppMessageState
+
+    private let stateHandler: (InAppMessageState) -> Void
+
+    init(stateHandler: @escaping (InAppMessageState) -> Void) {
+        self.stateHandler = stateHandler
+    }
+
+    func newState(state: InAppMessageState) {
+        stateHandler(state)
+    }
+}
