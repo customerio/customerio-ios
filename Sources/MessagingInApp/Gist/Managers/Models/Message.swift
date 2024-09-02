@@ -29,54 +29,50 @@ public class Message {
         gistProperties.elementId != nil
     }
 
-    public init(messageId: String) {
-        self.queueId = nil
-        self.priority = nil
-        self.gistProperties = GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
+    public init(
+        queueId: String? = nil,
+        priority: Int? = nil,
+        messageId: String,
+        properties: [String: Any]? = nil,
+        gistProperties: GistProperties? = nil
+    ) {
         self.messageId = messageId
-    }
-
-    init(queueId: String? = nil, priority: Int? = nil, messageId: String, properties: [String: Any]?) {
         self.queueId = queueId
         self.priority = priority
-        self.messageId = messageId
-
-        var gistProperties: GistProperties?
-        if let properties = properties {
-            self.properties = properties
-            if let gist = self.properties["gist"] as? [String: Any] {
-                var messagePosition = MessagePosition.center
-                if let position = gist["position"] as? String,
-                   let positionValue = MessagePosition(rawValue: position) {
-                    messagePosition = positionValue
-                }
-                var routeRule: String?
-                if let routeRuleApple = gist["routeRuleApple"] as? String {
-                    routeRule = routeRuleApple
-                }
-                var elementId: String?
-                if let elementIdValue = gist["elementId"] as? String {
-                    elementId = elementIdValue
-                }
-                var campaignId: String?
-                if let campaignIdValue = gist["campaignId"] as? String {
-                    campaignId = campaignIdValue
-                }
-                var persistent = false
-                if let persistentValue = gist["persistent"] as? Bool {
-                    persistent = persistentValue
-                }
-
-                gistProperties = GistProperties(
-                    routeRule: routeRule,
-                    elementId: elementId,
-                    campaignId: campaignId,
-                    position: messagePosition,
-                    persistent: persistent
-                )
-            }
+        self.gistProperties = gistProperties ?? Message.parseGistProperties(from: properties)
+        if let props = properties {
+            self.properties = props
         }
-        self.gistProperties = gistProperties ?? GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
+    }
+
+    public convenience init(messageId: String, properties: [String: Any]?) {
+        self.init(
+            queueId: properties?["queueId"] as? String,
+            priority: properties?["priority"] as? Int,
+            messageId: messageId,
+            gistProperties: Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        )
+    }
+
+    private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
+        let defaultPosition = MessagePosition.center
+        guard let gist = gist else {
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false)
+        }
+
+        let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
+        let routeRule = gist["routeRuleApple"] as? String
+        let elementId = gist["elementId"] as? String
+        let campaignId = gist["campaignId"] as? String
+        let persistent = gist["persistent"] as? Bool ?? false
+
+        return GistProperties(
+            routeRule: routeRule,
+            elementId: elementId,
+            campaignId: campaignId,
+            position: position,
+            persistent: persistent
+        )
     }
 
     public func addProperty(key: String, value: Any) {
