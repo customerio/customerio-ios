@@ -4,7 +4,7 @@ import ReSwift
 /// Store class wrapped as actor to maintain consistency and thread safety
 /// This also decouples store callers from ReSwift dependency by exposing only required methods
 actor InAppMessageStore {
-    let store: Store<InAppMessageState>
+    private let store: Store<InAppMessageState>
 
     var state: InAppMessageState { store.state }
 
