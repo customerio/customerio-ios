@@ -28,24 +28,22 @@ func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMi
     middleware { dispatch, getState, next, action in
         let state = getState()
         // Check for page rule match if the action is setting new route and userId is set.
-        guard case .setPageRoute = action, let userId = state.userId, !userId.isBlankOrEmpty() else {
+        guard case .setPageRoute(let currentRoute) = action, let userId = state.userId, !userId.isBlankOrEmpty() else {
             return next(action)
         }
 
         // Update current route first
         next(action)
 
-        // Check if there is a message currently displayed and if it has a page rule
-        let currentRoute = state.currentRoute
-        let currentMessage: Message? = state.currentMessageState.activeModalMessage
-        let doesCurrentMessageRouteMatch: Bool = currentMessage.flatMap { message in
-            message.doesHavePageRule() && (currentRoute.flatMap(message.doesPageRuleMatch) ?? true)
-        } ?? true
-
-        // Dismiss the message if updated route does not match message's page rule
-        if let message = currentMessage, !doesCurrentMessageRouteMatch {
-            logger.debug("[InApp] Dismissing message: \(message.describeForLogs) because route does not match current route: \(String(describing: currentRoute))")
-            dispatch(.dismissMessage(message: message, shouldLog: false))
+        // Check if there is a message displayed and if it has a page rule
+        // If the message does not have a page rule, it will continue to be displayed
+        // If the message has a page rule, it will be dismissed only if updated route does not match message's page rule
+        if let message = state.currentMessageState.activeModalMessage, message.doesHavePageRule() {
+            // Dismiss message if the route does not match new route
+            if !message.doesPageRuleMatch(route: currentRoute) {
+                logger.debug("[InApp] Dismissing message: \(message.describeForLogs) because route does not match current route: \(currentRoute)")
+                dispatch(.dismissMessage(message: message, shouldLog: false))
+            }
         }
 
         // Process message queue to check if there is a message that matches the new route
