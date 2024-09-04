@@ -40,6 +40,10 @@ public class Gist: GistDelegate {
         // RouteManager.clearCurrentRoute()
     }
 
+    public func resetState() {}
+
+    public func setEventListener(_ eventListener: (any InAppEventListener)?) {}
+
     // MARK: User
 
     public func setUserToken(_ userToken: String) {

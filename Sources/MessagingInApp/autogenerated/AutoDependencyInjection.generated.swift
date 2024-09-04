@@ -58,7 +58,7 @@ extension DIGraphShared {
         _ = engineWebProvider
         countDependenciesResolved += 1
 
-        _ = inAppProvider
+        _ = gistDelegate
         countDependenciesResolved += 1
 
         _ = gistQueueNetwork
@@ -84,14 +84,28 @@ extension DIGraphShared {
         EngineWebProviderImpl()
     }
 
-    // InAppProvider
-    var inAppProvider: InAppProvider {
+    // GistDelegate (singleton)
+    var gistDelegate: GistDelegate {
         getOverriddenInstance() ??
-            newInAppProvider
+            sharedGistDelegate
     }
 
-    private var newInAppProvider: InAppProvider {
-        GistInAppProvider()
+    var sharedGistDelegate: GistDelegate {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_GistDelegate_singleton_access").sync {
+            if let overridenDep: GistDelegate = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: GistDelegate.self)] as? GistDelegate
+            let instance = existingSingletonInstance ?? _get_gistDelegate()
+            self.singletons[String(describing: GistDelegate.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_gistDelegate() -> GistDelegate {
+        GistDelegateImpl(logger: logger, eventBusHandler: eventBusHandler)
     }
 
     // GistQueueNetwork
@@ -125,7 +139,7 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageManager(logger: logger, threadUtil: threadUtil, logManager: logManager)
+        InAppMessageManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate)
     }
 
     // LogManager

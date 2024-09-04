@@ -15,8 +15,7 @@ public class InAppMessageManager {
         get async { await store.state }
     }
 
-    init(logger: Logger, threadUtil: ThreadUtil, logManager: LogManager) {
-        // swiftlint:disable todo
+    init(logger: Logger, threadUtil: ThreadUtil, logManager: LogManager, gistDelegate: GistDelegate) {
         self.logger = logger
         self.store = InAppMessageStore(
             reducer: inAppMessageReducer(logger: logger),
@@ -30,12 +29,10 @@ public class InAppMessageManager {
                 modalMessageDisplayStateMiddleware(logger: logger, threadUtil: threadUtil),
                 messageMetricsMiddleware(logger: logger, logManager: logManager),
                 messageQueueProcessorMiddleware(logger: logger),
-                // TODO: Pass delegate to this middleware once Gist shared instance is removed.
-                messageEventCallbacksMiddleware(delegate: nil),
+                messageEventCallbacksMiddleware(delegate: gistDelegate),
                 errorReportingMiddleware(logger: logger)
             ]
         )
-        // swiftlint:enable todo
     }
 
     /// Fetches current state of the InAppMessage store and calls the completion block with result.
@@ -49,8 +46,11 @@ public class InAppMessageManager {
     }
 
     @discardableResult
-    func dispatch(action: InAppMessageAction) -> Task<Void, Never> {
-        Task { await store.dispatch(action) }
+    func dispatch(action: InAppMessageAction, completion: (() -> Void)? = nil) -> Task<Void, Never> {
+        Task {
+            await store.dispatch(action)
+            completion?()
+        }
     }
 
     @discardableResult
