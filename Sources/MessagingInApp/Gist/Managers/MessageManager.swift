@@ -51,27 +51,28 @@ class MessageManager: EngineWebDelegate {
     }
 
     func subscribeToInAppMessageState() {
-        inAppMessageStoreSubscriber = InAppMessageStoreSubscriber { [self] state in
-            switch state.currentMessageState {
-            case .displayed:
-                threadUtil.runMain {
-                    self.loadModalMessage()
-                }
+        inAppMessageStoreSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [self] state in
+                switch state.currentMessageState {
+                case .displayed:
+                    threadUtil.runMain {
+                        self.loadModalMessage()
+                    }
 
-            case .dismissed:
-                threadUtil.runMain {
-                    self.engine.delegate = nil
-                    self.dismissMessage()
-                    self.inAppMessageStoreSubscriber = nil
-                }
+                case .dismissed:
+                    threadUtil.runMain {
+                        self.engine.delegate = nil
+                        self.dismissMessage()
+                        self.inAppMessageStoreSubscriber = nil
+                    }
 
-            default:
-                break
+                default:
+                    break
+                }
             }
-        }
-        if let subscriber = inAppMessageStoreSubscriber {
             inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
-        }
+            return subscriber
+        }()
     }
 
     func showMessage(position: MessagePosition) {
