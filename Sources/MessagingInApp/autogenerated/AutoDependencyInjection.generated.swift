@@ -64,6 +64,9 @@ extension DIGraphShared {
         _ = gistQueueNetwork
         countDependenciesResolved += 1
 
+        _ = inAppMessageManager
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -96,6 +99,30 @@ extension DIGraphShared {
 
     private var newGistQueueNetwork: GistQueueNetwork {
         GistQueueNetworkImpl()
+    }
+
+    // InAppMessageManager (singleton)
+    public var inAppMessageManager: InAppMessageManager {
+        getOverriddenInstance() ??
+            sharedInAppMessageManager
+    }
+
+    public var sharedInAppMessageManager: InAppMessageManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_InAppMessageManager_singleton_access").sync {
+            if let overridenDep: InAppMessageManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: InAppMessageManager.self)] as? InAppMessageManager
+            let instance = existingSingletonInstance ?? _get_inAppMessageManager()
+            self.singletons[String(describing: InAppMessageManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_inAppMessageManager() -> InAppMessageManager {
+        InAppMessageManager(threadUtil: threadUtil)
     }
 }
 
