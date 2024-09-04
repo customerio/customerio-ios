@@ -26,9 +26,9 @@ class QueueManager {
         cachedFetchUserQueueResponse = nil
     }
 
-    func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
+    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
-            try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { response in
+            try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)

@@ -21,8 +21,8 @@ class MessageManager: EngineWebDelegate {
     weak var delegate: GistDelegate?
     private let engineWebProvider: EngineWebProvider = DIGraphShared.shared.engineWebProvider
 
-    init(siteId: String, message: Message) {
-        self.siteId = siteId
+    init(state: InAppMessageState, message: Message) {
+        self.siteId = state.siteId
         self.currentMessage = message
         self.currentRoute = message.messageId
 
@@ -33,12 +33,12 @@ class MessageManager: EngineWebDelegate {
             siteId: Gist.shared.siteId,
             dataCenter: Gist.shared.dataCenter,
             instanceId: message.instanceId,
-            endpoint: Settings.Network.engineAPI,
+            endpoint: state.environment.networkSettings.engineAPI,
             messageId: message.messageId,
             properties: message.toEngineRoute().properties
         )
 
-        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration)
+        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state)
         engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
     }

@@ -15,7 +15,7 @@ public class InAppMessageManager {
         get async { await store.state }
     }
 
-    init(logger: Logger, threadUtil: ThreadUtil) {
+    init(logger: Logger, threadUtil: ThreadUtil, logManager: LogManager) {
         // swiftlint:disable todo
         self.logger = logger
         self.store = InAppMessageStore(
@@ -28,7 +28,7 @@ public class InAppMessageManager {
                 userAuthenticationMiddleware(),
                 routeMatchingMiddleware(logger: logger),
                 modalMessageDisplayStateMiddleware(logger: logger, threadUtil: threadUtil),
-                messageMetricsMiddleware(logger: logger),
+                messageMetricsMiddleware(logger: logger, logManager: logManager),
                 messageQueueProcessorMiddleware(logger: logger),
                 // TODO: Pass delegate to this middleware once Gist shared instance is removed.
                 messageEventCallbacksMiddleware(delegate: nil),
