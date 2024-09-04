@@ -73,9 +73,6 @@ extension DIGraphShared {
         _ = logManager
         countDependenciesResolved += 1
 
-        _ = messageQueueManager
-        countDependenciesResolved += 1
-
         _ = queueManager
         countDependenciesResolved += 1
 
@@ -114,7 +111,7 @@ extension DIGraphShared {
     }
 
     private func _get_gist() -> Gist {
-        Gist(gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, messageQueueManager: messageQueueManager)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil)
     }
 
     // GistDelegate (singleton)
@@ -183,30 +180,6 @@ extension DIGraphShared {
 
     private var newLogManager: LogManager {
         LogManager(gistQueueNetwork: gistQueueNetwork)
-    }
-
-    // MessageQueueManager (singleton)
-    var messageQueueManager: MessageQueueManager {
-        getOverriddenInstance() ??
-            sharedMessageQueueManager
-    }
-
-    var sharedMessageQueueManager: MessageQueueManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_MessageQueueManager_singleton_access").sync {
-            if let overridenDep: MessageQueueManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: MessageQueueManager.self)] as? MessageQueueManager
-            let instance = existingSingletonInstance ?? _get_messageQueueManager()
-            self.singletons[String(describing: MessageQueueManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_messageQueueManager() -> MessageQueueManager {
-        MessageQueueManager(logger: logger, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil)
     }
 
     // QueueManager (singleton)

@@ -60,9 +60,9 @@ class MessageManager: EngineWebDelegate {
 
             case .dismissed:
                 threadUtil.runMain {
-                    self.dismissMessage {
-                        self.inAppMessageStoreSubscriber = nil
-                    }
+                    self.engine.delegate = nil
+                    self.dismissMessage()
+                    self.inAppMessageStoreSubscriber = nil
                 }
 
             default:
