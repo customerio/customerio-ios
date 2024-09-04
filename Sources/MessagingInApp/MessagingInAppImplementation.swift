@@ -43,14 +43,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         eventBusHandler.addObserver(ScreenViewedEvent.self) { event in
             self.logger.debug("setting route for in-app to \(event.name)")
 
-            // Gist expects webview to be launched in main thread and changing route will trigger locally stored in-app messages for that route.
             self.gist.setCurrentRoute(event.name)
         }
 
         eventBusHandler.addObserver(ResetEvent.self) { _ in
             self.logger.debug("removing profile for in-app")
 
-            // Gist may dismiss a modal if it's displayed. Run on main thread to call UI code.
             self.gist.resetState()
         }
     }
