@@ -38,12 +38,12 @@ func routeMatchingMiddleware(logger: CioInternalCommon.Logger) -> InAppMessageMi
         // Check if there is a message displayed and if it has a page rule
         // If the message does not have a page rule, it will continue to be displayed
         // If the message has a page rule, it will be dismissed only if updated route does not match message's page rule
-        if let message = state.currentMessageState.activeModalMessage, message.doesHavePageRule() {
+        if let message = state.currentMessageState.activeModalMessage,
+           message.doesHavePageRule(),
+           !message.doesPageRuleMatch(route: currentRoute) {
             // Dismiss message if the route does not match new route
-            if !message.doesPageRuleMatch(route: currentRoute) {
-                logger.debug("[InApp] Dismissing message: \(message.describeForLogs) because route does not match current route: \(currentRoute)")
-                dispatch(.dismissMessage(message: message, shouldLog: false))
-            }
+            logger.debug("[InApp] Dismissing message: \(message.describeForLogs) because route does not match current route: \(currentRoute)")
+            dispatch(.dismissMessage(message: message, shouldLog: false))
         }
 
         // Process message queue to check if there is a message that matches the new route
