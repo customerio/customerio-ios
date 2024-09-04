@@ -45,7 +45,9 @@ let package = Package(
         .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0"),
 
         // Make sure the version number is same for DataPipelines cocoapods.
-        .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.5.14+cio.1"))
+        .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.5.14+cio.1")),
+        // Redux-like implementation for Swift, used for managing in-app message state in MessagingInApp module.
+        .package(name: "ReSwift", url: "https://github.com/ReSwift/ReSwift.git", .exact("6.1.1")),
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -113,7 +115,7 @@ let package = Package(
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
-                dependencies: ["CioInternalCommon"],
+                dependencies: ["CioInternalCommon", .product(name: "ReSwift", package: "ReSwift")],
                 path: "Sources/MessagingInApp",
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
