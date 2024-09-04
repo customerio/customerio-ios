@@ -13,7 +13,7 @@ class MessageManager: EngineWebDelegate {
 
     private let currentMessage: Message
     private var currentRoute: String
-    private var isMessageEmbed: Bool = false
+    private let isMessageEmbed: Bool
     private var messagePosition: MessagePosition = .center
 
     private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
@@ -74,22 +74,9 @@ class MessageManager: EngineWebDelegate {
         }
     }
 
-    var isShowingMessage: Bool {
-        guard let modalViewManager = modalViewManager else {
-            return false
-        }
-
-        return modalViewManager.isShowingMessage
-    }
-
     func showMessage(position: MessagePosition) {
         elapsedTimer.start(title: "Displaying modal for message: \(currentMessage.messageId)")
         messagePosition = position
-    }
-
-    func getMessageView() -> GistView {
-        isMessageEmbed = true
-        return gistView
     }
 
     private func loadModalMessage() {
@@ -99,16 +86,6 @@ class MessageManager: EngineWebDelegate {
 
             self.elapsedTimer.end()
         }
-    }
-
-    func cancelShowingMessage() {
-        guard let modalViewManager = modalViewManager else {
-            return // no message being shown to cancel
-        }
-
-        engine.delegate = nil // to make sure we do not get a callback when message loaded and we try to show it.
-
-        modalViewManager.cancel()
     }
 
     private func dismissMessage(completionHandler: (() -> Void)? = nil) {
