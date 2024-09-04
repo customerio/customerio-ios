@@ -33,7 +33,7 @@ class GistDelegateImpl: GistDelegate {
     public func messageShown(message: Message) {
         logger.debug("[InApp] Message shown: \(message.describeForLogs)")
 
-        if let deliveryId = getDeliveryId(from: message) {
+        if let deliveryId = message.campaignDeliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
 
@@ -57,7 +57,7 @@ class GistDelegateImpl: GistDelegate {
 
         // a close action does not count as a clicked action.
         if action != "gist://close" {
-            if let deliveryId = getDeliveryId(from: message) {
+            if let deliveryId = message.campaignDeliveryId {
                 eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
             }
         }
@@ -68,9 +68,11 @@ class GistDelegateImpl: GistDelegate {
             actionName: name
         )
     }
+}
 
-    private func getDeliveryId(from message: Message) -> String? {
-        guard let deliveryId = message.gistProperties.campaignId else {
+private extension Message {
+    var campaignDeliveryId: String? {
+        guard let deliveryId = gistProperties.campaignId else {
             return nil
         }
 

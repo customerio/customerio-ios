@@ -183,30 +183,30 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     }
 }
 
-func messageEventCallbacksMiddleware(delegate: GistDelegate?) -> InAppMessageMiddleware {
+func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Forward message events to delegate when message is displayed, dismissed or embedded,
         // or when an engine action is received
         switch action {
         case .embedMessage(let message, let elementId):
-            delegate?.embedMessage(message: message, elementId: elementId)
+            delegate.embedMessage(message: message, elementId: elementId)
 
         case .displayMessage(let message):
-            delegate?.messageShown(message: message)
+            delegate.messageShown(message: message)
 
         case .dismissMessage(let message, _, _):
-            delegate?.messageDismissed(message: message)
+            delegate.messageDismissed(message: message)
 
         case .engineAction(let engineAction):
             switch engineAction {
             case .tap(let message, let route, let name, let action):
-                delegate?.action(message: message, currentRoute: route, action: action, name: name)
+                delegate.action(message: message, currentRoute: route, action: action, name: name)
 
             case .messageLoadingFailed(let message):
-                delegate?.messageError(message: message)
+                delegate.messageError(message: message)
 
             case .error(let message):
-                delegate?.messageError(message: message)
+                delegate.messageError(message: message)
             }
 
         default:
