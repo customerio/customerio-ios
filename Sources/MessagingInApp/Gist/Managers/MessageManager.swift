@@ -7,6 +7,7 @@ public enum GistMessageActions: String {
 }
 
 class MessageManager: EngineWebDelegate {
+    private let logger: Logger
     private var engine: EngineWebInstance
     private let siteId: String
     private var messagePosition: MessagePosition = .top
@@ -24,6 +25,9 @@ class MessageManager: EngineWebDelegate {
         self.siteId = siteId
         self.currentMessage = message
         self.currentRoute = message.messageId
+
+        let diGraph = DIGraphShared.shared
+        self.logger = diGraph.logger
 
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: Gist.shared.siteId,
@@ -90,13 +94,13 @@ class MessageManager: EngineWebDelegate {
 
     func removePersistentMessage() {
         if currentMessage.gistProperties.persistent == true {
-            Logger.instance.debug(message: "Persistent message dismissed, logging view")
+            logger.debug("Persistent message dismissed, logging view")
             Gist.shared.logMessageView(message: currentMessage)
         }
     }
 
     func bootstrapped() {
-        Logger.instance.debug(message: "Bourbon Engine bootstrapped")
+        logger.debug("Bourbon Engine bootstrapped")
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
         if currentMessage.messageId == "" {
@@ -106,14 +110,14 @@ class MessageManager: EngineWebDelegate {
 
     // swiftlint:disable cyclomatic_complexity
     func tap(name: String, action: String, system: Bool) {
-        Logger.instance.info(message: "Action triggered: \(action) with name: \(name)")
+        logger.info("Action triggered: \(action) with name: \(name)")
         delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {
             switch url.host {
             case "close":
-                Logger.instance.info(message: "Dismissing from action: \(action)")
+                logger.info("Dismissing from action: \(action)")
                 removePersistentMessage()
                 dismissMessage()
             case "loadPage":
@@ -157,14 +161,14 @@ class MessageManager: EngineWebDelegate {
                         // If `continueNSUserActivity` could not handle the URL, try opening it directly.
                         UIApplication.shared.open(url) { handled in
                             if handled {
-                                Logger.instance.info(message: "Dismissing from system action: \(action)")
+                                self.logger.info("Dismissing from system action: \(action)")
                                 self.dismissMessage()
                             } else {
-                                Logger.instance.info(message: "System action not handled")
+                                self.logger.info("System action not handled")
                             }
                         }
                     } else {
-                        Logger.instance.info(message: "Handled by NSUserActivity")
+                        logger.info("Handled by NSUserActivity")
                         dismissMessage()
                     }
                 }
@@ -204,26 +208,26 @@ class MessageManager: EngineWebDelegate {
     }
 
     func routeChanged(newRoute: String) {
-        Logger.instance.info(message: "Message route changed to: \(newRoute)")
+        logger.info("Message route changed to: \(newRoute)")
     }
 
     func sizeChanged(width: CGFloat, height: CGFloat) {
         gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
-        Logger.instance.debug(message: "Message size changed Width: \(width) - Height: \(height)")
+        logger.debug("Message size changed Width: \(width) - Height: \(height)")
     }
 
     func routeError(route: String) {
-        Logger.instance.error(message: "Error loading message with route: \(route)")
+        logger.error("Error loading message with route: \(route)")
         delegate?.messageError(message: currentMessage)
     }
 
     func error() {
-        Logger.instance.error(message: "Error loading message with id: \(currentMessage.messageId)")
+        logger.error("Error loading message with id: \(currentMessage.messageId)")
         delegate?.messageError(message: currentMessage)
     }
 
     func routeLoaded(route: String) {
-        Logger.instance.info(message: "Message loaded with route: \(route)")
+        logger.info("Message loaded with route: \(route)")
 
         currentRoute = route
         if route == currentMessage.messageId, !messageLoaded {

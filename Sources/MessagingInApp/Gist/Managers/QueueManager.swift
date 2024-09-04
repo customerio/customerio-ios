@@ -88,7 +88,7 @@ class QueueManager {
             DispatchQueue.main.async {
                 Gist.shared.messageQueueManager.interval = newPollingInterval
                 Gist.shared.messageQueueManager.setup(skipQueueCheck: true)
-                Logger.instance.info(message: "Polling interval changed to: \(newPollingInterval) seconds")
+                DIGraphShared.shared.logger.info("Polling interval changed to: \(newPollingInterval) seconds")
             }
         }
     }

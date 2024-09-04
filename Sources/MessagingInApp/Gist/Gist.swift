@@ -1,7 +1,9 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
 public class Gist: GistDelegate {
+    private let logger: Logger
     var messageQueueManager = MessageQueueManager()
     var shownMessageQueueIds: Set<String> = []
     private var messageManagers: [MessageManager] = []
@@ -12,6 +14,10 @@ public class Gist: GistDelegate {
 
     public static let shared = Gist()
 
+    init() {
+        self.logger = DIGraphShared.shared.logger
+    }
+
     public func setup(
         siteId: String,
         dataCenter: String,
@@ -21,7 +27,6 @@ public class Gist: GistDelegate {
         Settings.Environment = env
         self.siteId = siteId
         self.dataCenter = dataCenter
-        Logger.instance.enabled = logging
         messageQueueManager.setup()
 
         // Initialising Gist web with an empty message to fetch fonts and other assets.
@@ -74,7 +79,7 @@ public class Gist: GistDelegate {
 
     public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
         if let messageManager = getModalMessageManager() {
-            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
+            logger.info("Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
         } else {
             let messageManager = createMessageManager(siteId: siteId, message: message)
             messageManager.showMessage(position: position)
@@ -100,17 +105,17 @@ public class Gist: GistDelegate {
     // MARK: Events
 
     public func messageShown(message: Message) {
-        Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
+        logger.debug("Message with route: \(message.messageId) shown")
         if message.gistProperties.persistent != true {
             logMessageView(message: message)
         } else {
-            Logger.instance.debug(message: "Persistent message shown, skipping logging view")
+            logger.debug("Persistent message shown, skipping logging view")
         }
         delegate?.messageShown(message: message)
     }
 
     public func messageDismissed(message: Message) {
-        Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
+        logger.debug("Message with id: \(message.messageId) dismissed")
         removeMessageManager(instanceId: message.instanceId)
         delegate?.messageDismissed(message: message)
 
@@ -139,7 +144,7 @@ public class Gist: GistDelegate {
         LogManager(siteId: siteId, dataCenter: dataCenter)
             .logView(message: message, userToken: userToken) { response in
                 if case .failure(let error) = response {
-                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+                    self.logger.error("Failed to log view for message: \(message.messageId) with error: \(error)")
                 }
             }
     }
@@ -152,7 +157,7 @@ public class Gist: GistDelegate {
 
             if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
                 // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
+                logger.debug("Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
 
                 // Stop showing the current message synchronously meaning to remove from UI instantly.
                 // We want to be sure the message is gone when this function returns and be ready to display another message if needed.

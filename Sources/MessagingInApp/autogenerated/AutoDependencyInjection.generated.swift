@@ -122,7 +122,7 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageManager(threadUtil: threadUtil)
+        InAppMessageManager(logger: logger, threadUtil: threadUtil)
     }
 }
 

@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 
 class RouteManager {
@@ -9,11 +10,11 @@ class RouteManager {
 
     static func setCurrentRoute(_ currentRoute: String) {
         self.currentRoute = currentRoute
-        Logger.instance.info(message: "Route changed to: \(currentRoute)")
+        DIGraphShared.shared.logger.info("Route changed to: \(currentRoute)")
     }
 
     static func clearCurrentRoute() {
         currentRoute = ""
-        Logger.instance.info(message: "Route cleared")
+        DIGraphShared.shared.logger.info("Route cleared")
     }
 }
