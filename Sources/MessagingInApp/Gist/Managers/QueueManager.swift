@@ -1,12 +1,12 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "QueueManager"
+// sourcery: InjectSingleton
 class QueueManager {
-    let siteId: String
-    let dataCenter: String
-    var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
-    let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
-    let threadUtil: ThreadUtil = DIGraphShared.shared.threadUtil
+    private var keyValueStore: SharedKeyValueStorage
+    private let gistQueueNetwork: GistQueueNetwork
+    private let inAppMessageManager: InAppMessageManager
 
     private var cachedFetchUserQueueResponse: Data? {
         get {
@@ -17,9 +17,10 @@ class QueueManager {
         }
     }
 
-    init(siteId: String, dataCenter: String) {
-        self.siteId = siteId
-        self.dataCenter = dataCenter
+    init(keyValueStore: SharedKeyValueStorage, gistQueueNetwork: GistQueueNetwork, inAppMessageManager: InAppMessageManager) {
+        self.keyValueStore = keyValueStore
+        self.gistQueueNetwork = gistQueueNetwork
+        self.inAppMessageManager = inAppMessageManager
     }
 
     func clearCachedUserQueue() {
@@ -41,9 +42,7 @@ class QueueManager {
                         do {
                             let userQueue = try self.parseResponseBody(lastCachedResponse)
 
-                            self.threadUtil.runMain {
-                                completionHandler(.success(userQueue))
-                            }
+                            completionHandler(.success(userQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -53,9 +52,7 @@ class QueueManager {
 
                             self.cachedFetchUserQueueResponse = data
 
-                            self.threadUtil.runMain {
-                                completionHandler(.success(userQueue))
-                            }
+                            completionHandler(.success(userQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -82,14 +79,13 @@ class QueueManager {
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
-        if let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
-           let newPollingInterval = Double(newPollingIntervalString),
-           newPollingInterval != Gist.shared.messageQueueManager.interval {
-            DispatchQueue.main.async {
-                Gist.shared.messageQueueManager.interval = newPollingInterval
-                Gist.shared.messageQueueManager.setup(skipQueueCheck: true)
-                DIGraphShared.shared.logger.info("Polling interval changed to: \(newPollingInterval) seconds")
-            }
+        guard let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
+              let newPollingInterval = Double(newPollingIntervalString) else { return }
+
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self = self, newPollingInterval != state.pollInterval else { return }
+
+            inAppMessageManager.dispatch(action: .setPollingInterval(interval: newPollingInterval))
         }
     }
 }

@@ -58,6 +58,9 @@ extension DIGraphShared {
         _ = engineWebProvider
         countDependenciesResolved += 1
 
+        _ = gist
+        countDependenciesResolved += 1
+
         _ = gistDelegate
         countDependenciesResolved += 1
 
@@ -68,6 +71,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = logManager
+        countDependenciesResolved += 1
+
+        _ = queueManager
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -82,6 +88,30 @@ extension DIGraphShared {
 
     private var newEngineWebProvider: EngineWebProvider {
         EngineWebProviderImpl()
+    }
+
+    // Gist (singleton)
+    public var gist: Gist {
+        getOverriddenInstance() ??
+            sharedGist
+    }
+
+    public var sharedGist: Gist {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_Gist_singleton_access").sync {
+            if let overridenDep: Gist = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: Gist.self)] as? Gist
+            let instance = existingSingletonInstance ?? _get_gist()
+            self.singletons[String(describing: Gist.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_gist() -> Gist {
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil)
     }
 
     // GistDelegate (singleton)
@@ -150,6 +180,30 @@ extension DIGraphShared {
 
     private var newLogManager: LogManager {
         LogManager(gistQueueNetwork: gistQueueNetwork)
+    }
+
+    // QueueManager (singleton)
+    var queueManager: QueueManager {
+        getOverriddenInstance() ??
+            sharedQueueManager
+    }
+
+    var sharedQueueManager: QueueManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_QueueManager_singleton_access").sync {
+            if let overridenDep: QueueManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: QueueManager.self)] as? QueueManager
+            let instance = existingSingletonInstance ?? _get_queueManager()
+            self.singletons[String(describing: QueueManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_queueManager() -> QueueManager {
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager)
     }
 }
 
