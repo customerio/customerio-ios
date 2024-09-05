@@ -21,6 +21,8 @@ protocol EngineWebInstance: AutoMockable {
 
 public class EngineWeb: NSObject, EngineWebInstance {
     private let logger: Logger = DIGraphShared.shared.logger
+    private let inAppMessageManager: InAppMessageManager = DIGraphShared.shared.inAppMessageManager
+    private let _currentMessage: Message?
     private var _currentRoute = ""
     private var _timeoutTimer: Timer?
     private var _elapsedTimer = ElapsedTimer()
@@ -42,6 +44,8 @@ public class EngineWeb: NSObject, EngineWebInstance {
     }
 
     init(configuration: EngineWebConfiguration, state: InAppMessageState) {
+        self._currentMessage = state.currentMessageState.message
+
         super.init()
 
         _elapsedTimer.start(title: "Engine render for message: \(configuration.messageId)")
@@ -91,6 +95,9 @@ public class EngineWeb: NSObject, EngineWebInstance {
     @objc
     func forcedTimeout() {
         logger.info("Timeout triggered, triggering message error.")
+        if let message = _currentMessage {
+            inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: message)))
+        }
         delegate?.error()
     }
 }

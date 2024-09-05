@@ -40,7 +40,7 @@ class MessageManager: EngineWebDelegate {
             instanceId: message.instanceId,
             endpoint: state.environment.networkSettings.engineAPI,
             messageId: message.messageId,
-            properties: message.toEngineRoute().properties
+            properties: message.properties.mapValues { AnyEncodable($0) }
         )
 
         self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state)
