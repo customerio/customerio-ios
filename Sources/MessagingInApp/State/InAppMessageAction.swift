@@ -23,7 +23,6 @@ enum InAppMessageAction: Equatable, Action {
     enum EngineAction: Equatable {
         case tap(message: Message, route: String, name: String, action: String)
         case messageLoadingFailed(message: Message)
-        case error(message: Message)
     }
 
     // swiftlint:disable cyclomatic_complexity

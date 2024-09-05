@@ -204,9 +204,6 @@ func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMidd
 
             case .messageLoadingFailed(let message):
                 delegate.messageError(message: message)
-
-            case .error(let message):
-                delegate.messageError(message: message)
             }
 
         default:

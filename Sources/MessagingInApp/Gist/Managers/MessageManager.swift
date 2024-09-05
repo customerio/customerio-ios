@@ -221,7 +221,7 @@ class MessageManager: EngineWebDelegate {
 
     func error() {
         logger.error("Error loading message with id: \(currentMessage.messageId)")
-        inAppMessageManager.dispatch(action: .engineAction(action: .error(message: currentMessage)))
+        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
     }
 
     func routeLoaded(route: String) {
