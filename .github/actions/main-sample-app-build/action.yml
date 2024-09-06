@@ -50,7 +50,6 @@ runs:
     
     # If the cache is found, we set the cache-hit status to true.
     # This is useful for future steps to know if the cache was found or not.
-    # Also, if the cache is found, we do not need to save the build.
     - name: Set cache-hit and should-save-build values
       shell: bash
       run: |
@@ -59,7 +58,7 @@ runs:
         echo "Cache Hit Value: $build_cache_hit"
 
     # If the cache is not found, we need to build the sample app for main branch.
-    # So, we checkout the main branch and build the sample app.
+    # So we checkout the main branch and build the sample app.
     - name: Checkout main branch
       if: ${{ env.BUILD_CACHE_HIT == 'false' }}
       uses: actions/checkout@v4
@@ -92,7 +91,7 @@ runs:
         cp -r ${{ inputs.set-latest-main-build }} ${{ env.BUILD_FILE_NAME }}
 
     # If the cache was not found, we need to copy the fallback build to the expected name.
-    # This is similar to the previous step, but we are doing it for the case where the cache was not found.
+    # This is similar to the previous step, but we are doing it for the case where cache was not found.
     - name: If cache was not found, copy fallback build to expected name
       if: ${{ env.BUILD_CACHE_HIT == 'false' }}
       working-directory: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}
