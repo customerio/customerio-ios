@@ -43,7 +43,7 @@ class MessageManager: EngineWebDelegate {
             properties: message.properties.mapValues { AnyEncodable($0) }
         )
 
-        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state)
+        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state, message: message)
         engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
 
