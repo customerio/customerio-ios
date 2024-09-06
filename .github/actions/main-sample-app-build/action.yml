@@ -8,6 +8,10 @@ inputs:
     type: string
     required: false 
     default: ''
+  GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
+    description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
+    type: string
+    required: true
 
 outputs:
   apn-app-xcarchive-path:
@@ -29,6 +33,7 @@ runs:
         echo "CACHE_KEY_BASE=APN-UIKit-build-main-" >> $GITHUB_ENV
 
     - name: Download latest main sample app build to compare against 
+      id: restore-build
       if: ${{ inputs.set-latest-main-build == '' }}
       uses: actions/cache/restore@v4
       with:
@@ -43,6 +48,40 @@ runs:
         restore-keys: |
           ${{ env.CACHE_KEY_BASE }}
     
+    # If the cache is found, we set the cache-hit status to true.
+    # This is useful for future steps to know if the cache was found or not.
+    # Also, if the cache is found, we do not need to save the build.
+    - name: Set cache-hit and should-save-build values
+      shell: bash
+      run: |
+        build_cache_hit="${{ steps.restore-build.outputs.cache-hit || 'false' }}"
+        echo "BUILD_CACHE_HIT=$build_cache_hit" >> $GITHUB_ENV
+        echo "Cache Hit Value: $build_cache_hit"
+
+    # If the cache is not found, we need to build the sample app for main branch.
+    # So, we checkout the main branch and build the sample app.
+    - name: Checkout main branch
+      if: ${{ env.BUILD_CACHE_HIT == 'false' }}
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    # Build the sample app for main branch if the cache is not found.
+    - name: Make a build of the sample app to generate report for 
+      if: ${{ env.BUILD_CACHE_HIT == 'false' }}
+      uses: ./.github/actions/build-sample-app
+      id: fallback-build-main
+      with:
+        apn-or-fcm: 'APN'
+        sample-app: 'APN-UIKit'
+        # Pass in a hard-coded version and build number to ensure that all sample app builds that are compiled for SDK size reports are consistent.
+        # When we compare size reports between different builds, we want to ensure that the only difference is the SDK code that was modified in a PR. 
+        fastlane-build-args: '{"app_version": "1.0.0", "build_number": "1"}'
+        # workspace credentials do not matter since we are not using this app build. 
+        customerio-workspace-siteid: "12345"
+        customerio-workspace-cdp-api-key: "12345"      
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+
     # It's easiest if the latest main build always has the same name that easily identifies it. 
     # Therefore, we take the input build and copy it to have the name that we expect to upload.
     - name: If saving a new build, create copy that we will save. 
@@ -52,8 +91,17 @@ runs:
       run: |
         cp -r ${{ inputs.set-latest-main-build }} ${{ env.BUILD_FILE_NAME }}
 
+    # If the cache was not found, we need to copy the fallback build to the expected name.
+    # This is similar to the previous step, but we are doing it for the case where the cache was not found.
+    - name: If cache was not found, copy fallback build to expected name
+      if: ${{ env.BUILD_CACHE_HIT == 'false' }}
+      working-directory: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}
+      shell: bash
+      run: |
+        cp -r ${{ steps.fallback-build-main.outputs.app-xcarchive-name }} ${{ env.BUILD_FILE_NAME }}
+
     - name: Save latest main sample app build
-      if: ${{ inputs.set-latest-main-build != '' }}
+      if: ${{ inputs.set-latest-main-build != '' || env.BUILD_CACHE_HIT == 'false' }}
       uses: actions/cache/save@v4
       with:
         # the key must be unique. caches are immutable so the key must always be unique. 
