@@ -4,10 +4,10 @@ import UIKit
 
 // sourcery: InjectRegisterShared = "Gist"
 // sourcery: InjectSingleton
-/// Main class that is responsible for managing the in-app message queue, and observing user and route changes.
-/// This class is responsible for scheduling polling of in-app message queue based on `InAppMessageState.pollInterval`.
-/// This class is also responsible for fetching the in-app message queue from the remote service and dispatching
-/// actions to the `InAppMessageManager` based on user and route changes.
+/// Main class that is responsible for managing in-app message queue from remote service and
+/// dispatching actions to `InAppMessageManager` based on user and route changes.
+/// This class is also responsible for scheduling polling of in-app message queue based on
+/// `InAppMessageState.pollInterval`.
 public class Gist {
     private let logger: Logger
     private let gistDelegate: GistDelegate
