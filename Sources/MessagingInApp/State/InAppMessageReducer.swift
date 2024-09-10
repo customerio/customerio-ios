@@ -69,8 +69,15 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .dismissMessage(let message, _, _):
         return state.copy(currentMessageState: .dismissed(message: message))
 
+    case .engineAction(let engineAction):
+        switch engineAction {
+        case .tap:
+            return state
+        case .messageLoadingFailed(let message):
+            return state.copy(currentMessageState: .dismissed(message: message))
+        }
+
     case .embedMessage,
-         .engineAction,
          .reportError:
         return state
 

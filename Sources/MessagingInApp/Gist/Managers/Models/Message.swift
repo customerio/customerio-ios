@@ -18,41 +18,28 @@ public class GistProperties {
 }
 
 public class Message {
-    public let instanceId = UUID().uuidString.lowercased()
-    public let queueId: String?
-    public let priority: Int?
-    public let messageId: String
-    public let gistProperties: GistProperties
-
-    var properties = [String: Any]()
+    let instanceId = UUID().uuidString.lowercased()
+    let queueId: String?
+    let priority: Int?
+    let messageId: String
+    let gistProperties: GistProperties
+    let properties: [String: Any]
 
     public var isEmbedded: Bool {
         gistProperties.elementId != nil
     }
 
     public init(
+        messageId: String,
         queueId: String? = nil,
         priority: Int? = nil,
-        messageId: String,
-        properties: [String: Any]? = nil,
-        gistProperties: GistProperties? = nil
+        properties: [String: Any]?
     ) {
+        self.messageId = messageId
         self.queueId = queueId
         self.priority = priority
-        self.messageId = messageId
-        self.gistProperties = gistProperties ?? Message.parseGistProperties(from: properties)
-        if let props = properties {
-            self.properties = props
-        }
-    }
-
-    public convenience init(messageId: String, properties: [String: Any]?) {
-        self.init(
-            queueId: properties?["queueId"] as? String,
-            priority: properties?["priority"] as? Int,
-            messageId: messageId,
-            gistProperties: Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
-        )
+        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        self.properties = properties ?? [:]
     }
 
     private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
@@ -74,20 +61,6 @@ public class Message {
             position: position,
             persistent: persistent
         )
-    }
-
-    public func addProperty(key: String, value: Any) {
-        properties[key] = AnyEncodable(value)
-    }
-
-    func toEngineRoute() -> EngineRoute {
-        let engineRoute = EngineRoute(route: messageId)
-        properties.keys.forEach { key in
-            if let value = properties[key] {
-                engineRoute.addProperty(key: key, value: value)
-            }
-        }
-        return engineRoute
     }
 }
 

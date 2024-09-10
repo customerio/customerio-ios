@@ -40,10 +40,10 @@ class MessageManager: EngineWebDelegate {
             instanceId: message.instanceId,
             endpoint: state.environment.networkSettings.engineAPI,
             messageId: message.messageId,
-            properties: message.toEngineRoute().properties
+            properties: message.properties.mapValues { AnyEncodable($0) }
         )
 
-        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state)
+        self.engine = engineWebProvider.getEngineWebInstance(configuration: engineWebConfiguration, state: state, message: message)
         engine.delegate = self
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
 
@@ -221,7 +221,7 @@ class MessageManager: EngineWebDelegate {
 
     func error() {
         logger.error("Error loading message with id: \(currentMessage.messageId)")
-        inAppMessageManager.dispatch(action: .engineAction(action: .error(message: currentMessage)))
+        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
     }
 
     func routeLoaded(route: String) {
