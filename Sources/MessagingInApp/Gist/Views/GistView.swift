@@ -20,7 +20,7 @@ public class GistView: UIView {
 
     override public func removeFromSuperview() {
         super.removeFromSuperview()
-        if let message = message {
+        if let _ = message {
             DIGraphShared.shared.gist.dismissMessage()
         }
     }
