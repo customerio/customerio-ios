@@ -35,7 +35,7 @@ func middleware(
 ) -> Middleware<InAppMessageState> {
     { dispatch, getState in { next in { action in
         guard let inAppAction = action as? InAppMessageAction else {
-            DIGraphShared.shared.logger.debug("[InApp] Invalid action type: \(action), skipping middleware")
+            DIGraphShared.shared.logger.logWithModuleTag("Invalid action type: \(action), skipping middleware", level: .debug)
             return next(action)
         }
 

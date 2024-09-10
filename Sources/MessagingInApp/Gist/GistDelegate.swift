@@ -13,6 +13,11 @@ public protocol GistDelegate: AnyObject {
 
 // sourcery: InjectRegisterShared = "GistDelegate"
 // sourcery: InjectSingleton
+/// Default implementation of `GistDelegate`.
+/// This class is responsible for handling events received when an in-app message is shown, dismissed,
+/// received an error, or an action is taken.
+/// This class is also responsible for sending events to client callbacks using `InAppEventListener`
+/// protocol for similar events.
 class GistDelegateImpl: GistDelegate {
     private let logger: Logger
     private let eventBusHandler: EventBusHandler
@@ -31,7 +36,7 @@ class GistDelegateImpl: GistDelegate {
     public func embedMessage(message: Message, elementId: String) {}
 
     public func messageShown(message: Message) {
-        logger.debug("[InApp] Message shown: \(message.describeForLogs)")
+        logger.logWithModuleTag("Message shown: \(message.describeForLogs)", level: .debug)
 
         if let deliveryId = message.campaignDeliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
@@ -41,19 +46,19 @@ class GistDelegateImpl: GistDelegate {
     }
 
     public func messageDismissed(message: Message) {
-        logger.debug("[InApp] Message dismissed: \(message.describeForLogs)")
+        logger.logWithModuleTag("Message dismissed: \(message.describeForLogs)", level: .debug)
 
         eventListener?.messageDismissed(message: InAppMessage(gistMessage: message))
     }
 
     public func messageError(message: Message) {
-        logger.debug("[InApp] Message error: \(message.describeForLogs)")
+        logger.logWithModuleTag("Message error: \(message.describeForLogs)", level: .debug)
 
         eventListener?.errorWithMessage(message: InAppMessage(gistMessage: message))
     }
 
     public func action(message: Message, currentRoute: String, action: String, name: String) {
-        logger.debug("[InApp] Message action: \(action), \(message.describeForLogs)")
+        logger.logWithModuleTag("Message action: \(action), \(message.describeForLogs)", level: .debug)
 
         // a close action does not count as a clicked action.
         if action != "gist://close" {
