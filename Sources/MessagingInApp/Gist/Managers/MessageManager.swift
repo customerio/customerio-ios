@@ -16,6 +16,7 @@ class MessageManager: EngineWebDelegate {
     private let isMessageEmbed: Bool
     private var messagePosition: MessagePosition = .center
 
+    @Atomic private var isMessageLoaded: Bool = false
     private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
     private var elapsedTimer = ElapsedTimer()
     private var modalViewManager: ModalViewManager?
@@ -84,6 +85,11 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func loadModalMessage() {
+        guard isMessageLoaded else {
+            logger.debug("[InApp] Message already loaded. Skipping loading modal message: \(currentMessage.describeForLogs)")
+            return
+        }
+
         logger.debug("[InApp] Loading modal message: \(currentMessage.describeForLogs)")
         modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
         modalViewManager?.showModalView { [weak self] in
@@ -233,7 +239,10 @@ class MessageManager: EngineWebDelegate {
         logger.info("[InApp] Message loaded with route: \(route)")
 
         currentRoute = route
-        if route == currentMessage.messageId {
+        // If the route is the same as the current message and the message is not already loaded,
+        // then display the message.
+        if route == currentMessage.messageId, !isMessageLoaded {
+            isMessageLoaded = true
             if isMessageEmbed {
                 inAppMessageManager.dispatch(action: .displayMessage(message: currentMessage))
             } else {
