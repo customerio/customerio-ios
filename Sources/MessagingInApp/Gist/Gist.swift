@@ -107,7 +107,7 @@ public class Gist {
     // MARK: Message Queue Polling
 
     private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
-        logger.info("[InApp] Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)")
+        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
 
         // Timer must be scheduled on the main thread
@@ -133,13 +133,13 @@ public class Gist {
     /// Also, the method must be called on main thread since it checks the application state.
     @objc
     func fetchUserMessages() {
-        logger.info("[InApp] Attempting to fetch user messages")
+        logger.logWithModuleTag("Attempting to fetch user messages", level: .info)
         guard UIApplication.shared.applicationState != .background else {
-            logger.info("[InApp] Application in background, skipping queue check.")
+            logger.logWithModuleTag("Application in background, skipping queue check.", level: .info)
             return
         }
 
-        logger.info("[InApp] Checking Gist queue service")
+        logger.logWithModuleTag("Checking Gist queue service", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
@@ -149,7 +149,7 @@ public class Gist {
 
     private func fetchUserQueue(state: InAppMessageState) {
         guard let _ = state.userId else {
-            logger.debug("[InApp] User token not set, skipping fetch user queue.")
+            logger.logWithModuleTag("User token not set, skipping fetch user queue.", level: .debug)
             return
         }
 
@@ -159,17 +159,17 @@ public class Gist {
 
                 switch response {
                 case .success(nil):
-                    logger.info("[InApp] No changes to remote queue")
+                    logger.logWithModuleTag("No changes to remote queue", level: .info)
                     inAppMessageManager.dispatch(action: .clearMessageQueue)
 
                 case .success(let responses):
                     guard let responses else { return }
 
-                    logger.info("[InApp] Gist queue service found \(responses.count) new messages")
+                    logger.logWithModuleTag("Gist queue service found \(responses.count) new messages", level: .info)
                     inAppMessageManager.dispatch(action: .processMessageQueue(messages: responses.map { $0.toMessage() }))
 
                 case .failure(let error):
-                    logger.error("[InApp] Error fetching messages from Gist queue service. \(error.localizedDescription)")
+                    logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
                     inAppMessageManager.dispatch(action: .clearMessageQueue)
                 }
             }

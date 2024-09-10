@@ -12,19 +12,19 @@ func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
         guard let action = action as? InAppMessageAction else {
             // This should never happen ideally since we are only dispatching InAppMessageAction as actions,
             // but if it does, we should log it and return the current state.
-            logger.debug("[InApp] Error: Action (\(action)) is not of type InAppMessageAction")
+            logger.logWithModuleTag("Error: Action (\(action)) is not of type InAppMessageAction", level: .debug)
             return InAppMessageState()
         }
 
         let currentState = state ?? InAppMessageState()
-        logger.debug("[InApp] Action received: \(action) with current state: \(currentState)")
+        logger.logWithModuleTag("Action received: \(action) with current state: \(currentState)", level: .debug)
         let result = reducer(action: action, state: currentState)
 
         let changes = InAppMessageState.changes(from: currentState, to: result)
         if !changes.isEmpty {
-            logger.debug("[InApp] State changes after action '\(action)': \(changes)")
+            logger.logWithModuleTag("State changes after action '\(action)': \(changes)", level: .debug)
         } else {
-            logger.debug("[InApp] No state changes after action '\(action)'")
+            logger.logWithModuleTag("No state changes after action '\(action)'", level: .debug)
         }
 
         return result

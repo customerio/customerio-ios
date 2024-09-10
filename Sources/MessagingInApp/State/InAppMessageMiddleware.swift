@@ -16,7 +16,7 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
         default:
             let userId = state.userId
             guard let userId = userId, !userId.isBlankOrEmpty() else {
-                return next(.reportError(message: "[InApp] Blocked action: \(action) because userId (\(String(describing: userId))) is invalid"))
+                return next(.reportError(message: "Blocked action: \(action) because userId (\(String(describing: userId))) is invalid"))
             }
 
             return next(action)
@@ -42,7 +42,7 @@ func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
            message.doesHavePageRule(),
            !message.doesPageRuleMatch(route: currentRoute) {
             // Dismiss message if the route does not match new route
-            logger.debug("[InApp] Dismissing message: \(message.describeForLogs) because route does not match current route: \(currentRoute)")
+            logger.logWithModuleTag("Dismissing message: \(message.describeForLogs) because route does not match current route: \(currentRoute)", level: .debug)
             dispatch(.dismissMessage(message: message, shouldLog: false))
         }
 
@@ -62,10 +62,10 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
         // If there is a message currently displayed, block loading new message
         guard !state.currentMessageState.isDisplayed else {
             let currentMessage = state.currentMessageState.message?.describeForLogs ?? "nil"
-            return next(.reportError(message: "[InApp] Blocked loading message: \(message.describeForLogs) because another message is currently displayed or cancelled: \(currentMessage)"))
+            return next(.reportError(message: "Blocked loading message: \(message.describeForLogs) because another message is currently displayed or cancelled: \(currentMessage)"))
         }
 
-        logger.debug("[InApp] Showing message: \(message.describeForLogs) with position: \(String(describing: position))")
+        logger.logWithModuleTag("Showing message: \(message.describeForLogs) with position: \(String(describing: position))", level: .debug)
         // Show message on main thread to avoid unexpected crashes
         threadUtil.runMain {
             let messageManager = MessageManager(state: state, message: message)
@@ -79,7 +79,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
 private func logMessageView(logger: Logger, logManager: LogManager, state: InAppMessageState, message: Message) {
     logManager.logView(state: state, message: message) { response in
         if case .failure(let error) = response {
-            logger.error("[InApp] Failed to log message view: \(error) for message: \(message.describeForLogs)")
+            logger.logWithModuleTag("Failed to log message view: \(error) for message: \(message.describeForLogs)", level: .error)
         }
     }
 }
@@ -91,10 +91,10 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
         case .displayMessage(let message):
             // Log message view only if message is not persistent
             if message.gistProperties.persistent != true {
-                logger.debug("[InApp] Message shown, logging view for message: \(message.describeForLogs)")
+                logger.logWithModuleTag("Message shown, logging view for message: \(message.describeForLogs)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
-                logger.debug("[InApp] Persistent message shown, not logging view for message: \(message.describeForLogs)")
+                logger.logWithModuleTag("Persistent message shown, not logging view for message: \(message.describeForLogs)", level: .debug)
             }
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
@@ -103,13 +103,13 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             // Log message close only if message was dismissed via close action
             if viaCloseAction {
                 if message.gistProperties.persistent == true {
-                    logger.debug("[InApp] Persistent message dismissed, logging view for message: \(message.describeForLogs)")
+                    logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs)", level: .debug)
                 } else {
-                    logger.debug("[InApp] Dismissed message, logging view for message: \(message.describeForLogs)")
+                    logger.logWithModuleTag("Dismissed message, logging view for message: \(message.describeForLogs)", level: .debug)
                 }
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
-                logger.debug("[InApp] Message dismissed without close action, not logging view for message: \(message.describeForLogs)")
+                logger.logWithModuleTag("Message dismissed without close action, not logging view for message: \(message.describeForLogs)", level: .debug)
             }
 
         default:
@@ -167,7 +167,7 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             // Log if no message matched the criteria to be shown
             // This can happen if there is a message currently displayed or loading
             // or if there are no messages in the queue that match the current route
-            logger.debug("[InApp] No message matched the criteria to be shown")
+            logger.logWithModuleTag("No message matched the criteria to be shown", level: .debug)
             return
         }
 
@@ -217,7 +217,7 @@ func errorReportingMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Log error messages for reportError actions only
         if case .reportError(let message) = action {
-            logger.error("[InApp] Error received: \(message)")
+            logger.logWithModuleTag("Error received: \(message)", level: .error)
         }
 
         return next(action)

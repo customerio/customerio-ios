@@ -71,7 +71,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
            let options = jsonString.data(using: .utf8)?.base64EncodedString()
            .addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
             let url = "\(state.environment.networkSettings.renderer)/index.html?options=\(options)"
-            logger.info("[InApp] Loading URL: \(url)")
+            logger.logWithModuleTag("Loading URL: \(url)", level: .info)
             if let link = URL(string: url) {
                 self._timeoutTimer = Timer.scheduledTimer(
                     timeInterval: 5.0,
@@ -94,7 +94,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
     @objc
     func forcedTimeout() {
-        logger.info("[InApp] Timeout triggered, triggering message error.")
+        logger.logWithModuleTag("Timeout triggered, triggering message error.", level: .info)
         inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
         delegate?.error()
     }

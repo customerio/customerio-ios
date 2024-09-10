@@ -16,7 +16,7 @@ class ElapsedTimer {
             return
         }
         let timeElapsed = ((CFAbsoluteTimeGetCurrent() - startTime) * 1000).rounded() / 1000.0
-        logger.info("[InApp] \(title) timer elapsed in \(timeElapsed) seconds")
+        logger.logWithModuleTag("\(title) timer elapsed in \(timeElapsed) seconds", level: .info)
         self.startTime = nil
     }
 }
