@@ -124,7 +124,7 @@ extension Message {
                 return false // exit early to not show the message since page rule doesnt match
             }
         } else {
-            DIGraphShared.shared.logger.info("Problem processing route rule message regex: \(cleanRouteRule)")
+            DIGraphShared.shared.logger.info("[InApp] Problem processing route rule message regex: \(cleanRouteRule)")
             return false // exit early to not show the message since we cannot parse the page rule for message.
         }
 

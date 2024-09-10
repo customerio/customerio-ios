@@ -51,6 +51,9 @@ class MessageManager: EngineWebDelegate {
     }
 
     func subscribeToInAppMessageState() {
+        // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
+        // Also, since we do not store strong reference of MessageManager anywhere, not keeping a strong reference of
+        // subscriber may result in deallocation of MessageManager and hence dismissal of message unexpectedly.
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [self] state in
                 switch state.currentMessageState {
@@ -81,6 +84,7 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func loadModalMessage() {
+        logger.debug("[InApp] Loading modal message: \(currentMessage.describeForLogs)")
         modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
         modalViewManager?.showModalView { [weak self] in
             guard let self = self else { return }
@@ -90,6 +94,7 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func dismissMessage(completionHandler: (() -> Void)? = nil) {
+        logger.debug("[InApp] Dismissing message: \(currentMessage.describeForLogs)")
         if let modalViewManager = modalViewManager {
             modalViewManager.dismissModalView { [weak self] in
                 guard let _ = self else { return }
@@ -100,7 +105,7 @@ class MessageManager: EngineWebDelegate {
     }
 
     func bootstrapped() {
-        logger.debug("Bourbon Engine bootstrapped")
+        logger.debug("[InApp] Bourbon Engine bootstrapped")
 
         // Cleaning after engine web is bootstrapped and all assets downloaded.
         if currentMessage.messageId == "" {
@@ -110,14 +115,14 @@ class MessageManager: EngineWebDelegate {
 
     // swiftlint:disable cyclomatic_complexity
     func tap(name: String, action: String, system: Bool) {
-        logger.info("Action triggered: \(action) with name: \(name)")
+        logger.info("[InApp] Action triggered: \(action) with name: \(name)")
         inAppMessageManager.dispatch(action: .engineAction(action: .tap(message: currentMessage, route: currentRoute, name: name, action: action)))
         gistView.delegate?.action(message: currentMessage, currentRoute: currentRoute, action: action, name: name)
 
         if let url = URL(string: action), url.scheme == "gist" {
             switch url.host {
             case "close":
-                logger.info("Dismissing from action: \(action)")
+                logger.info("[InApp] Dismissing from action: \(action)")
                 inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, viaCloseAction: true))
             case "loadPage":
                 if let page = url.queryParameters?["url"],
@@ -159,14 +164,14 @@ class MessageManager: EngineWebDelegate {
                         // If `continueNSUserActivity` could not handle the URL, try opening it directly.
                         UIApplication.shared.open(url) { handled in
                             if handled {
-                                self.logger.info("Dismissing from system action: \(action)")
+                                self.logger.info("[InApp] Dismissing from system action: \(action)")
                                 self.inAppMessageManager.dispatch(action: .dismissMessage(message: self.currentMessage, shouldLog: false))
                             } else {
-                                self.logger.info("System action not handled")
+                                self.logger.info("[InApp] System action not handled")
                             }
                         }
                     } else {
-                        logger.info("Handled by NSUserActivity")
+                        logger.info("[InApp] Handled by NSUserActivity")
                         inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage))
                     }
                 }
@@ -211,21 +216,21 @@ class MessageManager: EngineWebDelegate {
 
     func sizeChanged(width: CGFloat, height: CGFloat) {
         gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
-        logger.debug("Message size changed Width: \(width) - Height: \(height)")
+        logger.debug("[InApp] Message size changed Width: \(width) - Height: \(height)")
     }
 
     func routeError(route: String) {
-        logger.error("Error loading message with route: \(route)")
+        logger.error("[InApp] Error loading message with route: \(route)")
         inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
     }
 
     func error() {
-        logger.error("Error loading message with id: \(currentMessage.messageId)")
+        logger.error("[InApp] Error loading message with id: \(currentMessage.messageId)")
         inAppMessageManager.dispatch(action: .engineAction(action: .error(message: currentMessage)))
     }
 
     func routeLoaded(route: String) {
-        logger.info("Message loaded with route: \(route)")
+        logger.info("[InApp] Message loaded with route: \(route)")
 
         currentRoute = route
         if route == currentMessage.messageId {
@@ -250,6 +255,7 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func showNewMessage(url: URL) {
+        logger.info("[InApp] Showing new message from action: \(url.absoluteString)")
         var properties: [String: Any]?
 
         if let stringProps = url.queryParameters?["properties"],

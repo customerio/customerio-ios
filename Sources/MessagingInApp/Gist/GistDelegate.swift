@@ -13,6 +13,11 @@ public protocol GistDelegate: AnyObject {
 
 // sourcery: InjectRegisterShared = "GistDelegate"
 // sourcery: InjectSingleton
+/// Default implementation of `GistDelegate`.
+/// This class is responsible for handling events received when an in-app message is shown, dismissed,
+/// received an error, or an action is taken.
+/// This class is also responsible for sending events to client callbacks using `InAppEventListener`
+/// protocol for similar events.
 class GistDelegateImpl: GistDelegate {
     private let logger: Logger
     private let eventBusHandler: EventBusHandler
