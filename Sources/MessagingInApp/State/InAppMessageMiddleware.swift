@@ -96,12 +96,10 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             } else {
                 logger.logWithModuleTag("Persistent message shown, not logging view for message: \(message.describeForLogs)", level: .debug)
             }
-            return next(action)
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
-            guard shouldLog else {
-                return next(action)
-            }
+            // Use break to exit switch statement instead of return to continue to next middleware
+            guard shouldLog else { break }
 
             // Log message close only if message was dismissed via close action
             if viaCloseAction {
@@ -116,8 +114,10 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         default:
-            return next(action)
+            break
         }
+
+        return next(action)
     }
 }
 
