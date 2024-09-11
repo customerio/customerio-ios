@@ -50,6 +50,7 @@ runs:
     uses: ./.github/actions/main-sample-app-build 
     with:
       set-latest-main-build: ${{ steps.build-sample-app.outputs.app-xcarchive-name }}
+      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
 
   - name: Make the SDK size report
     uses: mathiasvr/command-output@v2.0.0
@@ -78,6 +79,8 @@ runs:
     if: ${{ github.event_name == 'pull_request' }}
     id: download-latest-main-build
     uses: ./.github/actions/main-sample-app-build
+    with:
+      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
 
   - name: Generate SDK binary diff report between main branch and current branch 
     if: ${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path != '' }}
