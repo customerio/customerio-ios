@@ -53,6 +53,10 @@ public class InAppMessageManager {
         }
     }
 
+    func dispatchAsync(action: InAppMessageAction) async {
+        await store.dispatch(action)
+    }
+
     @discardableResult
     func unsubscribe(subscriber: InAppMessageStoreSubscriber) -> Task<Void, Never> {
         Task { await store.unsubscribe(subscriber) }

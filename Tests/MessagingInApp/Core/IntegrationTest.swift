@@ -27,7 +27,7 @@ open class IntegrationTest: UnitTest {
     }
 
     func setupHttpResponse(code: Int, body: Data) {
-        gistQueueNetworkMock.requestClosure = { _, _, _, _, completionHandler in
+        gistQueueNetworkMock.requestClosure = { _, _, completionHandler in
             let response = HTTPURLResponse(url: URL(string: "https://test.com")!, statusCode: code, httpVersion: nil, headerFields: nil)!
 
             completionHandler(.success((body, response)))
