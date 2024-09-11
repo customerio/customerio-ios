@@ -53,7 +53,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .clearMessageQueue:
         return state.copy(messagesInQueue: [])
 
-    case .loadMessage(let message, _):
+    case .loadMessage(let message):
         return state.copy(currentMessageState: .loading(message: message))
 
     case .displayMessage(let message):

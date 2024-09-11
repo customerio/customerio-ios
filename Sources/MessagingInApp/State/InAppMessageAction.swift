@@ -10,7 +10,7 @@ enum InAppMessageAction: Equatable, Action {
     case setPageRoute(route: String)
     case processMessageQueue(messages: [Message])
     case clearMessageQueue
-    case loadMessage(message: Message, position: MessagePosition? = nil)
+    case loadMessage(message: Message)
     case embedMessage(message: Message, elementId: String)
     case displayMessage(message: Message)
     case dismissMessage(message: Message, shouldLog: Bool = true, viaCloseAction: Bool = true)
@@ -46,8 +46,8 @@ enum InAppMessageAction: Equatable, Action {
         case (.clearMessageQueue, .clearMessageQueue):
             return true
 
-        case (.loadMessage(let lhsMessage, let lhsPosition), .loadMessage(let rhsMessage, let rhsPosition)):
-            return lhsMessage == rhsMessage && lhsPosition == rhsPosition
+        case (.loadMessage(let lhsMessage), .loadMessage(let rhsMessage)):
+            return lhsMessage == rhsMessage
 
         case (.embedMessage(let lhsMessage, let lhsElementId), .embedMessage(let rhsMessage, let rhsElementId)):
             return lhsMessage == rhsMessage && lhsElementId == rhsElementId
