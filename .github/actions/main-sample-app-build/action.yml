@@ -83,21 +83,24 @@ runs:
 
     # It's easiest if the latest main build always has the same name that easily identifies it. 
     # Therefore, we take the input build and copy it to have the name that we expect to upload.
-    # If cache is found, we copy the cache build to expected name.
-    # If cache is not found, we need to copy the fallback build to expected name.
     - name: If saving a new build, create copy that we will save. 
       if: ${{ inputs.set-latest-main-build != '' }}
       working-directory: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}
       shell: bash
       run: |
-        if [[ "${{ inputs.set-latest-main-build }}" != "" ]]; then
-          cp -r ${{ inputs.set-latest-main-build }} ${{ env.BUILD_FILE_NAME }}
-        elif [[ "${{ env.BUILD_CACHE_HIT }}" == "false" ]]; then
-          cp -r ${{ steps.fallback-build-main.outputs.app-xcarchive-name }} ${{ env.BUILD_FILE_NAME }}
-        fi
+        cp -r ${{ inputs.set-latest-main-build }} ${{ env.BUILD_FILE_NAME }}
+
+    # If the cache was not found, we need to copy the fallback build to the expected name.
+    # This is similar to the previous step, but we are doing it for the case where cache was not found.
+    - name: If cache was not found, copy fallback build to expected name
+      if: ${{ env.BUILD_CACHE_HIT == 'false' }}
+      working-directory: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}
+      shell: bash
+      run: |
+        cp -r ${{ steps.fallback-build-main.outputs.app-xcarchive-name }} ${{ env.BUILD_FILE_NAME }}
 
     - name: Save latest main sample app build
-      if: inputs.set-latest-main-build != '' || env.BUILD_CACHE_HIT == 'false'
+      if: ${{ inputs.set-latest-main-build != '' || env.BUILD_CACHE_HIT == 'false' }}
       uses: actions/cache/save@v4
       with:
         # the key must be unique. caches are immutable so the key must always be unique. 
