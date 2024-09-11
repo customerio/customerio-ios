@@ -80,7 +80,7 @@ class InAppMessageStateTests: IntegrationTest {
 
     func test_processMessageQueue_expectMessagesAddedToQueue() async {
         let messages = [Message(queueId: "1"), Message(queueId: "2")]
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
         let state = await inAppMessageManager.state
@@ -92,7 +92,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_displayMessage_expectMessageStateUpdated() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message))
 
         let state = await inAppMessageManager.state
@@ -103,7 +103,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_dismissMessage_expectMessageStateDismissed() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message))
 
         let state = await inAppMessageManager.state
@@ -111,22 +111,16 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     func test_resetState_expectInitialStateRestored() async {
-        // Setup initial state
-        inAppMessageManager.dispatch(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
-        inAppMessageManager.dispatch(action: .setUserIdentifier(user: "testUser"))
+        // Setup user
+        inAppMessageManager.dispatch(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .development))
+        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
 
-        let expectation = XCTestExpectation(description: "State reset")
-
-        inAppMessageManager.dispatch(action: .resetState) {
-            expectation.fulfill()
-        }
-
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await inAppMessageManager.dispatchAsync(action: .resetState)
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.siteId, "testSite")
         XCTAssertEqual(state.dataCenter, "testDC")
-        XCTAssertEqual(state.environment, .production)
+        XCTAssertEqual(state.environment, .development)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
         XCTAssertEqual(state.currentMessageState, .initial)
@@ -143,8 +137,7 @@ class InAppMessageStateTests: IntegrationTest {
             Message(priority: 3, queueId: "3")
         ]
 
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
         let state = await inAppMessageManager.state
@@ -164,8 +157,7 @@ class InAppMessageStateTests: IntegrationTest {
             Message(queueId: "2")
         ]
 
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
         let state = await inAppMessageManager.state
@@ -177,8 +169,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_routeChange_givenMessageWithPageRule_expectMessageStateUpdated() async {
         let message = Message(pageRule: "home", queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
         await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
 
@@ -213,7 +204,7 @@ class InAppMessageStateTests: IntegrationTest {
         let message = Message(queueId: "1")
         let elementId = "testElementId"
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .embedMessage(message: message, elementId: elementId))
 
         let state = await inAppMessageManager.state
@@ -229,7 +220,7 @@ class InAppMessageStateTests: IntegrationTest {
         let action = "testAction"
         let name = "testName"
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .engineAction(action: .tap(message: message, route: route, name: name, action: action)))
 
         XCTAssertTrue(globalEventListener.messageActionTakenCalled)
@@ -241,7 +232,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_engineAction_givenMessageLoadingFailed_expectMessageDismissed() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
 
         let state = await inAppMessageManager.state
@@ -251,14 +242,50 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(globalEventListener.errorWithMessageReceivedArguments?.deliveryId, message.gistProperties.campaignId)
     }
 
+    func test_processMessageQueue_givenDismissedMessage_expectMessageNotDisplayedAgain() async {
+        let message = Message(queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message))
+        await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message))
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertTrue(state.shownMessageQueueIds.contains(message.queueId!))
+
+        XCTAssertEqual(globalEventListener.messageShownCallsCount, 1)
+        XCTAssertEqual(globalEventListener.messageDismissedCallsCount, 1)
+    }
+
     // MARK: - Route Change Tests
+
+    func test_setPageRoute_givenNoUser_expectRouteUpdatedWithoutProcessingMessages() async {
+        var state = await inAppMessageManager.state
+        XCTAssertNil(state.userId)
+        XCTAssertNil(state.currentRoute)
+
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+
+        state = await inAppMessageManager.state
+        XCTAssertNil(state.userId)
+        XCTAssertEqual(state.currentRoute, "home")
+        XCTAssertEqual(state.currentMessageState, .initial)
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+
+        XCTAssertFalse(globalEventListener.messageShownCalled)
+        XCTAssertFalse(globalEventListener.messageDismissedCalled)
+        XCTAssertFalse(globalEventListener.errorWithMessageCalled)
+        XCTAssertFalse(globalEventListener.messageActionTakenCalled)
+    }
 
     func test_routeChange_expectMessageProcessing() async {
         let message1 = Message(pageRule: "home", queueId: "1")
         let message2 = Message(pageRule: "profile", queueId: "2")
 
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
 
         // Set route to "home"
@@ -286,12 +313,34 @@ class InAppMessageStateTests: IntegrationTest {
         }
     }
 
+    func test_routeChange_givenMessageBeingProcessed_expectMessageHandledCorrectly() async {
+        let message = Message(pageRule: "home", queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.currentMessageState, .loading(message: message))
+
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertEqual(state.currentRoute, "profile")
+
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.currentMessageState, .loading(message: message))
+    }
+
     // MARK: - Callback Tests
 
     func test_displayMessage_expectMessageShownCallbackCalled() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message))
 
         XCTAssertTrue(globalEventListener.messageShownCalled)
@@ -301,7 +350,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_dismissMessage_expectMessageDismissedCallbackCalled() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message))
 
         XCTAssertTrue(globalEventListener.messageDismissedCalled)
@@ -311,7 +360,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_engineAction_givenMessageLoadingFailed_expectErrorCallbackCalled() async {
         let message = Message(queueId: "1")
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
 
         XCTAssertTrue(globalEventListener.errorWithMessageCalled)
@@ -324,7 +373,7 @@ class InAppMessageStateTests: IntegrationTest {
         let action = "testAction"
         let name = "testName"
 
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .engineAction(action: .tap(message: message, route: route, name: name, action: action)))
 
         XCTAssertTrue(globalEventListener.messageActionTakenCalled)
