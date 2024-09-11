@@ -4,7 +4,7 @@ import SharedTests
 import XCTest
 
 class MessageQueueManagerIntegrationTests: IntegrationTest {
-    var manager: MessageQueueManager!
+    var manager: MessageQueueManagerImpl!
 
     var sampleFetchResponseBody: String {
         readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")
@@ -68,6 +68,6 @@ class MessageQueueManagerIntegrationTests: IntegrationTest {
 extension MessageQueueManagerIntegrationTests {
     // Convenient function for test functions that need to test when a new instance of manager is created (clearing in-memory stores).
     func initializeManager() {
-        manager = MessageQueueManager()
+        manager = MessageQueueManagerImpl()
     }
 }

@@ -1,13 +1,44 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-class MessageQueueManager {
-    var interval: Double = 600
-    private var queueTimer: Timer?
-    // The local message store is used to keep messages that can't be displayed because the route rule doesnt match.
-    var localMessageStore: [String: Message] = [:]
+protocol MessageQueueManager: AutoMockable {
+    func clearLocalStore()
+    func getInterval() -> Double
+    func setInterval(_ newInterval: Double)
+    func setup(skipQueueCheck: Bool)
+    func fetchUserMessagesFromLocalStore()
+    func removeMessageFromLocalStore(message: Message)
+    func clearUserMessagesFromLocalStore()
+    func getInlineMessages(forElementId elementId: String) -> [Message]
+}
 
-    func setup(skipQueueCheck: Bool = false) {
+// sourcery: InjectRegisterShared = "MessageQueueManager"
+// sourcery: InjectSingleton
+class MessageQueueManagerImpl: MessageQueueManager {
+    @Atomic private var interval: Double = 600
+    private var queueTimer: Timer?
+
+    // The local message store is used to keep messages that can't be displayed because the route rule doesnt match and inline messages.
+    @Atomic var localMessageStore: [String: Message] = [:]
+
+    private var gist: GistInstance {
+        DIGraphShared.shared.gist
+    }
+
+    private var eventBus: EventBusHandler {
+        DIGraphShared.shared.eventBusHandler
+    }
+
+    func getInterval() -> Double {
+        interval
+    }
+
+    func setInterval(_ newInterval: Double) {
+        interval = newInterval
+    }
+
+    func setup(skipQueueCheck: Bool) {
         queueTimer?.invalidate()
         queueTimer = nil
 
@@ -39,21 +70,8 @@ class MessageQueueManager {
 
     func fetchUserMessagesFromLocalStore() {
         Logger.instance.info(message: "Checking local store with \(localMessageStore.count) messages")
-        let sortedMessages = localMessageStore.sorted {
-            switch ($0.value.priority, $1.value.priority) {
-            case (let priority0?, let priority1?):
-                // Both messages have a priority, so we compare them.
-                return priority0 < priority1
-            case (nil, _):
-                // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
-                return false
-            case (_, nil):
-                // The second message has no priority, the first message should be ordered first.
-                return true
-            }
-        }
-        sortedMessages.forEach { message in
-            showMessageIfMeetsCriteria(message: message.value)
+        localMessageStore.map(\.value).sortByMessagePriority().forEach { message in
+            showMessageIfMeetsCriteria(message: message)
         }
     }
 
@@ -62,15 +80,40 @@ class MessageQueueManager {
     }
 
     func removeMessageFromLocalStore(message: Message) {
-        guard let queueId = message.queueId else {
+        guard let queueId = message.id else {
             return
         }
         localMessageStore.removeValue(forKey: queueId)
     }
 
+    func getInlineMessages(forElementId elementId: String) -> [Message] {
+        let messages = localMessageStore
+            .filter { $0.value.elementId == elementId } // Only get messages for a specific elementid.
+            .filter { !hasMessageBeenShown($0.value) } // If we have already shown message, do not show again.
+            .filter {
+                // if page rule is enabled, filter what matches
+                if $0.value.doesHavePageRule() {
+                    return $0.value.doesPageRuleMatch(route: Gist.shared.getCurrentRoute())
+                }
+                // if page rule is disabled then no filter required
+                return true
+            }
+            .map(\.value) // give us the message from dictionary
+            .sortByMessagePriority() // sorts based on messages priorities
+        return messages
+    }
+
+    private func hasMessageBeenShown(_ message: Message) -> Bool {
+        guard let queueId = message.id else {
+            return false
+        }
+
+        return Gist.shared.shownMessageQueueIds.contains(queueId)
+    }
+
     func addMessagesToLocalStore(messages: [Message]) {
         messages.forEach { message in
-            guard let queueId = message.queueId else {
+            guard let queueId = message.id else {
                 return
             }
             localMessageStore.updateValue(message, forKey: queueId)
@@ -92,9 +135,7 @@ class MessageQueueManager {
                                 return
                             }
 
-                            Logger.instance.info(message: "Gist queue service found \(responses.count) new messages")
-
-                            self.processFetchResponse(responses.map { $0.toMessage() })
+                            self.processFetchedMessages(responses.map { $0.toMessage() })
                         case .failure(let error):
                             Logger.instance.error(message: "Error fetching messages from Gist queue service. \(error.localizedDescription)")
                         }
@@ -107,21 +148,33 @@ class MessageQueueManager {
         }
     }
 
-    func processFetchResponse(_ fetchedMessages: [Message]) {
+    func processFetchedMessages(_ fetchedMessages: [Message]) {
         // To prevent us from showing expired / revoked messages, reset the local queue with the latest queue from the backend service.
         // The backend service is the single-source-of-truth for in-app messages for each user.
         clearUserMessagesFromLocalStore()
         addMessagesToLocalStore(messages: fetchedMessages)
+        Logger.instance.info(message: "Gist queue service found \(fetchedMessages.count) new messages")
 
         for message in fetchedMessages {
             showMessageIfMeetsCriteria(message: message)
         }
+
+        // Notify observers that a fetch has completed and the local queue has been modified.
+        // This is useful for inline Views that may need to display or dismiss messages.
+        eventBus.postEvent(InAppMessagesFetchedEvent())
     }
 
     private func showMessageIfMeetsCriteria(message: Message) {
-        // Skip shown messages
-        if let queueId = message.queueId, Gist.shared.shownMessageQueueIds.contains(queueId) {
-            Logger.instance.info(message: "Message with queueId: \(queueId) already shown, skipping.")
+        if message.isInlineMessage {
+            // Inline Views show inline messages by getting messages stored in the local queue on device.
+            return
+        }
+
+        // Rest of logic of function is for Modal messages
+
+        // Skip showing Modal messages if already shown.
+        if hasMessageBeenShown(message) {
+            Logger.instance.info(message: "Message with queueId: \(message.id ?? "(null)") already shown, skipping.")
             return
         }
 
@@ -134,12 +187,6 @@ class MessageQueueManager {
             }
         }
 
-        if let elementId = message.gistProperties.elementId {
-            Logger.instance.info(message: "Embedding message with Element Id \(elementId)")
-            Gist.shared.embedMessage(message: message, elementId: elementId)
-            return
-        } else {
-            _ = Gist.shared.showMessage(message, position: position)
-        }
+        _ = gist.showMessage(message, position: position)
     }
 }
