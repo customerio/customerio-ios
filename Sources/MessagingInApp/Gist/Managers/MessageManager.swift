@@ -14,7 +14,6 @@ class MessageManager: EngineWebDelegate {
     private let currentMessage: Message
     private var currentRoute: String
     private let isMessageEmbed: Bool
-    private var messagePosition: MessagePosition = .center
 
     @Atomic private var isMessageLoaded: Bool = false
     private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
@@ -79,9 +78,8 @@ class MessageManager: EngineWebDelegate {
         }()
     }
 
-    func showMessage(position: MessagePosition) {
+    func showMessage() {
         elapsedTimer.start(title: "Displaying modal for message: \(currentMessage.messageId)")
-        messagePosition = position
     }
 
     private func loadModalMessage() {
@@ -91,7 +89,7 @@ class MessageManager: EngineWebDelegate {
         }
 
         logger.logWithModuleTag("Loading modal message: \(currentMessage.describeForLogs)", level: .debug)
-        modalViewManager = ModalViewManager(gistView: gistView, position: messagePosition)
+        modalViewManager = ModalViewManager(gistView: gistView, position: currentMessage.gistProperties.position)
         modalViewManager?.showModalView { [weak self] in
             guard let self = self else { return }
 

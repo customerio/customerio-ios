@@ -69,7 +69,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
         // Show message on main thread to avoid unexpected crashes
         threadUtil.runMain {
             let messageManager = MessageManager(state: state, message: message)
-            messageManager.showMessage(position: message.gistProperties.position)
+            messageManager.showMessage()
         }
 
         return next(action)
