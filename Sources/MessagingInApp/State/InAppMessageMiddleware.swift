@@ -171,7 +171,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             // This can happen if there is a message currently displayed or loading
             // or if there are no messages in the queue that match the current route
             logger.logWithModuleTag("No message matched the criteria to be shown", level: .debug)
-            return next(action)
+            // We don't need to dispatch next action to process remaining messages since processMessageQueue was already dispatched above
+            return
         }
 
         // Dispatch action to show the message
