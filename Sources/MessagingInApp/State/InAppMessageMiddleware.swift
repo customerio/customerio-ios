@@ -96,9 +96,12 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             } else {
                 logger.logWithModuleTag("Persistent message shown, not logging view for message: \(message.describeForLogs)", level: .debug)
             }
+            return next(action)
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
-            guard shouldLog else { return }
+            guard shouldLog else {
+                return next(action)
+            }
 
             // Log message close only if message was dismissed via close action
             if viaCloseAction {
@@ -113,9 +116,8 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         default:
-            break
+            return next(action)
         }
-        return next(action)
     }
 }
 
@@ -169,7 +171,7 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             // This can happen if there is a message currently displayed or loading
             // or if there are no messages in the queue that match the current route
             logger.logWithModuleTag("No message matched the criteria to be shown", level: .debug)
-            return
+            return next(action)
         }
 
         // Dispatch action to show the message

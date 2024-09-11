@@ -145,6 +145,7 @@ class MessageManager: EngineWebDelegate {
             }
         } else {
             if system {
+                inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, shouldLog: false))
                 if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
                     /*
                      There are 2 types of deep links:
@@ -169,14 +170,12 @@ class MessageManager: EngineWebDelegate {
                         UIApplication.shared.open(url) { handled in
                             if handled {
                                 self.logger.logWithModuleTag("Dismissing from system action: \(action)", level: .info)
-                                self.inAppMessageManager.dispatch(action: .dismissMessage(message: self.currentMessage, shouldLog: false))
                             } else {
                                 self.logger.logWithModuleTag("System action not handled", level: .info)
                             }
                         }
                     } else {
                         logger.logWithModuleTag("Handled by NSUserActivity", level: .info)
-                        inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage))
                     }
                 }
             }
