@@ -54,7 +54,7 @@ func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
 func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         // Continue to next middleware if action is not loadMessage
-        guard case .loadMessage(let message, let position) = action else {
+        guard case .loadMessage(let message) = action else {
             return next(action)
         }
 
@@ -65,11 +65,11 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
             return next(.reportError(message: "Blocked loading message: \(message.describeForLogs) because another message is currently displayed or cancelled: \(currentMessage)"))
         }
 
-        logger.logWithModuleTag("Showing message: \(message.describeForLogs) with position: \(String(describing: position))", level: .debug)
+        logger.logWithModuleTag("Showing message: \(message)", level: .debug)
         // Show message on main thread to avoid unexpected crashes
         threadUtil.runMain {
             let messageManager = MessageManager(state: state, message: message)
-            messageManager.showMessage(position: position ?? .center)
+            messageManager.showMessage()
         }
 
         return next(action)
@@ -96,9 +96,12 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             } else {
                 logger.logWithModuleTag("Persistent message shown, not logging view for message: \(message.describeForLogs)", level: .debug)
             }
+            return next(action)
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
-            guard shouldLog else { return }
+            guard shouldLog else {
+                return next(action)
+            }
 
             // Log message close only if message was dismissed via close action
             if viaCloseAction {
@@ -113,9 +116,8 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         default:
-            break
+            return next(action)
         }
-        return next(action)
     }
 }
 
@@ -132,7 +134,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             .filter { message in
                 guard let queueId = message.queueId else { return false }
 
-                return !state.shownMessageQueueIds.contains(queueId)
+                // Filter out messages that have been shown already, or if the message is embedded
+                return !state.shownMessageQueueIds.contains(queueId) && message.gistProperties.elementId == nil
             }
             .reduce(into: [Message]()) { result, message in
                 if !result.contains(where: { $0.queueId == message.queueId }) {
@@ -168,18 +171,12 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             // This can happen if there is a message currently displayed or loading
             // or if there are no messages in the queue that match the current route
             logger.logWithModuleTag("No message matched the criteria to be shown", level: .debug)
+            // We don't need to dispatch next action to process remaining messages since processMessageQueue was already dispatched above
             return
         }
 
-        let elementId = message.gistProperties.elementId
-        let nextAction: InAppMessageAction
-        if let elementId {
-            nextAction = .embedMessage(message: message, elementId: elementId)
-        } else {
-            nextAction = .loadMessage(message: message)
-        }
         // Dispatch action to show the message
-        dispatch(nextAction)
+        dispatch(.loadMessage(message: message))
     }
 }
 
