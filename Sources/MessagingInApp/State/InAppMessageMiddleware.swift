@@ -65,7 +65,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
             return next(.reportError(message: "Blocked loading message: \(message.describeForLogs) because another message is currently displayed or cancelled: \(currentMessage)"))
         }
 
-        logger.logWithModuleTag("Showing message: \(message.describeForLogs) with position: \(String(describing: position))", level: .debug)
+        logger.logWithModuleTag("Showing message: \(message) with position: \(String(describing: position))", level: .debug)
         // Show message on main thread to avoid unexpected crashes
         threadUtil.runMain {
             let messageManager = MessageManager(state: state, message: message)
@@ -132,7 +132,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             .filter { message in
                 guard let queueId = message.queueId else { return false }
 
-                return !state.shownMessageQueueIds.contains(queueId)
+                // Filter out messages that have been shown already, or if the message is embedded
+                return !state.shownMessageQueueIds.contains(queueId) && message.gistProperties.elementId == nil
             }
             .reduce(into: [Message]()) { result, message in
                 if !result.contains(where: { $0.queueId == message.queueId }) {
@@ -171,15 +172,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             return
         }
 
-        let elementId = message.gistProperties.elementId
-        let nextAction: InAppMessageAction
-        if let elementId {
-            nextAction = .embedMessage(message: message, elementId: elementId)
-        } else {
-            nextAction = .loadMessage(message: message)
-        }
         // Dispatch action to show the message
-        dispatch(nextAction)
+        dispatch(.loadMessage(message: message))
     }
 }
 
