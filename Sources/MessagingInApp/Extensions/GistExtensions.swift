@@ -17,6 +17,6 @@ extension Message: CustomStringConvertible {
 extension GistProperties: CustomStringConvertible {
     // Provides string representation of GistProperties object with all its properties for debugging purposes.
     public var description: String {
-        "GistProperties(routeRule=\(String(describing: routeRule)), elementId=\(String(describing: elementId)), campaignId=\(String(describing: campaignId)), position=\(position), persistent=\(String(describing: persistent)))"
+        "GistProperties(routeRule=\(String(describing: routeRule)), elementId=\(String(describing: elementId)), deliveryId=\(String(describing: campaignId)), position=\(position), persistent=\(String(describing: persistent)))"
     }
 }
