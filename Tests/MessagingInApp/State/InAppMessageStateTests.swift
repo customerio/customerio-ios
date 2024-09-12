@@ -53,26 +53,14 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     func test_setUserIdentifier_expectUserIdUpdate() async {
-        let expectation = XCTestExpectation(description: "State updated")
-
-        inAppMessageManager.dispatch(action: .setUserIdentifier(user: "testUser")) {
-            expectation.fulfill()
-        }
-
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.userId, "testUser")
     }
 
     func test_setPageRoute_expectRouteUpdate() async {
-        let expectation = XCTestExpectation(description: "State updated")
-
-        inAppMessageManager.dispatch(action: .setPageRoute(route: "testRoute")) {
-            expectation.fulfill()
-        }
-
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "testRoute"))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "testRoute")
