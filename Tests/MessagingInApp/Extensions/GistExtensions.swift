@@ -2,7 +2,7 @@
 import Foundation
 
 extension Message {
-    convenience init(messageId: String = .random, campaignId: String = .random, pageRule: String? = nil, queueId: String? = .random) {
+    convenience init(messageId: String = .random, priority: Int? = nil, campaignId: String = .random, pageRule: String? = nil, queueId: String? = .random) {
         var gistProperties = [
             "gist": [
                 "campaignId": campaignId
@@ -12,7 +12,7 @@ extension Message {
             gistProperties["gist"]?["routeRuleApple"] = pageRule
         }
 
-        self.init(queueId: queueId, messageId: messageId, properties: gistProperties)
+        self.init(messageId: messageId, queueId: queueId, priority: priority, properties: gistProperties)
     }
 
     static var random: Message {
