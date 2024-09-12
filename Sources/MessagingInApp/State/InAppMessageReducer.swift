@@ -1,6 +1,5 @@
 import CioInternalCommon
 import Foundation
-import ReSwift
 
 /// Returns a reducer function after wrapping it in a logging function.
 /// The wrapper function logs the action and state before and after the reducer is called.
@@ -8,14 +7,6 @@ import ReSwift
 /// of referring to ReSwift's Action type directly.
 func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
     { action, state in
-        // Avoid force unwrapping the action as InAppMessageAction to prevent unexpected crashes.
-        guard let action = action as? InAppMessageAction else {
-            // This should never happen ideally since we are only dispatching InAppMessageAction as actions,
-            // but if it does, we should log it and return the current state.
-            logger.logWithModuleTag("Error: Action (\(action)) is not of type InAppMessageAction", level: .debug)
-            return InAppMessageState()
-        }
-
         let currentState = state ?? InAppMessageState()
         logger.logWithModuleTag("Action received: \(action) with current state: \(currentState)", level: .debug)
         let result = reducer(action: action, state: currentState)

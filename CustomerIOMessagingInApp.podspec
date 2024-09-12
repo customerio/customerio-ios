@@ -26,6 +26,4 @@ Pod::Spec.new do |spec|
   spec.module_name = "CioMessagingInApp"  # the `import X` name when using SDK in Swift files
   
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  # Redux-like implementation for Swift, used for managing in-app message state in MessagingInApp module.
-  spec.dependency "ReSwift", "= 6.1.1"
  end
