@@ -48,7 +48,7 @@ public class InAppMessageManager {
     @discardableResult
     func dispatch(action: InAppMessageAction, completion: (() -> Void)? = nil) -> Task<Void, Never> {
         Task {
-            await store.dispatch(action)
+            await dispatchAsync(action: action)
             completion?()
         }
     }

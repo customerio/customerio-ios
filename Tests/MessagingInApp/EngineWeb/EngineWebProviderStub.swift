@@ -2,7 +2,7 @@
 import Foundation
 
 class EngineWebProviderStub: EngineWebProvider {
-    func getEngineWebInstance(configuration: CioMessagingInApp.EngineWebConfiguration, state: CioMessagingInApp.InAppMessageState, message: CioMessagingInApp.Message) -> any CioMessagingInApp.EngineWebInstance {
+    func getEngineWebInstance(configuration: EngineWebConfiguration, state: InAppMessageState, message: Message) -> any EngineWebInstance {
         engineWebMock
     }
 

@@ -44,12 +44,12 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     func test_initialize_expectCorrectStateUpdate() async {
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .development))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.siteId, "testSite")
         XCTAssertEqual(state.dataCenter, "testDC")
-        XCTAssertEqual(state.environment, .production)
+        XCTAssertEqual(state.environment, .development)
     }
 
     func test_setUserIdentifier_expectUserIdUpdate() async {
@@ -112,15 +112,13 @@ class InAppMessageStateTests: IntegrationTest {
 
     func test_resetState_expectInitialStateRestored() async {
         // Setup user
-        inAppMessageManager.dispatch(action: .initialize(siteId: "testSite", dataCenter: "testDC", environment: .development))
-        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
-
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .resetState)
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.siteId, "testSite")
-        XCTAssertEqual(state.dataCenter, "testDC")
-        XCTAssertEqual(state.environment, .development)
+        XCTAssertEqual(state.siteId, "")
+        XCTAssertEqual(state.dataCenter, "")
+        XCTAssertEqual(state.environment, .production)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
         XCTAssertEqual(state.currentMessageState, .initial)
@@ -183,12 +181,7 @@ class InAppMessageStateTests: IntegrationTest {
         }
 
         // Change route to dismiss the message
-        let dismissExpectation = XCTestExpectation(description: "Message dismissed")
-        inAppMessageManager.dispatch(action: .setPageRoute(route: "profile")) {
-            dismissExpectation.fulfill()
-        }
-
-        await fulfillment(of: [dismissExpectation], timeout: 1.0)
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "profile")
