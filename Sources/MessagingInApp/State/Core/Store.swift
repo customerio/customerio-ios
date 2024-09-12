@@ -44,10 +44,6 @@ class Store<State: Equatable> {
 
     private var isDispatching = Synchronized<Bool>(false)
 
-    /// Indicates if new subscriptions attempt to apply `skipRepeats`
-    /// by default.
-    private let subscriptionsAutomaticallySkipRepeats: Bool
-
     public var middleware: [Middleware<State>] {
         didSet {
             dispatchFunction = createDispatchFunction()
@@ -69,10 +65,8 @@ class Store<State: Equatable> {
     public required init(
         reducer: @escaping Reducer<State>,
         state: State,
-        middleware: [Middleware<State>] = [],
-        automaticallySkipsRepeats: Bool = true
+        middleware: [Middleware<State>] = []
     ) {
-        self.subscriptionsAutomaticallySkipRepeats = automaticallySkipsRepeats
         self.reducer = reducer
         self.middleware = middleware
         self.state = state
@@ -93,11 +87,11 @@ class Store<State: Equatable> {
             )
     }
 
-    private func _subscribe<SelectedState, S: StoreSubscriber>(
-        _ subscriber: S, originalSubscription: Subscription<State>,
-        transformedSubscription: Subscription<SelectedState>?
-    )
-        where S.StoreSubscriberStateType == SelectedState {
+    private func _subscribe<S: StoreSubscriber>(
+        _ subscriber: S,
+        originalSubscription: Subscription<State>,
+        transformedSubscription: Subscription<State>?
+    ) where S.StoreSubscriberStateType == State {
         let subscriptionBox = self.subscriptionBox(
             originalSubscription: originalSubscription,
             transformedSubscription: transformedSubscription,
@@ -111,13 +105,17 @@ class Store<State: Equatable> {
         }
     }
 
-    open func subscribe<S: StoreSubscriber>(_ subscriber: S)
-        where S.StoreSubscriberStateType == State {
-        guard subscriptionsAutomaticallySkipRepeats else {
-            subscribe(subscriber, transform: nil)
-            return
-        }
-        subscribe(subscriber, transform: { $0.skipRepeats() })
+    public func subscribe<S: StoreSubscriber>(
+        _ subscriber: S,
+        transform: ((Subscription<State>) -> Subscription<State>) = { $0.skipRepeats() }
+    ) where S.StoreSubscriberStateType == State {
+        let originalSubscription = Subscription<State>()
+
+        _subscribe(
+            subscriber,
+            originalSubscription: originalSubscription,
+            transformedSubscription: transform(originalSubscription)
+        )
     }
 
     func subscriptionBox<T>(
@@ -132,7 +130,7 @@ class Store<State: Equatable> {
         )
     }
 
-    open func unsubscribe(_ subscriber: AnyStoreSubscriber) {
+    func unsubscribe(_ subscriber: AnyStoreSubscriber) {
         #if swift(>=5.0)
         if let index = subscriptions.firstIndex(where: { $0.subscriber === subscriber }) {
             subscriptions.remove(at: index)
@@ -145,7 +143,7 @@ class Store<State: Equatable> {
     }
 
     // swiftlint:disable:next identifier_name
-    open func _defaultDispatch(action: InAppMessageAction) {
+    func _defaultDispatch(action: InAppMessageAction) {
         guard !isDispatching.value else {
             raiseFatalError(
                 "ReSwift:ConcurrentMutationError- Action has been dispatched while" +
@@ -164,25 +162,5 @@ class Store<State: Equatable> {
 
     open func dispatch(_ action: InAppMessageAction) {
         dispatchFunction(action)
-    }
-}
-
-// MARK: Skip Repeats for Equatable States
-
-extension Store {
-    public func subscribe<SelectedState: Equatable, S: StoreSubscriber>(
-        _ subscriber: S, transform: ((Subscription<State>) -> Subscription<SelectedState>)?
-    ) where S.StoreSubscriberStateType == SelectedState {
-        let originalSubscription = Subscription<State>()
-
-        var transformedSubscription = transform?(originalSubscription)
-        if subscriptionsAutomaticallySkipRepeats {
-            transformedSubscription = transformedSubscription?.skipRepeats()
-        }
-        _subscribe(
-            subscriber,
-            originalSubscription: originalSubscription,
-            transformedSubscription: transformedSubscription
-        )
     }
 }

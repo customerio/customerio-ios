@@ -10,14 +10,12 @@ actor InAppMessageStore {
     init(
         reducer: @escaping InAppMessageReducer,
         state: InAppMessageState,
-        middleware: [InAppMessageMiddleware],
-        automaticallySkipsRepeats: Bool = true
+        middleware: [InAppMessageMiddleware]
     ) {
         self.store = Store(
             reducer: reducer,
             state: state,
-            middleware: middleware,
-            automaticallySkipsRepeats: automaticallySkipsRepeats
+            middleware: middleware
         )
     }
 
