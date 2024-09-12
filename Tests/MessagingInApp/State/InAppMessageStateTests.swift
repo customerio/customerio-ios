@@ -1,6 +1,12 @@
 @testable import CioMessagingInApp
 import XCTest
 
+extension InAppMessageManager {
+    func dispatchAsync(action: InAppMessageAction) async {
+        await dispatch(action: action).value
+    }
+}
+
 class InAppMessageStateTests: IntegrationTest {
     var inAppMessageManager: InAppMessageManager!
     private let engineWebMock = EngineWebInstanceMock()
