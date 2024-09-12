@@ -1,9 +1,8 @@
 import Foundation
-import ReSwift
 
 /// Represents an action that can be dispatched to InAppMessage store.
 /// It acts like a sealed class, so that only the cases defined here can be used with InAppMessage store.
-enum InAppMessageAction: Equatable, Action {
+enum InAppMessageAction: Equatable {
     case initialize(siteId: String, dataCenter: String, environment: GistEnvironment)
     case setPollingInterval(interval: Double)
     case setUserIdentifier(user: String)
