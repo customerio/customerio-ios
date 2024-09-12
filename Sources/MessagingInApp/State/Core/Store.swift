@@ -11,6 +11,8 @@
 //  - Constrained State to Equatable to simplify state comparison as InAppMessageState is Equatable.
 //  - Updated visibility to internal to prevent exposing non-public types.
 //  - Updated initializer to require non-optional initial State to avoid dispatching dummy init action.
+//  - Removed subscriptionsAutomaticallySkipRepeats as it will always be true.
+//  - Simplified subscription handling by removing unused subscription options.
 //  - Removed unused functions.
 //
 
