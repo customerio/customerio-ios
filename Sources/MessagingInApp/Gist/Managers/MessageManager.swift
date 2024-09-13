@@ -258,6 +258,7 @@ class MessageManager: EngineWebDelegate {
         }
         inAppMessageStoreSubscriber = nil
         engine.cleanEngineWeb()
+        engine.delegate = nil
     }
 
     private func showNewMessage(url: URL) {

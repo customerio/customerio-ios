@@ -1,5 +1,4 @@
 import Foundation
-import ReSwift
 
 /// Store class wrapped as actor to maintain consistency and thread safety
 /// This also decouples store callers from ReSwift dependency by exposing only required methods
@@ -9,16 +8,14 @@ actor InAppMessageStore {
     var state: InAppMessageState { store.state }
 
     init(
-        reducer: @escaping Reducer<InAppMessageState>,
-        state: InAppMessageState?,
-        middleware: [Middleware<InAppMessageState>],
-        automaticallySkipsRepeats: Bool = true
+        reducer: @escaping InAppMessageReducer,
+        state: InAppMessageState,
+        middleware: [InAppMessageMiddleware]
     ) {
         self.store = Store(
             reducer: reducer,
             state: state,
-            middleware: middleware,
-            automaticallySkipsRepeats: automaticallySkipsRepeats
+            middleware: middleware
         )
     }
 

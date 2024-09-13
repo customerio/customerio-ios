@@ -1,6 +1,20 @@
 import CioInternalCommon
 import Foundation
 
+/// Helper function to create middleware for InAppMessage module
+/// - Parameter completion: A closure that takes in the necessary parameters to perform the middleware logic
+/// - Returns: Middleware function with given completion closure
+private func middleware(
+    completion: @escaping MiddlewareCompletion
+) -> InAppMessageMiddleware {
+    { dispatch, getState in { next in { action in
+        let getStateOrDefault = { getState() ?? InAppMessageState() }
+        completion(dispatch, getStateOrDefault, next, action)
+    }
+    }
+    }
+}
+
 func userAuthenticationMiddleware() -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
