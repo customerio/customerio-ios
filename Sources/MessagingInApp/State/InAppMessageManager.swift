@@ -1,13 +1,52 @@
 import CioInternalCommon
 import Foundation
 
+protocol InAppMessageManager: AutoMockable {
+    var state: InAppMessageState { get async }
+
+    @discardableResult
+    func fetchState(_ completion: @escaping (InAppMessageState) -> Void) -> Task<InAppMessageState, Never>
+
+    @discardableResult
+    func dispatch(action: InAppMessageAction, completion: (() -> Void)?) -> Task<Void, Never>
+
+    @discardableResult
+    func unsubscribe(subscriber: InAppMessageStoreSubscriber) -> Task<Void, Never>
+
+    @discardableResult
+    func subscribe(
+        comparator: @escaping (InAppMessageState, InAppMessageState) -> Bool,
+        subscriber: InAppMessageStoreSubscriber
+    ) -> Task<Void, Never>
+}
+
+extension InAppMessageManager {
+    @discardableResult
+    func dispatch(action: InAppMessageAction) -> Task<Void, Never> {
+        dispatch(action: action, completion: nil)
+    }
+
+    @discardableResult
+    func subscribe<Value>(
+        keyPath: KeyPath<InAppMessageState, Value>,
+        subscriber: InAppMessageStoreSubscriber
+    ) -> Task<Void, Never> where Value: Equatable {
+        subscribe(
+            comparator: { oldState, newState in
+                oldState[keyPath: keyPath] == newState[keyPath: keyPath]
+            },
+            subscriber: subscriber
+        )
+    }
+}
+
 // sourcery: InjectRegisterShared = "InAppMessageManager"
 // sourcery: InjectSingleton
 /// InAppMessageManager is the main class used to interact and manage the InAppMessage state.
 /// It is responsible for dispatching actions, subscribing to state changes and fetching the current state.
 /// It is also responsible for initializing the store with the required middleware and reducer.
 /// It also makes asynchronous calls convenient by wrapping them in non-async methods.
-public class InAppMessageManager {
+class InAppMessageStoreManager: InAppMessageManager {
     private let logger: Logger
     private let store: InAppMessageStore
 
@@ -79,18 +118,5 @@ public class InAppMessageManager {
         subscriber: InAppMessageStoreSubscriber
     ) -> Task<Void, Never> {
         Task { await self.store.subscribe(subscriber, comparator) }
-    }
-
-    @discardableResult
-    func subscribe<Value>(
-        keyPath: KeyPath<InAppMessageState, Value>,
-        subscriber: InAppMessageStoreSubscriber
-    ) -> Task<Void, Never> where Value: Equatable {
-        subscribe(
-            comparator: { oldState, newState in
-                oldState[keyPath: keyPath] == newState[keyPath: keyPath]
-            },
-            subscriber: subscriber
-        )
     }
 }

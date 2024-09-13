@@ -6,7 +6,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
 
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
-    private let gist: Gist
+    private let gist: GistProvider
     private let threadUtil: ThreadUtil
     private let eventBusHandler: EventBusHandler
 
@@ -14,7 +14,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.inAppMessageManager = diGraph.inAppMessageManager
-        self.gist = diGraph.gist
+        self.gist = diGraph.gistProvider
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
 
