@@ -119,10 +119,10 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             if viaCloseAction {
                 if message.gistProperties.persistent == true {
                     logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs)", level: .debug)
+                    logMessageView(logger: logger, logManager: logManager, state: state, message: message)
                 } else {
-                    logger.logWithModuleTag("Dismissed message, logging view for message: \(message.describeForLogs)", level: .debug)
+                    logger.logWithModuleTag("Dismissed message with close action: \(message.describeForLogs)", level: .debug)
                 }
-                logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
                 logger.logWithModuleTag("Message dismissed without close action, not logging view for message: \(message.describeForLogs)", level: .debug)
             }

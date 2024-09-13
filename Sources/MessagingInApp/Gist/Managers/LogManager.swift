@@ -11,7 +11,7 @@ class LogManager {
 
     func logView(state: InAppMessageState, message: Message, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         do {
-            if let queueId = message.queueId, let userToken = state.userId {
+            if let queueId = message.queueId, let _ = state.userId {
                 try gistQueueNetwork.request(
                     state: state,
                     request: LogEndpoint.logUserMessageView(queueId: queueId),
