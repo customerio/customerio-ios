@@ -22,7 +22,7 @@ func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
     }
 }
 
-// swiftlint:disable cyclomatic_complexity
+// swiftlint:disable cyclomatic_complexity function_body_length
 /// Reducer function implementation for managing InAppMessageState based on the action received.
 private func reducer(action: InAppMessageAction, state: InAppMessageState) -> InAppMessageState {
     switch action {
@@ -49,16 +49,30 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
     case .displayMessage(let message):
         if let queueId = message.queueId {
+            // Do not add queueId to shownMessageQueueIds if the message is persistent
+            // As it should be considered shown only when it is dismissed via close action.
+            let shownMessageQueueIds = message.gistProperties.persistent != true
+                ? state.shownMessageQueueIds.union([queueId])
+                : state.shownMessageQueueIds
+
             return state.copy(
                 currentMessageState: .displayed(message: message),
                 messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
-                shownMessageQueueIds: state.shownMessageQueueIds.union([queueId])
+                shownMessageQueueIds: shownMessageQueueIds
             )
         }
         return state
 
-    case .dismissMessage(let message, _, _):
-        return state.copy(currentMessageState: .dismissed(message: message))
+    case .dismissMessage(let message, let shouldLog, let viaCloseAction):
+        // If message is persistent and dismissed via close action, add queueId to shownMessageQueueIds.
+        if message.gistProperties.persistent == true, let queueId = message.queueId, shouldLog, viaCloseAction {
+            return state.copy(
+                currentMessageState: .dismissed(message: message),
+                shownMessageQueueIds: state.shownMessageQueueIds.union([queueId])
+            )
+        } else {
+            return state.copy(currentMessageState: .dismissed(message: message))
+        }
 
     case .engineAction(let engineAction):
         switch engineAction {
@@ -81,4 +95,4 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     }
 }
 
-// swiftlint:enable cyclomatic_complexity
+// swiftlint:enable cyclomatic_complexity function_body_length
