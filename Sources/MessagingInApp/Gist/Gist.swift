@@ -128,7 +128,7 @@ public class Gist {
         }
     }
 
-    func fetchUserMessagesFromLocalStore() {
+    func fetchUserMessagesFromStoreState() {
         logger.logWithModuleTag("Attempting to fetch user messages from local store", level: .info)
         inAppMessageManager.fetchState { [self] state in
             let messages = state.messagesInQueue
