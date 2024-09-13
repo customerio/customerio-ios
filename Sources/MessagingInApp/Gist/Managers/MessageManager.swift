@@ -50,6 +50,11 @@ class MessageManager: EngineWebDelegate {
         subscribeToInAppMessageState()
     }
 
+    deinit {
+        unsubscribeFromInAppMessageState()
+        removeEngineWebView()
+    }
+
     func subscribeToInAppMessageState() {
         // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
         // Also, since we do not store strong reference of MessageManager anywhere, not keeping a strong reference of
@@ -62,11 +67,16 @@ class MessageManager: EngineWebDelegate {
                         self.loadModalMessage()
                     }
 
-                case .dismissed:
+                // Dismiss the message when the message is dismissed or initial state
+                // Initial state may only be received when state is reset while a message was being displayed
+                case .dismissed, .initial:
                     threadUtil.runMain {
-                        self.engine.delegate = nil
-                        self.dismissMessage()
-                        self.inAppMessageStoreSubscriber = nil
+                        self.removeEngineWebView()
+                        // Unsubscribe from InAppMessageState when the message is dismissed completely
+                        // so that MessageManager is deallocated only after dismiss animation is completed.
+                        self.dismissMessage {
+                            self.unsubscribeFromInAppMessageState()
+                        }
                     }
 
                 default:
@@ -76,6 +86,25 @@ class MessageManager: EngineWebDelegate {
             inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
             return subscriber
         }()
+    }
+
+    /// Unsubscribes from InAppMessageState so that MessageManager can be deallocated.
+    func unsubscribeFromInAppMessageState() {
+        guard let subscriber = inAppMessageStoreSubscriber else { return }
+
+        logger.logWithModuleTag("Unsubscribing MessageManager from InAppMessageState", level: .debug)
+        inAppMessageManager.unsubscribe(subscriber: subscriber)
+        inAppMessageStoreSubscriber = nil
+    }
+
+    /// Removes EngineWebView from MessageManager and sets the delegate to nil to stop receiving JS events.
+    func removeEngineWebView() {
+        // If delegate is nil, then EngineWebView is already cleaned up.
+        guard let _ = engine.delegate else { return }
+
+        logger.logWithModuleTag("Cleaning EngineWebView from MessageManager", level: .debug)
+        engine.cleanEngineWeb()
+        engine.delegate = nil
     }
 
     func showMessage() {
@@ -98,13 +127,17 @@ class MessageManager: EngineWebDelegate {
     }
 
     private func dismissMessage(completionHandler: (() -> Void)? = nil) {
-        logger.logWithModuleTag("Dismissing message: \(currentMessage.describeForLogs)", level: .debug)
-        if let modalViewManager = modalViewManager {
-            modalViewManager.dismissModalView { [weak self] in
-                guard let _ = self else { return }
+        logger.logWithModuleTag("Dismissing message: \(currentMessage.describeForLogs) from MessageManager", level: .debug)
+        // If modalViewManager is nil, skip dismissing the message but call completion handler so rest of the resources can be cleaned up.
+        guard let modalViewManager = modalViewManager else {
+            completionHandler?()
+            return
+        }
+        // Dismiss modal view and call the completion handler when modal view is dismissed.
+        modalViewManager.dismissModalView { [weak self] in
+            guard let _ = self else { return }
 
-                completionHandler?()
-            }
+            completionHandler?()
         }
     }
 
@@ -250,15 +283,6 @@ class MessageManager: EngineWebDelegate {
                 }
             }
         }
-    }
-
-    deinit {
-        if let subscriber = inAppMessageStoreSubscriber {
-            inAppMessageManager.unsubscribe(subscriber: subscriber)
-        }
-        inAppMessageStoreSubscriber = nil
-        engine.cleanEngineWeb()
-        engine.delegate = nil
     }
 
     private func showNewMessage(url: URL) {
