@@ -10,6 +10,7 @@ class MessageManager: EngineWebDelegate {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
     private let threadUtil: ThreadUtil
+    private let gist: Gist
 
     private let currentMessage: Message
     private var currentRoute: String
@@ -32,6 +33,7 @@ class MessageManager: EngineWebDelegate {
         self.logger = diGraph.logger
         self.inAppMessageManager = diGraph.inAppMessageManager
         self.threadUtil = diGraph.threadUtil
+        self.gist = diGraph.gist
         self.engineWebProvider = diGraph.engineWebProvider
 
         let engineWebConfiguration = EngineWebConfiguration(
@@ -61,7 +63,8 @@ class MessageManager: EngineWebDelegate {
         // subscriber may result in deallocation of MessageManager and hence dismissal of message unexpectedly.
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [self] state in
-                switch state.currentMessageState {
+                let messageState = state.currentMessageState
+                switch messageState {
                 case .displayed:
                     threadUtil.runMain {
                         self.loadModalMessage()
@@ -76,6 +79,12 @@ class MessageManager: EngineWebDelegate {
                         // so that MessageManager is deallocated only after dismiss animation is completed.
                         self.dismissMessage {
                             self.unsubscribeFromInAppMessageState()
+                            // Fetch user messages from local store after message is dismissed so that
+                            // next message can be displayed instantly if available.
+                            // This is only needed when message is dismissed and not when it is reset.
+                            if case .dismissed = messageState {
+                                self.gist.fetchUserMessagesFromLocalStore()
+                            }
                         }
                     }
 

@@ -128,12 +128,32 @@ public class Gist {
         }
     }
 
+    func fetchUserMessagesFromLocalStore() {
+        logger.logWithModuleTag("Attempting to fetch user messages from local store", level: .info)
+        inAppMessageManager.fetchState { [self] state in
+            let messages = state.messagesInQueue
+            guard !messages.isEmpty else { return }
+
+            // Switch to main thread before checking application state
+            threadUtil.runMain {
+                // Skip fetching messages from local store if application is in background
+                // This is to prevent showing messages when the app was moved to background
+                guard UIApplication.shared.applicationState != .background else {
+                    self.logger.logWithModuleTag("Application in background, skipping local queue check.", level: .info)
+                    return
+                }
+
+                self.inAppMessageManager.dispatch(action: .processMessageQueue(messages: Array(messages)))
+            }
+        }
+    }
+
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
     /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
     /// Also, the method must be called on main thread since it checks the application state.
     @objc
     func fetchUserMessages() {
-        logger.logWithModuleTag("Attempting to fetch user messages", level: .info)
+        logger.logWithModuleTag("Attempting to fetch user messages from remote service", level: .info)
         guard UIApplication.shared.applicationState != .background else {
             logger.logWithModuleTag("Application in background, skipping queue check.", level: .info)
             return
