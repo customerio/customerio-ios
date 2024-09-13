@@ -29,7 +29,7 @@ class InAppMessageStateTests: IntegrationTest {
         super.tearDown()
     }
 
-    func dispatchAndWait(_ action: InAppMessageAction, timeout: TimeInterval = 10.0) async throws {
+    func dispatchAndWait(_ action: InAppMessageAction, timeout: TimeInterval = 3.0) async throws {
         let expectation = XCTestExpectation(description: "Action completed: \(action)")
         inAppMessageManager.dispatch(action: action) {
             expectation.fulfill()
