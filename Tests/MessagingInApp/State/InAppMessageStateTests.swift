@@ -19,14 +19,15 @@ class InAppMessageStateTests: IntegrationTest {
     override func setUp() {
         super.setUp()
         engineWebMock.underlyingView = UIView()
-        diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
         MessagingInApp.shared.setEventListener(globalEventListener)
-        inAppMessageManager = InAppMessageManager(
+        inAppMessageManager = InAppMessageStoreManager(
             logger: diGraphShared.logger,
             threadUtil: diGraphShared.threadUtil,
             logManager: diGraphShared.logManager,
             gistDelegate: diGraphShared.gistDelegate
         )
+        diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
+        diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
     }
 
     override func tearDown() {
