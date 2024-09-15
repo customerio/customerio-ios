@@ -3,8 +3,7 @@ name: Tests
 on: 
   pull_request:
   push:
-    branches: [main] # code coverage reporting needs to be on main so all PRs can compare against it. 
-
+    
 concurrency: # cancel previous workflow run if one exists. 
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -32,35 +31,35 @@ jobs:
       with:
         lane: 'scan'
 
-    # https://about.codecov.io/blog/pre-converting-xcresult-files-for-codecov-using-xcresultparser/
-    - name: Generate code coverage report from .xcresult/ that can be converted to codecov format
-      run: |
-        brew tap a7ex/homebrew-formulae && brew install xcresultparser
-        xcresultparser --output-format cobertura "Customer.io-Package.xcresult" > ".build/coverage.xml"
+    # # https://about.codecov.io/blog/pre-converting-xcresult-files-for-codecov-using-xcresultparser/
+    # - name: Generate code coverage report from .xcresult/ that can be converted to codecov format
+    #   run: |
+    #     brew tap a7ex/homebrew-formulae && brew install xcresultparser
+    #     xcresultparser --output-format cobertura "Customer.io-Package.xcresult" > ".build/coverage.xml"
   
-    - name: Upload code coverage report 
-      uses: codecov/codecov-action@v4
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }} 
-      with: 
-        files: .build/coverage.xml
-        fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
-        verbose: true 
+    # - name: Upload code coverage report 
+    #   uses: codecov/codecov-action@v4
+    #   env:
+    #     CODECOV_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }} 
+    #   with: 
+    #     files: .build/coverage.xml
+    #     fail_ci_if_error: true # fail if upload fails so we can catch it and fix it right away.
+    #     verbose: true 
 
-    - name: Upload test report 
-      uses: actions/upload-artifact@v4
-      with:
-        name: xcode-test-report
-        path: test-report.*
-      if: ${{ always() }}
-    - name: Publish test results
-      uses: mikepenz/action-junit-report@v4      
-      with:
-        check_name: XCode macOS tests - Results
-        report_paths: test-report.xml
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        fail_on_failure: true
-        require_tests: true
-      if: ${{ always() }} # if running tests fails, we still want to parse the test results  
+    # - name: Upload test report 
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: xcode-test-report
+    #     path: test-report.*
+    #   if: ${{ always() }}
+    # - name: Publish test results
+    #   uses: mikepenz/action-junit-report@v4      
+    #   with:
+    #     check_name: XCode macOS tests - Results
+    #     report_paths: test-report.xml
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     fail_on_failure: true
+    #     require_tests: true
+    #   if: ${{ always() }} # if running tests fails, we still want to parse the test results  
   
 

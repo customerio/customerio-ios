@@ -73,10 +73,19 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.currentRoute, "testRoute")
     }
 
-    func test_processMessageQueue_expectMessagesAddedToQueue() async {
+    func dispatchAndWait(_ action: InAppMessageAction, timeout: TimeInterval = 3.0) async throws {
+        let expectation = XCTestExpectation(description: "Action completed: \(action)")
+        inAppMessageManager.dispatch(action: action) {
+            expectation.fulfill()
+        }
+        await fulfillment(of: [expectation], timeout: timeout)
+    }
+
+    func test_processMessageQueue_expectMessagesAddedToQueue() async throws {
         let messages = [Message(queueId: "1"), Message(queueId: "2")]
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
+        try await dispatchAndWait(.processMessageQueue(messages: messages))
+//        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.messagesInQueue.count, 2)
