@@ -174,7 +174,7 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
         let isCurrentMessageLoading = state.currentMessageState.isLoading
         let isCurrentMessageDisplaying = state.currentMessageState.isDisplayed
         // Dispatch next action to process remaining messages
-        next(.processMessageQueue(messages: notShownMessages))
+//        next(.processMessageQueue(messages: notShownMessages))
 
         // If there is a message currently displayed or loading, do not show another message
         guard let message = messageToBeShown,

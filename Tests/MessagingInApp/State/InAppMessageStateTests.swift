@@ -84,8 +84,7 @@ class InAppMessageStateTests: IntegrationTest {
     func test_processMessageQueue_expectMessagesAddedToQueue() async throws {
         let messages = [Message(queueId: "1"), Message(queueId: "2")]
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        try await dispatchAndWait(.processMessageQueue(messages: messages))
-//        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.messagesInQueue.count, 2)
