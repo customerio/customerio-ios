@@ -137,6 +137,8 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
 
 func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { dispatch, getState, next, action in
+
+        return next(action)
         // Continue to next middleware if action is not processMessageQueue or if messages are empty
         guard case .processMessageQueue(let messages) = action, !messages.isEmpty else {
             return next(action)
@@ -174,7 +176,7 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
         let isCurrentMessageLoading = state.currentMessageState.isLoading
         let isCurrentMessageDisplaying = state.currentMessageState.isDisplayed
         // Dispatch next action to process remaining messages
-//        next(.processMessageQueue(messages: notShownMessages))
+        next(.processMessageQueue(messages: notShownMessages))
 
         // If there is a message currently displayed or loading, do not show another message
         guard let message = messageToBeShown,
