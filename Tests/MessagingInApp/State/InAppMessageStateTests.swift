@@ -1,3 +1,4 @@
+@testable import CioInternalCommon
 @testable import CioMessagingInApp
 import XCTest
 
@@ -20,13 +21,17 @@ class InAppMessageStateTests: IntegrationTest {
         super.setUp()
         engineWebMock.underlyingView = UIView()
         MessagingInApp.shared.setEventListener(globalEventListener)
+
+        diGraphShared.override(value: CioThreadUtil(), forType: ThreadUtil.self)
+        diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
+
         inAppMessageManager = InAppMessageStoreManager(
             logger: diGraphShared.logger,
             threadUtil: diGraphShared.threadUtil,
             logManager: diGraphShared.logManager,
             gistDelegate: diGraphShared.gistDelegate
         )
-        diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
+
         diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
     }
 
