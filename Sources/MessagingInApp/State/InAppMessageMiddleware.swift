@@ -18,7 +18,7 @@ private func middleware(
                 // Use dispatch from InAppMessageManager so that next action is queued in correct order and dispatched
                 // only after the current action is processed
                 // Ideally, we should have dispatch as a parameter with completion, but we'll keep it simple for now
-                let dispatch: (InAppMessageAction) -> Void = { action in
+                let dispatch: DispatchFunction = { action in
                     DIGraphShared.shared.inAppMessageManager.dispatch(action: action)
                 }
                 completion(dispatch, getStateOrDefault, next, action)

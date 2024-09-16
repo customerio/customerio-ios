@@ -62,7 +62,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         }
         return state
 
-    case .dismissMessage(let message, let shouldLog, let viaCloseAction):
+    case .dismissMessage(let message, _, _):
         let shownMessageQueueIds: Set<String>
         // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
         if let queueId = message.queueId, action.shouldTrackMessageShown {

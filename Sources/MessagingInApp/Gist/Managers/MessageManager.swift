@@ -83,7 +83,7 @@ class MessageManager: EngineWebDelegate {
                             // next message can be displayed instantly if available.
                             // This is only needed when message is dismissed and not when it is reset.
                             if case .dismissed = messageState {
-                                self.gist.fetchUserMessagesQueue()
+                                self.gist.fetchUserMessagesFromRemoteQueue()
                             }
                         }
                     }

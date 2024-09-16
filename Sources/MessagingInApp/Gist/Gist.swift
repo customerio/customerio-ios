@@ -6,7 +6,7 @@ import UIKit
 protocol GistProvider: AutoMockable {
     func setUserToken(_ userToken: String)
     func setCurrentRoute(_ currentRoute: String)
-    func fetchUserMessagesQueue()
+    func fetchUserMessagesFromRemoteQueue()
     func resetState()
     func setEventListener(_ eventListener: InAppEventListener?)
     func dismissMessage()
@@ -116,7 +116,7 @@ class Gist: GistProvider {
 
     // MARK: Message Queue Polling
 
-    func fetchUserMessagesQueue() {
+    func fetchUserMessagesFromRemoteQueue() {
         logger.logWithModuleTag("Requesting to fetch user messages queue", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }

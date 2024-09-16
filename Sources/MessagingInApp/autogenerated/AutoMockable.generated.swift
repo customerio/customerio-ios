@@ -227,7 +227,7 @@ class GistProviderMock: GistProvider, Mock {
         setCurrentRouteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        fetchUserMessagesQueueCallsCount = 0
+        fetchUserMessagesFromRemoteQueueCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
         resetStateCallsCount = 0
@@ -297,25 +297,25 @@ class GistProviderMock: GistProvider, Mock {
         setCurrentRouteClosure?(currentRoute)
     }
 
-    // MARK: - fetchUserMessagesQueue
+    // MARK: - fetchUserMessagesFromRemoteQueue
 
     /// Number of times the function was called.
-    @Atomic private(set) var fetchUserMessagesQueueCallsCount = 0
+    @Atomic private(set) var fetchUserMessagesFromRemoteQueueCallsCount = 0
     /// `true` if the function was ever called.
-    var fetchUserMessagesQueueCalled: Bool {
-        fetchUserMessagesQueueCallsCount > 0
+    var fetchUserMessagesFromRemoteQueueCalled: Bool {
+        fetchUserMessagesFromRemoteQueueCallsCount > 0
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var fetchUserMessagesQueueClosure: (() -> Void)?
+    var fetchUserMessagesFromRemoteQueueClosure: (() -> Void)?
 
-    /// Mocked function for `fetchUserMessagesQueue()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func fetchUserMessagesQueue() {
+    /// Mocked function for `fetchUserMessagesFromRemoteQueue()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func fetchUserMessagesFromRemoteQueue() {
         mockCalled = true
-        fetchUserMessagesQueueCallsCount += 1
-        fetchUserMessagesQueueClosure?()
+        fetchUserMessagesFromRemoteQueueCallsCount += 1
+        fetchUserMessagesFromRemoteQueueClosure?()
     }
 
     // MARK: - resetState
