@@ -2,13 +2,22 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
-// sourcery: InjectRegisterShared = "Gist"
+// wrapper around Gist SDK to make it mockable
+protocol GistProvider: AutoMockable {
+    func setUserToken(_ userToken: String)
+    func setCurrentRoute(_ currentRoute: String)
+    func resetState()
+    func setEventListener(_ eventListener: InAppEventListener?)
+    func dismissMessage()
+}
+
+// sourcery: InjectRegisterShared = "GistProvider"
 // sourcery: InjectSingleton
 /// Main class that is responsible for managing in-app message queue from remote service and
 /// dispatching actions to `InAppMessageManager` based on user and route changes.
 /// This class is also responsible for scheduling polling of in-app message queue based on
 /// `InAppMessageState.pollInterval`.
-public class Gist {
+class Gist: GistProvider {
     private let logger: Logger
     private let gistDelegate: GistDelegate
     private let inAppMessageManager: InAppMessageManager
