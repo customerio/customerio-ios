@@ -21,9 +21,9 @@ typealias InAppMessageMiddleware = Middleware<InAppMessageState>
 ///   - next: Next middleware in the chain
 ///   - action: The action that is being dispatched
 typealias MiddlewareCompletion = (
-    @escaping (InAppMessageAction) -> Void,
+    @escaping DispatchFunction,
     @escaping () -> InAppMessageState,
-    @escaping (InAppMessageAction) -> Void,
+    @escaping DispatchFunction,
     InAppMessageAction
 ) -> Void
 

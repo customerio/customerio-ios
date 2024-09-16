@@ -22,7 +22,7 @@ func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
     }
 }
 
-// swiftlint:disable cyclomatic_complexity
+// swiftlint:disable cyclomatic_complexity function_body_length
 /// Reducer function implementation for managing InAppMessageState based on the action received.
 private func reducer(action: InAppMessageAction, state: InAppMessageState) -> InAppMessageState {
     switch action {
@@ -49,16 +49,30 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
     case .displayMessage(let message):
         if let queueId = message.queueId {
+            // If the message should be tracked shown when it is displayed, add the queueId to shownMessageQueueIds.
+            let shownMessageQueueIds = action.shouldMarkMessageAsShown
+                ? state.shownMessageQueueIds.union([queueId])
+                : state.shownMessageQueueIds
+
             return state.copy(
                 currentMessageState: .displayed(message: message),
                 messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
-                shownMessageQueueIds: state.shownMessageQueueIds.union([queueId])
+                shownMessageQueueIds: shownMessageQueueIds
             )
         }
         return state
 
     case .dismissMessage(let message, _, _):
-        return state.copy(currentMessageState: .dismissed(message: message))
+        var shownMessageQueueIds = state.shownMessageQueueIds
+        // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
+        if action.shouldMarkMessageAsShown, let queueId = message.queueId {
+            shownMessageQueueIds = shownMessageQueueIds.union([queueId])
+        }
+
+        return state.copy(
+            currentMessageState: .dismissed(message: message),
+            shownMessageQueueIds: shownMessageQueueIds
+        )
 
     case .engineAction(let engineAction):
         switch engineAction {
@@ -81,4 +95,4 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     }
 }
 
-// swiftlint:enable cyclomatic_complexity
+// swiftlint:enable cyclomatic_complexity function_body_length

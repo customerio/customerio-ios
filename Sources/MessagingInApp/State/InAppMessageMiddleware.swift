@@ -7,11 +7,23 @@ import Foundation
 private func middleware(
     completion: @escaping MiddlewareCompletion
 ) -> InAppMessageMiddleware {
-    { dispatch, getState in { next in { action in
-        let getStateOrDefault = { getState() ?? InAppMessageState() }
-        completion(dispatch, getStateOrDefault, next, action)
-    }
-    }
+    { _,
+        // swiftlint:disable:next closure_parameter_position
+        getState in {
+            // swiftlint:disable:next closure_parameter_position
+            next in {
+                // swiftlint:disable:next closure_parameter_position
+                action in
+                let getStateOrDefault = { getState() ?? InAppMessageState() }
+                // Use dispatch from InAppMessageManager so that next action is queued in correct order and dispatched
+                // only after the current action is processed
+                // Ideally, we should have dispatch as a parameter with completion, but we'll keep it simple for now
+                let dispatch: DispatchFunction = { action in
+                    DIGraphShared.shared.inAppMessageManager.dispatch(action: action)
+                }
+                completion(dispatch, getStateOrDefault, next, action)
+            }
+        }
     }
 }
 
@@ -103,8 +115,8 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
         let state = getState()
         switch action {
         case .displayMessage(let message):
-            // Log message view only if message is not persistent
-            if message.gistProperties.persistent != true {
+            // Log message view only if message should be tracked as shown on display action
+            if action.shouldMarkMessageAsShown {
                 logger.logWithModuleTag("Message shown, logging view for message: \(message.describeForLogs)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
@@ -112,19 +124,12 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
-            // Use break to exit switch statement instead of return to continue to next middleware
-            guard shouldLog else { break }
-
-            // Log message close only if message was dismissed via close action
-            if viaCloseAction {
-                if message.gistProperties.persistent == true {
-                    logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs)", level: .debug)
-                } else {
-                    logger.logWithModuleTag("Dismissed message, logging view for message: \(message.describeForLogs)", level: .debug)
-                }
+            // Log message close only if message should be tracked as shown on dismiss action
+            if action.shouldMarkMessageAsShown {
+                logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
-                logger.logWithModuleTag("Message dismissed without close action, not logging view for message: \(message.describeForLogs)", level: .debug)
+                logger.logWithModuleTag("Message dismissed, not logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
             }
 
         default:
