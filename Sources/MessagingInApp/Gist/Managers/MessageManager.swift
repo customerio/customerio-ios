@@ -10,7 +10,7 @@ class MessageManager: EngineWebDelegate {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
     private let threadUtil: ThreadUtil
-    private let gist: Gist
+    private let gist: GistProvider
 
     private let currentMessage: Message
     private var currentRoute: String
@@ -33,7 +33,7 @@ class MessageManager: EngineWebDelegate {
         self.logger = diGraph.logger
         self.inAppMessageManager = diGraph.inAppMessageManager
         self.threadUtil = diGraph.threadUtil
-        self.gist = diGraph.gist
+        self.gist = diGraph.gistProvider
         self.engineWebProvider = diGraph.engineWebProvider
 
         let engineWebConfiguration = EngineWebConfiguration(
@@ -83,7 +83,7 @@ class MessageManager: EngineWebDelegate {
                             // next message can be displayed instantly if available.
                             // This is only needed when message is dismissed and not when it is reset.
                             if case .dismissed = messageState {
-                                self.gist.fetchUserMessagesFromStoreState()
+                                self.gist.fetchUserMessagesQueue()
                             }
                         }
                     }

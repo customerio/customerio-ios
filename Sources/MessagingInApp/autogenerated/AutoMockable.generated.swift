@@ -227,6 +227,9 @@ class GistProviderMock: GistProvider, Mock {
         setCurrentRouteReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        fetchUserMessagesQueueCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
         resetStateCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
@@ -292,6 +295,27 @@ class GistProviderMock: GistProvider, Mock {
         setCurrentRouteReceivedArguments = currentRoute
         setCurrentRouteReceivedInvocations.append(currentRoute)
         setCurrentRouteClosure?(currentRoute)
+    }
+
+    // MARK: - fetchUserMessagesQueue
+
+    /// Number of times the function was called.
+    @Atomic private(set) var fetchUserMessagesQueueCallsCount = 0
+    /// `true` if the function was ever called.
+    var fetchUserMessagesQueueCalled: Bool {
+        fetchUserMessagesQueueCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var fetchUserMessagesQueueClosure: (() -> Void)?
+
+    /// Mocked function for `fetchUserMessagesQueue()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func fetchUserMessagesQueue() {
+        mockCalled = true
+        fetchUserMessagesQueueCallsCount += 1
+        fetchUserMessagesQueueClosure?()
     }
 
     // MARK: - resetState
