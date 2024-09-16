@@ -72,3 +72,24 @@ enum InAppMessageAction: Equatable {
     }
     // swiftlint:enable cyclomatic_complexity
 }
+
+extension InAppMessageAction {
+    /// Determines whether the message should be tracked viewed and added to `shownMessageQueueIds` or not.
+    ///
+    /// - Returns: `true` if the message is non-persistent in `displayMessage` case or if it's persistent and
+    ///   meets the conditions in `dismissMessage` case, otherwise `false`.
+    var shouldTrackMessageShown: Bool {
+        switch self {
+        case .displayMessage(let message):
+            // Mark the message as shown if it's not persistent
+            return message.gistProperties.persistent != true
+
+        case .dismissMessage(let message, let shouldLog, let viaCloseAction):
+            // Mark the message as shown if it's persistent and should be logged and dismissed via close action only
+            return message.gistProperties.persistent == true && shouldLog && viaCloseAction
+
+        default:
+            return false
+        }
+    }
+}

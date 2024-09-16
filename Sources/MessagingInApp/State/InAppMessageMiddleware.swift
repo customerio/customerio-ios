@@ -103,8 +103,8 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
         let state = getState()
         switch action {
         case .displayMessage(let message):
-            // Log message view only if message is not persistent
-            if message.gistProperties.persistent != true {
+            // Log message view only if message should be tracked as shown on display action
+            if action.shouldTrackMessageShown {
                 logger.logWithModuleTag("Message shown, logging view for message: \(message.describeForLogs)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
@@ -112,19 +112,12 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
-            // Use break to exit switch statement instead of return to continue to next middleware
-            guard shouldLog else { break }
-
-            // Log message close only if message was dismissed via close action
-            if viaCloseAction {
-                if message.gistProperties.persistent == true {
-                    logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs)", level: .debug)
-                    logMessageView(logger: logger, logManager: logManager, state: state, message: message)
-                } else {
-                    logger.logWithModuleTag("Dismissed message with close action: \(message.describeForLogs)", level: .debug)
-                }
+            // Log message close only if message should be tracked as shown on dismiss action
+            if action.shouldTrackMessageShown {
+                logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
+                logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
-                logger.logWithModuleTag("Message dismissed without close action, not logging view for message: \(message.describeForLogs)", level: .debug)
+                logger.logWithModuleTag("Message dismissed, not logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
             }
 
         default:
@@ -143,13 +136,16 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
         }
 
         let state = getState()
+        let activeModalMessage = state.currentMessageState.activeModalMessage
         // Filter out messages with valid queueId that have not been shown yet and sort by priority
         let notShownMessages = messages
             .filter { message in
                 guard let queueId = message.queueId else { return false }
 
                 // Filter out messages that have been shown already, or if the message is embedded
-                return !state.shownMessageQueueIds.contains(queueId) && message.gistProperties.elementId == nil
+                return !state.shownMessageQueueIds.contains(queueId) &&
+                    activeModalMessage?.queueId != queueId &&
+                    message.gistProperties.elementId == nil
             }
             .reduce(into: [Message]()) { result, message in
                 if !result.contains(where: { $0.queueId == message.queueId }) {
