@@ -117,7 +117,7 @@ class Gist: GistProvider {
     // MARK: Message Queue Polling
 
     func fetchUserMessagesFromRemoteQueue() {
-        logger.logWithModuleTag("Requesting to fetch user messages queue", level: .info)
+        logger.logWithModuleTag("Requesting to fetch user messages from remote service", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
