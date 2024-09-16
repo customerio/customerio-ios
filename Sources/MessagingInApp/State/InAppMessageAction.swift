@@ -78,7 +78,7 @@ extension InAppMessageAction {
     ///
     /// - Returns: `true` if the message is non-persistent in `displayMessage` case or if it's persistent and
     ///   meets the conditions in `dismissMessage` case, otherwise `false`.
-    var shouldTrackMessageShown: Bool {
+    var shouldMarkMessageAsShown: Bool {
         switch self {
         case .displayMessage(let message):
             // Mark the message as shown if it's not persistent

@@ -50,7 +50,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .displayMessage(let message):
         if let queueId = message.queueId {
             // If the message should be tracked shown when it is displayed, add the queueId to shownMessageQueueIds.
-            let shownMessageQueueIds = action.shouldTrackMessageShown
+            let shownMessageQueueIds = action.shouldMarkMessageAsShown
                 ? state.shownMessageQueueIds.union([queueId])
                 : state.shownMessageQueueIds
 
@@ -63,12 +63,10 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state
 
     case .dismissMessage(let message, _, _):
-        let shownMessageQueueIds: Set<String>
+        var shownMessageQueueIds = state.shownMessageQueueIds
         // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
-        if let queueId = message.queueId, action.shouldTrackMessageShown {
-            shownMessageQueueIds = state.shownMessageQueueIds.union([queueId])
-        } else {
-            shownMessageQueueIds = state.shownMessageQueueIds
+        if action.shouldMarkMessageAsShown, let queueId = message.queueId {
+            shownMessageQueueIds = shownMessageQueueIds.union([queueId])
         }
 
         return state.copy(

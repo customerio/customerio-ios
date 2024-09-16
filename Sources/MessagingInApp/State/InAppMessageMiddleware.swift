@@ -116,7 +116,7 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
         switch action {
         case .displayMessage(let message):
             // Log message view only if message should be tracked as shown on display action
-            if action.shouldTrackMessageShown {
+            if action.shouldMarkMessageAsShown {
                 logger.logWithModuleTag("Message shown, logging view for message: \(message.describeForLogs)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
@@ -125,7 +125,7 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
             // Log message close only if message should be tracked as shown on dismiss action
-            if action.shouldTrackMessageShown {
+            if action.shouldMarkMessageAsShown {
                 logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
                 logMessageView(logger: logger, logManager: logManager, state: state, message: message)
             } else {
