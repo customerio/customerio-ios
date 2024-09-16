@@ -6,6 +6,7 @@ import UIKit
 protocol GistProvider: AutoMockable {
     func setUserToken(_ userToken: String)
     func setCurrentRoute(_ currentRoute: String)
+    func fetchUserMessagesFromRemoteQueue()
     func resetState()
     func setEventListener(_ eventListener: InAppEventListener?)
     func dismissMessage()
@@ -115,6 +116,15 @@ class Gist: GistProvider {
 
     // MARK: Message Queue Polling
 
+    func fetchUserMessagesFromRemoteQueue() {
+        logger.logWithModuleTag("Requesting to fetch user messages from remote service", level: .info)
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self else { return }
+
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
+    }
+
     private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
         logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
@@ -142,7 +152,7 @@ class Gist: GistProvider {
     /// Also, the method must be called on main thread since it checks the application state.
     @objc
     func fetchUserMessages() {
-        logger.logWithModuleTag("Attempting to fetch user messages", level: .info)
+        logger.logWithModuleTag("Attempting to fetch user messages from remote service", level: .info)
         guard UIApplication.shared.applicationState != .background else {
             logger.logWithModuleTag("Application in background, skipping queue check.", level: .info)
             return
