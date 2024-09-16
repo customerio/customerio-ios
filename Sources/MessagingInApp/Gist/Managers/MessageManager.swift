@@ -74,10 +74,10 @@ class MessageManager: EngineWebDelegate {
                 // Initial state may only be received when state is reset while a message was being displayed
                 case .dismissed, .initial:
                     threadUtil.runMain {
-                        self.removeEngineWebView()
                         // Unsubscribe from InAppMessageState when the message is dismissed completely
                         // so that MessageManager is deallocated only after dismiss animation is completed.
                         self.dismissMessage {
+                            self.removeEngineWebView()
                             self.unsubscribeFromInAppMessageState()
                             // Fetch user messages from local store after message is dismissed so that
                             // next message can be displayed instantly if available.
