@@ -93,7 +93,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
 
         logger.logWithModuleTag("Showing message: \(message)", level: .debug)
         // Show message on main thread to avoid unexpected crashes
-        DispatchQueue.main.async {
+        threadUtil.runMain {
             let messageManager = MessageManager(state: state, message: message)
             messageManager.showMessage()
         }
