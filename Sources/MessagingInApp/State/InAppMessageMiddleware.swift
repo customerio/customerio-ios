@@ -7,7 +7,7 @@ import Foundation
 private func middleware(
     completion: @escaping MiddlewareCompletion
 ) -> InAppMessageMiddleware {
-    { _,
+    { dis,
         // swiftlint:disable:next closure_parameter_position
         getState in {
             // swiftlint:disable:next closure_parameter_position
@@ -21,7 +21,7 @@ private func middleware(
                 let dispatch: DispatchFunction = { action in
                     DIGraphShared.shared.inAppMessageManager.dispatch(action: action)
                 }
-                completion(dispatch, getStateOrDefault, next, action)
+                completion(dis, getStateOrDefault, next, action)
             }
         }
     }
@@ -93,7 +93,7 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
 
         logger.logWithModuleTag("Showing message: \(message)", level: .debug)
         // Show message on main thread to avoid unexpected crashes
-        threadUtil.runMain {
+        DispatchQueue.main.async {
             let messageManager = MessageManager(state: state, message: message)
             messageManager.showMessage()
         }
