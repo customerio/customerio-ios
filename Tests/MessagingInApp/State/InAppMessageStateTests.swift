@@ -35,6 +35,15 @@ class InAppMessageStateTests: IntegrationTest {
         diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
     }
 
+    // This add a wait so that all the middlewares are done processing by the time we check state
+    func dispatchAndWait(_ action: InAppMessageAction) async throws {
+        let expectation = XCTestExpectation(description: "Action completed: \(action)")
+        inAppMessageManager.dispatch(action: action) {
+            expectation.fulfill()
+        }
+        await fulfillment(of: [expectation])
+    }
+
     override func tearDown() {
         inAppMessageManager = nil
         super.tearDown()
@@ -164,12 +173,12 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertTrue(state.messagesInQueue.contains { $0.queueId == "2" })
     }
 
-    func test_routeChange_givenMessageWithPageRule_expectMessageStateUpdated() async {
+    func test_routeChange_givenMessageWithPageRule_expectMessageStateUpdated() async throws {
         let message = Message(pageRule: "home", queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+        try await dispatchAndWait(.setPageRoute(route: "home"))
 
         var state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "home")
@@ -181,7 +190,7 @@ class InAppMessageStateTests: IntegrationTest {
         }
 
         // Change route to dismiss the message
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
+        try await dispatchAndWait(.setPageRoute(route: "profile"))
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "profile")
@@ -274,7 +283,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertFalse(globalEventListener.messageActionTakenCalled)
     }
 
-    func test_routeChange_expectMessageProcessing() async {
+    func test_routeChange_expectMessageProcessing() async throws {
         let message1 = Message(pageRule: "home", queueId: "1")
         let message2 = Message(pageRule: "profile", queueId: "2")
 
@@ -282,7 +291,7 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
 
         // Set route to "home"
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+        try await dispatchAndWait(.setPageRoute(route: "home"))
 
         var state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "home")
@@ -294,7 +303,7 @@ class InAppMessageStateTests: IntegrationTest {
         }
 
         // Change route to "profile"
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
+        try await dispatchAndWait(.setPageRoute(route: "profile"))
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "profile")
@@ -306,7 +315,7 @@ class InAppMessageStateTests: IntegrationTest {
         }
     }
 
-    func test_routeChange_givenMessageBeingProcessed_expectMessageHandledCorrectly() async {
+    func test_routeChange_givenMessageBeingProcessed_expectMessageHandledCorrectly() async throws {
         let message = Message(pageRule: "home", queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
@@ -316,13 +325,13 @@ class InAppMessageStateTests: IntegrationTest {
         var state = await inAppMessageManager.state
         XCTAssertEqual(state.currentMessageState, .loading(message: message))
 
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
+        try await dispatchAndWait(.setPageRoute(route: "profile"))
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
         XCTAssertEqual(state.currentRoute, "profile")
 
-        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+        try await dispatchAndWait(.setPageRoute(route: "home"))
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentMessageState, .loading(message: message))
