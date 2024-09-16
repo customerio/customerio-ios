@@ -129,22 +129,11 @@ public class Gist {
     }
 
     func fetchUserMessagesFromStoreState() {
-        logger.logWithModuleTag("Attempting to fetch user messages from local store", level: .info)
-        inAppMessageManager.fetchState { [self] state in
-            let messages = state.messagesInQueue
-            guard !messages.isEmpty else { return }
+        logger.logWithModuleTag("[DEV] Attempting to fetch user messages from local store", level: .info)
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self else { return }
 
-            // Switch to main thread before checking application state
-            threadUtil.runMain {
-                // Skip fetching messages from local store if application is in background
-                // This is to prevent showing messages when the app was moved to background
-                guard UIApplication.shared.applicationState != .background else {
-                    self.logger.logWithModuleTag("Application in background, skipping local queue check.", level: .info)
-                    return
-                }
-
-                self.inAppMessageManager.dispatch(action: .processMessageQueue(messages: Array(messages)))
-            }
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
     }
 
