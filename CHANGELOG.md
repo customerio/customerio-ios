@@ -1,3 +1,9 @@
+## [3.4.0](https://github.com/customerio/customerio-ios/compare/3.3.3...3.4.0) (2024-09-17)
+
+### Features
+
+* state-driven in-app messaging ([#815](https://github.com/customerio/customerio-ios/issues/815)) ([5cd651b](https://github.com/customerio/customerio-ios/commit/5cd651b0cc9a3593bdc1e782565bcf89ede87eb3))
+
 ## [3.3.3](https://github.com/customerio/customerio-ios/compare/3.3.2...3.3.3) (2024-08-08)
 
 ### Bug Fixes

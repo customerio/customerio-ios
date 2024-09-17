@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIODataPipelines"
-  spec.version      = "3.3.3" # Don't modify this line - it's automatically updated
+  spec.version      = "3.4.0" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
