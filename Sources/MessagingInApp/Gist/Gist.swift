@@ -1,187 +1,197 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-public class Gist: GistDelegate {
-    var messageQueueManager = MessageQueueManager()
-    var shownMessageQueueIds: Set<String> = []
-    private var messageManagers: [MessageManager] = []
-    public var siteId: String = ""
-    public var dataCenter: String = ""
+// wrapper around Gist SDK to make it mockable
+protocol GistProvider: AutoMockable {
+    func setUserToken(_ userToken: String)
+    func setCurrentRoute(_ currentRoute: String)
+    func fetchUserMessagesFromRemoteQueue()
+    func resetState()
+    func setEventListener(_ eventListener: InAppEventListener?)
+    func dismissMessage()
+}
 
-    public weak var delegate: GistDelegate?
+// sourcery: InjectRegisterShared = "GistProvider"
+// sourcery: InjectSingleton
+/// Main class that is responsible for managing in-app message queue from remote service and
+/// dispatching actions to `InAppMessageManager` based on user and route changes.
+/// This class is also responsible for scheduling polling of in-app message queue based on
+/// `InAppMessageState.pollInterval`.
+class Gist: GistProvider {
+    private let logger: Logger
+    private let gistDelegate: GistDelegate
+    private let inAppMessageManager: InAppMessageManager
+    private let queueManager: QueueManager
+    private let threadUtil: ThreadUtil
 
-    public static let shared = Gist()
+    private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
+    private var queueTimer: Timer?
 
-    public func setup(
-        siteId: String,
-        dataCenter: String,
-        logging: Bool = false,
-        env: GistEnvironment = .production
+    init(
+        logger: Logger,
+        gistDelegate: GistDelegate,
+        inAppMessageManager: InAppMessageManager,
+        queueManager: QueueManager,
+        threadUtil: ThreadUtil
     ) {
-        Settings.Environment = env
-        self.siteId = siteId
-        self.dataCenter = dataCenter
-        Logger.instance.enabled = logging
-        messageQueueManager.setup()
+        self.logger = logger
+        self.gistDelegate = gistDelegate
+        self.inAppMessageManager = inAppMessageManager
+        self.queueManager = queueManager
+        self.threadUtil = threadUtil
 
-        // Initialising Gist web with an empty message to fetch fonts and other assets.
-        _ = Gist.shared.getMessageView(Message(messageId: ""))
+        subscribeToInAppMessageState()
     }
 
-    // For testing to reset the singleton state
-    func reset() {
-        clearUserToken()
-        messageQueueManager = MessageQueueManager()
-        messageManagers = []
-        RouteManager.clearCurrentRoute()
-    }
-
-    // MARK: User
-
-    public func setUserToken(_ userToken: String) {
-        UserManager().setUserToken(userToken: userToken)
-    }
-
-    public func clearUserToken() {
-        cancelModalMessage(ifDoesNotMatchRoute: "") // provide a new route to trigger a modal cancel.
-        messageQueueManager.clearLocalStore()
-        UserManager().clearUserToken()
-        messageQueueManager.clearUserMessagesFromLocalStore()
-    }
-
-    // MARK: Route
-
-    public func getCurrentRoute() -> String {
-        RouteManager.getCurrentRoute()
-    }
-
-    public func setCurrentRoute(_ currentRoute: String) {
-        if RouteManager.getCurrentRoute() == currentRoute {
-            return // ignore request, route has not changed.
+    deinit {
+        // Unsubscribe from in-app message state changes and release resources to stop polling
+        // and prevent memory leaks.
+        if let subscriber = inAppMessageStoreSubscriber {
+            inAppMessageManager.unsubscribe(subscriber: subscriber)
         }
-
-        cancelModalMessage(ifDoesNotMatchRoute: currentRoute)
-
-        RouteManager.setCurrentRoute(currentRoute)
-        messageQueueManager.fetchUserMessagesFromLocalStore()
+        inAppMessageStoreSubscriber = nil
+        invalidateTimer()
     }
 
-    public func clearCurrentRoute() {
-        RouteManager.clearCurrentRoute()
+    private func subscribeToInAppMessageState() {
+        // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
+        inAppMessageStoreSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { state in
+                self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval)
+            }
+            // Subscribe to changes in `pollInterval` property of `InAppMessageState`
+            inAppMessageManager.subscribe(keyPath: \.pollInterval, subscriber: subscriber)
+            return subscriber
+        }()
     }
 
-    // MARK: Message Actions
-
-    public func showMessage(_ message: Message, position: MessagePosition = .center) -> Bool {
-        if let messageManager = getModalMessageManager() {
-            Logger.instance.info(message: "Message cannot be displayed, \(messageManager.currentMessage.messageId) is being displayed.")
-        } else {
-            let messageManager = createMessageManager(siteId: siteId, message: message)
-            messageManager.showMessage(position: position)
-            return true
-        }
-        return false
+    private func invalidateTimer() {
+        queueTimer?.invalidate()
+        queueTimer = nil
     }
 
-    public func getMessageView(_ message: Message) -> GistView {
-        let messageManager = createMessageManager(siteId: siteId, message: message)
-        return messageManager.getMessageView()
+    func resetState() {
+        inAppMessageManager.dispatch(action: .resetState)
+        queueManager.clearCachedUserQueue()
+        invalidateTimer()
     }
 
-    public func dismissMessage(instanceId: String? = nil, completionHandler: (() -> Void)? = nil) {
-        if let id = instanceId, let messageManager = messageManager(instanceId: id) {
-            messageManager.removePersistentMessage()
-            messageManager.dismissMessage(completionHandler: completionHandler)
-        } else {
-            getModalMessageManager()?.dismissMessage(completionHandler: completionHandler)
+    func setEventListener(_ eventListener: InAppEventListener?) {
+        gistDelegate.setEventListener(eventListener)
+    }
+
+    func dismissMessage() {
+        inAppMessageManager.fetchState { [self] state in
+            guard case .displayed(let message) = state.currentMessageState else {
+                return
+            }
+
+            inAppMessageManager.dispatch(action: .dismissMessage(message: message))
         }
     }
 
-    // MARK: Events
+    // MARK: User Token and Route
 
-    public func messageShown(message: Message) {
-        Logger.instance.debug(message: "Message with route: \(message.messageId) shown")
-        if message.gistProperties.persistent != true {
-            logMessageView(message: message)
-        } else {
-            Logger.instance.debug(message: "Persistent message shown, skipping logging view")
+    func setUserToken(_ userToken: String) {
+        inAppMessageManager.fetchState { [self] state in
+            if state.userId == userToken {
+                return
+            }
+
+            inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
-        delegate?.messageShown(message: message)
     }
 
-    public func messageDismissed(message: Message) {
-        Logger.instance.debug(message: "Message with id: \(message.messageId) dismissed")
-        removeMessageManager(instanceId: message.instanceId)
-        delegate?.messageDismissed(message: message)
+    func setCurrentRoute(_ currentRoute: String) {
+        inAppMessageManager.fetchState { [self] state in
+            if state.currentRoute == currentRoute {
+                return // ignore request, route has not changed.
+            }
 
-        messageQueueManager.fetchUserMessagesFromLocalStore()
-    }
-
-    public func messageError(message: Message) {
-        removeMessageManager(instanceId: message.instanceId)
-        delegate?.messageError(message: message)
-    }
-
-    public func action(message: Message, currentRoute: String, action: String, name: String) {
-        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
-    }
-
-    public func embedMessage(message: Message, elementId: String) {
-        delegate?.embedMessage(message: message, elementId: elementId)
-    }
-
-    func logMessageView(message: Message) {
-        messageQueueManager.removeMessageFromLocalStore(message: message)
-        if let queueId = message.queueId {
-            shownMessageQueueIds.insert(queueId)
+            inAppMessageManager.dispatch(action: .setPageRoute(route: currentRoute))
         }
-        let userToken = UserManager().getUserToken()
-        LogManager(siteId: siteId, dataCenter: dataCenter)
-            .logView(message: message, userToken: userToken) { response in
-                if case .failure(let error) = response {
-                    Logger.instance.error(message: "Failed to log view for message: \(message.messageId) with error: \(error)")
+    }
+
+    // MARK: Message Queue Polling
+
+    func fetchUserMessagesFromRemoteQueue() {
+        logger.logWithModuleTag("Requesting to fetch user messages from remote service", level: .info)
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self else { return }
+
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
+    }
+
+    private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
+        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)", level: .info)
+        invalidateTimer()
+
+        // Timer must be scheduled on the main thread
+        threadUtil.runMain {
+            self.queueTimer = Timer.scheduledTimer(
+                timeInterval: pollingInterval,
+                target: self,
+                selector: #selector(self.fetchUserMessages),
+                userInfo: nil,
+                repeats: true
+            )
+        }
+
+        if !skipMessageFetch {
+            threadUtil.runMain {
+                self.fetchUserMessages()
+            }
+        }
+    }
+
+    /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
+    /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
+    /// Also, the method must be called on main thread since it checks the application state.
+    @objc
+    func fetchUserMessages() {
+        logger.logWithModuleTag("Attempting to fetch user messages from remote service", level: .info)
+        guard UIApplication.shared.applicationState != .background else {
+            logger.logWithModuleTag("Application in background, skipping queue check.", level: .info)
+            return
+        }
+
+        logger.logWithModuleTag("Checking Gist queue service", level: .info)
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self else { return }
+
+            fetchUserQueue(state: state)
+        }
+    }
+
+    private func fetchUserQueue(state: InAppMessageState) {
+        guard let _ = state.userId else {
+            logger.logWithModuleTag("User token not set, skipping fetch user queue.", level: .debug)
+            return
+        }
+
+        threadUtil.runBackground {
+            self.queueManager.fetchUserQueue(state: state) { [weak self] response in
+                guard let self else { return }
+
+                switch response {
+                case .success(nil):
+                    logger.logWithModuleTag("No changes to remote queue", level: .info)
+                    inAppMessageManager.dispatch(action: .clearMessageQueue)
+
+                case .success(let responses):
+                    guard let responses else { return }
+
+                    logger.logWithModuleTag("Gist queue service found \(responses.count) new messages", level: .info)
+                    inAppMessageManager.dispatch(action: .processMessageQueue(messages: responses.map { $0.toMessage() }))
+
+                case .failure(let error):
+                    logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)
+                    inAppMessageManager.dispatch(action: .clearMessageQueue)
                 }
             }
-    }
-
-    // When the user navigates to a different screen, modal messages should only appear if they are meant for the current screen.
-    // If the currently displayed/loading modal message has a page rule, it should not be shown anymore.
-    private func cancelModalMessage(ifDoesNotMatchRoute newRoute: String) {
-        if let messageManager = getModalMessageManager() {
-            let modalMessageLoadingOrDisplayed = messageManager.currentMessage
-
-            if modalMessageLoadingOrDisplayed.doesHavePageRule(), !modalMessageLoadingOrDisplayed.doesPageRuleMatch(route: newRoute) {
-                // the page rule has changed and the currently loading/visible modal has page rules set, it should no longer be shown.
-                Logger.instance.debug(message: "Cancelled showing message with id: \(modalMessageLoadingOrDisplayed.messageId)")
-
-                // Stop showing the current message synchronously meaning to remove from UI instantly.
-                // We want to be sure the message is gone when this function returns and be ready to display another message if needed.
-                messageManager.cancelShowingMessage()
-
-                // Removing the message manager allows you to show a new modal message. Otherwise, request to show will be ignored.
-                removeMessageManager(instanceId: modalMessageLoadingOrDisplayed.instanceId)
-            }
         }
-    }
-
-    // Message Manager
-
-    private func createMessageManager(siteId: String, message: Message) -> MessageManager {
-        let messageManager = MessageManager(siteId: siteId, message: message)
-        messageManager.delegate = self
-        messageManagers.append(messageManager)
-        return messageManager
-    }
-
-    func getModalMessageManager() -> MessageManager? {
-        messageManagers.first(where: { !$0.isMessageEmbed })
-    }
-
-    func messageManager(instanceId: String) -> MessageManager? {
-        messageManagers.first(where: { $0.currentMessage.instanceId == instanceId })
-    }
-
-    func removeMessageManager(instanceId: String) {
-        messageManagers.removeAll(where: { $0.currentMessage.instanceId == instanceId })
     }
 }

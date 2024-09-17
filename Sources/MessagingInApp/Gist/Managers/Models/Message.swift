@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 
 public class GistProperties {
@@ -17,79 +18,49 @@ public class GistProperties {
 }
 
 public class Message {
-    public private(set) var instanceId = UUID().uuidString.lowercased()
-    public let queueId: String?
-    public let priority: Int?
-    public let messageId: String
-    public private(set) var gistProperties: GistProperties
-
-    var properties = [String: Any]()
+    let instanceId = UUID().uuidString.lowercased()
+    let queueId: String?
+    let priority: Int?
+    let messageId: String
+    let gistProperties: GistProperties
+    let properties: [String: Any]
 
     public var isEmbedded: Bool {
-        Gist.shared.messageManager(instanceId: instanceId)?.isMessageEmbed ?? false
+        gistProperties.elementId != nil
     }
 
-    public init(messageId: String) {
-        self.queueId = nil
-        self.priority = nil
-        self.gistProperties = GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
+    public init(
+        messageId: String,
+        queueId: String? = nil,
+        priority: Int? = nil,
+        properties: [String: Any]?
+    ) {
         self.messageId = messageId
-    }
-
-    init(queueId: String? = nil, priority: Int? = nil, messageId: String, properties: [String: Any]?) {
         self.queueId = queueId
         self.priority = priority
-        self.gistProperties = GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: .center, persistent: false)
-        self.messageId = messageId
-
-        if let properties = properties {
-            self.properties = properties
-            if let gist = self.properties["gist"] as? [String: Any] {
-                var messagePosition = MessagePosition.center
-                if let position = gist["position"] as? String,
-                   let positionValue = MessagePosition(rawValue: position) {
-                    messagePosition = positionValue
-                }
-                var routeRule: String?
-                if let routeRuleApple = gist["routeRuleApple"] as? String {
-                    routeRule = routeRuleApple
-                }
-                var elementId: String?
-                if let elementIdValue = gist["elementId"] as? String {
-                    elementId = elementIdValue
-                }
-                var campaignId: String?
-                if let campaignIdValue = gist["campaignId"] as? String {
-                    campaignId = campaignIdValue
-                }
-                var persistent = false
-                if let persistentValue = gist["persistent"] as? Bool {
-                    persistent = persistentValue
-                }
-
-                self.gistProperties = GistProperties(
-                    routeRule: routeRule,
-                    elementId: elementId,
-                    campaignId: campaignId,
-                    position: messagePosition,
-                    persistent: persistent
-                )
-            }
-        }
+        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        self.properties = properties ?? [:]
     }
 
-    public func addProperty(key: String, value: Any) {
-        properties[key] = AnyEncodable(value)
-    }
-
-    func toEngineRoute() -> EngineRoute {
-        let engineRoute = EngineRoute(route: messageId)
-        properties.keys.forEach { key in
-            if let value = properties[key] {
-                engineRoute.addProperty(key: key, value: value)
-            }
+    private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
+        let defaultPosition = MessagePosition.center
+        guard let gist = gist else {
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false)
         }
-        return engineRoute
+
+        let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
+        let routeRule = gist["routeRuleApple"] as? String
+        let elementId = gist["elementId"] as? String
+        let campaignId = gist["campaignId"] as? String
+        let persistent = gist["persistent"] as? Bool ?? false
+
+        return GistProperties(
+            routeRule: routeRule,
+            elementId: elementId,
+            campaignId: campaignId,
+            position: position,
+            persistent: persistent
+        )
     }
 }
 
@@ -126,7 +97,7 @@ extension Message {
                 return false // exit early to not show the message since page rule doesnt match
             }
         } else {
-            Logger.instance.info(message: "Problem processing route rule message regex: \(cleanRouteRule)")
+            DIGraphShared.shared.logger.logWithModuleTag("Problem processing route rule message regex: \(cleanRouteRule)", level: .info)
             return false // exit early to not show the message since we cannot parse the page rule for message.
         }
 
@@ -134,7 +105,7 @@ extension Message {
     }
 }
 
-extension Message: Equatable {
+extension Message: Equatable, Hashable {
     public static func == (lhs: Message, rhs: Message) -> Bool {
         // The queueId is the single-source-of-truth as a unique identifier generated by the backend.
         if let lhsQueueId = lhs.queueId, let rhsQueueId = rhs.queueId {
@@ -143,5 +114,12 @@ extension Message: Equatable {
 
         // If the queueId is nil, we fallback to the instanceId which is a unique ID generated client-side
         return lhs.instanceId == rhs.instanceId
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(instanceId)
+        hasher.combine(queueId)
+        hasher.combine(priority)
+        hasher.combine(messageId)
     }
 }

@@ -1,12 +1,13 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "QueueManager"
+// sourcery: InjectSingleton
 class QueueManager {
-    let siteId: String
-    let dataCenter: String
-    var keyValueStore: SharedKeyValueStorage = DIGraphShared.shared.sharedKeyValueStorage
-    let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
-    let threadUtil: ThreadUtil = DIGraphShared.shared.threadUtil
+    private var keyValueStore: SharedKeyValueStorage
+    private let gistQueueNetwork: GistQueueNetwork
+    private let inAppMessageManager: InAppMessageManager
+    private let logger: Logger
 
     private var cachedFetchUserQueueResponse: Data? {
         get {
@@ -17,21 +18,24 @@ class QueueManager {
         }
     }
 
-    init(siteId: String, dataCenter: String) {
-        self.siteId = siteId
-        self.dataCenter = dataCenter
+    init(keyValueStore: SharedKeyValueStorage, gistQueueNetwork: GistQueueNetwork, inAppMessageManager: InAppMessageManager, logger: Logger) {
+        self.keyValueStore = keyValueStore
+        self.gistQueueNetwork = gistQueueNetwork
+        self.inAppMessageManager = inAppMessageManager
+        self.logger = logger
     }
 
     func clearCachedUserQueue() {
         cachedFetchUserQueueResponse = nil
     }
 
-    func fetchUserQueue(userToken: String, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
+    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
         do {
-            try gistQueueNetwork.request(siteId: siteId, dataCenter: dataCenter, userToken: userToken, request: QueueEndpoint.getUserQueue, completionHandler: { response in
+            try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)
+                    self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
                     switch response.statusCode {
                     case 304:
                         guard let lastCachedResponse = self.cachedFetchUserQueueResponse else {
@@ -41,9 +45,7 @@ class QueueManager {
                         do {
                             let userQueue = try self.parseResponseBody(lastCachedResponse)
 
-                            self.threadUtil.runMain {
-                                completionHandler(.success(userQueue))
-                            }
+                            completionHandler(.success(userQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -53,18 +55,18 @@ class QueueManager {
 
                             self.cachedFetchUserQueueResponse = data
 
-                            self.threadUtil.runMain {
-                                completionHandler(.success(userQueue))
-                            }
+                            completionHandler(.success(userQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
                     }
                 case .failure(let error):
+                    self.logger.logWithModuleTag("Gist queue fetch response failure: \(error)", level: .debug)
                     completionHandler(.failure(error))
                 }
             })
         } catch {
+            logger.logWithModuleTag("Gist queue fetch response error: \(error)", level: .debug)
             completionHandler(.failure(error))
         }
     }
@@ -82,14 +84,14 @@ class QueueManager {
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
-        if let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
-           let newPollingInterval = Double(newPollingIntervalString),
-           newPollingInterval != Gist.shared.messageQueueManager.interval {
-            DispatchQueue.main.async {
-                Gist.shared.messageQueueManager.interval = newPollingInterval
-                Gist.shared.messageQueueManager.setup(skipQueueCheck: true)
-                Logger.instance.info(message: "Polling interval changed to: \(newPollingInterval) seconds")
-            }
+        guard let newPollingIntervalString = headers["x-gist-queue-polling-interval"] as? String,
+              let newPollingInterval = Double(newPollingIntervalString) else { return }
+
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self = self, newPollingInterval != state.pollInterval else { return }
+
+            logger.logWithModuleTag("Updating polling interval to: \(newPollingInterval) seconds", level: .debug)
+            inAppMessageManager.dispatch(action: .setPollingInterval(interval: newPollingInterval))
         }
     }
 }

@@ -10,9 +10,6 @@ class ModalViewManager {
     var window: UIWindow?
     var viewController: GistModalViewController!
     var position: MessagePosition
-    var isShowingMessage: Bool {
-        window != nil
-    }
 
     init(gistView: GistView, position: MessagePosition) {
         self.viewController = GistModalViewController()
@@ -50,11 +47,6 @@ class ModalViewManager {
         })
 
         viewController.view.isHidden = false
-    }
-
-    // Like dismiss, but no animation. Instantly removes the view from the screen.
-    func cancel() {
-        removeModalViewFromScreen()
     }
 
     func dismissModalView(completionHandler: @escaping () -> Void) {

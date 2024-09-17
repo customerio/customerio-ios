@@ -30,9 +30,9 @@ struct UserQueueResponse {
 
     func toMessage() -> Message {
         Message(
+            messageId: messageId,
             queueId: queueId,
             priority: priority,
-            messageId: messageId,
             properties: properties
         )
     }

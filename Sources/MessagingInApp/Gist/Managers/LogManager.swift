@@ -1,23 +1,19 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "LogManager"
 class LogManager {
-    let siteId: String
-    let dataCenter: String
-    let gistQueueNetwork: GistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
+    let gistQueueNetwork: GistQueueNetwork
 
-    init(siteId: String, dataCenter: String) {
-        self.siteId = siteId
-        self.dataCenter = dataCenter
+    init(gistQueueNetwork: GistQueueNetwork) {
+        self.gistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
     }
 
-    func logView(message: Message, userToken: String?, completionHandler: @escaping (Result<Void, Error>) -> Void) {
+    func logView(state: InAppMessageState, message: Message, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         do {
-            if let queueId = message.queueId, let userToken = userToken {
+            if let queueId = message.queueId, let _ = state.userId {
                 try gistQueueNetwork.request(
-                    siteId: siteId,
-                    dataCenter: dataCenter,
-                    userToken: userToken,
+                    state: state,
                     request: LogEndpoint.logUserMessageView(queueId: queueId),
                     completionHandler: { response in
                         switch response {
@@ -34,10 +30,7 @@ class LogManager {
                 )
             } else {
                 try gistQueueNetwork.request(
-                    siteId: siteId,
-                    dataCenter: dataCenter,
-                    userToken: nil,
-
+                    state: state,
                     request: LogEndpoint.logMessageView(messageId: message.messageId),
                     completionHandler: { response in
                         switch response {

@@ -1,6 +1,8 @@
+import CioInternalCommon
 import Foundation
 
 class ElapsedTimer {
+    private let logger: Logger = DIGraphShared.shared.logger
     private var title: String?
     private var startTime: CFAbsoluteTime?
 
@@ -14,7 +16,7 @@ class ElapsedTimer {
             return
         }
         let timeElapsed = ((CFAbsoluteTimeGetCurrent() - startTime) * 1000).rounded() / 1000.0
-        Logger.instance.info(message: "\(title) timer elapsed in \(timeElapsed) seconds")
+        logger.logWithModuleTag("\(title) timer elapsed in \(timeElapsed) seconds", level: .info)
         self.startTime = nil
     }
 }

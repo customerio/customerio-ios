@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
@@ -19,8 +20,8 @@ public class GistView: UIView {
 
     override public func removeFromSuperview() {
         super.removeFromSuperview()
-        if let message = message {
-            Gist.shared.removeMessageManager(instanceId: message.instanceId)
+        if let _ = message {
+            DIGraphShared.shared.gistProvider.dismissMessage()
         }
     }
 }

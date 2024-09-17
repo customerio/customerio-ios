@@ -4,10 +4,9 @@ public enum GistEnvironment {
     case production
 }
 
-enum Settings {
-    static var Environment: GistEnvironment = .production
-    static var Network: NetworkSettings {
-        switch Environment {
+extension GistEnvironment {
+    var networkSettings: NetworkSettings {
+        switch self {
         case .development:
             return NetworkSettingsDevelopment()
         case .local:
