@@ -36,12 +36,12 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     // This add a wait so that all the middlewares are done processing by the time we check state
-    func dispatchAndWait(_ action: InAppMessageAction) async throws {
+    func dispatchAndWait(_ action: InAppMessageAction, timeout seconds: TimeInterval = 2) async throws {
         let expectation = XCTestExpectation(description: "Action completed: \(action)")
         inAppMessageManager.dispatch(action: action) {
             expectation.fulfill()
         }
-        await fulfillment(of: [expectation])
+        await fulfillment(of: [expectation], timeout: seconds)
     }
 
     override func tearDown() {
