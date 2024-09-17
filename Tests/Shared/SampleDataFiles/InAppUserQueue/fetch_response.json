@@ -7,7 +7,6 @@
       "gist": {
         "position": "center",
         "routeRuleAndroid": "^DO_NOT_DISPLAY_IN_APP$",
-        "routeRuleApple": "^(.*Dashboard.*)$",
         "routeRuleWeb": "^DO_NOT_DISPLAY_IN_APP$"
       },
       "name": "okFNkDksSc@customer.io"
@@ -21,7 +20,6 @@
       "gist": {
         "position": "center",
         "routeRuleAndroid": "^DO_NOT_DISPLAY_IN_APP$",
-        "routeRuleApple": "^(.*Dashboard.*)$",
         "routeRuleWeb": "^DO_NOT_DISPLAY_IN_APP$"
       },
       "name": "okFNkDksSc@customer.io"

@@ -16,6 +16,8 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     private let globalEventListener = InAppEventListenerMock()
+    var gist: Gist!
+    var queueManager: QueueManager!
 
     override func setUp() {
         super.setUp()
@@ -33,6 +35,21 @@ class InAppMessageStateTests: IntegrationTest {
         )
 
         diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
+
+        queueManager = QueueManager(
+            keyValueStore: diGraphShared.sharedKeyValueStorage,
+            gistQueueNetwork: gistQueueNetworkMock,
+            inAppMessageManager: inAppMessageManager,
+            logger: diGraphShared.logger
+        )
+
+        gist = Gist(
+            logger: diGraphShared.logger,
+            gistDelegate: diGraphShared.gistDelegate,
+            inAppMessageManager: inAppMessageManager,
+            queueManager: queueManager,
+            threadUtil: diGraphShared.threadUtil
+        )
     }
 
     // This add a wait so that all the middlewares are done processing by the time we check state
@@ -147,8 +164,12 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: messages))
 
-        let state = await inAppMessageManager.state
+        var state = await inAppMessageManager.state
         XCTAssertEqual(state.messagesInQueue.count, 3)
+
+        state = await inAppMessageManager.waitForState { state in
+            state.currentMessageState.isLoading
+        }
 
         if case .loading(let message) = state.currentMessageState {
             XCTAssertEqual(message.queueId, "2")
@@ -296,6 +317,10 @@ class InAppMessageStateTests: IntegrationTest {
         var state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "home")
 
+        state = await inAppMessageManager.waitForState { state in
+            state.currentMessageState.isLoading
+        }
+
         if case .loading(let loadingMessage) = state.currentMessageState {
             XCTAssertEqual(loadingMessage.queueId, "1")
         } else {
@@ -307,6 +332,10 @@ class InAppMessageStateTests: IntegrationTest {
 
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "profile")
+
+        state = await inAppMessageManager.waitForState { state in
+            state.currentMessageState.isLoading
+        }
 
         if case .loading(let loadingMessage) = state.currentMessageState {
             XCTAssertEqual(loadingMessage.queueId, "2")
@@ -382,5 +411,103 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(globalEventListener.messageActionTakenReceivedArguments?.message.deliveryId, message.gistProperties.campaignId)
         XCTAssertEqual(globalEventListener.messageActionTakenReceivedArguments?.actionValue, action)
         XCTAssertEqual(globalEventListener.messageActionTakenReceivedArguments?.actionName, name)
+    }
+
+    // MARK: fetch user messages from backend services
+
+    var sampleFetchResponseBody: String {
+        readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")
+    }
+
+    func test_fetch_givenHTTPResponse200_expectSetLocalMessageStoreFromFetchResponse() async {
+        inAppMessageManager.dispatch(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+
+        setupHttpResponse(code: 200, body: sampleFetchResponseBody.data)
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        state = await inAppMessageManager.waitForState { state in
+            state.messagesInQueue.count == 2
+        }
+        XCTAssertEqual(state.messagesInQueue.count, 2)
+    }
+
+    func test_fetch_givenMessageCacheSaved_given304AfterSdkInitialized_expectPopulateLocalMessageStoreFromCache() async {
+        inAppMessageManager.dispatch(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+
+        setupHttpResponse(code: 200, body: sampleFetchResponseBody.data)
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        state = await inAppMessageManager.waitForState { state in
+            state.messagesInQueue.count == 2
+        }
+
+        let localMessageStoreBefore304: Set<Message> = state.messagesInQueue
+        inAppMessageManager.dispatch(action: .clearMessageQueue)
+
+        state = await inAppMessageManager.waitForState { state in
+            state.messagesInQueue.isEmpty
+        }
+
+        setupHttpResponse(code: 304, body: "".data)
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        state = await inAppMessageManager.waitForState { state in
+            state.messagesInQueue.count == 2
+        }
+
+        let localMessageStoreAfter304 = state.messagesInQueue
+
+        XCTAssertEqual(localMessageStoreBefore304.compactMap(\.queueId).sorted(), localMessageStoreAfter304.compactMap(\.queueId).sorted())
+    }
+
+    // The SDK could receive a 304 and the SDK does not have a previous fetch response cached. Example use cases when this could happen:
+    // 1. The user logs out of the SDK and logs in again  with same or different profile.
+    // 2. Reinstalls the app and first fetch response is a 304
+    func test_fetch_givenNoPreviousCacheSaved_given304AfterSdkInitialized_expectPopulateLocalMessageStoreFromCache() async {
+        inAppMessageManager.dispatch(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
+
+        let state = await inAppMessageManager.state
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+
+        setupHttpResponse(code: 304, body: "".data)
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+    }
+}
+
+extension InAppMessageManager {
+    func waitForState(
+        timeout: TimeInterval = 5.0,
+        pollInterval: TimeInterval = 0.2,
+        comparator: @escaping (InAppMessageState) -> Bool,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) async -> InAppMessageState {
+        let timeoutDate = Date().addingTimeInterval(timeout)
+
+        var lastKnownState: InAppMessageState
+        repeat {
+            lastKnownState = await state
+            // Check if the condition is met
+            if comparator(lastKnownState) {
+                return lastKnownState
+            }
+
+            // Sleep for pollInterval before checking again
+            try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1000000000))
+        } while Date() < timeoutDate
+
+        XCTFail("Condition not met within \(timeout) seconds.", file: file, line: line)
+        return lastKnownState
     }
 }
