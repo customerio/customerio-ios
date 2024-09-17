@@ -203,7 +203,7 @@ extension DIGraphShared {
     }
 
     private func _get_queueManager() -> QueueManager {
-        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, logger: logger)
     }
 }
 
