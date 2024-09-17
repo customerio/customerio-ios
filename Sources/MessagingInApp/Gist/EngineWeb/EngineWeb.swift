@@ -87,6 +87,8 @@ public class EngineWeb: NSObject, EngineWebInstance {
     }
 
     public func cleanEngineWeb() {
+        _timeoutTimer?.invalidate()
+        _timeoutTimer = nil
         webView.removeFromSuperview()
         webView.configuration.userContentController.removeAllUserScripts()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gist")
@@ -117,6 +119,7 @@ extension EngineWeb: WKScriptMessageHandler {
         switch engineEventMethod {
         case .bootstrapped:
             _timeoutTimer?.invalidate()
+            _timeoutTimer = nil
             delegate?.bootstrapped()
         case .routeLoaded:
             _elapsedTimer.end()
