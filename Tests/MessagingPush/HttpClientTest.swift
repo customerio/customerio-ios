@@ -11,7 +11,7 @@ class HttpClientTest: UnitTest {
     private var requestRunnerMock = HttpRequestRunnerMock()
     private let globalDataStoreMock = GlobalDataStoreMock()
     private let timerMock = SimpleTimerMock()
-    private let deviceInfoMock = DeviceInfoStub()
+    private var deviceInfoStub: DeviceInfoStub!
 
     private var client: RichPushHttpClient!
 
@@ -24,8 +24,14 @@ class HttpClientTest: UnitTest {
             jsonAdapter: jsonAdapter,
             httpRequestRunner: requestRunnerMock,
             logger: log,
-            deviceInfo: deviceInfoMock
+            userAgentUtil: diGraphShared.userAgentUtil
         )
+    }
+
+    override func setUpDependencies() {
+        super.setUpDependencies()
+
+        deviceInfoStub = DeviceInfoStub.createAndOverride(for: diGraphShared)
     }
 
     // MARK: request

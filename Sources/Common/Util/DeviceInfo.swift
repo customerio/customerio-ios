@@ -17,7 +17,6 @@ public protocol DeviceInfo: AutoMockable {
     var customerAppName: String { get }
     var customerAppVersion: String { get }
     var customerBundleId: String { get }
-    var sdkVersion: String { get }
     var deviceLocale: String { get }
     func isPushSubscribed(completion: @escaping (Bool) -> Void)
 }
@@ -64,10 +63,6 @@ public class CIODeviceInfo: DeviceInfo {
 
     public var customerBundleId: String {
         Bundle.main.bundleIdentifier ?? ""
-    }
-
-    public var sdkVersion: String {
-        SdkVersion.version
     }
 
     // Requirements:

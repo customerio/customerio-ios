@@ -31,7 +31,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         // get DataPipelineImplementation instance so we can call its methods directly
         dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation) // swiftlint:disable:this force_cast
 
-        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
+        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub, sdkClient: diGraphShared.sdkClient)
 
         // get storage instance so we can read final events
         storage = analytics.storage

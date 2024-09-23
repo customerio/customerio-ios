@@ -80,6 +80,9 @@ extension DIGraphShared {
         _ = logger
         countDependenciesResolved += 1
 
+        _ = sdkClient
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -262,6 +265,12 @@ extension DIGraphShared {
 
     private func _get_logger() -> Logger {
         ConsoleLogger()
+    }
+
+    // SdkClient (custom. property getter provided via extension)
+    public var sdkClient: SdkClient {
+        getOverriddenInstance() ??
+            customSdkClient
     }
 
     // DeviceMetricsGrabber
@@ -487,7 +496,7 @@ extension DIGraphShared {
     }
 
     private var newUserAgentUtil: UserAgentUtil {
-        UserAgentUtilImpl(deviceInfo: deviceInfo)
+        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkClient: sdkClient)
     }
 
     // SandboxedSiteIdKeyValueStorage
