@@ -22,7 +22,6 @@ class DeviceAttributesProviderTest: UnitTest {
         // do not call super.setUp() because we want to override SDK config and every test should
         // call setUp(modifySdkConfig:) to modify the SDK config before calling super.setUp()
 
-        sdkClientMock.underlyingSource = "iOS"
         provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock, sdkClient: sdkClientMock)
     }
 
@@ -61,6 +60,7 @@ class DeviceAttributesProviderTest: UnitTest {
             "push_enabled": "true",
             "device_manufacturer": givenDeviceManufacturer
         ]
+        sdkClientMock.underlyingSource = "iOS"
         sdkClientMock.underlyingSdkVersion = givenSdkVersion
         deviceInfoMock.underlyingCustomerAppVersion = givenAppVersion
         deviceInfoMock.underlyingDeviceLocale = givenDeviceLocale
