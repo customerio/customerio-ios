@@ -16,7 +16,8 @@ open class IntegrationTest: UnitTest {
 
         // Mock device info since we are running tests, not running the app on a device. Tests crash when trying to
         // execute the code in the real device into implementation.
-        deviceInfoStub = DeviceInfoStub.createAndOverride(for: diGraphShared)
+        deviceInfoStub = DeviceInfoStub()
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
     }
 
     override open func initializeSDKComponents() -> MessagingPushInstance? {

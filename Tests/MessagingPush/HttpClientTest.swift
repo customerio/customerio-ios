@@ -31,7 +31,8 @@ class HttpClientTest: UnitTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        deviceInfoStub = DeviceInfoStub.createAndOverride(for: diGraphShared)
+        deviceInfoStub = DeviceInfoStub()
+        diGraphShared.override(value: deviceInfoStub, forType: DeviceInfo.self)
     }
 
     // MARK: request
