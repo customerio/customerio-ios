@@ -23,7 +23,7 @@ class DeviceAttributesProviderTest: UnitTest {
     override func setUp() {
         // do not call super.setUp() because we want to override SDK config and every test should
         // call setUp(modifySdkConfig:) to modify the SDK config before calling super.setUp()
-        sdkClientMock.underlyingSource = CustomerIOSdkClient.SOURCE_IOS
+        sdkClientMock.underlyingSource = "iOS"
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {

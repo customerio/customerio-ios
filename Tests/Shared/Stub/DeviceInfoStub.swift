@@ -35,6 +35,12 @@ public class DeviceInfoStub: DeviceInfo {
 }
 
 extension DeviceInfoStub {
+    /// Since cio_sdk_version relies on SdkClient, we need to create and override SdkClient every
+    /// time we create DeviceInfoStub in tests to make sure the version matches the expected values.
+    /// The method allows to create and override SdkClient and DeviceInfoStub in one go to simplify
+    /// using stub in tests.
+    /// This isn't the best approach, but it's the best we can do without changing the design of tests
+    /// at this point. We can refactor this in the future to decouple these two classes further.
     static func createAndOverride(for diGraph: DIManager) -> DeviceInfoStub {
         let sdkClientMock = SdkClientMock()
         sdkClientMock.underlyingSource = "iOS"

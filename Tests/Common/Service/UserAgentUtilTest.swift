@@ -23,7 +23,7 @@ class UserAgentUtilTest: UnitTest {
     func test_getUserAgent_givenDeviceInfoNotAvailable_expectShortUserAgent() {
         let expected = "Customer.io iOS Client/1.0.1"
         deviceInfoMock.underlyingDeviceModel = nil
-        sdkClientMock.underlyingSource = CustomerIOSdkClient.SOURCE_IOS
+        sdkClientMock.underlyingSource = "iOS"
         sdkClientMock.underlyingSdkVersion = "1.0.1"
 
         let actual = userAgentUtil.getUserAgentHeaderValue()
