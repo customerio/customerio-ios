@@ -22,13 +22,22 @@ public class CustomerIOSdkClient: SdkClient {
     public let source: String
     public let sdkVersion: String
 
+    /// Convenience initializer to create `CustomerIOSdkClient` from `DeviceInfo`.
     convenience init(deviceInfo: DeviceInfo) {
         self.init(source: deviceInfo.osName ?? "iOS", sdkVersion: SdkVersion.version)
     }
 
+    /// Initializes `CustomerIOSdkClient` with source and sdk version.
+    /// If source or sdk version is empty, it will default to "iOS" and current SDK version.
     init(source: String, sdkVersion: String) {
-        self.sdkVersion = sdkVersion
+        guard !source.isBlankOrEmpty(), !sdkVersion.isBlankOrEmpty() else {
+            self.source = "iOS"
+            self.sdkVersion = SdkVersion.version
+            return
+        }
+
         self.source = source
+        self.sdkVersion = sdkVersion
     }
 }
 
