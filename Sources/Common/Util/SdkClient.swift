@@ -18,38 +18,23 @@ public extension SdkClient {
 // sourcery: InjectRegisterShared = "SdkClient"
 // sourcery: InjectCustomShared
 // sourcery: InjectSingleton
-public struct CustomerIOSdkClient: SdkClient {
+public class CustomerIOSdkClient: SdkClient {
     public let source: String
     public let sdkVersion: String
 
-    private init(source: String, sdkVersion: String) {
-        self.source = source
-        self.sdkVersion = sdkVersion
+    convenience init(deviceInfo: DeviceInfo) {
+        self.init(source: deviceInfo.osName ?? "iOS", sdkVersion: SdkVersion.version)
     }
 
-    // Default source for native iOS SDK
-    private static let SOURCE_IOS = "iOS"
-
-    /// Creates a new instance of `CustomerIOSdkClient` with provided source and sdk version.
-    /// If source or sdk version is nil or empty, it will use default values.
-    /// - Parameters:
-    ///  - source: Source of SDK client.
-    ///  - sdkVersion: Version of SDK client.
-    /// - Returns: A new instance of `CustomerIOSdkClient`.
-    public static func create(source: String? = nil, sdkVersion: String? = nil) -> CustomerIOSdkClient {
-        guard let source = source, !source.isBlankOrEmpty(),
-              let sdkVersion = sdkVersion, !sdkVersion.isBlankOrEmpty()
-        else {
-            return CustomerIOSdkClient(source: SOURCE_IOS, sdkVersion: SdkVersion.version)
-        }
-
-        return CustomerIOSdkClient(source: source, sdkVersion: sdkVersion)
+    init(source: String, sdkVersion: String) {
+        self.sdkVersion = sdkVersion
+        self.source = source
     }
 }
 
 // Extension to provide custom SdkClient initialization in DIGraphShared.
 extension DIGraphShared {
     var customSdkClient: SdkClient {
-        CustomerIOSdkClient.create(source: deviceInfo.osName, sdkVersion: SdkVersion.version)
+        CustomerIOSdkClient(deviceInfo: deviceInfo)
     }
 }

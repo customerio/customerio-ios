@@ -7,8 +7,8 @@ class SdkClientTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
     private let defaultClientString = "iOS Client/\(SdkVersion.version)"
 
-    private func createClientString(source: String?, sdkVersion: String?) -> String {
-        CustomerIOSdkClient.create(source: source, sdkVersion: sdkVersion).description
+    private func createClientString(source: String, sdkVersion: String) -> String {
+        CustomerIOSdkClient(source: source, sdkVersion: sdkVersion).description
     }
 
     override func setUpDependencies() {
@@ -22,7 +22,7 @@ class SdkClientTest: UnitTest {
     func test_givenClientAsString_expectCorrectDescription() {
         let expected = "iOS Client/2.0.0"
 
-        let actual = "\(CustomerIOSdkClient.create(source: "iOS", sdkVersion: "2.0.0"))"
+        let actual = "\(CustomerIOSdkClient(source: "iOS", sdkVersion: "2.0.0"))"
 
         XCTAssertEqual(expected, actual)
     }
@@ -47,20 +47,8 @@ class SdkClientTest: UnitTest {
 
     // MARK: - Missing or Empty Values
 
-    func test_givenNilSource_expectDefaultClient() {
-        let actual = createClientString(source: nil, sdkVersion: "2.0.0")
-
-        XCTAssertEqual(defaultClientString, actual)
-    }
-
     func test_givenEmptySource_expectDefaultClient() {
         let actual = createClientString(source: "", sdkVersion: "2.0.0")
-
-        XCTAssertEqual(defaultClientString, actual)
-    }
-
-    func test_givenNilSdkVersion_expectDefaultClient() {
-        let actual = createClientString(source: "React Native", sdkVersion: nil)
 
         XCTAssertEqual(defaultClientString, actual)
     }
@@ -72,12 +60,6 @@ class SdkClientTest: UnitTest {
     }
 
     // MARK: - Both Nil or Empty Values
-
-    func test_givenNilSourceAndSdkVersion_expectDefaultClient() {
-        let actual = createClientString(source: nil, sdkVersion: nil)
-
-        XCTAssertEqual(defaultClientString, actual)
-    }
 
     func test_givenEmptySourceAndSdkVersion_expectDefaultClient() {
         let actual = createClientString(source: "", sdkVersion: "")
