@@ -29,7 +29,7 @@ public class CustomerIOSdkClient: SdkClient {
 
     /// Initializes `CustomerIOSdkClient` with source and sdk version.
     /// If source or sdk version is empty, it will default to "iOS" and current SDK version.
-    init(source: String, sdkVersion: String) {
+    public init(source: String, sdkVersion: String) {
         guard !source.isBlankOrEmpty(), !sdkVersion.isBlankOrEmpty() else {
             self.source = "iOS"
             self.sdkVersion = SdkVersion.version
