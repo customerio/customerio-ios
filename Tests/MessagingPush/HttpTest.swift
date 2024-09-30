@@ -18,14 +18,14 @@ import XCTest
  */
 open class HttpTest: UnitTest {
     public var runner: HttpRequestRunner!
-    public var deviceInfo: DeviceInfo!
+    public var userAgentUtil: UserAgentUtil!
     public var cioSession: URLSession?
     public var publicSession: URLSession = RichPushHttpClient.getBasicSession()
 
     override open func setUp() {
         super.setUp()
 
-        deviceInfo = diGraphShared.deviceInfo
+        userAgentUtil = diGraphShared.userAgentUtil
         publicSession = RichPushHttpClient.getBasicSession()
         runner = UrlRequestHttpRequestRunner()
 
@@ -36,7 +36,7 @@ open class HttpTest: UnitTest {
         if let cdpApiKey = getEnvironmentVariable("CDP_API_KEY") {
             cioSession = RichPushHttpClient.getCIOApiSession(
                 key: cdpApiKey,
-                userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
+                userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
             )
         }
     }

@@ -6,21 +6,23 @@ import XCTest
 
 class DeviceAttributesProviderTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
+    private let sdkClientMock = SdkClientMock()
 
     private var provider: SdkDeviceAttributesProvider!
 
     override func setUpDependencies() {
         super.setUpDependencies()
 
-        provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock)
-
         diGraphShared.override(value: provider, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
+        diGraphShared.override(value: sdkClientMock, forType: SdkClient.self)
     }
 
     override func setUp() {
         // do not call super.setUp() because we want to override SDK config and every test should
         // call setUp(modifySdkConfig:) to modify the SDK config before calling super.setUp()
+
+        provider = SdkDeviceAttributesProvider(deviceInfo: deviceInfoMock, sdkClient: sdkClientMock)
     }
 
     func test_getDefaultDeviceAttributes_givenTrackingDeviceAttributesDisabled_expectEmptyAttributes() {
@@ -58,7 +60,8 @@ class DeviceAttributesProviderTest: UnitTest {
             "push_enabled": "true",
             "device_manufacturer": givenDeviceManufacturer
         ]
-        deviceInfoMock.underlyingSdkVersion = givenSdkVersion
+        sdkClientMock.underlyingSource = "iOS"
+        sdkClientMock.underlyingSdkVersion = givenSdkVersion
         deviceInfoMock.underlyingCustomerAppVersion = givenAppVersion
         deviceInfoMock.underlyingDeviceLocale = givenDeviceLocale
         deviceInfoMock.underlyingDeviceManufacturer = givenDeviceManufacturer

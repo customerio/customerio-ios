@@ -7,9 +7,11 @@ public protocol UserAgentUtil: AutoMockable {
 // sourcery: InjectRegisterShared = "UserAgentUtil"
 public class UserAgentUtilImpl: UserAgentUtil {
     private let deviceInfo: DeviceInfo
+    private let sdkClient: SdkClient
 
-    init(deviceInfo: DeviceInfo) {
+    init(deviceInfo: DeviceInfo, sdkClient: SdkClient) {
         self.deviceInfo = deviceInfo
+        self.sdkClient = sdkClient
     }
 
     /**
@@ -23,7 +25,7 @@ public class UserAgentUtilImpl: UserAgentUtil {
      * `Customer.io iOS Client/1.0.0-alpha.16`
      */
     public func getUserAgentHeaderValue() -> String {
-        var userAgent = "Customer.io \(deviceInfo.osName ?? "iOS") Client/\(deviceInfo.sdkVersion)"
+        var userAgent = "Customer.io \(sdkClient)"
 
         if let deviceModel = deviceInfo.deviceModel,
            let deviceOsVersion = deviceInfo.osVersion,

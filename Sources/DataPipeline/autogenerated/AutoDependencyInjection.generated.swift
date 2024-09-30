@@ -95,7 +95,7 @@ extension DIGraphShared {
     }
 
     private var newDeviceAttributesProvider: DeviceAttributesProvider {
-        SdkDeviceAttributesProvider(deviceInfo: deviceInfo)
+        SdkDeviceAttributesProvider(deviceInfo: deviceInfo, sdkClient: sdkClient)
     }
 }
 

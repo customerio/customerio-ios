@@ -8,12 +8,14 @@ protocol DeviceAttributesProvider: AutoMockable {
 // sourcery: InjectRegisterShared = "DeviceAttributesProvider"
 class SdkDeviceAttributesProvider: DeviceAttributesProvider {
     private let deviceInfo: DeviceInfo
+    private let sdkClient: SdkClient
     private var moduleConfig: DataPipelineConfigOptions {
         DataPipeline.moduleConfig
     }
 
-    init(deviceInfo: DeviceInfo) {
+    init(deviceInfo: DeviceInfo, sdkClient: SdkClient) {
         self.deviceInfo = deviceInfo
+        self.sdkClient = sdkClient
     }
 
     func getDefaultDeviceAttributes(onComplete: @escaping ([String: Any]) -> Void) {
@@ -23,7 +25,7 @@ class SdkDeviceAttributesProvider: DeviceAttributesProvider {
         }
 
         var deviceAttributes = [
-            "cio_sdk_version": deviceInfo.sdkVersion,
+            "cio_sdk_version": sdkClient.sdkVersion,
             "app_version": deviceInfo.customerAppVersion,
             "device_locale": deviceInfo.deviceLocale,
             "device_manufacturer": deviceInfo.deviceManufacturer
