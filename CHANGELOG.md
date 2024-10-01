@@ -1,3 +1,9 @@
+## [3.4.1](https://github.com/customerio/customerio-ios/compare/3.4.0...3.4.1) (2024-10-01)
+
+### Bug Fixes
+
+* crash when switching screens frequently ([#820](https://github.com/customerio/customerio-ios/issues/820)) ([62268a4](https://github.com/customerio/customerio-ios/commit/62268a4a3248ba62f7898f6a0cb25e9e7cb5d015))
+
 ## [3.4.0](https://github.com/customerio/customerio-ios/compare/3.3.3...3.4.0) (2024-09-17)
 
 ### Features
