@@ -30,5 +30,5 @@ Pod::Spec.new do |spec|
   # Add FCM SDK as a dependency, as our SDK is designed to be compatible with it. 
   # No version is specified which means that by default, the latest version is installed for customers. 
   # Customers can override this by adding the pod to their Podfile themselves to specify a version they want to use. 
-  spec.dependency "FirebaseMessaging", ">= 8.7.0", "< 11"
+  spec.dependency "FirebaseMessaging", ">= 8.7.0", "< 12"
 end
