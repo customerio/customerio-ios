@@ -16,6 +16,18 @@ class RegionTest: UnitTest {
         XCTAssertEqual(given, expected)
     }
 
+    func test_from_givenIncorrectString_expectDefaultRegion() {
+        let given = Region.getRegion(from: "OK")
+        let expected = Region.US
+        XCTAssertEqual(given, expected)
+    }
+
+    func test_from_givenEmptyString_expectDefaultRegion() {
+        let given = Region.getRegion(from: "")
+        let expected = Region.US
+        XCTAssertEqual(given, expected)
+    }
+
     func test_from_expectConvertToAndFromRegion() {
         let expected = Region.US
         let actual = Region.getRegion(from: Region.US.rawValue)
