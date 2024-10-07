@@ -1,3 +1,9 @@
+## [2.14.2](https://github.com/customerio/customerio-ios/compare/2.14.1...2.14.2) (2024-10-07)
+
+### Bug Fixes
+
+* firebase version upgrade for v2 ([#822](https://github.com/customerio/customerio-ios/issues/822)) ([ab53cf6](https://github.com/customerio/customerio-ios/commit/ab53cf6dacb7c197913ac39ee5d7da83e3cd41b6))
+
 ## [2.14.1](https://github.com/customerio/customerio-ios/compare/2.14.0...2.14.1) (2024-08-21)
 
 ### Bug Fixes
