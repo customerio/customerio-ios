@@ -32,24 +32,6 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config?.region.rawValue, givenRegion)
     }
 
-    func test_initializeFromDictionaryWithCustomKey_expectCorrectValues() {
-        let givenSiteId = String.random
-        let givenRegion = "US"
-
-        let givenDict: [String: Any] = [
-            "region": givenRegion,
-            "in-app": [
-                "siteId": givenSiteId
-            ]
-        ]
-
-        let config = try? MessagingInAppConfigBuilder.build(from: givenDict, withConfig: "in-app")
-
-        XCTAssertNotNil(config)
-        XCTAssertEqual(config?.siteId, givenSiteId)
-        XCTAssertEqual(config?.region.rawValue, givenRegion)
-    }
-
     func test_initializeFromEmptyDictionary_expectThrowError() {
         let givenDict: [String: Any] = [
             "inApp": [:]

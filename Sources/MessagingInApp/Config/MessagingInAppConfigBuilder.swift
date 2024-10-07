@@ -54,9 +54,9 @@ public extension MessagingInAppConfigBuilder {
     /// Constructs `MessagingInAppConfigOptions` by parsing and applying configurations from provided dictionary.
     /// The method is used to create `MessagingInAppConfigOptions` from wrapper SDK configurations.
     @available(iOSApplicationExtension, unavailable)
-    static func build(from sdkConfig: [String: Any?], withConfig inAppConfigKey: String = "inApp") throws -> MessagingInAppConfigOptions? {
+    static func build(from sdkConfig: [String: Any?]) throws -> MessagingInAppConfigOptions? {
         // If the inApp config is not present, then we assume the user does not want to use in-app messaging feature.
-        guard let inAppConfig = sdkConfig[inAppConfigKey] else {
+        guard let inAppConfig = sdkConfig["inApp"] else {
             return nil
         }
         // If the inApp config is present but it is not a dictionary, then we throw an error to indicate that the config is invalid.
