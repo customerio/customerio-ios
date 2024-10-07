@@ -41,7 +41,7 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.0.0")
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git",  "8.7.0"..<"12.0.0")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
