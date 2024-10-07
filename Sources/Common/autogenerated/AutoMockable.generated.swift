@@ -1832,6 +1832,11 @@ public class LoggerMock: Logger, Mock {
     public func resetMock() {
         logLevelGetCallsCount = 0
         logLevelSetCallsCount = 0
+        setLogDispatcherCallsCount = 0
+        setLogDispatcherReceivedArguments = nil
+        setLogDispatcherReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         setLogLevelCallsCount = 0
         setLogLevelReceivedArguments = nil
         setLogLevelReceivedInvocations = []
@@ -1852,6 +1857,33 @@ public class LoggerMock: Logger, Mock {
         errorReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - setLogDispatcher
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var setLogDispatcherCallsCount = 0
+    /// `true` if the function was ever called.
+    public var setLogDispatcherCalled: Bool {
+        setLogDispatcherCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var setLogDispatcherReceivedArguments: ((CioLogLevel, String) -> Void)??
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var setLogDispatcherReceivedInvocations: [((CioLogLevel, String) -> Void)?] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var setLogDispatcherClosure: ((((CioLogLevel, String) -> Void)?) -> Void)?
+
+    /// Mocked function for `setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
+        mockCalled = true
+        setLogDispatcherCallsCount += 1
+        setLogDispatcherReceivedArguments = dispatcher
+        setLogDispatcherReceivedInvocations.append(dispatcher)
+        setLogDispatcherClosure?(dispatcher)
     }
 
     // MARK: - setLogLevel

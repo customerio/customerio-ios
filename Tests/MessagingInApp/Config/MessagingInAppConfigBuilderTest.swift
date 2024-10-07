@@ -14,13 +14,15 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
-    func test_initializeFromDictionaryWithCustomValues_expectCustomValues() {
+    func test_initializeFromDictionaryWithCustomValues_expectCorrectValues() {
         let givenSiteId = String.random
         let givenRegion = "EU"
 
         let givenDict: [String: Any] = [
-            "siteId": givenSiteId,
-            "region": givenRegion
+            "region": givenRegion,
+            "inApp": [
+                "siteId": givenSiteId
+            ]
         ]
 
         let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
@@ -31,27 +33,46 @@ class MessagingInAppConfigBuilderTest: UnitTest {
     }
 
     func test_initializeFromEmptyDictionary_expectThrowError() {
-        let givenDict: [String: Any] = [:]
+        let givenDict: [String: Any] = [
+            "inApp": [:]
+        ]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
             XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingSiteId)
         }
     }
 
-    func test_initializeFromDictionaryWithOnlySiteId_expectThrowError() {
+    func test_initializeFromMalformedDictionary_expectThrowError() {
         let givenDict: [String: Any] = [
-            "siteId": String.random
+            "inApp": String.random
         ]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingRegion)
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.malformedConfig)
         }
+    }
+
+    func test_initializeFromDictionaryWithOnlySiteId_expectConfigWithDefaultRegion() {
+        let givenSiteId = String.random
+        let givenDict: [String: Any] = [
+            "inApp": [
+                "siteId": givenSiteId
+            ]
+        ]
+
+        let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
+
+        XCTAssertNotNil(config)
+        XCTAssertEqual(config?.siteId, givenSiteId)
+        XCTAssertEqual(config?.region, .US)
     }
 
     func test_initializeFromDictionaryWithIncorrectSiteIdType_expectThrowError() {
         let givenDict: [String: Any] = [
-            "siteId": 100,
-            "region": "US"
+            "region": "US",
+            "inApp": [
+                "siteId": 100
+            ]
         ]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
@@ -61,7 +82,10 @@ class MessagingInAppConfigBuilderTest: UnitTest {
 
     func test_initializeFromDictionaryWithOnlyRegion_expectThrowError() {
         let givenDict: [String: Any] = [
-            "region": String.random
+            "region": String.random,
+            "inApp": [
+                "apiKey": String.random
+            ]
         ]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
@@ -72,20 +96,24 @@ class MessagingInAppConfigBuilderTest: UnitTest {
     func test_initializeFromDictionaryWithIncorrectRegionType_expectThrowError() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
-            "siteId": givenSiteId,
-            "region": Region.US
+            "region": Region.US,
+            "inApp": [
+                "siteId": givenSiteId
+            ]
         ]
 
         XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.missingRegion)
+            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.invalidRegionType)
         }
     }
 
     func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValues() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
-            "siteId": givenSiteId,
-            "region": "OK"
+            "region": "OK",
+            "inApp": [
+                "siteId": givenSiteId
+            ]
         ]
 
         let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
