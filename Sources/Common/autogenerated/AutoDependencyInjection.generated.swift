@@ -80,6 +80,9 @@ extension DIGraphShared {
         _ = logger
         countDependenciesResolved += 1
 
+        _ = sdkResourceLoader
+        countDependenciesResolved += 1
+
         _ = sdkClient
         countDependenciesResolved += 1
 
@@ -265,6 +268,12 @@ extension DIGraphShared {
 
     private func _get_logger() -> Logger {
         ConsoleLogger()
+    }
+
+    // SdkResourceLoader (custom. property getter provided via extension)
+    var sdkResourceLoader: SdkResourceLoader {
+        getOverriddenInstance() ??
+            customSdkResourceLoader
     }
 
     // SdkClient (custom. property getter provided via extension)

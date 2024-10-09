@@ -44,6 +44,8 @@ public class CustomerIOSdkClient: SdkClient {
 // Extension to provide custom SdkClient initialization in DIGraphShared.
 extension DIGraphShared {
     var customSdkClient: SdkClient {
-        CustomerIOSdkClient(deviceInfo: deviceInfo)
+        // Try to resolve SdkClient from resource loader for wrapper SDKs.
+        // If not found, create default CustomerIOSdkClient instance based on device info.
+        sdkResourceLoader.resolveSdkClient() ?? CustomerIOSdkClient(deviceInfo: deviceInfo)
     }
 }
