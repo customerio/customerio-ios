@@ -25,25 +25,25 @@ class CustomerIOResourceLoader: SdkResourceLoader {
     }
 
     convenience init(logger: Logger) {
-        let bundle: Bundle?
-        // Wrapper SDKs should include resources in a separate bundle named "CustomerIO_Resources"
+        // Wrapper SDKs should include resources in a separate bundle named "CustomerIO_Resources" or "CustomerIO_NSEResources"
         // with required files like CIOClientInfo.json.
-        let bundleName = "CustomerIO_Resources"
+        let bundle: Bundle? = Self.findBundle(withName: "CustomerIO_Resources") ?? Self.findBundle(withName: "CustomerIO_NSEResources")
+        self.init(logger: logger, bundle: bundle)
+    }
+
+    private static func findBundle(withName bundleName: String) -> Bundle? {
         // First, try to load the bundle associated with current class (common for SDKs or frameworks).
         // This checks if resource bundle is located within the same bundle as the class.
-        if let bundleURL = Bundle(for: type(of: self)).url(forResource: bundleName, withExtension: "bundle") {
-            bundle = Bundle(url: bundleURL)
+        if let bundleURL = Bundle(for: CustomerIOResourceLoader.self).url(forResource: bundleName, withExtension: "bundle") {
+            return Bundle(url: bundleURL)
         }
         // Fallback to main app bundle if the resource is not found in the framework or class bundle.
         // This is useful if the resource is part of the main app package rather than the framework.
         else if let bundleURL = Bundle.main.url(forResource: bundleName, withExtension: "bundle") {
-            bundle = Bundle(url: bundleURL)
+            return Bundle(url: bundleURL)
         }
-        // If neither bundle contains the resource, set bundle to nil.
-        else {
-            bundle = nil
-        }
-        self.init(logger: logger, bundle: bundle)
+        // If neither bundle contains the resource we need, return nil.
+        return nil
     }
 
     func loadPlist() -> [String: Any]? {
