@@ -146,7 +146,7 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringCon
         }
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let unnotification = (push as? UNNotificationWrapper)?.notification else {
             return
         }
@@ -154,11 +154,12 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringCon
         let delegateGotCalled: Void? = delegate.userNotificationCenter?(UNUserNotificationCenter.current(), willPresent: unnotification) { displayPushInForegroundOptions in
             let shouldShowPush = !displayPushInForegroundOptions.isEmpty
 
-            completionHandler(shouldShowPush)
+            // Change here - send all options as received
+            completionHandler(displayPushInForegroundOptions)
         }
 
         if delegateGotCalled == nil { // delegate did not implement this optional method. Call the completionHandler for them.
-            completionHandler(false)
+            completionHandler([])
         }
     }
 }

@@ -1,4 +1,5 @@
 import CioInternalCommon
+import UserNotifications
 import CioTracking
 import Foundation
 
@@ -9,7 +10,7 @@ protocol PushEventHandlerProxy: AutoMockable {
 
     // When these push event handler functions are called, the request is forwarded to other push handlers.
     func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void)
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void)
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
 }
 
 /*
@@ -85,12 +86,17 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
         }
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let nestedDelegates = self.nestedDelegates // create a scoped copy for this function body.
 
         // If there are no other click handlers, then call the completion handler. Indicating that the CIO SDK handled it.
+        // Change here - allow all to show push
         guard !nestedDelegates.isEmpty else {
-            completionHandler(true)
+            if #available(iOS 14.0, *) {
+                completionHandler([.alert, .sound, .banner, .badge])
+            } else {
+                completionHandler([.alert, .sound, .badge])
+            }
             return
         }
 
@@ -102,7 +108,8 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
             // To do that, we start with Apple's default value of: do not display.
             // If any of the handlers return result indicating push should be displayed, we return true.
             // Apple docs: https://developer.apple.com/documentation/usernotifications/unusernotificationcenterdelegate/usernotificationcenter(_:willpresent:withcompletionhandler:)
-            var shouldDisplayPush = false
+            // Change here - Instead of bool using array
+            var shouldDisplayPush: UNNotificationPresentationOptions = []
 
             // Wait for all other push event handlers to finish before calling the completion handler.
             // Each iteration of the loop waits for the push event to be processed by the delegate.
@@ -125,9 +132,10 @@ class PushEventHandlerProxyImpl: PushEventHandlerProxy {
                             if !hasResumed {
                                 hasResumed = true
 
-                                if delegateShouldDisplayPushResult {
-                                    shouldDisplayPush = true
-                                }
+                                // change here
+//                                if delegateShouldDisplayPushResult.isEmpty {
+                                    shouldDisplayPush = delegateShouldDisplayPushResult
+//                                }
 
                                 continuation.resume()
                             }

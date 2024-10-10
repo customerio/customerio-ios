@@ -1,4 +1,5 @@
 import CioInternalCommon
+import UserNotifications
 import CioTracking
 import Foundation
 
@@ -74,7 +75,7 @@ class IOSPushEventListener: PushEventHandler {
         })
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         guard let dateWhenPushDelivered = push.deliveryDate else {
             return
         }
@@ -87,7 +88,7 @@ class IOSPushEventListener: PushEventHandler {
             // Call the completionHandler so the 3rd party SDK knows we are done processing it.
             //
             // For push notifications sent from CIO, the completionHandler return value is irrelevant. For those sent by third-party SDKs, it's up to that SDK to use the return value or not.
-            completionHandler(false)
+            completionHandler([])
             return
         }
 
@@ -112,7 +113,8 @@ class IOSPushEventListener: PushEventHandler {
 
             // The push came from CIO, so it gets handled by the CIO SDK.
             // Calling the completion handler indicates to the OS that we are done processing the push.
-            completionHandler(shouldShowPush)
+            // Change here
+            completionHandler([.alert])
         })
     }
 }

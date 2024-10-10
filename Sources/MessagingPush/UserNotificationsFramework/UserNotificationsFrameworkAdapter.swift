@@ -107,15 +107,15 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
         }
 
         pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification)) { shouldShowPush in
-            if shouldShowPush {
-                if #available(iOS 14.0, *) {
+//            if shouldShowPush {
+            if #available(iOS 14.0, *), shouldShowPush.contains(.banner){
                     completionHandler([.list, .banner, .badge, .sound])
                 } else {
-                    completionHandler([.badge, .sound])
+                    completionHandler([shouldShowPush])
                 }
-            } else {
-                completionHandler([])
-            }
+//            } else {
+//                completionHandler([])
+//            }
         }
     }
 

@@ -1,4 +1,5 @@
 import CioInternalCommon
+import UserNotifications
 import Foundation
 
 // A protocol that can handle push notification events. Such as when a push is received on the device or when a push is clicked on.
@@ -16,5 +17,5 @@ protocol PushEventHandler: AutoMockable {
     //
     // Replacement of: `userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)`
     // `completionHandler`'s `Bool` is `true` if the push should be displayed when app in foreground.
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void)
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
 }
