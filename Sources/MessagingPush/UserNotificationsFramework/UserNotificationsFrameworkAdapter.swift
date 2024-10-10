@@ -111,7 +111,7 @@ class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterD
             if #available(iOS 14.0, *), shouldShowPush.contains(.banner){
                     completionHandler([.list, .banner, .badge, .sound])
                 } else {
-                    completionHandler([shouldShowPush])
+                    completionHandler(shouldShowPush)
                 }
 //            } else {
 //                completionHandler([])

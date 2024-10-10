@@ -104,7 +104,7 @@ class IOSPushEventListener: PushEventHandler {
         logger.debug("Push came from CIO. Handle the willPresent event on behalf of the customer.")
 
         // Forward event to other push handlers so they can receive a callback about this push event.
-        pushEventHandlerProxy.shouldDisplayPushAppInForeground(push, completionHandler: { _ in
+        pushEventHandlerProxy.shouldDisplayPushAppInForeground(push, completionHandler: { delegateShouldDisplayPushResult in
             // When this block of code executes, the customer is done processing the push event.
 
             // Because push came from CIO, ignore the return result of other push handlers.
@@ -114,7 +114,10 @@ class IOSPushEventListener: PushEventHandler {
             // The push came from CIO, so it gets handled by the CIO SDK.
             // Calling the completion handler indicates to the OS that we are done processing the push.
             // Change here
-            completionHandler([.alert])
+            if shouldShowPush {
+                completionHandler([delegateShouldDisplayPushResult])
+            }
+            completionHandler([])
         })
     }
 }
