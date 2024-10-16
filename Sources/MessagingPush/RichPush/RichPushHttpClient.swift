@@ -127,7 +127,7 @@ public class RichPushHttpClient: HttpClient {
         self.publicSession = Self.getBasicSession()
         self.cioApiSession = Self.getCIOApiSession(
             key: MessagingPush.moduleConfig.cdpApiKey,
-            userAgentHeaderValue: userAgentUtil.getUserAgentHeaderValue()
+            userAgentHeaderValue: userAgentUtil.getNSEUserAgentHeaderValue()
         )
     }
 

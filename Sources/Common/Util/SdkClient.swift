@@ -46,4 +46,10 @@ extension DIGraphShared {
     var customSdkClient: SdkClient {
         CustomerIOSdkClient(deviceInfo: deviceInfo)
     }
+
+    /// SDK client for NSE. It is not injected as dependency, but can be accessed
+    /// using `DIGraphShared.shared.nseSdkClient`.
+    var nseSdkClient: SdkClient {
+        CustomerIOSdkClient(source: "NSE", sdkVersion: SdkVersion.version)
+    }
 }

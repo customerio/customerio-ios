@@ -6,29 +6,12 @@ class MessagingPushImplementation: MessagingPushInstance {
     let logger: Logger
     let jsonAdapter: JsonAdapter
     let eventBusHandler: EventBusHandler
-    let richPushDeliveryTracker: RichPushDeliveryTracker
-
-    /// testing init
-    init(
-        moduleConfig: MessagingPushConfigOptions,
-        logger: Logger,
-        jsonAdapter: JsonAdapter,
-        eventBusHandler: EventBusHandler,
-        richPushDeliveryTracker: RichPushDeliveryTracker
-    ) {
-        self.moduleConfig = moduleConfig
-        self.logger = logger
-        self.jsonAdapter = jsonAdapter
-        self.eventBusHandler = eventBusHandler
-        self.richPushDeliveryTracker = richPushDeliveryTracker
-    }
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
         self.eventBusHandler = diGraph.eventBusHandler
-        self.richPushDeliveryTracker = diGraph.richPushDeliveryTracker
     }
 
     func deleteDeviceToken() {
@@ -48,6 +31,9 @@ class MessagingPushImplementation: MessagingPushInstance {
         event: Metric,
         deviceToken: String
     ) {
-        richPushDeliveryTracker.trackMetric(token: deviceToken, event: event, deliveryId: deliveryID) { _ in }
+        // Access richPushDeliveryTracker from DIGraphShared.shared directly as it is only required for NSE.
+        // Keeping it as class property results in initialization of UserAgentUtil before SDK client is overridden by wrapper SDKs.
+        // In future, we can improve how we access SdkClient so that we don't need to worry about initialization order.
+        DIGraphShared.shared.richPushDeliveryTracker.trackMetric(token: deviceToken, event: event, deliveryId: deliveryID) { _ in }
     }
 }
