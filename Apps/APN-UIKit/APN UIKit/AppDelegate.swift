@@ -70,6 +70,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .autoFetchDeviceToken(true)
                 .build()
         )
+
+        // When `autoFetchDeviceToken` false, we need to call this manually. so we add it here.
+        UIApplication.shared.registerForRemoteNotifications()
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
@@ -83,6 +86,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // When you uninstall and reinstall the app (to clear device token persisted to the device data), run sample app with `autoFetchDeviceToken` false. You should see this function get called. Then, run app with `autoFetchDeviceToken` true and you should see this function *not* get called.
+
+        // We need this function to always get called. That's what needs fixed.
+
+        print("APN device token got")
     }
 
     // MARK: UISceneSession Lifecycle

@@ -18,6 +18,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Initialize the Firebase SDK.
         FirebaseApp.configure()
 
+        // Because this is a SwiftUI app, swizzling does not work as expected. Therefore, we need to perform manual push token registration.
+        // Part of that is receiving the FCM device token from the FCM SDK. Do that by setting a delegate.
+        Messaging.messaging().delegate = self
+
         let appSetSettings = CioSettingsManager().appSetSettings
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
         let cdpApiKey = appSetSettings?.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
@@ -43,14 +47,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
             .setEventListener(self)
+
+        // Because this is a SwiftUI app, swizzling does not work as expected. Therefore, we need to perform manual push token registration.
+        // Disable automatic device token feature.
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(true)
+                .autoFetchDeviceToken(false)
                 .build()
         )
-
-        // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
-        Messaging.messaging().delegate = self
 
         /*
          Next line of code for internal testing purposes only.
@@ -70,18 +74,25 @@ class AppDelegate: NSObject, UIApplicationDelegate {
          */
         UNUserNotificationCenter.current().delegate = self
 
+        // Because this is a SwiftUI app, swizzling does not work as expected. Therefore, we need to perform manual push token registration.
+        // Manually call register function to receive a APN device token.
+        UIApplication.shared.registerForRemoteNotifications()
+
         return true
     }
 
+    // Because this is a SwiftUI app, swizzling does not work as expected. Therefore, we need to perform manual push token registration.
+    // As stated in the FCM docs for SwiftUI, pass the APN device token to the FCM SDK:
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
     }
 }
 
+// FCM SDK delegate callback functions.
 extension AppDelegate: MessagingDelegate {
-    // Function that is called when a new FCM device token is assigned to device.
+    // Called by FCM SDK when a FCM device token is received.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Forward the device token to the Customer.io SDK:
+        // Because this is a SwiftUI app and swizzling does not work as expected, we need to manually register the FCM token to the Customer.io SDK:
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
