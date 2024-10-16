@@ -1,3 +1,9 @@
+## [3.5.0](https://github.com/customerio/customerio-ios/compare/3.4.1...3.5.0) (2024-10-16)
+
+### Features
+
+* support for wrapper SDKs ([#819](https://github.com/customerio/customerio-ios/issues/819)) ([171dfdc](https://github.com/customerio/customerio-ios/commit/171dfdc45a43f9560f24ae2d7ea2dcd3b71297c8))
+
 ## [3.4.1](https://github.com/customerio/customerio-ios/compare/3.4.0...3.4.1) (2024-10-01)
 
 ### Bug Fixes
