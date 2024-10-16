@@ -2724,6 +2724,9 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
         getUserAgentHeaderValueCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        getNSEUserAgentHeaderValueCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - getUserAgentHeaderValue
@@ -2749,6 +2752,31 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
         mockCalled = true
         getUserAgentHeaderValueCallsCount += 1
         return getUserAgentHeaderValueClosure.map { $0() } ?? getUserAgentHeaderValueReturnValue
+    }
+
+    // MARK: - getNSEUserAgentHeaderValue
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var getNSEUserAgentHeaderValueCallsCount = 0
+    /// `true` if the function was ever called.
+    public var getNSEUserAgentHeaderValueCalled: Bool {
+        getNSEUserAgentHeaderValueCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    public var getNSEUserAgentHeaderValueReturnValue: String!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `getNSEUserAgentHeaderValueReturnValue`
+     */
+    public var getNSEUserAgentHeaderValueClosure: (() -> String)?
+
+    /// Mocked function for `getNSEUserAgentHeaderValue()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getNSEUserAgentHeaderValue() -> String {
+        mockCalled = true
+        getNSEUserAgentHeaderValueCallsCount += 1
+        return getNSEUserAgentHeaderValueClosure.map { $0() } ?? getNSEUserAgentHeaderValueReturnValue
     }
 }
 

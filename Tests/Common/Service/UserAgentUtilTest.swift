@@ -78,4 +78,18 @@ class UserAgentUtilTest: UnitTest {
 
         XCTAssertEqual(expected, actual)
     }
+
+    func test_getUserAgent_givenDeviceInfoAvailable_expectLongNSEUserAgent() {
+        let expected = "Customer.io NSE Client/\(SdkVersion.version) (iPhone14; iOS 15.3) io.customer.nse/2.0.3"
+        deviceInfoMock.underlyingDeviceModel = "iPhone14"
+        deviceInfoMock.underlyingOsVersion = "15.3"
+        deviceInfoMock.underlyingOsName = "iOS"
+        deviceInfoMock.underlyingCustomerAppName = "NSEPush"
+        deviceInfoMock.underlyingCustomerBundleId = "io.customer.nse"
+        deviceInfoMock.underlyingCustomerAppVersion = "2.0.3"
+
+        let actual = userAgentUtil.getNSEUserAgentHeaderValue()
+
+        XCTAssertEqual(expected, actual)
+    }
 }
