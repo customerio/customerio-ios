@@ -9,6 +9,11 @@ public protocol Logger: AutoMockable {
     /// controls the verbosity of the logs that are output. Only messages
     /// at this level or higher will be logged.
     var logLevel: CioLogLevel { get }
+    /// Sets the dispatcher to handle log events based on the log level.
+    /// Default implementation is to print logs to XCode Debug Area.
+    /// In wrapper SDKs, this will be overridden to emit logs to more user-friendly channels like console, etc.
+    /// - Parameter dispatcher: Dispatcher to handle log events based on the log level, pass null to reset to default.
+    func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)
     /// Sets the logger's verbosity level to control which messages are logged.
     /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
     /// - Parameter level: The `CioLogLevel` for logging output verbosity.
@@ -73,10 +78,16 @@ public class ConsoleLogger: Logger {
     public static let logSubsystem = "io.customer.sdk"
     public static let logCategory = "CIO"
 
+    private var logDispatcher: ((CioLogLevel, String) -> Void)?
+
+    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
+        logDispatcher = dispatcher
+    }
+
     private func printMessage(_ message: String, _ level: CioLogLevel) {
         if !logLevel.shouldLog(level) { return }
 
-        ConsoleLogger.logMessageToConsole(message, level: level)
+        logDispatcher?(level, message) ?? ConsoleLogger.logMessageToConsole(message, level: level)
     }
 
     public func debug(_ message: String) {
@@ -119,7 +130,7 @@ public func sdkNotInitializedAlert(_ message: String) {
     ConsoleLogger.logMessageToConsole("⚠️ \(message)", level: .error)
 }
 
-extension CioLogLevel {
+public extension CioLogLevel {
     static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
         case CioLogLevel.none.rawValue:

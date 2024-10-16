@@ -31,7 +31,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         // get DataPipelineImplementation instance so we can call its methods directly
         dataPipelineImplementation = (customerIO.implementation as! DataPipelineImplementation) // swiftlint:disable:this force_cast
 
-        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub)
+        userAgentUtil = UserAgentUtilImpl(deviceInfo: deviceInfoStub, sdkClient: diGraphShared.sdkClient)
 
         // get storage instance so we can read final events
         storage = analytics.storage
@@ -146,12 +146,12 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         XCTAssertFalse(savedEvent.containsKey("platform"))
 
         var expectedData = givenDefaultAttributes
+        expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
             uniquingKeysWith: { current, _ in current }
         )
-
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),
@@ -196,13 +196,12 @@ class DataPipelineCompatibilityTests: IntegrationTest {
         XCTAssertEqual(savedEvent[keyPath: "context.device.token"] as? String, givenToken)
 
         var expectedData = deviceInfoStub.getDefaultAttributes().mergeWith(customAttributes)
-
+        expectedData["cio_sdk_version"] = diGraphShared.sdkClient.sdkVersion
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.screen"] as! [String: Any]).flatten(parentKey: "screen"),
             uniquingKeysWith: { current, _ in current }
         )
-
         expectedData.merge(
             // swiftlint:disable:next force_cast
             (savedEvent[keyPath: "context.network"] as! [String: Any]).flatten(parentKey: "network"),

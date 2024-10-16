@@ -118,7 +118,7 @@ public class RichPushHttpClient: HttpClient {
         jsonAdapter: JsonAdapter,
         httpRequestRunner: HttpRequestRunner,
         logger: Logger,
-        deviceInfo: DeviceInfo
+        userAgentUtil: UserAgentUtil
     ) {
         self.httpRequestRunner = httpRequestRunner
         self.jsonAdapter = jsonAdapter
@@ -127,7 +127,7 @@ public class RichPushHttpClient: HttpClient {
         self.publicSession = Self.getBasicSession()
         self.cioApiSession = Self.getCIOApiSession(
             key: MessagingPush.moduleConfig.cdpApiKey,
-            userAgentHeaderValue: deviceInfo.getUserAgentHeaderValue()
+            userAgentHeaderValue: userAgentUtil.getNSEUserAgentHeaderValue()
         )
     }
 
@@ -174,23 +174,5 @@ extension RichPushHttpClient {
         urlSessionConfig.httpAdditionalHeaders = getCIOsessionHeader(cdpApiKey: key, userAgentHeaderValue: userAgentHeaderValue)
 
         return URLSession(configuration: urlSessionConfig, delegate: nil, delegateQueue: nil)
-    }
-}
-
-extension DeviceInfo {
-    func getUserAgentHeaderValue() -> String {
-        var userAgent = "Customer.io NSE Client/\(sdkVersion)"
-
-        // Append device details if available
-        if let deviceModel = deviceModel,
-           let osName = osName,
-           let osVersion = osVersion {
-            userAgent += " (\(deviceModel); \(osName) \(osVersion))"
-        }
-
-        // App details
-        userAgent += " \(customerBundleId)/\(customerAppVersion)"
-
-        return userAgent
     }
 }

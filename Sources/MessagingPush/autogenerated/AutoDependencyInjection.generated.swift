@@ -204,7 +204,7 @@ extension DIGraphShared {
     }
 
     private var newHttpClient: HttpClient {
-        RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, deviceInfo: deviceInfo)
+        RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, userAgentUtil: userAgentUtil)
     }
 
     // UserNotificationCenter
