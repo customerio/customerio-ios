@@ -91,6 +91,14 @@ public class Gist: GistDelegate {
         } else {
             Logger.instance.debug(message: "Persistent message shown, skipping logging view")
         }
+        
+        // To ensure the keyboard is dismissed on displaying an in-app message,
+        // Update UI on main thread only.
+        // Dismiss keyboard on showing the message to prevent gap between
+        // displaying the in-app message and dismissing the keyboard.
+        DispatchQueue.main.async {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         delegate?.messageShown(message: message)
     }
 
