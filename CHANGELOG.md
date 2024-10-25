@@ -1,3 +1,9 @@
+## [3.5.1](https://github.com/customerio/customerio-ios/compare/3.5.0...3.5.1) (2024-10-25)
+
+### Bug Fixes
+
+* dismiss keyboard on showing in app message on CDP SDK ([#828](https://github.com/customerio/customerio-ios/issues/828)) ([faad28a](https://github.com/customerio/customerio-ios/commit/faad28a02f085b5f4a334bc9122dbfe862e38119))
+
 ## [3.5.0](https://github.com/customerio/customerio-ios/compare/3.4.1...3.5.0) (2024-10-16)
 
 ### Features
