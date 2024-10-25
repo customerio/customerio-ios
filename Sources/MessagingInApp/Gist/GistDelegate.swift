@@ -21,12 +21,12 @@ public protocol GistDelegate: AnyObject {
 class GistDelegateImpl: GistDelegate {
     private let logger: Logger
     private let eventBusHandler: EventBusHandler
-
     private var eventListener: InAppEventListener?
-
+    private let threadUtil: ThreadUtil
     init(logger: Logger, eventBusHandler: EventBusHandler) {
         self.logger = logger
         self.eventBusHandler = eventBusHandler
+        self.threadUtil = DIGraphShared.shared.threadUtil
     }
 
     func setEventListener(_ eventListener: InAppEventListener?) {
@@ -41,7 +41,13 @@ class GistDelegateImpl: GistDelegate {
         if let deliveryId = message.campaignDeliveryId {
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
-
+        // To ensure the keyboard is dismissed on displaying an in-app message,
+        // Update UI on main thread only.
+        // Dismiss keyboard on showing the message to prevent gap between
+        // displaying the in-app message and dismissing the keyboard.
+        threadUtil.runMain {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         eventListener?.messageShown(message: InAppMessage(gistMessage: message))
     }
 
