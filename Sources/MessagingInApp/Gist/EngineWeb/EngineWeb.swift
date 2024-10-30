@@ -34,7 +34,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView
     }
 
-    private var currentConfiguration: EngineWebConfiguration?
+    private let currentConfiguration: EngineWebConfiguration
 
     public private(set) var currentRoute: String {
         get { _currentRoute }
@@ -55,17 +55,13 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
     /// Sets up the properties and appearance of the WKWebView.
     private func setupWebView() {
-        _elapsedTimer.start(title: "Engine render for message: \(currentConfiguration?.messageId ?? "")")
+        _elapsedTimer.start(title: "Engine render for message: \(currentConfiguration.messageId)")
 
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-
-        if #available(iOS 11.0, *) {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
     }
 
     /// Injects a JavaScript listener to handle messages from the web content.
@@ -83,14 +79,14 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
     private func loadMessage(with state: InAppMessageState) {
         let messageUrl = "\(state.environment.networkSettings.renderer)/index.html"
-        logger.debug("Rendering message with URL: \(messageUrl)")
+        logger.logWithModuleTag("Rendering message with URL: \(messageUrl)", level: .debug)
 
         if let url = URL(string: messageUrl) {
             _timeoutTimer?.invalidate()
             _timeoutTimer = Timer.scheduledTimer(timeInterval: 5.0, target: self, selector: #selector(forcedTimeout), userInfo: nil, repeats: false)
             webView.load(URLRequest(url: url))
         } else {
-            logger.error("Invalid URL: \(messageUrl)")
+            logger.logWithModuleTag("Invalid URL: \(messageUrl)", level: .error)
             delegate?.error()
         }
     }
@@ -162,13 +158,7 @@ extension EngineWeb: WKScriptMessageHandler {
 // swiftlint:enable cyclomatic_complexity
 extension EngineWeb: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        guard let configuration = currentConfiguration else {
-            logger.error("Configuration not available")
-            delegate?.error()
-            return
-        }
-
-        injectConfiguration(configuration)
+        injectConfiguration(currentConfiguration)
     }
 
     private func injectConfiguration(_ configuration: EngineWebConfiguration) {
@@ -182,14 +172,14 @@ extension EngineWeb: WKNavigationDelegate {
 
             webView.evaluateJavaScript(js) { [weak self] _, error in
                 if let error = error {
-                    self?.logger.error("JavaScript execution error: \(error)")
+                    self?.logger.logWithModuleTag("JavaScript execution error: \(error)", level: .error)
                     self?.delegate?.error()
                 } else {
-                    self?.logger.debug("Configuration injected successfully")
+                    self?.logger.logWithModuleTag("Configuration injected successfully", level: .error)
                 }
             }
         } catch {
-            logger.error("Failed to encode configuration: \(error)")
+            logger.logWithModuleTag("Failed to encode configuration: \(error)", level: .error)
             delegate?.error()
         }
     }
