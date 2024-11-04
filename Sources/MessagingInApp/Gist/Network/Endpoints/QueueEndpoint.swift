@@ -17,7 +17,7 @@ enum QueueEndpoint: GistNetworkRequest {
     var path: String {
         switch self {
         case .getUserQueue:
-            return "/api/v1/users"
+            return "/api/v2/users"
         }
     }
 }
