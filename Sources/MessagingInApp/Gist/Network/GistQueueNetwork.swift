@@ -22,10 +22,14 @@ class GistQueueNetworkImpl: GistQueueNetwork {
             throw GistNetworkRequestError.invalidBaseURL
         }
 
+        let sdkClient = DIGraphShared.shared.sdkClient
+
         var urlRequest = URLRequest(url: baseURL.appendingPathComponent(request.path))
         urlRequest.httpMethod = request.method.rawValue
         urlRequest.addValue(state.siteId, forHTTPHeaderField: HTTPHeader.siteId.rawValue)
         urlRequest.addValue(state.dataCenter, forHTTPHeaderField: HTTPHeader.cioDataCenter.rawValue)
+        urlRequest.addValue(sdkClient.sdkVersion, forHTTPHeaderField: HTTPHeader.cioClientVersion.rawValue)
+        urlRequest.addValue(sdkClient.source.lowercased(), forHTTPHeaderField: HTTPHeader.cioClientPlatform.rawValue)
         if let userToken = state.userId {
             urlRequest.addValue(Data(userToken.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
         }
