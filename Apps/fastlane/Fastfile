@@ -215,7 +215,7 @@ lane :get_build_notes do
 end 
 
 lane :get_build_test_groups do 
-  test_groups = ['all-builds', 'feature-branch'] # send all builds to group 'all-builds'. Therefore, set it here and we will not remove it. 
+  test_groups = ['all-builds'] # send all builds to group 'all-builds'. Therefore, set it here and we will not remove it. 
   test_groups.append("feature-branch") # Feature branch is for when a PR is merged into a feature branch. Need to add a check for that. 
   github = GitHub.new()
     
