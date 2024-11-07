@@ -216,7 +216,7 @@ end
 
 lane :get_build_test_groups do 
   test_groups = ['all-builds'] # send all builds to group 'all-builds'. Therefore, set it here and we will not remove it. 
-  test_groups.append("feature-branch") # Feature branch is for when a PR is merged into a feature branch. Need to add a check for that. 
+  test_groups.append("feature-branch") # Feature branch will be used when a PR is merged into a feature branch. We will need to add a check for this.
   github = GitHub.new()
     
   # To avoid giving potentially unstable builds of our sample apps to certain members of the organization, we only send builds to "stable" group uncertain certain situations. 
