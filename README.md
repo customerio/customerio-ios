@@ -17,10 +17,6 @@ You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios]
 
 **The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 
-### Migrating from an older SDK version? 
-
-Please follow the relevant migration guide for your current SDK version in our [migration docs](https://customer.io/docs/sdk/ios/migrate-upgrade/).
-
 ## **Getting Support for Our SDK**
 
 We’re committed to helping you get the most out of our SDK with fast, knowledgeable support. Here’s how to get assistance:
@@ -67,6 +63,10 @@ While our SDK supports visionOS, there are some limitations:
 # Getting started 
 
 See our complete SDK documentation at [https://customer.io/docs/sdk/ios/](https://customer.io/docs/sdk/ios/)
+
+### Migrating from an older SDK version? 
+
+Please follow the relevant migration guide for your current SDK version in our [migration docs](https://customer.io/docs/sdk/ios/migrate-upgrade/).
 
 # Contributing
 
