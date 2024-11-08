@@ -21,6 +21,25 @@ You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios]
 
 Please follow the relevant migration guide for your current SDK version in our [migration docs](https://customer.io/docs/sdk/ios/migrate-upgrade/).
 
+## **Getting Support for Our SDK**
+
+We’re committed to helping you get the most out of our SDK with fast, knowledgeable support. Here’s how to get assistance:
+
+1. **Support Requests (for customers with support plans):**
+    
+    Our Technical Support team is staffed with experts who have deep knowledge of our platform, ensuring you get quick, accurate answers. They’re equipped to resolve most issues directly, and for specialized SDK questions, we have a streamlined escalation process to connect with the engineers who built it. Simply email [win@customer.io](mailto:win@customer.io), and our team will be ready to help.
+    
+2. **Community Forum (for general questions and peer support):**
+    
+    Our [Community Forum](https://community.customer.io/) is a great place for general questions, advice, and tips from other developers and Customer.io experts. You can tap into our active community and share insights or learn new ways to optimize your implementation.
+    
+3. **Propose a Fix (for developers with a solution):**
+    
+    If you’ve found a bug and have a solution, we encourage you to submit a Pull Request (PR) with your proposed changes. Our team will review and collaborate with you, making it easy to contribute improvements to our SDK directly.
+    
+
+Our goal is to provide efficient, expert support and ensure you have a smooth experience as you work with our SDK. Thank you for helping us improve!
+
 ## Summary
 
 To get started, you need to install and initialize the relevant SDK packages in your project. 
