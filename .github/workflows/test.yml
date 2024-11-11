@@ -54,7 +54,7 @@ jobs:
         path: test-report.*
       if: ${{ always() }}
     - name: Publish test results
-      uses: mikepenz/action-junit-report@v4      
+      uses: mikepenz/action-junit-report@v5      
       with:
         check_name: XCode macOS tests - Results
         report_paths: test-report.xml
