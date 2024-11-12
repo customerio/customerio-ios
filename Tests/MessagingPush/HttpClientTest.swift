@@ -221,6 +221,11 @@ class HttpClientTest: UnitTest {
         XCTAssertTrue(containsAuthorizationHeader)
     }
 
+    func test_getDefaultApiHost_givenRegion_expectCorrectApiHost() {
+        XCTAssertEqual(RichPushHttpClient.getDefaultApiHost(region: .US), "https://cdp.customer.io/v1")
+        XCTAssertEqual(RichPushHttpClient.getDefaultApiHost(region: .EU), "https://cdp-eu.customer.io/v1")
+    }
+
     func test_getSessionForRequest_givenCIOAssetLibraryEndpoint_expectPublicSession() {
         let actualSession = client.getSessionForRequest(url: URL(string: "https://storage.googleapis.com/cio-asset-manager-standalone/1670599791846_frederick_adoption_day.jpg")!)
 

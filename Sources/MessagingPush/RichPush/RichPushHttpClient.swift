@@ -15,7 +15,7 @@ public class RichPushHttpClient: HttpClient {
         [cioApiSession, publicSession]
     }
 
-    private var region: Region = .US
+    private let region: Region
 
     public func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Void) {
         httpRequestRunner
