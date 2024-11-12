@@ -16,8 +16,11 @@ class HttpClientTest: UnitTest {
 
     private let url = URL(string: "https://customer.io")!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp(
+        enableLogs: Bool = false,
+        modifyModuleConfig: ((MessagingPushConfigBuilder) -> Void)? = nil
+    ) {
+        super.setUp(enableLogs: enableLogs, modifyModuleConfig: modifyModuleConfig)
 
         client = RichPushHttpClient(
             jsonAdapter: jsonAdapter,
@@ -45,7 +48,7 @@ class HttpClientTest: UnitTest {
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: Region.US),
             headers: nil,
             body: nil
         )!
@@ -71,7 +74,7 @@ class HttpClientTest: UnitTest {
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: Region.US),
             headers: nil,
             body: nil
         )!
@@ -95,7 +98,7 @@ class HttpClientTest: UnitTest {
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: Region.US),
             headers: nil,
             body: nil
         )!
@@ -104,6 +107,41 @@ class HttpClientTest: UnitTest {
             guard case .noRequestMade = result.error! else {
                 return XCTFail("expect no request was made")
             }
+
+            expectComplete.fulfill()
+        }
+
+        waitForExpectations()
+    }
+
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    func test_request_givenEuRegion_expectRequestToBeMade() {
+        super.setUp(modifyModuleConfig: { config in
+            config.region(Region.EU)
+        })
+
+        let expected = #"{ "message": "Success!" }"#.data!
+
+        mockRequestResponse {
+            (body: expected, response: HTTPURLResponse(url: self.url, statusCode: 200, httpVersion: nil, headerFields: nil), failure: nil)
+        }
+
+        let expectComplete = expectation(description: "Expect to complete")
+        let params = HttpRequestParams(
+            endpoint: .trackPushMetricsCdp,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: messagingPushConfigOptions.region),
+            headers: nil,
+            body: nil
+        )!
+        client.request(params) { result in
+            XCTAssertTrue(self.requestRunnerMock.requestCalled)
+
+            XCTAssertNil(result.error)
+
+            XCTAssertEqual(result.success, expected)
 
             expectComplete.fulfill()
         }
@@ -121,7 +159,7 @@ class HttpClientTest: UnitTest {
         let expectComplete = expectation(description: "Expect to complete")
         let params = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: messagingPushConfigOptions.region),
             headers: nil,
             body: nil
         )!
@@ -151,7 +189,28 @@ class HttpClientTest: UnitTest {
     func test_getSessionForRequest_givenCIOApiEndpoint_expectGetCIOApiSession() {
         let cioApiEndpointUrl = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: Region.US),
+            headers: nil,
+            body: nil
+        )!.url
+
+        let actualSession = client.getSessionForRequest(url: cioApiEndpointUrl)
+
+        let containsAuthorizationHeader = actualSession.configuration.httpAdditionalHeaders!["Authorization"] != nil
+        XCTAssertTrue(containsAuthorizationHeader)
+    }
+
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    func test_getSessionForRequest_givenCIOEUApiEndpoint_expectGetCIOApiSession() {
+        setUp(modifyModuleConfig: { config in
+            config.region(.EU)
+        })
+        let cioApiEndpointUrl = HttpRequestParams(
+            endpoint: .trackPushMetricsCdp,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: Region.EU),
             headers: nil,
             body: nil
         )!.url
