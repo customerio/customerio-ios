@@ -55,7 +55,7 @@ public class MessagingPushConfigBuilder {
         self.cdpApiKey = cdpApiKey
     }
 
-    /// Configures the regionfor NotificationServiceExtension for metric tracking
+    /// Configures the region for NotificationServiceExtension for metric tracking
     @discardableResult
     @available(iOS, unavailable)
     @available(visionOS, unavailable)
