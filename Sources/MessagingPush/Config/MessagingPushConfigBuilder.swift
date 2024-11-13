@@ -33,6 +33,7 @@ public class MessagingPushConfigBuilder {
 
     // configuration options for MessagingPushConfigOptions
     private let cdpApiKey: String
+    private var region: Region = .US
     private var autoFetchDeviceToken: Bool = true
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
@@ -52,6 +53,17 @@ public class MessagingPushConfigBuilder {
     ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
+    }
+
+    /// Configures the region for NotificationServiceExtension for metric tracking
+    @discardableResult
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    public func region(_ region: Region) -> MessagingPushConfigBuilder {
+        self.region = region
+        return self
     }
 
     /// Configures the log level for NotificationServiceExtension, allowing customization of SDK log
@@ -94,6 +106,7 @@ public class MessagingPushConfigBuilder {
         let configOptions = MessagingPushConfigOptions(
             logLevel: logLevel,
             cdpApiKey: cdpApiKey,
+            region: region,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
             showPushAppInForeground: showPushAppInForeground
@@ -106,6 +119,7 @@ public class MessagingPushConfigBuilder {
 public extension MessagingPushConfigBuilder {
     /// Constants used to map each of the options in MessagingPushConfigOptions.
     enum Keys: String {
+        case region
         case autoFetchDeviceToken
         case autoTrackPushEvents
         case showPushAppInForeground
@@ -116,6 +130,9 @@ public extension MessagingPushConfigBuilder {
     static func build(from dictionary: [String: Any]) -> MessagingPushConfigOptions {
         let builder = MessagingPushConfigBuilder()
 
+        if let region = dictionary[Keys.region.rawValue] as? String {
+            builder.region = Region.getRegion(from: region)
+        }
         if let autoFetchDeviceToken = dictionary[Keys.autoFetchDeviceToken.rawValue] as? Bool {
             builder.autoFetchDeviceToken(autoFetchDeviceToken)
         }

@@ -1,3 +1,4 @@
+@testable import CioInternalCommon
 @testable import CioMessagingPush
 import SharedTests
 import XCTest
@@ -41,7 +42,8 @@ class MessagingPushConfigBuilderTest: UnitTest {
         let givenDict: [String: Any] = [
             "autoFetchDeviceToken": givenAutoFetchDeviceToken,
             "autoTrackPushEvents": givenAutoTrackPushEvents,
-            "showPushAppInForeground": givenShowPushAppInForeground
+            "showPushAppInForeground": givenShowPushAppInForeground,
+            "region": "EU"
         ]
 
         let config = MessagingPushConfigBuilder.build(from: givenDict)
@@ -49,6 +51,7 @@ class MessagingPushConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.autoFetchDeviceToken, givenAutoFetchDeviceToken)
         XCTAssertEqual(config.autoTrackPushEvents, givenAutoTrackPushEvents)
         XCTAssertEqual(config.showPushAppInForeground, givenShowPushAppInForeground)
+        XCTAssertEqual(config.region, Region.EU)
     }
 
     func test_initializeFromDictionaryWithIncorrectKeys_expectDefaultValues() {
@@ -83,5 +86,6 @@ extension MessagingPushConfigBuilderTest {
         XCTAssertTrue(config.autoFetchDeviceToken, file: file, line: line)
         XCTAssertTrue(config.autoTrackPushEvents, file: file, line: line)
         XCTAssertTrue(config.showPushAppInForeground, file: file, line: line)
+        XCTAssertEqual(config.region, Region.US, file: file, line: line)
     }
 }

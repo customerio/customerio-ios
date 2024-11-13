@@ -5,10 +5,12 @@ import Foundation
 class RichPushDeliveryTracker {
     let httpClient: HttpClient
     let logger: Logger
+    let region: Region
 
     init(httpClient: HttpClient, logger: Logger) {
         self.httpClient = httpClient
         self.logger = logger
+        self.region = MessagingPush.moduleConfig.region
     }
 
     func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String? = nil, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
@@ -25,7 +27,7 @@ class RichPushDeliveryTracker {
         let endpoint: CIOApiEndpoint = .trackPushMetricsCdp
         guard let httpParams = HttpRequestParams(
             endpoint: endpoint,
-            baseUrl: RichPushHttpClient.defaultAPIHost,
+            baseUrl: RichPushHttpClient.getDefaultApiHost(region: region),
             headers: nil,
             body: try? JSONSerialization.data(withJSONObject: properties)
         ) else {
