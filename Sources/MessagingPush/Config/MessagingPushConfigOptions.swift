@@ -6,6 +6,7 @@ import CioInternalCommon
 public struct MessagingPushConfigOptions {
     public let logLevel: CioLogLevel
     public let cdpApiKey: String
+    public let region: Region
     public let autoFetchDeviceToken: Bool
     public let autoTrackPushEvents: Bool
     public let showPushAppInForeground: Bool

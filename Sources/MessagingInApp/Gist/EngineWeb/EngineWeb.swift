@@ -34,55 +34,60 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView
     }
 
+    private let currentConfiguration: EngineWebConfiguration
+
     public private(set) var currentRoute: String {
-        get {
-            _currentRoute
-        }
-        set {
-            _currentRoute = newValue
-        }
+        get { _currentRoute }
+        set { _currentRoute = newValue }
     }
 
+    /// Initializes the EngineWeb instance with the given configuration, state, and message.
     init(configuration: EngineWebConfiguration, state: InAppMessageState, message: Message) {
         self.currentMessage = message
+        self.currentConfiguration = configuration
 
         super.init()
 
-        _elapsedTimer.start(title: "Engine render for message: \(configuration.messageId)")
+        setupWebView()
+        injectJavaScriptListener()
+        loadMessage(with: state)
+    }
+
+    /// Sets up the properties and appearance of the WKWebView.
+    private func setupWebView() {
+        _elapsedTimer.start(title: "Engine render for message: \(currentConfiguration.messageId)")
 
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
         webView.isOpaque = false
-        webView.backgroundColor = UIColor.clear
-        webView.scrollView.backgroundColor = UIColor.clear
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+    }
 
-        let js = "window.parent.postMessage = function(message) {webkit.messageHandlers.gist.postMessage(message)}"
+    /// Injects a JavaScript listener to handle messages from the web content.
+    private func injectJavaScriptListener() {
+        let js = """
+        window.addEventListener('message', function(event) {
+            webkit.messageHandlers.gist.postMessage(event.data);
+        });
+        """
         let messageHandlerScript = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
 
         webView.configuration.userContentController.add(self, name: "gist")
         webView.configuration.userContentController.addUserScript(messageHandlerScript)
+    }
 
-        if #available(iOS 11.0, *) {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
+    private func loadMessage(with state: InAppMessageState) {
+        let messageUrl = "\(state.environment.networkSettings.renderer)/index.html"
+        logger.logWithModuleTag("Rendering message with URL: \(messageUrl)", level: .debug)
 
-        if let jsonData = try? JSONEncoder().encode(configuration),
-           let jsonString = String(data: jsonData, encoding: .utf8),
-           let options = jsonString.data(using: .utf8)?.base64EncodedString()
-           .addingPercentEncoding(withAllowedCharacters: .alphanumerics) {
-            let url = "\(state.environment.networkSettings.renderer)/index.html?options=\(options)"
-            logger.logWithModuleTag("Loading URL: \(url)", level: .info)
-            if let link = URL(string: url) {
-                self._timeoutTimer = Timer.scheduledTimer(
-                    timeInterval: 5.0,
-                    target: self,
-                    selector: #selector(forcedTimeout),
-                    userInfo: nil,
-                    repeats: false
-                )
-                let request = URLRequest(url: link)
-                webView.load(request)
-            }
+        if let url = URL(string: messageUrl) {
+            _timeoutTimer?.invalidate()
+            _timeoutTimer = Timer.scheduledTimer(timeInterval: 5.0, target: self, selector: #selector(forcedTimeout), userInfo: nil, repeats: false)
+            webView.load(URLRequest(url: url))
+        } else {
+            logger.logWithModuleTag("Invalid URL: \(messageUrl)", level: .error)
+            delegate?.error()
         }
     }
 
@@ -104,10 +109,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
 // swiftlint:disable cyclomatic_complexity
 extension EngineWeb: WKScriptMessageHandler {
-    public func userContentController(
-        _ userContentController: WKUserContentController,
-        didReceive message: WKScriptMessage
-    ) {
+    public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let dict = message.body as? [String: AnyObject],
               let eventProperties = dict["gist"] as? [String: AnyObject],
               let method = eventProperties["method"] as? String,
@@ -116,6 +118,10 @@ extension EngineWeb: WKScriptMessageHandler {
             return
         }
 
+        handleEngineEvent(engineEventMethod, eventProperties: eventProperties)
+    }
+
+    private func handleEngineEvent(_ engineEventMethod: EngineEvent, eventProperties: [String: AnyObject]) {
         switch engineEventMethod {
         case .bootstrapped:
             _timeoutTimer?.invalidate()
@@ -150,27 +156,43 @@ extension EngineWeb: WKScriptMessageHandler {
 }
 
 // swiftlint:enable cyclomatic_complexity
-
 extension EngineWeb: WKNavigationDelegate {
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {}
+    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        injectConfiguration(currentConfiguration)
+    }
+
+    private func injectConfiguration(_ configuration: EngineWebConfiguration) {
+        do {
+            let jsonData = try JSONEncoder().encode(["options": configuration])
+            guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                throw NSError(domain: "EngineWeb", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create JSON string"])
+            }
+
+            let js = "window.postMessage(\(jsonString), '*');"
+
+            webView.evaluateJavaScript(js) { [weak self] _, error in
+                if let error = error {
+                    self?.logger.logWithModuleTag("JavaScript execution error: \(error)", level: .error)
+                    self?.delegate?.error()
+                } else {
+                    self?.logger.logWithModuleTag("Configuration injected successfully", level: .error)
+                }
+            }
+        } catch {
+            logger.logWithModuleTag("Failed to encode configuration: \(error)", level: .error)
+            delegate?.error()
+        }
+    }
 
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         delegate?.error()
     }
 
-    public func webView(
-        _ webView: WKWebView,
-        didFail navigation: WKNavigation!,
-        withError error: Error
-    ) {
+    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         delegate?.error()
     }
 
-    public func webView(
-        _ webView: WKWebView,
-        didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: Error
-    ) {
+    public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         delegate?.error()
     }
 }

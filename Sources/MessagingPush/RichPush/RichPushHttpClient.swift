@@ -15,6 +15,8 @@ public class RichPushHttpClient: HttpClient {
         [cioApiSession, publicSession]
     }
 
+    private let region: Region
+
     public func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Void) {
         httpRequestRunner
             .request(
@@ -57,7 +59,7 @@ public class RichPushHttpClient: HttpClient {
     }
 
     func getSessionForRequest(url: URL) -> URLSession {
-        let cioApiHostname = URL(string: Self.defaultAPIHost)!.host
+        let cioApiHostname = URL(string: Self.getDefaultApiHost(region: region))!.host
         let requestHostname = url.host
         let isRequestToCIOApi = cioApiHostname == requestHostname
 
@@ -123,7 +125,7 @@ public class RichPushHttpClient: HttpClient {
         self.httpRequestRunner = httpRequestRunner
         self.jsonAdapter = jsonAdapter
         self.logger = logger
-
+        self.region = MessagingPush.moduleConfig.region
         self.publicSession = Self.getBasicSession()
         self.cioApiSession = Self.getCIOApiSession(
             key: MessagingPush.moduleConfig.cdpApiKey,
@@ -137,7 +139,14 @@ public class RichPushHttpClient: HttpClient {
 }
 
 extension RichPushHttpClient {
-    public static let defaultAPIHost = "https://cdp.customer.io/v1"
+    static func getDefaultApiHost(region: Region) -> String {
+        switch region {
+        case .US:
+            "https://cdp.customer.io/v1"
+        case .EU:
+            "https://cdp-eu.customer.io/v1"
+        }
+    }
 
     static func authorizationHeaderForCdpApiKey(_ key: String) -> String {
         var returnHeader = "\(key):"
