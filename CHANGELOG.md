@@ -1,3 +1,9 @@
+## [3.6.0](https://github.com/customerio/customerio-ios/compare/3.5.1...3.6.0) (2024-11-13)
+
+### Features
+
+* support for large in-app messages ([#831](https://github.com/customerio/customerio-ios/issues/831)) ([3731f68](https://github.com/customerio/customerio-ios/commit/3731f685a19bd1e9840c53ab3bcd70e37deac182))
+
 ## [3.5.1](https://github.com/customerio/customerio-ios/compare/3.5.0...3.5.1) (2024-10-25)
 
 ### Bug Fixes
