@@ -171,7 +171,9 @@ class MessageManager: EngineWebDelegate {
                 logger.logWithModuleTag("Dismissing from action: \(action)", level: .info)
                 inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, viaCloseAction: true))
             case "loadPage":
-                if let page = url.queryParameters?["url"],
+                // Encode '#' in url action string and creates encoded URL to handle fragments
+                let encodedUrl = URL(string: action.percentEncode(character: "#")) ?? url
+                if let page = encodedUrl.queryParameters?["url"],
                    let pageUrl = URL(string: page),
                    UIApplication.shared.canOpenURL(pageUrl) {
                     UIApplication.shared.open(pageUrl)
