@@ -10,3 +10,4 @@ public typealias Metric = CioInternalCommon.Metric
 public typealias CustomerIO = CioInternalCommon.CustomerIO
 public typealias CioLogLevel = CioInternalCommon.CioLogLevel
 public typealias Region = CioInternalCommon.Region
+public typealias ScreenView = CioInternalCommon.ScreenView

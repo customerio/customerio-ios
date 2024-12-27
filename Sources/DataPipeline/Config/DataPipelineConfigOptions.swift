@@ -28,6 +28,9 @@ public struct DataPipelineConfigOptions {
     /// Configuration options required for migration from earlier versions
     public let migrationSiteId: String?
 
+    /// Determines how SDK should handle screen view events
+    public let screenViewUse: ScreenView
+
     /// Plugins identified based on configuration provided by the user
     let autoConfiguredPlugins: [Plugin]
 }
