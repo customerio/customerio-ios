@@ -126,8 +126,9 @@ class MessageManager: EngineWebDelegate {
             return
         }
 
+        let gistProperties = currentMessage.gistProperties
         logger.logWithModuleTag("Loading modal message: \(currentMessage.describeForLogs)", level: .debug)
-        modalViewManager = ModalViewManager(gistView: gistView, position: currentMessage.gistProperties.position)
+        modalViewManager = ModalViewManager(gistView: gistView, position: gistProperties.position, overlayColor: gistProperties.overlayColor)
         modalViewManager?.showModalView { [weak self] in
             guard let self = self else { return }
 

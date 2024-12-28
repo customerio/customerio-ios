@@ -9,12 +9,14 @@ public class GistProperties {
     public let persistent: Bool?
     public let overlayColor: String?
 
-    init(routeRule: String?,
-         elementId: String?,
-         campaignId: String?,
-         position: MessagePosition,
-         persistent: Bool?,
-         overlayColor: String?) {
+    init(
+        routeRule: String?,
+        elementId: String?,
+        campaignId: String?,
+        position: MessagePosition,
+        persistent: Bool?,
+        overlayColor: String?
+    ) {
         self.routeRule = routeRule
         self.elementId = elementId
         self.position = position
