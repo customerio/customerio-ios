@@ -44,7 +44,7 @@ class OutputReaderPlugin: Plugin {
 extension OutputReaderPlugin {
     var identifyEvents: [IdentifyEvent] { events.compactMap { $0 as? IdentifyEvent } }
     var trackEvents: [RawEvent] { events.compactMap { $0 as? TrackEvent } }
-    var screenEvents: [RawEvent] { events.compactMap { $0 as? ScreenEvent } }
+    var screenEvents: [ScreenEvent] { events.compactMap { $0 as? ScreenEvent } }
 
     var deviceDeleteEvents: [TrackEvent] {
         events
