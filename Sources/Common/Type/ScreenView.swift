@@ -11,7 +11,7 @@ public enum ScreenView: String {
     /// Returns the ScreenView enum case for the given name.
     /// Returns fallback if the specified enum type has no constant with the given name.
     /// Defaults to .all
-    static func getScreenView(_ screenView: String?, fallback: ScreenView = .all) -> ScreenView {
+    public static func getScreenView(_ screenView: String?, fallback: ScreenView = .all) -> ScreenView {
         guard let screenView = screenView,
               !screenView.isEmpty,
               let value = ScreenView(rawValue: screenView.lowercased())
