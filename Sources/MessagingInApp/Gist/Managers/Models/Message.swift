@@ -7,13 +7,22 @@ public class GistProperties {
     public let campaignId: String?
     public let position: MessagePosition
     public let persistent: Bool?
+    public let overlayColor: String?
 
-    init(routeRule: String?, elementId: String?, campaignId: String?, position: MessagePosition, persistent: Bool?) {
+    init(
+        routeRule: String?,
+        elementId: String?,
+        campaignId: String?,
+        position: MessagePosition,
+        persistent: Bool?,
+        overlayColor: String?
+    ) {
         self.routeRule = routeRule
         self.elementId = elementId
         self.position = position
         self.campaignId = campaignId
         self.persistent = persistent
+        self.overlayColor = overlayColor
     }
 }
 
@@ -45,7 +54,7 @@ public class Message {
     private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
         let defaultPosition = MessagePosition.center
         guard let gist = gist else {
-            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false)
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil)
         }
 
         let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
@@ -53,13 +62,15 @@ public class Message {
         let elementId = gist["elementId"] as? String
         let campaignId = gist["campaignId"] as? String
         let persistent = gist["persistent"] as? Bool ?? false
+        let overlayColor = gist["overlayColor"] as? String
 
         return GistProperties(
             routeRule: routeRule,
             elementId: elementId,
             campaignId: campaignId,
             position: position,
-            persistent: persistent
+            persistent: persistent,
+            overlayColor: overlayColor
         )
     }
 }
