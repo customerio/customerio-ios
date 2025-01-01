@@ -43,6 +43,7 @@ public class SDKConfigBuilder {
     private var trackApplicationLifecycleEvents: Bool = true
     private var autoTrackDeviceAttributes: Bool = true
     private var migrationSiteId: String?
+    private var screenViewUse: ScreenView = .all
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -149,6 +150,12 @@ public class SDKConfigBuilder {
         return self
     }
 
+    @discardableResult
+    public func screenViewUse(screenView: ScreenView) -> SDKConfigBuilder {
+        screenViewUse = screenView
+        return self
+    }
+
     @available(iOSApplicationExtension, unavailable)
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig` from given configurations
@@ -180,6 +187,7 @@ public class SDKConfigBuilder {
             trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
             autoTrackDeviceAttributes: autoTrackDeviceAttributes,
             migrationSiteId: migrationSiteId,
+            screenViewUse: screenViewUse,
             autoConfiguredPlugins: configuredPlugins
         )
 

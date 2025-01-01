@@ -58,6 +58,9 @@ class DataPipelineImplementation: DataPipelineInstance {
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
+        // Add plugin to filter events based on SDK configuration
+        analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
+
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
