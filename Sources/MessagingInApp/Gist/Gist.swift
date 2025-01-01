@@ -67,8 +67,11 @@ class Gist: GistProvider {
     }
 
     private func invalidateTimer() {
-        queueTimer?.invalidate()
-        queueTimer = nil
+        // Timer must be scheduled or modified on main.
+        threadUtil.runMain {
+            self.queueTimer?.invalidate()
+            self.queueTimer = nil
+        }
     }
 
     func resetState() {
