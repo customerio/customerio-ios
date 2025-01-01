@@ -1,3 +1,9 @@
+## [3.7.0](https://github.com/customerio/customerio-ios/compare/3.6.0...3.7.0) (2025-01-01)
+
+### Features
+
+* add option to disable screen view usage ([#844](https://github.com/customerio/customerio-ios/issues/844)) ([486e228](https://github.com/customerio/customerio-ios/commit/486e2281f91715fcbcfa9dbde01743329e838fda))
+
 ## [3.6.0](https://github.com/customerio/customerio-ios/compare/3.5.1...3.6.0) (2024-11-13)
 
 ### Features
