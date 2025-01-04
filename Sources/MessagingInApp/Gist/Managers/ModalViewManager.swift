@@ -39,7 +39,7 @@ class ModalViewManager {
             finalPosition = viewController.view.center.y - viewController.view.bounds.height
         }
 
-        let overlayColor = UIColor.fromHex(color: overlayColor) ?? UIColor.black.withAlphaComponent(0.2)
+        let overlayColor = UIColor.fromHex(overlayColor) ?? UIColor.black.withAlphaComponent(0.2)
         UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
             self.viewController.view.center.y = finalPosition
         }, completion: { _ in
