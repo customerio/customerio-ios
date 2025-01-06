@@ -34,7 +34,7 @@
    0.8%  7.45Ki   0.8%  7.45Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/RichPush/RichPushHttpClient.swift
    0.8%  7.41Ki   0.8%  7.41Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Background Queue/Type/QueueTaskMetadata.swift
    0.7%  6.84Ki   0.7%  6.84Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Store/PushHistory.swift
-   0.7%  6.34Ki   0.7%  6.34Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Gist.swift
+   0.7%  6.52Ki   0.7%  6.52Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Gist.swift
    0.7%  6.30Ki   0.7%  6.30Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Managers/ModalViewManager.swift
    0.7%  6.21Ki   0.7%  6.21Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/KeyValueStorage.swift
    0.7%  6.07Ki   0.7%  6.07Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Utilities/URLComponents.swift

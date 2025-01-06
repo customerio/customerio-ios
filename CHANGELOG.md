@@ -1,3 +1,9 @@
+## [3.7.1](https://github.com/customerio/customerio-ios/compare/3.7.0...3.7.1) (2025-01-06)
+
+### Bug Fixes
+
+* interact with Gist timer on main ([#840](https://github.com/customerio/customerio-ios/issues/840)) ([93200a4](https://github.com/customerio/customerio-ios/commit/93200a420d589962d12c618f63b64dce03c8940b))
+
 ## [3.7.0](https://github.com/customerio/customerio-ios/compare/3.6.0...3.7.0) (2025-01-01)
 
 ### Features
