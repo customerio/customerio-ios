@@ -11,8 +11,10 @@ extension UIColor {
             return nil
         }
 
+        let correctHex = correctColorFormatIfNeeded(cleanHex)
+
         var rgbValue: UInt64 = 0
-        guard Scanner(string: cleanHex).scanHexInt64(&rgbValue) else {
+        guard Scanner(string: correctHex).scanHexInt64(&rgbValue) else {
             return nil
         }
 
@@ -25,5 +27,16 @@ extension UIColor {
             : 1.0
 
         return UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+    private static func correctColorFormatIfNeeded(_ color: String) -> String {
+        guard color.count == 8 else { return color }
+
+        let red = color[color.index(color.startIndex, offsetBy: 0) ..< color.index(color.startIndex, offsetBy: 2)]
+        let green = color[color.index(color.startIndex, offsetBy: 2) ..< color.index(color.startIndex, offsetBy: 4)]
+        let blue = color[color.index(color.startIndex, offsetBy: 4) ..< color.index(color.startIndex, offsetBy: 6)]
+        let alpha = color[color.index(color.startIndex, offsetBy: 6) ..< color.endIndex]
+
+        return "\(alpha)\(red)\(green)\(blue)"
     }
 }
