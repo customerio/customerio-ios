@@ -1,3 +1,9 @@
+## [3.7.2](https://github.com/customerio/customerio-ios/compare/3.7.1...3.7.2) (2025-01-08)
+
+### Bug Fixes
+
+* Fix in-app messages overlay color ignored from message payload ([#843](https://github.com/customerio/customerio-ios/issues/843)) ([bbc708d](https://github.com/customerio/customerio-ios/commit/bbc708dbb5b72d124b09ad3536df064f91410ea5))
+
 ## [3.7.1](https://github.com/customerio/customerio-ios/compare/3.7.0...3.7.1) (2025-01-06)
 
 ### Bug Fixes
