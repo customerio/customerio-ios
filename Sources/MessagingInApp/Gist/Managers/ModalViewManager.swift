@@ -10,12 +10,14 @@ class ModalViewManager {
     var window: UIWindow?
     var viewController: GistModalViewController!
     var position: MessagePosition
+    var overlayColor: String?
 
-    init(gistView: GistView, position: MessagePosition) {
+    init(gistView: GistView, position: MessagePosition, overlayColor: String?) {
         self.viewController = GistModalViewController()
         viewController.gistView = gistView
         viewController.setup(position: position)
         self.position = position
+        self.overlayColor = overlayColor
     }
 
     func showModalView(completionHandler: @escaping () -> Void) {
@@ -37,11 +39,12 @@ class ModalViewManager {
             finalPosition = viewController.view.center.y - viewController.view.bounds.height
         }
 
+        let overlayColor = UIColor.fromHex(overlayColor) ?? UIColor.black.withAlphaComponent(0.2)
         UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
             self.viewController.view.center.y = finalPosition
         }, completion: { _ in
             UIView.animate(withDuration: 0.1, delay: 0, options: [.curveEaseIn], animations: {
-                self.viewController.view.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+                self.viewController.view.backgroundColor = overlayColor
             }, completion: nil)
             completionHandler()
         })
