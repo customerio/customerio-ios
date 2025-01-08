@@ -21,7 +21,10 @@ class UIColorFromHexTests: UnitTest {
         XCTAssertNil(UIColor.fromHex("#"))
         XCTAssertNil(UIColor.fromHex("#FF11F"))
         XCTAssertNil(UIColor.fromHex("#FF11FF1"))
-        XCTAssertNil(UIColor.fromHex("#FF11FF11F"))
+    }
+
+    func test_parseColor_givenInputColorWithNonHexChars_expectNullResult() {
+        XCTAssertNil(UIColor.fromHex("#MMXXMMYY"))
     }
 
     func test_parseColor_givenValidInputColorWithoutAlpha_expectCorrectResult() {
