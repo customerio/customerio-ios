@@ -215,12 +215,13 @@ lane :get_build_notes do
 end 
 
 lane :get_build_test_groups do |arguments|
-  args = arguments[:distribution_groups]
-  UI.important("DEV Distribution groups received: #{args}")
+  # if no groups are passed in, then set it to an empty array.
+  distribution_groups = arguments[:distribution_groups] || ""
+  UI.important("[DEV] Distribution groups received: #{distribution_groups}")
+  UI.important("[DEV] Distribution groups type: #{distribution_groups.class}")
   # Build groups are set by CI action based on the type of build.
-  distribution_groups = args || [] # if no groups are passed in, then set it to an empty array.
 
-  test_groups = distribution_groups.join(", ")
+  test_groups = (distribution_groups.is_a?(String) ? distribution_groups.split(" ") : groups).join(", ")
 
   UI.important("Test group names that will be added to this build: #{test_groups}")
 
