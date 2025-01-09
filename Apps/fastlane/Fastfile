@@ -215,13 +215,9 @@ lane :get_build_notes do
 end 
 
 lane :get_build_test_groups do |arguments|
-  # if no groups are passed in, then set it to an empty array.
-  distribution_groups = arguments[:distribution_groups] || ""
-  UI.important("[DEV] Distribution groups received: #{distribution_groups}")
-  UI.important("[DEV] Distribution groups type: #{distribution_groups.class}")
-  # Build groups are set by CI action based on the type of build.
-
-  test_groups = (distribution_groups.is_a?(String) ? distribution_groups.split(" ") : groups).join(", ")
+  # Firebase App Distribution expects a comma separated string of test group names.
+  # If no groups are passed in, then set test groups to an empty string.
+  test_groups = arguments[:distribution_groups] || ""
 
   UI.important("Test group names that will be added to this build: #{test_groups}")
 
