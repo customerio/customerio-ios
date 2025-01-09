@@ -218,7 +218,7 @@ lane :get_build_test_groups do |arguments|
   args = arguments[:distribution_groups]
   UI.important("DEV Distribution groups received: #{args}")
   # Build groups are set by CI action based on the type of build.
-  distribution_groups = JSON.parse(args || '[]') # if no groups are passed in, then set it to an empty array.
+  distribution_groups = args || [] # if no groups are passed in, then set it to an empty array.
 
   test_groups = distribution_groups.join(", ")
 
