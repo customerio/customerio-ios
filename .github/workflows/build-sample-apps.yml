@@ -67,6 +67,29 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set Default Firebase Distribution Groups
+      run: |
+        # Define all the possible distribution groups
+        ALL_BUILDS_GROUP="all-builds"
+        FEATURE_BUILDS_GROUP="feature-branch"
+        STABLE_BUILDS_GROUP="next"
+
+        # Initialize with the default distribution group
+        distribution_groups=("$ALL_BUILDS_GROUP")
+
+        # Determine current app type and Git context
+        is_primary_app=$([[ "${{ matrix.apn-or-fcm }}" == "APN" ]] && echo "true" || echo "false")
+        current_branch="${GITHUB_REF}"
+
+        # Append distribution groups based on branch and context if the app is primary
+        if [[ "$is_primary_app" == "true" ]]; then
+          [[ "$current_branch" == "refs/heads/feature/"* ]] && distribution_groups+=("$FEATURE_BUILDS_GROUP")
+          [[ "$current_branch" == "refs/heads/main" ]] && distribution_groups+=("$STABLE_BUILDS_GROUP")
+        fi
+
+        # Export the groups as an environment variable
+        echo "firebase_distribution_groups=$(IFS=','; echo "${distribution_groups[*]}")" >> $GITHUB_ENV
+
     - name: Build and upload app build for QA testing 
       uses: ./.github/actions/build-sample-app
       with:
@@ -74,6 +97,7 @@ jobs:
         sample-app: ${{ matrix.sample-app }}
         customerio-workspace-siteid: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_SITE_ID', matrix.apn-or-fcm)] }}
         customerio-workspace-cdp-api-key: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_CDP_API_KEY', matrix.apn-or-fcm)] }}
+        fastlane-build-args: '{"distribution_groups": "${{ env.firebase_distribution_groups }}"}'
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
 
