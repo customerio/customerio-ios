@@ -88,6 +88,12 @@ jobs:
 
         # Export the groups as an environment variable
         echo "firebase_distribution_groups=${distribution_groups[*]}" >> $GITHUB_ENV
+        
+    - name: Confirm Firebase Distribution Groups
+      run: |
+        echo "Firebase Distribution Groups: $firebase_distribution_groups"
+      env:
+        firebase_distribution_groups: ${{ env.firebase_distribution_groups }}
     
     - name: Build and upload app build for QA testing 
       uses: ./.github/actions/build-sample-app
