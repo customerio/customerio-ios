@@ -89,7 +89,7 @@ jobs:
         fi
 
         # Export the groups as an environment variable
-        echo "firebase_distribution_groups=$(IFS=','; echo "${distribution_groups[*]}")" >> $GITHUB_ENV
+        echo "firebase_distribution_groups=$(IFS=', '; echo "${distribution_groups[*]}")" >> $GITHUB_ENV
         
     - name: Confirm Firebase Distribution Groups
       run: |
