@@ -73,8 +73,8 @@ jobs:
         # Distribution group constants
         ALL_BUILDS_GROUP: all-builds
         FEATURE_BUILDS_GROUP: feature-branch
-        RELEASE_BUILDS_GROUP: public
-        STABLE_BUILDS_GROUP: next
+        NEXT_BUILDS_GROUP: next
+        PUBLIC_BUILDS_GROUP: public
         # Input variables
         IS_PRIMARY_APP: ${{ matrix.apn-or-fcm == 'APN' }}
         CURRENT_BRANCH: ${{ github.ref }}
@@ -85,8 +85,8 @@ jobs:
         # Append distribution groups based on branch and context if the app is primary
         if [[ "$IS_PRIMARY_APP" == "true" ]]; then
           [[ "$CURRENT_BRANCH" == "refs/heads/feature/"* ]] && distribution_groups+=("$FEATURE_BUILDS_GROUP")
-          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$STABLE_BUILDS_GROUP")
-          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$RELEASE_BUILDS_GROUP")
+          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$NEXT_BUILDS_GROUP")
+          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$PUBLIC_BUILDS_GROUP")
         fi
 
         # Export the groups as an environment variable
