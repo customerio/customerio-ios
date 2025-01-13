@@ -7,6 +7,11 @@ import SharedTests
 open class UnitTest: SharedTests.UnitTestBase<MessagingInAppInstance> {
     public private(set) var messagingInAppConfigOptions: MessagingInAppConfigOptions!
 
+    public var messagingInAppImplementation: MessagingInAppImplementation {
+        // get MessagingInAppImplementation instance so we can call its methods directly
+        (MessagingInApp.shared.implementation as! MessagingInAppImplementation) // swiftlint:disable:this force_cast
+    }
+
     override open func setUp() {
         setUp(modifyModuleConfig: nil)
     }

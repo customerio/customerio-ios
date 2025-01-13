@@ -1,13 +1,12 @@
-import CioInternalCommon
 import Foundation
 
-protocol DeepLinkUtil: AutoMockable {
+public protocol DeepLinkUtil: AutoMockable {
     func handleDeepLink(_ deepLinkUrl: URL)
 }
 
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegisterShared = "DeepLinkUtil"
-class DeepLinkUtilImpl: DeepLinkUtil {
+public class DeepLinkUtilImpl: DeepLinkUtil {
     private let logger: Logger
     private let uiKit: UIKitWrapper
 
@@ -16,7 +15,7 @@ class DeepLinkUtilImpl: DeepLinkUtil {
         self.uiKit = uiKitWrapper
     }
 
-    func handleDeepLink(_ deepLinkUrl: URL) {
+    public func handleDeepLink(_ deepLinkUrl: URL) {
         logger.info("Found a deep link inside of a push notification.")
         logger.debug("deep link found in push: \(deepLinkUrl)")
 
