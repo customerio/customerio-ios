@@ -8,7 +8,9 @@ public struct InAppMessage: Equatable {
     // in-app messages
 
     init(gistMessage: GistMessage) {
-        self.messageId = gistMessage.messageId
+        // Internally, the SDK refers to the message ID as "templateId".
+        // To keep backwards compatibility, map Message.templateId to "messageId".
+        self.messageId = gistMessage.templateId
         self.deliveryId = gistMessage.gistProperties.campaignId
     }
 }
