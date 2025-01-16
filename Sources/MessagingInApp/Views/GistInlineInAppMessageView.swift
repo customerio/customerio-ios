@@ -15,7 +15,9 @@ public protocol GistInlineMessageUIViewDelegate: AnyObject {
     func willChangeMessage(newTemplateId: String, onComplete: @escaping () -> Void)
 }
 
+// swiftlint:disable todo
 // TODO: Reimplement this class from feature branch.
+// swiftlint:enable todo
 public class GistInlineMessageUIView: UIView {
     public var elementId: String?
     public weak var delegate: GistInlineMessageUIViewDelegate?
