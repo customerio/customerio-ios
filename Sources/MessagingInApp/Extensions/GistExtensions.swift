@@ -5,7 +5,7 @@ extension Message: CustomStringConvertible {
     //
     // We are logging the Gist campaign id as delivery id because we call it delivery id on our system.
     var describeForLogs: String {
-        "id: \(id ?? "none"), templateId: \(templateId), deliveryId: \(gistProperties.campaignId ?? "none")"
+        "id: \(messageId), queueId: \(queueId ?? "none"), deliveryId: \(gistProperties.campaignId ?? "none")"
     }
 
     // Provides string representation of Message object with all its properties for debugging purposes.
