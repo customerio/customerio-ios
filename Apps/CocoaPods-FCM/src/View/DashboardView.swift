@@ -1,5 +1,4 @@
 import CioDataPipelines
-import CioMessagingInApp
 import SwiftUI
 import UserNotifications
 
@@ -26,130 +25,115 @@ struct DashboardView: View {
     @State private var blockingAlert: BlockingAlert?
 
     @EnvironmentObject var userManager: UserManager
+
     var body: some View {
-        ScrollView {
-            ZStack {
-                VStack {
-                    SettingsButton {
-                        subscreenShown = .settings
-                    }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.trailing, 10)
-                    Spacer()
+        ZStack {
+            VStack {
+                SettingsButton {
+                    subscreenShown = .settings
                 }
-                .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
-                    SettingsView {
-                        subscreenShown = nil
-                    }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 10)
+                Spacer()
+            }
+            .sheet(isPresented: .constant(subscreenShown == .settings), onDismiss: { subscreenShown = nil }) {
+                SettingsView {
+                    subscreenShown = nil
                 }
+            }
 
-                VStack(spacing: 15) {
-                    if let loggedInUserEmail = userManager.email {
-                        Text(loggedInUserEmail)
-                    }
-                    Text("What would you like to test?")
-                    Group {
-                        InlineMessage(elementId: "dashboard-announcement", onActionClick: { message, actionValue, actionName in
-                            CustomerIO.shared.track(name: "inline custom button action", properties: [
-                                "source": "onActionClick View callback",
-                                "delivery-id": message.deliveryId ?? "(none)",
-                                "message-id": message.messageId,
-                                "action-value": actionValue,
-                                "action-name": actionName
-                            ])
-                        })
-                        ColorButton("Send Random Event") {
-                            switch Int.random(in: 0 ..< 3) {
-                            case 0:
-                                CustomerIO.shared.track(name: "Order Purchased")
-                            case 1:
-                                CustomerIO.shared.track(
-                                    name: "movie_watched",
-                                    properties: [
-                                        "movie_name": "The Incredibles"
-                                    ]
-                                )
-                            default: // case 2
-                                CustomerIO.shared.track(
-                                    name: "appointmentScheduled",
-                                    properties: [
-                                        "appointmentTime": Calendar.current.date(byAdding: .day, value: 7, to: Date())!.epochNoMilliseconds
-                                    ]
-                                )
-                            }
+            VStack(spacing: 15) {
+                if let loggedInUserEmail = userManager.email {
+                    Text(loggedInUserEmail)
+                }
+                Text("What would you like to test?")
 
-                            nonBlockingMessage = "Random event sent"
+                Group {
+                    ColorButton("Send Random Event") {
+                        switch Int.random(in: 0 ..< 3) {
+                        case 0:
+                            CustomerIO.shared.track(name: "Order Purchased")
+                        case 1:
+                            CustomerIO.shared.track(
+                                name: "movie_watched",
+                                properties: [
+                                    "movie_name": "The Incredibles"
+                                ]
+                            )
+                        default: // case 2
+                            CustomerIO.shared.track(
+                                name: "appointmentScheduled",
+                                properties: [
+                                    "appointmentTime": Calendar.current.date(byAdding: .day, value: 7, to: Date())!.epochNoMilliseconds
+                                ]
+                            )
                         }
-                        .setAppiumId("Random Event Button")
 
-                        ColorButton("Send Custom Event") {
-                            subscreenShown = .customEvent
-                        }.setAppiumId("Custom Event Button")
-                            .sheet(isPresented: .constant(subscreenShown == .customEvent), onDismiss: { subscreenShown = nil }) {
-                                CustomEventView(close: {
-                                    subscreenShown = nil
-                                })
-                            }
+                        nonBlockingMessage = "Random event sent"
+                    }
+                    .setAppiumId("Random Event Button")
 
-                        ColorButton("Set Device Attribute") {
-                            subscreenShown = .deviceAttribute
-                        }.setAppiumId("Device Attribute Button")
-                            .sheet(isPresented: .constant(subscreenShown == .deviceAttribute), onDismiss: { subscreenShown = nil }) {
-                                CustomAttributeView(attributeType: .device, close: {
-                                    subscreenShown = nil
-                                })
-                            }
+                    ColorButton("Send Custom Event") {
+                        subscreenShown = .customEvent
+                    }.setAppiumId("Custom Event Button")
+                        .sheet(isPresented: .constant(subscreenShown == .customEvent), onDismiss: { subscreenShown = nil }) {
+                            CustomEventView(close: {
+                                subscreenShown = nil
+                            })
+                        }
 
-                        ColorButton("Set Profile Attribute") {
-                            subscreenShown = .profileAttribute
-                        }.setAppiumId("Profile Attribute Button")
-                            .sheet(isPresented: .constant(subscreenShown == .profileAttribute), onDismiss: { subscreenShown = nil }) {
-                                CustomAttributeView(attributeType: .profile, close: {
-                                    subscreenShown = nil
-                                })
-                            }
+                    ColorButton("Set Device Attribute") {
+                        subscreenShown = .deviceAttribute
+                    }.setAppiumId("Device Attribute Button")
+                        .sheet(isPresented: .constant(subscreenShown == .deviceAttribute), onDismiss: { subscreenShown = nil }) {
+                            CustomAttributeView(attributeType: .device, close: {
+                                subscreenShown = nil
+                            })
+                        }
 
-                        ColorButton("Show Push Prompt") {
-                            UNUserNotificationCenter.current().getNotificationSettings { settings in
-                                switch settings.authorizationStatus {
-                                case .authorized:
-                                    blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
-                                case .denied:
-                                    blockingAlert = BlockingAlert(
-                                        alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
-                                        callToActionButton: (actionText: "Go to Settings", actionCallback: {
-                                            UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
-                                        })
-                                    )
-                                case .notDetermined:
-                                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-                                        if granted {
-                                            DispatchQueue.main.async {
-                                                UIApplication.shared.registerForRemoteNotifications()
-                                            }
+                    ColorButton("Set Profile Attribute") {
+                        subscreenShown = .profileAttribute
+                    }.setAppiumId("Profile Attribute Button")
+                        .sheet(isPresented: .constant(subscreenShown == .profileAttribute), onDismiss: { subscreenShown = nil }) {
+                            CustomAttributeView(attributeType: .profile, close: {
+                                subscreenShown = nil
+                            })
+                        }
+
+                    ColorButton("Show Push Prompt") {
+                        UNUserNotificationCenter.current().getNotificationSettings { settings in
+                            switch settings.authorizationStatus {
+                            case .authorized:
+                                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
+                            case .denied:
+                                blockingAlert = BlockingAlert(
+                                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
+                                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
+                                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                                    })
+                                )
+                            case .notDetermined:
+                                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                                    if granted {
+                                        DispatchQueue.main.async {
+                                            UIApplication.shared.registerForRemoteNotifications()
                                         }
                                     }
-                                default: break
                                 }
+                            default: break
                             }
-                        }.setAppiumId("Show Push Prompt Button")
+                        }
+                    }.setAppiumId("Show Push Prompt Button")
+                    ColorButton("Logout") {
+                        CustomerIO.shared.clearIdentify()
 
-                        InlineMessage(elementId: "dashboard-announcement-code")
-
-                        ColorButton("Logout") {
-                            CustomerIO.shared.clearIdentify()
-
-                            userManager.logout()
-                        }.setAppiumId("Log Out Button")
-                    }
-
-                    EnvironmentText()
-
-                    Text("This screen contains inline in-app Views with elementIds: dashboard-announcement, dashboard-announcement-code")
-                        .font(.caption)
+                        userManager.logout()
+                    }.setAppiumId("Log Out Button")
                 }
-                .padding()
+
+                EnvironmentText()
             }
+            .padding()
         }
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
         .alert(isPresented: .notNil(blockingAlert)) {

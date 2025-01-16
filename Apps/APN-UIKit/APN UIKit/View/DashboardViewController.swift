@@ -1,5 +1,4 @@
 import CioDataPipelines
-import CioMessagingInApp
 import UIKit
 
 class DashboardViewController: BaseViewController {
@@ -16,9 +15,6 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
-    @IBOutlet var inlineInAppViewCreatedInStoryboard: InlineMessageUIView!
-    @IBOutlet var buttonStackView: UIStackView!
-
     var dashboardRouter: DashboardRouting?
     var notificationUtil = DIGraphShared.shared.notificationUtil
     var storage = DIGraphShared.shared.storage
@@ -32,26 +28,6 @@ class DashboardViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // For inline Views added with Storyboard, set the elementId to finish setup of the View and begin showing messages.
-        inlineInAppViewCreatedInStoryboard.elementId = "dashboard-announcement"
-
-        // This is optional. If set, the delegate method `onActionClick`
-        // will receive callbacks.
-        // If not set, the global method `messageActionTaken` will handle the callbacks.
-        inlineInAppViewCreatedInStoryboard.onActionDelegate = self
-
-        // We want to test that Inline Views can be used by customers who prefer to use code to make the UI.
-        // Construct a new instance of the View, add it to the ViewController, then set constraints to make it visible.
-        let newInlineViewUsingUIAsCode = InlineMessageUIView(elementId: "dashboard-announcement-code")
-        // Add the View to the screen.
-        // It's important that we test inline Views that are nested in a UIStackView. See comments in inline View code to learn more.
-        buttonStackView.addArrangedSubview(newInlineViewUsingUIAsCode)
-
-        // Customers are responsible for setting the width of the View.
-        newInlineViewUsingUIAsCode.translatesAutoresizingMaskIntoConstraints = false
-        newInlineViewUsingUIAsCode.widthAnchor.constraint(equalTo: buttonStackView.widthAnchor).isActive = true
-
         configureDashboardRouter()
         addNotifierObserver()
         addUserInteractionToImageViews()
@@ -175,17 +151,5 @@ class DashboardViewController: BaseViewController {
         content.body = "Try clicking me and see host app handle the push instead of Customer.io SDK"
         let request = UNNotificationRequest(identifier: "local-push-not-from-cio", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
-    }
-}
-
-extension DashboardViewController: InlineMessageUIViewDelegate {
-    func onActionClick(message: InAppMessage, actionValue: String, actionName: String) {
-        print("You can perform any action here. For instance, we are tracking the custom button tap.")
-        CustomerIO.shared.track(name: "inline custom button action", properties: [
-            "delivery-id": message.deliveryId ?? "(none)",
-            "message-id": message.messageId,
-            "action-value": actionValue,
-            "action-name": actionName
-        ])
     }
 }
