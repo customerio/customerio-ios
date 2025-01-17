@@ -2,10 +2,8 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
-// MARK: - BaseMessageManager
-
 /// Abstract base class that contains shared logic for both Modal and Inline message managers.
-open class BaseMessageManager: EngineWebDelegate {
+open class BaseMessageManager {
     // MARK: - Dependencies
 
     public let logger: Logger
@@ -41,7 +39,6 @@ open class BaseMessageManager: EngineWebDelegate {
         self.isMessageEmbed = !(message.gistProperties.elementId?.isBlankOrEmpty() ?? true)
 
         let diGraph = DIGraphShared.shared
-
         self.inAppMessageManager = diGraph.inAppMessageManager
         self.threadUtil = diGraph.threadUtil
         self.gist = diGraph.gistProvider
@@ -137,8 +134,40 @@ open class BaseMessageManager: EngineWebDelegate {
         // Actually handle the logic
     }
 
-    // MARK: - EngineWebDelegate
+    // MARK: - Helpers
 
+    public func showNewMessage(url: URL) {
+        logger.logWithModuleTag("Showing new message from action: \(url.absoluteString)", level: .info)
+        var properties: [String: Any]?
+
+        if let stringProps = url.queryParameters?["properties"],
+           let decodedData = Data(base64Encoded: stringProps),
+           let decodedString = String(data: decodedData, encoding: .utf8),
+           let convertedProps = convertToDictionary(text: decodedString) {
+            properties = convertedProps
+        }
+
+        if let messageId = url.queryParameters?["messageId"] {
+            let message = Message(messageId: messageId, properties: properties)
+            inAppMessageManager.dispatch(action: .loadMessage(message: message))
+        }
+    }
+
+    public func convertToDictionary(text: String) -> [String: Any]? {
+        if let data = text.data(using: .utf8) {
+            do {
+                return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+            } catch {
+                print(error.localizedDescription)
+            }
+        }
+        return nil
+    }
+}
+
+// MARK: - EngineWebDelegate Conformance
+
+extension BaseMessageManager: EngineWebDelegate {
     public func bootstrapped() {
         logger.logWithModuleTag("Bourbon Engine bootstrapped", level: .debug)
         // If empty message ID, clean engine
@@ -188,8 +217,6 @@ open class BaseMessageManager: EngineWebDelegate {
             break
         }
     }
-
-    // Extracted gist actions for clarity and testability:
 
     private func handleGistCloseAction(action: String) {
         logger.logWithModuleTag("Dismissing from action: \(action)", level: .info)
@@ -326,35 +353,5 @@ open class BaseMessageManager: EngineWebDelegate {
                 )
             }
         }
-    }
-
-    // MARK: - Helpers
-
-    public func showNewMessage(url: URL) {
-        logger.logWithModuleTag("Showing new message from action: \(url.absoluteString)", level: .info)
-        var properties: [String: Any]?
-
-        if let stringProps = url.queryParameters?["properties"],
-           let decodedData = Data(base64Encoded: stringProps),
-           let decodedString = String(data: decodedData, encoding: .utf8),
-           let convertedProps = convertToDictionary(text: decodedString) {
-            properties = convertedProps
-        }
-
-        if let messageId = url.queryParameters?["messageId"] {
-            let message = Message(messageId: messageId, properties: properties)
-            inAppMessageManager.dispatch(action: .loadMessage(message: message))
-        }
-    }
-
-    public func convertToDictionary(text: String) -> [String: Any]? {
-        if let data = text.data(using: .utf8) {
-            do {
-                return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-            } catch {
-                print(error.localizedDescription)
-            }
-        }
-        return nil
     }
 }
