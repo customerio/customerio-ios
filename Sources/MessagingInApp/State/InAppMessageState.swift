@@ -12,7 +12,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let userId: String?
     let currentRoute: String?
     let currentMessageState: MessageState
-    let messagesInQueue: Set<Message>
+    public let messagesInQueue: Set<Message>
     let shownMessageQueueIds: Set<String>
 
     init(

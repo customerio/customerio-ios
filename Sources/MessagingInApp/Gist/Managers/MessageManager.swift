@@ -1,68 +1,44 @@
 import CioInternalCommon
-// MessageManagerType.swift
 import Foundation
 import UIKit
 
-/// Protocol defining the core functionality that all message managers must implement
-protocol MessageManagerDelegate: AnyObject {
-    func messageShown(message: Message)
-    func messageDismissed(message: Message)
-    func messageError(message: Message)
-    func action(message: Message, currentRoute: String, action: String, name: String)
-}
+/// Abstract base class that contains shared logic for both Modal and Inline message managers.
+public class BaseMessageManager: EngineWebDelegate {
+    // MARK: - Dependencies
 
-public enum GistMessageActions: String {
-    case close = "gist://close"
-}
-
-protocol MessageManager {
-    var currentMessage: Message { get }
-    var currentRoute: String { get }
-    var gistView: GistView { get }
-    var delegate: MessageManagerDelegate? { get set }
-
-    func handleAction(name: String, action: String, system: Bool)
-    func handleRouteChange(_ route: String)
-    func cleanup()
-    func handleMessageLoaded()
-
-    // Protected methods for subclasses
-    func onDeepLinkOpened()
-    func onTapAction(message: Message, currentRoute: String, action: String, name: String)
-}
-
-// BaseMessageManager.swift
-class BaseMessageManager: MessageManager {
-    // MARK: - Properties
-
-    private let logger: Logger
-    private let threadUtil: ThreadUtil
-    private let gist: GistProvider
-
-    weak var delegate: MessageManagerDelegate?
-
-    let currentMessage: Message
-    private(set) var currentRoute: String
-    var engine: EngineWebInstance
-    let gistView: GistView
+    public let logger: Logger
     let inAppMessageManager: InAppMessageManager
+    public let threadUtil: ThreadUtil
+    let gist: GistProvider
+    let engineWebProvider: EngineWebProvider
 
-    @Atomic private var isMessageLoaded: Bool = false
-    private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
-    private var elapsedTimer = ElapsedTimer()
+    // MARK: - Message & State
 
-    // MARK: - Initialization
+    public let currentMessage: Message
+    public var currentRoute: String
+    public let isMessageEmbed: Bool
+
+    @Atomic public var isMessageLoaded: Bool = false
+    var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
+    var elapsedTimer = ElapsedTimer()
+    var engine: EngineWebInstance!
+    var gistView: GistView!
+
+    // MARK: - Init & Deinit
 
     init(state: InAppMessageState, message: Message) {
         self.currentMessage = message
         self.currentRoute = message.messageId
+        self.isMessageEmbed = !(message.gistProperties.elementId?.isBlankOrEmpty() ?? true)
 
         let diGraph = DIGraphShared.shared
         self.logger = diGraph.logger
         self.inAppMessageManager = diGraph.inAppMessageManager
         self.threadUtil = diGraph.threadUtil
         self.gist = diGraph.gistProvider
+        self.engineWebProvider = diGraph.engineWebProvider
 
+        // Setup engine configuration
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: state.siteId,
             dataCenter: state.dataCenter,
@@ -72,255 +48,244 @@ class BaseMessageManager: MessageManager {
             properties: message.properties.mapValues { AnyEncodable($0) }
         )
 
-        self.engine = diGraph.engineWebProvider.getEngineWebInstance(
+        // Create the engine
+        self.engine = engineWebProvider.getEngineWebInstance(
             configuration: engineWebConfiguration,
             state: state,
             message: message
         )
+        engine.delegate = self
+
+        // Create the GistView container
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
 
-        setupEngineDelegate()
+        // Subscribe to state changes
         subscribeToInAppMessageState()
     }
 
     deinit {
-        cleanup()
-    }
-
-    // MARK: - Public Methods
-
-    func cleanup() {
         unsubscribeFromInAppMessageState()
         removeEngineWebView()
     }
 
-    func handleMessageLoaded() {
-        // Base implementation - override in subclasses
-        logger.logWithModuleTag("Message loaded: \(currentMessage.describeForLogs)", level: .debug)
-    }
+    // MARK: - Subscription to InAppMessageState
 
-    func handleAction(name: String, action: String, system: Bool) {
-        logger.logWithModuleTag("Action triggered: \(action) with name: \(name)", level: .info)
-        processAction(name: name, action: action, system: system)
-    }
-
-    func handleRouteChange(_ route: String) {
-        currentRoute = route
-        logger.logWithModuleTag("Route changed to: \(route)", level: .info)
-    }
-
-    // MARK: - Protected Methods for Subclasses
-
-    func dismissMessage(completion: (() -> Void)? = nil) {
-        inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage))
-        completion?()
-    }
-
-    func onDeepLinkOpened() {
-        // Base implementation - can be overridden by subclasses
-        logger.logWithModuleTag("Deep link opened", level: .debug)
-    }
-
-    func onReplaceMessage(newMessageToShow: Message) {
-        // Base implementation - should be overridden by subclasses
-        logger.logWithModuleTag("Replace message requested", level: .debug)
-    }
-
-    func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
-        // Base implementation - can be overridden by subclasses
-        logger.logWithModuleTag("Tap action received", level: .debug)
-    }
-
-    // MARK: - Private Methods
-
-    private func setupEngineDelegate() {
-        engine.delegate = self
-    }
-}
-
-// MARK: - EngineWebDelegate
-
-extension BaseMessageManager: EngineWebDelegate {
-    func bootstrapped() {
-        logger.logWithModuleTag("Bourbon Engine bootstrapped", level: .debug)
-
-        // Clean up if empty message id
-        if currentMessage.messageId.isEmpty {
-            engine.cleanEngineWeb()
-        }
-    }
-
-    func routeLoaded(route: String) {
-        logger.logWithModuleTag("Message loaded with route: \(route)", level: .info)
-        currentRoute = route
-
-        // Only handle message loading once
-        if route == currentMessage.messageId, !isMessageLoaded {
-            isMessageLoaded = true
-            handleMessageLoaded()
-        }
-    }
-
-    func routeError(route: String) {
-        logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
-        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
-    }
-
-    func error() {
-        logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
-        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
-    }
-
-    func sizeChanged(width: CGFloat, height: CGFloat) {
-        logger.logWithModuleTag("Message size changed Width: \(width) - Height: \(height)", level: .debug)
-        gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
-
-        // Let inline messages handle size changes specially
-        if let inlineManager = self as? InlineMessageManager {
-            inlineManager.sizeChanged(message: currentMessage, width: width, height: height)
-        }
-    }
-
-    func tap(name: String, action: String, system: Bool) {
-        handleAction(name: name, action: action, system: system)
-    }
-
-    func routeChanged(newRoute: String) {
-        handleRouteChange(newRoute)
-    }
-
-    private func subscribeToInAppMessageState() {
+    func subscribeToInAppMessageState() {
+        // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
+        // Also, since we do not store strong reference of MessageManager anywhere, not keeping a strong reference of
+        // subscriber may result in deallocation of MessageManager and hence dismissal of message unexpectedly.
         inAppMessageStoreSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
-                self?.handleStateChange(state)
+            let subscriber = InAppMessageStoreSubscriber { [self] state in
+                let messageState = state.currentMessageState
+                switch messageState {
+                case .displayed:
+                    threadUtil.runMain {
+                        // Subclasses (Modal or Inline) can show differently
+                        self.onMessageDisplayed()
+                    }
+
+                // Dismiss the message when the message is dismissed or initial state
+                // Initial state may only be received when state is reset while a message was being displayed
+                case .dismissed, .initial:
+                    threadUtil.runMain {
+                        // Dismiss the message from subclass
+                        self.onMessageDismissed(messageState: messageState)
+                    }
+
+                default:
+                    break
+                }
             }
             inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
             return subscriber
         }()
     }
 
-    private func unsubscribeFromInAppMessageState() {
+    open func unsubscribeFromInAppMessageState() {
         guard let subscriber = inAppMessageStoreSubscriber else { return }
-        logger.logWithModuleTag("Unsubscribing from InAppMessageState", level: .debug)
+
+        logger.logWithModuleTag("Unsubscribing BaseMessageManager from InAppMessageState", level: .debug)
         inAppMessageManager.unsubscribe(subscriber: subscriber)
         inAppMessageStoreSubscriber = nil
     }
 
-    private func removeEngineWebView() {
+    // MARK: - Engine Cleanup
+
+    open func removeEngineWebView() {
         guard engine.delegate != nil else { return }
-        logger.logWithModuleTag("Cleaning EngineWebView", level: .debug)
+        logger.logWithModuleTag("Cleaning EngineWebView from BaseMessageManager", level: .debug)
         engine.cleanEngineWeb()
         engine.delegate = nil
     }
 
-    private func handleStateChange(_ state: InAppMessageState) {
-        threadUtil.runMain { [weak self] in
-            switch state.currentMessageState {
-            case .displayed:
-                self?.handleMessageDisplayed()
-            case .dismissed, .initial:
-                self?.handleMessageDismissed()
-            default:
-                break
-            }
+    // MARK: - Callbacks to be overridden by Subclasses
+
+    /// Called when the state changes to `.displayed`.
+    /// Subclasses decide how to actually show the UI (inline or modal).
+    open func onMessageDisplayed() {
+        // Subclasses can override to do modal or inline show
+    }
+
+    /// Called when the message is dismissed (or reset). Subclasses decide
+    /// how to handle the cleanup animation or removal.
+    func onMessageDismissed(messageState: MessageState) {
+        // Subclasses can override
+    }
+
+    // MARK: - EngineWebDelegate
+
+    public func bootstrapped() {
+        logger.logWithModuleTag("Bourbon Engine bootstrapped", level: .debug)
+        // (Optional) If empty message ID, clean engine
+        if currentMessage.messageId.isEmpty {
+            engine.cleanEngineWeb()
         }
     }
 
-    private func handleMessageDisplayed() {
-        handleMessageLoaded()
-    }
-
-    private func handleMessageDismissed() {
-        cleanup()
-        gist.fetchUserMessagesFromRemoteQueue()
-    }
-
-    private func processAction(name: String, action: String, system: Bool) {
-        inAppMessageManager.dispatch(action: .engineAction(action: .tap(
+    public func tap(name: String, action: String, system: Bool) {
+        logger.logWithModuleTag("Action triggered: \(action) with name: \(name)", level: .info)
+        inAppMessageManager.dispatch(action: .engineAction(
+            action: .tap(message: currentMessage, route: currentRoute, name: name, action: action)
+        ))
+        gistView.delegate?.action(
             message: currentMessage,
-            route: currentRoute,
-            name: name,
-            action: action
-        )))
+            currentRoute: currentRoute,
+            action: action,
+            name: name
+        )
 
-        if let url = URL(string: action) {
-            handleActionURL(url, name: name, system: system)
+        guard let url = URL(string: action), url.scheme == "gist" else {
+            // Non-gist actions (deep links, system actions, etc.)
+            handleNonGistAction(action, system: system)
+            return
         }
-    }
 
-    private func handleActionURL(_ url: URL, name: String, system: Bool) {
-        if url.scheme == "gist" {
-            handleGistAction(url)
-        } else if system {
-            handleSystemAction(url)
-        }
-    }
-
-    private func handleGistAction(_ url: URL) {
         switch url.host {
         case "close":
-            logger.logWithModuleTag("Dismissing from action: \(url.absoluteString)", level: .info)
-            dismissMessage()
-
+            logger.logWithModuleTag("Dismissing from action: \(action)", level: .info)
+            inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, viaCloseAction: true))
         case "loadPage":
-            if let page = url.queryParameters?["url"],
+            // ...
+            let encodedUrl = URL(string: action.percentEncode(character: "#")) ?? url
+            if let page = encodedUrl.queryParameters?["url"],
                let pageUrl = URL(string: page),
                UIApplication.shared.canOpenURL(pageUrl) {
                 UIApplication.shared.open(pageUrl)
             }
-
         case "showMessage":
-            handleShowNewMessage(url: url)
-
+            if currentMessage.isEmbedded {
+                showNewMessage(url: url)
+            } else {
+                inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, shouldLog: false))
+                showNewMessage(url: url)
+            }
         default:
             break
         }
     }
 
-    private func handleSystemAction(_ url: URL) {
-        guard UIApplication.shared.canOpenURL(url) else { return }
-
-        // First try universal links through NSUserActivity
-        let handledByUserActivity = continueNSUserActivity(webpageURL: url)
-
-        if !handledByUserActivity {
-            // Fallback to direct URL opening
-            UIApplication.shared.open(url) { [weak self] handled in
-                if handled {
-                    self?.logger.logWithModuleTag("Opened system URL: \(url.absoluteString)", level: .info)
+    // For non-gist actions (e.g., universal links or custom schemes)
+    private func handleNonGistAction(_ action: String, system: Bool) {
+        if system {
+            inAppMessageManager.dispatch(action: .dismissMessage(message: currentMessage, shouldLog: false))
+            if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
+                // Attempt to open with NSUserActivity for universal link
+                let handledByUserActivity = continueNSUserActivity(webpageURL: url)
+                if !handledByUserActivity {
+                    // Fallback: open directly if userActivity wasn't handled
+                    UIApplication.shared.open(url) { handled in
+                        if handled {
+                            self.logger.logWithModuleTag("Dismissing from system action: \(action)", level: .info)
+                        } else {
+                            self.logger.logWithModuleTag("System action not handled", level: .info)
+                        }
+                    }
                 } else {
-                    self?.logger.logWithModuleTag("Failed to open system URL", level: .info)
+                    logger.logWithModuleTag("Handled by NSUserActivity", level: .info)
                 }
             }
         }
     }
 
-    private func continueNSUserActivity(webpageURL: URL) -> Bool {
-        guard #available(iOS 10.0, *),
-              isValidUserActivityLink(webpageURL)
-        else {
+    public func continueNSUserActivity(webpageURL: URL) -> Bool {
+        guard #available(iOS 10.0, *) else {
+            return false
+        }
+        guard isLinkValidNSUserActivityLink(webpageURL) else {
             return false
         }
 
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        activity.webpageURL = webpageURL
+        let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+        openLinkInHostAppActivity.webpageURL = webpageURL
 
-        return UIApplication.shared.delegate?.application?(
+        let didHostAppHandleLink = UIApplication.shared.delegate?.application?(
             UIApplication.shared,
-            continue: activity,
+            continue: openLinkInHostAppActivity,
             restorationHandler: { _ in }
         ) ?? false
+
+        return didHostAppHandleLink
     }
 
-    private func isValidUserActivityLink(_ url: URL) -> Bool {
-        guard let scheme = url.scheme else { return false }
+    public func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
+        guard let scheme = url.scheme else {
+            return false
+        }
         return ["http", "https"].contains(scheme)
     }
 
-    private func handleShowNewMessage(url: URL) {
+    public func routeChanged(newRoute: String) {
+        logger.info("Message route changed to: \(newRoute)")
+    }
+
+    public func sizeChanged(width: CGFloat, height: CGFloat) {
+        // Subclass might or might not override.
+        // Also call gistView.delegate if needed.
+        gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
+        logger.logWithModuleTag("Message size changed Width: \(width) - Height: \(height)", level: .debug)
+    }
+
+    public func routeError(route: String) {
+        logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
+        inAppMessageManager.dispatch(
+            action: .engineAction(action: .messageLoadingFailed(message: currentMessage))
+        )
+    }
+
+    public func error() {
+        logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
+        inAppMessageManager.dispatch(
+            action: .engineAction(action: .messageLoadingFailed(message: currentMessage))
+        )
+    }
+
+    public func routeLoaded(route: String) {
+        logger.logWithModuleTag("Message loaded with route: \(route)", level: .info)
+
+        currentRoute = route
+        if route == currentMessage.messageId, !isMessageLoaded {
+            isMessageLoaded = true
+            // If embedded, always show. Otherwise, check app state
+            if isMessageEmbed {
+                inAppMessageManager.dispatch(action: .displayMessage(message: currentMessage))
+            } else {
+                if UIApplication.shared.applicationState == .active {
+                    inAppMessageManager.dispatch(action: .displayMessage(message: currentMessage))
+                } else {
+                    inAppMessageManager.dispatch(
+                        action: .dismissMessage(message: currentMessage, shouldLog: false, viaCloseAction: false)
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    public func showNewMessage(url: URL) {
+        logger.logWithModuleTag("Showing new message from action: \(url.absoluteString)", level: .info)
         var properties: [String: Any]?
 
-        // Decode properties if present
         if let stringProps = url.queryParameters?["properties"],
            let decodedData = Data(base64Encoded: stringProps),
            let decodedString = String(data: decodedData, encoding: .utf8),
@@ -328,29 +293,20 @@ extension BaseMessageManager: EngineWebDelegate {
             properties = convertedProps
         }
 
-        // Create and load new message if ID present
         if let messageId = url.queryParameters?["messageId"] {
             let message = Message(messageId: messageId, properties: properties)
-
-            // For inline messages, just replace. For modal, dismiss first
-            if currentMessage.isEmbedded {
-                inAppMessageManager.dispatch(action: .loadMessage(message: message))
-            } else {
-                dismissMessage { [weak self] in
-                    self?.inAppMessageManager.dispatch(action: .loadMessage(message: message))
-                }
-            }
+            inAppMessageManager.dispatch(action: .loadMessage(message: message))
         }
     }
 
-    private func convertToDictionary(text: String) -> [String: Any]? {
-        guard let data = text.data(using: .utf8) else { return nil }
-
-        do {
-            return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-        } catch {
-            logger.logWithModuleTag("Failed to parse JSON: \(error)", level: .error)
-            return nil
+    public func convertToDictionary(text: String) -> [String: Any]? {
+        if let data = text.data(using: .utf8) {
+            do {
+                return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+            } catch {
+                print(error.localizedDescription)
+            }
         }
+        return nil
     }
 }

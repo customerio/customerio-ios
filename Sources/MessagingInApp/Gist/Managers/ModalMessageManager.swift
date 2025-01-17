@@ -1,73 +1,58 @@
-import CioInternalCommon
 import Foundation
 import UIKit
 
-class ModalMessageManager: BaseMessageManager {
+/// A MessageManager subclass that specifically shows messages in a modal view.
+public class ModalMessageManager: BaseMessageManager {
     private var modalViewManager: ModalViewManager?
-    private var messageLoaded = false
-    var messagePosition: MessagePosition = .top
 
-    override func handleMessageLoaded() {
-        super.handleMessageLoaded()
-
-        // Only handle first time message is loaded
-        if currentRoute == currentMessage.messageId, !messageLoaded {
-            messageLoaded = true
-
-            guard UIApplication.shared.applicationState == .active else {
-                dismissMessage()
-                return
-            }
-
-            setupAndShowModal()
-        }
-    }
-
-    override func cleanup() {
-        super.cleanup()
-    }
-
-    func showMessage(position: MessagePosition) {
-        messagePosition = position
-        if messageLoaded {
-            setupAndShowModal()
-        }
-    }
-
-    override func dismissMessage(completion: (() -> Void)? = nil) {
-        guard let modalViewManager = modalViewManager else {
-            completion?()
+    override public func onMessageDisplayed() {
+        // The original "loadModalMessage()" logic
+        // but triggered by `onMessageDisplayed()`
+        guard isMessageLoaded else {
+            logger.logWithModuleTag("Message not loaded yet. Skipping loadModalMessage.", level: .debug)
             return
         }
 
-        modalViewManager.dismissModalView { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.messageDismissed(message: self.currentMessage)
-            completion?()
-        }
-    }
-
-    private func setupAndShowModal() {
+        logger.logWithModuleTag("Loading modal message: \(currentMessage.describeForLogs)", level: .debug)
         let gistProperties = currentMessage.gistProperties
         modalViewManager = ModalViewManager(
             gistView: gistView,
-            position: messagePosition,
+            position: gistProperties.position,
             overlayColor: gistProperties.overlayColor
         )
-
         modalViewManager?.showModalView { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.messageShown(message: self.currentMessage)
+            self?.elapsedTimer.end()
         }
     }
 
-    override func onDeepLinkOpened() {
-        super.onDeepLinkOpened()
-        dismissMessage()
+    override func onMessageDismissed(messageState: MessageState) {
+        logger.logWithModuleTag("Dismissing message: \(currentMessage.describeForLogs) from ModalMessageManager", level: .debug)
+
+        guard let modalViewManager = modalViewManager else {
+            // No modal to dismiss
+            finishDismissal(messageState: messageState)
+            return
+        }
+
+        // Dismiss the modal then call completion
+        modalViewManager.dismissModalView { [weak self] in
+            self?.finishDismissal(messageState: messageState)
+        }
     }
 
-    override func onTapAction(message: Message, currentRoute: String, action: String, name: String) {
-        super.onTapAction(message: message, currentRoute: currentRoute, action: action, name: name)
-        delegate?.action(message: message, currentRoute: currentRoute, action: action, name: name)
+    private func finishDismissal(messageState: MessageState) {
+        removeEngineWebView()
+        unsubscribeFromInAppMessageState()
+
+        // If the message was explicitly dismissed (not just reset to initial)
+        // then fetch next messages from queue
+        if case .dismissed = messageState {
+            gist.fetchUserMessagesFromRemoteQueue()
+        }
+    }
+
+    public func showMessage() {
+        // Original `showMessage()` logic
+        elapsedTimer.start(title: "Displaying modal for message: \(currentMessage.messageId)")
     }
 }
