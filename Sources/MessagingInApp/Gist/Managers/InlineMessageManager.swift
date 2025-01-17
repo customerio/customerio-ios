@@ -1,18 +1,19 @@
+import CioInternalCommon
 import Foundation
 import UIKit
 
-// Callbacks specific to inline message events.
+// MARK: - InlineMessageManagerDelegate
+
+/// Callbacks specific to inline message events.
 public protocol InlineMessageManagerDelegate: AnyObject {
-    /// Called when the GistView's HTML content size changes
+    /// Called when the inline web message (HTML) size changes
     func sizeChanged(width: CGFloat, height: CGFloat)
-
-    /// Called when the inline message is closed (via a "close" action or similar)
+    /// Called when the inline message is closed (via a "close" action)
     func onCloseAction()
-
     /**
-     Called when any inline button/action is tapped.
-     If your delegate handles the action completely and does not want any default handling, return `true`.
-     Otherwise, return `false` so the manager's default logic is triggered.
+     Called when an inline button or link is tapped.
+     Return `true` if your delegate handled the action entirely (so the manager does nothing more).
+     Return `false` if you'd like the manager to continue its normal flow.
      */
     func onInlineButtonAction(
         message: Message,
@@ -20,62 +21,51 @@ public protocol InlineMessageManagerDelegate: AnyObject {
         action: String,
         name: String
     ) -> Bool
-
-    /// Called when the inline message is about to change to a new template
+    /// Called when the inline message is about to change to a new template (if supported)
     func willChangeMessage(newTemplateId: String)
 }
 
-/**
- A MessageManager subclass that displays an in-app message inline (embedded in a view).
- It inherits from BaseMessageManager so it shares the same engine/subscription logic
- as the modal flow. The main difference is how it's shown and dismissed:
-    - Inline does not use a modal overlay; it is rendered inside your app's UI.
- */
-public class InlineMessageManager: BaseMessageManager {
-    // The GistView that can be placed inline in your UI.
-    // Add this view to your own view hierarchy wherever you want the message to appear.
-    public var inlineMessageView: GistView {
-        // If no delegate is set yet, set ourselves as the GistViewDelegate
-        if super.gistView.delegate == nil {
-            super.gistView.delegate = self
-        }
-        return super.gistView
-    }
+// MARK: - InlineMessageManager
 
+/// A `BaseMessageManager` subclass that displays an in-app message inline (embedded in your UI).
+/// Rather than presenting a modal, it uses a `GistView` that you place in a view hierarchy.
+public class InlineMessageManager: BaseMessageManager {
     public weak var inlineMessageDelegate: InlineMessageManagerDelegate?
 
-    // MARK: - Overriding Base Hooks
+    // Expose the GistView for embedding.
+    // Also set ourselves as the GistViewDelegate if not already set.
+    public var inlineMessageView: GistView {
+        if gistView.delegate == nil {
+            gistView.delegate = self
+        }
+        return gistView
+    }
 
+    // MARK: - Overriding from Base
+
+    /// Called when the in-app state changes to `.displayed`.
+    /// Inline typically means the content is ready and the `inlineMessageView` is or can be added to the UI.
     override public func onMessageDisplayed() {
-        // For an inline message, "onMessageDisplayed()" typically means
-        // the content is loaded and we're ready to show the GistView in the layout.
         logger.logWithModuleTag(
             "Inline message displayed: \(currentMessage.describeForLogs)",
             level: .debug
         )
-        // Inline messages don’t need to "present" a modal,
-        // so there's nothing special to do here unless you want
-        // to do extra logging, analytics, or UI hooks.
+        // If needed, you might notify your delegate that it's displayed or ready.
+        // e.g., inlineMessageDelegate?.didDisplayInlineMessage?()
     }
 
-    override func onMessageDismissed(
-        messageState: MessageState
-    ) {
-        // For an inline message, "onMessageDismissed" means we should clean up:
-        //  - Possibly remove inlineMessageView from its superview
-        //  - Clean up engine, unsubscribe, etc.
+    /// Called when the message is dismissed (or reset).
+    /// Typically remove the web engine, unsubscribe, and optionally remove the inline view.
+    override func onMessageDismissed(messageState: MessageState) {
         logger.logWithModuleTag(
             "Inline message dismissed: \(currentMessage.describeForLogs)",
             level: .debug
         )
 
-        // Remove engine from memory
         removeEngineWebView()
-        // Unsubscribe from store updates
         unsubscribeFromInAppMessageState()
 
-        // If the message was explicitly dismissed (as opposed to reset to .initial),
-        // we can fetch the next message in the queue
+        // If the message was explicitly dismissed, fetch new messages from queue
         if case .dismissed = messageState {
             gist.fetchUserMessagesFromRemoteQueue()
         }
@@ -83,12 +73,14 @@ public class InlineMessageManager: BaseMessageManager {
 
     // MARK: - Additional Inline Logic
 
-    /**
-     If you'd like to manually dismiss the inline message (for instance,
-     in response to a user action in your app's UI), you can call this.
-     It triggers the normal in-app dismissal logic in the store.
-     */
+    /// Manually closes the inline message (for example, if your app’s UI has a "Close" button).
+    /// This will trigger the normal in-app dismissal flow,
+    /// which eventually calls `onMessageDismissed(messageState:)`.
     public func closeInlineMessage() {
+        // Notify delegate that a close action occurred
+        inlineMessageDelegate?.onCloseAction()
+
+        // Trigger the store to dismiss
         inAppMessageManager.dispatch(
             action: .dismissMessage(
                 message: currentMessage,
@@ -102,7 +94,7 @@ public class InlineMessageManager: BaseMessageManager {
 
 extension InlineMessageManager: GistViewDelegate {
     public func sizeChanged(message: Message, width: CGFloat, height: CGFloat) {
-        // Notify delegate that the inline content size has changed
+        // Pass the size change event to the inlineMessageDelegate
         inlineMessageDelegate?.sizeChanged(width: width, height: height)
     }
 
@@ -112,8 +104,7 @@ extension InlineMessageManager: GistViewDelegate {
         action: String,
         name: String
     ) {
-        // Before passing the action to the base logic,
-        // let the InlineMessageManagerDelegate try to handle it first.
+        // Let the inlineMessageDelegate have a chance to handle the action
         let didHandle = inlineMessageDelegate?.onInlineButtonAction(
             message: message,
             currentRoute: currentRoute,
@@ -121,9 +112,7 @@ extension InlineMessageManager: GistViewDelegate {
             name: name
         ) ?? false
 
-        // If the delegate did not handle it,
-        // we can still dispatch it through `inAppMessageManager`.
-        // For example, to log the tap or handle normal fallback.
+        // If not handled by the delegate, pass it to the normal in-app manager flow
         if !didHandle {
             inAppMessageManager.dispatch(
                 action: .engineAction(
@@ -136,5 +125,11 @@ extension InlineMessageManager: GistViewDelegate {
                 )
             )
         }
+    }
+
+    /// If your app uses multiple message templates and may switch to a new template ID,
+    /// you can forward that event here if the `GistView` notifies you:
+    public func willChangeMessage(newTemplateId: String) {
+        inlineMessageDelegate?.willChangeMessage(newTemplateId: newTemplateId)
     }
 }
