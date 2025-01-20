@@ -83,9 +83,6 @@ extension DIGraphShared {
         _ = sdkClient
         countDependenciesResolved += 1
 
-        _ = deepLinkUtil
-        countDependenciesResolved += 1
-
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -274,18 +271,6 @@ extension DIGraphShared {
     public var sdkClient: SdkClient {
         getOverriddenInstance() ??
             customSdkClient
-    }
-
-    // DeepLinkUtil
-    @available(iOSApplicationExtension, unavailable)
-    public var deepLinkUtil: DeepLinkUtil {
-        getOverriddenInstance() ??
-            newDeepLinkUtil
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newDeepLinkUtil: DeepLinkUtil {
-        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 
     // DeviceMetricsGrabber

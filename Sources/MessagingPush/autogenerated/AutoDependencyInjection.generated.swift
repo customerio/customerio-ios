@@ -57,6 +57,9 @@ extension DIGraphShared {
         _ = automaticPushClickHandling
         countDependenciesResolved += 1
 
+        _ = deepLinkUtil
+        countDependenciesResolved += 1
+
         _ = pushEventHandler
         countDependenciesResolved += 1
 
@@ -95,6 +98,18 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
         AutomaticPushClickHandlingImpl(notificationCenterAdapter: userNotificationsFrameworkAdapter, logger: logger)
+    }
+
+    // DeepLinkUtil
+    @available(iOSApplicationExtension, unavailable)
+    var deepLinkUtil: DeepLinkUtil {
+        getOverriddenInstance() ??
+            newDeepLinkUtil
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private var newDeepLinkUtil: DeepLinkUtil {
+        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 
     // PushEventHandler
