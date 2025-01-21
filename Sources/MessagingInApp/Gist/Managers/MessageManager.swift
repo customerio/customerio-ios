@@ -23,6 +23,7 @@ open class BaseMessageManager {
     var elapsedTimer = ElapsedTimer()
     var engine: EngineWebInstance!
     var gistView: GistView!
+    var deeplinkUtil: DeepLinkUtil
 
     // MARK: - Initializers
 
@@ -44,6 +45,7 @@ open class BaseMessageManager {
         self.gist = diGraph.gistProvider
         self.engineWebProvider = diGraph.engineWebProvider
         self.logger = diGraph.logger
+        self.deeplinkUtil = diGraph.deepLinkUtil
 
         // Create engine
         let engineWebConfiguration = EngineWebConfiguration(
@@ -255,49 +257,10 @@ extension BaseMessageManager: EngineWebDelegate {
                     shouldLog: false
                 )
             )
-            if let url = URL(string: action), UIApplication.shared.canOpenURL(url) {
-                // Attempt universal link via NSUserActivity
-                let handledByUserActivity = continueNSUserActivity(webpageURL: url)
-                if !handledByUserActivity {
-                    // Fallback direct open
-                    UIApplication.shared.open(url) { handled in
-                        if handled {
-                            self.logger.logWithModuleTag("Dismissing from system action: \(action)", level: .info)
-                        } else {
-                            self.logger.logWithModuleTag("System action not handled", level: .info)
-                        }
-                    }
-                } else {
-                    logger.logWithModuleTag("Handled by NSUserActivity", level: .info)
-                }
+            if let url = URL(string: action) {
+                deeplinkUtil.handleDeepLink(url)
             }
         }
-    }
-
-    public func continueNSUserActivity(webpageURL: URL) -> Bool {
-        guard #available(iOS 10.0, *) else {
-            return false
-        }
-        guard isLinkValidNSUserActivityLink(webpageURL) else {
-            return false
-        }
-        let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        openLinkInHostAppActivity.webpageURL = webpageURL
-
-        let didHostAppHandleLink = UIApplication.shared.delegate?.application?(
-            UIApplication.shared,
-            continue: openLinkInHostAppActivity,
-            restorationHandler: { _ in }
-        ) ?? false
-
-        return didHostAppHandleLink
-    }
-
-    public func isLinkValidNSUserActivityLink(_ url: URL) -> Bool {
-        guard let scheme = url.scheme else {
-            return false
-        }
-        return ["http", "https"].contains(scheme)
     }
 
     public func routeChanged(newRoute: String) {
