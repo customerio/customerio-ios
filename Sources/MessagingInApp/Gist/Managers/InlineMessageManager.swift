@@ -105,15 +105,15 @@ extension InlineMessageManager: GistViewDelegate {
         name: String
     ) {
         // Let the inlineMessageDelegate have a chance to handle the action
-        let didHandle = inlineMessageDelegate?.onInlineButtonAction(
-            message: message,
-            currentRoute: currentRoute,
-            action: action,
-            name: name
-        ) ?? false
-
-        // If not handled by the delegate, pass it to the normal in-app manager flow
-        if !didHandle {
+        guard let delegate = inlineMessageDelegate,
+              delegate.onInlineButtonAction(
+                  message: message,
+                  currentRoute: currentRoute,
+                  action: action,
+                  name: name
+              )
+        else {
+            // If no delegate or delegate didn't handle it, pass to in-app manager
             inAppMessageManager.dispatch(
                 action: .engineAction(
                     action: .tap(
@@ -124,6 +124,7 @@ extension InlineMessageManager: GistViewDelegate {
                     )
                 )
             )
+            return
         }
     }
 

@@ -16,7 +16,7 @@ public class ModalMessageManager: BaseMessageManager {
         }
 
         logger.logWithModuleTag(
-            "Loading modal message: \(currentMessage.describeForLogs)",
+            "Displaying modal message: \(currentMessage.describeForLogs)",
             level: .debug
         )
 
@@ -41,16 +41,18 @@ public class ModalMessageManager: BaseMessageManager {
             level: .debug
         )
 
-        guard let modalViewManager = modalViewManager else {
-            // No modal to dismiss
-            finishDismissal(messageState: messageState)
-            return
-        }
-
-        // Dismiss the modal then call completion
-        modalViewManager.dismissModalView { [weak self] in
+        // Common handler to finalize dismissal logic
+        let dismissalHandler: () -> Void = { [weak self] in
             self?.finishDismissal(messageState: messageState)
         }
+
+        guard let modalViewManager = modalViewManager else {
+            // No modal to dismiss
+            dismissalHandler()
+            return
+        }
+        // Dismiss the modal then call completion
+        modalViewManager.dismissModalView(completionHandler: dismissalHandler)
     }
 
     private func finishDismissal(messageState: MessageState) {

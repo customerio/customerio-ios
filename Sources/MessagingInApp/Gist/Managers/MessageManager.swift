@@ -124,14 +124,9 @@ open class BaseMessageManager {
         // Subclasses override for their own show logic
     }
 
-    // Public or open, no parameter:
-    open func onMessageDismissed() {
-        // Subclasses override
-    }
-
     // Internal, for internal usage:
     func onMessageDismissed(messageState: MessageState) {
-        // Actually handle the logic
+        // Subclasses overridea
     }
 
     // MARK: - Helpers
