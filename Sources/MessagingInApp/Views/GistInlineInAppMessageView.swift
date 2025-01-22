@@ -108,17 +108,30 @@ public class GistInlineMessageUIView: UIView {
     }
 
     private func setupView() {
-        subscribeToInAppMessageState()
-    }
-
-    private func subscribeToInAppMessageState() {
-        // Begin listening to the queue for new messages.
+        // Subscribe to changes in InAppMessageState to listen for new messages to display.
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [weak self] state in
                 // InAppMessageManager callback function might not be on UI thread.
                 // Switch to UI thread to update UI.
                 Task { @MainActor [weak self] in
-                    self?.refreshView(state: state)
+                    guard let self else { return }
+
+                    switch state.currentMessageState {
+                    case .embedded(let message, let elementId):
+                        // swiftlint:disable todo
+                        // TODO: Check for elementId messages only
+                        // swiftlint:enable todo
+                        self.refreshView(state: state)
+
+                    case .dismissed where isRenderingOrDisplayingAMessage:
+                        self.refreshView(state: state)
+
+                    case .initial,
+                         .loading,
+                         .displayed,
+                         .dismissed:
+                        break
+                    }
                 }
             }
             // Subscribe to changes in `currentMessageState` property of `InAppMessageState`
@@ -137,7 +150,9 @@ public class GistInlineMessageUIView: UIView {
 
     private func refreshView(forceShowNextMessage: Bool = false) {
         inAppMessageManager.fetchState { [self] state in
-            refreshView(state: state, forceShowNextMessage: forceShowNextMessage)
+            Task { @MainActor [weak self] in
+                self?.refreshView(state: state, forceShowNextMessage: forceShowNextMessage)
+            }
         }
     }
 
@@ -152,8 +167,12 @@ public class GistInlineMessageUIView: UIView {
             return // we cannot check if a message is available until element id set on View.
         }
 
-        let queueOfMessagesForGivenElementId = state.inlineMessagesInQueue(forElementId: elementId)
-        let messageAvailableToDisplay = queueOfMessagesForGivenElementId.first { !hasBeenPreviouslyShown($0) }
+        let currentMessageState = state.currentMessageState
+
+        if case .dismissed = currentMessageState {
+            stopShowingMessageAndCleanup()
+            delegate?.onNoMessageToDisplay()
+        }
 
         if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
             // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
@@ -162,11 +181,8 @@ public class GistInlineMessageUIView: UIView {
             return
         }
 
-        if let messageAvailableToDisplay {
+        if let messageAvailableToDisplay = state.currentMessageState.message {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
-        } else {
-            stopShowingMessageAndCleanup()
-            delegate?.onNoMessageToDisplay()
         }
     }
 
@@ -176,11 +192,9 @@ public class GistInlineMessageUIView: UIView {
     }
 
     private func displayInAppMessage(state: InAppMessageState, message: Message) {
-        // If this function gets called a lot in a short amount of time (eventbus triggers multiple events), the display animation does not look as expected.
-        // To fix this, exit early if display has already been triggered.
-        if let currentlyShownMessage = state.currentMessageState.message, currentlyShownMessage.queueId == message.queueId {
-            return // already showing this message or in the process of showing it.
-        }
+        // swiftlint:disable todo
+        // TODO: Verify if we need to check if the message has already been shown.
+        // swiftlint:enable todo
 
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
         if isRenderingOrDisplayingAMessage {
