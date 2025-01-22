@@ -72,10 +72,6 @@ public class GistInlineMessageUIView: UIView {
     // See linear ticket MBL-427 to learn more about this limitation in our tests.
     var refreshViewListener: (() -> Void)?
 
-    // Inline messages that have already been shown by this View instance.
-    // This is used to prevent showing the same message multiple times when the close button is pressed.
-    var previouslyShownMessages: [Message] = []
-
     var inlineMessageManager: InlineMessageManager?
 
     // Determines if the View is already trying to show a message or not.
@@ -186,11 +182,6 @@ public class GistInlineMessageUIView: UIView {
         }
     }
 
-    // Function to check if a message has been previously shown
-    func hasBeenPreviouslyShown(_ message: Message) -> Bool {
-        previouslyShownMessages.contains { $0.queueId == message.queueId }
-    }
-
     private func displayInAppMessage(state: InAppMessageState, message: Message) {
         // swiftlint:disable todo
         // TODO: Verify if we need to check if the message has already been shown.
@@ -253,10 +244,6 @@ extension GistInlineMessageUIView: InlineMessageManagerDelegate {
 
     func onCloseAction() {
         Task { @MainActor in
-            if let currentlyShownMessage = inlineMessageManager?.currentMessage {
-                previouslyShownMessages.append(currentlyShownMessage)
-            }
-
             self.refreshView(forceShowNextMessage: true)
         }
     }
