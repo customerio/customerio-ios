@@ -134,3 +134,23 @@ extension Message: Equatable, Hashable {
         hasher.combine(messageId)
     }
 }
+
+// Messages come with a priority used to determine the order of which messages should show in the app.
+// Given a list of Messages that could be displayed, sort them by priority (lower values have higher priority).
+extension Array where Element == Message {
+    func sortByMessagePriority() -> [Message] {
+        sorted {
+            switch ($0.priority, $1.priority) {
+            case (let priority0?, let priority1?):
+                // Both messages have a priority, so we compare them.
+                return priority0 < priority1
+            case (nil, _):
+                // The first message has no priority, it should be considered greater so that it ends up at the end of the sorted array.
+                return false
+            case (_, nil):
+                // The second message has no priority, the first message should be ordered first.
+                return true
+            }
+        }
+    }
+}

@@ -116,6 +116,27 @@ extension InAppMessageState {
 
         return diffs
     }
+
+    func inlineMessagesInQueue(forElementId elementId: String) -> [Message] {
+        messagesInQueue
+            .filter { $0.gistProperties.elementId == elementId } // Only get messages for a specific elementid.
+            .filter { message in
+                // If we have already shown message, do not show again.
+                if let queueId = message.queueId {
+                    return !shownMessageQueueIds.contains(queueId)
+                }
+                return true
+            }
+            .filter { message in
+                // if page rule is enabled, filter what matches
+                if message.doesHavePageRule(), let route = currentRoute {
+                    return message.doesPageRuleMatch(route: route)
+                }
+                // if page rule is disabled then no filter required
+                return true
+            }
+            .sortByMessagePriority()
+    }
 }
 
 /// Represents various states an in-app message can be in.
