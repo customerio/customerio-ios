@@ -11,7 +11,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let pollInterval: Double
     let userId: String?
     let currentRoute: String?
-    let currentMessageState: MessageState
+    let currentMessageState: ModalMessageState
+    let embeddedMessagesState: [String: Set<InLineMessageState>]
     let messagesInQueue: Set<Message>
     let shownMessageQueueIds: Set<String>
 
@@ -22,7 +23,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         pollInterval: Double = 600,
         userId: String? = nil,
         currentRoute: String? = nil,
-        currentMessageState: MessageState = .initial,
+        currentMessageState: ModalMessageState = .initial,
+        embeddedMessagesState: [String: Set<InLineMessageState>] = [:],
         messagesInQueue: Set<Message> = [],
         shownMessageQueueIds: Set<String> = []
     ) {
@@ -33,6 +35,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.userId = userId
         self.currentRoute = currentRoute
         self.currentMessageState = currentMessageState
+        self.embeddedMessagesState = embeddedMessagesState
         self.messagesInQueue = messagesInQueue
         self.shownMessageQueueIds = shownMessageQueueIds
     }
@@ -43,7 +46,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         pollInterval: Double? = nil,
         userId: String? = nil,
         currentRoute: String? = nil,
-        currentMessageState: MessageState? = nil,
+        currentMessageState: ModalMessageState? = nil,
+        embeddedMessagesState: [String: Set<InLineMessageState>]? = nil,
         messagesInQueue: Set<Message>? = nil,
         shownMessageQueueIds: Set<String>? = nil
     ) -> InAppMessageState {
@@ -55,6 +59,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             userId: userId ?? self.userId,
             currentRoute: currentRoute ?? self.currentRoute,
             currentMessageState: currentMessageState ?? self.currentMessageState,
+            embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
             shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds
         )
@@ -82,6 +87,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             userId: \(String(describing: userId)),
             currentRoute: \(String(describing: currentRoute)),
             currentMessageState: \(currentMessageState),
+            embeddedMessagesState: \(embeddedMessagesState),
             messagesInQueue: \(messagesInQueue.map(\.describeForLogs)),
             shownMessageQueueIds: \(shownMessageQueueIds)
         )
@@ -111,6 +117,7 @@ extension InAppMessageState {
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
         putIfDifferent(\.currentMessageState, as: "currentMessageState")
+        putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")
         putIfDifferent(\.messagesInQueue, as: "messagesInQueue")
         putIfDifferent(\.shownMessageQueueIds, as: "shownMessageQueueIds")
 
@@ -120,14 +127,13 @@ extension InAppMessageState {
 
 /// Represents various states an in-app message can be in.
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
-enum MessageState: Equatable, CustomStringConvertible {
+enum ModalMessageState: Equatable, CustomStringConvertible {
     case initial
     case loading(message: Message)
     case displayed(message: Message)
-    case embedded(message: Message, elementId: String)
     case dismissed(message: Message)
 
-    static func == (lhs: MessageState, rhs: MessageState) -> Bool {
+    static func == (lhs: ModalMessageState, rhs: ModalMessageState) -> Bool {
         switch (lhs, rhs) {
         case (.initial, .initial):
             return true
@@ -135,8 +141,6 @@ enum MessageState: Equatable, CustomStringConvertible {
              (.displayed(let lhsMessage), .displayed(let rhsMessage)),
              (.dismissed(let lhsMessage), .dismissed(let rhsMessage)):
             return lhsMessage == rhsMessage
-        case (.embedded(let lhsMessage, let lhsElementId), .embedded(let rhsMessage, let rhsElementId)):
-            return lhsMessage == rhsMessage && lhsElementId == rhsElementId
         default:
             return false
         }
@@ -150,10 +154,50 @@ enum MessageState: Equatable, CustomStringConvertible {
             return "Loading(\(message.describeForLogs))"
         case .displayed(let message):
             return "Displayed(\(message.describeForLogs))"
+        case .dismissed(let message):
+            return "Dismissed(\(message.describeForLogs))"
+        }
+    }
+}
+
+/// Represents various states an in-app message can be in.
+/// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
+enum InLineMessageState: Equatable, CustomStringConvertible, Hashable {
+    case initial
+    case embedded(message: Message, elementId: String)
+    case dismissed(message: Message)
+
+    static func == (lhs: InLineMessageState, rhs: InLineMessageState) -> Bool {
+        switch (lhs, rhs) {
+        case (.initial, .initial):
+            return true
+        case (.dismissed(let lhsMessage), .dismissed(let rhsMessage)):
+            return lhsMessage.queueId == rhsMessage.queueId
+        case (.embedded(let lhsMessage, let lhsElementId), .embedded(let rhsMessage, let rhsElementId)):
+            return lhsMessage.queueId == rhsMessage.queueId && lhsElementId == rhsElementId
+        default:
+            return false
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .initial:
+            return "Initial"
         case .embedded(let message, _):
             return "Embedded(\(message.describeForLogs))"
         case .dismissed(let message):
             return "Dismissed(\(message.describeForLogs))"
+        }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .initial:
+            hasher.combine(0)
+        case .embedded(let message, _),
+             .dismissed(let message):
+            hasher.combine(message.queueId)
         }
     }
 }
@@ -162,14 +206,13 @@ enum MessageState: Equatable, CustomStringConvertible {
 /// This extension simplifies access to `Message` associated with each state and
 /// provides boolean properties that make it easy to check whether a `MessageState`
 /// is currently in a specific state (e.g., loading, displayed, embedded, or dismissed).
-extension MessageState {
+extension ModalMessageState {
     var message: Message? {
         switch self {
         case .initial:
             return nil
         case .loading(let message),
              .displayed(let message),
-             .embedded(let message, _),
              .dismissed(let message):
             return message
         }
@@ -179,7 +222,6 @@ extension MessageState {
     var activeModalMessage: Message? {
         switch self {
         case .initial,
-             .embedded,
              .dismissed:
             return nil
         case .loading(let message),
@@ -202,11 +244,34 @@ extension MessageState {
         return false
     }
 
-    var isEmbedded: Bool {
-        if case .embedded = self {
+    var isDismissed: Bool {
+        if case .dismissed = self {
             return true
         }
         return false
+    }
+}
+
+extension InLineMessageState {
+    var message: Message? {
+        switch self {
+        case .initial:
+            return nil
+        case .embedded(let message, let elementId):
+            return message
+        case .dismissed(let message):
+            return message
+        }
+    }
+
+    var elementId: String? {
+        switch self {
+        case .initial,
+             .dismissed:
+            return nil
+        case .embedded(_, let elementId):
+            return elementId
+        }
     }
 
     var isDismissed: Bool {

@@ -147,8 +147,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             .filter { message in
                 guard let queueId = message.queueId else { return false }
 
-                // Filter out messages that have been shown already, or if the message is embedded
-                return !state.shownMessageQueueIds.contains(queueId) && message.gistProperties.elementId == nil
+                // Filter out messages that have been shown already
+                return !state.shownMessageQueueIds.contains(queueId)
             }
             .reduce(into: [Message]()) { result, message in
                 if !result.contains(where: { $0.queueId == message.queueId }) {
@@ -157,26 +157,30 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
             }
             .sorted { ($0.priority ?? Int.max) < ($1.priority ?? Int.max) }
 
-        // Find the first message that matches the current route or has no page rule
-        // Since messages are sorted by priority, the first message will be the one with the highest priority
-        let messageToBeShown = notShownMessages.first { message in
-            let currentRoute = state.currentRoute
-
-            if message.doesHavePageRule() {
-                guard let currentRoute else { return false }
-
-                return message.doesPageRuleMatch(route: currentRoute)
-            }
-            return true
-        }
+        // Split into modal and embedded messages
+        let modalMessages = notShownMessages.filter { !$0.isEmbedded }
+        let embeddedMessages = notShownMessages.filter(\.isEmbedded)
 
         let isCurrentMessageLoading = state.currentMessageState.isLoading
         let isCurrentMessageDisplaying = state.currentMessageState.isDisplayed
         // Dispatch next action to process remaining messages
         next(.processMessageQueue(messages: notShownMessages))
 
+        let validEmbeddedMessages = embeddedMessages
+            .filter { messageMatchesRoute($0, state.currentRoute) }
+
+        if !validEmbeddedMessages.isEmpty {
+            dispatch(.embedMessages(messages: validEmbeddedMessages))
+        }
+
+        // Find the first message that matches the current route or has no page rule
+        // Since messages are sorted by priority, the first message will be the one with the highest priority
+        let modelMessageToBeShown = modalMessages.first { message in
+            messageMatchesRoute(message, state.currentRoute)
+        }
+
         // If there is a message currently displayed or loading, do not show another message
-        guard let message = messageToBeShown,
+        guard let message = modelMessageToBeShown,
               !isCurrentMessageLoading,
               !isCurrentMessageDisplaying
         else {
@@ -193,13 +197,21 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     }
 }
 
+private func messageMatchesRoute(_ message: Message, _ currentRoute: String?) -> Bool {
+    if message.doesHavePageRule() {
+        guard let currentRoute else { return false }
+        return message.doesPageRuleMatch(route: currentRoute)
+    }
+    return true
+}
+
 func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Forward message events to delegate when message is displayed, dismissed or embedded,
         // or when an engine action is received
         switch action {
-        case .embedMessage(let message, let elementId):
-            delegate.embedMessage(message: message, elementId: elementId)
+//        case .embedMessage(let message, let elementId):
+//            delegate.embedMessage(message: message, elementId: elementId)
 
         case .displayMessage(let message):
             delegate.messageShown(message: message)

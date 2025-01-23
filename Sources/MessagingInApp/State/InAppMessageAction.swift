@@ -10,7 +10,7 @@ enum InAppMessageAction: Equatable {
     case processMessageQueue(messages: [Message])
     case clearMessageQueue
     case loadMessage(message: Message)
-    case embedMessage(message: Message, elementId: String)
+    case embedMessages(messages: [Message])
     case displayMessage(message: Message)
     case dismissMessage(message: Message, shouldLog: Bool = true, viaCloseAction: Bool = true)
     case reportError(message: String)
@@ -48,8 +48,8 @@ enum InAppMessageAction: Equatable {
         case (.loadMessage(let lhsMessage), .loadMessage(let rhsMessage)):
             return lhsMessage == rhsMessage
 
-        case (.embedMessage(let lhsMessage, let lhsElementId), .embedMessage(let rhsMessage, let rhsElementId)):
-            return lhsMessage == rhsMessage && lhsElementId == rhsElementId
+        case (.embedMessages(let lhsMessages), .embedMessages(let rhsMessages)):
+            return lhsMessages == rhsMessages
 
         case (.displayMessage(let lhsMessage), .displayMessage(let rhsMessage)):
             return lhsMessage == rhsMessage

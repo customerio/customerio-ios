@@ -41,6 +41,21 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .processMessageQueue(let messages):
         return state.copy(messagesInQueue: Set(messages))
 
+    case .embedMessages(let messages):
+
+        let messageDictionary = messages.reduce(into: [String: Set<InLineMessageState>]()) { dict, message in
+            let wrapper = InLineMessageState.embedded(message: message, elementId: message.elementId!)
+            dict[message.elementId!, default: []].insert(wrapper)
+        }
+
+        var stateEmbeddedMessages = state.embeddedMessagesState
+        for key in state.embeddedMessagesState.keys {
+            let result = stateEmbeddedMessages[key]?.union(messageDictionary[key]!)
+            stateEmbeddedMessages[key] = result!
+        }
+
+        return state.copy(embeddedMessagesState: stateEmbeddedMessages)
+
     case .clearMessageQueue:
         return state.copy(messagesInQueue: [])
 
@@ -63,15 +78,22 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state
 
     case .dismissMessage(let message, _, _):
-        var shownMessageQueueIds = state.shownMessageQueueIds
-        // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
-        if action.shouldMarkMessageAsShown, let queueId = message.queueId {
-            shownMessageQueueIds = shownMessageQueueIds.union([queueId])
+        let newShownIds = action.shouldMarkMessageAsShown && message.queueId != nil
+            ? state.shownMessageQueueIds.union([message.queueId!])
+            : state.shownMessageQueueIds
+
+        if message.isEmbedded {
+            let newEmbeddedStates = state.embeddedMessagesState[message.elementId!]?.union([.dismissed(message: message)])
+
+            return state.copy(
+                embeddedMessagesState: newEmbeddedStates,
+                shownMessageQueueIds: newShownIds
+            )
         }
 
         return state.copy(
             currentMessageState: .dismissed(message: message),
-            shownMessageQueueIds: shownMessageQueueIds
+            shownMessageQueueIds: newShownIds
         )
 
     case .engineAction(let engineAction):
@@ -82,8 +104,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             return state.copy(currentMessageState: .dismissed(message: message))
         }
 
-    case .embedMessage,
-         .reportError:
+    case .reportError:
         return state
 
     case .resetState:

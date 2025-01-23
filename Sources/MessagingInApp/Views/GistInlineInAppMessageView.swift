@@ -111,27 +111,11 @@ public class GistInlineMessageUIView: UIView {
                 // Switch to UI thread to update UI.
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-
-                    switch state.currentMessageState {
-                    case .embedded(let message, let elementId):
-                        // swiftlint:disable todo
-                        // TODO: Check for elementId messages only
-                        // swiftlint:enable todo
-                        self.refreshView(state: state)
-
-                    case .dismissed where isRenderingOrDisplayingAMessage:
-                        self.refreshView(state: state)
-
-                    case .initial,
-                         .loading,
-                         .displayed,
-                         .dismissed:
-                        break
-                    }
+                    self.refreshView(state: state)
                 }
             }
             // Subscribe to changes in `currentMessageState` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
+            inAppMessageManager.subscribe(keyPath: \.embeddedMessagesState, subscriber: subscriber)
             return subscriber
         }()
     }
@@ -163,21 +147,21 @@ public class GistInlineMessageUIView: UIView {
             return // we cannot check if a message is available until element id set on View.
         }
 
-        let currentMessageState = state.currentMessageState
+        let currentMessageState = state.embeddedMessagesState[elementId]?.first { $0.elementId == elementId }
 
         if case .dismissed = currentMessageState {
             stopShowingMessageAndCleanup()
             delegate?.onNoMessageToDisplay()
         }
 
-        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
-            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
-            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
-            // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
-            return
-        }
+//        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
+//            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
+//            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
+//            // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
+//            return
+//        }
 
-        if let messageAvailableToDisplay = state.currentMessageState.message {
+        if let messageAvailableToDisplay = currentMessageState?.message {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
         }
     }

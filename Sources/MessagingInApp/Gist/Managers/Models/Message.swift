@@ -38,6 +38,10 @@ public class Message {
         gistProperties.elementId != nil
     }
 
+    public var elementId: String? {
+        gistProperties.elementId
+    }
+
     public init(
         messageId: String,
         queueId: String? = nil,

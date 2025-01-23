@@ -5,6 +5,37 @@ import UIKit
 public class ModalMessageManager: BaseMessageManager {
     private var modalViewManager: ModalViewManager?
 
+    override init(state: InAppMessageState, message: Message) {
+        super.init(state: state, message: message)
+        subscribeToInAppMessageState()
+    }
+
+    // MARK: - Subscription to InAppMessageState
+
+    public func subscribeToInAppMessageState() {
+        inAppMessageStoreSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [self] state in
+                let messageState = state.currentMessageState
+                switch messageState {
+                case .displayed:
+                    threadUtil.runMain {
+                        // Subclasses (Modal or Inline) can show differently
+                        self.onMessageDisplayed()
+                    }
+                case .dismissed, .initial:
+                    threadUtil.runMain {
+                        // Dismiss the message from subclass
+                        self.onMessageDismissed(messageState: messageState)
+                    }
+                default:
+                    break
+                }
+            }
+            self.inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
+            return subscriber
+        }()
+    }
+
     // Show the modal when the message is displayed
     override public func onMessageDisplayed() {
         guard isMessageLoaded else {
@@ -35,7 +66,7 @@ public class ModalMessageManager: BaseMessageManager {
     // Called when the message is dismissed (or reset).
     // Because onMessageDismissed(...) is internal in BaseMessageManager,
     // we can override it here in the same module.
-    override func onMessageDismissed(messageState: MessageState) {
+    override func onMessageDismissed(messageState: ModalMessageState) {
         logger.logWithModuleTag(
             "Dismissing message: \(currentMessage.describeForLogs) from ModalMessageManager",
             level: .debug
@@ -55,7 +86,7 @@ public class ModalMessageManager: BaseMessageManager {
         modalViewManager.dismissModalView(completionHandler: dismissalHandler)
     }
 
-    private func finishDismissal(messageState: MessageState) {
+    private func finishDismissal(messageState: ModalMessageState) {
         removeEngineWebView()
         unsubscribeFromInAppMessageState()
 

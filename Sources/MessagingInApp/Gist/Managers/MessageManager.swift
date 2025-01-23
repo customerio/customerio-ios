@@ -68,38 +68,11 @@ open class BaseMessageManager {
 
         // Set delegate and subscribe
         engine.delegate = self
-        subscribeToInAppMessageState()
     }
 
     deinit {
         unsubscribeFromInAppMessageState()
         removeEngineWebView()
-    }
-
-    // MARK: - Subscription to InAppMessageState
-
-    public func subscribeToInAppMessageState() {
-        inAppMessageStoreSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [self] state in
-                let messageState = state.currentMessageState
-                switch messageState {
-                case .displayed:
-                    threadUtil.runMain {
-                        // Subclasses (Modal or Inline) can show differently
-                        self.onMessageDisplayed()
-                    }
-                case .dismissed, .initial:
-                    threadUtil.runMain {
-                        // Dismiss the message from subclass
-                        self.onMessageDismissed(messageState: messageState)
-                    }
-                default:
-                    break
-                }
-            }
-            self.inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
-            return subscriber
-        }()
     }
 
     open func unsubscribeFromInAppMessageState() {
@@ -127,7 +100,7 @@ open class BaseMessageManager {
     }
 
     // Internal, for internal usage:
-    func onMessageDismissed(messageState: MessageState) {
+    func onMessageDismissed(messageState: ModalMessageState) {
         // Subclasses overridea
     }
 
