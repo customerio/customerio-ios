@@ -5,7 +5,7 @@ import UIKit
 // MARK: - InlineMessageManagerDelegate
 
 /// Callbacks specific to inline message events.
-public protocol InlineMessageManagerDelegate: AnyObject {
+protocol InlineMessageManagerDelegate: AnyObject {
     /// Called when the inline web message (HTML) size changes
     func sizeChanged(width: CGFloat, height: CGFloat)
     /// Called when the inline message is closed (via a "close" action)
@@ -29,7 +29,7 @@ public protocol InlineMessageManagerDelegate: AnyObject {
 
 /// A `BaseMessageManager` subclass that displays an in-app message inline (embedded in your UI).
 /// Rather than presenting a modal, it uses a `GistView` that you place in a view hierarchy.
-public class InlineMessageManager: BaseMessageManager {
+class InlineMessageManager: BaseMessageManager {
     public weak var inlineMessageDelegate: InlineMessageManagerDelegate?
 
     // Expose the GistView for embedding.
@@ -40,6 +40,11 @@ public class InlineMessageManager: BaseMessageManager {
         }
         return gistView
     }
+
+    // swiftlint:disable todo
+    // TODO: Verify and implement the method.
+    // swiftlint:enable todo
+    func stopAndCleanup() {}
 
     // MARK: - Overriding from Base
 
