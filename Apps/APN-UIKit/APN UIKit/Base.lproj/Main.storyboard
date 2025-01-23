@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="37F-6d-U3o">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23094" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="37F-6d-U3o">
     <device id="retina6_5" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23084"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -56,7 +56,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="iXp-Fu-ehx">
-                                        <rect key="frame" x="20" y="240" width="344" height="35"/>
+                                        <rect key="frame" x="20" y="240.00000000000003" width="344" height="38.333333333333343"/>
                                         <color key="tintColor" red="0.44313725490196076" green="0.19215686274509802" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Generate Random Login"/>
@@ -154,13 +154,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gm6-Cg-tg6">
-                                <rect key="frame" x="10" y="157.66666666666666" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="124.66666666666667" width="394" height="27.333333333333329"/>
                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalCentering" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="AIH-WX-Xne">
-                                <rect key="frame" x="20" y="225" width="374" height="446"/>
+                                <rect key="frame" x="20" y="192" width="374" height="512"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="94.666666666666686" y="0.0" width="185" height="50"/>
@@ -229,7 +229,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="QCc-aF-w6r" userLabel="Send local push" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="94.666666666666686" y="338" width="185" height="34.333333333333314"/>
+                                        <rect key="frame" x="94.666666666666686" y="336" width="185" height="38.333333333333314"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="nRx-fT-Ki2"/>
@@ -241,8 +241,21 @@
                                             <action selector="send3rdPartyPush:" destination="0ax-47-4zI" eventType="touchUpInside" id="DR5-oa-iJr"/>
                                         </connections>
                                     </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Lb4-oP-0VA" userLabel="Inline examples (UiKit)" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="81.333333333333329" y="402" width="211.66666666666669" height="38.333333333333314"/>
+                                        <color key="backgroundColor" red="0.2352941036" green="0.26274511220000002" blue="0.49019610879999997" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="R99-5x-1ES"/>
+                                        </constraints>
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <state key="normal" title="Button"/>
+                                        <buttonConfiguration key="configuration" style="plain" title="Inline examples (SwiftUi)"/>
+                                        <connections>
+                                            <action selector="openInlineSwiftUiExamples:" destination="0ax-47-4zI" eventType="touchUpInside" id="n9s-20-5vO"/>
+                                        </connections>
+                                    </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="94.666666666666686" y="396" width="185" height="50"/>
+                                        <rect key="frame" x="94.666666666666686" y="462" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="uv2-HN-pr3"/>
@@ -271,7 +284,7 @@
                                 </constraints>
                             </imageView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="mIk-22-9js">
-                                <rect key="frame" x="10" y="130.33333333333334" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="97.333333333333329" width="394" height="27.333333333333329"/>
                                 <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
@@ -718,7 +731,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="T4D-Xe-9R6">
-                                                <rect key="frame" x="83" y="730.33333333333337" width="205" height="34.333333333333371"/>
+                                                <rect key="frame" x="83" y="730.33333333333337" width="205" height="38.333333333333371"/>
                                                 <color key="tintColor" red="0.4431372549" green="0.19215686269999999" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <state key="normal" title="Button"/>
                                                 <buttonConfiguration key="configuration" style="plain" title="Restore default settings"/>
@@ -727,7 +740,7 @@
                                                 </connections>
                                             </button>
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Note: You must restart the app to apply these changes" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="q0h-un-phO">
-                                                <rect key="frame" x="10" y="774.66666666666663" width="350.66666666666669" height="19.333333333333371"/>
+                                                <rect key="frame" x="10" y="778.66666666666663" width="350.66666666666669" height="19.333333333333371"/>
                                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="14"/>
                                                 <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="0.55000000000000004" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
@@ -868,6 +881,22 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="oht-yj-uze" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="4202" y="4"/>
+        </scene>
+        <!--Inline In App Message Swift Ui View Controller-->
+        <scene sceneID="UVM-d0-6Zn">
+            <objects>
+                <viewController storyboardIdentifier="InlineInAppMessageSwiftUiViewController" id="eep-l7-eum" customClass="InlineInAppMessageSwiftUiViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Vni-O4-X2d">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="tcJ-0P-ZLy"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <navigationItem id="OhY-DD-4vP"/>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="hZc-t9-INr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4912" y="8"/>
         </scene>
     </scenes>
     <resources>

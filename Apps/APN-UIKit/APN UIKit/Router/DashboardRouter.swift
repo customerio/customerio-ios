@@ -5,6 +5,7 @@ protocol DashboardRouting {
     func routeToLogin()
     func routeToCustomDataScreen(forSource source: CustomDataSource)
     func routeToSettings(_ withInfo: [String: String]?)
+    func routeToInlineSwiftUiExamplesScreen()
 }
 
 class DashboardRouter: DashboardRouting {
@@ -32,6 +33,11 @@ class DashboardRouter: DashboardRouting {
             viewController.deepLinkSiteId = siteId
             viewController.deeplinkCdpApiKey = cdpApiKey
         }
+        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToInlineSwiftUiExamplesScreen() {
+        let viewController = InlineInAppMessageSwiftUiViewController.newInstance()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }
