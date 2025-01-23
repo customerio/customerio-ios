@@ -124,6 +124,10 @@ class DashboardViewController: BaseViewController {
         dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
     }
 
+    @IBAction func openInlineSwiftUiExamples(_ sender: UIButton) {
+        dashboardRouter?.routeToInlineSwiftUiExamplesScreen()
+    }
+
     @IBAction func showPushPrompt(_ sender: UIButton) {
         notificationUtil.getPushPermission { status in
             if status == .notDetermined {
