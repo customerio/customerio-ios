@@ -106,16 +106,19 @@ public class GistInlineMessageUIView: UIView {
     private func setupView() {
         // Subscribe to changes in InAppMessageState to listen for new messages to display.
         inAppMessageStoreSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [self] state in
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
                 // InAppMessageManager callback function might not be on UI thread.
                 // Switch to UI thread to update UI.
                 Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.refreshView(state: state)
+                    self?.refreshView(state: state)
                 }
             }
             // Subscribe to changes in `currentMessageState` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.embeddedMessagesState, subscriber: subscriber)
+            inAppMessageManager.subscribe(comparator: { oldState, newState in
+                guard let elementId = self.elementId else { return true }
+
+                return oldState.embeddedMessagesState.first { $0.elementId == elementId } == newState.embeddedMessagesState.first { $0.elementId == elementId }
+            }, subscriber: subscriber)
             return subscriber
         }()
     }
@@ -129,7 +132,7 @@ public class GistInlineMessageUIView: UIView {
     }
 
     private func refreshView(forceShowNextMessage: Bool = false) {
-        inAppMessageManager.fetchState { [self] state in
+        inAppMessageManager.fetchState { [weak self] state in
             Task { @MainActor [weak self] in
                 self?.refreshView(state: state, forceShowNextMessage: forceShowNextMessage)
             }
@@ -152,6 +155,7 @@ public class GistInlineMessageUIView: UIView {
         if case .dismissed = currentMessageState {
             stopShowingMessageAndCleanup()
             delegate?.onNoMessageToDisplay()
+            return
         }
 
 //        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {

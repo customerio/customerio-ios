@@ -1,13 +1,11 @@
+import CioMessagingInApp
 import SwiftUI
 
 struct InlineInAppMessageView: View {
     var body: some View {
-        VStack(spacing: 10) {
-            // To be replaced with inline view
-            HeaderView()
-                .frame(height: 80)
+        VStack {
+            InlineMessage(elementId: "sticky-header")
                 .frame(maxWidth: .infinity)
-                .background(Color.red)
 
             ScrollView {
                 CardView()
@@ -18,13 +16,8 @@ struct InlineInAppMessageView: View {
                 SquaresView()
                     .frame(height: 160)
 
-                // To be replaced with inline view
-                Text("#inline")
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .frame(height: 80)
+                InlineMessage(elementId: "inline")
                     .frame(maxWidth: .infinity)
-                    .background(Color.red)
 
                 CardView()
                     .frame(maxWidth: .infinity)
@@ -36,24 +29,11 @@ struct InlineInAppMessageView: View {
 
                 RectangleView()
 
-                // To be replaced with inline view
-                Text("#below-fold")
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .frame(height: 80)
+                InlineMessage(elementId: "below-fold")
                     .frame(maxWidth: .infinity)
-                    .background(Color.red)
 
-            }.padding()
+            }.padding(.horizontal, 10)
         }
-    }
-}
-
-struct HeaderView: View {
-    var body: some View {
-        Text("#sticky-header")
-            .font(.subheadline)
-            .foregroundColor(.white)
     }
 }
 
