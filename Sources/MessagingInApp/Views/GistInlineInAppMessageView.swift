@@ -106,7 +106,7 @@ public class GistInlineMessageUIView: UIView {
     private func setupView() {
         // Subscribe to changes in InAppMessageState to listen for new messages to display.
         inAppMessageStoreSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+            let subscriber = InAppMessageStoreSubscriber { [self] state in
                 // InAppMessageManager callback function might not be on UI thread.
                 // Switch to UI thread to update UI.
                 Task { @MainActor [weak self] in
@@ -147,7 +147,7 @@ public class GistInlineMessageUIView: UIView {
             return // we cannot check if a message is available until element id set on View.
         }
 
-        let currentMessageState = state.embeddedMessagesState[elementId]?.first { $0.elementId == elementId }
+        let currentMessageState = state.embeddedMessagesState.first { $0.elementId == elementId }
 
         if case .dismissed = currentMessageState {
             stopShowingMessageAndCleanup()

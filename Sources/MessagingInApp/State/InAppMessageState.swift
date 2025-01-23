@@ -12,7 +12,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let userId: String?
     let currentRoute: String?
     let currentMessageState: ModalMessageState
-    let embeddedMessagesState: [String: Set<InLineMessageState>]
+    let embeddedMessagesState: Set<InLineMessageState>
     let messagesInQueue: Set<Message>
     let shownMessageQueueIds: Set<String>
 
@@ -24,7 +24,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         userId: String? = nil,
         currentRoute: String? = nil,
         currentMessageState: ModalMessageState = .initial,
-        embeddedMessagesState: [String: Set<InLineMessageState>] = [:],
+        embeddedMessagesState: Set<InLineMessageState> = [],
         messagesInQueue: Set<Message> = [],
         shownMessageQueueIds: Set<String> = []
     ) {
@@ -47,7 +47,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         userId: String? = nil,
         currentRoute: String? = nil,
         currentMessageState: ModalMessageState? = nil,
-        embeddedMessagesState: [String: Set<InLineMessageState>]? = nil,
+        embeddedMessagesState: Set<InLineMessageState>? = nil,
         messagesInQueue: Set<Message>? = nil,
         shownMessageQueueIds: Set<String>? = nil
     ) -> InAppMessageState {
@@ -266,11 +266,12 @@ extension InLineMessageState {
 
     var elementId: String? {
         switch self {
-        case .initial,
-             .dismissed:
+        case .initial:
             return nil
         case .embedded(_, let elementId):
             return elementId
+        case .dismissed(let message):
+            return message.elementId
         }
     }
 

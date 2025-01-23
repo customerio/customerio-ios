@@ -43,18 +43,22 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
     case .embedMessages(let messages):
 
-        let messageDictionary = messages.reduce(into: [String: Set<InLineMessageState>]()) { dict, message in
-            let wrapper = InLineMessageState.embedded(message: message, elementId: message.elementId!)
-            dict[message.elementId!, default: []].insert(wrapper)
+//        let messageDictionary = messages.reduce(into: [String: Set<InLineMessageState>]()) { dict, message in
+//            let wrapper = InLineMessageState.embedded(message: message, elementId: message.elementId!)
+//            dict[message.elementId!, default: []].insert(wrapper)
+//        }
+//
+//        var stateEmbeddedMessages = state.embeddedMessagesState
+//        for key in state.embeddedMessagesState.keys {
+//            let result = stateEmbeddedMessages[key]?.union(messageDictionary[key]!)
+//            stateEmbeddedMessages[key] = result!
+//        }
+
+        let messageToEmbed = messages.map {
+            InLineMessageState.embedded(message: $0, elementId: $0.elementId!)
         }
 
-        var stateEmbeddedMessages = state.embeddedMessagesState
-        for key in state.embeddedMessagesState.keys {
-            let result = stateEmbeddedMessages[key]?.union(messageDictionary[key]!)
-            stateEmbeddedMessages[key] = result!
-        }
-
-        return state.copy(embeddedMessagesState: stateEmbeddedMessages)
+        return state.copy(embeddedMessagesState: state.embeddedMessagesState.union(messageToEmbed))
 
     case .clearMessageQueue:
         return state.copy(messagesInQueue: [])
@@ -83,7 +87,10 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             : state.shownMessageQueueIds
 
         if message.isEmbedded {
-            let newEmbeddedStates = state.embeddedMessagesState[message.elementId!]?.union([.dismissed(message: message)])
+            let newEmbeddedStates = state.embeddedMessagesState.filter {
+                $0.message?.queueId != message.queueId
+            }
+            .union([.dismissed(message: message)])
 
             return state.copy(
                 embeddedMessagesState: newEmbeddedStates,
