@@ -1,5 +1,4 @@
 import CioDataPipelines
-import CioMessagingInApp
 import SwiftUI
 
 struct CustomEventView: View {
@@ -19,8 +18,6 @@ struct CustomEventView: View {
 
             VStack {
                 Text("Send Custom Event").bold().font(.system(size: 20))
-
-                InlineMessage(elementId: "custom-screen")
 
                 VStack(spacing: 8) {
                     LabeledStringTextField(title: "Event Name", appiumId: "Event Name Input", value: $eventName)
