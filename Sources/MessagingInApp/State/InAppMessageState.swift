@@ -281,27 +281,26 @@ extension InLineMessageState {
         }
         return false
     }
+
+    var isEmbedded: Bool {
+        if case .embedded = self {
+            return true
+        }
+        return false
+    }
 }
 
 struct EmbeddedMessagesState: Equatable {
     private var messagesById: [String: InLineMessageState] = [:] // Keyed by queueId
-    private var elementToMessageIds: [String: [String]] = [:] // Maps elementId -> [queueId]
+    private var elementToMessageIds: [String: String] = [:] // Maps elementId -> queueId
 
     // Add or update a message
     mutating func add(message: Message, elementId: String) {
         guard let messageId = message.queueId else { return }
 
         let state = InLineMessageState.embedded(message: message, elementId: elementId)
-
-        // Update or insert the message into messagesById
         messagesById[messageId] = state
-
-        // Append messageId to the list for elementId if it's not already there
-        var messageIds = elementToMessageIds[elementId, default: []]
-        if !messageIds.contains(messageId) {
-            messageIds.append(messageId)
-        }
-        elementToMessageIds[elementId] = messageIds
+        elementToMessageIds[elementId] = messageId
     }
 
     // Remove a message by its messageId
@@ -309,27 +308,19 @@ struct EmbeddedMessagesState: Equatable {
         guard let state = messagesById[messageId],
               let elementId = state.elementId else { return }
 
+        // Remove from messagesById
         messagesById[messageId] = nil
-        elementToMessageIds[elementId]?.removeAll { $0 == messageId }
 
-        if elementToMessageIds[elementId]?.isEmpty == true {
+        // Remove the mapping in elementToMessageIds
+        if elementToMessageIds[elementId] == messageId {
             elementToMessageIds[elementId] = nil
         }
     }
 
-    // Fetch the next message for an elementId
-    func getNextMessage(forElementId elementId: String) -> InLineMessageState? {
-        guard let messageId = elementToMessageIds[elementId]?.first else { return nil }
+    // Fetch the message currently associated with an elementId
+    func getMessage(forElementId elementId: String) -> InLineMessageState? {
+        guard let messageId = elementToMessageIds[elementId] else { return nil }
         return messagesById[messageId]
-    }
-
-    // Mark the current message for an elementId as processed and move to the next
-    mutating func advanceMessage(forElementId elementId: String) {
-        guard var messageIds = elementToMessageIds[elementId], !messageIds.isEmpty else { return }
-
-        // Remove the first messageId from the list
-        messageIds.removeFirst()
-        elementToMessageIds[elementId] = messageIds.isEmpty ? nil : messageIds
     }
 
     // Fetch all messages for debugging or iteration
@@ -345,19 +336,24 @@ struct EmbeddedMessagesState: Equatable {
 }
 
 extension EmbeddedMessagesState {
+    // Dismiss the message for a given elementId
+    mutating func dismissMessage(forElementId elementId: String) {
+        guard let messageId = elementToMessageIds[elementId],
+              let existingState = messagesById[messageId] else { return }
+
+        // Update the state of the message to dismissed
+        let dismissedState = InLineMessageState.dismissed(message: existingState.message!)
+        messagesById[messageId] = dismissedState
+
+        // Remove the mapping from elementToMessageIds
+        elementToMessageIds[elementId] = nil
+    }
+
+    // Dismiss a specific message by messageId
     mutating func dismissMessage(withMessageId messageId: String) {
         guard let existingState = messagesById[messageId] else { return }
 
-        // Update the message state to dismissed
-        let dismissedState = InLineMessageState.dismissed(message: existingState.message!)
-        messagesById[messageId] = dismissedState
-    }
-
-    mutating func dismissMessage(forElementId elementId: String) {
-        guard let messageId = elementToMessageIds[elementId]?.first,
-              let existingState = messagesById[messageId] else { return }
-
-        // Update the message state to dismissed
+        // Update the state of the message to dismissed
         let dismissedState = InLineMessageState.dismissed(message: existingState.message!)
         messagesById[messageId] = dismissedState
     }

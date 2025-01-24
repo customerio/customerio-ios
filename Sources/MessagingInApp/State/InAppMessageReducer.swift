@@ -57,11 +57,18 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state.copy(currentMessageState: .loading(message: message))
 
     case .displayMessage(let message):
-        if let queueId = message.queueId, !message.isEmbedded {
+        if let queueId = message.queueId {
             // If the message should be tracked shown when it is displayed, add the queueId to shownMessageQueueIds.
             let shownMessageQueueIds = action.shouldMarkMessageAsShown
                 ? state.shownMessageQueueIds.union([queueId])
                 : state.shownMessageQueueIds
+
+            if message.isEmbedded {
+                return state.copy(
+                    messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
+                    shownMessageQueueIds: shownMessageQueueIds
+                )
+            }
 
             return state.copy(
                 currentMessageState: .displayed(message: message),

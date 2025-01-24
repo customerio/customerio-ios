@@ -106,16 +106,20 @@ public class GistInlineMessageUIView: UIView {
     private func setupView() {
         // Subscribe to changes in InAppMessageState to listen for new messages to display.
         inAppMessageStoreSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [self] state in
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
                 // InAppMessageManager callback function might not be on UI thread.
                 // Switch to UI thread to update UI.
                 Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.refreshView(state: state)
+                    self?.refreshView(state: state)
                 }
             }
             // Subscribe to changes in `currentMessageState` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.embeddedMessagesState, subscriber: subscriber)
+            inAppMessageManager.subscribe(comparator: { oldState, newState in
+                guard let elementId = self.elementId else { return true }
+
+                return oldState.embeddedMessagesState.getMessage(forElementId: elementId) == newState.embeddedMessagesState.getMessage(forElementId: elementId)
+
+            }, subscriber: subscriber)
             return subscriber
         }()
     }
@@ -124,12 +128,15 @@ public class GistInlineMessageUIView: UIView {
         guard let subscriber = inAppMessageStoreSubscriber else { return }
 
         logger.logWithModuleTag("Unsubscribing GistInlineMessageUIView from InAppMessageState", level: .debug)
+        if let message = inlineMessageManager?.currentMessage {
+            inAppMessageManager.dispatch(action: .dismissMessage(message: message, shouldLog: false, viaCloseAction: false))
+        }
         inAppMessageManager.unsubscribe(subscriber: subscriber)
         inAppMessageStoreSubscriber = nil
     }
 
     private func refreshView(forceShowNextMessage: Bool = false) {
-        inAppMessageManager.fetchState { [self] state in
+        inAppMessageManager.fetchState { [weak self] state in
             Task { @MainActor [weak self] in
                 self?.refreshView(state: state, forceShowNextMessage: forceShowNextMessage)
             }
@@ -147,11 +154,12 @@ public class GistInlineMessageUIView: UIView {
             return // we cannot check if a message is available until element id set on View.
         }
 
-        let messageState = state.embeddedMessagesState.getNextMessage(forElementId: elementId)
+        let currentMessageState = state.embeddedMessagesState.getMessage(forElementId: elementId)
 
-        if case .dismissed = messageState {
+        if case .dismissed = currentMessageState {
             stopShowingMessageAndCleanup()
             delegate?.onNoMessageToDisplay()
+            return
         }
 
 //        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
@@ -161,7 +169,7 @@ public class GistInlineMessageUIView: UIView {
 //            return
 //        }
 
-        if let messageAvailableToDisplay = messageState?.message {
+        if let messageAvailableToDisplay = currentMessageState?.message {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
         }
     }
