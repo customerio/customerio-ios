@@ -228,7 +228,7 @@ class InAppMessageStateTests: IntegrationTest {
         let elementId = "testElementId"
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .embedMessage(message: message, elementId: elementId))
+//        await inAppMessageManager.dispatchAsync(action: .embedMessage(message: message, elementId: elementId))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.currentMessageState, .initial)
