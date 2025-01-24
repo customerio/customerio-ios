@@ -147,9 +147,9 @@ public class GistInlineMessageUIView: UIView {
             return // we cannot check if a message is available until element id set on View.
         }
 
-        let currentMessageState = state.embeddedMessagesState.first { $0.elementId == elementId }
+        let messageState = state.embeddedMessagesState.getNextMessage(forElementId: elementId)
 
-        if case .dismissed = currentMessageState {
+        if case .dismissed = messageState {
             stopShowingMessageAndCleanup()
             delegate?.onNoMessageToDisplay()
         }
@@ -161,7 +161,7 @@ public class GistInlineMessageUIView: UIView {
 //            return
 //        }
 
-        if let messageAvailableToDisplay = currentMessageState?.message {
+        if let messageAvailableToDisplay = messageState?.message {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
         }
     }
