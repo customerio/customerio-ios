@@ -118,6 +118,14 @@ extension Message {
 
         return true
     }
+
+    func messageMatchesRoute(_ currentRoute: String?) -> Bool {
+        if doesHavePageRule() {
+            guard let currentRoute else { return false }
+            return doesPageRuleMatch(route: currentRoute)
+        }
+        return true
+    }
 }
 
 extension Message: Equatable, Hashable {

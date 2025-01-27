@@ -223,6 +223,7 @@ class InAppMessageStateTests: IntegrationTest {
         }
     }
 
+    // TODO: reevaluate need of this test
     func test_embedMessage_expectNoStateChange() async {
         let message = Message(queueId: "1")
         let elementId = "testElementId"

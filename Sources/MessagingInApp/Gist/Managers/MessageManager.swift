@@ -19,7 +19,6 @@ open class BaseMessageManager {
     public let isMessageEmbed: Bool
 
     @Atomic public var isMessageLoaded: Bool = false
-    var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
     var elapsedTimer = ElapsedTimer()
     var engine: EngineWebInstance!
     var gistView: GistView!
@@ -71,15 +70,7 @@ open class BaseMessageManager {
     }
 
     deinit {
-        unsubscribeFromInAppMessageState()
         removeEngineWebView()
-    }
-
-    open func unsubscribeFromInAppMessageState() {
-        guard let subscriber = inAppMessageStoreSubscriber else { return }
-        logger.logWithModuleTag("Unsubscribing BaseMessageManager from InAppMessageState", level: .debug)
-        inAppMessageManager.unsubscribe(subscriber: subscriber)
-        inAppMessageStoreSubscriber = nil
     }
 
     // MARK: - Engine Cleanup

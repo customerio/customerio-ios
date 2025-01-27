@@ -68,7 +68,6 @@ class InlineMessageManager: BaseMessageManager {
         )
 
         removeEngineWebView()
-        unsubscribeFromInAppMessageState()
 
         // If the message was explicitly dismissed, fetch new messages from queue
         if case .dismissed = messageState {

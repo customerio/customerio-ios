@@ -63,16 +63,18 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
                 ? state.shownMessageQueueIds.union([queueId])
                 : state.shownMessageQueueIds
 
+            let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
+
             if message.isEmbedded {
                 return state.copy(
-                    messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
+                    messagesInQueue: messagesInQueue,
                     shownMessageQueueIds: shownMessageQueueIds
                 )
             }
 
             return state.copy(
                 currentMessageState: .displayed(message: message),
-                messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
+                messagesInQueue: messagesInQueue,
                 shownMessageQueueIds: shownMessageQueueIds
             )
         }

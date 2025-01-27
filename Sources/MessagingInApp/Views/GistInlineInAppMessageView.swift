@@ -162,6 +162,7 @@ public class GistInlineMessageUIView: UIView {
             return
         }
 
+        // TODO: check if this is needed
 //        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
 //            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
 //            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.

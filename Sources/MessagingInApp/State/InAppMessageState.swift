@@ -162,12 +162,12 @@ enum ModalMessageState: Equatable, CustomStringConvertible {
 
 /// Represents various states an in-app message can be in.
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
-enum InLineMessageState: Equatable, CustomStringConvertible, Hashable {
+enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
     case initial
     case embedded(message: Message, elementId: String)
     case dismissed(message: Message)
 
-    static func == (lhs: InLineMessageState, rhs: InLineMessageState) -> Bool {
+    static func == (lhs: InlineMessageState, rhs: InlineMessageState) -> Bool {
         switch (lhs, rhs) {
         case (.initial, .initial):
             return true
@@ -252,7 +252,7 @@ extension ModalMessageState {
     }
 }
 
-extension InLineMessageState {
+extension InlineMessageState {
     var message: Message? {
         switch self {
         case .initial:
@@ -291,14 +291,14 @@ extension InLineMessageState {
 }
 
 struct EmbeddedMessagesState: Equatable {
-    private var messagesById: [String: InLineMessageState] = [:] // Keyed by queueId
+    private var messagesById: [String: InlineMessageState] = [:] // Keyed by queueId
     private var elementToMessageIds: [String: String] = [:] // Maps elementId -> queueId
 
     // Add or update a message
     mutating func add(message: Message, elementId: String) {
         guard let messageId = message.queueId else { return }
 
-        let state = InLineMessageState.embedded(message: message, elementId: elementId)
+        let state = InlineMessageState.embedded(message: message, elementId: elementId)
         messagesById[messageId] = state
         elementToMessageIds[elementId] = messageId
     }
@@ -318,13 +318,13 @@ struct EmbeddedMessagesState: Equatable {
     }
 
     // Fetch the message currently associated with an elementId
-    func getMessage(forElementId elementId: String) -> InLineMessageState? {
+    func getMessage(forElementId elementId: String) -> InlineMessageState? {
         guard let messageId = elementToMessageIds[elementId] else { return nil }
         return messagesById[messageId]
     }
 
     // Fetch all messages for debugging or iteration
-    func allMessages() -> [InLineMessageState] {
+    func allMessages() -> [InlineMessageState] {
         Array(messagesById.values)
     }
 
@@ -342,7 +342,7 @@ extension EmbeddedMessagesState {
               let existingState = messagesById[messageId] else { return }
 
         // Update the state of the message to dismissed
-        let dismissedState = InLineMessageState.dismissed(message: existingState.message!)
+        let dismissedState = InlineMessageState.dismissed(message: existingState.message!)
         messagesById[messageId] = dismissedState
 
         // Remove the mapping from elementToMessageIds
@@ -354,7 +354,7 @@ extension EmbeddedMessagesState {
         guard let existingState = messagesById[messageId] else { return }
 
         // Update the state of the message to dismissed
-        let dismissedState = InLineMessageState.dismissed(message: existingState.message!)
+        let dismissedState = InlineMessageState.dismissed(message: existingState.message!)
         messagesById[messageId] = dismissedState
     }
 }

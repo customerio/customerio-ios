@@ -4,10 +4,14 @@ import UIKit
 /// A MessageManager subclass that specifically shows messages in a modal view.
 public class ModalMessageManager: BaseMessageManager {
     private var modalViewManager: ModalViewManager?
-
+    var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
     override init(state: InAppMessageState, message: Message) {
         super.init(state: state, message: message)
         subscribeToInAppMessageState()
+    }
+
+    deinit {
+        unsubscribeFromInAppMessageState()
     }
 
     // MARK: - Subscription to InAppMessageState
@@ -84,6 +88,13 @@ public class ModalMessageManager: BaseMessageManager {
         }
         // Dismiss the modal then call completion
         modalViewManager.dismissModalView(completionHandler: dismissalHandler)
+    }
+
+    open func unsubscribeFromInAppMessageState() {
+        guard let subscriber = inAppMessageStoreSubscriber else { return }
+        logger.logWithModuleTag("Unsubscribing BaseMessageManager from InAppMessageState", level: .debug)
+        inAppMessageManager.unsubscribe(subscriber: subscriber)
+        inAppMessageStoreSubscriber = nil
     }
 
     private func finishDismissal(messageState: ModalMessageState) {
