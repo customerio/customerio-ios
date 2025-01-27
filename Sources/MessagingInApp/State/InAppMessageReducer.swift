@@ -41,6 +41,15 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .processMessageQueue(let messages):
         return state.copy(messagesInQueue: Set(messages))
 
+    case .embedMessages(let messages):
+        var newEmbeddedMessages = state.embeddedMessagesState
+        for message in messages {
+            if let elementId = message.elementId {
+                newEmbeddedMessages.add(message: message, elementId: elementId)
+            }
+        }
+        return state.copy(embeddedMessagesState: newEmbeddedMessages)
+
     case .clearMessageQueue:
         return state.copy(messagesInQueue: [])
 
@@ -54,24 +63,37 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
                 ? state.shownMessageQueueIds.union([queueId])
                 : state.shownMessageQueueIds
 
+            let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
+
+            if message.isEmbedded {
+                return state.copy(
+                    messagesInQueue: messagesInQueue,
+                    shownMessageQueueIds: shownMessageQueueIds
+                )
+            }
+
             return state.copy(
                 currentMessageState: .displayed(message: message),
-                messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
+                messagesInQueue: messagesInQueue,
                 shownMessageQueueIds: shownMessageQueueIds
             )
         }
         return state
 
     case .dismissMessage(let message, _, _):
-        var shownMessageQueueIds = state.shownMessageQueueIds
-        // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
-        if action.shouldMarkMessageAsShown, let queueId = message.queueId {
-            shownMessageQueueIds = shownMessageQueueIds.union([queueId])
+        let newShownIds = action.shouldMarkMessageAsShown && message.queueId != nil
+            ? state.shownMessageQueueIds.union([message.queueId!])
+            : state.shownMessageQueueIds
+
+        if message.isEmbedded {
+            var newEmbeddedMessages = state.embeddedMessagesState
+            newEmbeddedMessages.dismissMessage(byQueueId: message.queueId!)
+            return state.copy(embeddedMessagesState: newEmbeddedMessages, shownMessageQueueIds: newShownIds)
         }
 
         return state.copy(
             currentMessageState: .dismissed(message: message),
-            shownMessageQueueIds: shownMessageQueueIds
+            shownMessageQueueIds: newShownIds
         )
 
     case .engineAction(let engineAction):
@@ -82,8 +104,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             return state.copy(currentMessageState: .dismissed(message: message))
         }
 
-    case .embedMessage,
-         .reportError:
+    case .reportError:
         return state
 
     case .resetState:

@@ -61,14 +61,13 @@ class InlineMessageManager: BaseMessageManager {
 
     /// Called when the message is dismissed (or reset).
     /// Typically remove the web engine, unsubscribe, and optionally remove the inline view.
-    override func onMessageDismissed(messageState: MessageState) {
+    override func onMessageDismissed(messageState: ModalMessageState) {
         logger.logWithModuleTag(
             "Inline message dismissed: \(currentMessage.describeForLogs)",
             level: .debug
         )
 
         removeEngineWebView()
-        unsubscribeFromInAppMessageState()
 
         // If the message was explicitly dismissed, fetch new messages from queue
         if case .dismissed = messageState {
