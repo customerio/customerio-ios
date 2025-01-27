@@ -164,6 +164,7 @@ enum ModalMessageState: Equatable, CustomStringConvertible {
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
 enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
     case initial
+    case readyToEmbed(message: Message, elementId: String) // New state
     case embedded(message: Message, elementId: String)
     case dismissed(message: Message)
 
@@ -171,10 +172,12 @@ enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
         switch (lhs, rhs) {
         case (.initial, .initial):
             return true
-        case (.dismissed(let lhsMessage), .dismissed(let rhsMessage)):
-            return lhsMessage.queueId == rhsMessage.queueId
+        case (.readyToEmbed(let lhsMessage, let lhsElementId), .readyToEmbed(let rhsMessage, let rhsElementId)):
+            return lhsMessage.queueId == rhsMessage.queueId && lhsElementId == rhsElementId
         case (.embedded(let lhsMessage, let lhsElementId), .embedded(let rhsMessage, let rhsElementId)):
             return lhsMessage.queueId == rhsMessage.queueId && lhsElementId == rhsElementId
+        case (.dismissed(let lhsMessage), .dismissed(let rhsMessage)):
+            return lhsMessage.queueId == rhsMessage.queueId
         default:
             return false
         }
@@ -184,6 +187,8 @@ enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
         switch self {
         case .initial:
             return "Initial"
+        case .readyToEmbed(let message, let elementId):
+            return "ReadyToEmbed(message: \(message.describeForLogs), elementId: \(elementId))"
         case .embedded(let message, _):
             return "Embedded(\(message.describeForLogs))"
         case .dismissed(let message):
@@ -195,6 +200,9 @@ enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
         switch self {
         case .initial:
             hasher.combine(0)
+        case .readyToEmbed(let message, let elementId):
+            hasher.combine(message.queueId)
+            hasher.combine(elementId)
         case .embedded(let message, _),
              .dismissed(let message):
             hasher.combine(message.queueId)
@@ -257,7 +265,8 @@ extension InlineMessageState {
         switch self {
         case .initial:
             return nil
-        case .embedded(let message, _):
+        case .readyToEmbed(let message, _),
+             .embedded(let message, _):
             return message
         case .dismissed(let message):
             return message
@@ -268,7 +277,8 @@ extension InlineMessageState {
         switch self {
         case .initial:
             return nil
-        case .embedded(_, let elementId):
+        case .readyToEmbed(_, let elementId),
+             .embedded(_, let elementId):
             return elementId
         case .dismissed(let message):
             return message.elementId
@@ -295,7 +305,7 @@ struct EmbeddedMessagesState: Equatable {
 
     // Add or update a message
     mutating func add(message: Message, elementId: String) {
-        let state = InlineMessageState.embedded(message: message, elementId: elementId)
+        let state = InlineMessageState.readyToEmbed(message: message, elementId: elementId)
         messagesByElementId[elementId] = state
     }
 
@@ -316,32 +326,11 @@ struct EmbeddedMessagesState: Equatable {
 }
 
 extension EmbeddedMessagesState {
-    // Dismiss a message by elementId
-    mutating func dismissMessage(forElementId elementId: String) {
-        guard let existingState = messagesByElementId[elementId],
-              let message = existingState.message
-        else {
+    // Update the state of an existing message by queueId
+    mutating func updateState(forQueueId queueId: String, to newState: InlineMessageState) {
+        guard let (elementId, _) = messagesByElementId.first(where: { $0.value.message?.queueId == queueId }) else {
             return
         }
-
-        // Safely update the state to dismissed
-        let dismissedState = InlineMessageState.dismissed(message: message)
-        messagesByElementId[elementId] = dismissedState
-    }
-
-    // Dismiss a message by queueId
-    mutating func dismissMessage(byQueueId queueId: String) {
-        // Find the matching elementId and message
-        guard let (elementId, existingState) = messagesByElementId.first(where: {
-            $0.value.message?.queueId == queueId
-        }),
-            let message = existingState.message
-        else {
-            return
-        }
-
-        // Safely update the state to dismissed
-        let dismissedState = InlineMessageState.dismissed(message: message)
-        messagesByElementId[elementId] = dismissedState
+        messagesByElementId[elementId] = newState
     }
 }

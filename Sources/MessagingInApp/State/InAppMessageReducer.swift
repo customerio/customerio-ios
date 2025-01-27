@@ -66,7 +66,11 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
 
             if message.isEmbedded {
+                var newEmbeddedMessages = state.embeddedMessagesState
+                newEmbeddedMessages.updateState(forQueueId: queueId, to: InlineMessageState.embedded(message: message, elementId: message.elementId!))
+
                 return state.copy(
+                    embeddedMessagesState: newEmbeddedMessages,
                     messagesInQueue: messagesInQueue,
                     shownMessageQueueIds: shownMessageQueueIds
                 )
@@ -86,8 +90,9 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             : state.shownMessageQueueIds
 
         if message.isEmbedded {
+            guard let queueId = message.queueId else { return state.copy(shownMessageQueueIds: newShownIds) }
             var newEmbeddedMessages = state.embeddedMessagesState
-            newEmbeddedMessages.dismissMessage(byQueueId: message.queueId!)
+            newEmbeddedMessages.updateState(forQueueId: queueId, to: InlineMessageState.dismissed(message: message))
             return state.copy(embeddedMessagesState: newEmbeddedMessages, shownMessageQueueIds: newShownIds)
         }
 
