@@ -82,6 +82,10 @@ public struct InlineMessageUIViewRepresentable: UIViewRepresentable {
 
     public func updateUIView(_ uiView: GistInlineMessageUIView, context: Context) {}
 
+    public static func dismantleUIView(_ uiView: GistInlineMessageUIView, coordinator: Coordinator) {
+        uiView.teardownView()
+    }
+
     public func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
