@@ -179,15 +179,12 @@ enum ModalMessageState: Equatable, CustomStringConvertible {
 /// Represents various states an in-app message can be in.
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
 enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
-    case initial
     case readyToEmbed(message: Message, elementId: String)
     case embedded(message: Message, elementId: String)
     case dismissed(message: Message)
 
     static func == (lhs: InlineMessageState, rhs: InlineMessageState) -> Bool {
         switch (lhs, rhs) {
-        case (.initial, .initial):
-            return true
         case (.readyToEmbed(let lhsMessage, let lhsElementId), .readyToEmbed(let rhsMessage, let rhsElementId)):
             return lhsMessage.queueId == rhsMessage.queueId && lhsElementId == rhsElementId
         case (.embedded(let lhsMessage, let lhsElementId), .embedded(let rhsMessage, let rhsElementId)):
@@ -201,8 +198,6 @@ enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
 
     var description: String {
         switch self {
-        case .initial:
-            return "Initial"
         case .readyToEmbed(let message, let elementId):
             return "ReadyToEmbed(message: \(message.describeForLogs), elementId: \(elementId))"
         case .embedded(let message, _):
@@ -214,8 +209,6 @@ enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
 
     func hash(into hasher: inout Hasher) {
         switch self {
-        case .initial:
-            hasher.combine(0)
         case .readyToEmbed(let message, let elementId):
             hasher.combine(message.queueId)
             hasher.combine(elementId)
@@ -279,8 +272,6 @@ extension ModalMessageState {
 extension InlineMessageState {
     var message: Message? {
         switch self {
-        case .initial:
-            return nil
         case .readyToEmbed(let message, _),
              .embedded(let message, _):
             return message
@@ -291,8 +282,6 @@ extension InlineMessageState {
 
     var elementId: String? {
         switch self {
-        case .initial:
-            return nil
         case .readyToEmbed(_, let elementId),
              .embedded(_, let elementId):
             return elementId
