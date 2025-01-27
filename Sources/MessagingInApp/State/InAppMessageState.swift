@@ -123,6 +123,22 @@ extension InAppMessageState {
 
         return diffs
     }
+
+    func updateEmbeddedMessage(
+        queueId: String,
+        newState: InlineMessageState,
+        shownMessageQueueIds: Set<String>,
+        messagesInQueue: Set<Message>? = nil
+    ) -> InAppMessageState {
+        var updatedEmbeddedMessages = embeddedMessagesState
+        updatedEmbeddedMessages.updateState(forQueueId: queueId, to: newState)
+
+        return copy(
+            embeddedMessagesState: updatedEmbeddedMessages,
+            messagesInQueue: messagesInQueue ?? self.messagesInQueue,
+            shownMessageQueueIds: shownMessageQueueIds
+        )
+    }
 }
 
 /// Represents various states an in-app message can be in.
@@ -164,7 +180,7 @@ enum ModalMessageState: Equatable, CustomStringConvertible {
 /// The states are derived from lifecycle of an in-app message, from loading to displaying to dismissing.
 enum InlineMessageState: Equatable, CustomStringConvertible, Hashable {
     case initial
-    case readyToEmbed(message: Message, elementId: String) // New state
+    case readyToEmbed(message: Message, elementId: String)
     case embedded(message: Message, elementId: String)
     case dismissed(message: Message)
 

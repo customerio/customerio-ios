@@ -166,11 +166,21 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
         // Dispatch next action to process remaining messages
         next(.processMessageQueue(messages: notShownMessages))
 
-        let validEmbeddedMessages = embeddedMessages
+        // Handle embedded messages
+        let embedMessagesToBeShown = embeddedMessages
             .filter { $0.messageMatchesRoute(state.currentRoute) }
+            .filter { message in
+                // Ensure no duplicate embedded messages for the same elementId in the `.embedded` state
+                guard let elementId = message.elementId else { return true }
+                if let existingState = state.embeddedMessagesState.getMessage(forElementId: elementId),
+                   case .embedded = existingState {
+                    return false // Exclude if the existing state is `.embedded`
+                }
+                return true // Include if no `.embedded` message exists for this elementId
+            }
 
-        if !validEmbeddedMessages.isEmpty {
-            dispatch(.embedMessages(messages: validEmbeddedMessages))
+        if !embedMessagesToBeShown.isEmpty {
+            dispatch(.embedMessages(messages: embedMessagesToBeShown))
         }
 
         // Find the first message that matches the current route or has no page rule

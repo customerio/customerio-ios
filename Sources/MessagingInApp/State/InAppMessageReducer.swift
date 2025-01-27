@@ -57,48 +57,51 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state.copy(currentMessageState: .loading(message: message))
 
     case .displayMessage(let message):
-        if let queueId = message.queueId {
-            // If the message should be tracked shown when it is displayed, add the queueId to shownMessageQueueIds.
-            let shownMessageQueueIds = action.shouldMarkMessageAsShown
-                ? state.shownMessageQueueIds.union([queueId])
-                : state.shownMessageQueueIds
+        guard let queueId = message.queueId else { return state }
 
-            let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
+        // Update shownMessageQueueIds if the message should be tracked
+        let shownMessageQueueIds = action.shouldMarkMessageAsShown
+            ? state.shownMessageQueueIds.union([queueId])
+            : state.shownMessageQueueIds
 
-            if message.isEmbedded {
-                var newEmbeddedMessages = state.embeddedMessagesState
-                newEmbeddedMessages.updateState(forQueueId: queueId, to: InlineMessageState.embedded(message: message, elementId: message.elementId!))
+        // Remove the message from the queue
+        let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
 
-                return state.copy(
-                    embeddedMessagesState: newEmbeddedMessages,
-                    messagesInQueue: messagesInQueue,
-                    shownMessageQueueIds: shownMessageQueueIds
-                )
-            }
-
-            return state.copy(
-                currentMessageState: .displayed(message: message),
-                messagesInQueue: messagesInQueue,
-                shownMessageQueueIds: shownMessageQueueIds
+        if message.isEmbedded {
+            // Update embedded message state
+            return state.updateEmbeddedMessage(
+                queueId: queueId,
+                newState: .embedded(message: message, elementId: message.elementId ?? ""),
+                shownMessageQueueIds: shownMessageQueueIds,
+                messagesInQueue: messagesInQueue
             )
         }
-        return state
+
+        // Update modal message state
+        return state.copy(
+            currentMessageState: .displayed(message: message),
+            messagesInQueue: messagesInQueue,
+            shownMessageQueueIds: shownMessageQueueIds
+        )
 
     case .dismissMessage(let message, _, _):
-        let newShownIds = action.shouldMarkMessageAsShown && message.queueId != nil
+        let shownMessageQueueIds = action.shouldMarkMessageAsShown && message.queueId != nil
             ? state.shownMessageQueueIds.union([message.queueId!])
             : state.shownMessageQueueIds
 
-        if message.isEmbedded {
-            guard let queueId = message.queueId else { return state.copy(shownMessageQueueIds: newShownIds) }
-            var newEmbeddedMessages = state.embeddedMessagesState
-            newEmbeddedMessages.updateState(forQueueId: queueId, to: InlineMessageState.dismissed(message: message))
-            return state.copy(embeddedMessagesState: newEmbeddedMessages, shownMessageQueueIds: newShownIds)
+        if message.isEmbedded, let queueId = message.queueId {
+            // Update embedded message state
+            return state.updateEmbeddedMessage(
+                queueId: queueId,
+                newState: InlineMessageState.dismissed(message: message),
+                shownMessageQueueIds: shownMessageQueueIds
+            )
         }
 
+        // Update modal message state
         return state.copy(
             currentMessageState: .dismissed(message: message),
-            shownMessageQueueIds: newShownIds
+            shownMessageQueueIds: shownMessageQueueIds
         )
 
     case .engineAction(let engineAction):
