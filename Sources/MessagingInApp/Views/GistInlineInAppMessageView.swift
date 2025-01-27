@@ -100,7 +100,7 @@ public class GistInlineMessageUIView: UIView {
     }
 
     deinit {
-        unsubscribeFromInAppMessageState()
+        dismissCurrentMessage()
     }
 
     private func setupView() {
@@ -136,12 +136,19 @@ public class GistInlineMessageUIView: UIView {
         }()
     }
 
-    private func unsubscribeFromInAppMessageState() {
+    func teardownView() {
         guard let subscriber = inAppMessageStoreSubscriber else { return }
 
         logger.logWithModuleTag("Unsubscribing GistInlineMessageUIView from InAppMessageState", level: .debug)
         inAppMessageManager.unsubscribe(subscriber: subscriber)
         inAppMessageStoreSubscriber = nil
+    }
+
+    private func dismissCurrentMessage() {
+        if let message = inlineMessageManager?.currentMessage {
+            logger.logWithModuleTag("Dismissing current inline message: \(message.messageId)", level: .debug)
+            inAppMessageManager.dispatch(action: .dismissMessage(message: message, shouldLog: false, viaCloseAction: false))
+        }
     }
 
     private func refreshView(forceShowNextMessage: Bool = false) {
