@@ -291,70 +291,57 @@ extension InlineMessageState {
 }
 
 struct EmbeddedMessagesState: Equatable {
-    private var messagesById: [String: InlineMessageState] = [:] // Keyed by queueId
-    private var elementToMessageIds: [String: String] = [:] // Maps elementId -> queueId
+    private var messagesByElementId: [String: InlineMessageState] = [:] // Maps elementId -> InLineMessageState
 
     // Add or update a message
     mutating func add(message: Message, elementId: String) {
-        guard let messageId = message.queueId else { return }
-
         let state = InlineMessageState.embedded(message: message, elementId: elementId)
-        messagesById[messageId] = state
-        elementToMessageIds[elementId] = messageId
+        messagesByElementId[elementId] = state
     }
 
-    // Remove a message by its messageId
-    mutating func remove(messageId: String) {
-        guard let state = messagesById[messageId],
-              let elementId = state.elementId else { return }
-
-        // Remove from messagesById
-        messagesById[messageId] = nil
-
-        // Remove the mapping in elementToMessageIds
-        if elementToMessageIds[elementId] == messageId {
-            elementToMessageIds[elementId] = nil
-        }
-    }
-
-    // Fetch the message currently associated with an elementId
+    // Fetch the current message for an elementId
     func getMessage(forElementId elementId: String) -> InlineMessageState? {
-        guard let messageId = elementToMessageIds[elementId] else { return nil }
-        return messagesById[messageId]
+        messagesByElementId[elementId]
     }
 
     // Fetch all messages for debugging or iteration
     func allMessages() -> [InlineMessageState] {
-        Array(messagesById.values)
+        Array(messagesByElementId.values)
     }
 
     // Conformance to Equatable
     static func == (lhs: EmbeddedMessagesState, rhs: EmbeddedMessagesState) -> Bool {
-        lhs.messagesById == rhs.messagesById &&
-            lhs.elementToMessageIds == rhs.elementToMessageIds
+        lhs.messagesByElementId == rhs.messagesByElementId
     }
 }
 
 extension EmbeddedMessagesState {
-    // Dismiss the message for a given elementId
+    // Dismiss a message by elementId
     mutating func dismissMessage(forElementId elementId: String) {
-        guard let messageId = elementToMessageIds[elementId],
-              let existingState = messagesById[messageId] else { return }
+        guard let existingState = messagesByElementId[elementId],
+              let message = existingState.message
+        else {
+            return
+        }
 
-        // Update the state of the message to dismissed
-        let dismissedState = InlineMessageState.dismissed(message: existingState.message!)
-        messagesById[messageId] = dismissedState
-
-        // Remove the mapping from elementToMessageIds
-        elementToMessageIds[elementId] = nil
+        // Safely update the state to dismissed
+        let dismissedState = InlineMessageState.dismissed(message: message)
+        messagesByElementId[elementId] = dismissedState
     }
 
-    // Dismiss a specific message by messageId
-    mutating func dismissMessage(withMessageId messageId: String) {
-        guard let existingState = messagesById[messageId] else { return }
+    // Dismiss a message by queueId
+    mutating func dismissMessage(byQueueId queueId: String) {
+        // Find the matching elementId and message
+        guard let (elementId, existingState) = messagesByElementId.first(where: {
+            $0.value.message?.queueId == queueId
+        }),
+            let message = existingState.message
+        else {
+            return
+        }
 
-        // Update the state of the message to dismissed
-        let dismissedState = InlineMessageState.dismissed(message: existingState.message!)
-        messagesById[messageId] = dismissedState
+        // Safely update the state to dismissed
+        let dismissedState = InlineMessageState.dismissed(message: message)
+        messagesByElementId[elementId] = dismissedState
     }
 }

@@ -87,7 +87,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
         if message.isEmbedded {
             var newEmbeddedMessages = state.embeddedMessagesState
-            newEmbeddedMessages.dismissMessage(withMessageId: message.queueId!)
+            newEmbeddedMessages.dismissMessage(byQueueId: message.queueId!)
             return state.copy(embeddedMessagesState: newEmbeddedMessages, shownMessageQueueIds: newShownIds)
         }
 
