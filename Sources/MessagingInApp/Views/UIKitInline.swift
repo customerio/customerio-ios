@@ -26,7 +26,7 @@ public protocol InlineMessageUIViewDelegate: AnyObject, AutoMockable {
  */
 public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
     // Can set in the constructor or can set later (like if you use Storyboards)
-    public var elementId: String? {
+    @IBInspectable public var elementId: String? {
         didSet {
             setupView()
         }
@@ -60,6 +60,10 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
 
         setupView()
         // An element id will not be set yet. No need to check for messages to display.
+    }
+
+    deinit {
+        inAppMessageView?.teardownView()
     }
 
     private func setupView() {

@@ -6,6 +6,7 @@ protocol DashboardRouting {
     func routeToCustomDataScreen(forSource source: CustomDataSource)
     func routeToSettings(_ withInfo: [String: String]?)
     func routeToInlineSwiftUiExamplesScreen()
+    func routeToInlineUikitExamplesScreen()
 }
 
 class DashboardRouter: DashboardRouting {
@@ -38,6 +39,11 @@ class DashboardRouter: DashboardRouting {
 
     func routeToInlineSwiftUiExamplesScreen() {
         let viewController = InlineInAppMessageSwiftUiViewController.newInstance()
+        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToInlineUikitExamplesScreen() {
+        let viewController = InlineInAppMessageUikitViewController.newInstance()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }
