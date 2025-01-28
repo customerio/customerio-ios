@@ -51,6 +51,7 @@
 		9443F22C2A66CD650019E744 /* MetadataUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9443F22B2A66CD650019E744 /* MetadataUtil.swift */; };
 		94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */; };
 		94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C5C26B2A718E970066A072 /* DateExtension.swift */; };
+		A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */; };
 		A776886C2B9875B5004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886B2B9875B5004F2A49 /* DataPipelines */; };
 		A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886D2B9875D0004F2A49 /* DataPipelines */; };
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
@@ -147,6 +148,7 @@
 		9443F22B2A66CD650019E744 /* MetadataUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataUtil.swift; sourceTree = "<group>"; };
 		94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
 		94C5C26B2A718E970066A072 /* DateExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtension.swift; sourceTree = "<group>"; };
+		A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageUikitViewController.swift; sourceTree = "<group>"; };
 		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraphShared.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraphShared.swift; sourceTree = "<group>"; };
 		F78934232A168E08005D3DF7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
 				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
+				A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */,
 				94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */,
 			);
 			path = View;
@@ -561,6 +564,7 @@
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
+				A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */,
 				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */,

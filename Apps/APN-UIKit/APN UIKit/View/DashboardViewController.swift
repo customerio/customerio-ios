@@ -128,6 +128,10 @@ class DashboardViewController: BaseViewController {
         dashboardRouter?.routeToInlineSwiftUiExamplesScreen()
     }
 
+    @IBAction func openInlineUikitExamples(_ sender: UIButton) {
+        dashboardRouter?.routeToInlineUikitExamplesScreen()
+    }
+
     @IBAction func showPushPrompt(_ sender: UIButton) {
         notificationUtil.getPushPermission { status in
             if status == .notDetermined {

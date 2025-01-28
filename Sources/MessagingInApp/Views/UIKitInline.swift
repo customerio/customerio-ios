@@ -26,7 +26,7 @@ public protocol InlineMessageUIViewDelegate: AnyObject, AutoMockable {
  */
 public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
     // Can set in the constructor or can set later (like if you use Storyboards)
-    public var elementId: String? {
+    @IBInspectable public var elementId: String? {
         didSet {
             setupView()
         }
@@ -60,6 +60,10 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
 
         setupView()
         // An element id will not be set yet. No need to check for messages to display.
+    }
+
+    deinit {
+        inAppMessageView?.teardownView()
     }
 
     private func setupView() {
@@ -101,7 +105,11 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
         }
 
         inAppMessageView.isHidden = false
-        animateHeight(to: height)
+        // If current height is same, we don't need to animate as repeated animations can cause flicker
+        // and may result in view never showing up.
+        if height != frame.size.height {
+            animateHeight(to: height)
+        }
 
         if let messageRenderingLoadingView = messageRenderingLoadingView {
             animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {

@@ -177,7 +177,7 @@ public class GistInlineMessageUIView: UIView {
 //            return
 //        }
 
-        if let messageAvailableToDisplay = currentMessageState?.message {
+        if let messageAvailableToDisplay = currentMessageState?.message, case .readyToEmbed = currentMessageState {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
         }
     }
