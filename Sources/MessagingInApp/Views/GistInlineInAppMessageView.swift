@@ -157,29 +157,33 @@ class GistInlineMessageUIView: UIView {
             refreshViewListener?()
         }
 
-        guard let elementId = elementId else {
-            return // we cannot check if a message is available until element id set on View.
-        }
+        // we cannot check if a message is available until element id set on View.
+        guard let elementId = elementId,
+              let embeddedMessageState = state.embeddedMessagesState.getMessage(forElementId: elementId)
+        else { return }
 
-        let currentMessageState = state.embeddedMessagesState.getMessage(forElementId: elementId)
-
-        if case .dismissed = currentMessageState {
-            stopShowingMessageAndCleanup()
+        switch embeddedMessageState {
+        case .dismissed:
+            stopShowingMessageAndCleanup(messageState: embeddedMessageState)
             delegate?.onNoMessageToDisplay()
-            return
-        }
-
-        if let messageAvailableToDisplay = currentMessageState?.message, case .readyToEmbed = currentMessageState {
-            displayInAppMessage(state: state, message: messageAvailableToDisplay)
+        case .readyToEmbed:
+            displayInAppMessage(state: state, messageState: embeddedMessageState)
+        case .embedded:
+            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
+            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
+            // We want to continue showing a message even if the fetch no longer returns the message and the message is currently visible.
+            break
         }
     }
 
-    private func displayInAppMessage(state: InAppMessageState, message: Message) {
+    private func displayInAppMessage(state: InAppMessageState, messageState: InlineMessageState) {
+        guard let message = messageState.message else { return }
+
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
         if isRenderingOrDisplayingAMessage {
             delegate?.willChangeMessage(newTemplateId: message.messageId) {
                 // After the delegate is done, cleanup resources since we no longer need to show the previous message.
-                self.stopShowingMessageAndCleanup()
+                self.stopShowingMessageAndCleanup(messageState: messageState)
                 self.beginShowing(state: state, message: message)
             }
         } else {
@@ -209,9 +213,10 @@ class GistInlineMessageUIView: UIView {
         inlineMessageManager = newInlineMessageManager
     }
 
-    private func stopShowingMessageAndCleanup() {
+    private func stopShowingMessageAndCleanup(messageState: InlineMessageState) {
         // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
         // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
+        inlineMessageManager?.onMessageDismissed(messageState: messageState)
         inlineMessageManager?.inlineMessageView.removeFromSuperview()
         inlineMessageManager = nil
     }

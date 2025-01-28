@@ -41,7 +41,7 @@ public class ModalMessageManager: BaseMessageManager {
     }
 
     // Show the modal when the message is displayed
-    override public func onMessageDisplayed() {
+    func onMessageDisplayed() {
         guard isMessageLoaded else {
             logger.logWithModuleTag(
                 "Message not loaded yet. Skipping loadModalMessage for \(currentMessage.describeForLogs).",
@@ -70,7 +70,7 @@ public class ModalMessageManager: BaseMessageManager {
     // Called when the message is dismissed (or reset).
     // Because onMessageDismissed(...) is internal in BaseMessageManager,
     // we can override it here in the same module.
-    override func onMessageDismissed(messageState: ModalMessageState) {
+    func onMessageDismissed(messageState: ModalMessageState) {
         logger.logWithModuleTag(
             "Dismissing message: \(currentMessage.describeForLogs) from ModalMessageManager",
             level: .debug
