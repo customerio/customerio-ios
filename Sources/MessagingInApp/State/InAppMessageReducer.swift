@@ -54,7 +54,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state.copy(messagesInQueue: [])
 
     case .loadMessage(let message):
-        return state.copy(currentMessageState: .loading(message: message))
+        return state.copy(modalMessageState: .loading(message: message))
 
     case .displayMessage(let message):
         guard let queueId = message.queueId else { return state }
@@ -79,7 +79,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
         // Update modal message state
         return state.copy(
-            currentMessageState: .displayed(message: message),
+            modalMessageState: .displayed(message: message),
             messagesInQueue: messagesInQueue,
             shownMessageQueueIds: shownMessageQueueIds
         )
@@ -100,7 +100,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
 
         // Update modal message state
         return state.copy(
-            currentMessageState: .dismissed(message: message),
+            modalMessageState: .dismissed(message: message),
             shownMessageQueueIds: shownMessageQueueIds
         )
 
@@ -109,7 +109,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         case .tap:
             return state
         case .messageLoadingFailed(let message):
-            return state.copy(currentMessageState: .dismissed(message: message))
+            return state.copy(modalMessageState: .dismissed(message: message))
         }
 
     case .reportError:

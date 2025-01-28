@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 // Event listener for interactions and state changes to an inline inapp message that's rendered.
-public protocol GistInlineMessageUIViewDelegate: AnyObject {
+protocol GistInlineMessageUIViewDelegate: AnyObject {
     // After a message is finished rendering and the size may have changed.
     func onMessageRendered(width: CGFloat, height: CGFloat)
     // If there is no longer any messages to be shown.
@@ -25,7 +25,7 @@ public protocol GistInlineMessageUIViewDelegate: AnyObject {
 
  This UIView is designed to not be opinionated on how an inline in-app message is displayed in an app. Anyone (including customers) can create a wrapper around this UIView in their UIKit or SwiftUI app and modify how in-app messages are shown.
  */
-public class GistInlineMessageUIView: UIView {
+class GistInlineMessageUIView: UIView {
     private var inAppMessageManager: InAppMessageManager {
         DIGraphShared.shared.inAppMessageManager
     }
@@ -63,7 +63,7 @@ public class GistInlineMessageUIView: UIView {
         contentSize = .init(width: newWidth, height: newHeight)
     }
 
-    public weak var delegate: GistInlineMessageUIViewDelegate?
+    weak var delegate: GistInlineMessageUIViewDelegate?
 
     // When a fetch request is performed, it's an async operation to have the inline View notified about this fetch and the inline View processing the fetch.
     // There is currently no easy way to know when the inline View has finished processing the fetch.
@@ -169,24 +169,12 @@ public class GistInlineMessageUIView: UIView {
             return
         }
 
-        // TODO: check if this is needed
-//        if !forceShowNextMessage, isRenderingOrDisplayingAMessage {
-//            // We are already displaying or rendering a messsage. Do not show another message until the current message is closed.
-//            // The main reason for this is when a message is tracked as "opened", the Gist backend will not return this message on the next fetch call.
-//            // We want to coninue showing a message even if the fetch no longer returns the message and the message is currently visible.
-//            return
-//        }
-
         if let messageAvailableToDisplay = currentMessageState?.message, case .readyToEmbed = currentMessageState {
             displayInAppMessage(state: state, message: messageAvailableToDisplay)
         }
     }
 
     private func displayInAppMessage(state: InAppMessageState, message: Message) {
-        // swiftlint:disable todo
-        // TODO: Verify if we need to check if the message has already been shown.
-        // swiftlint:enable todo
-
         // If a different message is currently being shown, we want to replace the currently shown message with new message.
         if isRenderingOrDisplayingAMessage {
             delegate?.willChangeMessage(newTemplateId: message.messageId) {
@@ -224,7 +212,6 @@ public class GistInlineMessageUIView: UIView {
     private func stopShowingMessageAndCleanup() {
         // If a message is currently being shown, cleanup and remove the webview so we can begin showing a new message.
         // Cleanup needs to involve removing the WebView from it's superview and cleaning up the WebView's resources.
-        inlineMessageManager?.stopAndCleanup()
         inlineMessageManager?.inlineMessageView.removeFromSuperview()
         inlineMessageManager = nil
     }

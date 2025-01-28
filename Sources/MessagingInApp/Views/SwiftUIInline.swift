@@ -55,7 +55,7 @@ public struct InlineMessage: View {
 
 // UIViewRepresentable to wrap the UIKit in-app message View. Required to use UIKit views in SwiftUI.
 // Mostly used to send events between the two frameworks: SwiftUI <--> UIKit.
-public struct InlineMessageUIViewRepresentable: UIViewRepresentable {
+struct InlineMessageUIViewRepresentable: UIViewRepresentable {
     public var elementId: String
     public var onActionClick: ((InAppMessage, String, String) -> Void)?
     public var onHeightChange: (CGFloat) -> Void
@@ -90,7 +90,7 @@ public struct InlineMessageUIViewRepresentable: UIViewRepresentable {
         Coordinator(self)
     }
 
-    public class Coordinator: NSObject, GistInlineMessageUIViewDelegate {
+    class Coordinator: NSObject, GistInlineMessageUIViewDelegate {
         var parent: InlineMessageUIViewRepresentable
 
         init(_ parent: InlineMessageUIViewRepresentable) {

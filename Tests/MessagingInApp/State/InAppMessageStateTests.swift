@@ -76,7 +76,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.pollInterval, 600)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
-        XCTAssertEqual(state.currentMessageState, .initial)
+        XCTAssertEqual(state.modalMessageState, .initial)
         XCTAssertTrue(state.messagesInQueue.isEmpty)
         XCTAssertTrue(state.shownMessageQueueIds.isEmpty)
     }
@@ -122,7 +122,7 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message))
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .displayed(message: message))
+        XCTAssertEqual(state.modalMessageState, .displayed(message: message))
         XCTAssertTrue(state.shownMessageQueueIds.contains("1"))
     }
 
@@ -133,7 +133,7 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message))
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
     }
 
     func test_resetState_expectInitialStateRestored() async {
@@ -147,7 +147,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.environment, .production)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
-        XCTAssertEqual(state.currentMessageState, .initial)
+        XCTAssertEqual(state.modalMessageState, .initial)
         XCTAssertTrue(state.messagesInQueue.isEmpty)
         XCTAssertTrue(state.shownMessageQueueIds.isEmpty)
     }
@@ -168,10 +168,10 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.messagesInQueue.count, 3)
 
         state = await inAppMessageManager.waitForState { state in
-            state.currentMessageState.isLoading
+            state.modalMessageState.isLoading
         }
 
-        if case .loading(let message) = state.currentMessageState {
+        if case .loading(let message) = state.modalMessageState {
             XCTAssertEqual(message.queueId, "2")
         } else {
             XCTFail("Expected loading state with highest priority message")
@@ -204,7 +204,7 @@ class InAppMessageStateTests: IntegrationTest {
         var state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "home")
 
-        if case .loading(let loadingMessage) = state.currentMessageState {
+        if case .loading(let loadingMessage) = state.modalMessageState {
             XCTAssertEqual(loadingMessage.queueId, "1")
         } else {
             XCTFail("Expected loading state with message")
@@ -216,24 +216,121 @@ class InAppMessageStateTests: IntegrationTest {
         state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "profile")
 
-        if case .dismissed(let dismissedMessage) = state.currentMessageState {
+        if case .dismissed(let dismissedMessage) = state.modalMessageState {
             XCTAssertEqual(dismissedMessage.queueId, "1")
         } else {
             XCTFail("Expected dismissed state")
         }
     }
 
-    // TODO: reevaluate need of this test
+    // MARK: - Inline Tests
+
     func test_embedMessage_expectNoStateChange() async {
-        let message = Message(queueId: "1")
         let elementId = "testElementId"
 
+        let message = Message(elementId: elementId, queueId: "1")
+
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-//        await inAppMessageManager.dispatchAsync(action: .embedMessage(message: message, elementId: elementId))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .initial)
+        XCTAssertEqual(state.modalMessageState, .initial)
+        XCTAssertTrue(state.embeddedMessagesState.getMessage(forElementId: elementId)?.message?.queueId == "1")
         XCTAssertFalse(state.shownMessageQueueIds.contains("1"))
+    }
+
+    func test_embedMessage_givenDuplicateElementId_expectOnlyOneMessageAdded() async {
+        let elementId = String.random
+        let message1 = Message(elementId: elementId, queueId: "1")
+        let message2 = Message(elementId: elementId, queueId: "2")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage = state.embeddedMessagesState.getMessage(forElementId: elementId)
+
+        XCTAssertNotNil(embeddedMessage)
+        XCTAssertEqual(embeddedMessage?.message?.queueId, "2") // Only the latest message should be embedded, since its a map
+    }
+
+    func test_dismissEmbeddedMessage_expectStateUpdatedToDismissed() async {
+        let elementId = String.random
+        let message = Message(elementId: elementId, queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+        await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage = state.embeddedMessagesState.getMessage(forElementId: elementId)
+
+        XCTAssertNotNil(embeddedMessage)
+        XCTAssertEqual(embeddedMessage?.message?.queueId, "1")
+        XCTAssertEqual(embeddedMessage, .dismissed(message: message))
+    }
+
+    func test_readyToEmbedMessage_expectStateUpdatedToEmbedded() async {
+        let elementId = String.random
+        let message = Message(elementId: elementId, queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage = state.embeddedMessagesState.getMessage(forElementId: elementId)
+
+        XCTAssertNotNil(embeddedMessage)
+        XCTAssertEqual(embeddedMessage?.message?.queueId, "1")
+        XCTAssertEqual(embeddedMessage, .embedded(message: message, elementId: elementId))
+    }
+
+    func test_embedMessage_givenRouteMismatch_expectMessageNotEmbedded() async {
+        let elementId = String.random
+        let message = Message(pageRule: "home", elementId: elementId, queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "profile"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage = state.embeddedMessagesState.getMessage(forElementId: elementId)
+
+        XCTAssertNil(embeddedMessage) // Message should not be embedded as the route doesn't match
+    }
+
+    func test_embedMessage_givenRouteMatch_expectMessageEmbedded() async {
+        let elementId = String.random
+        let message = Message(pageRule: "home", elementId: elementId, queueId: "1")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage = state.embeddedMessagesState.getMessage(forElementId: elementId)
+
+        XCTAssertNotNil(embeddedMessage)
+        XCTAssertEqual(embeddedMessage?.message?.queueId, "1")
+    }
+
+    func test_processMessageQueue_givenMultipleEmbeddedMessages_expectAllEmbedded() async {
+        let message1 = Message(elementId: "element1", queueId: "1")
+        let message2 = Message(elementId: "element2", queueId: "2")
+
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
+
+        let state = await inAppMessageManager.state
+        let embeddedMessage1 = state.embeddedMessagesState.getMessage(forElementId: "element1")
+        let embeddedMessage2 = state.embeddedMessagesState.getMessage(forElementId: "element2")
+
+        XCTAssertNotNil(embeddedMessage1)
+        XCTAssertEqual(embeddedMessage1?.message?.queueId, "1")
+
+        XCTAssertNotNil(embeddedMessage2)
+        XCTAssertEqual(embeddedMessage2?.message?.queueId, "2")
     }
 
     // MARK: - Engine Action Tests
@@ -260,7 +357,7 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
 
         XCTAssertTrue(globalEventListener.errorWithMessageCalled)
         XCTAssertEqual(globalEventListener.errorWithMessageReceivedArguments?.deliveryId, message.gistProperties.campaignId)
@@ -277,7 +374,7 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
 
         let state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
         XCTAssertTrue(state.shownMessageQueueIds.contains(message.queueId!))
 
         XCTAssertEqual(globalEventListener.messageShownCallsCount, 1)
@@ -296,7 +393,7 @@ class InAppMessageStateTests: IntegrationTest {
         state = await inAppMessageManager.state
         XCTAssertNil(state.userId)
         XCTAssertEqual(state.currentRoute, "home")
-        XCTAssertEqual(state.currentMessageState, .initial)
+        XCTAssertEqual(state.modalMessageState, .initial)
         XCTAssertTrue(state.messagesInQueue.isEmpty)
 
         XCTAssertFalse(globalEventListener.messageShownCalled)
@@ -319,10 +416,10 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.currentRoute, "home")
 
         state = await inAppMessageManager.waitForState { state in
-            state.currentMessageState.isLoading
+            state.modalMessageState.isLoading
         }
 
-        if case .loading(let loadingMessage) = state.currentMessageState {
+        if case .loading(let loadingMessage) = state.modalMessageState {
             XCTAssertEqual(loadingMessage.queueId, "1")
         } else {
             XCTFail("Expected loading state with message 1")
@@ -335,10 +432,10 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.currentRoute, "profile")
 
         state = await inAppMessageManager.waitForState { state in
-            state.currentMessageState.isLoading
+            state.modalMessageState.isLoading
         }
 
-        if case .loading(let loadingMessage) = state.currentMessageState {
+        if case .loading(let loadingMessage) = state.modalMessageState {
             XCTAssertEqual(loadingMessage.queueId, "2")
         } else {
             XCTFail("Expected loading state with message 2")
@@ -353,18 +450,18 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message]))
 
         var state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .loading(message: message))
+        XCTAssertEqual(state.modalMessageState, .loading(message: message))
 
         try await dispatchAndWait(.setPageRoute(route: "profile"))
 
         state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .dismissed(message: message))
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
         XCTAssertEqual(state.currentRoute, "profile")
 
         try await dispatchAndWait(.setPageRoute(route: "home"))
 
         state = await inAppMessageManager.state
-        XCTAssertEqual(state.currentMessageState, .loading(message: message))
+        XCTAssertEqual(state.modalMessageState, .loading(message: message))
     }
 
     // MARK: - Callback Tests

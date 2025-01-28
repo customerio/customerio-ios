@@ -11,7 +11,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let pollInterval: Double
     let userId: String?
     let currentRoute: String?
-    let currentMessageState: ModalMessageState
+    let modalMessageState: ModalMessageState
     let embeddedMessagesState: EmbeddedMessagesState
     let messagesInQueue: Set<Message>
     let shownMessageQueueIds: Set<String>
@@ -23,7 +23,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         pollInterval: Double = 600,
         userId: String? = nil,
         currentRoute: String? = nil,
-        currentMessageState: ModalMessageState = .initial,
+        modalMessageState: ModalMessageState = .initial,
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
         messagesInQueue: Set<Message> = [],
         shownMessageQueueIds: Set<String> = []
@@ -34,7 +34,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.pollInterval = pollInterval
         self.userId = userId
         self.currentRoute = currentRoute
-        self.currentMessageState = currentMessageState
+        self.modalMessageState = modalMessageState
         self.embeddedMessagesState = embeddedMessagesState
         self.messagesInQueue = messagesInQueue
         self.shownMessageQueueIds = shownMessageQueueIds
@@ -46,7 +46,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         pollInterval: Double? = nil,
         userId: String? = nil,
         currentRoute: String? = nil,
-        currentMessageState: ModalMessageState? = nil,
+        modalMessageState: ModalMessageState? = nil,
         embeddedMessagesState: EmbeddedMessagesState? = nil,
         messagesInQueue: Set<Message>? = nil,
         shownMessageQueueIds: Set<String>? = nil
@@ -58,7 +58,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             pollInterval: pollInterval ?? self.pollInterval,
             userId: userId ?? self.userId,
             currentRoute: currentRoute ?? self.currentRoute,
-            currentMessageState: currentMessageState ?? self.currentMessageState,
+            modalMessageState: modalMessageState ?? self.modalMessageState,
             embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
             shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds
@@ -72,7 +72,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.pollInterval == rhs.pollInterval &&
             lhs.userId == rhs.userId &&
             lhs.currentRoute == rhs.currentRoute &&
-            lhs.currentMessageState == rhs.currentMessageState &&
+            lhs.modalMessageState == rhs.modalMessageState &&
             lhs.messagesInQueue == rhs.messagesInQueue &&
             lhs.shownMessageQueueIds == rhs.shownMessageQueueIds
     }
@@ -86,7 +86,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             pollInterval: \(pollInterval),
             userId: \(String(describing: userId)),
             currentRoute: \(String(describing: currentRoute)),
-            currentMessageState: \(currentMessageState),
+            modalMessageState: \(modalMessageState),
             embeddedMessagesState: \(embeddedMessagesState),
             messagesInQueue: \(messagesInQueue.map(\.describeForLogs)),
             shownMessageQueueIds: \(shownMessageQueueIds)
@@ -116,7 +116,7 @@ extension InAppMessageState {
         putIfDifferent(\.pollInterval, as: "pollInterval")
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
-        putIfDifferent(\.currentMessageState, as: "currentMessageState")
+        putIfDifferent(\.modalMessageState, as: "currentMessageState")
         putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")
         putIfDifferent(\.messagesInQueue, as: "messagesInQueue")
         putIfDifferent(\.shownMessageQueueIds, as: "shownMessageQueueIds")

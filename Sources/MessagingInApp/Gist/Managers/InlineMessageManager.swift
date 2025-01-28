@@ -41,11 +41,6 @@ class InlineMessageManager: BaseMessageManager {
         return gistView
     }
 
-    // swiftlint:disable todo
-    // TODO: Verify and implement the method.
-    // swiftlint:enable todo
-    func stopAndCleanup() {}
-
     // MARK: - Overriding from Base
 
     /// Called when the in-app state changes to `.displayed`.

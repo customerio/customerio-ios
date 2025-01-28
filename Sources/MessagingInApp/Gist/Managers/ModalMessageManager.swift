@@ -19,7 +19,7 @@ public class ModalMessageManager: BaseMessageManager {
     public func subscribeToInAppMessageState() {
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [self] state in
-                let messageState = state.currentMessageState
+                let messageState = state.modalMessageState
                 switch messageState {
                 case .displayed:
                     threadUtil.runMain {
@@ -35,7 +35,7 @@ public class ModalMessageManager: BaseMessageManager {
                     break
                 }
             }
-            self.inAppMessageManager.subscribe(keyPath: \.currentMessageState, subscriber: subscriber)
+            self.inAppMessageManager.subscribe(keyPath: \.modalMessageState, subscriber: subscriber)
             return subscriber
         }()
     }

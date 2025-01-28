@@ -58,7 +58,7 @@ func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
         // Check if there is a message displayed and if it has a page rule
         // If the message does not have a page rule, it will continue to be displayed
         // If the message has a page rule, it will be dismissed only if updated route does not match message's page rule
-        if let message = state.currentMessageState.activeModalMessage,
+        if let message = state.modalMessageState.activeModalMessage,
            message.doesHavePageRule(),
            !message.doesPageRuleMatch(route: currentRoute) {
             // Dismiss message if the route does not match new route
@@ -80,8 +80,8 @@ func modalMessageDisplayStateMiddleware(logger: Logger, threadUtil: ThreadUtil) 
 
         let state = getState()
         // If there is a message currently displayed, block loading new message
-        guard !state.currentMessageState.isDisplayed else {
-            let currentMessage = state.currentMessageState.message?.describeForLogs ?? "nil"
+        guard !state.modalMessageState.isDisplayed else {
+            let currentMessage = state.modalMessageState.message?.describeForLogs ?? "nil"
             return next(.reportError(message: "Blocked loading message: \(message.describeForLogs) because another message is currently displayed or cancelled: \(currentMessage)"))
         }
 
@@ -161,8 +161,8 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
         let modalMessages = notShownMessages.filter { !$0.isEmbedded }
         let embeddedMessages = notShownMessages.filter(\.isEmbedded)
 
-        let isCurrentMessageLoading = state.currentMessageState.isLoading
-        let isCurrentMessageDisplaying = state.currentMessageState.isDisplayed
+        let isCurrentMessageLoading = state.modalMessageState.isLoading
+        let isCurrentMessageDisplaying = state.modalMessageState.isDisplayed
         // Dispatch next action to process remaining messages
         next(.processMessageQueue(messages: notShownMessages))
 
@@ -212,10 +212,6 @@ func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMidd
         // Forward message events to delegate when message is displayed, dismissed or embedded,
         // or when an engine action is received
         switch action {
-            // TODO: add delegate for embedd
-//        case .embedMessage(let message, let elementId):
-//            delegate.embedMessage(message: message, elementId: elementId)
-
         case .displayMessage(let message):
             delegate.messageShown(message: message)
 
