@@ -105,7 +105,11 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
         }
 
         inAppMessageView.isHidden = false
-        animateHeight(to: height)
+        // If current height is same, we don't need to animate as repeated animations can cause flicker
+        // and may result in view never showing up.
+        if height != frame.size.height {
+            animateHeight(to: height)
+        }
 
         if let messageRenderingLoadingView = messageRenderingLoadingView {
             animateFadeInOutInlineView(fromView: messageRenderingLoadingView, toView: inAppMessageView) {
