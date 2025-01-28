@@ -86,7 +86,7 @@ class Gist: GistProvider {
 
     func dismissMessage() {
         inAppMessageManager.fetchState { [self] state in
-            guard case .displayed(let message) = state.currentMessageState else {
+            guard case .displayed(let message) = state.modalMessageState else {
                 return
             }
 
