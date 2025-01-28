@@ -82,19 +82,6 @@ open class BaseMessageManager {
         engine.delegate = nil
     }
 
-    // MARK: - Callbacks to be overridden by Subclasses
-
-    /// Called when the state changes to `.displayed`.
-    /// Subclasses decide how to show the UI (inline or modal).
-    open func onMessageDisplayed() {
-        // Subclasses override for their own show logic
-    }
-
-    // Internal, for internal usage:
-    func onMessageDismissed(messageState: ModalMessageState) {
-        // Subclasses overridea
-    }
-
     // MARK: - Helpers
 
     public func showNewMessage(url: URL) {

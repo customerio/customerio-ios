@@ -45,7 +45,7 @@ class InlineMessageManager: BaseMessageManager {
 
     /// Called when the in-app state changes to `.displayed`.
     /// Inline typically means the content is ready and the `inlineMessageView` is or can be added to the UI.
-    override public func onMessageDisplayed() {
+    func onMessageDisplayed() {
         logger.logWithModuleTag(
             "Inline message displayed: \(currentMessage.describeForLogs)",
             level: .debug
@@ -56,7 +56,7 @@ class InlineMessageManager: BaseMessageManager {
 
     /// Called when the message is dismissed (or reset).
     /// Typically remove the web engine, unsubscribe, and optionally remove the inline view.
-    override func onMessageDismissed(messageState: ModalMessageState) {
+    func onMessageDismissed(messageState: InlineMessageState) {
         logger.logWithModuleTag(
             "Inline message dismissed: \(currentMessage.describeForLogs)",
             level: .debug
