@@ -1,3 +1,9 @@
+## [3.8.0](https://github.com/customerio/customerio-ios/compare/3.7.2...3.8.0) (2025-01-30)
+
+### Features
+
+* inline in-app  ([#864](https://github.com/customerio/customerio-ios/issues/864)) ([35fba9b](https://github.com/customerio/customerio-ios/commit/35fba9b8171ca50138553d2c2d6a87a747a90c49))
+
 ## [3.7.2](https://github.com/customerio/customerio-ios/compare/3.7.1...3.7.2) (2025-01-08)
 
 ### Bug Fixes
