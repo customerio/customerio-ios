@@ -41,36 +41,66 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .processMessageQueue(let messages):
         return state.copy(messagesInQueue: Set(messages))
 
+    case .embedMessages(let messages):
+        var newEmbeddedMessages = state.embeddedMessagesState
+        for message in messages {
+            if let elementId = message.elementId {
+                newEmbeddedMessages.add(message: message, elementId: elementId)
+            }
+        }
+        return state.copy(embeddedMessagesState: newEmbeddedMessages)
+
     case .clearMessageQueue:
         return state.copy(messagesInQueue: [])
 
     case .loadMessage(let message):
-        return state.copy(currentMessageState: .loading(message: message))
+        return state.copy(modalMessageState: .loading(message: message))
 
     case .displayMessage(let message):
-        if let queueId = message.queueId {
-            // If the message should be tracked shown when it is displayed, add the queueId to shownMessageQueueIds.
-            let shownMessageQueueIds = action.shouldMarkMessageAsShown
-                ? state.shownMessageQueueIds.union([queueId])
-                : state.shownMessageQueueIds
+        guard let queueId = message.queueId else { return state }
 
-            return state.copy(
-                currentMessageState: .displayed(message: message),
-                messagesInQueue: state.messagesInQueue.filter { $0.queueId != queueId },
+        // Update shownMessageQueueIds if the message should be tracked
+        let shownMessageQueueIds = action.shouldMarkMessageAsShown
+            ? state.shownMessageQueueIds.union([queueId])
+            : state.shownMessageQueueIds
+
+        // Remove the message from the queue
+        let messagesInQueue = state.messagesInQueue.filter { $0.queueId != queueId }
+
+        if message.isEmbedded {
+            // Update embedded message state
+            return state.updateEmbeddedMessage(
+                queueId: queueId,
+                newState: .embedded(message: message, elementId: message.elementId ?? ""),
+                shownMessageQueueIds: shownMessageQueueIds,
+                messagesInQueue: messagesInQueue
+            )
+        }
+
+        // Update modal message state
+        return state.copy(
+            modalMessageState: .displayed(message: message),
+            messagesInQueue: messagesInQueue,
+            shownMessageQueueIds: shownMessageQueueIds
+        )
+
+    case .dismissMessage(let message, _, _):
+        let shownMessageQueueIds = action.shouldMarkMessageAsShown && message.queueId != nil
+            ? state.shownMessageQueueIds.union([message.queueId!])
+            : state.shownMessageQueueIds
+
+        if message.isEmbedded, let queueId = message.queueId {
+            // Update embedded message state
+            return state.updateEmbeddedMessage(
+                queueId: queueId,
+                newState: InlineMessageState.dismissed(message: message),
                 shownMessageQueueIds: shownMessageQueueIds
             )
         }
-        return state
 
-    case .dismissMessage(let message, _, _):
-        var shownMessageQueueIds = state.shownMessageQueueIds
-        // If the message should be tracked shown when it is dismissed, add the queueId to shownMessageQueueIds.
-        if action.shouldMarkMessageAsShown, let queueId = message.queueId {
-            shownMessageQueueIds = shownMessageQueueIds.union([queueId])
-        }
-
+        // Update modal message state
         return state.copy(
-            currentMessageState: .dismissed(message: message),
+            modalMessageState: .dismissed(message: message),
             shownMessageQueueIds: shownMessageQueueIds
         )
 
@@ -79,11 +109,10 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         case .tap:
             return state
         case .messageLoadingFailed(let message):
-            return state.copy(currentMessageState: .dismissed(message: message))
+            return state.copy(modalMessageState: .dismissed(message: message))
         }
 
-    case .embedMessage,
-         .reportError:
+    case .reportError:
         return state
 
     case .resetState:

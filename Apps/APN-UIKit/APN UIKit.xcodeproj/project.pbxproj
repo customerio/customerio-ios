@@ -45,9 +45,13 @@
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
 		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
+		68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */; };
+		68050B722D417DAA0090B4BB /* InlineInAppMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */; };
+		68050B742D4246CE0090B4BB /* ColorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B732D4246CE0090B4BB /* ColorExtension.swift */; };
 		9443F22C2A66CD650019E744 /* MetadataUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9443F22B2A66CD650019E744 /* MetadataUtil.swift */; };
 		94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */; };
 		94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C5C26B2A718E970066A072 /* DateExtension.swift */; };
+		A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */; };
 		A776886C2B9875B5004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886B2B9875B5004F2A49 /* DataPipelines */; };
 		A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886D2B9875D0004F2A49 /* DataPipelines */; };
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
@@ -138,9 +142,13 @@
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
+		68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageSwiftUiViewController.swift; sourceTree = "<group>"; };
+		68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageView.swift; sourceTree = "<group>"; };
+		68050B732D4246CE0090B4BB /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
 		9443F22B2A66CD650019E744 /* MetadataUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataUtil.swift; sourceTree = "<group>"; };
 		94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
 		94C5C26B2A718E970066A072 /* DateExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtension.swift; sourceTree = "<group>"; };
+		A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageUikitViewController.swift; sourceTree = "<group>"; };
 		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraphShared.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraphShared.swift; sourceTree = "<group>"; };
 		F78934232A168E08005D3DF7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -261,6 +269,7 @@
 		46D5D9B029E56DE000EAF40B /* View */ = {
 			isa = PBXGroup;
 			children = (
+				68050B702D417D7D0090B4BB /* Inline */,
 				46D5D9B829E5887A00EAF40B /* Extension */,
 				46D5D9B329E56F1E00EAF40B /* Customisation */,
 				46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */,
@@ -268,6 +277,7 @@
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
 				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
 				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
+				A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */,
 				94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */,
 			);
 			path = View;
@@ -291,6 +301,7 @@
 				46EE275C29E9ECE60068F9A3 /* StringExtension.swift */,
 				46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */,
 				94C5C26B2A718E970066A072 /* DateExtension.swift */,
+				68050B732D4246CE0090B4BB /* ColorExtension.swift */,
 			);
 			path = Extension;
 			sourceTree = "<group>";
@@ -356,6 +367,15 @@
 				9443F22B2A66CD650019E744 /* MetadataUtil.swift */,
 			);
 			path = Util;
+			sourceTree = "<group>";
+		};
+		68050B702D417D7D0090B4BB /* Inline */ = {
+			isa = PBXGroup;
+			children = (
+				68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */,
+				68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */,
+			);
+			path = Inline;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -544,6 +564,7 @@
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
 				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
+				A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */,
 				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */,
@@ -551,6 +572,7 @@
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
 				46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */,
 				94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */,
+				68050B722D417DAA0090B4BB /* InlineInAppMessageView.swift in Sources */,
 				46D5D9BF29E58DE700EAF40B /* LoginRouter.swift in Sources */,
 				46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */,
 				46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */,
@@ -559,10 +581,12 @@
 				46EE276229ED679D0068F9A3 /* UserDefaultKeys.swift in Sources */,
 				F7820EAA2A15631000B346A9 /* DIGraphShared.swift in Sources */,
 				46EE277629ED802D0068F9A3 /* DIDependencies.swift in Sources */,
+				68050B742D4246CE0090B4BB /* ColorExtension.swift in Sources */,
 				46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46EE277429ED722E0068F9A3 /* AutoMockable.generated.swift in Sources */,
 				46EE277329ED722E0068F9A3 /* AutoDependencyInjection.generated.swift in Sources */,
+				68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */,
 				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
 				9443F22C2A66CD650019E744 /* MetadataUtil.swift in Sources */,

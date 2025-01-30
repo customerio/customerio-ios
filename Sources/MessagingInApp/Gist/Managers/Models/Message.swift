@@ -38,6 +38,10 @@ public class Message {
         gistProperties.elementId != nil
     }
 
+    public var elementId: String? {
+        gistProperties.elementId
+    }
+
     public init(
         messageId: String,
         queueId: String? = nil,
@@ -112,6 +116,14 @@ extension Message {
             return false // exit early to not show the message since we cannot parse the page rule for message.
         }
 
+        return true
+    }
+
+    func messageMatchesRoute(_ currentRoute: String?) -> Bool {
+        if doesHavePageRule() {
+            guard let currentRoute else { return false }
+            return doesPageRuleMatch(route: currentRoute)
+        }
         return true
     }
 }

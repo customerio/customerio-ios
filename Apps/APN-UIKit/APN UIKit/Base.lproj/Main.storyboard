@@ -56,7 +56,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="iXp-Fu-ehx">
-                                        <rect key="frame" x="20" y="240" width="344" height="35"/>
+                                        <rect key="frame" x="20" y="240.00000000000003" width="344" height="34.333333333333343"/>
                                         <color key="tintColor" red="0.44313725490196076" green="0.19215686274509802" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Generate Random Login"/>
@@ -154,13 +154,13 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gm6-Cg-tg6">
-                                <rect key="frame" x="10" y="157.66666666666666" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="91.666666666666671" width="394" height="27.333333333333329"/>
                                 <fontDescription key="fontDescription" name="Avenir-Book" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalCentering" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="AIH-WX-Xne">
-                                <rect key="frame" x="20" y="225" width="374" height="446"/>
+                                <rect key="frame" x="20" y="159" width="374" height="578"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
                                         <rect key="frame" x="94.666666666666686" y="0.0" width="185" height="50"/>
@@ -241,8 +241,34 @@
                                             <action selector="send3rdPartyPush:" destination="0ax-47-4zI" eventType="touchUpInside" id="DR5-oa-iJr"/>
                                         </connections>
                                     </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Lb4-oP-0VA" userLabel="Inline examples (UiKit)" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="80.666666666666671" y="404" width="212.66666666666663" height="34.333333333333314"/>
+                                        <color key="backgroundColor" red="0.2352941036" green="0.26274511220000002" blue="0.49019610879999997" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="R99-5x-1ES"/>
+                                        </constraints>
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <state key="normal" title="Button"/>
+                                        <buttonConfiguration key="configuration" style="plain" title="Inline Examples (SwiftUI)"/>
+                                        <connections>
+                                            <action selector="openInlineSwiftUiExamples:" destination="0ax-47-4zI" eventType="touchUpInside" id="n9s-20-5vO"/>
+                                        </connections>
+                                    </button>
+                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xg6-ZV-bDY" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                        <rect key="frame" x="89.666666666666671" y="470" width="194.66666666666663" height="34.333333333333314"/>
+                                        <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="CXH-fW-VDm"/>
+                                        </constraints>
+                                        <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                        <state key="normal" title="Button"/>
+                                        <buttonConfiguration key="configuration" style="plain" title="Inline Examples (UIKit)"/>
+                                        <connections>
+                                            <action selector="openInlineUikitExamples:" destination="0ax-47-4zI" eventType="touchUpInside" id="BOs-sF-hvl"/>
+                                        </connections>
+                                    </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                        <rect key="frame" x="94.666666666666686" y="396" width="185" height="50"/>
+                                        <rect key="frame" x="94.666666666666686" y="528" width="185" height="50"/>
                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <constraints>
                                             <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="185" id="uv2-HN-pr3"/>
@@ -271,7 +297,7 @@
                                 </constraints>
                             </imageView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="mIk-22-9js">
-                                <rect key="frame" x="10" y="130.33333333333334" width="394" height="27.333333333333343"/>
+                                <rect key="frame" x="10" y="64.333333333333329" width="394" height="27.333333333333329"/>
                                 <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="20"/>
                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <nil key="highlightedColor"/>
@@ -868,6 +894,37 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="oht-yj-uze" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="4202" y="4"/>
+        </scene>
+        <!--Inline In App Message Swift Ui View Controller-->
+        <scene sceneID="UVM-d0-6Zn">
+            <objects>
+                <viewController storyboardIdentifier="InlineInAppMessageSwiftUiViewController" id="eep-l7-eum" customClass="InlineInAppMessageSwiftUiViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Vni-O4-X2d">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="tcJ-0P-ZLy"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <navigationItem id="OhY-DD-4vP"/>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="hZc-t9-INr" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="4912" y="8"/>
+        </scene>
+        <!--Inline In App Message Uikit View Controller-->
+        <scene sceneID="XvK-Jp-F9O">
+            <objects>
+                <viewController storyboardIdentifier="InlineInAppMessageUikitViewController" id="aGf-c1-OHL" userLabel="Inline In App Message Uikit View Controller" customClass="InlineInAppMessageUikitViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="8oU-G6-4m4">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="YGe-lJ-MdQ"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Jgv-iL-1eI" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="5651" y="7"/>
         </scene>
     </scenes>
     <resources>
