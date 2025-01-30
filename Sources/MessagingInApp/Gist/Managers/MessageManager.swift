@@ -6,19 +6,19 @@ import UIKit
 open class BaseMessageManager {
     // MARK: - Dependencies
 
-    public let logger: Logger
+    let logger: Logger
     let inAppMessageManager: InAppMessageManager
-    public let threadUtil: ThreadUtil
+    let threadUtil: ThreadUtil
     let gist: GistProvider
     let engineWebProvider: EngineWebProvider
 
     // MARK: - Message & State
 
-    public let currentMessage: Message
-    public var currentRoute: String
-    public let isMessageEmbed: Bool
+    let currentMessage: Message
+    var currentRoute: String
+    let isMessageEmbed: Bool
 
-    @Atomic public var isMessageLoaded: Bool = false
+    @Atomic var isMessageLoaded: Bool = false
     var elapsedTimer = ElapsedTimer()
     var engine: EngineWebInstance!
     var gistView: GistView!
