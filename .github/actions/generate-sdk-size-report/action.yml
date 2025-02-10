@@ -42,7 +42,8 @@ runs:
       fastlane-build-args: '{"app_version": "1.0.0", "build_number": "1"}'
       # workspace credentials do not matter since we are not using this app build. 
       customerio-workspace-siteid: "12345"
-      customerio-workspace-cdp-api-key: "12345"      
+      customerio-workspace-cdp-api-key: "12345"
+      customerio-workspace-name: "Dummy Workspace"
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
 
   - name: Save the sample app build, if this is a main branch build 

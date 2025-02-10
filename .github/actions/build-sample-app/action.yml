@@ -25,6 +25,15 @@ inputs:
     description: 'The CDP API key for a workspace in Customer.io to set as default in compiled app, probably a secret.'
     type: string
     required: true
+  customerio-workspace-name:
+    description: "The name of the workspace used in Customer.io to set as default in compiled app. This makes it easier to know which workspace the app is connected to."
+    type: string
+    required: true
+  customerio-public-sdk-version:
+    description: "The public version of Customer.io to use in compiled app. This is used to test public releases of Customer.io SDK in the sample apps."
+    type: string
+    required: false
+    default: ''
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     type: string
@@ -62,10 +71,23 @@ runs:
     
     - name: Setup build environment to prepare for building
       shell: bash
+      env:
+        BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        COMMIT_HASH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       run: |
         make setup_sample_app app=${{ inputs.sample-app }}
-        sd CUSTOMERIO_WORKSPACE_SITE_ID ${{ inputs.customerio-workspace-siteid }} "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
-        sd CUSTOMERIO_WORKSPACE_CDP_API_KEY ${{ inputs.customerio-workspace-cdp-api-key }} "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'buildTimestamp: TimeInterval = .*' 'buildTimestamp: TimeInterval = $(date +%s)' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+
+        sd 'cdpApiKey: String = \".*\"' 'cdpApiKey: String = \"${{ inputs.customerio-workspace-cdp-api-key }}\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'siteId: String = \".*\"' 'siteId: String = \"${{ inputs.customerio-workspace-siteid }}\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'workspaceName: String = \".*\"' 'workspaceName: String = \"${{ inputs.customerio-workspace-name }}\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        if [[ -n "${{ inputs.customerio-public-sdk-version }}" ]]; then
+          sd 'sdkVersion: String = \".*\"' 'sdkVersion: String = \"${{ inputs.customerio-public-sdk-version }}\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        fi
+
+        sd 'branchName: String = \".*\"' 'branchName: String = \"$BRANCH_NAME\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'commitHash: String = \".*\"' 'commitHash: String = \"${COMMIT_HASH:0:7}\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'commitsAheadCount: String = \".*\"' 'commitsAheadCount: String = \"$(git rev-list $(git describe --tags --abbrev=0)..HEAD --count)\"' "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
 
     - name: Does ${{ inputs.sample-app }} use CocoaPods? 
       id: check_podfile_exists
