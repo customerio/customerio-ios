@@ -19,7 +19,7 @@ struct BuildInfoMetadata: CustomStringConvertible {
         self.buildDate = BuildInfoMetadata.formatBuildDateWithRelativeTime(timestamp: BuildEnvironment.BuildInfo.buildTimestamp)
         let branchName = BuildEnvironment.GitMetadata.branchName
         let commitHash = BuildEnvironment.GitMetadata.commitHash
-        self.gitMetadata = "\(BuildInfoMetadata.resolveValidOrElse(branchName) { "working branch" })-\(BuildInfoMetadata.resolveValidOrElse(commitHash) { "untracked" })"
+        self.gitMetadata = "\(BuildInfoMetadata.resolveValidOrElse(branchName) { "development build" })-\(BuildInfoMetadata.resolveValidOrElse(commitHash) { "untracked" })"
         self.defaultWorkspace = BuildInfoMetadata.resolveValidOrElse(BuildEnvironment.CustomerIO.workspaceName)
         self.language = BuildInfoMetadata.resolveValidOrElse("Swift")
         self.uiFramework = BuildInfoMetadata.resolveValidOrElse("UIKit (Storyboard)")
