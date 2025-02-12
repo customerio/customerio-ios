@@ -67,7 +67,10 @@ jobs:
     runs-on: macos-14
     name: Building app...${{ matrix.sample-app }}
     steps:
-    - uses: actions/checkout@v4
+    - name: Check out code with conditional fetch-depth
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Workaround for bug https://github.com/actions/checkout/issues/1471
 
     - name: Set Default Firebase Distribution Groups
       shell: bash
