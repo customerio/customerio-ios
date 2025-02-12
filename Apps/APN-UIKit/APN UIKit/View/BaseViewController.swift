@@ -11,8 +11,8 @@ class BaseViewController: UIViewController {
     }
 
     func getMetaData() -> String {
-        let versionDetail = "SDK: Customer.io iOS SDK \(MetadataUtil.cioSdkVersion)\nApp: \(MetadataUtil.appName) \(MetadataUtil.appBuildVersion) \(MetadataUtil.appBuildNumber)"
-        return versionDetail
+        let metadata = BuildInfoMetadata()
+        return metadata.description
     }
 
     func setAppiumAccessibilityIdTo(_ element: UIView, value: String) {

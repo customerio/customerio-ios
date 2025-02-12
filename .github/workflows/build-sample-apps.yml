@@ -59,8 +59,10 @@ jobs:
         include: # Add additional variables to each sample app build: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
           - sample-app: "APN-UIKit"
             apn-or-fcm: APN
+            cio-workspace-name: "Mobile: Native iOS & Android"
           - sample-app: "CocoaPods-FCM"
             apn-or-fcm: FCM
+            cio-workspace-name: "Mobile: xiOS CocoaPods FCM + Kotlin Android"
 
     runs-on: macos-14
     name: Building app...${{ matrix.sample-app }}
@@ -99,6 +101,7 @@ jobs:
         sample-app: ${{ matrix.sample-app }}
         customerio-workspace-siteid: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_SITE_ID', matrix.apn-or-fcm)] }}
         customerio-workspace-cdp-api-key: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_CDP_API_KEY', matrix.apn-or-fcm)] }}
+        customerio-workspace-name: ${{ matrix.cio-workspace-name }}
         fastlane-build-args: '{"distribution_groups": "${{ env.firebase_distribution_groups }}"}'
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}

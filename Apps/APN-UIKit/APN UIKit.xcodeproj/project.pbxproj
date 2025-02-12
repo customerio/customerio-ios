@@ -48,12 +48,12 @@
 		68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */; };
 		68050B722D417DAA0090B4BB /* InlineInAppMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */; };
 		68050B742D4246CE0090B4BB /* ColorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B732D4246CE0090B4BB /* ColorExtension.swift */; };
-		9443F22C2A66CD650019E744 /* MetadataUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9443F22B2A66CD650019E744 /* MetadataUtil.swift */; };
 		94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */; };
 		94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C5C26B2A718E970066A072 /* DateExtension.swift */; };
 		A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */; };
 		A776886C2B9875B5004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886B2B9875B5004F2A49 /* DataPipelines */; };
 		A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886D2B9875D0004F2A49 /* DataPipelines */; };
+		A78201272D5A16EB00E2D9E0 /* BuildInfoMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = A78201262D5A16EB00E2D9E0 /* BuildInfoMetadata.swift */; };
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraphShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraphShared.swift */; };
@@ -145,10 +145,10 @@
 		68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageSwiftUiViewController.swift; sourceTree = "<group>"; };
 		68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageView.swift; sourceTree = "<group>"; };
 		68050B732D4246CE0090B4BB /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
-		9443F22B2A66CD650019E744 /* MetadataUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataUtil.swift; sourceTree = "<group>"; };
 		94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
 		94C5C26B2A718E970066A072 /* DateExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtension.swift; sourceTree = "<group>"; };
 		A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageUikitViewController.swift; sourceTree = "<group>"; };
+		A78201262D5A16EB00E2D9E0 /* BuildInfoMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildInfoMetadata.swift; sourceTree = "<group>"; };
 		F74F41F82A168316000D61B9 /* BuildEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = SOURCE_ROOT; };
 		F7820EA92A15631000B346A9 /* DIGraphShared.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DIGraphShared.swift; sourceTree = "<group>"; };
 		F78934232A168E08005D3DF7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -364,7 +364,7 @@
 			children = (
 				46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */,
 				4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */,
-				9443F22B2A66CD650019E744 /* MetadataUtil.swift */,
+				A78201262D5A16EB00E2D9E0 /* BuildInfoMetadata.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
@@ -585,11 +585,11 @@
 				46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */,
 				46D5D9C129E58EB600EAF40B /* DashboardViewController.swift in Sources */,
 				46EE277429ED722E0068F9A3 /* AutoMockable.generated.swift in Sources */,
+				A78201272D5A16EB00E2D9E0 /* BuildInfoMetadata.swift in Sources */,
 				46EE277329ED722E0068F9A3 /* AutoDependencyInjection.generated.swift in Sources */,
 				68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */,
 				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
-				9443F22C2A66CD650019E744 /* MetadataUtil.swift in Sources */,
 				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
 				F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */,
 				46EE277929ED833D0068F9A3 /* Settings.swift in Sources */,
