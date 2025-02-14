@@ -76,18 +76,22 @@ runs:
         COMMIT_HASH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       run: |
         make setup_sample_app app=${{ inputs.sample-app }}
-        sd 'buildTimestamp: TimeInterval = .*' "buildTimestamp: TimeInterval = $(date +%s)" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        ENV_FILE="Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'buildTimestamp: TimeInterval = .*' "buildTimestamp: TimeInterval = $(date +%s)" "$ENV_FILE"
 
-        sd 'cdpApiKey: String = \".*\"' "cdpApiKey: String = \"${{ inputs.customerio-workspace-cdp-api-key }}\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
-        sd 'siteId: String = \".*\"' "siteId: String = \"${{ inputs.customerio-workspace-siteid }}\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
-        sd 'workspaceName: String = \".*\"' "workspaceName: String = \"${{ inputs.customerio-workspace-name }}\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'cdpApiKey: String = \".*\"' "cdpApiKey: String = \"${{ inputs.customerio-workspace-cdp-api-key }}\"" "$ENV_FILE"
+        sd 'siteId: String = \".*\"' "siteId: String = \"${{ inputs.customerio-workspace-siteid }}\"" "$ENV_FILE"
+        sd 'workspaceName: String = \".*\"' "workspaceName: String = \"${{ inputs.customerio-workspace-name }}\"" "$ENV_FILE"
         if [[ -n "${{ inputs.customerio-public-sdk-version }}" ]]; then
-          sd 'sdkVersion: String = \".*\"' "sdkVersion: String = \"${{ inputs.customerio-public-sdk-version }}\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+          sd 'sdkVersion: String = \".*\"' "sdkVersion: String = \"${{ inputs.customerio-public-sdk-version }}\"" "$ENV_FILE"
         fi
 
-        sd 'branchName: String = \".*\"' "branchName: String = \"$BRANCH_NAME\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
-        sd 'commitHash: String = \".*\"' "commitHash: String = \"${COMMIT_HASH:0:7}\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
-        sd 'commitsAheadCount: String = \".*\"' "commitsAheadCount: String = \"$(git rev-list $(git describe --tags --abbrev=0)..HEAD --count)\"" "Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
+        sd 'branchName: String = \".*\"' "branchName: String = \"$BRANCH_NAME\"" "$ENV_FILE"
+        sd 'commitHash: String = \".*\"' "commitHash: String = \"${COMMIT_HASH:0:7}\"" "$ENV_FILE"
+
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
+        COMMITS_AHEAD=$(git rev-list $LAST_TAG..HEAD --count 2>/dev/null || echo "untracked")
+        sd 'commitsAheadCount: String = \".*\"' "commitsAheadCount: String = \"$COMMITS_AHEAD\"" "$ENV_FILE"
 
     - name: Does ${{ inputs.sample-app }} use CocoaPods? 
       id: check_podfile_exists
