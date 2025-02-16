@@ -1,182 +1,118 @@
-name: Build sample apps 
+name: Build sample apps
 
-on: 
-  pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
-  push: 
+on:
+  pull_request:
+  push:
     branches: [ main, feature/* ]
-  workflow_dispatch: # allow manual run     
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      use_latest_sdk_version:
+        description: "Whether to build sample apps with the latest SDK version (newest tag)."
+        type: boolean
+        required: false
+        default: false
 
-concurrency: # cancel previous workflow run if one exists. 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # 1) Update PR comment (optional) - only runs if event is a pull_request
   update-pr-comment:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write # to be able to comment on PR
+      pull-requests: write
     outputs:
       comment-id: ${{ steps.create-comment.outputs.comment-id }}
     steps:
-    - name: Find Comment
-      uses: peter-evans/find-comment@v3
-      id: existing-comment
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: <!-- sample app builds --> 
-    
-    - name: Create or update comment
-      uses: peter-evans/create-or-update-comment@v4
-      id: create-comment
-      with:
-        comment-id: ${{ steps.existing-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          <!-- sample app builds --> 
-          # Sample app builds 📱
-          
-          Below you will find the list of the latest versions of the sample apps. It's recommended to always download the latest builds of the sample apps to accurately test the pull request. 
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: existing-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: <!-- sample app builds -->
 
-          ---
-          ${{ steps.build.outputs.build-log }}
-        edit-mode: replace # replace the existing comment with new content since we are creating new builds 
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v4
+        id: create-comment
+        with:
+          comment-id: ${{ steps.existing-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- sample app builds -->
+            # Sample app builds 📱
 
+            Below you will find the list of the latest versions of the sample apps. 
+            It's recommended to always download the latest builds to test this PR accurately.
+
+  # 2) Call the reusable workflow to build all sample apps
   build-sample-apps:
-    if: ${{ always() }} # do not skip running this step if update-pr-comment does not run 
-    needs: [update-pr-comment] # wait for PR comment to be created saying new builds are being made. 
-    permissions:
-      pull-requests: write # comment on pull request with build information 
-    strategy:
-      fail-fast: false # if one sample app fails to build, let the other sample apps continue to build and not cancel them. 
-      matrix: # Use a matrix allowing us to build multiple apps in parallel. Just add an entry to the matrix and it will build!
-        sample-app: 
-        # List all sample apps you want to have compiled. 
-        # List item is name of directory inside of "Apps" directory for the corresponding app to compile. 
-        - "CocoaPods-FCM"
-        - "APN-UIKit"
-        include: # Add additional variables to each sample app build: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
-          - sample-app: "APN-UIKit"
-            apn-or-fcm: APN
-            cio-workspace-name: "Mobile: Native iOS & Android"
-          - sample-app: "CocoaPods-FCM"
-            apn-or-fcm: FCM
-            cio-workspace-name: "Mobile: xiOS CocoaPods FCM + Kotlin Android"
+    if: ${{ always() }}
+    needs: [ update-pr-comment ]
+    uses: ./.github/workflows/reusable_build_sample_apps_ios.yml
+    with:
+      # If the event is 'release', we definitely want the new tag.
+      # If manual run AND user sets 'use_latest_sdk_version' to true, also get the new tag.
+      use_latest_sdk_version: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_latest_sdk_version == 'true') }}
+    secrets:
+      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+      FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+      CUSTOMERIO_APN_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+      CUSTOMERIO_FCM_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }}
 
-    runs-on: macos-14
-    name: Building app...${{ matrix.sample-app }}
-    steps:
-    - name: Check out code with conditional fetch-depth
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # Workaround for bug https://github.com/actions/checkout/issues/1471
-
-    - name: Set Default Firebase Distribution Groups
-      shell: bash
-      env:
-        # Distribution group constants
-        ALL_BUILDS_GROUP: all-builds
-        FEATURE_BUILDS_GROUP: feature-branch
-        NEXT_BUILDS_GROUP: next
-        PUBLIC_BUILDS_GROUP: public
-        # Input variables
-        IS_PRIMARY_APP: ${{ matrix.apn-or-fcm == 'APN' }}
-        CURRENT_BRANCH: ${{ github.ref }}
-      run: |
-        # Initialize with the default distribution group
-        distribution_groups=("$ALL_BUILDS_GROUP")
-
-        # Append distribution groups based on branch and context if the app is primary
-        if [[ "$IS_PRIMARY_APP" == "true" ]]; then
-          [[ "$CURRENT_BRANCH" == "refs/heads/feature/"* ]] && distribution_groups+=("$FEATURE_BUILDS_GROUP")
-          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$NEXT_BUILDS_GROUP")
-          [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$PUBLIC_BUILDS_GROUP")
-        fi
-
-        # Export the groups as an environment variable
-        echo "firebase_distribution_groups=$(IFS=','; echo "${distribution_groups[*]}")" >> $GITHUB_ENV
-
-    - name: Build and upload app build for QA testing 
-      uses: ./.github/actions/build-sample-app
-      with:
-        apn-or-fcm: ${{ matrix.apn-or-fcm }}
-        sample-app: ${{ matrix.sample-app }}
-        customerio-workspace-siteid: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_SITE_ID', matrix.apn-or-fcm)] }}
-        customerio-workspace-cdp-api-key: ${{ secrets[format('CUSTOMERIO_{0}_WORKSPACE_CDP_API_KEY', matrix.apn-or-fcm)] }}
-        customerio-workspace-name: ${{ matrix.cio-workspace-name }}
-        fastlane-build-args: '{"distribution_groups": "${{ env.firebase_distribution_groups }}"}'
-        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
-
-    - name: Update sample builds PR comment with build information 
-      if: ${{ github.event_name == 'pull_request' }}
-      uses: peter-evans/create-or-update-comment@v4
-      with:
-        comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        # the variables APP_BUILD_NUMBER, APP_VERSION_STRING are created when fastlane runs "build". 
-        body: |
-          * ${{ matrix.sample-app }}: `${{ env.APP_VERSION_STRING }} (${{ env.APP_BUILD_NUMBER }})`
-        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
-
-    - name: Update sample builds PR comment with build failure message 
-      if: ${{ failure() }}
-      uses: peter-evans/create-or-update-comment@v4
-      with:
-        comment-id: ${{ needs.update-pr-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          * ${{ matrix.sample-app }}: Build failed. See [CI job logs](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) to determine the issue and try re-building. 
-        edit-mode: append # append new line to the existing PR comment to build a list of all sample app builds. 
-
+  # 3) Generate SDK size reports or other tasks
   generate-sdk-size-reports:
     runs-on: macos-14
     permissions:
-      pull-requests: write # to be able to comment on PR
-    name: Generate SDK size reports 
+      pull-requests: write
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: ./.github/actions/generate-sdk-size-report
-      id: generate-sdk-size-report
-      with:
-        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-    
-    - name: Find existing SDK size report comment, if there is one. 
-      if: github.event_name == 'pull_request'
-      uses: peter-evans/find-comment@v3
-      id: find-sdk-size-report-comment
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: <!-- sdk size reports -->
+      - uses: ./.github/actions/generate-sdk-size-report
+        id: generate-sdk-size-report
+        with:
+          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
 
-    - name: Send SDK size reports to the PR for convenient viewing 
-      if: github.event_name == 'pull_request'
-      uses: peter-evans/create-or-update-comment@v4
-      with:
-        comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
-        issue-number: ${{ github.event.pull_request.number }}
-        edit-mode: replace
-        body: |
-          <!-- sdk size reports -->
-          # SDK binary size reports 📊
+      - name: Find existing "SDK size reports" comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@v3
+        id: find-sdk-size-report-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: <!-- sdk size reports -->
 
-          <details>
-          <summary>SDK binary size of this PR</summary>
+      - name: Send SDK size reports to the PR
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            <!-- sdk size reports -->
+            # SDK binary size reports 📊
 
-          ```  
-          ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
-          ```
+            <details>
+            <summary>SDK binary size of this PR</summary>
 
-          </details>
+            ```
+            ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
+            ```
 
-          <details>
-          <summary>SDK binary size diff report between this PR and the main branch</summary>
-          
-          ``` 
-          ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
-          ```
-          
-          </details>
+            </details>
+
+            <details>
+            <summary>SDK binary size diff report vs. main branch</summary>
+
+            ```
+            ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
+            ```
+
+            </details>
