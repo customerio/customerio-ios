@@ -4,8 +4,6 @@ on:
   pull_request:
   push:
     branches: [ main, feature/* ]
-  release:
-    types: [ published ]
   workflow_dispatch:
     inputs:
       use_latest_sdk_version:
@@ -55,9 +53,8 @@ jobs:
     needs: [ update-pr-comment ]
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
-      # If the event is 'release', we definitely want the new tag.
-      # If manual run AND user sets 'use_latest_sdk_version' to true, also get the new tag.
-      use_latest_sdk_version: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_latest_sdk_version == 'true') }}
+      # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
+      use_latest_sdk_version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.use_latest_sdk_version == 'true' }}
     secrets:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
       FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
