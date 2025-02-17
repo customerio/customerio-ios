@@ -126,6 +126,14 @@ jobs:
           fi
           echo "fastlane_build_args=$fastlane_build_args" >> $GITHUB_ENV
 
+      - name: Determine SDK Version
+        run: |
+          if [[ "${{ inputs.use_latest_sdk_version }}" == "true" ]]; then
+            echo "CUSTOMERIO_SDK_VERSION=${LATEST_TAG}" >> $GITHUB_ENV
+          else
+            echo "CUSTOMERIO_SDK_VERSION=" >> $GITHUB_ENV
+          fi
+
       - name: Build sample app
         uses: ./.github/actions/build-sample-app
         with:
@@ -134,7 +142,7 @@ jobs:
           customerio-workspace-siteid: ${{ secrets[matrix.cio-siteid-secret-key] }}
           customerio-workspace-cdp-api-key: ${{ secrets[matrix.cio-cdpapikey-secret-key] }}
           customerio-workspace-name: ${{ matrix.cio-workspace-name }}
-          customerio-public-sdk-version: ${{ env.LATEST_TAG }}
+          customerio-public-sdk-version: ${{ env.CUSTOMERIO_SDK_VERSION }}
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
           FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
           fastlane-build-args: ${{ env.fastlane_build_args }}
