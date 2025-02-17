@@ -3,13 +3,14 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117072D63531A00DB1E11 /* SampleAppsCommon */; };
+		30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117092D6356BA00DB1E11 /* SampleAppsCommon */; };
 		4650330229F68FEB001B6552 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650330129F68FEB001B6552 /* NotificationService.swift */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 4650330C29F69374001B6552 /* MessagingPushAPN */; };
 		4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331029F696B8001B6552 /* DeepLinkViewController.swift */; };
 		4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
@@ -33,8 +34,6 @@
 		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
 		46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */; };
 		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
-		46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275429E9E2960068F9A3 /* MessagingInApp */; };
-		46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */ = {isa = PBXBuildFile; productRef = 46EE275629E9E2960068F9A3 /* MessagingPushAPN */; };
 		46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275C29E9ECE60068F9A3 /* StringExtension.swift */; };
 		46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275F29E9F1BD0068F9A3 /* Storage.swift */; };
 		46EE276229ED679D0068F9A3 /* UserDefaultKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE276129ED679D0068F9A3 /* UserDefaultKeys.swift */; };
@@ -51,14 +50,11 @@
 		94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */; };
 		94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C5C26B2A718E970066A072 /* DateExtension.swift */; };
 		A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */; };
-		A776886C2B9875B5004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886B2B9875B5004F2A49 /* DataPipelines */; };
-		A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */ = {isa = PBXBuildFile; productRef = A776886D2B9875D0004F2A49 /* DataPipelines */; };
 		A78201272D5A16EB00E2D9E0 /* BuildInfoMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = A78201262D5A16EB00E2D9E0 /* BuildInfoMetadata.swift */; };
 		F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F74F41FA2A168316000D61B9 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74F41F82A168316000D61B9 /* BuildEnvironment.swift */; };
 		F7820EAA2A15631000B346A9 /* DIGraphShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7820EA92A15631000B346A9 /* DIGraphShared.swift */; };
 		F78934242A168E09005D3DF7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F78934232A168E08005D3DF7 /* GoogleService-Info.plist */; };
-		F7D35F0A2BC9869900D25BC2 /* MessagingPushFCM in Frameworks */ = {isa = PBXBuildFile; productRef = F7D35F092BC9869900D25BC2 /* MessagingPushFCM */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -131,7 +127,6 @@
 		46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
 		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
-		46EE275129E9E1BA0068F9A3 /* customerio-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "customerio-ios"; path = ../..; sourceTree = "<group>"; };
 		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
 		46EE275F29E9F1BD0068F9A3 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
 		46EE276129ED679D0068F9A3 /* UserDefaultKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultKeys.swift; sourceTree = "<group>"; };
@@ -159,8 +154,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4650330D29F69374001B6552 /* MessagingPushAPN in Frameworks */,
-				A776886C2B9875B5004F2A49 /* DataPipelines in Frameworks */,
+				30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -168,10 +162,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F7D35F0A2BC9869900D25BC2 /* MessagingPushFCM in Frameworks */,
-				A776886E2B9875D0004F2A49 /* DataPipelines in Frameworks */,
-				46EE275529E9E2960068F9A3 /* MessagingInApp in Frameworks */,
-				46EE275729E9E2960068F9A3 /* MessagingPushAPN in Frameworks */,
+				30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,7 +310,6 @@
 		46EE275029E9E1BA0068F9A3 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				46EE275129E9E1BA0068F9A3 /* customerio-ios */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -395,8 +385,7 @@
 			);
 			name = NotificationServiceExtension;
 			packageProductDependencies = (
-				4650330C29F69374001B6552 /* MessagingPushAPN */,
-				A776886B2B9875B5004F2A49 /* DataPipelines */,
+				30F117092D6356BA00DB1E11 /* SampleAppsCommon */,
 			);
 			productName = NotificationServiceExtension;
 			productReference = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */;
@@ -418,10 +407,7 @@
 			);
 			name = "APN UIKit";
 			packageProductDependencies = (
-				46EE275429E9E2960068F9A3 /* MessagingInApp */,
-				46EE275629E9E2960068F9A3 /* MessagingPushAPN */,
-				A776886D2B9875D0004F2A49 /* DataPipelines */,
-				F7D35F092BC9869900D25BC2 /* MessagingPushFCM */,
+				30F117072D63531A00DB1E11 /* SampleAppsCommon */,
 			);
 			productName = "APN UIKit";
 			productReference = 46D5D97D29E459D600EAF40B /* APN UIKit.app */;
@@ -499,6 +485,7 @@
 			);
 			mainGroup = 46D5D97429E459D600EAF40B;
 			packageReferences = (
+				30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */,
 			);
 			productRefGroup = 46D5D97E29E459D600EAF40B /* Products */;
 			projectDirPath = "";
@@ -1023,30 +1010,22 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Common;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
-		4650330C29F69374001B6552 /* MessagingPushAPN */ = {
+		30F117072D63531A00DB1E11 /* SampleAppsCommon */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = MessagingPushAPN;
+			productName = SampleAppsCommon;
 		};
-		46EE275429E9E2960068F9A3 /* MessagingInApp */ = {
+		30F117092D6356BA00DB1E11 /* SampleAppsCommon */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = MessagingInApp;
-		};
-		46EE275629E9E2960068F9A3 /* MessagingPushAPN */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MessagingPushAPN;
-		};
-		A776886B2B9875B5004F2A49 /* DataPipelines */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DataPipelines;
-		};
-		A776886D2B9875D0004F2A49 /* DataPipelines */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DataPipelines;
-		};
-		F7D35F092BC9869900D25BC2 /* MessagingPushFCM */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MessagingPushFCM;
+			package = 30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */;
+			productName = SampleAppsCommon;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

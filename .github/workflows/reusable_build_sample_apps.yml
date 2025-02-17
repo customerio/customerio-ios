@@ -62,6 +62,32 @@ jobs:
           echo "LATEST_TAG=$latest_tag" >> "$GITHUB_ENV"
           echo "Found latest tag: $latest_tag"
 
+      - name: Replace local references with published SDK version
+        if: ${{ inputs.use_latest_sdk_version == true }}
+        shell: bash
+        run: |
+          brew install sd # if not already installed earlier
+          TAG="${{ env.LATEST_TAG }}"
+          echo "Switching local references to published version: $TAG"
+
+          # 1) CocoaPods Podfile in `Apps/CocoaPods-FCM/Podfile`
+          # Example lines to replace:
+          #   pod 'CustomerIODataPipelines', :path => ...
+          #   =>  pod 'CustomerIODataPipelines', '1.2.3'
+          sd "pod 'CustomerIODataPipelines', :path =>.*" "pod 'CustomerIODataPipelines', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          # If you have other modules: repeat
+
+          # 2) SwiftPM package in `Apps/Common/Package.swift`
+          # Original: .package(path: "../../")
+          # Replace with pinned remote version
+          sd '\.package\(path: *".*\)' \
+             ".package(name: \"customerio-ios\", url: \"https://github.com/customerio/customerio-ios.git\", .upToNextMajor(from: \"${TAG}\"))" \
+             "Apps/Common/Package.swift"
+
+          echo "Finished updating references. Now we have pinned SDK version $TAG."
+
       - name: Set Default Firebase Distribution Groups
         shell: bash
         env:
@@ -74,21 +100,15 @@ jobs:
         run: |
           distribution_groups=("$ALL_BUILDS_GROUP")
 
-          # If the app is 'primary' (APN), let's add special distribution groups
           if [[ "$IS_PRIMARY_APP" == "true" ]]; then
-            # If the branch name starts with feature/, add 'feature-branch'
             [[ "$CURRENT_BRANCH" == "refs/heads/feature/"* ]] && distribution_groups+=("$FEATURE_BUILDS_GROUP")
-
-            # If the branch is main, add 'next'
             [[ "$CURRENT_BRANCH" == "refs/heads/main" ]] && distribution_groups+=("$NEXT_BUILDS_GROUP")
 
-            # If building with the latest SDK version, likely a release or manual dispatch => add 'public'
             if [[ "${{ inputs.use_latest_sdk_version }}" == "true" ]]; then
               distribution_groups+=("$PUBLIC_BUILDS_GROUP")
             fi
           fi
 
-          # Export distribution_groups for future steps
           echo "firebase_distribution_groups=$(IFS=','; echo "${distribution_groups[*]}")" >> $GITHUB_ENV
 
       - name: Prepare Fastlane Build Arguments
