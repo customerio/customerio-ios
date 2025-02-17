@@ -53,7 +53,7 @@ jobs:
   build-sample-apps:
     if: ${{ always() }}
     needs: [ update-pr-comment ]
-    uses: ./.github/workflows/reusable_build_sample_apps_ios.yml
+    uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If the event is 'release', we definitely want the new tag.
       # If manual run AND user sets 'use_latest_sdk_version' to true, also get the new tag.
