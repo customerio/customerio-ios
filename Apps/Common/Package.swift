@@ -18,7 +18,12 @@ let package = Package(
     targets: [
         .target(
             name: "SampleAppsCommon",
-            dependencies: [.product(name: "DataPipelines", package: "customerio-ios")],
+            dependencies: [
+                // List the modules from the Customer.io iOS SDK that you actually use
+                .product(name: "DataPipelines", package: "customerio-ios"),
+                .product(name: "MessagingPushAPN", package: "customerio-ios"),
+                .product(name: "MessagingInApp", package: "customerio-ios")
+            ],
             path: "Source"
         )
     ]
