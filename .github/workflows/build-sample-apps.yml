@@ -46,6 +46,7 @@ jobs:
 
             Below you will find the list of the latest versions of the sample apps. 
             It's recommended to always download the latest builds to test this PR accurately.
+          edit-mode: replace # replace the existing comment with new content since we are creating new builds 
 
   # 2) Call the reusable workflow to build all sample apps
   build-sample-apps:
