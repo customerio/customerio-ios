@@ -1,10 +1,10 @@
 name: Build sample apps
 
 on:
-  pull_request:
+  pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
   push:
     branches: [ main, feature/* ]
-  workflow_dispatch:
+  workflow_dispatch: # allow manual run     
     inputs:
       use_latest_sdk_version:
         description: "Whether to build sample apps with the latest SDK version (newest tag)."
@@ -21,7 +21,7 @@ jobs:
   update-pr-comment:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
-    permissions:
+    permissions: # to be able to comment on PR
       pull-requests: write
     outputs:
       comment-id: ${{ steps.create-comment.outputs.comment-id }}
@@ -54,7 +54,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
-      use_latest_sdk_version: true
+      use_latest_sdk_version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.use_latest_sdk_version == 'true' }}
     secrets:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
       FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
