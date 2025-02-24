@@ -27,6 +27,18 @@ on:
       CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY:
         required: true
         description: "Secret for the FCM sample app's CDP API key in Customer.io."
+      SAMPLE_APPS_APN_FIREBASE_APP_ID:
+        required: true
+        description: "Secret for the APN sample app's Firebase App ID."
+      SAMPLE_APPS_FCM_FIREBASE_APP_ID:
+        required: true
+        description: "Secret for the FCM sample app's Firebase App ID."
+      SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK:
+        required: true
+        description: "Secret for the link to the instructions guide for the sample apps."
+      SLACK_NOTIFY_RELEASES_WEBHOOK_URL:
+        required: true
+        description: "Secret for the Slack webhook URL to notify about sample app releases."
 
 jobs:
   build_sample_apps:
@@ -44,11 +56,13 @@ jobs:
             cio-siteid-secret-key: "CUSTOMERIO_APN_WORKSPACE_SITE_ID"
             cio-cdpapikey-secret-key: "CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY"
             cio-workspace-name: "Mobile: Native iOS & Android"
+            firebase-app-id: "SAMPLE_APPS_APN_FIREBASE_APP_ID"
           - sample-app: "CocoaPods-FCM"
             apn-or-fcm: "FCM"
             cio-siteid-secret-key: "CUSTOMERIO_FCM_WORKSPACE_SITE_ID"
             cio-cdpapikey-secret-key: "CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY"
             cio-workspace-name: "Mobile: xiOS CocoaPods FCM + Kotlin Android"
+            firebase-app-id: "SAMPLE_APPS_FCM_FIREBASE_APP_ID"
 
     steps:
       - name: Check out code (with full history for tags)
@@ -143,6 +157,9 @@ jobs:
           customerio-workspace-cdp-api-key: ${{ secrets[matrix.cio-cdpapikey-secret-key] }}
           customerio-workspace-name: ${{ matrix.cio-workspace-name }}
           customerio-public-sdk-version: ${{ env.CUSTOMERIO_SDK_VERSION }}
+          firebase-app-id: ${{ secrets[matrix.firebase-app-id] }}
+          instructions-guide-link: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
           FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           fastlane-build-args: ${{ env.fastlane_build_args }}

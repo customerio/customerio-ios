@@ -34,6 +34,14 @@ inputs:
     type: string
     required: false
     default: ''
+  firebase-app-id:
+    description: "Firebase App ID used for invite links"
+    required: false
+    default: ''
+  instructions-guide-link:
+    description: "Link to instructions guide for the sample app"
+    required: false
+    default: ''
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     type: string
@@ -41,6 +49,10 @@ inputs:
   FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64:
     description: 'Set this input, only if you want to upload app for internal testing. Maps to the secret, FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64. Used for uploading compiled apps for testing. See the Fastlane config files to learn more.'
     type: string
+    required: false
+    default: ''
+  SLACK_WEBHOOK_URL:
+    description: "Slack Webhook URL for sample app notifications"
     required: false
     default: ''
 
@@ -69,11 +81,17 @@ runs:
         ruby-version: '3.0'
         bundler-cache: true # cache tools to make builds faster in future 
     
+    - name: Capture Git Context
+      shell: bash
+      id: git-context
+      run: |
+        echo "BRANCH_NAME=${{ github.head_ref || github.ref_name }}" >> $GITHUB_ENV
+        COMMIT_HASH="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+        echo "COMMIT_HASH=${COMMIT_HASH:0:7}" >> $GITHUB_ENV
+        echo "LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+    
     - name: Setup build environment to prepare for building
       shell: bash
-      env:
-        BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        COMMIT_HASH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       run: |
         make setup_sample_app app=${{ inputs.sample-app }}
         ENV_FILE="Apps/${{ inputs.sample-app }}/BuildEnvironment.swift"
@@ -86,10 +104,10 @@ runs:
           sd 'sdkVersion: String = \".*\"' "sdkVersion: String = \"${{ inputs.customerio-public-sdk-version }}\"" "$ENV_FILE"
         fi
 
-        sd 'branchName: String = \".*\"' "branchName: String = \"$BRANCH_NAME\"" "$ENV_FILE"
-        sd 'commitHash: String = \".*\"' "commitHash: String = \"${COMMIT_HASH:0:7}\"" "$ENV_FILE"
+        sd 'branchName: String = \".*\"' "branchName: String = \"${{ env.BRANCH_NAME }}\"" "$ENV_FILE"
+        sd 'commitHash: String = \".*\"' "commitHash: String = \"${{ env.COMMIT_HASH }}\"" "$ENV_FILE"
 
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
+        LAST_TAG="${LATEST_TAG:-untagged}"
         COMMITS_AHEAD=$(git rev-list $LAST_TAG..HEAD --count 2>/dev/null || echo "untracked")
         sd 'commitsAheadCount: String = \".*\"' "commitsAheadCount: String = \"$COMMITS_AHEAD\"" "$ENV_FILE"
 
@@ -135,7 +153,34 @@ runs:
       env: 
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
         FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ inputs.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
-    
+
+    - name: Determine SDK Version
+      shell: bash
+      id: determine-sdk-version
+      run: |
+        sdk_version="${{ inputs.customerio-public-sdk-version }}"
+        sdk_version="${sdk_version:-${{ env.SDK_VERSION }}}"
+        sdk_version="${sdk_version:-${{ env.LATEST_TAG }}}"
+        echo "SDK Version used in app build: $sdk_version"
+        echo "APP_SDK_BUILD_VERSION=$sdk_version" >> $GITHUB_ENV
+
+    - name: Send Slack Notification for Sample App Builds
+      if: ${{ always() && inputs.apn-or-fcm == 'APN' && inputs.SLACK_WEBHOOK_URL != '' }}
+      uses: customerio/mobile-ci-tools/github-actions/slack-notify-sample-app/v1
+      with:
+        build_status: ${{ job.status }}
+        app_icon_emoji: ":ios:"
+        app_name: "iOS Native"
+        firebase_app_id: ${{ inputs.firebase-app-id }}
+        firebase_distribution_groups: ${{ env.firebase_distribution_groups }}
+        git_context: "${{ env.BRANCH_NAME }} (${{ env.COMMIT_HASH }})"
+        icon_url: "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png"
+        instructions_guide_link: ${{ inputs.instructions-guide-link }}
+        platform: "ios"
+        sdk_name: "iOS Native SDK"
+        sdk_version: ${{ env.APP_SDK_BUILD_VERSION }}
+        slack_webhook_url: ${{ inputs.SLACK_WEBHOOK_URL }}
+
     # xcodebuild creates builds that include a timestamp in the name. In order for bloaty to read the build, we need to rename it to a static name.
     - name: Rename the same app build to a static name that we can generate SDK size reports with
       shell: bash
