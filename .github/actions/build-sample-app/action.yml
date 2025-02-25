@@ -166,7 +166,7 @@ runs:
 
     - name: Send Slack Notification for Sample App Builds
       if: ${{ always() && inputs.apn-or-fcm == 'APN' && inputs.SLACK_WEBHOOK_URL != '' }}
-      uses: customerio/mobile-ci-tools/github-actions/slack-notify-sample-app/v1
+      uses: customerio/mobile-ci-tools/github-actions/slack-notify-sample-app/v1@main
       with:
         build_status: ${{ job.status }}
         app_icon_emoji: ":ios:"
