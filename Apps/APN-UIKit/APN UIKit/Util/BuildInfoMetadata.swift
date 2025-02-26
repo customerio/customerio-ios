@@ -25,16 +25,27 @@ struct BuildInfoMetadata: CustomStringConvertible {
         self.uiFramework = BuildInfoMetadata.resolveValidOrElse("UIKit (Storyboard)")
         self.sdkIntegration = BuildInfoMetadata.resolveValidOrElse("Swift Package Manager (SPM)")
     }
-
+  var asSortedKeyValuePairs: [(String, String)]  {
+    [
+      "SDK Version": sdkVersion,
+      "App Version": appVersion,
+      "Build Date": buildDate,
+      "Branch": gitMetadata,
+      "Default Workspace": defaultWorkspace,
+      "Language": language,
+      "UI Framework": uiFramework,
+      "SDK Integration": sdkIntegration
+    ].sorted( by: { $0.0 < $1.0 })
+  }
+      
+      
+    
     var description: String {
-        """
-        SDK Version: \(sdkVersion)\tApp Version: \(appVersion)
-        Build Date: \(buildDate)
-        Branch: \(gitMetadata)
-        Default Workspace: \(defaultWorkspace)
-        Language: \(language)\tUI Framework: \(uiFramework)
-        SDK Integration: \(sdkIntegration)
-        """
+      var res = ""
+      asSortedKeyValuePairs.forEach { key, value in
+        res += "\(key): \(value)\n"
+      }
+      return res
     }
 }
 
@@ -65,4 +76,5 @@ extension BuildInfoMetadata {
         let startOfBuildDate = calendar.startOfDay(for: date)
         return calendar.dateComponents([.day], from: startOfBuildDate, to: startOfToday).day ?? 0
     }
+  
 }

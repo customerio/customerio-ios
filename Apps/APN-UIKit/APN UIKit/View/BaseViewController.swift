@@ -14,6 +14,11 @@ class BaseViewController: UIViewController {
         let metadata = BuildInfoMetadata()
         return metadata.description
     }
+  
+    func getMetadataAsSortedKeyValuePairs() -> [(String, String)] {
+      let metadata = BuildInfoMetadata()
+      return metadata.asSortedKeyValuePairs
+    }
 
     func setAppiumAccessibilityIdTo(_ element: UIView, value: String) {
         element.isAccessibilityElement = true
