@@ -43,15 +43,15 @@ class DashboardViewController: BaseViewController {
     }
 
     func configureVersionLabel() {
-      let boldText = [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: UIFont.systemFontSize)]
-      let regularText = [NSAttributedString.Key.font: UIFont.systemFont(ofSize: UIFont.systemFontSize)]
-      
-      let versionLabelAttributedText = NSMutableAttributedString(string:"")
-      getMetadataAsSortedKeyValuePairs().forEach { key, value in
-        versionLabelAttributedText.append(NSAttributedString(string: "\(key): ", attributes: boldText))
-        versionLabelAttributedText.append(NSAttributedString(string: "\(value)\n", attributes: regularText))
-      }
-      versionsLabel.attributedText = versionLabelAttributedText
+        let boldText = [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: UIFont.systemFontSize)]
+        let regularText = [NSAttributedString.Key.font: UIFont.systemFont(ofSize: UIFont.systemFontSize)]
+
+        let versionLabelAttributedText = NSMutableAttributedString(string: "")
+        for (key, value) in getMetadataAsSortedKeyValuePairs() {
+            versionLabelAttributedText.append(NSAttributedString(string: "\(key): ", attributes: boldText))
+            versionLabelAttributedText.append(NSAttributedString(string: "\(value)\n", attributes: regularText))
+        }
+        versionsLabel.attributedText = versionLabelAttributedText
     }
 
     func addUserInteractionToImageViews() {
