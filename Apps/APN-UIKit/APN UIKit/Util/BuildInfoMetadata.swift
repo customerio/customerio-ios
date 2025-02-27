@@ -26,15 +26,26 @@ struct BuildInfoMetadata: CustomStringConvertible {
         self.sdkIntegration = BuildInfoMetadata.resolveValidOrElse("Swift Package Manager (SPM)")
     }
 
+    var asSortedKeyValuePairs: [(String, String)] {
+        [
+            "SDK Version": sdkVersion,
+            "App Version": appVersion,
+
+            "Build Date": buildDate,
+            "Branch": gitMetadata,
+            "Default Workspace": defaultWorkspace,
+            "Language": language,
+            "UI Framework": uiFramework,
+            "SDK Integration": sdkIntegration
+        ].sorted(by: { $0.0 < $1.0 })
+    }
+
     var description: String {
-        """
-        SDK Version: \(sdkVersion)\tApp Version: \(appVersion)
-        Build Date: \(buildDate)
-        Branch: \(gitMetadata)
-        Default Workspace: \(defaultWorkspace)
-        Language: \(language)\tUI Framework: \(uiFramework)
-        SDK Integration: \(sdkIntegration)
-        """
+        var res = ""
+        for (key, value) in asSortedKeyValuePairs {
+            res += "\(key): \(value)\n"
+        }
+        return res
     }
 }
 
