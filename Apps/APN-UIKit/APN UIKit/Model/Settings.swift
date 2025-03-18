@@ -1,18 +1,11 @@
-import Foundation
 import CioDataPipelines
-
+import Foundation
 
 struct Settings: Codable {
     var dataPipelines: DataPipelinesSettings
     var messaging: MessagingPushAPNSettings
     var inApp: MessagingInAppSettings
     var internalSettings: InternalSettings
-    // var deviceToken: String
-    // var bgQDelay: String
-    // var bgQMinTasks: String
-    // var isTrackScreenEnabled: Bool
-    // var isDeviceAttributeEnabled: Bool
-    // var isDebugModeEnabled: Bool
 }
 
 struct DataPipelinesSettings: Codable {

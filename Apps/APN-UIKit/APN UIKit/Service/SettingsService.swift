@@ -1,36 +1,24 @@
-//
-//  SettingsService.swift
-//  APN UIKit
-//
-//  Created by Uros Milivojevic on 17.3.25..
-//
-
 // sourcery: InjectRegisterShared = "SettingsService"
 class SettingsService {
     private let storage: Storage
     let defaultInternalSettings: InternalSettings
-    
-    init (storage: Storage) {
+
+    init(storage: Storage) {
         self.storage = storage
-        
+
         self.defaultInternalSettings = InternalSettings(
             cdnHost: "cdp.customer.io/v1",
             apiHost: "cdp.customer.io/v1",
             inAppEnvironment: .Production,
-            testMode: true)
-        
-        self.setDefaultSettings()
+            testMode: true
+        )
+
+        setDefaultSettings()
     }
-   
+
     func setDefaultSettings() {
-//        if storage.didSetDefaults == false {
-//            storage.didSetDefaults = true
-//            storage.isDebugModeEnabled = true
-//            storage.isTrackScreenEnabled = true
-//            storage.isTrackDeviceAttrEnabled = true
-//        }
         guard storage.didSetDefaults == false else { return }
-        
+
         let settings = Settings(
             dataPipelines: DataPipelinesSettings(
                 cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey,
@@ -40,20 +28,23 @@ class SettingsService {
                 autoTrackUIKitScreenViews: true,
                 trackApplicationLifecycleEvents: true,
                 screenViewUse: .All,
-                logLevel: .Error),
+                logLevel: .Error
+            ),
             messaging: MessagingPushAPNSettings(
                 autoFetchDeviceToken: true,
                 autoTrackPushEvents: true,
-                showPushAppInForeground: true),
+                showPushAppInForeground: true
+            ),
             inApp: MessagingInAppSettings(
                 siteId: BuildEnvironment.CustomerIO.siteId,
-                region: .US),
+                region: .US
+            ),
             internalSettings: defaultInternalSettings
         )
-        
-        self.storage.settings = settings
+
+        storage.settings = settings
     }
-    
+
 //    func setDefaultInternalSettings() {
 //        guard var settings = storage.settings else { return }
 //        settings.internalSettings = defaultInternalSettings
