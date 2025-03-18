@@ -44,10 +44,4 @@ class SettingsService {
 
         storage.settings = settings
     }
-
-//    func setDefaultInternalSettings() {
-//        guard var settings = storage.settings else { return }
-//        settings.internalSettings = defaultInternalSettings
-//        self.storage.settings = settings
-//    }
 }
