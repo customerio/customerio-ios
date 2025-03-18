@@ -67,51 +67,52 @@ class SettingsViewController: BaseViewController {
     }
 
     func getAndSetDefaultValues() {
-        var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
-        var cdpApiKey = storage.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
-        if let deepLinkSiteId = deepLinkSiteId, let deeplinkCdpApiKey = deeplinkCdpApiKey {
-            siteId = deepLinkSiteId
-            cdpApiKey = deeplinkCdpApiKey
-        }
-        currentSettings = Settings(
-            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
-            cdnHost: storage.cdnHost ?? "cdp.customer.io/v1",
-            apiHost: storage.apiHost ?? "cdp.customer.io/v1",
-            siteId: siteId,
-            cdpApiKey: cdpApiKey,
-            bgQDelay: storage.bgQDelay ?? "30",
-            bgQMinTasks: storage.bgNumOfTasks ?? "10",
-            isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
-            isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
-            isDebugModeEnabled: storage.isDebugModeEnabled ?? true
-        )
+//        var siteId = storage.siteId ?? BuildEnvironment.CustomerIO.siteId
+//        var cdpApiKey = storage.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
+//        if let deepLinkSiteId = deepLinkSiteId, let deeplinkCdpApiKey = deeplinkCdpApiKey {
+//            siteId = deepLinkSiteId
+//            cdpApiKey = deeplinkCdpApiKey
+//        }
+        
+//        currentSettings = Settings(
+//            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
+//            cdnHost: storage.cdnHost ?? "cdp.customer.io/v1",
+//            apiHost: storage.apiHost ?? "cdp.customer.io/v1",
+//            siteId: siteId,
+//            cdpApiKey: cdpApiKey,
+//            bgQDelay: storage.bgQDelay ?? "30",
+//            bgQMinTasks: storage.bgNumOfTasks ?? "10",
+//            isTrackScreenEnabled: storage.isTrackScreenEnabled ?? true,
+//            isDeviceAttributeEnabled: storage.isTrackDeviceAttrEnabled ?? true,
+//            isDebugModeEnabled: storage.isDebugModeEnabled ?? true
+//        )
         setDefaultValues()
     }
 
     func setDefaultValues() {
-        deviceTokenTextField.text = currentSettings.deviceToken
-        cdnHostTextField.text = currentSettings.cdnHost
-        apiHostTextField.text = currentSettings.apiHost
-
-        siteIdTextField.text = currentSettings.siteId
-        cdpApiKeyTextField.text = currentSettings.cdpApiKey
-
-        bgQTakDelayTextField.text = currentSettings.bgQDelay
-        bgQMinTasksTextField.text = currentSettings.bgQMinTasks
-
-        trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
-        trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
-        debugModeToggle.isOn = currentSettings.isDebugModeEnabled
+//        deviceTokenTextField.text = currentSettings.deviceToken
+//        cdnHostTextField.text = currentSettings.cdnHost
+//        apiHostTextField.text = currentSettings.apiHost
+//
+//        siteIdTextField.text = currentSettings.siteId
+//        cdpApiKeyTextField.text = currentSettings.cdpApiKey
+//
+//        bgQTakDelayTextField.text = currentSettings.bgQDelay
+//        bgQMinTasksTextField.text = currentSettings.bgQMinTasks
+//
+//        trackScreenToggle.isOn = currentSettings.isTrackScreenEnabled
+//        trackDeviceToggle.isOn = currentSettings.isDeviceAttributeEnabled
+//        debugModeToggle.isOn = currentSettings.isDebugModeEnabled
     }
 
     func configureSettingsRouter() {
         let router = SettingsRouter()
         settingsRouter = router
-        router.settingsViewController = self
+//        router.settingsViewController = self
     }
 
     func popToSource() {
-        settingsRouter?.routeToSource()
+//        settingsRouter?.routeToSource()
     }
 
     func addAccessibilityIdentifiersForAppium() {
@@ -130,6 +131,7 @@ class SettingsViewController: BaseViewController {
         navigationController?.navigationBar.topItem?.backBarButtonItem = backButton
     }
 
+    // TODO: remove if not used
     func getStatusOfPushPermissions(handler: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             handler(settings.authorizationStatus)
@@ -137,26 +139,27 @@ class SettingsViewController: BaseViewController {
     }
 
     func save() {
-        // CDN Host
-        storage.cdnHost = cdnHostTextField.text
-        // API Host
-        storage.apiHost = apiHostTextField.text
-        // Background Queue Seconds Delay
-        storage.bgQDelay = bgQTakDelayTextField.text
-        // Min number of tasks
-        storage.bgNumOfTasks = bgQMinTasksTextField.text
-        // Track screen enabled
-        storage.isTrackScreenEnabled = trackScreenState
-        // Device attributes
-        storage.isTrackDeviceAttrEnabled = trackDeviceAttributeState
-        // Debug screen
-        storage.isDebugModeEnabled = debugModeState
-        // SiteId
-        storage.siteId = siteIdTextField.text
-        // CDP API Key
-        storage.cdpApiKey = cdpApiKeyTextField.text
+//        // CDN Host
+//        storage.cdnHost = cdnHostTextField.text
+//        // API Host
+//        storage.apiHost = apiHostTextField.text
+//        // Background Queue Seconds Delay
+//        storage.bgQDelay = bgQTakDelayTextField.text
+//        // Min number of tasks
+//        storage.bgNumOfTasks = bgQMinTasksTextField.text
+//        // Track screen enabled
+//        storage.isTrackScreenEnabled = trackScreenState
+//        // Device attributes
+//        storage.isTrackDeviceAttrEnabled = trackDeviceAttributeState
+//        // Debug screen
+//        storage.isDebugModeEnabled = debugModeState
+//        // SiteId
+//        storage.siteId = siteIdTextField.text
+//        // CDP API Key
+//        storage.cdpApiKey = cdpApiKeyTextField.text
     }
 
+    // TODO: remove if not used
     func isValid() -> Bool {
         // Site id and CDP API Key
         if siteIdTextField.isTextTrimEmpty {
@@ -210,18 +213,18 @@ class SettingsViewController: BaseViewController {
     }
 
     @IBAction func restoreDefaultSettings(_ sender: UIButton) {
-        currentSettings = Settings(
-            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
-            cdnHost: "",
-            apiHost: "",
-            siteId: BuildEnvironment.CustomerIO.siteId,
-            cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey,
-            bgQDelay: "30",
-            bgQMinTasks: "10",
-            isTrackScreenEnabled: true,
-            isDeviceAttributeEnabled: true,
-            isDebugModeEnabled: true
-        )
+//        currentSettings = Settings(
+//            deviceToken: CustomerIO.shared.registeredDeviceToken ?? "Error",
+//            cdnHost: "",
+//            apiHost: "",
+//            siteId: BuildEnvironment.CustomerIO.siteId,
+//            cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey,
+//            bgQDelay: "30",
+//            bgQMinTasks: "10",
+//            isTrackScreenEnabled: true,
+//            isDeviceAttributeEnabled: true,
+//            isDebugModeEnabled: true
+//        )
         setDefaultValues()
     }
 }

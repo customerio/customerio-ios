@@ -15,7 +15,6 @@
 		4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4650331229F69845001B6552 /* DeepLinksHandlerUtil.swift */; };
 		46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98029E459D600EAF40B /* AppDelegate.swift */; };
 		46D5D98329E459D600EAF40B /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98229E459D600EAF40B /* SceneDelegate.swift */; };
-		46D5D98529E459D600EAF40B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D98429E459D600EAF40B /* ViewController.swift */; };
 		46D5D98829E459D600EAF40B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 46D5D98629E459D600EAF40B /* Main.storyboard */; };
 		46D5D98A29E459D800EAF40B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 46D5D98929E459D800EAF40B /* Assets.xcassets */; };
 		46D5D98D29E459D800EAF40B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */; };
@@ -32,7 +31,7 @@
 		46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C229E590CE00EAF40B /* DashboardRouter.swift */; };
 		46D5D9C529E596F300EAF40B /* ViewControllerExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */; };
 		46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */; };
-		46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */; };
+		46D5D9CC29E830AD00EAF40B /* _SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D5D9CB29E830AD00EAF40B /* _SettingsViewController.swift */; };
 		46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */; };
 		46EE275D29E9ECE60068F9A3 /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275C29E9ECE60068F9A3 /* StringExtension.swift */; };
 		46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE275F29E9F1BD0068F9A3 /* Storage.swift */; };
@@ -44,6 +43,11 @@
 		46EE277929ED833D0068F9A3 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE277829ED833D0068F9A3 /* Settings.swift */; };
 		46EE278429EEEDF30068F9A3 /* NotificationUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */; };
 		46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */; };
+		666B6DD72D8973F200F67EBC /* ThemeSelectedButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666B6DD62D8973F200F67EBC /* ThemeSelectedButton.swift */; };
+		666DC9542D8440E600279A8E /* MainSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666DC9532D8440E600279A8E /* MainSettingsViewController.swift */; };
+		666DC9562D84413300279A8E /* InternalSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666DC9552D84413300279A8E /* InternalSettingsViewController.swift */; };
+		667D549F2D883FAA00183336 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667D549E2D883FA400183336 /* SettingsViewModel.swift */; };
+		667D54A22D8854E500183336 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667D54A12D8854DD00183336 /* SettingsService.swift */; };
 		68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */; };
 		68050B722D417DAA0090B4BB /* InlineInAppMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */; };
 		68050B742D4246CE0090B4BB /* ColorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68050B732D4246CE0090B4BB /* ColorExtension.swift */; };
@@ -104,7 +108,6 @@
 		46D5D97D29E459D600EAF40B /* APN UIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "APN UIKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D98029E459D600EAF40B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		46D5D98229E459D600EAF40B /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		46D5D98429E459D600EAF40B /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		46D5D98729E459D600EAF40B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		46D5D98929E459D800EAF40B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		46D5D98C29E459D800EAF40B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -125,7 +128,7 @@
 		46D5D9C429E596F300EAF40B /* ViewControllerExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerExtension.swift; sourceTree = "<group>"; };
 		46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CustomDataViewController.swift; path = Customisation/CustomDataViewController.swift; sourceTree = "<group>"; };
 		46D5D9C829E7276F00EAF40B /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
-		46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		46D5D9CB29E830AD00EAF40B /* _SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = _SettingsViewController.swift; sourceTree = "<group>"; };
 		46EE274C29E9CBCE0068F9A3 /* SettingsRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouter.swift; sourceTree = "<group>"; };
 		46EE275C29E9ECE60068F9A3 /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
 		46EE275F29E9F1BD0068F9A3 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
@@ -137,6 +140,11 @@
 		46EE277829ED833D0068F9A3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		46EE278329EEEDF30068F9A3 /* NotificationUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationUtil.swift; sourceTree = "<group>"; };
 		46EE278529F01F9B0068F9A3 /* ImageViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewExtension.swift; sourceTree = "<group>"; };
+		666B6DD62D8973F200F67EBC /* ThemeSelectedButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSelectedButton.swift; sourceTree = "<group>"; };
+		666DC9532D8440E600279A8E /* MainSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSettingsViewController.swift; sourceTree = "<group>"; };
+		666DC9552D84413300279A8E /* InternalSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InternalSettingsViewController.swift; sourceTree = "<group>"; };
+		667D549E2D883FA400183336 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		667D54A12D8854DD00183336 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		68050B6D2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageSwiftUiViewController.swift; sourceTree = "<group>"; };
 		68050B712D417DAA0090B4BB /* InlineInAppMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageView.swift; sourceTree = "<group>"; };
 		68050B732D4246CE0090B4BB /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
@@ -219,6 +227,7 @@
 		46D5D97F29E459D600EAF40B /* APN UIKit */ = {
 			isa = PBXGroup;
 			children = (
+				667D54A02D8854D400183336 /* Service */,
 				46EE278229EEED500068F9A3 /* Util */,
 				46EE277729ED83340068F9A3 /* Model */,
 				46EE276E29ED722E0068F9A3 /* autogenerated */,
@@ -228,7 +237,6 @@
 				46EE275E29E9F19B0068F9A3 /* Storage */,
 				46D5D98029E459D600EAF40B /* AppDelegate.swift */,
 				46D5D98229E459D600EAF40B /* SceneDelegate.swift */,
-				46D5D98429E459D600EAF40B /* ViewController.swift */,
 				46D5D98629E459D600EAF40B /* Main.storyboard */,
 				46D5D98929E459D800EAF40B /* Assets.xcassets */,
 				46D5D98B29E459D800EAF40B /* LaunchScreen.storyboard */,
@@ -260,13 +268,14 @@
 		46D5D9B029E56DE000EAF40B /* View */ = {
 			isa = PBXGroup;
 			children = (
+				667D549D2D883AD000183336 /* Settings */,
 				68050B702D417D7D0090B4BB /* Inline */,
 				46D5D9B829E5887A00EAF40B /* Extension */,
 				46D5D9B329E56F1E00EAF40B /* Customisation */,
 				46D5D9B129E56E0E00EAF40B /* LoginViewController.swift */,
 				46D5D9C029E58EB600EAF40B /* DashboardViewController.swift */,
 				46D5D9C629E59A5E00EAF40B /* CustomDataViewController.swift */,
-				46D5D9CB29E830AD00EAF40B /* SettingsViewController.swift */,
+				46D5D9CB29E830AD00EAF40B /* _SettingsViewController.swift */,
 				4650331029F696B8001B6552 /* DeepLinkViewController.swift */,
 				A76FCBF52D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift */,
 				94AF7C9E2A44BE9B004880BD /* BaseViewController.swift */,
@@ -278,6 +287,7 @@
 			isa = PBXGroup;
 			children = (
 				46D5D9B429E5710E00EAF40B /* ThemeButton.swift */,
+				666B6DD62D8973F200F67EBC /* ThemeSelectedButton.swift */,
 				46D5D9B629E5792C00EAF40B /* ThemeTextField.swift */,
 			);
 			path = Customisation;
@@ -357,6 +367,24 @@
 				A78201262D5A16EB00E2D9E0 /* BuildInfoMetadata.swift */,
 			);
 			path = Util;
+			sourceTree = "<group>";
+		};
+		667D549D2D883AD000183336 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				667D549E2D883FA400183336 /* SettingsViewModel.swift */,
+				666DC9532D8440E600279A8E /* MainSettingsViewController.swift */,
+				666DC9552D84413300279A8E /* InternalSettingsViewController.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		667D54A02D8854D400183336 /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				667D54A12D8854DD00183336 /* SettingsService.swift */,
+			);
+			path = Service;
 			sourceTree = "<group>";
 		};
 		68050B702D417D7D0090B4BB /* Inline */ = {
@@ -549,14 +577,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				46D5D9B229E56E0E00EAF40B /* LoginViewController.swift in Sources */,
-				46D5D98529E459D600EAF40B /* ViewController.swift in Sources */,
 				46D5D9BC29E58D2000EAF40B /* StoryboardExtension.swift in Sources */,
 				A76FCBF62D48AE5000625DD9 /* InlineInAppMessageUikitViewController.swift in Sources */,
 				4650331329F69845001B6552 /* DeepLinksHandlerUtil.swift in Sources */,
 				46D5D98129E459D600EAF40B /* AppDelegate.swift in Sources */,
 				94AF7C9F2A44BE9B004880BD /* BaseViewController.swift in Sources */,
 				46D5D9BA29E5889F00EAF40B /* TextFieldExtension.swift in Sources */,
+				667D549F2D883FAA00183336 /* SettingsViewModel.swift in Sources */,
 				46EE276029E9F1BD0068F9A3 /* Storage.swift in Sources */,
+				667D54A22D8854E500183336 /* SettingsService.swift in Sources */,
 				46EE278629F01F9C0068F9A3 /* ImageViewExtension.swift in Sources */,
 				94C5C26C2A718E970066A072 /* DateExtension.swift in Sources */,
 				68050B722D417DAA0090B4BB /* InlineInAppMessageView.swift in Sources */,
@@ -576,13 +605,16 @@
 				46EE277329ED722E0068F9A3 /* AutoDependencyInjection.generated.swift in Sources */,
 				68050B6E2D417D100090B4BB /* InlineInAppMessageSwiftUiViewController.swift in Sources */,
 				4650331129F696B8001B6552 /* DeepLinkViewController.swift in Sources */,
+				666DC9562D84413300279A8E /* InternalSettingsViewController.swift in Sources */,
 				46EE274D29E9CBCE0068F9A3 /* SettingsRouter.swift in Sources */,
-				46D5D9CC29E830AD00EAF40B /* SettingsViewController.swift in Sources */,
+				46D5D9CC29E830AD00EAF40B /* _SettingsViewController.swift in Sources */,
 				F74F41F92A168316000D61B9 /* BuildEnvironment.swift in Sources */,
+				666B6DD72D8973F200F67EBC /* ThemeSelectedButton.swift in Sources */,
 				46EE277929ED833D0068F9A3 /* Settings.swift in Sources */,
 				46D5D9B529E5710E00EAF40B /* ThemeButton.swift in Sources */,
 				46D5D9B729E5792C00EAF40B /* ThemeTextField.swift in Sources */,
 				46D5D9C729E59A5E00EAF40B /* CustomDataViewController.swift in Sources */,
+				666DC9542D8440E600279A8E /* MainSettingsViewController.swift in Sources */,
 				46D5D9C329E590CE00EAF40B /* DashboardRouter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -647,11 +679,10 @@
 		4650330829F68FEB001B6552 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				DEVELOPMENT_TEAM = 4W566ZQLNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
@@ -663,10 +694,9 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
+				PRODUCT_BUNDLE_IDENTIFIER = com.urosmil.apn.richpush;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -677,11 +707,10 @@
 		4650330929F68FEB001B6552 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				DEVELOPMENT_TEAM = 4W566ZQLNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
@@ -693,10 +722,9 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
+				PRODUCT_BUNDLE_IDENTIFIER = com.urosmil.apn.richpush;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.apn-spm.APN-UIKit.richpush";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -825,28 +853,28 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				DEVELOPMENT_TEAM = 4W566ZQLNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "APN UIKit/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit";
+				PRODUCT_BUNDLE_IDENTIFIER = com.urosmil.apn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.apn-spm.APN-UIKit";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -860,28 +888,28 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "APN UIKit/APN UIKit.entitlements";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				DEVELOPMENT_TEAM = 4W566ZQLNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "APN UIKit/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKit";
+				PRODUCT_BUNDLE_IDENTIFIER = com.urosmil.apn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.apn-spm.APN-UIKit";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

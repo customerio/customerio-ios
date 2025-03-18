@@ -26,50 +26,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func initializeCioAndInAppListeners() {
+        // Set default setting if those don't exist
+        DIGraphShared.shared.settingsService.setDefaultSettings()
+        
         // Initialize CustomerIO SDK
+        guard let settings = storage.settings else {
+            assert(false, "Settings should not be nil")
+        }
+        
+        let config = SDKConfigBuilder(cdpApiKey: settings.dataPipelines.cdpApiKey)
+            .region(settings.dataPipelines.region.toCIORegion())
+            .autoTrackDeviceAttributes(settings.dataPipelines.autoTrackDeviceAttributes)
+            .trackApplicationLifecycleEvents(settings.dataPipelines.trackApplicationLifecycleEvents)
+            .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
+            .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
+            .migrationSiteId(settings.dataPipelines.siteId)
 
-        if storage.didSetDefaults == false {
-            storage.didSetDefaults = true
-            storage.isDebugModeEnabled = true
-            storage.isTrackScreenEnabled = true
-            storage.isTrackDeviceAttrEnabled = true
+        if settings.dataPipelines.autoTrackUIKitScreenViews {
+            config.autoTrackUIKitScreenViews()
         }
-        var cdpApiKey = BuildEnvironment.CustomerIO.cdpApiKey
-        var siteId = BuildEnvironment.CustomerIO.siteId
-        if let storedSiteId = storage.siteId {
-            siteId = storedSiteId
-        }
-        if let storedCdpApiKey = storage.cdpApiKey {
-            cdpApiKey = storedCdpApiKey
-        }
-        let logLevel = storage.isDebugModeEnabled ?? true ? CioLogLevel.debug : CioLogLevel.error
-        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
-            .logLevel(logLevel)
-            .flushAt(Int(storage.bgNumOfTasks ?? "10") ?? 10)
-            .flushInterval(Double(storage.bgQDelay ?? "30") ?? 30)
-            .autoTrackDeviceAttributes(storage.isTrackDeviceAttrEnabled ?? true)
-            .migrationSiteId(siteId)
-
-        if let apiHost = storage.apiHost, !apiHost.isEmpty {
+        if case let apiHost = settings.internalSettings.apiHost, !apiHost.isEmpty {
             config.apiHost(apiHost)
         }
-        if let cdnHost = storage.cdnHost, !cdnHost.isEmpty {
+        if case let cdnHost = settings.internalSettings.cdnHost, !cdnHost.isEmpty {
             config.cdnHost(cdnHost)
         }
-        if storage.isTrackScreenEnabled == true {
-            config.autoTrackUIKitScreenViews()
+        if settings.internalSettings.testMode {
+            config.flushAt(1)
         }
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
-        MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
-            .setEventListener(self)
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(true)
+                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
+                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
+                .showPushAppInForeground(settings.messaging.showPushAppInForeground)
                 .build()
         )
+        MessagingInApp
+            .initialize(withConfig: MessagingInAppConfigBuilder(
+                siteId: settings.inApp.siteId,
+                region: settings.inApp.region.toCIORegion()
+            ).build())
+            .setEventListener(self)
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

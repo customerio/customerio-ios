@@ -8,6 +8,9 @@ protocol LoginRouting {
 
 class LoginRouter: LoginRouting {
     weak var loginViewController: LoginViewController?
+    lazy var settingsRouter: SettingsRouting = {
+        return SettingsRouter(navigationController: loginViewController?.navigationController)
+    }()
 
     func routeToDashboard() {
         let viewController = DashboardViewController.newInstance()
@@ -15,11 +18,6 @@ class LoginRouter: LoginRouting {
     }
 
     func routeToSettings(_ withInfo: [String: String]? = nil) {
-        let viewController = SettingsViewController.newInstance()
-        if let siteId = withInfo?["site_id"], let cdpApiKey = withInfo?["cdp_api_key"] {
-            viewController.deepLinkSiteId = siteId
-            viewController.deeplinkCdpApiKey = cdpApiKey
-        }
-        loginViewController?.navigationController?.pushViewController(viewController, animated: true)
+        settingsRouter.routeToMainSettings()
     }
 }
