@@ -17,6 +17,16 @@ class SettingsViewModel {
         setLocalSettings()
     }
     
+    func overrideSiteIdAndCdpApiKey(siteIdOverride: String?, cdpApiKeyOverride: String?) {
+        if let siteIdOverride {
+            settings.dataPipelines.siteId = siteIdOverride
+            settings.inApp.siteId = siteIdOverride
+        }
+        if let cdpApiKeyOverride {
+            settings.dataPipelines.cdpApiKey = cdpApiKeyOverride
+        }
+    }
+    
     // MARK: Routing
     
     func internalSettingsScreenRequested() {

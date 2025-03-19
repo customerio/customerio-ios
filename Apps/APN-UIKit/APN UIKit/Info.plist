@@ -4,9 +4,9 @@
 <dict>
     <key>CFBundleDisplayName</key>
     <string>Native iOS</string>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
-	<key>CFBundleURLTypes</key>
+    <key>UIUserInterfaceStyle</key>
+    <string>Light</string>
+    <key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeRole</key>

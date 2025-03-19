@@ -32,7 +32,7 @@ class DashboardRouter: DashboardRouting {
     }
 
     func routeToSettings(_ withInfo: [String: String]? = nil) {
-        settingsRouter.routeToMainSettings()
+        settingsRouter.routeToMainSettings(siteIdOverride: withInfo?["site_id"], cdpApiKeyOverride: withInfo?["cdp_api_key"])
     }
 
     func routeToInlineSwiftUiExamplesScreen() {

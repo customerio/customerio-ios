@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 
 protocol SettingsRouting {
-    func routeToMainSettings()
+    func routeToMainSettings(siteIdOverride: String?, cdpApiKeyOverride: String?)
     func routeToInternalSettings()
 }
 
@@ -14,8 +14,9 @@ class SettingsRouter: SettingsRouting {
         self.navigationController = navigationController
     }
     
-    func routeToMainSettings() {
+    func routeToMainSettings(siteIdOverride: String?, cdpApiKeyOverride: String?) {
         settingsViewModel = SettingsViewModel(settingRouter: self)
+        settingsViewModel?.overrideSiteIdAndCdpApiKey(siteIdOverride: siteIdOverride, cdpApiKeyOverride: cdpApiKeyOverride)
         
         let mainSettingsViewController = MainSettingsViewController.newInstance()
         mainSettingsViewController.settingsViewModel = settingsViewModel
