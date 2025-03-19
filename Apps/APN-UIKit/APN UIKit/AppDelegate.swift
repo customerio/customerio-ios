@@ -32,6 +32,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize CustomerIO SDK
         guard let settings = storage.settings else {
             assertionFailure("Settings should not be nil")
+            return
         }
 
         let config = SDKConfigBuilder(cdpApiKey: settings.dataPipelines.cdpApiKey)

@@ -68,7 +68,13 @@ class MainSettingsViewController: BaseViewController {
         CustomerIO.shared.screen(title: screenName, properties: [:])
     }
 
-    func setInitialValues() {
+    private func setInitialValues() {
+        setDataPipelineInitialValues()
+        setMessagingPushAPNInitialValues()
+        setMessagingInAppInitialValues()
+    }
+
+    private func setDataPipelineInitialValues() {
         cdpApiKeyTextField.text = settingsViewModel.settings.dataPipelines.cdpApiKey
         siteIdTextField.text = settingsViewModel.settings.dataPipelines.siteId
 
@@ -96,7 +102,9 @@ class MainSettingsViewController: BaseViewController {
         logLevelErrorButton.isSelected = settingsViewModel.settings.dataPipelines.logLevel == .Error
         logLevelInfoButton.isSelected = settingsViewModel.settings.dataPipelines.logLevel == .Info
         logLevelDebugButton.isSelected = settingsViewModel.settings.dataPipelines.logLevel == .Debug
+    }
 
+    private func setMessagingPushAPNInitialValues() {
         // Auto Fetch Device Token
         autoFetchDeviceTokenTrueButton.isSelected = settingsViewModel.settings.messaging.autoFetchDeviceToken
         autoFetchDeviceTokenFalseButton.isSelected = !settingsViewModel.settings.messaging.autoFetchDeviceToken
@@ -108,7 +116,9 @@ class MainSettingsViewController: BaseViewController {
         // Show Push App In Foreground
         showPushAppInForegroundTrueButton.isSelected = settingsViewModel.settings.messaging.showPushAppInForeground
         showPushAppInForegroundFalseButton.isSelected = !settingsViewModel.settings.messaging.showPushAppInForeground
+    }
 
+    private func setMessagingInAppInitialValues() {
         // Site ID
         inAppSiteIdTextField.text = settingsViewModel.settings.dataPipelines.siteId
 
@@ -117,7 +127,13 @@ class MainSettingsViewController: BaseViewController {
         inAppRegionEUButton.isSelected = settingsViewModel.settings.inApp.region == .EU
     }
 
-    func configureButtonActions() {
+    private func configureButtonActions() {
+        configureDataPipelineButtonActions()
+        configureMessagingPushAPNButtonActions()
+        configureMessagingInAppButtonActions()
+    }
+
+    private func configureDataPipelineButtonActions() {
         // region
         regionUSButton.addAction(UIAction(handler: { [weak self] _ in
             self?.updateRegion(.US)
@@ -168,7 +184,9 @@ class MainSettingsViewController: BaseViewController {
         logLevelDebugButton.addAction(UIAction(handler: { [weak self] _ in
             self?.updateLogLevel(.Debug)
         }), for: .touchUpInside)
+    }
 
+    private func configureMessagingPushAPNButtonActions() {
         // autoFetchDeviceToken
         autoFetchDeviceTokenTrueButton.addAction(UIAction(handler: { [weak self] _ in
             self?.updateAutoFetchDeviceToken(true)
@@ -192,7 +210,9 @@ class MainSettingsViewController: BaseViewController {
         showPushAppInForegroundFalseButton.addAction(UIAction(handler: { [weak self] _ in
             self?.updateShowPushAppInForeground(false)
         }), for: .touchUpInside)
+    }
 
+    private func configureMessagingInAppButtonActions() {
         // inAppRegion
         inAppRegionUSButton.addAction(UIAction(handler: { [weak self] _ in
             self?.updateInAppRegion(.US)
