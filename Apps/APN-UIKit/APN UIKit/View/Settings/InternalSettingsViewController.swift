@@ -75,9 +75,4 @@ class InternalSettingsViewController: BaseViewController {
     @IBAction func apiHostChanged(_ sender: UITextField) {
         settingsViewModel.apiHostUpdated(self.cdnHostTextField.text ?? "")
     }
-    
-    @IBAction func restoreDefaultSettings(_ sender: UIButton) {
-        settingsViewModel.restoreDefaultInternalSettings()
-        setInitialValues()
-    }
 }

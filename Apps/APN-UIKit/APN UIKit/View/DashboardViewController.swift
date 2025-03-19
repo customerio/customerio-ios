@@ -6,6 +6,8 @@ class DashboardViewController: BaseViewController {
         UIStoryboard.getViewController(identifier: "DashboardViewController")
     }
 
+    @IBOutlet var userEmailLabel: UILabel!
+    @IBOutlet var deviceTokenLabel: UILabel!
     @IBOutlet var sendDeviceAttributesButton: ThemeButton!
     @IBOutlet var showPushPromptButton: ThemeButton!
     @IBOutlet var logoutButton: ThemeButton!
@@ -13,7 +15,6 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var customEventButton: ThemeButton!
     @IBOutlet var randomEventButton: ThemeButton!
     @IBOutlet var versionsLabel: UILabel!
-    @IBOutlet var userInfoLabel: UILabel!
     @IBOutlet var settings: UIImageView!
     var dashboardRouter: DashboardRouting?
     var notificationUtil = DIGraphShared.shared.notificationUtil
@@ -31,7 +32,7 @@ class DashboardViewController: BaseViewController {
         configureDashboardRouter()
         addNotifierObserver()
         addUserInteractionToImageViews()
-        setUserDetail()
+        setEmailAndDeviceToken()
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
     }
@@ -92,10 +93,11 @@ class DashboardViewController: BaseViewController {
         setAppiumAccessibilityIdTo(logoutButton, value: "Log Out Button")
     }
 
-    func setUserDetail() {
+    func setEmailAndDeviceToken() {
         if let email = storage.userEmailId {
-            userInfoLabel.text = email
+            userEmailLabel.text = email
         }
+        deviceTokenLabel.text = CustomerIO.shared.registeredDeviceToken ?? "Not Registered"
     }
 
     // MARK: - Actions

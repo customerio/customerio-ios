@@ -254,6 +254,12 @@ class MainSettingsViewController: BaseViewController {
 
     // MARK: - Actions
     
+    @IBAction func saveChanges(_ sender: UIBarButtonItem) {
+        showSavingAlertAndExecuteDefaultAction(saveButtonTitle: "Save and close") { [weak self] in
+            self?.settingsViewModel.saveSettings()
+        }
+    }
+    
     @IBAction func cdpApiKeyChanged(_ sender: UITextField) {
         settingsViewModel.cdpApiKeyUpdated(sender.text ?? "")
     }
@@ -266,8 +272,43 @@ class MainSettingsViewController: BaseViewController {
         settingsViewModel.inAppSideIdUpdated(sender.text ?? "")
     }
     
+    @IBAction func restoreDefaultSettings(_ sender: UIButton) {
+        showSavingAlertAndExecuteDefaultAction(saveButtonTitle: "Restore and close") { [weak self] in
+            self?.settingsViewModel.restoreDefaultSettings()
+
+        }
+    }
+    
     @IBAction func internalSettingsButtonTapped(_ sender: Any) {
         settingsViewModel.internalSettingsScreenRequested()
+    }
+    
+    // MARK: Private methods
+    
+    private func showSavingAlertAndExecuteDefaultAction(
+        saveButtonTitle: String,
+        completion: @escaping (() -> Void)
+    ) {
+        let alertController = UIAlertController(
+            title: "Update settings",
+            message: "App will be closed automatically after saving. It must be reopened manually afterwards.",
+            preferredStyle: .alert
+        )
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        alertController.addAction(cancelAction)
+        
+        let saveAction = UIAlertAction(title: saveButtonTitle, style: .default) { _ in
+            completion()
+            // It's ok to have `exit(0)` since app is not intended for the App Store.
+            // Delay is added to ensure UserDefaults sync is complete.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                exit(0)
+            }
+        }
+        alertController.addAction(saveAction)
+        
+        present(alertController, animated: true)
     }
 
 }

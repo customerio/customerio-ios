@@ -1,25 +1,18 @@
 // sourcery: InjectRegisterShared = "SettingsService"
 class SettingsService {
     private let storage: Storage
-    let defaultInternalSettings: InternalSettings
 
     init(storage: Storage) {
         self.storage = storage
 
-        self.defaultInternalSettings = InternalSettings(
-            cdnHost: "cdp.customer.io/v1",
-            apiHost: "cdp.customer.io/v1",
-            inAppEnvironment: .Production,
-            testMode: true
-        )
-
         setDefaultSettings()
     }
 
-    func setDefaultSettings() {
-        guard storage.didSetDefaults == false else { return }
-
-        let settings = Settings(
+    func setDefaultSettings(force: Bool = false) {
+        guard force || storage.didSetDefaults == false else { return }
+        
+        storage.didSetDefaults = true
+        storage.settings = Settings(
             dataPipelines: DataPipelinesSettings(
                 cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey,
                 siteId: BuildEnvironment.CustomerIO.siteId,
@@ -39,9 +32,12 @@ class SettingsService {
                 siteId: BuildEnvironment.CustomerIO.siteId,
                 region: .US
             ),
-            internalSettings: defaultInternalSettings
+            internalSettings: InternalSettings(
+                cdnHost: "cdp.customer.io/v1",
+                apiHost: "cdp.customer.io/v1",
+                inAppEnvironment: .Production,
+                testMode: true
+            )
         )
-
-        storage.settings = settings
     }
 }
