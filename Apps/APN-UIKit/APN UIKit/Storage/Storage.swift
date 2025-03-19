@@ -3,7 +3,6 @@ import Foundation
 protocol StorageManager {
     var settings: Settings? { get set }
     var userEmailId: String? { get set }
-    var deviceToken: String? { get set }
     var didSetDefaults: Bool? { get set }
 }
 
@@ -44,15 +43,6 @@ class Storage: StorageManager {
         }
         set {
             userDefaults.set(newValue, forKey: UserDefaultKeys.userEmailId.rawValue)
-        }
-    }
-
-    var deviceToken: String? {
-        get {
-            userDefaults.string(forKey: UserDefaultKeys.deviceToken.rawValue)
-        }
-        set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.deviceToken.rawValue)
         }
     }
     
