@@ -81,6 +81,12 @@ runs:
         ruby-version: '3.0'
         bundler-cache: true # cache tools to make builds faster in future 
     
+    - name: Update cocoapods and xcodeproj libraries
+      shell: bash
+      run: |
+        gem update cocoapods
+        gem update xcodeproj
+
     - name: Capture Git Context
       shell: bash
       id: git-context
