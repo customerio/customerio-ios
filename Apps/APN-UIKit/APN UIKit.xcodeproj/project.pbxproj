@@ -65,6 +65,13 @@
 			);
 			target = 465032FE29F68FEB001B6552 /* NotificationServiceExtension */;
 		};
+		666B6E502D8AB1D000F67EBC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BuildEnvironment.swift,
+			);
+			target = 465032FE29F68FEB001B6552 /* NotificationServiceExtension */;
+		};
 		669B9A9B2D89E8E00087CC20 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -72,20 +79,13 @@
 			);
 			target = 46D5D97C29E459D600EAF40B /* APN UIKit */;
 		};
-		669B9A9D2D89E95B0087CC20 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				BuildEnvironment.swift,
-			);
-			target = 465032FE29F68FEB001B6552 /* NotificationServiceExtension */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		66161DC82D89E7020089A10C /* APN UIKitTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "APN UIKitTests"; sourceTree = "<group>"; };
 		66161DCC2D89E7090089A10C /* APN UIKitUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "APN UIKitUITests"; sourceTree = "<group>"; };
 		66161DD12D89E7170089A10C /* NotificationServiceExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (66161DD32D89E7170089A10C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = NotificationServiceExtension; sourceTree = "<group>"; };
-		669B9A6D2D89E8E00087CC20 /* APN UIKit */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (669B9A9B2D89E8E00087CC20 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 669B9A9D2D89E95B0087CC20 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "APN UIKit"; sourceTree = "<group>"; };
+		669B9A6D2D89E8E00087CC20 /* APN UIKit */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (669B9A9B2D89E8E00087CC20 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 666B6E502D8AB1D000F67EBC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "APN UIKit"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
