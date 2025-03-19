@@ -31,6 +31,7 @@ class DashboardViewController: BaseViewController {
         super.viewDidLoad()
         configureDashboardRouter()
         addNotifierObserver()
+        addCopyOnTapToDeviceTokenLabel()
         addUserInteractionToImageViews()
         setEmailAndDeviceToken()
         configureVersionLabel()
@@ -41,6 +42,17 @@ class DashboardViewController: BaseViewController {
         let router = DashboardRouter()
         dashboardRouter = router
         router.dashboardViewController = self
+    }
+
+    func addCopyOnTapToDeviceTokenLabel() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(copyDeviceTokenToPasteboard))
+        deviceTokenLabel.isUserInteractionEnabled = true
+        deviceTokenLabel.addGestureRecognizer(tapGesture)
+    }
+
+    @objc func copyDeviceTokenToPasteboard() {
+        UIPasteboard.general.string = deviceTokenLabel.text ?? ""
+        showToast(withMessage: "Device id copied to pasteboard")
     }
 
     func configureVersionLabel() {
