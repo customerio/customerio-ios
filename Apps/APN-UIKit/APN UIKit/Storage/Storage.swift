@@ -14,7 +14,7 @@ class Storage: StorageManager {
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
     }
-    
+
     var settings: Settings? {
         get {
             guard let data = userDefaults.data(forKey: UserDefaultKeys.settings.rawValue) else { return nil }
@@ -27,7 +27,7 @@ class Storage: StorageManager {
             userDefaults.set(data, forKey: UserDefaultKeys.settings.rawValue)
         }
     }
-    
+
     var didSetDefaults: Bool? {
         get {
             userDefaults.bool(forKey: UserDefaultKeys.didSetDefaults.rawValue)
@@ -36,7 +36,7 @@ class Storage: StorageManager {
             userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
         }
     }
-    
+
     var userEmailId: String? {
         get {
             userDefaults.string(forKey: UserDefaultKeys.userEmailId.rawValue)
@@ -45,5 +45,4 @@ class Storage: StorageManager {
             userDefaults.set(newValue, forKey: UserDefaultKeys.userEmailId.rawValue)
         }
     }
-    
 }

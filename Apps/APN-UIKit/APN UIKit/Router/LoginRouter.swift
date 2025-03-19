@@ -8,9 +8,7 @@ protocol LoginRouting {
 
 class LoginRouter: LoginRouting {
     weak var loginViewController: LoginViewController?
-    lazy var settingsRouter: SettingsRouting = {
-        return SettingsRouter(navigationController: loginViewController?.navigationController)
-    }()
+    lazy var settingsRouter: SettingsRouting = SettingsRouter(navigationController: loginViewController?.navigationController)
 
     func routeToDashboard() {
         let viewController = DashboardViewController.newInstance()

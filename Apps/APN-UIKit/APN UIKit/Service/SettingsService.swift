@@ -10,7 +10,7 @@ class SettingsService {
 
     func setDefaultSettings(force: Bool = false) {
         guard force || storage.didSetDefaults == false else { return }
-        
+
         storage.didSetDefaults = true
         storage.settings = Settings(
             dataPipelines: DataPipelinesSettings(

@@ -11,9 +11,7 @@ protocol DashboardRouting {
 
 class DashboardRouter: DashboardRouting {
     weak var dashboardViewController: DashboardViewController?
-    lazy var settingsRouter: SettingsRouting = {
-        return SettingsRouter(navigationController: dashboardViewController?.navigationController)
-    }()
+    lazy var settingsRouter: SettingsRouting = SettingsRouter(navigationController: dashboardViewController?.navigationController)
 
     func routeToLogin() {
         if let controllers = dashboardViewController?.navigationController?.viewControllers, controllers.count >= 1 {

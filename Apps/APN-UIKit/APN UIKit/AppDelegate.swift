@@ -28,12 +28,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func initializeCioAndInAppListeners() {
         // Set default setting if those don't exist
         DIGraphShared.shared.settingsService.setDefaultSettings()
-        
+
         // Initialize CustomerIO SDK
         guard let settings = storage.settings else {
-            assert(false, "Settings should not be nil")
+            assertionFailure("Settings should not be nil")
         }
-        
+
         let config = SDKConfigBuilder(cdpApiKey: settings.dataPipelines.cdpApiKey)
             .region(settings.dataPipelines.region.toCIORegion())
             .autoTrackDeviceAttributes(settings.dataPipelines.autoTrackDeviceAttributes)
