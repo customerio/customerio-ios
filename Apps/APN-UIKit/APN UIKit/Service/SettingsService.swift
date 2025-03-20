@@ -21,7 +21,7 @@ class SettingsService {
                 autoTrackUIKitScreenViews: true,
                 trackApplicationLifecycleEvents: true,
                 screenViewUse: .All,
-                logLevel: .Error
+                logLevel: .Debug
             ),
             messaging: MessagingPushAPNSettings(
                 autoFetchDeviceToken: true,
