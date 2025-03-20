@@ -30,10 +30,10 @@ class Storage: StorageManager {
 
     var didSetDefaults: Bool? {
         get {
-            userDefaults.bool(forKey: UserDefaultKeys.didSetDefaults.rawValue)
+            userDefaults.bool(forKey: UserDefaultKeys.didSetSettingDefaults.rawValue)
         }
         set {
-            userDefaults.set(newValue, forKey: UserDefaultKeys.didSetDefaults.rawValue)
+            userDefaults.set(newValue, forKey: UserDefaultKeys.didSetSettingDefaults.rawValue)
         }
     }
 

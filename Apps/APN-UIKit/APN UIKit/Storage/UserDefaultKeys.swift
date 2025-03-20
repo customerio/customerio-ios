@@ -2,6 +2,6 @@ import Foundation
 
 enum UserDefaultKeys: String {
     case settings
-    case didSetDefaults
+    case didSetSettingDefaults
     case userEmailId
 }
