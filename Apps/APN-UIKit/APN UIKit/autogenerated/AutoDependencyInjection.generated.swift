@@ -1,8 +1,7 @@
-// Generated using Sourcery 2.1.7 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.2.6 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
-import CioMessagingPushAPN
 import Foundation
 
 /**
@@ -60,6 +59,9 @@ extension DIGraphShared {
         _ = notificationUtil
         countDependenciesResolved += 1
 
+        _ = settingsService
+        countDependenciesResolved += 1
+
         _ = storage
         countDependenciesResolved += 1
 
@@ -88,6 +90,16 @@ extension DIGraphShared {
 
     private var newNotificationUtil: NotificationUtil {
         NotificationUtil()
+    }
+
+    // SettingsService
+    var settingsService: SettingsService {
+        getOverriddenInstance() ??
+            newSettingsService
+    }
+
+    private var newSettingsService: SettingsService {
+        SettingsService(storage: storage)
     }
 
     // Storage

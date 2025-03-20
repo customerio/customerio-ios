@@ -80,7 +80,7 @@ runs:
       with:
         ruby-version: '3.0'
         bundler-cache: true # cache tools to make builds faster in future 
-    
+
     - name: Capture Git Context
       shell: bash
       id: git-context

@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.1.7 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.2.6 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 // swiftlint:disable all
 
@@ -9,7 +9,6 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-import CioMessagingPushAPN
 
 /**
  ######################################################
