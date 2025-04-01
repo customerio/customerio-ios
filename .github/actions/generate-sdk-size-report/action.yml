@@ -54,7 +54,7 @@ runs:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
 
   - name: Make the SDK size report
-    uses: mathiasvr/command-output@v2.0.0
+    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
     id: sdk-size-report
     with:
       run: |
@@ -64,7 +64,7 @@ runs:
           -n 0 
     
   - name: Make the SDK size report, including dependencies
-    uses: mathiasvr/command-output@v2.0.0
+    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
     id: sdk-size-including-dependencies-report
     with: 
       run: |
@@ -86,7 +86,7 @@ runs:
   - name: Generate SDK binary diff report between main branch and current branch 
     if: ${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path != '' }}
     id: sdk-size-diff-report
-    uses: mathiasvr/command-output@v2.0.0
+    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
     with: 
       run: |
         bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
