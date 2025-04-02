@@ -76,7 +76,7 @@ runs:
         brew install xcbeautify # used by fastlane for output 
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
-      uses: ruby/setup-ruby@v1
+      uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
       with:
         ruby-version: '3.0'
         bundler-cache: true # cache tools to make builds faster in future 
@@ -113,7 +113,7 @@ runs:
 
     - name: Does ${{ inputs.sample-app }} use CocoaPods? 
       id: check_podfile_exists
-      uses: andstor/file-existence-action@v3
+      uses: andstor/file-existence-action@076e0072799f4942c8bc574a82233e1e4d13e9d6 # v3.0.0
       with:
         files: "Apps/${{ inputs.sample-app }}/Podfile"
 
@@ -145,7 +145,7 @@ runs:
       run: cat $GITHUB_EVENT_PATH
 
     - name: Build app via Fastlane 
-      uses: maierj/fastlane-action@v3.1.0
+      uses: maierj/fastlane-action@5a3b971aaa26776459bb26894d6c1a1a84a311a7 # v3.1.0
       with:
         lane: "ios build"
         subdirectory: "Apps/${{ inputs.sample-app }}"
