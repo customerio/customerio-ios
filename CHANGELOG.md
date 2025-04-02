@@ -1,3 +1,9 @@
+## [3.8.1](https://github.com/customerio/customerio-ios/compare/3.8.0...3.8.1) (2025-04-02)
+
+### Bug Fixes
+
+* Analytics version updated to 1.7.3+cio.1 ([#874](https://github.com/customerio/customerio-ios/issues/874)) ([c8b4568](https://github.com/customerio/customerio-ios/commit/c8b45686fd7522ef6a7a56856de133e22483ebfc))
+
 ## [3.8.0](https://github.com/customerio/customerio-ios/compare/3.7.2...3.8.0) (2025-01-30)
 
 ### Features
