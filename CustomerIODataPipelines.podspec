@@ -9,7 +9,7 @@ Pod::Spec.new do |spec|
   spec.author       = { "CustomerIO Team" => "win@customer.io" }
   spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :tag => spec.version.to_s }
 
-  spec.swift_version = '5.3'
+  spec.swift_version = '5.9'
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios # platforms SDK supports. Leave blank and it's assumed SDK supports all platforms.
@@ -28,5 +28,5 @@ Pod::Spec.new do |spec|
   spec.dependency "CustomerIOTrackingMigration", "= #{spec.version.to_s}"
 
   # Add Segment SDK as a dependency, as this module is designed to be compatible with it.
-  spec.dependency 'AnalyticsSwiftCIO', '= 1.5.14+cio.1'
+  spec.dependency 'AnalyticsSwiftCIO', '1.7.3+cio.1'
 end
