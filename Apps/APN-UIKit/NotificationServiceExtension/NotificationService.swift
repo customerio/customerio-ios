@@ -12,7 +12,11 @@ class NotificationService: UNNotificationServiceExtension {
                 .build()
         )
 
-        MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+        if MessagingPush.shared.didReceive(request, withContentHandler: contentHandler) == false {
+            contentHandler(request.content)
+            return
+        }
+            
     }
 
     override func serviceExtensionTimeWillExpire() {
