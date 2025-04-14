@@ -4,7 +4,11 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
-class MainCioAppDelegate: CioAppDelegateWrapper<AppDelegate> {}
+class MainCioAppDelegate: CioAppDelegateWrapper<AppDelegate> {
+//    override var shouldSetNotificationCenterDelegate: Bool {
+//        return false
+//    }
+}
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
@@ -107,6 +111,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        // When "CioAppDelegateWrapper" is used, method below is NOT necessary for Customer.io to track PN interaction.
         CustomerIO.shared.track(
             name: "push clicked",
             properties: ["push": response.notification.request.content.userInfo]

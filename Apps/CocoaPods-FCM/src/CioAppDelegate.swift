@@ -8,7 +8,8 @@ import UIKit
 import CioDataPipelines
 import CioMessagingPushAPN
 
-public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
+public typealias CioAppDelegateType = UIResponder & UIApplicationDelegate
+public typealias CioNotificationCenterDelegateType = NSObject & UNUserNotificationCenterDelegate
 
 open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
     private let wrappedAppDelegate: CioAppDelegateType?

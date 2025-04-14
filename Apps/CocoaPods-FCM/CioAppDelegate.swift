@@ -6,16 +6,22 @@
 //
 import UIKit
 import CioDataPipelines
-import CioMessagingPushAPN
+import CioMessagingPushFCM
+import FirebaseMessaging
 
 public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
-open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
+open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate, MessagingDelegate {
     private let wrappedAppDelegate: CioAppDelegateType?
+    private var wrappedMessagingDelegate: MessagingDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
     // Flag to control whether to set the UNUserNotificationCenter delegate
     open var shouldSetNotificationCenterDelegate: Bool {
+        return true
+    }
+    
+    open var shouldSetMessagingDelegate: Bool {
         return true
     }
     
@@ -34,6 +40,11 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         
         application.registerForRemoteNotifications()
         
+        if shouldSetMessagingDelegate {
+            wrappedMessagingDelegate = Messaging.messaging().delegate
+            Messaging.messaging().delegate = self
+        }
+        
         if shouldSetNotificationCenterDelegate {
             wrappedNoticeCenterDelegate = UNUserNotificationCenter.current().delegate
             UNUserNotificationCenter.current().delegate = self
@@ -48,7 +59,10 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         
 //        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
 //        print("📲 APNs Token: \(token)")
-        MessagingPush.shared.registerDeviceToken(apnDeviceToken: deviceToken)
+        if Messaging.messaging().apnsToken == deviceToken {
+            return
+        }
+        Messaging.messaging().apnsToken = deviceToken
     }
     
     public func application(_ application: UIApplication,
@@ -65,7 +79,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
                             fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
 //        print("🕶️ Background/silent push received: \(userInfo)")
         
-        if let wrappedAppDelegate = wrappedAppDelegate,
+        if let wrappedAppDelegate,
            wrappedAppDelegate.responds(to: #selector(CioAppDelegateType.application(_:didReceiveRemoteNotification:fetchCompletionHandler:))) {
             wrappedAppDelegate.application?(
                 application,
@@ -76,6 +90,17 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
             // Register notification received ???
             completionHandler(.newData)
         }
+    }
+    
+    // MARK: - MessagingDelegate
+    public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        if let wrappedMessagingDelegate,
+           wrappedMessagingDelegate.responds(to: #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))) {
+            wrappedMessagingDelegate.messaging?(messaging, didReceiveRegistrationToken: fcmToken)
+        }
+        
+        // Forward the device token to the Customer.io SDK:
+        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
    
     // MARK: - UNUserNotificationCenterDelegate
@@ -92,7 +117,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         // Or relie on internal API as in swizzled code
         // pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
         
-        if let wrappedNoticeCenterDelegate = wrappedNoticeCenterDelegate,
+        if let wrappedNoticeCenterDelegate,
            wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)))
         {
             wrappedNoticeCenterDelegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
