@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		66B7DF8E2DAD231F00C69A1F /* CioAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B7DF8D2DAD231F00C69A1F /* CioAppDelegate.swift */; };
+		66B7DF8E2DAD231F00C69A1F /* CioAppDelegateFCM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B7DF8D2DAD231F00C69A1F /* CioAppDelegateFCM.swift */; };
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
 		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
@@ -75,7 +75,7 @@
 		0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_test_cocoapods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Rich_Push_Notification_Service_Extension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
-		66B7DF8D2DAD231F00C69A1F /* CioAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CioAppDelegate.swift; sourceTree = "<group>"; };
+		66B7DF8D2DAD231F00C69A1F /* CioAppDelegateFCM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CioAppDelegateFCM.swift; sourceTree = "<group>"; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
 		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
@@ -233,7 +233,7 @@
 		F73134572919570600CD43D9 = {
 			isa = PBXGroup;
 			children = (
-				66B7DF8D2DAD231F00C69A1F /* CioAppDelegate.swift */,
+				66B7DF8D2DAD231F00C69A1F /* CioAppDelegateFCM.swift */,
 				F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */,
 				F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */,
 				F73134622919570600CD43D9 /* src */,
@@ -482,7 +482,7 @@
 				F7029ECE29F2C1EF00411BCC /* EnvironmentText.swift in Sources */,
 				F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */,
 				F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */,
-				66B7DF8E2DAD231F00C69A1F /* CioAppDelegate.swift in Sources */,
+				66B7DF8E2DAD231F00C69A1F /* CioAppDelegateFCM.swift in Sources */,
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
 				F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */,
 				F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */,

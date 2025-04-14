@@ -10,7 +10,7 @@ import CioMessagingPushAPN
 
 public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
-open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
+open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelegate {
     private let wrappedAppDelegate: CioAppDelegateType?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
@@ -85,10 +85,13 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
                                        withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
         // Set explicit events
-        CustomerIO.shared.track(
-            name: "push clicked",
-            properties: ["push": response.notification.request.content.userInfo]
-        )
+//        CustomerIO.shared.track(
+//            name: "push clicked",
+//            properties: ["push": response.notification.request.content.userInfo]
+//        )
+        // Or relie on API call directly
+//        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        let _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response)
         // Or relie on internal API as in swizzled code
         // pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
         
@@ -145,7 +148,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
     }
 }
 
-open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegate {
+open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateAPN {
     public init() {
         super.init(appDelegate: UserAppDelegate())
     }

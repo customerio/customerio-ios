@@ -11,7 +11,7 @@ import FirebaseMessaging
 
 public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
-open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate, MessagingDelegate {
+open class CioAppDelegateFCM: CioAppDelegateType, UNUserNotificationCenterDelegate, MessagingDelegate {
     private let wrappedAppDelegate: CioAppDelegateType?
     private var wrappedMessagingDelegate: MessagingDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
@@ -108,14 +108,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate,
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                        didReceive response: UNNotificationResponse,
                                        withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track a Customer.io event for testing purposes to more easily track when this function is called.
-        // Set explicit events
-        CustomerIO.shared.track(
-            name: "push clicked",
-            properties: ["push": response.notification.request.content.userInfo]
-        )
-        // Or relie on internal API as in swizzled code
-        // pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
+        let _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response)
         
         if let wrappedNoticeCenterDelegate,
            wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)))
@@ -137,7 +130,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate,
         {
             wrappedNoticeCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
         } else {
-            completionHandler([.banner, .badge, .sound])
+            completionHandler([.banner, .list, .badge, .sound])
         }
     }
     
@@ -170,7 +163,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate,
     }
 }
 
-open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegate {
+open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateFCM {
     public init() {
         super.init(appDelegate: UserAppDelegate())
     }
