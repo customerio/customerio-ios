@@ -4,6 +4,12 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
+class MainCioAppDelegate: APNAppDelegateWrapper<AppDelegate> {
+    override var shouldSetNotificationCenterDelegate: Bool {
+        return true
+    }
+}
+
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
@@ -60,8 +66,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
-                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
+                .autoFetchDeviceToken(false /*settings.messaging.autoFetchDeviceToken*/)
+                .autoTrackPushEvents(false /*settings.messaging.autoTrackPushEvents*/)
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
                 .build()
         )
