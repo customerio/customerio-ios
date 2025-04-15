@@ -1,7 +1,7 @@
 import UIKit
-import CioDataPipelines
 import CioMessagingPush
 
+@available(iOSApplicationExtension, unavailable)
 open class APNAppDelegate: AppDelegate {
     
     public convenience init() {
@@ -20,6 +20,7 @@ open class APNAppDelegate: AppDelegate {
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 open class APNAppDelegateWrapper<UserAppDelegate: AppDelegateType>: APNAppDelegate {
     public init() {
         super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate())

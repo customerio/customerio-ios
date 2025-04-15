@@ -1,9 +1,8 @@
 import UIKit
-import CioDataPipelines
-// import CioMessagingPush
 
 public typealias AppDelegateType = NSObject & UIApplicationDelegate
 
+@available(iOSApplicationExtension, unavailable)
 open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     package let messagingPush: MessagingPush
     
