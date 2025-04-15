@@ -6,11 +6,11 @@
 //
 import UIKit
 import CioDataPipelines
-import CioMessagingPushAPN
+import CioMessagingPush
 
 public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
-open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelegate {
+open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
     private let wrappedAppDelegate: CioAppDelegateType?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
@@ -45,21 +45,17 @@ open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelega
     public func application(_ application: UIApplication,
                             didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         wrappedAppDelegate?.application?(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-        
-//        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-//        print("📲 APNs Token: \(token)")
-        MessagingPush.shared.registerDeviceToken(apnDeviceToken: deviceToken)
     }
     
     public func application(_ application: UIApplication,
                             didFailToRegisterForRemoteNotificationsWithError error: Error) {
         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
         
-//        print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
         MessagingPush.shared.deleteDeviceToken()
     }
     
     // Silent/background push
+    // TODO: We don't need this in current iteration. Only if future if we want to read info from
     public func application(_ application: UIApplication,
                             didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                             fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
@@ -83,17 +79,7 @@ open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelega
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                        didReceive response: UNNotificationResponse,
                                        withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track a Customer.io event for testing purposes to more easily track when this function is called.
-        // Set explicit events
-//        CustomerIO.shared.track(
-//            name: "push clicked",
-//            properties: ["push": response.notification.request.content.userInfo]
-//        )
-        // Or relie on API call directly
-//        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
         let _ = MessagingPush.shared.userNotificationCenter(center, didReceive: response)
-        // Or relie on internal API as in swizzled code
-        // pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
         
         if let wrappedNoticeCenterDelegate = wrappedNoticeCenterDelegate,
            wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)))
@@ -103,30 +89,6 @@ open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelega
             completionHandler()
         }
     }
-    
-    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
-    public func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                       willPresent notification: UNNotification,
-                                       withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // pushEventHandler.shouldDisplayPushAppInForeground
-        
-        if let wrappedNoticeCenterDelegate = wrappedNoticeCenterDelegate,
-           wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)))
-        {
-            wrappedNoticeCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
-        } else {
-            completionHandler([.banner, .badge, .sound])
-        }
-    }
-    
-    // TODO: do we need this?
-//    public func userNotificationCenter(_ center: UNUserNotificationCenter,
-//                                       openSettingsFor notification: UNNotification?) {
-//        if let wrappedNoticeCenterDelegate = self.wrappedNoticeCenterDelegate,
-//           wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:))) {
-//            wrappedNoticeCenterDelegate.userNotificationCenter?(center, openSettingsFor: notification)
-//        }
-//    }
     
     // MARK: - method forwarding
     override public func responds(to aSelector: Selector!) -> Bool {
@@ -145,11 +107,5 @@ open class CioAppDelegateAPN: CioAppDelegateType, UNUserNotificationCenterDelega
             return wrappedAppDelegate
         }
         return nil
-    }
-}
-
-open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateAPN {
-    public init() {
-        super.init(appDelegate: UserAppDelegate())
     }
 }

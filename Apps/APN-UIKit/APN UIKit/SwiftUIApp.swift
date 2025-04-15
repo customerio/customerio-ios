@@ -13,7 +13,7 @@ import CioMessagingPushAPN
 @available(iOS 14.0, *)
 //@main
 struct CioSwiftUIApp: App {
-    @UIApplicationDelegateAdaptor(CioAppDelegateAPN.self) private var appDelegate
+    @UIApplicationDelegateAdaptor(CioAPNAppDelegate.self) private var appDelegate
 //    @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
 
     var body: some Scene {
