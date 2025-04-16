@@ -2,6 +2,7 @@ import UIKit
 import CioMessagingPush
 import FirebaseMessaging
 
+@available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     private var wrappedMessagingDelegate: MessagingDelegate?
     
@@ -51,6 +52,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegateWrapper<UserAppDelegate: AppDelegateType>: FCMAppDelegate {
     public init() {
         super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate())

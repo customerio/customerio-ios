@@ -4,7 +4,7 @@ public typealias AppDelegateType = NSObject & UIApplicationDelegate
 
 @available(iOSApplicationExtension, unavailable)
 open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
-    package let messagingPush: MessagingPush
+    @_spi(Internal) public let messagingPush: MessagingPush
     
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?

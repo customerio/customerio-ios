@@ -1,5 +1,5 @@
 import UIKit
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
 
 @available(iOSApplicationExtension, unavailable)
 open class APNAppDelegate: AppDelegate {
