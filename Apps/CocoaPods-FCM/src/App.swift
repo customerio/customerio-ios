@@ -6,7 +6,7 @@ class MainCioAppDelegate: FCMAppDelegateWrapper<AppDelegate> {
     //        return false
     //    }
     override var shouldSetMessagingDelegate: Bool {
-        return false
+        return true
     }
 }
 

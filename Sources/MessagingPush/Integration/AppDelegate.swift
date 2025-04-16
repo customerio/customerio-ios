@@ -25,7 +25,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
     
     open func application(_ application: UIApplication,
-                            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                          didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
         
         application.registerForRemoteNotifications()
@@ -39,12 +39,12 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
     
     open func application(_ application: UIApplication,
-                            didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                          didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         wrappedAppDelegate?.application?(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
     
     open func application(_ application: UIApplication,
-                            didFailToRegisterForRemoteNotificationsWithError error: Error) {
+                          didFailToRegisterForRemoteNotificationsWithError error: Error) {
         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
         
         messagingPush.deleteDeviceToken()
@@ -53,8 +53,8 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     // MARK: - UNUserNotificationCenterDelegate
     // Function called when a push notification is clicked or swiped away.
     open func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                       didReceive response: UNNotificationResponse,
-                                       withCompletionHandler completionHandler: @escaping () -> Void) {
+                                     didReceive response: UNNotificationResponse,
+                                     withCompletionHandler completionHandler: @escaping () -> Void) {
         let _ = messagingPush.userNotificationCenter(center, didReceive: response)
         
         if let wrappedNoticeCenterDelegate = wrappedNoticeCenterDelegate,

@@ -24,11 +24,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Configure and initialize the Customer.io SDK
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+            .region(.US)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
-        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
+        let logLevel = appSetSettings?.debugSdkMode
+        if logLevel == nil || logLevel == true {
             config.logLevel(CioLogLevel.debug)
         }
         if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
@@ -45,7 +47,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(true)
+                .autoFetchDeviceToken(false)
+                .autoTrackPushEvents(false)
                 .build()
         )
 
@@ -59,6 +62,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
          In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
          */
+        // TODO: Remove this, as swizzling is not going to be part of the sample app
         UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
         /**
@@ -82,7 +86,8 @@ extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // Forward the device token to the Customer.io SDK:
-        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+        // TODO: This in needed only if `shouldSetMessagingDelegate` is overriden to `false`
+//        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 
@@ -90,12 +95,18 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        // TODO: This is not necessary, as our AppDelegate is already caching this
         CustomerIO.shared.track(
             name: "push clicked",
             properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
+    }
+    
+    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .badge, .sound])
     }
 
     // For QA testing, it's suggested to not implement this optional function.

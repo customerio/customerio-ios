@@ -13,7 +13,7 @@ open class APNAppDelegate: AppDelegate {
     }
     
     public override func application(_ application: UIApplication,
-                            didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
         
         messagingPush.registerDeviceToken(apnDeviceToken: deviceToken)

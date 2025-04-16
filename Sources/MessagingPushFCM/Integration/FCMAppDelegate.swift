@@ -19,7 +19,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
     
     public override func application(_ application: UIApplication,
-                            didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
         
         if shouldSetMessagingDelegate {
@@ -31,12 +31,9 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
     
     public override func application(_ application: UIApplication,
-                            didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
         
-        if Messaging.messaging().apnsToken == deviceToken {
-            return
-        }
         Messaging.messaging().apnsToken = deviceToken
     }
     
