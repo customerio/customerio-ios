@@ -56,13 +56,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         Messaging.messaging().delegate = self
 
         /*
-         Next line of code for internal testing purposes only.
-
-         When the host app receives a push notification event such as a push being clicked, the Customer.io SDK forwards these events to all `UNUserNotificationCenterDelegate` instances (including 3rd party SDKs and the host iOS app).
-
-         In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
+         Next line of code is testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
+         This is not necessary for the Customer.io SDK to work.
          */
-        // TODO: Remove this, as swizzling is not going to be part of the sample app
         UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
         /**
@@ -86,7 +82,7 @@ extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // Forward the device token to the Customer.io SDK:
-        // TODO: This in needed only if `shouldSetMessagingDelegate` is overriden to `false`
+        // This in needed only if `shouldSetMessagingDelegate` is overriden to `false`
 //        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
@@ -95,7 +91,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
-        // TODO: This is not necessary, as our AppDelegate is already caching this
+        // This is not necessary, as our AppDelegate is already caching this
         CustomerIO.shared.track(
             name: "push clicked",
             properties: ["push": response.notification.request.content.userInfo]
