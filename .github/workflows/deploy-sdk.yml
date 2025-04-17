@@ -280,3 +280,10 @@ jobs:
           # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  build-sample-apps:
+    needs: deploy-cocoapods
+    uses: ./.github/workflows/build-sample-apps.yml
+    with:
+      use_latest_sdk_version: true
+    secrets: inherit
