@@ -45,7 +45,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(true)
+//                .autoFetchDeviceToken(true)
                 .build()
         )
 
@@ -74,6 +74,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // When CioAppDelegate is implemented, line below is not necessary
         Messaging.messaging().apnsToken = deviceToken
     }
 }
@@ -82,6 +83,7 @@ extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // Forward the device token to the Customer.io SDK:
+        // When CioAppDelegate is implemented, line below is not necessary
         MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }

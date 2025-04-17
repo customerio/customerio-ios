@@ -1,8 +1,20 @@
 import SwiftUI
 
+
+class MainCioAppDelegate: CioAppDelegateWrapper<AppDelegate> {
+    //    override var shouldSetNotificationCenterDelegate: Bool {
+    //        return false
+    //    }
+    override var shouldSetMessagingDelegate: Bool {
+        return false
+    }
+}
+
 @main
 struct MainApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+//    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+//    @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
+    @UIApplicationDelegateAdaptor(MainCioAppDelegate.self) private var appDelegate
 
     @StateObject var userManager: UserManager = .init()
 

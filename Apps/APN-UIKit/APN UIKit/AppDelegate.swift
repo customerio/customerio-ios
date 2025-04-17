@@ -4,6 +4,12 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
+class MainCioAppDelegate: CioAPNAppDelegateWrapper<AppDelegate> {
+    override var shouldSetNotificationCenterDelegate: Bool {
+        return true
+    }
+}
+
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
@@ -60,8 +66,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
-                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
+                .autoFetchDeviceToken(false /*settings.messaging.autoFetchDeviceToken*/)
+                .autoTrackPushEvents(false /*settings.messaging.autoTrackPushEvents*/)
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
                 .build()
         )
@@ -105,6 +111,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        // When "CioAppDelegateWrapper" is used, method below is NOT necessary for Customer.io to track PN interaction.
         CustomerIO.shared.track(
             name: "push clicked",
             properties: ["push": response.notification.request.content.userInfo]
