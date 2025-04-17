@@ -15,7 +15,7 @@ This is the official Customer.io SDK for iOS.
 
 You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios](https://customer.io/docs/sdk/ios/). 
 
-**The SDK has been tested on iOS devices**. It might work on other Apple devices—macOS, tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
+**The SDK has been tested on iOS devices**. It might work on other Apple devices—tvOS, and watchOS—but we have not officially tested, nor do we officially support, non-iOS devices.
 
 ### Migrating from an older SDK version? 
 
