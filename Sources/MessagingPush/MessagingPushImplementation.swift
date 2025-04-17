@@ -36,4 +36,8 @@ class MessagingPushImplementation: MessagingPushInstance {
         // In future, we can improve how we access SdkClient so that we don't need to worry about initialization order.
         DIGraphShared.shared.richPushDeliveryTracker.trackMetric(token: deviceToken, event: event, deliveryId: deliveryID) { _ in }
     }
+
+    func getConfiguration() -> MessagingPushConfigOptions? {
+        moduleConfig
+    }
 }

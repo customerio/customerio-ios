@@ -127,6 +127,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
+    
+    @_spi(Internal) public func getConfiguration() -> MessagingPushConfigOptions? {
+        implementation?.getConfiguration()
+    }
 }
 
 // Convenient way for other modules to access instance as well as being able to mock instance in tests.

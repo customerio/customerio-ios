@@ -1,10 +1,12 @@
 import UIKit
+import CioInternalCommon
 
 public typealias AppDelegateType = NSObject & UIApplicationDelegate
 
 @available(iOSApplicationExtension, unavailable)
 open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPush
+    @_spi(Internal) public let logger: Logger
     
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
@@ -15,11 +17,12 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
     
     public override convenience init() {
-        self.init(messagingPush: MessagingPush.shared, appDelegate: nil)
+        self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
     }
     
-    public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil) {
+    public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
         self.messagingPush = messagingPush
+        self.logger = logger
         self.wrappedAppDelegate = appDelegate
         super.init()
     }
@@ -27,6 +30,11 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     open func application(_ application: UIApplication,
                           didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
+       
+        guard !isConfigInConflict() else {
+            logger.error("CIO: Configuration conflict. Push notifications will not work properly.")
+            return true
+        }
         
         application.registerForRemoteNotifications()
         
@@ -47,6 +55,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
                           didFailToRegisterForRemoteNotificationsWithError error: Error) {
         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
         
+        logger.error("CIO: Device token is deleted for current user. Failed to register for remote notifications: \(error.localizedDescription)")
         messagingPush.deleteDeviceToken()
     }
     
@@ -83,5 +92,31 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
             return wrappedAppDelegate
         }
         return nil
+    }
+    
+    // MARK: - Private methods
+    private func isConfigInConflict() -> Bool {
+        guard let config = messagingPush.getConfiguration() else {
+            let errorMessage = "CIO: Missing configuration"
+            assertionFailure(errorMessage)
+            logger.error(errorMessage)
+            return true
+        }
+        
+        guard config.autoFetchDeviceToken == false else {
+            let errorMessage = "CIO: 'autoFetchDeviceToken' flag can't be enabled if AppDelegate is used" 
+            assertionFailure(errorMessage)
+            logger.error(errorMessage)
+            return true
+        }
+        
+        guard config.autoTrackPushEvents == false || shouldSetNotificationCenterDelegate == false else {
+            let errorMessage = "CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldSetNotificationCenterDelegate' flag set to true."
+            assertionFailure(errorMessage)
+            logger.error(errorMessage)
+            return true
+        }
+        
+        return false
     }
 }

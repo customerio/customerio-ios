@@ -1,5 +1,6 @@
 import UIKit
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
+import CioInternalCommon
 import FirebaseMessaging
 
 @available(iOSApplicationExtension, unavailable)
@@ -11,11 +12,11 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
 
     public convenience init() {
-        self.init(messagingPush: MessagingPush.shared, appDelegate: nil)
+        self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
     }
 
-    public override init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil) {
-        super.init(messagingPush: messagingPush, appDelegate: appDelegate)
+    public override init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
+        super.init(messagingPush: messagingPush, appDelegate: appDelegate, logger: logger)
     }
     
     public override func application(_ application: UIApplication,
@@ -45,13 +46,13 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         }
         
         // Forward the device token to the Customer.io SDK:
-        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+        messagingPush.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegateWrapper<UserAppDelegate: AppDelegateType>: FCMAppDelegate {
     public init() {
-        super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate())
+        super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate(), logger: DIGraphShared.shared.logger)
     }
 }
