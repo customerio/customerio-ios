@@ -6,7 +6,7 @@ import UIKit
 @main
 class MainCioAppDelegate: APNAppDelegateWrapper<AppDelegate> {
     override var shouldSetNotificationCenterDelegate: Bool {
-        return true
+        true
     }
 }
 
@@ -66,8 +66,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
             withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(false /*settings.messaging.autoFetchDeviceToken*/)
-                .autoTrackPushEvents(false /*settings.messaging.autoTrackPushEvents*/)
+                .autoFetchDeviceToken(false /* settings.messaging.autoFetchDeviceToken */ )
+                .autoTrackPushEvents(false /* settings.messaging.autoTrackPushEvents */ )
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
                 .build()
         )

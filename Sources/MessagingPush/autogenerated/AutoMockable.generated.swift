@@ -207,7 +207,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         registerDeviceTokenReceivedInvocations.append(deviceToken)
         registerDeviceTokenClosure?(deviceToken)
     }
-    
+
     @_spi(Internal) public func getConfiguration() -> MessagingPushConfigOptions? {
         nil
     }

@@ -127,7 +127,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     ) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
-    
+
     @_spi(Internal) public func getConfiguration() -> MessagingPushConfigOptions? {
         implementation?.getConfiguration()
     }

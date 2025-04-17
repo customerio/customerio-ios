@@ -1,12 +1,12 @@
-import SwiftUI
 import CioMessagingPushFCM
+import SwiftUI
 
 class MainCioAppDelegate: FCMAppDelegateWrapper<AppDelegate> {
     //    override var shouldSetNotificationCenterDelegate: Bool {
     //        return false
     //    }
     override var shouldSetMessagingDelegate: Bool {
-        return true
+        true
     }
 }
 

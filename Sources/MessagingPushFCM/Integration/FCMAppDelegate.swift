@@ -1,50 +1,55 @@
+import CioInternalCommon
 import UIKit
 @_spi(Internal) import CioMessagingPush
-import CioInternalCommon
 import FirebaseMessaging
 
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     private var wrappedMessagingDelegate: MessagingDelegate?
-    
+
     open var shouldSetMessagingDelegate: Bool {
-        return true
+        true
     }
 
     public convenience init() {
         self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
     }
 
-    public override init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
+    override public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
         super.init(messagingPush: messagingPush, appDelegate: appDelegate, logger: logger)
     }
-    
-    public override func application(_ application: UIApplication,
-                                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+
+    override public func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
-        
+
         if shouldSetMessagingDelegate {
             wrappedMessagingDelegate = Messaging.messaging().delegate
             Messaging.messaging().delegate = self
         }
-        
+
         return result
     }
-    
-    public override func application(_ application: UIApplication,
-                                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+
+    override public func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-        
+
         Messaging.messaging().apnsToken = deviceToken
     }
-    
+
     // MARK: - MessagingDelegate
+
     public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         if let wrappedMessagingDelegate,
            wrappedMessagingDelegate.responds(to: #selector(MessagingDelegate.messaging(_:didReceiveRegistrationToken:))) {
             wrappedMessagingDelegate.messaging?(messaging, didReceiveRegistrationToken: fcmToken)
         }
-        
+
         // Forward the device token to the Customer.io SDK:
         messagingPush.registerDeviceToken(fcmToken: fcmToken)
     }
