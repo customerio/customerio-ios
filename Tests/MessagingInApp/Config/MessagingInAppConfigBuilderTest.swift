@@ -93,18 +93,20 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         }
     }
 
-    func test_initializeFromDictionaryWithIncorrectRegionType_expectThrowError() {
+    func test_initializeFromDictionaryWithIncorrectRegionType_expectDefaultValues() {
         let givenSiteId = String.random
         let givenDict: [String: Any] = [
-            "region": Region.US,
+            "region": NSNull(),
             "inApp": [
                 "siteId": givenSiteId
             ]
         ]
 
-        XCTAssertThrowsError(try MessagingInAppConfigBuilder.build(from: givenDict)) { error in
-            XCTAssertEqual(error as? MessagingInAppConfigBuilderError, MessagingInAppConfigBuilderError.invalidRegionType)
-        }
+        let config = try? MessagingInAppConfigBuilder.build(from: givenDict)
+
+        XCTAssertNotNil(config)
+        XCTAssertEqual(config?.siteId, givenSiteId)
+        XCTAssertEqual(config?.region, Region.US)
     }
 
     func test_initializeFromDictionaryWithIncorrectRegionValue_expectDefaultValues() {
