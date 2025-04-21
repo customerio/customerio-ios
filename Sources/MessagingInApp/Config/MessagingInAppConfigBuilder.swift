@@ -41,7 +41,6 @@ public class MessagingInAppConfigBuilder {
 public enum MessagingInAppConfigBuilderError: Error {
     case malformedConfig
     case missingSiteId
-    case invalidRegionType
 }
 
 public extension MessagingInAppConfigBuilder {
