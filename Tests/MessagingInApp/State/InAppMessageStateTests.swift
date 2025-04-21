@@ -533,7 +533,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.messagesInQueue.count, 2)
     }
 
-    // TODO: flakty test
+    // note: remove flakty test
 //    func test_fetch_givenMessageCacheSaved_given304AfterSdkInitialized_expectPopulateLocalMessageStoreFromCache() async {
 //        inAppMessageManager.dispatch(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
 //        inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
