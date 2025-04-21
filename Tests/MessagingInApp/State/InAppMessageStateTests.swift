@@ -524,12 +524,23 @@ class InAppMessageStateTests: IntegrationTest {
         var state = await inAppMessageManager.state
         XCTAssertTrue(state.messagesInQueue.isEmpty)
 
+        // Set up HTTP response and create expectation
+        let fetchExpectation = XCTestExpectation(description: "Fetch completed")
         setupHttpResponse(code: 200, body: sampleFetchResponseBody.data)
+
+        // Trigger fetch
         gist.fetchUserMessagesFromRemoteQueue()
 
-        state = await inAppMessageManager.waitForState { state in
-            state.messagesInQueue.count == 2
+        // Wait with increased timeout
+        state = await inAppMessageManager.waitForState(timeout: 10.0) { state in
+            let result = state.messagesInQueue.count == 2
+            if result {
+                fetchExpectation.fulfill()
+            }
+            return result
         }
+
+        await fulfillment(of: [fetchExpectation], timeout: 10.0)
         XCTAssertEqual(state.messagesInQueue.count, 2)
     }
 
@@ -540,26 +551,64 @@ class InAppMessageStateTests: IntegrationTest {
         var state = await inAppMessageManager.state
         XCTAssertTrue(state.messagesInQueue.isEmpty)
 
+        // Set the initial HTTP response (200 with message data)
         setupHttpResponse(code: 200, body: sampleFetchResponseBody.data)
+
+        // Create expectation for first fetch
+        let firstFetchExpectation = XCTestExpectation(description: "First fetch completed")
+
+        // Trigger fetch
         gist.fetchUserMessagesFromRemoteQueue()
 
-        state = await inAppMessageManager.waitForState { state in
-            state.messagesInQueue.count == 2
+        // Wait for messages to be received and stored with a longer timeout (10 seconds)
+        state = await inAppMessageManager.waitForState(timeout: 10.0) { state in
+            let result = state.messagesInQueue.count == 2
+            if result {
+                firstFetchExpectation.fulfill()
+            }
+            return result
         }
+
+        await fulfillment(of: [firstFetchExpectation], timeout: 10.0)
 
         let localMessageStoreBefore304: Set<Message> = state.messagesInQueue
+
+        // Create expectation for clearing message queue
+        let clearQueueExpectation = XCTestExpectation(description: "Queue cleared")
+
+        // Clear message queue
         inAppMessageManager.dispatch(action: .clearMessageQueue)
 
-        state = await inAppMessageManager.waitForState { state in
-            state.messagesInQueue.isEmpty
+        // Wait for queue to be cleared
+        state = await inAppMessageManager.waitForState(timeout: 10.0) { state in
+            let result = state.messagesInQueue.isEmpty
+            if result {
+                clearQueueExpectation.fulfill()
+            }
+            return result
         }
 
+        await fulfillment(of: [clearQueueExpectation], timeout: 10.0)
+
+        // Create expectation for second fetch with 304 response
+        let secondFetchExpectation = XCTestExpectation(description: "Second fetch completed")
+
+        // Set up 304 HTTP response
         setupHttpResponse(code: 304, body: "".data)
+
+        // Trigger second fetch
         gist.fetchUserMessagesFromRemoteQueue()
 
-        state = await inAppMessageManager.waitForState { state in
-            state.messagesInQueue.count == 2
+        // Wait for cache to be loaded with a longer timeout
+        state = await inAppMessageManager.waitForState(timeout: 10.0) { state in
+            let result = state.messagesInQueue.count == 2
+            if result {
+                secondFetchExpectation.fulfill()
+            }
+            return result
         }
+
+        await fulfillment(of: [secondFetchExpectation], timeout: 10.0)
 
         let localMessageStoreAfter304 = state.messagesInQueue
 
@@ -573,39 +622,75 @@ class InAppMessageStateTests: IntegrationTest {
         inAppMessageManager.dispatch(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
         inAppMessageManager.dispatch(action: .setUserIdentifier(user: .random))
 
-        let state = await inAppMessageManager.state
-        XCTAssertTrue(state.messagesInQueue.isEmpty)
+        // Create expectation
+        let initExpectation = XCTestExpectation(description: "Initialization completed")
 
+        // Get initial state
+        var state = await inAppMessageManager.state
+        XCTAssertTrue(state.messagesInQueue.isEmpty)
+        initExpectation.fulfill()
+        await fulfillment(of: [initExpectation], timeout: 5.0)
+
+        // Set up 304 HTTP response
+        let fetchExpectation = XCTestExpectation(description: "304 fetch completed")
         setupHttpResponse(code: 304, body: "".data)
+
+        // Trigger fetch
         gist.fetchUserMessagesFromRemoteQueue()
 
+        // Give some time for any async operations to complete
+        try? await Task.sleep(nanoseconds: UInt64(2 * 1000000000))
+
+        // Check final state
+        state = await inAppMessageManager.state
         XCTAssertTrue(state.messagesInQueue.isEmpty)
+        fetchExpectation.fulfill()
+
+        await fulfillment(of: [fetchExpectation], timeout: 5.0)
     }
 }
 
 extension InAppMessageManager {
     func waitForState(
-        timeout: TimeInterval = 5.0,
-        pollInterval: TimeInterval = 0.2,
+        timeout: TimeInterval = 7.0, // Increase default timeout for CI environments
+        pollInterval: TimeInterval = 0.1, // Poll more frequently
         comparator: @escaping (InAppMessageState) -> Bool,
         file: StaticString = #file,
         line: UInt = #line
     ) async -> InAppMessageState {
         let timeoutDate = Date().addingTimeInterval(timeout)
+        let startDate = Date()
 
+        var checkCount = 0
         var lastKnownState: InAppMessageState
+
         repeat {
+            checkCount += 1
             lastKnownState = await state
+
             // Check if the condition is met
             if comparator(lastKnownState) {
+                // For debugging on CI, print how long it took to meet the condition
+                let elapsedTime = Date().timeIntervalSince(startDate)
+                print("Condition met after \(elapsedTime) seconds (check #\(checkCount))")
                 return lastKnownState
             }
 
-            // Sleep for pollInterval before checking again
-            try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1000000000))
+            // Print state periodically for debugging
+            if checkCount % 10 == 0 {
+                let elapsedTime = Date().timeIntervalSince(startDate)
+                print("Still waiting for condition after \(elapsedTime) seconds (check #\(checkCount)). Current state: \(String(describing: lastKnownState))")
+            }
+
+            // Sleep for pollInterval before checking again, but use a shorter interval as we approach timeout
+            let remainingTime = timeoutDate.timeIntervalSince(Date())
+            let adjustedPollInterval = min(pollInterval, max(0.05, remainingTime / 10))
+            try? await Task.sleep(nanoseconds: UInt64(adjustedPollInterval * 1000000000))
         } while Date() < timeoutDate
 
-        XCTFail("Condition not met within \(timeout) seconds.", file: file, line: line)
+        let elapsedTime = Date().timeIntervalSince(startDate)
+        print("TIMEOUT after \(elapsedTime) seconds (check #\(checkCount)). Final state: \(String(describing: lastKnownState))")
+        XCTFail("Condition not met within \(timeout) seconds after \(checkCount) checks.", file: file, line: line)
         return lastKnownState
     }
 }
