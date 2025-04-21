@@ -2,12 +2,6 @@
 @testable import CioMessagingInApp
 import XCTest
 
-extension InAppMessageManager {
-    func dispatchAsync(action: InAppMessageAction) async {
-        await dispatch(action: action).value
-    }
-}
-
 class InAppMessageStateTests: IntegrationTest {
     var inAppMessageManager: InAppMessageManager!
     private let engineWebMock = EngineWebInstanceMock()
@@ -651,6 +645,10 @@ class InAppMessageStateTests: IntegrationTest {
 }
 
 extension InAppMessageManager {
+    func dispatchAsync(action: InAppMessageAction) async {
+        await dispatch(action: action).value
+    }
+
     func waitForState(
         timeout: TimeInterval = 7.0, // Increase default timeout for CI environments
         pollInterval: TimeInterval = 0.1, // Poll more frequently
