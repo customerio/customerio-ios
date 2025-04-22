@@ -7,6 +7,17 @@ public typealias AppDelegateType = NSObject & UIApplicationDelegate
 open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPush
     @_spi(Internal) public let logger: Logger
+    @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
+        // UIApplicationDelegate
+        #selector(UIApplicationDelegate.application(_:didFinishLaunchingWithOptions:)),
+        #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:)),
+        #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:)),
+        #selector(UIApplicationDelegate.application(_:continue:restorationHandler:)),
+        // UNUserNotificationCenterDelegate
+        #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)),
+        #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
+        #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:)),
+    ]
 
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
@@ -84,16 +95,17 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
 
     // MARK: - method forwarding
-
+    @objc
     override public func responds(to aSelector: Selector!) -> Bool {
-        if super.responds(to: aSelector) {
+        if implementedOptionalMethods.contains(aSelector) && super.responds(to: aSelector) {
             return true
         }
         return wrappedAppDelegate?.responds(to: aSelector) ?? false
     }
 
+    @objc
     override public func forwardingTarget(for aSelector: Selector!) -> Any? {
-        if super.responds(to: aSelector) {
+        if implementedOptionalMethods.contains(aSelector) && super.responds(to: aSelector) {
             return self
         }
         if let wrappedAppDelegate = wrappedAppDelegate,
@@ -128,5 +140,25 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
         }
 
         return false
+    }
+}
+
+/// Prevent issues caused by swizzling in various SDKs:
+/// - those are not using `responds(to:)` and `forwardingTarget(for:)`,  but only check does original implementation exist
+///     - this is the case with FirebaseMassaging
+/// - for this reason, empty are added and forwarding to wrapper is possible
+@available(iOSApplicationExtension, unavailable)
+extension AppDelegate {
+    open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        wrappedNoticeCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
+    }
+    
+    open func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
+        wrappedNoticeCenterDelegate?.userNotificationCenter?(center, openSettingsFor: notification)
+    }
+    
+    @objc
+    open func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
+        wrappedAppDelegate?.application?(application, continue: userActivity, restorationHandler: restorationHandler) ?? false
     }
 }

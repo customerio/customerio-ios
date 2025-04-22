@@ -3,6 +3,16 @@ import UIKit
 @_spi(Internal) import CioMessagingPush
 import FirebaseMessaging
 
+/// Usage
+///
+/// Issues with FirebaseMessaging implementation:
+///  - for swizzled methods `application(_:didRegisterForRemoteNotificationsWithDeviceToken)`
+///   and `application(_:didFailToRegisterForRemoteNotificationsWithError:)` original implementation is not called.
+///   Because of this,, we are not able to forward calls to `wrappedAppDelegate` from our `AppDelegate`.
+///   Check class `FIRMessagingRemoteNotificationsProxy.m` for more details.
+///     - GULAppDelegateSwizzler has metod `application:donor_didRegisterForRemoteNotificationsWithDeviceToken:` which is not able to find our `application(_:didRegisterForRemoteNotificationsWithDeviceToken)`
+///     - check the methods `createSubclassWithObject`/`proxyOriginalDelegateIncludingAPNSMethods`  in the same class, for full list of swizzled methods
+   
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     private var wrappedMessagingDelegate: MessagingDelegate?
