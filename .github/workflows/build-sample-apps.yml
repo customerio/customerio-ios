@@ -12,43 +12,6 @@ on:
         required: false
         default: false
   workflow_call:
-    inputs:
-      use_latest_sdk_version:
-        description: "Whether to build sample apps with the latest SDK version (newest tag)."
-        type: boolean
-        required: false
-        default: false
-    secrets:
-      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
-        required: true
-        description: "Base64-encoded service account for code signing (match) used by Fastlane."
-      FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64:
-        required: false
-        description: "Base64-encoded service account for Firebase App Distribution (optional)."
-      CUSTOMERIO_APN_WORKSPACE_SITE_ID:
-        required: true
-        description: "Secret for the APN sample app's Site ID in Customer.io."
-      CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY:
-        required: true
-        description: "Secret for the APN sample app's CDP API key in Customer.io."
-      CUSTOMERIO_FCM_WORKSPACE_SITE_ID:
-        required: true
-        description: "Secret for the FCM sample app's Site ID in Customer.io."
-      CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY:
-        required: true
-        description: "Secret for the FCM sample app's CDP API key in Customer.io."
-      SAMPLE_APPS_APN_FIREBASE_APP_ID:
-        required: true
-        description: "Secret for the APN sample app's Firebase App ID."
-      SAMPLE_APPS_FCM_FIREBASE_APP_ID:
-        required: true
-        description: "Secret for the FCM sample app's Firebase App ID."
-      SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK:
-        required: true
-        description: "Secret for the link to the instructions guide for the sample apps."
-      SLACK_NOTIFY_RELEASES_WEBHOOK_URL:
-        required: true
-        description: "Secret for the Slack webhook URL to notify about sample app releases."
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
