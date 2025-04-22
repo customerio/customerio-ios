@@ -44,7 +44,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         customerIO.identify(userId: givenIdentifier)
 
         XCTAssertEqual(analytics.userId, givenIdentifier)
-        XCTAssertNil(analytics.traits())
+        XCTAssertMatches(analytics.traits(), [:])
 
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
         guard let identifyEvent = outputReader.identifyEvents.last else {
