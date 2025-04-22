@@ -41,7 +41,6 @@ public class MessagingInAppConfigBuilder {
 public enum MessagingInAppConfigBuilderError: Error {
     case malformedConfig
     case missingSiteId
-    case invalidRegionType
 }
 
 public extension MessagingInAppConfigBuilder {
@@ -72,17 +71,7 @@ public extension MessagingInAppConfigBuilder {
         // This prevents users from having to specify region more than once in the configuration.
         // Therefore, we retrieve the region from top-level configuration here.
         // If the region is not present, the default region is used.
-        let regionStr: String
-        if let regionRawValue = sdkConfig[Keys.region.rawValue] {
-            // This check ensures region is always provided as a string, and throwing an error can help
-            // identify potential bugs when passing configuration values from wrappers.
-            guard let rawValueAsString = regionRawValue as? String else {
-                throw MessagingInAppConfigBuilderError.invalidRegionType
-            }
-            regionStr = rawValueAsString
-        } else {
-            regionStr = ""
-        }
+        let regionStr = sdkConfig[Keys.region.rawValue] as? String ?? ""
         let region = Region.getRegion(from: regionStr)
 
         return MessagingInAppConfigBuilder(siteId: siteId, region: region).build()
