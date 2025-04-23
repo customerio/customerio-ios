@@ -45,7 +45,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
 
     override public convenience init() {
-        assertionFailure("CIO: This no-argument initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
@@ -145,23 +145,17 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
 
     private func isConfigInConflict() -> Bool {
         guard let config = messagingPush.getConfiguration() else {
-            let errorMessage = "CIO: Missing configuration"
-            assertionFailure(errorMessage)
-            logger.error(errorMessage)
+            logger.error("CIO: Missing configuration")
             return true
         }
 
         guard config.autoFetchDeviceToken == false else {
-            let errorMessage = "CIO: 'autoFetchDeviceToken' flag can't be enabled if AppDelegate is used"
-            assertionFailure(errorMessage)
-            logger.error(errorMessage)
+            logger.error("CIO: 'autoFetchDeviceToken' flag can't be enabled if AppDelegate is used")
             return true
         }
 
         guard config.autoTrackPushEvents == false || shouldSetNotificationCenterDelegate == false else {
-            let errorMessage = "CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldSetNotificationCenterDelegate' flag set to true."
-            assertionFailure(errorMessage)
-            logger.error(errorMessage)
+            logger.error("CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldSetNotificationCenterDelegate' flag set to true.")
             return true
         }
 
