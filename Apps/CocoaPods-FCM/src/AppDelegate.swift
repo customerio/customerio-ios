@@ -77,7 +77,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // This is not necessary if FCMAppDelegate is used
         Messaging.messaging().apnsToken = deviceToken
     }
-    
+
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false

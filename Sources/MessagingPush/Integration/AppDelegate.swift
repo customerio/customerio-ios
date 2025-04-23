@@ -3,9 +3,25 @@ import UIKit
 
 public typealias AppDelegateType = NSObject & UIApplicationDelegate
 
+public typealias UserNotificationCenterInstance = () -> UserNotificationCenterIntegration
+
+// sourcery: AutoMockable
+public protocol UserNotificationCenterIntegration {
+    var delegate: UNUserNotificationCenterDelegate? { get set }
+}
+
+extension UNUserNotificationCenter: UserNotificationCenterIntegration {}
+
+extension UIApplication {
+    func cioRegisterForRemoteNotifications(logger: Logger) {
+        logger.debug("CIO: Registering for remote notifications")
+        self.registerForRemoteNotifications()
+    }
+}
+
 @available(iOSApplicationExtension, unavailable)
 open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
-    @_spi(Internal) public let messagingPush: MessagingPush
+    @_spi(Internal) public let messagingPush: MessagingPushInstance
     @_spi(Internal) public let logger: Logger
     @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
         // UIApplicationDelegate
@@ -16,9 +32,10 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
         // UNUserNotificationCenterDelegate
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)),
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
-        #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:)),
+        #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:))
     ]
 
+    private var userNotificationCenter: UserNotificationCenterInstance
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
@@ -28,11 +45,18 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
 
     override public convenience init() {
-        self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
+        assertionFailure("CIO: This no-argument initializer is not intended to be used. Added for compatibility.")
+        self.init(
+            messagingPush: MessagingPush.shared,
+            userNotificationCenter: { UNUserNotificationCenter.current() },
+            appDelegate: nil,
+            logger: DIGraphShared.shared.logger
+        )
     }
 
-    public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
+    public init(messagingPush: MessagingPushInstance, userNotificationCenter: @escaping UserNotificationCenterInstance, appDelegate: AppDelegateType? = nil, logger: Logger) {
         self.messagingPush = messagingPush
+        self.userNotificationCenter = userNotificationCenter
         self.logger = logger
         self.wrappedAppDelegate = appDelegate
         super.init()
@@ -45,15 +69,16 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
 
         guard !isConfigInConflict() else {
-            logger.error("CIO: Configuration conflict. Push notifications will not work properly.")
+            logger.error("CIO: Configuration in conflict. Push notifications will not work properly.")
             return true
         }
 
-        application.registerForRemoteNotifications()
+        application.cioRegisterForRemoteNotifications(logger: logger)
 
         if shouldSetNotificationCenterDelegate {
-            wrappedNoticeCenterDelegate = UNUserNotificationCenter.current().delegate
-            UNUserNotificationCenter.current().delegate = self
+            var center = userNotificationCenter()
+            wrappedNoticeCenterDelegate = center.delegate
+            center.delegate = self
         }
 
         return result ?? true
@@ -95,9 +120,10 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     }
 
     // MARK: - method forwarding
+
     @objc
     override public func responds(to aSelector: Selector!) -> Bool {
-        if implementedOptionalMethods.contains(aSelector) && super.responds(to: aSelector) {
+        if implementedOptionalMethods.contains(aSelector), super.responds(to: aSelector) {
             return true
         }
         return wrappedAppDelegate?.responds(to: aSelector) ?? false
@@ -105,7 +131,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
 
     @objc
     override public func forwardingTarget(for aSelector: Selector!) -> Any? {
-        if implementedOptionalMethods.contains(aSelector) && super.responds(to: aSelector) {
+        if implementedOptionalMethods.contains(aSelector), super.responds(to: aSelector) {
             return self
         }
         if let wrappedAppDelegate = wrappedAppDelegate,
@@ -146,17 +172,17 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
 /// Prevent issues caused by swizzling in various SDKs:
 /// - those are not using `responds(to:)` and `forwardingTarget(for:)`,  but only check does original implementation exist
 ///     - this is the case with FirebaseMassaging
-/// - for this reason, empty are added and forwarding to wrapper is possible
+/// - for this reason, empty methods are added and forwarding to wrapper is possible
 @available(iOSApplicationExtension, unavailable)
 extension AppDelegate {
     open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         wrappedNoticeCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
     }
-    
+
     open func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
         wrappedNoticeCenterDelegate?.userNotificationCenter?(center, openSettingsFor: notification)
     }
-    
+
     @objc
     open func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         wrappedAppDelegate?.application?(application, continue: userActivity, restorationHandler: restorationHandler) ?? false

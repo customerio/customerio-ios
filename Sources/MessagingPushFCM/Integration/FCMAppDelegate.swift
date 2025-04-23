@@ -12,9 +12,14 @@ import FirebaseMessaging
 ///   Check class `FIRMessagingRemoteNotificationsProxy.m` for more details.
 ///     - GULAppDelegateSwizzler has metod `application:donor_didRegisterForRemoteNotificationsWithDeviceToken:` which is not able to find our `application(_:didRegisterForRemoteNotificationsWithDeviceToken)`
 ///     - check the methods `createSubclassWithObject`/`proxyOriginalDelegateIncludingAPNSMethods`  in the same class, for full list of swizzled methods
-   
+
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegate: AppDelegate, MessagingDelegate {
+    /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
+    private var messagingPushFCM: MessagingPushFCMInstance? {
+        messagingPush as? MessagingPushFCMInstance
+    }
+
     private var wrappedMessagingDelegate: MessagingDelegate?
 
     open var shouldSetMessagingDelegate: Bool {
@@ -22,11 +27,21 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
 
     public convenience init() {
-        self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
+        self.init(
+            messagingPush: MessagingPush.shared,
+            userNotificationCenter: { UNUserNotificationCenter.current() },
+            appDelegate: nil,
+            logger: DIGraphShared.shared.logger
+        )
     }
 
-    override public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
-        super.init(messagingPush: messagingPush, appDelegate: appDelegate, logger: logger)
+    override public init(
+        messagingPush: MessagingPushInstance,
+        userNotificationCenter: @escaping UserNotificationCenterInstance,
+        appDelegate: AppDelegateType? = nil,
+        logger: Logger
+    ) {
+        super.init(messagingPush: messagingPush, userNotificationCenter: userNotificationCenter, appDelegate: appDelegate, logger: logger)
     }
 
     override public func application(
@@ -61,13 +76,18 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         }
 
         // Forward the device token to the Customer.io SDK:
-        messagingPush.registerDeviceToken(fcmToken: fcmToken)
+        messagingPushFCM?.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegateWrapper<UserAppDelegate: AppDelegateType>: FCMAppDelegate {
     public init() {
-        super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate(), logger: DIGraphShared.shared.logger)
+        super.init(
+            messagingPush: MessagingPush.shared,
+            userNotificationCenter: { UNUserNotificationCenter.current() },
+            appDelegate: UserAppDelegate(),
+            logger: DIGraphShared.shared.logger
+        )
     }
 }

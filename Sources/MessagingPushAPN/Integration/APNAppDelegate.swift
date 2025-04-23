@@ -4,12 +4,32 @@ import UIKit
 
 @available(iOSApplicationExtension, unavailable)
 open class APNAppDelegate: AppDelegate {
-    public convenience init() {
-        self.init(messagingPush: MessagingPush.shared, appDelegate: nil, logger: DIGraphShared.shared.logger)
+    /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
+    private var messagingPushAPN: MessagingPushAPNInstance? {
+        messagingPush as? MessagingPushAPNInstance
     }
 
-    override public init(messagingPush: MessagingPush, appDelegate: AppDelegateType? = nil, logger: Logger) {
-        super.init(messagingPush: messagingPush, appDelegate: appDelegate, logger: logger)
+    public convenience init() {
+        self.init(
+            messagingPush: MessagingPush.shared,
+            userNotificationCenter: { UNUserNotificationCenter.current() },
+            appDelegate: nil,
+            logger: DIGraphShared.shared.logger
+        )
+    }
+
+    override public init(
+        messagingPush: MessagingPushInstance,
+        userNotificationCenter: @escaping UserNotificationCenterInstance,
+        appDelegate: AppDelegateType? = nil,
+        logger: Logger
+    ) {
+        super.init(
+            messagingPush: messagingPush,
+            userNotificationCenter: userNotificationCenter,
+            appDelegate: appDelegate,
+            logger: logger
+        )
     }
 
     override public func application(
@@ -18,13 +38,18 @@ open class APNAppDelegate: AppDelegate {
     ) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
 
-        messagingPush.registerDeviceToken(apnDeviceToken: deviceToken)
+        messagingPushAPN?.registerDeviceToken(apnDeviceToken: deviceToken)
     }
 }
 
 @available(iOSApplicationExtension, unavailable)
 open class APNAppDelegateWrapper<UserAppDelegate: AppDelegateType>: APNAppDelegate {
     public init() {
-        super.init(messagingPush: MessagingPush.shared, appDelegate: UserAppDelegate(), logger: DIGraphShared.shared.logger)
+        super.init(
+            messagingPush: MessagingPush.shared,
+            userNotificationCenter: { UNUserNotificationCenter.current() },
+            appDelegate: UserAppDelegate(),
+            logger: DIGraphShared.shared.logger
+        )
     }
 }
