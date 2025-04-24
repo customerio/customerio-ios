@@ -12,7 +12,7 @@ public protocol UserNotificationCenterIntegration {
 
 extension UNUserNotificationCenter: UserNotificationCenterIntegration {}
 
-extension UIApplication {
+private extension UIApplication {
     func cioRegisterForRemoteNotifications(logger: Logger) {
         logger.debug("CIO: Registering for remote notifications")
         self.registerForRemoteNotifications()

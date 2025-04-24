@@ -3,15 +3,15 @@ import UIKit
 @_spi(Internal) import CioMessagingPush
 import FirebaseMessaging
 
-/// Usage
-///
-/// Issues with FirebaseMessaging implementation:
-///  - for swizzled methods `application(_:didRegisterForRemoteNotificationsWithDeviceToken)`
-///   and `application(_:didFailToRegisterForRemoteNotificationsWithError:)` original implementation is not called.
-///   Because of this,, we are not able to forward calls to `wrappedAppDelegate` from our `AppDelegate`.
-///   Check class `FIRMessagingRemoteNotificationsProxy.m` for more details.
-///     - GULAppDelegateSwizzler has metod `application:donor_didRegisterForRemoteNotificationsWithDeviceToken:` which is not able to find our `application(_:didRegisterForRemoteNotificationsWithDeviceToken)`
-///     - check the methods `createSubclassWithObject`/`proxyOriginalDelegateIncludingAPNSMethods`  in the same class, for full list of swizzled methods
+public typealias FirebaseMessagingInstance = () -> FirebaseMessagingIntegration
+
+// sourcery: AutoMockable
+public protocol FirebaseMessagingIntegration {
+    var delegate: MessagingDelegate? { get set }
+    var apnsToken: Data? { get set }
+}
+
+extension Messaging: FirebaseMessagingIntegration {}
 
 @available(iOSApplicationExtension, unavailable)
 open class FCMAppDelegate: AppDelegate, MessagingDelegate {
@@ -20,6 +20,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         messagingPush as? MessagingPushFCMInstance
     }
 
+    private var firebaseMessaging: FirebaseMessagingInstance
     private var wrappedMessagingDelegate: MessagingDelegate?
 
     open var shouldSetMessagingDelegate: Bool {
@@ -30,17 +31,20 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
+            firebaseMessaging: { Messaging.messaging() },
             appDelegate: nil,
             logger: DIGraphShared.shared.logger
         )
     }
 
-    override public init(
+    public init(
         messagingPush: MessagingPushInstance,
         userNotificationCenter: @escaping UserNotificationCenterInstance,
+        firebaseMessaging: @escaping FirebaseMessagingInstance,
         appDelegate: AppDelegateType? = nil,
         logger: Logger
     ) {
+        self.firebaseMessaging = firebaseMessaging
         super.init(messagingPush: messagingPush, userNotificationCenter: userNotificationCenter, appDelegate: appDelegate, logger: logger)
     }
 
@@ -51,8 +55,9 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
         if shouldSetMessagingDelegate {
-            wrappedMessagingDelegate = Messaging.messaging().delegate
-            Messaging.messaging().delegate = self
+            var messaging = firebaseMessaging()
+            wrappedMessagingDelegate = messaging.delegate
+            messaging.delegate = self
         }
 
         return result
@@ -64,7 +69,8 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     ) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
 
-        Messaging.messaging().apnsToken = deviceToken
+        var messaging = firebaseMessaging()
+        messaging.apnsToken = deviceToken
     }
 
     // MARK: - MessagingDelegate
@@ -86,6 +92,7 @@ open class FCMAppDelegateWrapper<UserAppDelegate: AppDelegateType>: FCMAppDelega
         super.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
+            firebaseMessaging: { Messaging.messaging() },
             appDelegate: UserAppDelegate(),
             logger: DIGraphShared.shared.logger
         )

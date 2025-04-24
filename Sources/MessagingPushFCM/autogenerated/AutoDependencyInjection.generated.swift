@@ -5,6 +5,7 @@
 import Foundation
 import CioMessagingPush
 import CioInternalCommon
+import FirebaseMessaging
 
 /**
 ######################################################
