@@ -81,8 +81,8 @@ class FCMAppDelegateTests: XCTestCase {
     
     func testFCMAppDelegateInit() {
         XCTAssertNotNil(fcmAppDelegate)
-        XCTAssertTrue(fcmAppDelegate.shouldSetNotificationCenterDelegate)
-        XCTAssertTrue(fcmAppDelegate.shouldSetMessagingDelegate)
+        XCTAssertTrue(fcmAppDelegate.shouldIntegrateWithNotificationCenter)
+        XCTAssertTrue(fcmAppDelegate.shouldIntegrateWithFirebaseMessaging)
     }
     
     // MARK: - Tests for FCM-specific functionality
@@ -197,12 +197,12 @@ class FCMAppDelegateTests: XCTestCase {
         XCTAssertTrue(completionHandlerCalled)
     }
     
-    // MARK: - Tests for shouldSetMessagingDelegate override
+    // MARK: - Tests for shouldIntegrateWithFirebaseMessaging override
     
-    func testShouldSetMessagingDelegateOverride() {
+    func testShouldIntegrateWithFirebaseMessagingOverride() {
         // Create a custom subclass that overrides the property
         class CustomFCMAppDelegate: FCMAppDelegate {
-            override var shouldSetMessagingDelegate: Bool {
+            override var shouldIntegrateWithFirebaseMessaging: Bool {
                 return false
             }
         }
@@ -218,7 +218,7 @@ class FCMAppDelegateTests: XCTestCase {
         mockMessaging.delegate = nil
         
         // Verify override works
-        XCTAssertFalse(customFCMAppDelegate.shouldSetMessagingDelegate)
+        XCTAssertFalse(customFCMAppDelegate.shouldIntegrateWithFirebaseMessaging)
         
         // Call didFinishLaunching
         let result = customFCMAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)

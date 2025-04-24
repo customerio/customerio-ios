@@ -71,7 +71,7 @@ class APNAppDelegateTests: XCTestCase {
     
     func testAPNAppDelegateInit() {
         XCTAssertNotNil(apnAppDelegate)
-        XCTAssertTrue(apnAppDelegate.shouldSetNotificationCenterDelegate)
+        XCTAssertTrue(apnAppDelegate.shouldIntegrateWithNotificationCenter)
     }
     
     // MARK: - Tests for APN-specific functionality

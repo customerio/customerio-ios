@@ -7,6 +7,16 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
+class AppDelegateWithCioIntegration: FCMAppDelegateWrapper<AppDelegate> {
+    // Two properties below are not necessary. Add them only if you want to chenge default 'true` value.
+    override var shouldIntegrateWithNotificationCenter: Bool {
+        true
+    }
+    override var shouldIntegrateWithFirebaseMessaging: Bool {
+        true
+    }
+}
+
 class AppDelegate: NSObject, UIApplicationDelegate {
     let anotherPushEventHandler = AnotherPushEventHandler()
 
@@ -74,8 +84,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // This is not necessary if FCMAppDelegate is used
-        Messaging.messaging().apnsToken = deviceToken
+        // This is NOT necessary if FCMAppDelegate is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
+//        Messaging.messaging().apnsToken = deviceToken
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
@@ -90,8 +100,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Forward the device token to the Customer.io SDK:
-        // This in needed only if `shouldSetMessagingDelegate` is overriden to `false`
+        // This is NOT necessary if FCMAppDelegate is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
 //        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
@@ -99,10 +108,10 @@ extension AppDelegate: MessagingDelegate {
 extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track a Customer.io event for testing purposes to more easily track when this function is called.
-        // This is not necessary, as our AppDelegate is already caching this
+        // Track custom event with Customer.io.
+        // NOT required for basic PN tap tracking - that is done automatically with `FCMAppDelegateWrapper`.
         CustomerIO.shared.track(
-            name: "push clicked",
+            name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]
         )
 

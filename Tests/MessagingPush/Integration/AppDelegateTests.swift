@@ -69,7 +69,7 @@ class AppDelegateTests: XCTestCase {
 
     func testAppDelegateInit() {
         XCTAssertNotNil(appDelegate)
-        XCTAssertTrue(appDelegate.shouldSetNotificationCenterDelegate)
+        XCTAssertTrue(appDelegate.shouldIntegrateWithNotificationCenter)
     }
 
     // MARK: - Tests for application(_:didFinishLaunchingWithOptions:)
@@ -127,7 +127,7 @@ class AppDelegateTests: XCTestCase {
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertTrue(mockLogger.errorCallsCount > 0)
-        XCTAssertTrue(mockLogger.errorReceivedInvocations.contains { $0.contains("'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldSetNotificationCenterDelegate' flag set to true.") })
+        XCTAssertTrue(mockLogger.errorReceivedInvocations.contains { $0.contains("'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldIntegrateWithNotificationCenter' flag set to true.") })
     }
 
     // MARK: - Tests for remote notification registration
@@ -251,10 +251,10 @@ class AppDelegateTests: XCTestCase {
 
     // MARK: - Tests for custom subclass behavior
 
-    func testShouldSetNotificationCenterDelegateOverride() {
+    func testShouldIntegrateWithNotificationCenterOverride() {
         // Create a custom subclass that overrides the property
         class CustomAppDelegate: AppDelegate {
-            override var shouldSetNotificationCenterDelegate: Bool {
+            override var shouldIntegrateWithNotificationCenter: Bool {
                 false
             }
         }
@@ -268,13 +268,13 @@ class AppDelegateTests: XCTestCase {
         )
 
         // Verify override works
-        XCTAssertFalse(customAppDelegate.shouldSetNotificationCenterDelegate)
+        XCTAssertFalse(customAppDelegate.shouldIntegrateWithNotificationCenter)
 
         // Test that didFinishLaunching respects the override
         mockMessagingPush.getConfigurationReturnValue = createMockConfig(autoTrackPushEvents: true)
         let application = UIApplication.shared
 
-        // This should not cause a conflict now since shouldSetNotificationCenterDelegate is false
+        // This should not cause a conflict now since shouldIntegrateWithNotificationCenter is false
         let result = customAppDelegate.application(application, didFinishLaunchingWithOptions: nil)
 
         // Verify behavior

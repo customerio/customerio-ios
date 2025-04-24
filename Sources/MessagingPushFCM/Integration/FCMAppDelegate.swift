@@ -20,18 +20,19 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         messagingPush as? MessagingPushFCMInstance
     }
 
-    private var firebaseMessaging: FirebaseMessagingInstance
+    private var firebaseMessaging: FirebaseMessagingInstance?
     private var wrappedMessagingDelegate: MessagingDelegate?
 
-    open var shouldSetMessagingDelegate: Bool {
+    open var shouldIntegrateWithFirebaseMessaging: Bool {
         true
     }
 
     public convenience init() {
+        DIGraphShared.shared.logger.error("CIO: This no-argument FCMAppDelegate initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
-            userNotificationCenter: { UNUserNotificationCenter.current() },
-            firebaseMessaging: { Messaging.messaging() },
+            userNotificationCenter: nil,
+            firebaseMessaging: nil,
             appDelegate: nil,
             logger: DIGraphShared.shared.logger
         )
@@ -39,8 +40,8 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
 
     public init(
         messagingPush: MessagingPushInstance,
-        userNotificationCenter: @escaping UserNotificationCenterInstance,
-        firebaseMessaging: @escaping FirebaseMessagingInstance,
+        userNotificationCenter: UserNotificationCenterInstance?,
+        firebaseMessaging: FirebaseMessagingInstance?,
         appDelegate: AppDelegateType? = nil,
         logger: Logger
     ) {
@@ -54,8 +55,8 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     ) -> Bool {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
-        if shouldSetMessagingDelegate {
-            var messaging = firebaseMessaging()
+        if shouldIntegrateWithFirebaseMessaging,
+           var messaging = firebaseMessaging?() {
             wrappedMessagingDelegate = messaging.delegate
             messaging.delegate = self
         }
@@ -69,8 +70,10 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     ) {
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
 
-        var messaging = firebaseMessaging()
-        messaging.apnsToken = deviceToken
+        if shouldIntegrateWithFirebaseMessaging,
+           var messaging = firebaseMessaging?() {
+            messaging.apnsToken = deviceToken
+        }
     }
 
     // MARK: - MessagingDelegate

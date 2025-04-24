@@ -1,20 +1,18 @@
 import CioMessagingPushFCM
 import SwiftUI
 
-class MainCioAppDelegate: FCMAppDelegateWrapper<AppDelegate> {
-    //    override var shouldSetNotificationCenterDelegate: Bool {
-    //        return false
-    //    }
-    override var shouldSetMessagingDelegate: Bool {
-        true
-    }
-}
+
 
 @main
 struct MainApp: App {
-    //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    //    @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
-    @UIApplicationDelegateAdaptor(MainCioAppDelegate.self) private var appDelegate
+    // Default option, without CIO integration
+//    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    // Use this option if you do NOT have a need to extend `FCMAppDelegateWrapper`
+//    @UIApplicationDelegateAdaptor(FCMAppDelegateWrapper<AppDelegate>.self) private var appDelegate
+    
+    // Use this option if you need to extend `FCMAppDelegateWrapper`
+    @UIApplicationDelegateAdaptor(AppDelegateWithCioIntegration.self) private var appDelegate
 
     @StateObject var userManager: UserManager = .init()
 

@@ -35,17 +35,17 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:))
     ]
 
-    private var userNotificationCenter: UserNotificationCenterInstance
+    private var userNotificationCenter: UserNotificationCenterInstance?
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
     // Flag to control whether to set the UNUserNotificationCenter delegate
-    open var shouldSetNotificationCenterDelegate: Bool {
+    open var shouldIntegrateWithNotificationCenter: Bool {
         true
     }
 
     override public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument AppDelegate initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
@@ -54,7 +54,12 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
         )
     }
 
-    public init(messagingPush: MessagingPushInstance, userNotificationCenter: @escaping UserNotificationCenterInstance, appDelegate: AppDelegateType? = nil, logger: Logger) {
+    public init(
+        messagingPush: MessagingPushInstance,
+        userNotificationCenter: UserNotificationCenterInstance?,
+        appDelegate: AppDelegateType? = nil,
+        logger: Logger
+    ) {
         self.messagingPush = messagingPush
         self.userNotificationCenter = userNotificationCenter
         self.logger = logger
@@ -75,8 +80,8 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
 
         application.cioRegisterForRemoteNotifications(logger: logger)
 
-        if shouldSetNotificationCenterDelegate {
-            var center = userNotificationCenter()
+        if shouldIntegrateWithNotificationCenter,
+           var center = userNotificationCenter?() {
             wrappedNoticeCenterDelegate = center.delegate
             center.delegate = self
         }
@@ -154,8 +159,8 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
             return true
         }
 
-        guard config.autoTrackPushEvents == false || shouldSetNotificationCenterDelegate == false else {
-            logger.error("CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldSetNotificationCenterDelegate' flag set to true.")
+        guard config.autoTrackPushEvents == false || shouldIntegrateWithNotificationCenter == false else {
+            logger.error("CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldIntegrateWithNotificationCenter' flag set to true.")
             return true
         }
 

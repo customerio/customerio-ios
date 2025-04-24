@@ -6,7 +6,7 @@ import UIKit
 @main
 class AppDelegateWithCioIntegration: APNAppDelegateWrapper<AppDelegate> {
     // This is not necessary. Add it only if you want to chenge default 'true` value
-    override var shouldSetNotificationCenterDelegate: Bool {
+    override var shouldIntegrateWithNotificationCenter: Bool {
         true
     }
 }
@@ -115,7 +115,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Track custom event with Customer.io.
         // NOT required for basic PN tap tracking - that is done automatically with `APNAppDelegateWrapper`.
         CustomerIO.shared.track(
-            name: "custom push event",
+            name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]
         )
 

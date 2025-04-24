@@ -10,9 +10,10 @@ open class APNAppDelegate: AppDelegate {
     }
 
     public convenience init() {
+        DIGraphShared.shared.logger.error("CIO: This no-argument APNAppDelegate initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
-            userNotificationCenter: { UNUserNotificationCenter.current() },
+            userNotificationCenter: nil,
             appDelegate: nil,
             logger: DIGraphShared.shared.logger
         )
@@ -20,7 +21,7 @@ open class APNAppDelegate: AppDelegate {
 
     override public init(
         messagingPush: MessagingPushInstance,
-        userNotificationCenter: @escaping UserNotificationCenterInstance,
+        userNotificationCenter: UserNotificationCenterInstance?,
         appDelegate: AppDelegateType? = nil,
         logger: Logger
     ) {
