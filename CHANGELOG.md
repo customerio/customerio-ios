@@ -1,3 +1,9 @@
+## [3.8.2](https://github.com/customerio/customerio-ios/compare/3.8.1...3.8.2) (2025-04-22)
+
+### Bug Fixes
+
+* updated test as traits are empty by default and limit FCM ceiling version  ([#880](https://github.com/customerio/customerio-ios/issues/880)) ([78f11d6](https://github.com/customerio/customerio-ios/commit/78f11d6d3fc6cc6a4870dfc6b8e60f12d21d6d67))
+
 ## [3.8.1](https://github.com/customerio/customerio-ios/compare/3.8.0...3.8.1) (2025-04-02)
 
 ### Bug Fixes
