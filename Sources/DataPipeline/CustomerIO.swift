@@ -1,4 +1,4 @@
-import CioInternalCommon
+@_spi(Internal) import CioInternalCommon
 import CioTrackingMigration
 
 public extension CustomerIO {
@@ -7,10 +7,15 @@ public extension CustomerIO {
      Call this function when your app launches, before using `CustomerIO.instance`.
      */
     @available(iOSApplicationExtension, unavailable)
-    static func initialize(withConfig config: SDKConfigBuilderResult) {
+    static func initialize(withConfig config: CioSdkConfigBuilderResult) {
         // SdkConfig isn't currently stored anywhere since it wasn't required. If needed later, we
         // can introduce an option to store and retrieve it.
-        let (sdkConfig, cdpConfig) = config
+        let (sdkConfig, cdpConfig, deepLinkCallback) = config.deconstruct()
+
+        // Sets deeplink callback, used by whole of SDK
+        if let deepLinkCallback {
+            DIGraphShared.shared.deepLinkUtil.setDeepLinkCallback(deepLinkCallback)
+        }
 
         // set the logLevel for ConsoleLogger before initializing any module
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
@@ -24,6 +29,12 @@ public extension CustomerIO {
             let migrationAssistant = DataPipelineMigrationAssistant(handler: implementation)
             migrationAssistant.performMigration(siteId: siteId)
         }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    @available(*, deprecated, message: "Use initialize(withConfig:CioSdkConfigBuilderResult) instead")
+    static func initialize(withConfig config: SDKConfigBuilderResult) {
+        initialize(withConfig: CioSdkConfigBuilderResultImpl(sdkConfig: config.sdkConfig, dataPipelineConfig: config.dataPipelineConfig, deepLinkCallback: nil))
     }
 
     /**
@@ -50,4 +61,17 @@ public extension CustomerIO {
         DataPipeline.resetTestEnvironment()
     }
     #endif
+}
+
+private struct CioSdkConfigBuilderResultImpl: CioSdkConfigBuilderResult {
+    var sdkConfig: CioInternalCommon.SdkConfig
+    var dataPipelineConfig: DataPipelineConfigOptions
+    var deepLinkCallback: CioInternalCommon.DeepLinkCallback?
+}
+
+private extension CioSdkConfigBuilderResult {
+    // swiftlint:disable:next large_tuple - OK for private usage.
+    func deconstruct() -> (CioInternalCommon.SdkConfig, DataPipelineConfigOptions, CioInternalCommon.DeepLinkCallback?) {
+        (sdkConfig, dataPipelineConfig, deepLinkCallback)
+    }
 }

@@ -20,30 +20,30 @@ import UIKit
 ///   .build()
 /// // Use `config` for initializing the SDK...
 /// ```
-public class SDKConfigBuilder {
+public class CioSdkConfigGenericBuilder<ResultType: SDKConfigBuilderResult> {
     // helper configuration options to ease setting up other configurations such as `apiHost` and `cdnHost`
-    private var region: Region = .US
-    private var autoTrackUIKitScreenViews: Bool = false
-    private var autoScreenViewBody: (() -> [String: Any])?
+    var region: Region = .US
+    var autoTrackUIKitScreenViews: Bool = false
+    var autoScreenViewBody: (() -> [String: Any])?
     #if canImport(UIKit)
-    private var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
+    var filterAutoScreenViewEvents: ((UIViewController) -> Bool)?
     #endif
 
     // configuration options for SdkConfig
-    private var logLevel: CioLogLevel = .error
+    var logLevel: CioLogLevel = .error
 
     // configuration options for DataPipelineConfigOptions
-    private let cdpApiKey: String
-    private var apiHost: String?
-    private var cdnHost: String?
-    private var flushAt: Int = 20
-    private var flushInterval: Seconds = 30
-    private var autoAddCustomerIODestination: Bool = true
-    private var flushPolicies: [FlushPolicy] = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
-    private var trackApplicationLifecycleEvents: Bool = true
-    private var autoTrackDeviceAttributes: Bool = true
-    private var migrationSiteId: String?
-    private var screenViewUse: ScreenView = .all
+    let cdpApiKey: String
+    var apiHost: String?
+    var cdnHost: String?
+    var flushAt: Int = 20
+    var flushInterval: Seconds = 30
+    var autoAddCustomerIODestination: Bool = true
+    var flushPolicies: [FlushPolicy] = [CountBasedFlushPolicy(), IntervalBasedFlushPolicy()]
+    var trackApplicationLifecycleEvents: Bool = true
+    var autoTrackDeviceAttributes: Bool = true
+    var migrationSiteId: String?
+    var screenViewUse: ScreenView = .all
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -56,7 +56,7 @@ public class SDKConfigBuilder {
     /// Default values for apiHost and cdnHost are determined by the region.
     /// However, if apiHost or cdnHost are manually specified, those values override region-based defaults.
     @discardableResult
-    public func region(_ region: Region) -> SDKConfigBuilder {
+    public func region(_ region: Region) -> Self {
         self.region = region
         return self
     }
@@ -78,7 +78,7 @@ public class SDKConfigBuilder {
         enabled: Bool = true,
         autoScreenViewBody: (() -> [String: Any])? = nil,
         filterAutoScreenViewEvents: ((UIViewController) -> Bool)? = nil
-    ) -> SDKConfigBuilder {
+    ) -> Self {
         autoTrackUIKitScreenViews = enabled
         self.autoScreenViewBody = autoScreenViewBody
         self.filterAutoScreenViewEvents = filterAutoScreenViewEvents
@@ -89,49 +89,49 @@ public class SDKConfigBuilder {
     /// To help you get setup with the SDK or debug SDK, change the log level of logs you wish to
     /// view from the SDK.
     @discardableResult
-    public func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder {
+    public func logLevel(_ logLevel: CioLogLevel) -> Self {
         self.logLevel = logLevel
         return self
     }
 
     @discardableResult
-    public func apiHost(_ apiHost: String) -> SDKConfigBuilder {
+    public func apiHost(_ apiHost: String) -> Self {
         self.apiHost = apiHost
         return self
     }
 
     @discardableResult
-    public func cdnHost(_ cdnHost: String) -> SDKConfigBuilder {
+    public func cdnHost(_ cdnHost: String) -> Self {
         self.cdnHost = cdnHost
         return self
     }
 
     @discardableResult
-    public func flushAt(_ flushAt: Int) -> SDKConfigBuilder {
+    public func flushAt(_ flushAt: Int) -> Self {
         self.flushAt = flushAt
         return self
     }
 
     @discardableResult
-    public func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder {
+    public func flushInterval(_ flushInterval: Seconds) -> Self {
         self.flushInterval = flushInterval
         return self
     }
 
     @discardableResult
-    func autoAddCustomerIODestination(_ autoAdd: Bool) -> SDKConfigBuilder {
+    func autoAddCustomerIODestination(_ autoAdd: Bool) -> Self {
         autoAddCustomerIODestination = autoAdd
         return self
     }
 
     @discardableResult
-    public func flushPolicies(_ policies: [FlushPolicy]) -> SDKConfigBuilder {
+    public func flushPolicies(_ policies: [FlushPolicy]) -> Self {
         flushPolicies = policies
         return self
     }
 
     @discardableResult
-    public func trackApplicationLifecycleEvents(_ track: Bool) -> SDKConfigBuilder {
+    public func trackApplicationLifecycleEvents(_ track: Bool) -> Self {
         trackApplicationLifecycleEvents = track
         return self
     }
@@ -139,25 +139,34 @@ public class SDKConfigBuilder {
     /// Enable this property if you want SDK to automatic track device attributes such as
     /// operating system, device locale, device model, app version etc.
     @discardableResult
-    public func autoTrackDeviceAttributes(_ autoTrack: Bool) -> SDKConfigBuilder {
+    public func autoTrackDeviceAttributes(_ autoTrack: Bool) -> Self {
         autoTrackDeviceAttributes = autoTrack
         return self
     }
 
     @discardableResult
-    public func migrationSiteId(_ siteId: String) -> SDKConfigBuilder {
+    public func migrationSiteId(_ siteId: String) -> Self {
         migrationSiteId = siteId
         return self
     }
 
     @discardableResult
-    public func screenViewUse(screenView: ScreenView) -> SDKConfigBuilder {
+    public func screenViewUse(screenView: ScreenView) -> Self {
         screenViewUse = screenView
         return self
     }
 
     @available(iOSApplicationExtension, unavailable)
-    public func build() -> SDKConfigBuilderResult {
+    open func build() -> ResultType {
+        assertionFailure(
+            "This method should not be called directly. Use `SDKConfigAndCallbackBuilder.build()` instead."
+        )
+        // swiftlint:disable:next force_cast - OK for method that should NOT be used.
+        return NSObject() as! ResultType
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    func createSDKAndPipelineConfig() -> (SdkConfig, DataPipelineConfigOptions) {
         // create `SdkConfig` from given configurations
         let sdkConfig = SdkConfig.Factory.create(
             logLevel: logLevel
@@ -191,10 +200,97 @@ public class SDKConfigBuilder {
             autoConfiguredPlugins: configuredPlugins
         )
 
-        return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)
+        return (sdkConfig, dataPipelineConfig)
     }
 }
 
-/// Tuple type for the result of the `SDKConfigBuilder`'s `build` method.
+@available(*, deprecated, message: "Use SDKConfigAndCallbackBuilder instead")
+public class SDKConfigBuilder: CioSdkConfigGenericBuilder<SDKConfigBuilder.SDKConfigBuilderResultImpl> {
+    @available(iOSApplicationExtension, unavailable)
+    override open func build() -> SDKConfigBuilderResultImpl {
+        // create `SdkConfig` from given configurations
+        let sdkConfig = SdkConfig.Factory.create(
+            logLevel: logLevel
+        )
+
+        // create plugins based on given configurations
+        var configuredPlugins: [Plugin] = []
+        if logLevel == CioLogLevel.debug {
+            configuredPlugins.append(ConsoleLogger(diGraph: DIGraphShared.shared))
+        }
+        if autoTrackUIKitScreenViews {
+            configuredPlugins.append(AutoTrackingScreenViews(
+                filterAutoScreenViewEvents: filterAutoScreenViewEvents,
+                autoScreenViewBody: autoScreenViewBody
+            ))
+        }
+
+        // create `DataPipelineConfigOptions` from given configurations
+        let dataPipelineConfig = DataPipelineConfigOptions(
+            cdpApiKey: cdpApiKey,
+            apiHost: apiHost ?? region.apiHost,
+            cdnHost: cdnHost ?? region.cdnHost,
+            flushAt: flushAt,
+            flushInterval: flushInterval,
+            autoAddCustomerIODestination: autoAddCustomerIODestination,
+            flushPolicies: flushPolicies,
+            trackApplicationLifecycleEvents: trackApplicationLifecycleEvents,
+            autoTrackDeviceAttributes: autoTrackDeviceAttributes,
+            migrationSiteId: migrationSiteId,
+            screenViewUse: screenViewUse,
+            autoConfiguredPlugins: configuredPlugins
+        )
+
+        return SDKConfigBuilderResultImpl(
+            sdkConfig: sdkConfig,
+            dataPipelineConfig: dataPipelineConfig
+        )
+    }
+
+    public struct SDKConfigBuilderResultImpl: SDKConfigBuilderResult {
+        public var sdkConfig: SdkConfig
+        public var dataPipelineConfig: DataPipelineConfigOptions
+    }
+}
+
+public class CioSdkConfigBuilder: CioSdkConfigGenericBuilder<CioSdkConfigBuilder.SDKConfigAndCallbackBuilderResultImpl> {
+    // configure deep-linking for whole SDK
+    private var deepLinkCallback: DeepLinkCallback?
+
+    @discardableResult
+    @available(iOSApplicationExtension, unavailable)
+    public func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> Self {
+        deepLinkCallback = callback
+        return self
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    override open func build() -> SDKConfigAndCallbackBuilderResultImpl {
+        let (sdkConfig, dataPipelineConfig) = super.createSDKAndPipelineConfig()
+
+        return SDKConfigAndCallbackBuilderResultImpl(
+            sdkConfig: sdkConfig,
+            dataPipelineConfig: dataPipelineConfig,
+            deepLinkCallback: deepLinkCallback
+        )
+    }
+
+    public struct SDKConfigAndCallbackBuilderResultImpl: CioSdkConfigBuilderResult {
+        public let sdkConfig: SdkConfig
+        public let dataPipelineConfig: DataPipelineConfigOptions
+        public let deepLinkCallback: DeepLinkCallback?
+    }
+}
+
+/// Type for the result of the `SDKConfigBuilder`'s `build` method.
 /// Contains both `SdkConfig` and `DataPipelineConfigOptions` instances.
-public typealias SDKConfigBuilderResult = (sdkConfig: SdkConfig, dataPipelineConfig: DataPipelineConfigOptions)
+public protocol SDKConfigBuilderResult {
+    var sdkConfig: SdkConfig { get }
+    var dataPipelineConfig: DataPipelineConfigOptions { get }
+}
+
+/// Type for the result of the `CioSdkConfigBuilder`'s `build` method.
+/// Contains both `SdkConfig`, `DataPipelineConfigOptions` and `DeepLinkCallback` instances.
+public protocol CioSdkConfigBuilderResult: SDKConfigBuilderResult {
+    var deepLinkCallback: DeepLinkCallback? { get }
+}

@@ -15,7 +15,7 @@ extension UNUserNotificationCenter: UserNotificationCenterIntegration {}
 private extension UIApplication {
     func cioRegisterForRemoteNotifications(logger: Logger) {
         logger.debug("CIO: Registering for remote notifications")
-        self.registerForRemoteNotifications()
+        registerForRemoteNotifications()
     }
 }
 

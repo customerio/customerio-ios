@@ -28,7 +28,7 @@ class AppDelegateTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        
+
         UNUserNotificationCenter.swizzleNotificationCenter()
 
         mockMessagingPush = MessagingPushInstanceMock()
@@ -59,9 +59,9 @@ class AppDelegateTests: XCTestCase {
         mockNotificationCenterDelegate = nil
         mockLogger = nil
         appDelegate = nil
-        
+
         UNUserNotificationCenter.unswizzleNotificationCenter()
-        
+
         super.tearDown()
     }
 
@@ -88,7 +88,7 @@ class AppDelegateTests: XCTestCase {
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertTrue(mockLogger.debugCallsCount == 1)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains{
+        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
             $0.contains("CIO: Registering for remote notifications")
         })
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
@@ -170,7 +170,7 @@ class AppDelegateTests: XCTestCase {
             completionHandlerCalled = true
         }
         _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        
+
         // Call the method
         appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
@@ -228,7 +228,7 @@ class AppDelegateTests: XCTestCase {
     func testUserNotificationCenterOpenSettingsFor() {
         // Setup
         _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        
+
         // Call the method
         appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), openSettingsFor: UNNotification.testInstance)
 

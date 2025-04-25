@@ -5,135 +5,133 @@
 import Foundation
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions.
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code?
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph:
-    let wheels = DIGraphShared.shared.offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase.
-}
-```
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DIGraphShared.shared.offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
+ }
+ ```
 
-5. How do I use this graph in my test suite?
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class
-DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DIGraphShared.shared.reset()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DIGraphShared.shared.reset()
+ ```
 
-*/
-
-
+ */
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = self.deviceInfo
+        _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = self.eventBusHandler
+        _ = eventBusHandler
         countDependenciesResolved += 1
 
-        _ = self.profileStore
+        _ = profileStore
         countDependenciesResolved += 1
 
-        _ = self.queue
+        _ = queue
         countDependenciesResolved += 1
 
-        _ = self.globalDataStore
+        _ = globalDataStore
         countDependenciesResolved += 1
 
-        _ = self.simpleTimer
+        _ = simpleTimer
         countDependenciesResolved += 1
 
-        _ = self.singleScheduleTimer
+        _ = singleScheduleTimer
         countDependenciesResolved += 1
 
-        _ = self.threadUtil
+        _ = threadUtil
         countDependenciesResolved += 1
 
-        _ = self.logger
+        _ = logger
         countDependenciesResolved += 1
 
-        _ = self.sdkClient
+        _ = sdkClient
         countDependenciesResolved += 1
 
-        _ = self.deepLinkUtil
+        _ = deepLinkUtil
         countDependenciesResolved += 1
 
-        _ = self.deviceMetricsGrabber
+        _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
-        _ = self.eventBusObserversHolder
+        _ = eventBusObserversHolder
         countDependenciesResolved += 1
 
-        _ = self.eventCache
+        _ = eventCache
         countDependenciesResolved += 1
 
-        _ = self.eventStorage
+        _ = eventStorage
         countDependenciesResolved += 1
 
-        _ = self.fileStorage
+        _ = fileStorage
         countDependenciesResolved += 1
 
-        _ = self.queueStorage
+        _ = queueStorage
         countDependenciesResolved += 1
 
-        _ = self.jsonAdapter
+        _ = jsonAdapter
         countDependenciesResolved += 1
 
-        _ = self.lockManager
+        _ = lockManager
         countDependenciesResolved += 1
 
-        _ = self.queueInventoryMemoryStore
+        _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
-        _ = self.dateUtil
+        _ = dateUtil
         countDependenciesResolved += 1
 
-        _ = self.eventBus
+        _ = eventBus
         countDependenciesResolved += 1
 
-        _ = self.uIKitWrapper
+        _ = uIKitWrapper
         countDependenciesResolved += 1
 
-        _ = self.httpRequestRunner
+        _ = httpRequestRunner
         countDependenciesResolved += 1
 
-        _ = self.userAgentUtil
+        _ = userAgentUtil
         countDependenciesResolved += 1
 
-        _ = self.sandboxedSiteIdKeyValueStorage
+        _ = sandboxedSiteIdKeyValueStorage
         countDependenciesResolved += 1
 
-        _ = self.sharedKeyValueStorage
+        _ = sharedKeyValueStorage
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -142,21 +140,24 @@ extension DIGraphShared {
     // Handle classes annotated with InjectRegisterShared
     // DeviceInfo
     public var deviceInfo: DeviceInfo {
-        return getOverriddenInstance() ??
-            self.newDeviceInfo
+        getOverriddenInstance() ??
+            newDeviceInfo
     }
+
     private var newDeviceInfo: DeviceInfo {
-        return CIODeviceInfo()
+        CIODeviceInfo()
     }
+
     // EventBusHandler (singleton)
     public var eventBusHandler: EventBusHandler {
-        return getOverriddenInstance() ??
-            self.sharedEventBusHandler
+        getOverriddenInstance() ??
+            sharedEventBusHandler
     }
+
     public var sharedEventBusHandler: EventBusHandler {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
             if let overridenDep: EventBusHandler = getOverriddenInstance() {
                 return overridenDep
             }
@@ -166,50 +167,61 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_eventBusHandler() -> EventBusHandler {
-        return CioEventBusHandler(eventBus: self.eventBus, eventCache: self.eventCache, eventStorage: self.eventStorage, logger: self.logger)
+        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
+
     // ProfileStore
     public var profileStore: ProfileStore {
-        return getOverriddenInstance() ??
-            self.newProfileStore
+        getOverriddenInstance() ??
+            newProfileStore
     }
+
     private var newProfileStore: ProfileStore {
-        return CioProfileStore(keyValueStorage: self.sandboxedSiteIdKeyValueStorage)
+        CioProfileStore(keyValueStorage: sandboxedSiteIdKeyValueStorage)
     }
+
     // Queue
     public var queue: Queue {
-        return getOverriddenInstance() ??
-            self.newQueue
+        getOverriddenInstance() ??
+            newQueue
     }
+
     private var newQueue: Queue {
-        return CioQueue(storage: self.queueStorage, jsonAdapter: self.jsonAdapter, logger: self.logger, queueTimer: self.singleScheduleTimer, dateUtil: self.dateUtil)
+        CioQueue(storage: queueStorage, jsonAdapter: jsonAdapter, logger: logger, queueTimer: singleScheduleTimer, dateUtil: dateUtil)
     }
+
     // GlobalDataStore
     public var globalDataStore: GlobalDataStore {
-        return getOverriddenInstance() ??
-            self.newGlobalDataStore
+        getOverriddenInstance() ??
+            newGlobalDataStore
     }
+
     private var newGlobalDataStore: GlobalDataStore {
-        return CioSharedDataStore(keyValueStorage: self.sharedKeyValueStorage)
+        CioSharedDataStore(keyValueStorage: sharedKeyValueStorage)
     }
+
     // SimpleTimer
-    internal var simpleTimer: SimpleTimer {
-        return getOverriddenInstance() ??
-            self.newSimpleTimer
+    var simpleTimer: SimpleTimer {
+        getOverriddenInstance() ??
+            newSimpleTimer
     }
+
     private var newSimpleTimer: SimpleTimer {
-        return CioSimpleTimer(logger: self.logger)
+        CioSimpleTimer(logger: logger)
     }
+
     // SingleScheduleTimer (singleton)
-    internal var singleScheduleTimer: SingleScheduleTimer {
-        return getOverriddenInstance() ??
-            self.sharedSingleScheduleTimer
+    var singleScheduleTimer: SingleScheduleTimer {
+        getOverriddenInstance() ??
+            sharedSingleScheduleTimer
     }
-    internal var sharedSingleScheduleTimer: SingleScheduleTimer {
+
+    var sharedSingleScheduleTimer: SingleScheduleTimer {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_SingleScheduleTimer_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_SingleScheduleTimer_singleton_access").sync {
             if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
                 return overridenDep
             }
@@ -219,26 +231,31 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_singleScheduleTimer() -> SingleScheduleTimer {
-        return CioSingleScheduleTimer(timer: self.simpleTimer)
+        CioSingleScheduleTimer(timer: simpleTimer)
     }
+
     // ThreadUtil
     public var threadUtil: ThreadUtil {
-        return getOverriddenInstance() ??
-            self.newThreadUtil
+        getOverriddenInstance() ??
+            newThreadUtil
     }
+
     private var newThreadUtil: ThreadUtil {
-        return CioThreadUtil()
+        CioThreadUtil()
     }
+
     // Logger (singleton)
     public var logger: Logger {
-        return getOverriddenInstance() ??
-            self.sharedLogger
+        getOverriddenInstance() ??
+            sharedLogger
     }
+
     public var sharedLogger: Logger {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
             if let overridenDep: Logger = getOverriddenInstance() {
                 return overridenDep
             }
@@ -248,41 +265,64 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_logger() -> Logger {
-        return ConsoleLogger()
+        ConsoleLogger()
     }
+
     // SdkClient (custom. property getter provided via extension)
     public var sdkClient: SdkClient {
-        return getOverriddenInstance() ??
-            self.customSdkClient
+        getOverriddenInstance() ??
+            customSdkClient
     }
-    // DeepLinkUtil
+
+    // DeepLinkUtil (singleton)
     @available(iOSApplicationExtension, unavailable)
     public var deepLinkUtil: DeepLinkUtil {
-        return getOverriddenInstance() ??
-            self.newDeepLinkUtil
+        getOverriddenInstance() ??
+            sharedDeepLinkUtil
     }
+
     @available(iOSApplicationExtension, unavailable)
-    private var newDeepLinkUtil: DeepLinkUtil {
-        return DeepLinkUtilImpl(logger: self.logger, uiKitWrapper: self.uIKitWrapper)
-    }
-    // DeviceMetricsGrabber
-    internal var deviceMetricsGrabber: DeviceMetricsGrabber {
-        return getOverriddenInstance() ??
-            self.newDeviceMetricsGrabber
-    }
-    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
-        return DeviceMetricsGrabberImpl()
-    }
-    // EventBusObserversHolder (singleton)
-    internal var eventBusObserversHolder: EventBusObserversHolder {
-        return getOverriddenInstance() ??
-            self.sharedEventBusObserversHolder
-    }
-    internal var sharedEventBusObserversHolder: EventBusObserversHolder {
+    public var sharedDeepLinkUtil: DeepLinkUtil {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_EventBusObserversHolder_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_DeepLinkUtil_singleton_access").sync {
+            if let overridenDep: DeepLinkUtil = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: DeepLinkUtil.self)] as? DeepLinkUtil
+            let instance = existingSingletonInstance ?? _get_deepLinkUtil()
+            self.singletons[String(describing: DeepLinkUtil.self)] = instance
+            return instance
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_deepLinkUtil() -> DeepLinkUtil {
+        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // DeviceMetricsGrabber
+    var deviceMetricsGrabber: DeviceMetricsGrabber {
+        getOverriddenInstance() ??
+            newDeviceMetricsGrabber
+    }
+
+    private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
+        DeviceMetricsGrabberImpl()
+    }
+
+    // EventBusObserversHolder (singleton)
+    var eventBusObserversHolder: EventBusObserversHolder {
+        getOverriddenInstance() ??
+            sharedEventBusObserversHolder
+    }
+
+    var sharedEventBusObserversHolder: EventBusObserversHolder {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_EventBusObserversHolder_singleton_access").sync {
             if let overridenDep: EventBusObserversHolder = getOverriddenInstance() {
                 return overridenDep
             }
@@ -292,18 +332,21 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_eventBusObserversHolder() -> EventBusObserversHolder {
-        return EventBusObserversHolder()
+        EventBusObserversHolder()
     }
+
     // EventCache (singleton)
-    internal var eventCache: EventCache {
-        return getOverriddenInstance() ??
-            self.sharedEventCache
+    var eventCache: EventCache {
+        getOverriddenInstance() ??
+            sharedEventCache
     }
-    internal var sharedEventCache: EventCache {
+
+    var sharedEventCache: EventCache {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_EventCache_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_EventCache_singleton_access").sync {
             if let overridenDep: EventCache = getOverriddenInstance() {
                 return overridenDep
             }
@@ -313,18 +356,21 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_eventCache() -> EventCache {
-        return EventCacheManager()
+        EventCacheManager()
     }
+
     // EventStorage (singleton)
-    internal var eventStorage: EventStorage {
-        return getOverriddenInstance() ??
-            self.sharedEventStorage
+    var eventStorage: EventStorage {
+        getOverriddenInstance() ??
+            sharedEventStorage
     }
-    internal var sharedEventStorage: EventStorage {
+
+    var sharedEventStorage: EventStorage {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
             if let overridenDep: EventStorage = getOverriddenInstance() {
                 return overridenDep
             }
@@ -334,42 +380,51 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_eventStorage() -> EventStorage {
-        return EventStorageManager(logger: self.logger, jsonAdapter: self.jsonAdapter)
+        EventStorageManager(logger: logger, jsonAdapter: jsonAdapter)
     }
+
     // FileStorage
     public var fileStorage: FileStorage {
-        return getOverriddenInstance() ??
-            self.newFileStorage
+        getOverriddenInstance() ??
+            newFileStorage
     }
+
     private var newFileStorage: FileStorage {
-        return FileManagerFileStorage(logger: self.logger)
+        FileManagerFileStorage(logger: logger)
     }
+
     // QueueStorage
     public var queueStorage: QueueStorage {
-        return getOverriddenInstance() ??
-            self.newQueueStorage
+        getOverriddenInstance() ??
+            newQueueStorage
     }
+
     private var newQueueStorage: QueueStorage {
-        return FileManagerQueueStorage(fileStorage: self.fileStorage, jsonAdapter: self.jsonAdapter, lockManager: self.lockManager, logger: self.logger, dateUtil: self.dateUtil, inventoryStore: self.queueInventoryMemoryStore)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
+
     // JsonAdapter
     public var jsonAdapter: JsonAdapter {
-        return getOverriddenInstance() ??
-            self.newJsonAdapter
+        getOverriddenInstance() ??
+            newJsonAdapter
     }
+
     private var newJsonAdapter: JsonAdapter {
-        return JsonAdapter(log: self.logger)
+        JsonAdapter(log: logger)
     }
+
     // LockManager (singleton)
     public var lockManager: LockManager {
-        return getOverriddenInstance() ??
-            self.sharedLockManager
+        getOverriddenInstance() ??
+            sharedLockManager
     }
+
     public var sharedLockManager: LockManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
             if let overridenDep: LockManager = getOverriddenInstance() {
                 return overridenDep
             }
@@ -379,18 +434,21 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_lockManager() -> LockManager {
-        return LockManager()
+        LockManager()
     }
+
     // QueueInventoryMemoryStore (singleton)
-    internal var queueInventoryMemoryStore: QueueInventoryMemoryStore {
-        return getOverriddenInstance() ??
-            self.sharedQueueInventoryMemoryStore
+    var queueInventoryMemoryStore: QueueInventoryMemoryStore {
+        getOverriddenInstance() ??
+            sharedQueueInventoryMemoryStore
     }
-    internal var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
+
+    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_QueueInventoryMemoryStore_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_QueueInventoryMemoryStore_singleton_access").sync {
             if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
                 return overridenDep
             }
@@ -400,26 +458,31 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
-        return QueueInventoryMemoryStoreImpl()
+        QueueInventoryMemoryStoreImpl()
     }
+
     // DateUtil
     public var dateUtil: DateUtil {
-        return getOverriddenInstance() ??
-            self.newDateUtil
+        getOverriddenInstance() ??
+            newDateUtil
     }
+
     private var newDateUtil: DateUtil {
-        return SdkDateUtil()
+        SdkDateUtil()
     }
+
     // EventBus (singleton)
-    internal var eventBus: EventBus {
-        return getOverriddenInstance() ??
-            self.sharedEventBus
+    var eventBus: EventBus {
+        getOverriddenInstance() ??
+            sharedEventBus
     }
-    internal var sharedEventBus: EventBus {
+
+    var sharedEventBus: EventBus {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
             if let overridenDep: EventBus = getOverriddenInstance() {
                 return overridenDep
             }
@@ -429,50 +492,61 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_eventBus() -> EventBus {
-        return SharedEventBus(holder: self.eventBusObserversHolder)
+        SharedEventBus(holder: eventBusObserversHolder)
     }
+
     // UIKitWrapper
     @available(iOSApplicationExtension, unavailable)
     public var uIKitWrapper: UIKitWrapper {
-        return getOverriddenInstance() ??
-            self.newUIKitWrapper
+        getOverriddenInstance() ??
+            newUIKitWrapper
     }
+
     @available(iOSApplicationExtension, unavailable)
     private var newUIKitWrapper: UIKitWrapper {
-        return UIKitWrapperImpl()
+        UIKitWrapperImpl()
     }
+
     // HttpRequestRunner
     public var httpRequestRunner: HttpRequestRunner {
-        return getOverriddenInstance() ??
-            self.newHttpRequestRunner
+        getOverriddenInstance() ??
+            newHttpRequestRunner
     }
+
     private var newHttpRequestRunner: HttpRequestRunner {
-        return UrlRequestHttpRequestRunner()
+        UrlRequestHttpRequestRunner()
     }
+
     // UserAgentUtil
     public var userAgentUtil: UserAgentUtil {
-        return getOverriddenInstance() ??
-            self.newUserAgentUtil
+        getOverriddenInstance() ??
+            newUserAgentUtil
     }
+
     private var newUserAgentUtil: UserAgentUtil {
-        return UserAgentUtilImpl(deviceInfo: self.deviceInfo, sdkClient: self.sdkClient)
+        UserAgentUtilImpl(deviceInfo: deviceInfo, sdkClient: sdkClient)
     }
+
     // SandboxedSiteIdKeyValueStorage
     public var sandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
-        return getOverriddenInstance() ??
-            self.newSandboxedSiteIdKeyValueStorage
+        getOverriddenInstance() ??
+            newSandboxedSiteIdKeyValueStorage
     }
+
     private var newSandboxedSiteIdKeyValueStorage: SandboxedSiteIdKeyValueStorage {
-        return UserDefaultsSandboxedSiteIdKVStore(deviceMetricsGrabber: self.deviceMetricsGrabber)
+        UserDefaultsSandboxedSiteIdKVStore(deviceMetricsGrabber: deviceMetricsGrabber)
     }
+
     // SharedKeyValueStorage
     public var sharedKeyValueStorage: SharedKeyValueStorage {
-        return getOverriddenInstance() ??
-            self.newSharedKeyValueStorage
+        getOverriddenInstance() ??
+            newSharedKeyValueStorage
     }
+
     private var newSharedKeyValueStorage: SharedKeyValueStorage {
-        return UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: self.deviceMetricsGrabber)
+        UserDefaultsSharedKeyValueStorage(deviceMetricsGrabber: deviceMetricsGrabber)
     }
 }
 

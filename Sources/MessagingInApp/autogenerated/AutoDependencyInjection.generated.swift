@@ -2,80 +2,78 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import Foundation
 import CioInternalCommon
+import Foundation
 import UIKit
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions.
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code?
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph:
-    let wheels = DIGraphShared.shared.offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase.
-}
-```
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DIGraphShared.shared.offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
+ }
+ ```
 
-5. How do I use this graph in my test suite?
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class
-DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DIGraphShared.shared.reset()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DIGraphShared.shared.reset()
+ ```
 
-*/
-
-
+ */
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = self.engineWebProvider
+        _ = engineWebProvider
         countDependenciesResolved += 1
 
-        _ = self.gistProvider
+        _ = gistProvider
         countDependenciesResolved += 1
 
-        _ = self.gistDelegate
+        _ = gistDelegate
         countDependenciesResolved += 1
 
-        _ = self.gistQueueNetwork
+        _ = gistQueueNetwork
         countDependenciesResolved += 1
 
-        _ = self.inAppMessageManager
+        _ = inAppMessageManager
         countDependenciesResolved += 1
 
-        _ = self.logManager
+        _ = logManager
         countDependenciesResolved += 1
 
-        _ = self.queueManager
+        _ = queueManager
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -83,22 +81,25 @@ extension DIGraphShared {
 
     // Handle classes annotated with InjectRegisterShared
     // EngineWebProvider
-    internal var engineWebProvider: EngineWebProvider {
-        return getOverriddenInstance() ??
-            self.newEngineWebProvider
+    var engineWebProvider: EngineWebProvider {
+        getOverriddenInstance() ??
+            newEngineWebProvider
     }
+
     private var newEngineWebProvider: EngineWebProvider {
-        return EngineWebProviderImpl()
+        EngineWebProviderImpl()
     }
+
     // GistProvider (singleton)
-    internal var gistProvider: GistProvider {
-        return getOverriddenInstance() ??
-            self.sharedGistProvider
+    var gistProvider: GistProvider {
+        getOverriddenInstance() ??
+            sharedGistProvider
     }
-    internal var sharedGistProvider: GistProvider {
+
+    var sharedGistProvider: GistProvider {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_GistProvider_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_GistProvider_singleton_access").sync {
             if let overridenDep: GistProvider = getOverriddenInstance() {
                 return overridenDep
             }
@@ -108,18 +109,21 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_gistProvider() -> GistProvider {
-        return Gist(logger: self.logger, gistDelegate: self.gistDelegate, inAppMessageManager: self.inAppMessageManager, queueManager: self.queueManager, threadUtil: self.threadUtil)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil)
     }
+
     // GistDelegate (singleton)
-    internal var gistDelegate: GistDelegate {
-        return getOverriddenInstance() ??
-            self.sharedGistDelegate
+    var gistDelegate: GistDelegate {
+        getOverriddenInstance() ??
+            sharedGistDelegate
     }
-    internal var sharedGistDelegate: GistDelegate {
+
+    var sharedGistDelegate: GistDelegate {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_GistDelegate_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_GistDelegate_singleton_access").sync {
             if let overridenDep: GistDelegate = getOverriddenInstance() {
                 return overridenDep
             }
@@ -129,26 +133,31 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_gistDelegate() -> GistDelegate {
-        return GistDelegateImpl(logger: self.logger, eventBusHandler: self.eventBusHandler)
+        GistDelegateImpl(logger: logger, eventBusHandler: eventBusHandler)
     }
+
     // GistQueueNetwork
-    internal var gistQueueNetwork: GistQueueNetwork {
-        return getOverriddenInstance() ??
-            self.newGistQueueNetwork
+    var gistQueueNetwork: GistQueueNetwork {
+        getOverriddenInstance() ??
+            newGistQueueNetwork
     }
+
     private var newGistQueueNetwork: GistQueueNetwork {
-        return GistQueueNetworkImpl()
+        GistQueueNetworkImpl()
     }
+
     // InAppMessageManager (singleton)
-    internal var inAppMessageManager: InAppMessageManager {
-        return getOverriddenInstance() ??
-            self.sharedInAppMessageManager
+    var inAppMessageManager: InAppMessageManager {
+        getOverriddenInstance() ??
+            sharedInAppMessageManager
     }
-    internal var sharedInAppMessageManager: InAppMessageManager {
+
+    var sharedInAppMessageManager: InAppMessageManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_InAppMessageManager_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_InAppMessageManager_singleton_access").sync {
             if let overridenDep: InAppMessageManager = getOverriddenInstance() {
                 return overridenDep
             }
@@ -158,26 +167,31 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        return InAppMessageStoreManager(logger: self.logger, threadUtil: self.threadUtil, logManager: self.logManager, gistDelegate: self.gistDelegate)
+        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate)
     }
+
     // LogManager
-    internal var logManager: LogManager {
-        return getOverriddenInstance() ??
-            self.newLogManager
+    var logManager: LogManager {
+        getOverriddenInstance() ??
+            newLogManager
     }
+
     private var newLogManager: LogManager {
-        return LogManager(gistQueueNetwork: self.gistQueueNetwork)
+        LogManager(gistQueueNetwork: gistQueueNetwork)
     }
+
     // QueueManager (singleton)
-    internal var queueManager: QueueManager {
-        return getOverriddenInstance() ??
-            self.sharedQueueManager
+    var queueManager: QueueManager {
+        getOverriddenInstance() ??
+            sharedQueueManager
     }
-    internal var sharedQueueManager: QueueManager {
+
+    var sharedQueueManager: QueueManager {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_QueueManager_singleton_access").sync {
+        DispatchQueue(label: "DIGraphShared_QueueManager_singleton_access").sync {
             if let overridenDep: QueueManager = getOverriddenInstance() {
                 return overridenDep
             }
@@ -187,8 +201,9 @@ extension DIGraphShared {
             return instance
         }
     }
+
     private func _get_queueManager() -> QueueManager {
-        return QueueManager(keyValueStore: self.sharedKeyValueStorage, gistQueueNetwork: self.gistQueueNetwork, inAppMessageManager: self.inAppMessageManager, logger: self.logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, logger: logger)
     }
 }
 

@@ -12,6 +12,7 @@ class AppDelegateWithCioIntegration: CioAppDelegateFCMWrapper<AppDelegate> {
     override var shouldIntegrateWithNotificationCenter: Bool {
         true
     }
+
     override var shouldIntegrateWithFirebaseMessaging: Bool {
         true
     }
@@ -32,13 +33,24 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
         let cdpApiKey = appSetSettings?.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
 
+        // This is old deprecated way - do not use this any more and instead follow deprecation instruction
+//        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
         // Configure and initialize the Customer.io SDK
-        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+        let config = CioSdkConfigBuilder(cdpApiKey: cdpApiKey)
             .region(.US)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
+            .deepLinkCallback { (url: URL) in
+                // You can call any method to process this furhter,
+//                print("deep-link: \(url)")
+//                return true
+                // or redirect it to `application(_:continue:restorationHandler:)` for consistency if you use deep-link with Firebase
+                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+                openLinkInHostAppActivity.webpageURL = url
+                return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
+            }
         let logLevel = appSetSettings?.debugSdkMode
         if logLevel == nil || logLevel == true {
             config.logLevel(CioLogLevel.debug)
@@ -57,6 +69,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
+                // Two methods below are deprecate - do not use them any more and instead follow deprecation instruction
                 .autoFetchDeviceToken(false)
                 .autoTrackPushEvents(false)
                 .build()
@@ -88,6 +101,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 //        Messaging.messaging().apnsToken = deviceToken
     }
 
+    // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
+    //            Use `deepLinkCallback` on CioSdkConfigBuilder, as this works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false

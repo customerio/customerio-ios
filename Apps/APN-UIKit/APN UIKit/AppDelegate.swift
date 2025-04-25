@@ -111,7 +111,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        
         // Track custom event with Customer.io.
         // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateAPNWrapper`.
         CustomerIO.shared.track(

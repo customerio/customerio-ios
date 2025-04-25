@@ -21,8 +21,8 @@ public extension UNNotificationResponse {
 }
 
 public extension UNNotification {
-    
     static var testInstance: UNNotification {
+        // swiftlint:disable:next force_try - Ok in Test code.
         try! XCTUnwrap(UNNotification(coder: KeyedArchiver(requiringSecureCoding: false)))
     }
 }
