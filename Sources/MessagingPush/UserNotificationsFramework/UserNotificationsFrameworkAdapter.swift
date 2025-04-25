@@ -9,7 +9,7 @@ import UserNotifications
  In production, iOS will call functions in this file. Those requests are then forwarded onto the abstracted code in the SDK to perform all of the logic.
  */
 @available(iOSApplicationExtension, unavailable)
-@available(*, deprecated, message: "This swizzling based system is replaced with APNAppDelegate and FCMAppDelegate")
+@available(*, deprecated, message: "This swizzling based system is replaced with CioAppDelegateAPN and CioAppDelegateFCM")
 protocol UserNotificationsFrameworkAdapter {
     // A reference to an instance of UNUserNotificationCenterDelegate that we can provide to iOS in production.
     var delegate: UNUserNotificationCenterDelegate { get }
@@ -24,7 +24,7 @@ protocol UserNotificationsFrameworkAdapter {
  Keep this class small and simple because it is only able to be tested in QA testing. All logic for handling push events should be in the rest of the code base that has automated tests around it.
  */
 @available(iOSApplicationExtension, unavailable)
-@available(*, deprecated, message: "This swizzling based system is replaced with APNAppDelegate and FCMAppDelegate")
+@available(*, deprecated, message: "This swizzling based system is replaced with CioAppDelegateAPN and CioAppDelegateFCM")
 // sourcery: InjectRegisterShared = "UserNotificationsFrameworkAdapter"
 // sourcery: InjectSingleton
 class UserNotificationsFrameworkAdapterImpl: NSObject, UNUserNotificationCenterDelegate, UserNotificationsFrameworkAdapter {

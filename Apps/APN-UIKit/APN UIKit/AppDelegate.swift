@@ -4,7 +4,7 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
-class AppDelegateWithCioIntegration: APNAppDelegateWrapper<AppDelegate> {
+class AppDelegateWithCioIntegration: CioAppDelegateAPNWrapper<AppDelegate> {
     // This is not necessary. Add it only if you want to chenge default 'true` value
     override var shouldIntegrateWithNotificationCenter: Bool {
         true
@@ -113,7 +113,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         
         // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `APNAppDelegateWrapper`.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateAPNWrapper`.
         CustomerIO.shared.track(
             name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]

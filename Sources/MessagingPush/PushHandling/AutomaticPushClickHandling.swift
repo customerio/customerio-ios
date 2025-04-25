@@ -32,13 +32,13 @@ import Foundation
  2. The CIO SDK should be able to stay compatible with other SDKs that also want to handle push click events. A customer should be able to install 2+ push notification SDKs in an app and all of them are able to work, even though iOS only allows 1 `UNUserNotificationCenterDelegate` instance to be set in the app.
  */
 @available(iOSApplicationExtension, unavailable)
-@available(*, deprecated, message: "This swizzling based system is replaced with APNAppDelegate and FCMAppDelegate")
+@available(*, deprecated, message: "This swizzling based system is replaced with CioAppDelegateAPN and CioAppDelegateFCM")
 protocol AutomaticPushClickHandling: AutoMockable {
     func start()
 }
 
 @available(iOSApplicationExtension, unavailable)
-@available(*, deprecated, message: "This swizzling based system is replaced with APNAppDelegate and FCMAppDelegate")
+@available(*, deprecated, message: "This swizzling based system is replaced with CioAppDelegateAPN and CioAppDelegateFCM")
 // sourcery: InjectRegisterShared = "AutomaticPushClickHandling"
 class AutomaticPushClickHandlingImpl: AutomaticPushClickHandling {
     private let notificationCenterAdapter: UserNotificationsFrameworkAdapter

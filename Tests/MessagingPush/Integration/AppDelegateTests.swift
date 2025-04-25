@@ -12,7 +12,7 @@ class AppDelegateTests: XCTestCase {
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockLogger: LoggerMock!
-    var appDelegate: AppDelegate!
+    var appDelegate: CioAppDelegate!
 
     // Mock config for testing
     func createMockConfig(autoFetchDeviceToken: Bool = false, autoTrackPushEvents: Bool = false) -> MessagingPushConfigOptions {
@@ -44,7 +44,7 @@ class AppDelegateTests: XCTestCase {
         mockMessagingPush.getConfigurationReturnValue = createMockConfig()
 
         // Create AppDelegate with mocks
-        appDelegate = AppDelegate(
+        appDelegate = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
@@ -196,7 +196,7 @@ class AppDelegateTests: XCTestCase {
     func testForwardingTargetForSelector() {
         // Test forwarding for an implemented method
         let implementedSelector = #selector(UIApplicationDelegate.application(_:didFinishLaunchingWithOptions:))
-        XCTAssertEqual(appDelegate.forwardingTarget(for: implementedSelector) as? AppDelegate, appDelegate)
+        XCTAssertEqual(appDelegate.forwardingTarget(for: implementedSelector) as? CioAppDelegate, appDelegate)
 
         // Test forwarding for a method implemented by the wrapped app delegate
         let wrappedSelector = #selector(UIApplicationDelegate.applicationDidBecomeActive(_:))
@@ -253,7 +253,7 @@ class AppDelegateTests: XCTestCase {
 
     func testShouldIntegrateWithNotificationCenterOverride() {
         // Create a custom subclass that overrides the property
-        class CustomAppDelegate: AppDelegate {
+        class CustomAppDelegate: CioAppDelegate {
             override var shouldIntegrateWithNotificationCenter: Bool {
                 false
             }

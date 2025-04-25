@@ -1,7 +1,7 @@
 import CioInternalCommon
 import UIKit
 
-public typealias AppDelegateType = NSObject & UIApplicationDelegate
+public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
 public typealias UserNotificationCenterInstance = () -> UserNotificationCenterIntegration
 
@@ -20,7 +20,7 @@ private extension UIApplication {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
+open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPushInstance
     @_spi(Internal) public let logger: Logger
     @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
@@ -57,7 +57,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
     public init(
         messagingPush: MessagingPushInstance,
         userNotificationCenter: UserNotificationCenterInstance?,
-        appDelegate: AppDelegateType? = nil,
+        appDelegate: CioAppDelegateType? = nil,
         logger: Logger
     ) {
         self.messagingPush = messagingPush
@@ -173,7 +173,7 @@ open class AppDelegate: AppDelegateType, UNUserNotificationCenterDelegate {
 ///     - this is the case with FirebaseMassaging
 /// - for this reason, empty methods are added and forwarding to wrapper is possible
 @available(iOSApplicationExtension, unavailable)
-extension AppDelegate {
+extension CioAppDelegate {
     open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         wrappedNoticeCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
     }

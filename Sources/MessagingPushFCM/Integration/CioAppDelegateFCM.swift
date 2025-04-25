@@ -14,7 +14,7 @@ public protocol FirebaseMessagingIntegration {
 extension Messaging: FirebaseMessagingIntegration {}
 
 @available(iOSApplicationExtension, unavailable)
-open class FCMAppDelegate: AppDelegate, MessagingDelegate {
+open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushFCM: MessagingPushFCMInstance? {
         messagingPush as? MessagingPushFCMInstance
@@ -28,7 +28,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
     }
 
     public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument FCMAppDelegate initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegateFCM initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: nil,
@@ -42,7 +42,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
         messagingPush: MessagingPushInstance,
         userNotificationCenter: UserNotificationCenterInstance?,
         firebaseMessaging: FirebaseMessagingInstance?,
-        appDelegate: AppDelegateType? = nil,
+        appDelegate: CioAppDelegateType? = nil,
         logger: Logger
     ) {
         self.firebaseMessaging = firebaseMessaging
@@ -90,7 +90,7 @@ open class FCMAppDelegate: AppDelegate, MessagingDelegate {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class FCMAppDelegateWrapper<UserAppDelegate: AppDelegateType>: FCMAppDelegate {
+open class CioAppDelegateFCMWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateFCM {
     public init() {
         super.init(
             messagingPush: MessagingPush.shared,

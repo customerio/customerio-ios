@@ -7,7 +7,7 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
-class AppDelegateWithCioIntegration: FCMAppDelegateWrapper<AppDelegate> {
+class AppDelegateWithCioIntegration: CioAppDelegateFCMWrapper<AppDelegate> {
     // Two properties below are not necessary. Add them only if you want to chenge default 'true` value.
     override var shouldIntegrateWithNotificationCenter: Bool {
         true
@@ -84,7 +84,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // This is NOT necessary if FCMAppDelegate is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
+        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
 //        Messaging.messaging().apnsToken = deviceToken
     }
 
@@ -100,7 +100,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // This is NOT necessary if FCMAppDelegate is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
+        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
 //        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
@@ -109,7 +109,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `FCMAppDelegateWrapper`.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateFCMWrapper`.
         CustomerIO.shared.track(
             name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]

@@ -6,11 +6,11 @@ import SharedTests
 @testable import CioMessagingPush
 @testable import CioInternalCommon
 
-class APNAppDelegateTests: XCTestCase {
-    var apnAppDelegate: APNAppDelegate!
+class CioAppDelegateAPNTests: XCTestCase {
+    var appDelegateAPN: CioAppDelegateAPN!
     
     // Mock Classes
-    var mockMessagingPush: APNMessagingPushMock!
+    var mockMessagingPush: MessagingPushAPNMock!
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
@@ -33,7 +33,7 @@ class APNAppDelegateTests: XCTestCase {
         
         UNUserNotificationCenter.swizzleNotificationCenter()
 
-        mockMessagingPush = APNMessagingPushMock()
+        mockMessagingPush = MessagingPushAPNMock()
         mockAppDelegate = MockAppDelegate()
         mockNotificationCenter = UserNotificationCenterIntegrationMock()
         mockNotificationCenterDelegate = MockNotificationCenterDelegate()
@@ -45,8 +45,8 @@ class APNAppDelegateTests: XCTestCase {
         // Setup the MessagingPushAPNInstanceMock to return configs
         mockMessagingPush.getConfigurationReturnValue = createMockConfig()
         
-        // Create APNAppDelegate with mocks
-        apnAppDelegate = APNAppDelegate(
+        // Create CioAppDelegateAPN with mocks
+        appDelegateAPN = CioAppDelegateAPN(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { return self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
@@ -60,7 +60,7 @@ class APNAppDelegateTests: XCTestCase {
         mockNotificationCenter = nil
         mockNotificationCenterDelegate = nil
         mockLogger = nil
-        apnAppDelegate = nil
+        appDelegateAPN = nil
         
         UNUserNotificationCenter.unswizzleNotificationCenter()
         
@@ -69,9 +69,9 @@ class APNAppDelegateTests: XCTestCase {
     
     // MARK: - Tests for initialization
     
-    func testAPNAppDelegateInit() {
-        XCTAssertNotNil(apnAppDelegate)
-        XCTAssertTrue(apnAppDelegate.shouldIntegrateWithNotificationCenter)
+    func testCioAppDelegateAPNInit() {
+        XCTAssertNotNil(appDelegateAPN)
+        XCTAssertTrue(appDelegateAPN.shouldIntegrateWithNotificationCenter)
     }
     
     // MARK: - Tests for APN-specific functionality
@@ -79,10 +79,10 @@ class APNAppDelegateTests: XCTestCase {
     func testDidRegisterForRemoteNotifications_CallsAPNRegisterDeviceToken() {
         // Setup
         let deviceToken = "device_token".data(using: .utf8)!
-        _ = apnAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
         
         // Call the method
-        apnAppDelegate.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        appDelegateAPN.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
         
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
@@ -97,7 +97,7 @@ class APNAppDelegateTests: XCTestCase {
     
     func testDidFinishLaunchingWithValidConfig() {
         // Call the method
-        let result = apnAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        let result = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
         
         // Verify behavior
         XCTAssertTrue(result)
@@ -106,7 +106,7 @@ class APNAppDelegateTests: XCTestCase {
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains{
             $0.contains("CIO: Registering for remote notifications")
         })
-        XCTAssertTrue(mockNotificationCenter.delegate === apnAppDelegate)
+        XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }
     
     func testDidFailToRegisterForRemoteNotifications() {
@@ -115,7 +115,7 @@ class APNAppDelegateTests: XCTestCase {
         let error = NSError(domain: "test", code: 123, userInfo: nil)
         
         // Call the method
-        apnAppDelegate.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+        appDelegateAPN.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
         
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
@@ -127,7 +127,7 @@ class APNAppDelegateTests: XCTestCase {
     
     func testUserNotificationCenterDidReceive() {
         // Setup
-        _ = apnAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
         mockMessagingPush.userNotificationCenterReturnValue = nil
         
         var completionHandlerCalled = false
@@ -136,7 +136,7 @@ class APNAppDelegateTests: XCTestCase {
         }
         
         // Call the method
-        apnAppDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
+        appDelegateAPN.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
         
         // Verify behavior
         XCTAssertTrue(mockMessagingPush.userNotificationCenterCalled == true)

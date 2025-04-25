@@ -3,14 +3,14 @@ import UIKit
 @_spi(Internal) import CioMessagingPush
 
 @available(iOSApplicationExtension, unavailable)
-open class APNAppDelegate: AppDelegate {
+open class CioAppDelegateAPN: CioAppDelegate {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushAPN: MessagingPushAPNInstance? {
         messagingPush as? MessagingPushAPNInstance
     }
 
     public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument APNAppDelegate initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegateAPN initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: nil,
@@ -22,7 +22,7 @@ open class APNAppDelegate: AppDelegate {
     override public init(
         messagingPush: MessagingPushInstance,
         userNotificationCenter: UserNotificationCenterInstance?,
-        appDelegate: AppDelegateType? = nil,
+        appDelegate: CioAppDelegateType? = nil,
         logger: Logger
     ) {
         super.init(
@@ -44,7 +44,7 @@ open class APNAppDelegate: AppDelegate {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class APNAppDelegateWrapper<UserAppDelegate: AppDelegateType>: APNAppDelegate {
+open class CioAppDelegateAPNWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateAPN {
     public init() {
         super.init(
             messagingPush: MessagingPush.shared,

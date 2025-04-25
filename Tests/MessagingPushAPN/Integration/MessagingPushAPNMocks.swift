@@ -1,59 +1,34 @@
 import Foundation
-@testable import CioMessagingPushFCM
+@testable import CioMessagingPushAPN
 @testable import CioMessagingPush
 @testable import CioInternalCommon
 
-class FCMMessagingPushMock: MessagingPushInstanceMock, MessagingPushFCMInstance {
+class MessagingPushAPNMock: MessagingPushInstanceMock, MessagingPushAPNInstance {
+    
     // MARK: - registerDeviceToken
     
     /// Number of times the function was called.
-    @Atomic public private(set) var registerDeviceTokenFCMCallsCount = 0
+    @Atomic public private(set) var registerDeviceTokenAPNCallsCount = 0
     /// `true` if the function was ever called.
-    public var registerDeviceTokenFCMCalled: Bool {
-        return registerDeviceTokenFCMCallsCount > 0
+    public var registerDeviceTokenAPNCalled: Bool {
+        return registerDeviceTokenAPNCallsCount > 0
     }
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var registerDeviceTokenFCMReceivedArguments: (String?)?
+    @Atomic public private(set) var registerDeviceTokenAPNReceivedArguments: (Data)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var registerDeviceTokenFCMReceivedInvocations: [(String?)] = []
+    @Atomic public private(set) var registerDeviceTokenAPNReceivedInvocations: [(Data)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var registerDeviceTokenFCMClosure: ((String?) -> Void)?
+    public var registerDeviceTokenAPNClosure: ((Data) -> Void)?
     
-    /// Mocked function for `registerDeviceToken(fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func registerDeviceToken(fcmToken: String?) {
+    /// Mocked function for `registerDeviceToken(apnDeviceToken: Data)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func registerDeviceToken(apnDeviceToken: Data) {
         self.mockCalled = true
-        registerDeviceTokenFCMCallsCount += 1
-        registerDeviceTokenFCMReceivedArguments = (fcmToken)
-        registerDeviceTokenFCMReceivedInvocations.append((fcmToken))
-        registerDeviceTokenFCMClosure?(fcmToken)
-    }
-    
-    // MARK: - messaging
-    
-    /// Number of times the function was called.
-    @Atomic public private(set) var didReceiveRegistrationTokenCallsCount = 0
-    /// `true` if the function was ever called.
-    public var didReceiveRegistrationTokenCalled: Bool {
-        return didReceiveRegistrationTokenCallsCount > 0
-    }
-    /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var didReceiveRegistrationTokenReceivedArguments: (messaging: Any, fcmToken: String?)?
-    /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var didReceiveRegistrationTokenReceivedInvocations: [(messaging: Any, fcmToken: String?)] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var didReceiveRegistrationTokenClosure: ((Any, String?) -> Void)?
-    
-    /// Mocked function for `messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
-        self.mockCalled = true
-        didReceiveRegistrationTokenCallsCount += 1
-        didReceiveRegistrationTokenReceivedArguments = (messaging: messaging, fcmToken: fcmToken)
-        didReceiveRegistrationTokenReceivedInvocations.append((messaging: messaging, fcmToken: fcmToken))
-        didReceiveRegistrationTokenClosure?(messaging, fcmToken)
+        registerDeviceTokenAPNCallsCount += 1
+        registerDeviceTokenAPNReceivedArguments = (apnDeviceToken)
+        registerDeviceTokenAPNReceivedInvocations.append((apnDeviceToken))
+        registerDeviceTokenAPNClosure?(apnDeviceToken)
     }
     
     // MARK: - application

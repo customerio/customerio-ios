@@ -8,10 +8,10 @@ struct MainApp: App {
     // Default option, without CIO integration
 //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    // Use this option if you do NOT have a need to extend `FCMAppDelegateWrapper`
-//    @UIApplicationDelegateAdaptor(FCMAppDelegateWrapper<AppDelegate>.self) private var appDelegate
+    // Use this option if you do NOT have a need to extend `CioAppDelegateFCMWrapper`
+//    @UIApplicationDelegateAdaptor(CioAppDelegateFCMWrapper<AppDelegate>.self) private var appDelegate
     
-    // Use this option if you need to extend `FCMAppDelegateWrapper`
+    // Use this option if you need to extend `CioAppDelegateFCMWrapper`
     @UIApplicationDelegateAdaptor(AppDelegateWithCioIntegration.self) private var appDelegate
 
     @StateObject var userManager: UserManager = .init()
