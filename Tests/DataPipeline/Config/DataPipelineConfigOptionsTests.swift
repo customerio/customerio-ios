@@ -10,7 +10,8 @@ class DataPipelineConfigOptionsTests: UnitTest {
     // is a mismatch between our default values and Segment's default values.
     func test_doNotModifyDataPipelineConfig_expectMatchWithAnalyticsDefaults() {
         let givenCdpApiKey = String.random
-        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: givenCdpApiKey).build()
+        let result = SDKConfigBuilder(cdpApiKey: givenCdpApiKey).build()
+        let dataPipelineConfig = result.dataPipelineConfig
         let analyticsConfig = Configuration(writeKey: givenCdpApiKey).values
 
         // apiHost, cdnHost, defaultSettings and autoAddSegmentDestination will always be different
@@ -33,7 +34,8 @@ class DataPipelineConfigOptionsTests: UnitTest {
     // directly by Segment Configuration class.
     func test_doNotModifyDataPipelineConfig_expectAnalyticsConfigMatchExpectations() {
         let givenCdpApiKey = String.random
-        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: givenCdpApiKey).build()
+        let result = SDKConfigBuilder(cdpApiKey: givenCdpApiKey).build()
+        let dataPipelineConfig = result.dataPipelineConfig
         let analyticsConfig = dataPipelineConfig.toSegmentConfiguration().values
 
         // These values are overridden while creating the analytics configuration and should match
@@ -63,7 +65,7 @@ class DataPipelineConfigOptionsTests: UnitTest {
         let givenFlushPolicies: [FlushPolicy] = [CountBasedFlushPolicy()]
         let givenTrackApplicationLifecycleEvents = false
 
-        let (_, dataPipelineConfig) = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
+        let result = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
             .apiHost(givenApiHost)
             .cdnHost(givenCdnHost)
             .flushAt(givenFlushAt)
@@ -71,6 +73,7 @@ class DataPipelineConfigOptionsTests: UnitTest {
             .flushPolicies(givenFlushPolicies)
             .trackApplicationLifecycleEvents(givenTrackApplicationLifecycleEvents)
             .build()
+        let dataPipelineConfig = result.dataPipelineConfig
         let analyticsConfig = dataPipelineConfig.toSegmentConfiguration().values
 
         XCTAssertEqual(analyticsConfig.writeKey, givenCdpApiKey)
