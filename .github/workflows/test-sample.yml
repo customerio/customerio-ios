@@ -1,0 +1,33 @@
+name: Test Sample Apps Build
+
+on:
+  # Run on any push to any branch
+  push:
+    
+  # Keep manual triggering option
+  workflow_dispatch:
+    inputs:
+      use_latest_sdk_version:
+        description: 'Build sample apps with latest SDK version (set to true to test this functionality)'
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  build-sample-apps:
+    name: Build sample apps
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/reusable_build_sample_apps.yml
+    with:
+      use_latest_sdk_version: ${{ github.event_name == 'workflow_dispatch' && inputs.use_latest_sdk_version || true }}
+    secrets:
+      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+      FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+      CUSTOMERIO_APN_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+      CUSTOMERIO_FCM_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }}
+      SAMPLE_APPS_APN_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_APN_FIREBASE_APP_ID }}
+      SAMPLE_APPS_FCM_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_FCM_FIREBASE_APP_ID }}
+      SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
+      SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}

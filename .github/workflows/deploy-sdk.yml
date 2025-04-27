@@ -171,6 +171,8 @@ jobs:
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     runs-on: macos-14
+    outputs:
+      sdk_version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout git tag that got created in previous step
         uses: actions/checkout@v4
@@ -183,6 +185,15 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           ref: ${{ inputs.existing-git-tag }}
+
+      - name: Get SDK version
+        id: get-version
+        run: |
+          if [[ "${{ needs.deploy-git-tag.outputs.new_release_published }}" == "true" ]]; then
+            echo "version=${{ needs.deploy-git-tag.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
+          fi
 
       - uses: ./.github/actions/setup-ios
 
@@ -233,7 +244,7 @@ jobs:
                       "type": "section",
                       "text": {
                           "type": "mrkdwn",
-                          "text": "*Version ${{ github.event.release.tag_name }}*\n\niOS SDK deployment progress:\n ~1. <https://github.com/${{github.repository}}/releases/tag/${{ github.event.release.tag_name }}|create git tag and deploy to Swift Package Manager>~\n~2. deploy to cocoapods~\n\nBecause it's hard to automatically verify cocoapods get deployed, it's recommended to manually verify if cocoapods got deployed successfully by checking for cococapods emails or https://github.com/cocoaPods/specs to see if new commit was added for the release."
+                          "text": "*Version ${{ steps.get-version.outputs.version }}*\n\niOS SDK deployment progress:\n ~1. <https://github.com/${{github.repository}}/releases/tag/${{ steps.get-version.outputs.version }}|create git tag and deploy to Swift Package Manager>~\n~2. deploy to cocoapods~\n\nBuilding sample apps with latest SDK version will begin automatically."
                       }
                   }
               ]
@@ -280,3 +291,23 @@ jobs:
           # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  # New job to build sample apps after successful deployment to CocoaPods
+  build-sample-apps:
+    name: Build sample apps with latest SDK version
+    needs: [deploy-cocoapods]
+    if: ${{ success() }}
+    uses: ./.github/workflows/reusable_build_sample_apps.yml
+    with:
+      use_latest_sdk_version: true
+    secrets:
+      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+      FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
+      CUSTOMERIO_APN_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+      CUSTOMERIO_FCM_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }}
+      CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }}
+      SAMPLE_APPS_APN_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_APN_FIREBASE_APP_ID }}
+      SAMPLE_APPS_FCM_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_FCM_FIREBASE_APP_ID }}
+      SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
+      SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
