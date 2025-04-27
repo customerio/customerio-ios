@@ -1,0 +1,85 @@
+name: 'Build Sample Apps'
+description: 'Builds iOS sample apps, optionally with the latest SDK version'
+
+inputs:
+  use_latest_sdk_version:
+    description: 'Whether to build sample apps with the latest SDK version'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check out code (with full history for tags)
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get latest SDK version if requested
+      if: ${{ inputs.use_latest_sdk_version == 'true' }}
+      id: latest-sdk-version-step
+      shell: bash
+      run: |
+        latest_tag=$(git describe --tags --abbrev=0)
+        echo "LATEST_TAG=$latest_tag" >> "$GITHUB_ENV"
+        echo "Found latest tag: $latest_tag"
+
+    - name: Replace local references with published SDK version
+      if: ${{ inputs.use_latest_sdk_version == 'true' }}
+      shell: bash
+      run: |
+        brew install sd # if not already installed earlier
+        TAG="${{ env.LATEST_TAG }}"
+        echo "Switching local references to published version: $TAG"
+
+        # 1) CocoaPods Podfile in `Apps/CocoaPods-FCM/Podfile`
+        # Example lines to replace:
+        #   pod 'CustomerIODataPipelines', :path => ...
+        #   =>  pod 'CustomerIODataPipelines', '1.2.3'
+        sd "pod 'CustomerIODataPipelines', :path =>.*" "pod 'CustomerIODataPipelines', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+        sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+        sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+        # If you have other modules: repeat
+
+        # 2) SwiftPM package in `Apps/Common/Package.swift`
+        # Original: .package(path: "../../")
+        # Replace with pinned remote version
+        sd '\.package\(path: *".*\)' \
+           ".package(name: \"customerio-ios\", url: \"https://github.com/customerio/customerio-ios.git\", .upToNextMajor(from: \"${TAG}\"))" \
+           "Apps/Common/Package.swift"
+
+        echo "Finished updating references. Now we have pinned SDK version $TAG."
+
+    # Build APN-UIKit sample app
+    - name: Build APN sample app
+      uses: ./.github/actions/build-sample-app
+      with:
+        apn-or-fcm: "APN"
+        sample-app: "APN-UIKit"
+        customerio-workspace-siteid: ${{ github.event.repository && secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID || '' }}
+        customerio-workspace-cdp-api-key: ${{ github.event.repository && secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY || '' }}
+        customerio-workspace-name: "Mobile: Native iOS & Android"
+        customerio-public-sdk-version: ${{ inputs.use_latest_sdk_version == 'true' && env.LATEST_TAG || '' }}
+        firebase-app-id: ${{ github.event.repository && secrets.SAMPLE_APPS_APN_FIREBASE_APP_ID || '' }}
+        instructions-guide-link: ${{ github.event.repository && secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK || '' }}
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ github.event.repository && secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 || '' }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ github.event.repository && secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 || '' }}
+        SLACK_WEBHOOK_URL: ${{ github.event.repository && secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL || '' }}
+        fastlane-build-args: "{\"distribution_groups\":\"all-builds${{ env.firebase_distribution_groups && ',' || '' }}${{ env.firebase_distribution_groups || '' }}\"${{ inputs.use_latest_sdk_version == 'true' && format(',\"app_version\":\"{0}\",\"build_number\":\"1\"', env.LATEST_TAG) || '' }}}"
+
+    # Build CocoaPods-FCM sample app
+    - name: Build FCM sample app
+      uses: ./.github/actions/build-sample-app
+      with:
+        apn-or-fcm: "FCM"
+        sample-app: "CocoaPods-FCM"
+        customerio-workspace-siteid: ${{ github.event.repository && secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID || '' }}
+        customerio-workspace-cdp-api-key: ${{ github.event.repository && secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY || '' }}
+        customerio-workspace-name: "Mobile: xiOS CocoaPods FCM + Kotlin Android"
+        customerio-public-sdk-version: ${{ inputs.use_latest_sdk_version == 'true' && env.LATEST_TAG || '' }}
+        firebase-app-id: ${{ github.event.repository && secrets.SAMPLE_APPS_FCM_FIREBASE_APP_ID || '' }}
+        instructions-guide-link: ${{ github.event.repository && secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK || '' }}
+        GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ github.event.repository && secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 || '' }}
+        FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ github.event.repository && secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 || '' }}
+        SLACK_WEBHOOK_URL: ${{ github.event.repository && secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL || '' }}
+        fastlane-build-args: "{\"distribution_groups\":\"all-builds\"${{ inputs.use_latest_sdk_version == 'true' && format(',\"app_version\":\"{0}\",\"build_number\":\"1\"', env.LATEST_TAG) || '' }}}"

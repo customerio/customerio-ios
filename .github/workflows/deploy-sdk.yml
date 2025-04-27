@@ -243,6 +243,12 @@ jobs:
           # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          
+      - name: Build sample apps with latest SDK version
+        if: ${{ success() }}
+        uses: ./.github/actions/build-sample-apps
+        with:
+          use_latest_sdk_version: true
 
       - name: Notify team of failure
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
