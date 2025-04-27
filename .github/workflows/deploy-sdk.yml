@@ -301,7 +301,7 @@ jobs:
       - name: Wait for CocoaPods CDN propagation
         run: |
           echo "Waiting for CocoaPods CDN to propagate..."
-          sleep 1800 # Wait for 30 minute to allow CocoaPods CDN to propagate the changes.
+          sleep 1200 # Wait for 20 minute to allow CocoaPods CDN to propagate the changes.
           echo "CocoaPods CDN propagation completed."
 
   # New job to build sample apps after successful deployment to CocoaPods
