@@ -3,6 +3,8 @@ name: Test Sample Apps Build
 on:
   # Run on any push to any branch
   push:
+    branches:
+      - '**'  # Matches any branch name
     
   # Keep manual triggering option
   workflow_dispatch:
@@ -14,9 +16,8 @@ on:
         default: true
 
 jobs:
-  build-sample-apps:
+  call-reusable-workflow:
     name: Build sample apps
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       use_latest_sdk_version: ${{ github.event_name == 'workflow_dispatch' && inputs.use_latest_sdk_version || true }}
