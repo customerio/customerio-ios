@@ -292,10 +292,22 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
+  wait-for-cocoapods:
+    name: Wait for deploy-cocoapods to finish
+    needs: [deploy-cocoapods]
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+    steps:
+      - name: Wait for CocoaPods CDN propagation
+        run: |
+          echo "Waiting for CocoaPods CDN to propagate..."
+          sleep 1800 # Wait for 30 minute to allow CocoaPods CDN to propagate the changes.
+          echo "CocoaPods CDN propagation completed."
+
   # New job to build sample apps after successful deployment to CocoaPods
   build-sample-apps:
     name: Build sample apps with latest SDK version
-    needs: [deploy-cocoapods]
+    needs: [deploy-cocoapods, wait-for-cocoapods]
     if: ${{ success() }}
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
