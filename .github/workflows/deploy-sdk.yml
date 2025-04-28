@@ -171,8 +171,6 @@ jobs:
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     runs-on: macos-14
-    outputs:
-      sdk_version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout git tag that got created in previous step
         uses: actions/checkout@v4
