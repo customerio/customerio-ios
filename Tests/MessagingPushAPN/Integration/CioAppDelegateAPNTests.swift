@@ -76,7 +76,7 @@ class CioAppDelegateAPNTests: XCTestCase {
 
     // MARK: - Tests for APN-specific functionality
 
-    func testDidRegisterForRemoteNotifications_CallsAPNRegisterDeviceToken() {
+    func testDidRegisterForRemoteNotifications_whenCalled_thenSuperIsCalledANdDeviceTokenIsRegistered() {
         // Setup
         let deviceToken = "device_token".data(using: .utf8)!
         _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
@@ -95,7 +95,7 @@ class CioAppDelegateAPNTests: XCTestCase {
 
     // MARK: - Tests for inherited AppDelegate functionality
 
-    func testDidFinishLaunchingWithValidConfig() {
+    func testDidFinishLaunchingWithOption_whenCalled_thenSuperIsCalled() {
         // Call the method
         let result = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
@@ -109,7 +109,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }
 
-    func testDidFailToRegisterForRemoteNotifications() {
+    func testDidFailToRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
         // Setup
         let application = UIApplication.shared
         let error = NSError(domain: "test", code: 123, userInfo: nil)
@@ -125,7 +125,7 @@ class CioAppDelegateAPNTests: XCTestCase {
 
     // MARK: - Tests for UNUserNotificationCenterDelegate methods
 
-    func testUserNotificationCenterDidReceive() {
+    func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
         // Setup
         _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
         mockMessagingPush.userNotificationCenterReturnValue = nil
