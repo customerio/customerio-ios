@@ -5,23 +5,16 @@ import UIKit
 import UserNotifications
 import XCTest
 
-class CioAppDelegateTests: XCTestCase {
+class CioAppDelegateWithoutTokenRetrievalTests: XCTestCase {
     // Mock Classes
     var mockMessagingPush: MessagingPushInstanceMock!
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockLogger: LoggerMock!
-    var appDelegate: CioAppDelegate!
+    var appDelegate: CioAppDelegateWithoutTokenRetrieval!
 
-    class NoNotificationIntegrationAppDelegate: CioAppDelegate {
-        override var shouldIntegrateWithNotificationCenter: Bool {
-            false
-        }
-    }
-
-    // Mock config for testing
-    func createMockConfig(autoFetchDeviceToken: Bool = false, autoTrackPushEvents: Bool = false) -> MessagingPushConfigOptions {
+    func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
             cdpApiKey: "test-api-key",
@@ -46,14 +39,12 @@ class CioAppDelegateTests: XCTestCase {
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
-        // Setup the MessagingPushInstanceMock to return configs
-        mockMessagingPush.getConfigurationReturnValue = createMockConfig()
-
         // Create AppDelegate with mocks
-        appDelegate = CioAppDelegate(
+        appDelegate = CioAppDelegateWithoutTokenRetrieval(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
+            config: { self.createMockConfig() },
             logger: mockLogger
         )
     }
@@ -68,26 +59,19 @@ class CioAppDelegateTests: XCTestCase {
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
+        MessagingPush.appDelegateIntegratedExplicitely = false
+
         super.tearDown()
-    }
-
-    // MARK: - Tests for initialization and configuration
-
-    func testAppDelegateInit() {
-        XCTAssertNotNil(appDelegate)
-        XCTAssertTrue(appDelegate.shouldIntegrateWithNotificationCenter)
     }
 
     // MARK: - Tests for application(_:didFinishLaunchingWithOptions:)
 
-    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenDelegatesAreCalledAndSet() {
-        // Create mock application for testing
-        let application = UIApplication.shared
-
+    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsRequestedAndDelegateIsSet() {
         // Call the method
-        let result = appDelegate.application(application, didFinishLaunchingWithOptions: nil)
+        let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Verify behavior
+        XCTAssertTrue(MessagingPush.appDelegateIntegratedExplicitely)
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertTrue(mockLogger.debugCallsCount == 1)
@@ -97,40 +81,47 @@ class CioAppDelegateTests: XCTestCase {
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
     }
 
-    func testDidFinishLaunchingWithOptions_whenAutoFetchDeviceTokenIsEnabled_thenConflictShouldBeDetected() {
-        // Setup
-        mockMessagingPush.getConfigurationReturnValue = createMockConfig(autoFetchDeviceToken: true)
-
-        // Create application for testing
-        let application = UIApplication.shared
+    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsNotRequested() {
+        appDelegate = CioAppDelegateWithoutTokenRetrieval(
+            messagingPush: mockMessagingPush,
+            userNotificationCenter: { self.mockNotificationCenter },
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(autoFetchDeviceToken: false) },
+            logger: mockLogger
+        )
 
         // Call the method
-        let result = appDelegate.application(application, didFinishLaunchingWithOptions: nil)
+        let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.errorCallsCount > 0)
-        XCTAssertTrue(mockLogger.errorReceivedInvocations.contains {
-            $0.contains("'autoFetchDeviceToken' flag can't be enabled if AppDelegate is used")
+        XCTAssertFalse(mockLogger.debugReceivedInvocations.contains {
+            $0.contains("CIO: Registering for remote notifications")
         })
+        XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
     }
 
-    func testDidFinishLaunchingWithOptions_whenAutoTrackPushEventsIsEnabled_thenConflictShouldBeDetected() {
-        // Setup
-        mockMessagingPush.getConfigurationReturnValue = createMockConfig(autoTrackPushEvents: true)
+    func testDidFinishLaunchingWithOptions_whenAutoTrackPushEventsIsDisabled_thenDelegateIsNotSet() {
+        appDelegate = CioAppDelegateWithoutTokenRetrieval(
+            messagingPush: mockMessagingPush,
+            userNotificationCenter: { self.mockNotificationCenter },
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(autoTrackPushEvents: false) },
+            logger: mockLogger
+        )
 
-        // Create application for testing
-        let application = UIApplication.shared
-
-        // Call the method
-        let result = appDelegate.application(application, didFinishLaunchingWithOptions: nil)
+        // This should not cause a conflict now since shouldIntegrateWithNotificationCenter is false
+        let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.errorCallsCount > 0)
-        XCTAssertTrue(mockLogger.errorReceivedInvocations.contains { $0.contains("'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldIntegrateWithNotificationCenter' flag set to true.") })
+        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
+            $0.contains("CIO: Registering for remote notifications")
+        })
+        // Delegate should not be set on notification center
+        XCTAssertNotEqual(mockNotificationCenter.delegate as? CioAppDelegateWithoutTokenRetrieval, appDelegate)
     }
 
     // MARK: - Tests for remote notification registration
@@ -183,6 +174,29 @@ class CioAppDelegateTests: XCTestCase {
         XCTAssertTrue(completionHandlerCalled)
     }
 
+    func testUserNotificationCenterDidReceive_whenWrappedNotificationCenterDelegateIsNil_thenNotificationCompletitionHandlerIsCalled() {
+        // Create custom app delegate
+        appDelegate = CioAppDelegateWithoutTokenRetrieval(
+            messagingPush: mockMessagingPush,
+            userNotificationCenter: { self.mockNotificationCenter },
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(autoTrackPushEvents: false) },
+            logger: mockLogger
+        )
+        mockMessagingPush.userNotificationCenterReturnValue = nil
+        var completionHandlerCalled = false
+        let completionHandler = {
+            completionHandlerCalled = true
+        }
+        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        // Call the method
+        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
+
+        // Verify behavior
+        XCTAssertTrue(completionHandlerCalled)
+    }
+
     // MARK: - Tests for method forwarding
 
     func testResponds_whenSelectorIsProvided_thenItShouldCorrectlyDetectResponse() {
@@ -203,7 +217,7 @@ class CioAppDelegateTests: XCTestCase {
     func testForwardingTarget_whenSelectorIsProvided_thenItShouldCorrectlyDetectTarget() {
         // Test forwarding for an implemented method
         let implementedSelector = #selector(UIApplicationDelegate.application(_:didFinishLaunchingWithOptions:))
-        XCTAssertEqual(appDelegate.forwardingTarget(for: implementedSelector) as? CioAppDelegate, appDelegate)
+        XCTAssertEqual(appDelegate.forwardingTarget(for: implementedSelector) as? CioAppDelegateWithoutTokenRetrieval, appDelegate)
 
         // Test forwarding for a method implemented by the wrapped app delegate
         let wrappedSelector = #selector(UIApplicationDelegate.applicationDidBecomeActive(_:))
@@ -218,9 +232,9 @@ class CioAppDelegateTests: XCTestCase {
 
     func testUserNotificationCenterWillPresent_whenCalled_thenWrappedDelegateIsCalled() {
         // Setup
-        var presentationOptionsCalled = false
+        var completonHandlerCalled = false
         let completionHandler: (UNNotificationPresentationOptions) -> Void = { _ in
-            presentationOptionsCalled = true
+            completonHandlerCalled = true
         }
         _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
@@ -229,7 +243,7 @@ class CioAppDelegateTests: XCTestCase {
 
         // Verify behavior
         XCTAssertTrue(mockNotificationCenterDelegate.willPresentNotificationCalled)
-        XCTAssertTrue(presentationOptionsCalled)
+        XCTAssertTrue(completonHandlerCalled)
     }
 
     func testUserNotificationCenterOpenSettingsFor_whenCalled_thenWrappedDelegateIsCalled() {
@@ -254,49 +268,5 @@ class CioAppDelegateTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.continueUserActivityCalled)
         XCTAssertTrue(result)
-    }
-
-    // MARK: - Tests for custom subclass behavior
-
-    func testShouldIntegrateWithNotificationCenterOverride_whenDisabled_thenDelegateIsNotOverwritten() {
-        // Create custom app delegate
-        let customAppDelegate = NoNotificationIntegrationAppDelegate(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            appDelegate: mockAppDelegate,
-            logger: mockLogger
-        )
-
-        // This should not cause a conflict now since shouldIntegrateWithNotificationCenter is false
-        let result = customAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Verify behavior
-        XCTAssertFalse(customAppDelegate.shouldIntegrateWithNotificationCenter)
-        XCTAssertTrue(result)
-        XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        // Delegate should not be set on notification center
-        XCTAssertNotEqual(mockNotificationCenter.delegate as? NoNotificationIntegrationAppDelegate, customAppDelegate)
-    }
-
-    func testShouldIntegrateWithNotificationCenterOverride_whenDisabled_thenNotificationCompletitionHandlerIsCalled() {
-        // Create custom app delegate
-        let customAppDelegate = NoNotificationIntegrationAppDelegate(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            appDelegate: mockAppDelegate,
-            logger: mockLogger
-        )
-        mockMessagingPush.userNotificationCenterReturnValue = nil
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-        _ = customAppDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(completionHandlerCalled)
     }
 }

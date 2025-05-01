@@ -14,7 +14,7 @@ public protocol FirebaseMessagingIntegration {
 extension Messaging: FirebaseMessagingIntegration {}
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
+open class CioAppDelegate: CioAppDelegateWithoutTokenRetrieval, MessagingDelegate {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushFCM: MessagingPushFCMInstance? {
         messagingPush as? MessagingPushFCMInstance
@@ -23,12 +23,8 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
     private var firebaseMessaging: FirebaseMessagingInstance?
     private var wrappedMessagingDelegate: MessagingDelegate?
 
-    open var shouldIntegrateWithFirebaseMessaging: Bool {
-        true
-    }
-
     public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegateFCM initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegate initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: nil,
@@ -43,6 +39,7 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
         userNotificationCenter: UserNotificationCenterInstance?,
         firebaseMessaging: FirebaseMessagingInstance?,
         appDelegate: CioAppDelegateType? = nil,
+        config: ConfigInstance? = nil,
         logger: Logger
     ) {
         self.firebaseMessaging = firebaseMessaging
@@ -50,6 +47,7 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
             messagingPush: messagingPush,
             userNotificationCenter: userNotificationCenter,
             appDelegate: appDelegate,
+            config: config,
             logger: logger
         )
     }
@@ -60,25 +58,13 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
     ) -> Bool {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
-        if shouldIntegrateWithFirebaseMessaging,
+        if config?().autoFetchDeviceToken ?? false,
            var messaging = firebaseMessaging?() {
             wrappedMessagingDelegate = messaging.delegate
             messaging.delegate = self
         }
 
         return result
-    }
-
-    override public func application(
-        _ application: UIApplication,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-    ) {
-        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-
-        if shouldIntegrateWithFirebaseMessaging,
-           var messaging = firebaseMessaging?() {
-            messaging.apnsToken = deviceToken
-        }
     }
 
     // MARK: - MessagingDelegate
@@ -95,13 +81,14 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegateFCMWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateFCM {
+open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegate {
     public init() {
         super.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
             firebaseMessaging: { Messaging.messaging() },
             appDelegate: UserAppDelegate(),
+            config: { MessagingPush.moduleConfig },
             logger: DIGraphShared.shared.logger
         )
     }

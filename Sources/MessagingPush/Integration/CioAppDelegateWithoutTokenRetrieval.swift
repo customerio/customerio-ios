@@ -3,6 +3,8 @@ import UIKit
 
 public typealias CioAppDelegateType = NSObject & UIApplicationDelegate
 
+public typealias ConfigInstance = () -> MessagingPushConfigOptions
+
 public typealias UserNotificationCenterInstance = () -> UserNotificationCenterIntegration
 
 // sourcery: AutoMockable
@@ -20,7 +22,7 @@ private extension UIApplication {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
+open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPushInstance
     @_spi(Internal) public let logger: Logger
     @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
@@ -35,14 +37,11 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:))
     ]
 
+    @_spi(Internal) public var config: ConfigInstance?
+
     private var userNotificationCenter: UserNotificationCenterInstance?
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
-
-    // Flag to control whether to set the UNUserNotificationCenter delegate
-    open var shouldIntegrateWithNotificationCenter: Bool {
-        true
-    }
 
     override public convenience init() {
         DIGraphShared.shared.logger.error("CIO: This no-argument AppDelegate initializer is not intended to be used. Added for compatibility.")
@@ -50,6 +49,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
             appDelegate: nil,
+            config: nil,
             logger: DIGraphShared.shared.logger
         )
     }
@@ -58,11 +58,13 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         messagingPush: MessagingPushInstance,
         userNotificationCenter: UserNotificationCenterInstance?,
         appDelegate: CioAppDelegateType? = nil,
+        config: ConfigInstance? = nil,
         logger: Logger
     ) {
         self.messagingPush = messagingPush
         self.userNotificationCenter = userNotificationCenter
         self.logger = logger
+        self.config = config
         self.wrappedAppDelegate = appDelegate
         super.init()
     }
@@ -71,21 +73,15 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        MessagingPush.appDelegateIntegratedExplicitely = true
+
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
 
-        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder()
-            .autoFetchDeviceToken(false)
-            .autoTrackPushEvents(false)
-            .build())
-
-        guard !isConfigInConflict() else {
-            logger.error("CIO: Configuration in conflict. Push notifications will not work properly.")
-            return true
+        if config?().autoFetchDeviceToken ?? false {
+            application.cioRegisterForRemoteNotifications(logger: logger)
         }
 
-        application.cioRegisterForRemoteNotifications(logger: logger)
-
-        if shouldIntegrateWithNotificationCenter,
+        if config?().autoTrackPushEvents ?? false,
            var center = userNotificationCenter?() {
             wrappedNoticeCenterDelegate = center.delegate
             center.delegate = self
@@ -108,7 +104,9 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
 
         logger.error("CIO: Device token is deleted for current user. Failed to register for remote notifications: \(error.localizedDescription)")
-        messagingPush.deleteDeviceToken()
+        if config?().autoFetchDeviceToken ?? false {
+            messagingPush.deleteDeviceToken()
+        }
     }
 
     // MARK: - UNUserNotificationCenterDelegate
@@ -150,27 +148,6 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         }
         return nil
     }
-
-    // MARK: - Private methods
-
-    private func isConfigInConflict() -> Bool {
-        guard let config = messagingPush.getConfiguration() else {
-            logger.error("CIO: Missing configuration")
-            return true
-        }
-
-        guard config.autoFetchDeviceToken == false else {
-            logger.error("CIO: 'autoFetchDeviceToken' flag can't be enabled if AppDelegate is used")
-            return true
-        }
-
-        guard config.autoTrackPushEvents == false || shouldIntegrateWithNotificationCenter == false else {
-            logger.error("CIO: 'autoTrackPushEvents' flag can't be enabled if AppDelegate is used with 'shouldIntegrateWithNotificationCenter' flag set to true.")
-            return true
-        }
-
-        return false
-    }
 }
 
 /// Prevent issues caused by swizzling in various SDKs:
@@ -178,7 +155,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
 ///     - this is the case with FirebaseMassaging
 /// - for this reason, empty methods are added and forwarding to wrapper is possible
 @available(iOSApplicationExtension, unavailable)
-extension CioAppDelegate {
+extension CioAppDelegateWithoutTokenRetrieval {
     open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         wrappedNoticeCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
     }

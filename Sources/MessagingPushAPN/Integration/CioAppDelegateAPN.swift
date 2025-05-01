@@ -3,18 +3,19 @@ import UIKit
 @_spi(Internal) import CioMessagingPush
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegateAPN: CioAppDelegate {
+open class CioAppDelegate: CioAppDelegateWithoutTokenRetrieval {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushAPN: MessagingPushAPNInstance? {
         messagingPush as? MessagingPushAPNInstance
     }
 
     public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegateAPN initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument CioAppDelegate initializer is not intended to be used. Added for compatibility.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: nil,
             appDelegate: nil,
+            config: nil,
             logger: DIGraphShared.shared.logger
         )
     }
@@ -23,12 +24,14 @@ open class CioAppDelegateAPN: CioAppDelegate {
         messagingPush: MessagingPushInstance,
         userNotificationCenter: UserNotificationCenterInstance?,
         appDelegate: CioAppDelegateType? = nil,
+        config: ConfigInstance? = nil,
         logger: Logger
     ) {
         super.init(
             messagingPush: messagingPush,
             userNotificationCenter: userNotificationCenter,
             appDelegate: appDelegate,
+            config: config,
             logger: logger
         )
     }
@@ -44,12 +47,13 @@ open class CioAppDelegateAPN: CioAppDelegate {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegateAPNWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegateAPN {
+open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDelegate {
     public init() {
         super.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
             appDelegate: UserAppDelegate(),
+            config: { MessagingPush.moduleConfig },
             logger: DIGraphShared.shared.logger
         )
     }
