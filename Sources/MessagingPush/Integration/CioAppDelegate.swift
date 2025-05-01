@@ -72,7 +72,7 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
-        
+
         MessagingPush.initialize(withConfig: MessagingPushConfigBuilder()
             .autoFetchDeviceToken(false)
             .autoTrackPushEvents(false)

@@ -5,7 +5,7 @@ import SwiftUI
 struct MainApp: App {
     // Default option, without CIO integration
 //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     // Use this option if you don't have your own AppDelegate and don't need any customization
 //    @UIApplicationDelegateAdaptor(CioAppDelegateFCM.self) private var appDelegate
 
