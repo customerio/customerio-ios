@@ -4,12 +4,7 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
-class AppDelegateWithCioIntegration: CioAppDelegateAPNWrapper<AppDelegate> {
-    // This is not necessary. Add it only if you want to chenge default 'true` value
-    override var shouldIntegrateWithNotificationCenter: Bool {
-        true
-    }
-}
+class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
@@ -65,14 +60,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
-        // Call below is not needed if CioAppDelegateAPN/CioAppDelegateAPNWrapper is used
-//        MessagingPushAPN.initialize(
-//            withConfig: MessagingPushConfigBuilder()
-//                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
-//                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
-//                .showPushAppInForeground(settings.messaging.showPushAppInForeground)
-//                .build()
-//        )
+        // Call below is not needed if CioAppDelegate/CioAppDelegateWrapper is used
+        MessagingPushAPN.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
+                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
+                .showPushAppInForeground(settings.messaging.showPushAppInForeground)
+                .build()
+        )
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(
                 siteId: settings.inApp.siteId,
@@ -113,7 +108,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateAPNWrapper`.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
         CustomerIO.shared.track(
             name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]

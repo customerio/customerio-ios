@@ -7,16 +7,7 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
-class AppDelegateWithCioIntegration: CioAppDelegateFCMWrapper<AppDelegate> {
-    // Two properties below are not necessary. Add them only if you want to chenge default 'true` value.
-    override var shouldIntegrateWithNotificationCenter: Bool {
-        true
-    }
-
-    override var shouldIntegrateWithFirebaseMessaging: Bool {
-        true
-    }
-}
+class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     let anotherPushEventHandler = AnotherPushEventHandler()
@@ -36,7 +27,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // This is old deprecated way - do not use this any more and instead follow deprecation instruction
 //        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
         // Configure and initialize the Customer.io SDK
-        let config = CioSdkConfigBuilder(cdpApiKey: cdpApiKey)
+        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
             .region(.US)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
@@ -65,15 +56,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
             .setEventListener(self)
-        // Call below is not needed if CioAppDelegateFCM/CioAppDelegateFCMWrapper is used
-//        MessagingPushFCM.initialize(
-//            withConfig: MessagingPushConfigBuilder()
-//                .autoFetchDeviceToken(false)
-//                .autoTrackPushEvents(false)
-//                .build()
-//        )
+        MessagingPushFCM.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(true)
+                .autoTrackPushEvents(true)
+                .build()
+        )
 
         // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
+        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
         Messaging.messaging().delegate = self
 
         /*
@@ -95,12 +86,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
-//        Messaging.messaging().apnsToken = deviceToken
+        Messaging.messaging().apnsToken = deviceToken
     }
 
     // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
-    //            Use `deepLinkCallback` on CioSdkConfigBuilder, as this works in all scenarios.
+    //            Use `deepLinkCallback` on SDKConfigBuilder, as this works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false
@@ -113,7 +103,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
+        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
 //        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
@@ -122,7 +112,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateFCMWrapper`.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
         CustomerIO.shared.track(
             name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]

@@ -8,7 +8,7 @@ import UserNotifications
 import XCTest
 
 class CioAppDelegateFCMTests: XCTestCase {
-    var appDelegateFCM: CioAppDelegateFCM!
+    var appDelegateFCM: CioAppDelegate!
 
     // Mock Classes
     var mockMessagingPush: MessagingPushFCMMock!
@@ -20,7 +20,7 @@ class CioAppDelegateFCMTests: XCTestCase {
     var mockLogger: LoggerMock!
 
     // Mock config for testing
-    func createMockConfig(autoFetchDeviceToken: Bool = false, autoTrackPushEvents: Bool = false) -> MessagingPushConfigOptions {
+    func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
             cdpApiKey: "test-api-key",
@@ -38,7 +38,6 @@ class CioAppDelegateFCMTests: XCTestCase {
         Messaging.swizzleMessaging()
 
         mockMessagingPush = MessagingPushFCMMock()
-        mockMessagingPush.getConfigurationReturnValue = createMockConfig()
 
         mockAppDelegate = MockAppDelegate()
 
@@ -52,11 +51,12 @@ class CioAppDelegateFCMTests: XCTestCase {
 
         mockLogger = LoggerMock()
 
-        appDelegateFCM = CioAppDelegateFCM(
+        appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             firebaseMessaging: { self.mockMessaging },
             appDelegate: mockAppDelegate,
+            config: { self.createMockConfig() },
             logger: mockLogger
         )
     }
@@ -73,16 +73,10 @@ class CioAppDelegateFCMTests: XCTestCase {
 
         Messaging.unswizzleMessaging()
         UNUserNotificationCenter.unswizzleNotificationCenter()
+        
+        MessagingPush.appDelegateIntegratedExplicitely = false
 
         super.tearDown()
-    }
-
-    // MARK: - Tests for initialization
-
-    func testCioAppDelegateFCMInit() {
-        XCTAssertNotNil(appDelegateFCM)
-        XCTAssertTrue(appDelegateFCM.shouldIntegrateWithNotificationCenter)
-        XCTAssertTrue(appDelegateFCM.shouldIntegrateWithFirebaseMessaging)
     }
 
     // MARK: - Tests for FCM-specific functionality
@@ -107,31 +101,25 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockMessaging.delegate === appDelegateFCM)
     }
-
-    func testDidRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
-        // Setup
-        let deviceToken = "device_token".data(using: .utf8)!
-        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-
+    
+    func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDesabled_thenMessagingDelegateIsNotSet() {
+        appDelegateFCM = CioAppDelegate(
+            messagingPush: mockMessagingPush,
+            userNotificationCenter: { self.mockNotificationCenter },
+            firebaseMessaging: { self.mockMessaging },
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(autoFetchDeviceToken: false) },
+            logger: mockLogger
+        )
+        mockMessaging.delegate = nil
+        
+        // Call didFinishLaunching
+        let result = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        
         // Verify behavior
-        XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
-        XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
-    }
-
-    func testDidRegisterForRemoteNotifications_whenCalled_thenTokenIsForwardedToMessaging() {
-        // Setup
-        let deviceToken = "device_token".data(using: .utf8)!
-        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-
-        // Verify behavior
-        XCTAssertTrue(mockMessaging.apnsTokenSetCalled)
-        XCTAssertEqual(mockMessaging.underlyingApnsToken, deviceToken)
+        XCTAssertTrue(result)
+        XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
+        XCTAssertNil(mockMessaging.delegate)
     }
 
     // MARK: - Test MessagingDelegate
@@ -179,6 +167,19 @@ class CioAppDelegateFCMTests: XCTestCase {
     }
 
     // MARK: - Tests for UNUserNotificationCenterDelegate methods
+    
+    func testDidRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
+        // Setup
+        let deviceToken = "device_token".data(using: .utf8)!
+        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        
+        // Call the method
+        appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        
+        // Verify behavior
+        XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
+        XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
+    }
 
     func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
         // Setup
@@ -197,35 +198,5 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockMessagingPush.userNotificationCenterCalled == true)
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
         XCTAssertTrue(completionHandlerCalled)
-    }
-
-    // MARK: - Tests for shouldIntegrateWithFirebaseMessaging override
-
-    func testDidFinishLaunchingWithOptions_whenMessagingIntegrationIsDesabled_thenMessagingDelegateIsNotOverwritten() {
-        // Create a custom subclass that overrides the property
-        class NoMessagingIntegrationCioAppDelegateFCM: CioAppDelegateFCM {
-            override var shouldIntegrateWithFirebaseMessaging: Bool {
-                false
-            }
-        }
-
-        // Create custom app delegate
-        let customCioAppDelegateFCM = NoMessagingIntegrationCioAppDelegateFCM(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            firebaseMessaging: { self.mockMessaging },
-            appDelegate: mockAppDelegate,
-            logger: mockLogger
-        )
-        mockMessaging.delegate = nil
-
-        // Call didFinishLaunching
-        let result = customCioAppDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Verify behavior
-        XCTAssertFalse(customCioAppDelegateFCM.shouldIntegrateWithFirebaseMessaging)
-        XCTAssertTrue(result)
-        XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertNil(mockMessaging.delegate)
     }
 }

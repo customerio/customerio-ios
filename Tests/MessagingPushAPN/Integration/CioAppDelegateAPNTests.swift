@@ -7,7 +7,7 @@ import UserNotifications
 import XCTest
 
 class CioAppDelegateAPNTests: XCTestCase {
-    var appDelegateAPN: CioAppDelegateAPN!
+    var appDelegateAPN: CioAppDelegate!
 
     // Mock Classes
     var mockMessagingPush: MessagingPushAPNMock!
@@ -15,9 +15,8 @@ class CioAppDelegateAPNTests: XCTestCase {
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockLogger: LoggerMock!
-
-    // Mock config for testing
-    func createMockConfig(autoFetchDeviceToken: Bool = false, autoTrackPushEvents: Bool = false) -> MessagingPushConfigOptions {
+    
+    func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
             cdpApiKey: "test-api-key",
@@ -42,14 +41,12 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
-        // Setup the MessagingPushAPNInstanceMock to return configs
-        mockMessagingPush.getConfigurationReturnValue = createMockConfig()
-
-        // Create CioAppDelegateAPN with mocks
-        appDelegateAPN = CioAppDelegateAPN(
+        // Create CioAppDelegate with mocks
+        appDelegateAPN = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
+            config: { self.createMockConfig() },
             logger: mockLogger
         )
     }
@@ -63,15 +60,10 @@ class CioAppDelegateAPNTests: XCTestCase {
         appDelegateAPN = nil
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
+        
+        MessagingPush.appDelegateIntegratedExplicitely = false
 
         super.tearDown()
-    }
-
-    // MARK: - Tests for initialization
-
-    func testCioAppDelegateAPNInit() {
-        XCTAssertNotNil(appDelegateAPN)
-        XCTAssertTrue(appDelegateAPN.shouldIntegrateWithNotificationCenter)
     }
 
     // MARK: - Tests for APN-specific functionality

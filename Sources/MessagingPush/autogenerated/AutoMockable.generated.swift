@@ -179,9 +179,6 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         #endif
 
         mockCalled = false // do last as resetting properties above can make this true
-        getConfigurationCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - registerDeviceToken
@@ -381,32 +378,6 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         return userNotificationCenterClosure.map { $0(center, response) } ?? userNotificationCenterReturnValue
     }
     #endif
-
-    // MARK: - getConfiguration
-
-    /// Number of times the function was called.
-    @Atomic public private(set) var getConfigurationCallsCount = 0
-    /// `true` if the function was ever called.
-    public var getConfigurationCalled: Bool {
-        getConfigurationCallsCount > 0
-    }
-
-    /// Value to return from the mocked function.
-    public var getConfigurationReturnValue: MessagingPushConfigOptions?
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `getConfigurationReturnValue`
-     */
-    public var getConfigurationClosure: (() -> MessagingPushConfigOptions?)?
-
-    /// Mocked function for `getConfiguration()`. Your opportunity to return a mocked value and check result of mock in test code.
-    @_spi(Internal)
-    public func getConfiguration() -> MessagingPushConfigOptions? {
-        mockCalled = true
-        getConfigurationCallsCount += 1
-        return getConfigurationClosure.map { $0() } ?? getConfigurationReturnValue
-    }
 }
 
 /**

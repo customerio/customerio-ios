@@ -59,6 +59,4 @@ public protocol MessagingPushInstance: AutoMockable {
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload?
     #endif
-
-    @_spi(Internal) func getConfiguration() -> MessagingPushConfigOptions?
 }

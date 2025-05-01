@@ -24,8 +24,8 @@ class SettingsService {
                 logLevel: .Debug
             ),
             messaging: MessagingPushAPNSettings(
-                autoFetchDeviceToken: false,
-                autoTrackPushEvents: false,
+                autoFetchDeviceToken: true,
+                autoTrackPushEvents: true,
                 showPushAppInForeground: true
             ),
             inApp: MessagingInAppSettings(
