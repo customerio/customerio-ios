@@ -7,17 +7,6 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
-class AppDelegateWithCioIntegration: CioAppDelegateFCMWrapper<AppDelegate> {
-    // Two properties below are not necessary. Add them only if you want to chenge default 'true` value.
-    override var shouldIntegrateWithNotificationCenter: Bool {
-        true
-    }
-
-    override var shouldIntegrateWithFirebaseMessaging: Bool {
-        true
-    }
-}
-
 class AppDelegate: NSObject, UIApplicationDelegate {
     let anotherPushEventHandler = AnotherPushEventHandler()
 
@@ -33,24 +22,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let siteId = appSetSettings?.siteId ?? BuildEnvironment.CustomerIO.siteId
         let cdpApiKey = appSetSettings?.cdpApiKey ?? BuildEnvironment.CustomerIO.cdpApiKey
 
-        // This is old deprecated way - do not use this any more and instead follow deprecation instruction
-//        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
         // Configure and initialize the Customer.io SDK
-        let config = CioSdkConfigBuilder(cdpApiKey: cdpApiKey)
-            .region(.US)
+        let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
-            .deepLinkCallback { (url: URL) in
-                // You can call any method to process this furhter,
-                // or redirect it to `application(_:continue:restorationHandler:)` for consistency, if you use deep-linking in Firebase
-                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-                openLinkInHostAppActivity.webpageURL = url
-                return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
-            }
-        let logLevel = appSetSettings?.debugSdkMode
-        if logLevel == nil || logLevel == true {
+        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
             config.logLevel(CioLogLevel.debug)
         }
         if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
@@ -65,20 +43,21 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
             .setEventListener(self)
-        // Call below is not needed if CioAppDelegateFCM/CioAppDelegateFCMWrapper is used
-//        MessagingPushFCM.initialize(
-//            withConfig: MessagingPushConfigBuilder()
-//                .autoFetchDeviceToken(false)
-//                .autoTrackPushEvents(false)
-//                .build()
-//        )
+        MessagingPushFCM.initialize(
+            withConfig: MessagingPushConfigBuilder()
+                .autoFetchDeviceToken(true)
+                .build()
+        )
 
         // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
         Messaging.messaging().delegate = self
 
         /*
-         Next line of code is testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
-         This is not necessary for the Customer.io SDK to work.
+         Next line of code for internal testing purposes only.
+         
+         When the host app receives a push notification event such as a push being clicked, the Customer.io SDK forwards these events to all `UNUserNotificationCenterDelegate` instances (including 3rd party SDKs and the host iOS app).
+         
+         In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
          */
         UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
@@ -95,46 +74,33 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
-//        Messaging.messaging().apnsToken = deviceToken
-    }
-
-    // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
-    //            Use `deepLinkCallback` on CioSdkConfigBuilder, as this works in all scenarios.
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
-        guard let universalLinkUrl = userActivity.webpageURL else {
-            return false
-        }
-        print("universalLinkUrl: \(universalLinkUrl)")
-        return true
+        Messaging.messaging().apnsToken = deviceToken
     }
 }
 
 extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // This is NOT necessary if CioAppDelegateFCM is used with `shouldIntegrateWithFirebaseMessaging` set as `true`.
-//        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+        // Forward the device token to the Customer.io SDK:
+        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateFCMWrapper`.
+        // Track a Customer.io event for testing purposes to more easily track when this function is called.
         CustomerIO.shared.track(
-            name: "custom push-clicked event",
+            name: "push clicked",
             properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
     }
 
-    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .badge, .sound])
-    }
+    // For QA testing, it's suggested to not implement this optional function.
+    // The SDK contains logic that handles when this optional function is implemented in a host iOS app, or not. Do not implement it to test the use case.
+//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
 }
 
 extension AppDelegate: InAppEventListener {
