@@ -44,9 +44,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
             .deepLinkCallback { (url: URL) in
                 // You can call any method to process this furhter,
-//                print("deep-link: \(url)")
-//                return true
-                // or redirect it to `application(_:continue:restorationHandler:)` for consistency if you use deep-link with Firebase
+                // or redirect it to `application(_:continue:restorationHandler:)` for consistency, if you use deep-linking in Firebase
                 let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
                 openLinkInHostAppActivity.webpageURL = url
                 return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
@@ -67,13 +65,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
             .setEventListener(self)
-        MessagingPushFCM.initialize(
-            withConfig: MessagingPushConfigBuilder()
-                // Two methods below are deprecate - do not use them any more and instead follow deprecation instruction
-                .autoFetchDeviceToken(false)
-                .autoTrackPushEvents(false)
-                .build()
-        )
+        // Call below is not needed if CioAppDelegateFCM/CioAppDelegateFCMWrapper is used
+//        MessagingPushFCM.initialize(
+//            withConfig: MessagingPushConfigBuilder()
+//                .autoFetchDeviceToken(false)
+//                .autoTrackPushEvents(false)
+//                .build()
+//        )
 
         // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
         Messaging.messaging().delegate = self

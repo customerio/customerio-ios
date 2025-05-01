@@ -81,7 +81,7 @@ public class MessagingPushConfigBuilder {
     /// Enable automatic fetching of device token by the SDK without the need to write custom code by the customer.
     /// On fetching the token, SDK will auto-register the device. This value is `true` by default.
     @discardableResult
-    @available(*, deprecated, message: "Use CioAppDelegateAPN or CioAppDelegateFCM instead")
+    @available(*, deprecated, message: "Use CioAppDelegateAPN(Wrapper) or CioAppDelegateFCM(Wrapper) instead")
     public func autoFetchDeviceToken(_ value: Bool) -> MessagingPushConfigBuilder {
         autoFetchDeviceToken = value
         return self
@@ -90,7 +90,7 @@ public class MessagingPushConfigBuilder {
     /// Automatic tracking of push events will automatically generate `opened` and `delivered` metrics for
     /// push notifications sent by Customer.io. This value is `true` by default.
     @discardableResult
-    @available(*, deprecated, message: "Use CioAppDelegateAPN or CioAppDelegateFCM instead")
+    @available(*, deprecated, message: "Use CioAppDelegateAPN(Wrapper) or CioAppDelegateFCM(Wrapper) instead")
     public func autoTrackPushEvents(_ value: Bool) -> MessagingPushConfigBuilder {
         autoTrackPushEvents = value
         return self
@@ -98,6 +98,7 @@ public class MessagingPushConfigBuilder {
 
     /// Display push notifications sent by Customer.io while app is in foreground. This value is `true` by default.
     @discardableResult
+    @available(*, deprecated, message: "Use CioAppDelegateAPN(Wrapper) or CioAppDelegateFCM(Wrapper) instead")
     public func showPushAppInForeground(_ value: Bool) -> MessagingPushConfigBuilder {
         showPushAppInForeground = value
         return self

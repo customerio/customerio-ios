@@ -204,7 +204,7 @@ public class CioSdkConfigGenericBuilder<ResultType: SDKConfigBuilderResult> {
     }
 }
 
-@available(*, deprecated, message: "Use SDKConfigAndCallbackBuilder instead")
+@available(*, deprecated, message: "Use CioSdkConfigBuilder instead")
 public class SDKConfigBuilder: CioSdkConfigGenericBuilder<SDKConfigBuilder.SDKConfigBuilderResultImpl> {
     @available(iOSApplicationExtension, unavailable)
     override open func build() -> SDKConfigBuilderResultImpl {

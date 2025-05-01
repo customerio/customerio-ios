@@ -72,6 +72,11 @@ open class CioAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate 
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
+        
+        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder()
+            .autoFetchDeviceToken(false)
+            .autoTrackPushEvents(false)
+            .build())
 
         guard !isConfigInConflict() else {
             logger.error("CIO: Configuration in conflict. Push notifications will not work properly.")

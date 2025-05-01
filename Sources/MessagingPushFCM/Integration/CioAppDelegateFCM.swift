@@ -46,7 +46,12 @@ open class CioAppDelegateFCM: CioAppDelegate, MessagingDelegate {
         logger: Logger
     ) {
         self.firebaseMessaging = firebaseMessaging
-        super.init(messagingPush: messagingPush, userNotificationCenter: userNotificationCenter, appDelegate: appDelegate, logger: logger)
+        super.init(
+            messagingPush: messagingPush,
+            userNotificationCenter: userNotificationCenter,
+            appDelegate: appDelegate,
+            logger: logger
+        )
     }
 
     override public func application(

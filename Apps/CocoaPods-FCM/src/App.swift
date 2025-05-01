@@ -5,8 +5,11 @@ import SwiftUI
 struct MainApp: App {
     // Default option, without CIO integration
 //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    // Use this option if you don't have your own AppDelegate and don't need any customization
+//    @UIApplicationDelegateAdaptor(CioAppDelegateFCM.self) private var appDelegate
 
-    // Use this option if you do NOT have a need to extend `CioAppDelegateFCMWrapper`
+    // Use this option if you don't have a need to extend `CioAppDelegateFCMWrapper`
 //    @UIApplicationDelegateAdaptor(CioAppDelegateFCMWrapper<AppDelegate>.self) private var appDelegate
 
     // Use this option if you need to extend `CioAppDelegateFCMWrapper`

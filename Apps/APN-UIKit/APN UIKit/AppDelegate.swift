@@ -65,13 +65,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
-        MessagingPushAPN.initialize(
-            withConfig: MessagingPushConfigBuilder()
-                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
-                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
-                .showPushAppInForeground(settings.messaging.showPushAppInForeground)
-                .build()
-        )
+        // Call below is not needed if CioAppDelegateAPN/CioAppDelegateAPNWrapper is used
+//        MessagingPushAPN.initialize(
+//            withConfig: MessagingPushConfigBuilder()
+//                .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
+//                .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
+//                .showPushAppInForeground(settings.messaging.showPushAppInForeground)
+//                .build()
+//        )
         MessagingInApp
             .initialize(withConfig: MessagingInAppConfigBuilder(
                 siteId: settings.inApp.siteId,
