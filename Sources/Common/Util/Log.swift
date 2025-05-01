@@ -20,14 +20,28 @@ public protocol Logger: AutoMockable {
     func setLogLevel(_ level: CioLogLevel)
     /// the noisey log level. Feel free to spam this log level with any
     /// information about the SDK that would be useful for debugging the SDK.
-    func debug(_ message: String)
+    func debug(_ message: String, _ tag: String?)
     /// Not noisy log messages. Good for general information such as
     /// when the background queue begins and ends running but use `debug`
     /// for the status of each background queue task running.
-    func info(_ message: String)
+    func info(_ message: String, _ tag: String?)
     /// the SDK is in an unstable state that you want to notify
     /// the customer or our development team about.
-    func error(_ message: String)
+    func error(_ message: String, _ tag: String?, _ throwable: Error?)
+}
+
+public extension Logger {
+    func debug(_ message: String) {
+        debug(message, nil)
+    }
+
+    func info(_ message: String) {
+        info(message, nil)
+    }
+
+    func error(_ message: String) {
+        error(message, nil, nil)
+    }
 }
 
 /// none - no logs will be made
@@ -67,16 +81,17 @@ public enum CioLogLevel: String, CaseIterable {
 // log messages to console.
 // sourcery: InjectRegisterShared = "Logger"
 // sourcery: InjectSingleton
-public class ConsoleLogger: Logger {
+public class LoggerImpl: Logger {
+    private let systemLogger: SystemLogger
     public var logLevel: CioLogLevel = .error
+
+    init(logger: SystemLogger) {
+        self.systemLogger = logger
+    }
 
     public func setLogLevel(_ level: CioLogLevel) {
         logLevel = level
     }
-
-    // allows filtering in Console mac app
-    public static let logSubsystem = "io.customer.sdk"
-    public static let logCategory = "CIO"
 
     private var logDispatcher: ((CioLogLevel, String) -> Void)?
 
@@ -84,50 +99,39 @@ public class ConsoleLogger: Logger {
         logDispatcher = dispatcher
     }
 
-    private func printMessage(_ message: String, _ level: CioLogLevel) {
+    public func debug(_ message: String, _ tag: String?) {
+        printMessage(message, .debug, tag, nil)
+    }
+
+    public func info(_ message: String, _ tag: String? = nil) {
+        printMessage("\(message)", .info, tag, nil)
+    }
+
+    public func error(_ message: String, _ tag: String?, _ error: Error?) {
+        printMessage("\(message)", .error, tag, error)
+    }
+
+    private func printMessage(_ message: String, _ level: CioLogLevel, _ tag: String?, _ error: Error?) {
         if !logLevel.shouldLog(level) { return }
 
-        logDispatcher?(level, message) ?? ConsoleLogger.logMessageToConsole(message, level: level)
+        let formattedMessage = formatMessage(message, tag, error)
+//        logDispatcher?(level, message) ?? ConsoleLogger.logMessageToConsole(message, level: level, tag, error)
+        logDispatcher?(level, message) ?? systemLogger.log(formattedMessage, level)
     }
 
-    public func debug(_ message: String) {
-        printMessage(message, .debug)
-    }
+    private func formatMessage(_ message: String, _ tag: String? = nil, _ error: Error? = nil) -> String {
+        var formatted = message
 
-    public func info(_ message: String) {
-        printMessage("ℹ️ \(message)", .info)
-    }
-
-    public func error(_ message: String) {
-        printMessage("🛑 \(message)", .error)
-    }
-
-    public static func logMessageToConsole(_ message: String, level: CioLogLevel) {
-        #if canImport(os)
-        // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
-        // This means we can view logs in xcode console + Console app.
-        if #available(iOS 14, *) {
-            let logger = os.Logger(subsystem: self.logSubsystem, category: self.logCategory)
-            logger.log(level: level.osLogLevel, "\(message, privacy: .public)")
-        } else {
-            let logger = OSLog(subsystem: logSubsystem, category: logCategory)
-            os_log("%{public}@", log: logger, type: level.osLogLevel, message)
+        if let tag = tag {
+            formatted = "[\(tag)] \(formatted)"
         }
-        #else
-        // At this time, Linux cannot use `os.log` or `OSLog`. Instead, use: https://github.com/apple/swift-log/
-        // As we don't officially support Linux at this time, no need to add a dependency to the project.
-        // therefore, we are not logging if can't import os.log
-        #endif
-    }
-}
 
-// Log messages to customers when the SDK is not initialized.
-// Great for alerts when the SDK may not be setup correctly.
-// Since the SDK is not initialized, dependencies graph is not created.
-// Therefore, this is just a function that's available at the top-level available to all
-// of the SDK without the use of dependencies.
-public func sdkNotInitializedAlert(_ message: String) {
-    ConsoleLogger.logMessageToConsole("⚠️ \(message)", level: .error)
+        if let error = error {
+            formatted += " Error: \(error.localizedDescription)"
+        }
+
+        return formatted
+    }
 }
 
 public extension CioLogLevel {

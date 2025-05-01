@@ -77,9 +77,6 @@ extension DIGraphShared {
         _ = threadUtil
         countDependenciesResolved += 1
 
-        _ = logger
-        countDependenciesResolved += 1
-
         _ = sdkClient
         countDependenciesResolved += 1
 
@@ -110,6 +107,9 @@ extension DIGraphShared {
         _ = lockManager
         countDependenciesResolved += 1
 
+        _ = logger
+        countDependenciesResolved += 1
+
         _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
@@ -117,6 +117,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = eventBus
+        countDependenciesResolved += 1
+
+        _ = systemLogger
         countDependenciesResolved += 1
 
         _ = uIKitWrapper
@@ -244,30 +247,6 @@ extension DIGraphShared {
 
     private var newThreadUtil: ThreadUtil {
         CioThreadUtil()
-    }
-
-    // Logger (singleton)
-    public var logger: Logger {
-        getOverriddenInstance() ??
-            sharedLogger
-    }
-
-    public var sharedLogger: Logger {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
-            if let overridenDep: Logger = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: Logger.self)] as? Logger
-            let instance = existingSingletonInstance ?? _get_logger()
-            self.singletons[String(describing: Logger.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_logger() -> Logger {
-        ConsoleLogger()
     }
 
     // SdkClient (custom. property getter provided via extension)
@@ -424,6 +403,30 @@ extension DIGraphShared {
         LockManager()
     }
 
+    // Logger (singleton)
+    public var logger: Logger {
+        getOverriddenInstance() ??
+            sharedLogger
+    }
+
+    public var sharedLogger: Logger {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
+            if let overridenDep: Logger = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: Logger.self)] as? Logger
+            let instance = existingSingletonInstance ?? _get_logger()
+            self.singletons[String(describing: Logger.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_logger() -> Logger {
+        LoggerImpl(logger: systemLogger)
+    }
+
     // QueueInventoryMemoryStore (singleton)
     var queueInventoryMemoryStore: QueueInventoryMemoryStore {
         getOverriddenInstance() ??
@@ -480,6 +483,16 @@ extension DIGraphShared {
 
     private func _get_eventBus() -> EventBus {
         SharedEventBus(holder: eventBusObserversHolder)
+    }
+
+    // SystemLogger
+    public var systemLogger: SystemLogger {
+        getOverriddenInstance() ??
+            newSystemLogger
+    }
+
+    private var newSystemLogger: SystemLogger {
+        SystemLoggerImpl()
     }
 
     // UIKitWrapper
