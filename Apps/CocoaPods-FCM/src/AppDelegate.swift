@@ -54,9 +54,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         /*
          Next line of code for internal testing purposes only.
-         
+
          When the host app receives a push notification event such as a push being clicked, the Customer.io SDK forwards these events to all `UNUserNotificationCenterDelegate` instances (including 3rd party SDKs and the host iOS app).
-         
+
          In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
          */
         UNUserNotificationCenter.current().delegate = anotherPushEventHandler
