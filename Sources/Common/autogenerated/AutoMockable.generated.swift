@@ -2007,21 +2007,21 @@ public class LoggerMock: Logger, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var debugReceivedArguments: String?
+    @Atomic public private(set) var debugReceivedArguments: (message: String, tag: String?)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var debugReceivedInvocations: [String] = []
+    @Atomic public private(set) var debugReceivedInvocations: [(message: String, tag: String?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var debugClosure: ((String) -> Void)?
+    public var debugClosure: ((String, String?) -> Void)?
 
-    /// Mocked function for `debug(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func debug(_ message: String) {
+    /// Mocked function for `debug(_ message: String, _ tag: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func debug(_ message: String, _ tag: String?) {
         mockCalled = true
         debugCallsCount += 1
-        debugReceivedArguments = message
-        debugReceivedInvocations.append(message)
-        debugClosure?(message)
+        debugReceivedArguments = (message: message, tag: tag)
+        debugReceivedInvocations.append((message: message, tag: tag))
+        debugClosure?(message, tag)
     }
 
     // MARK: - info
@@ -2034,21 +2034,21 @@ public class LoggerMock: Logger, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var infoReceivedArguments: String?
+    @Atomic public private(set) var infoReceivedArguments: (message: String, tag: String?)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var infoReceivedInvocations: [String] = []
+    @Atomic public private(set) var infoReceivedInvocations: [(message: String, tag: String?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var infoClosure: ((String) -> Void)?
+    public var infoClosure: ((String, String?) -> Void)?
 
-    /// Mocked function for `info(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func info(_ message: String) {
+    /// Mocked function for `info(_ message: String, _ tag: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func info(_ message: String, _ tag: String?) {
         mockCalled = true
         infoCallsCount += 1
-        infoReceivedArguments = message
-        infoReceivedInvocations.append(message)
-        infoClosure?(message)
+        infoReceivedArguments = (message: message, tag: tag)
+        infoReceivedInvocations.append((message: message, tag: tag))
+        infoClosure?(message, tag)
     }
 
     // MARK: - error
@@ -2061,21 +2061,21 @@ public class LoggerMock: Logger, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var errorReceivedArguments: String?
+    @Atomic public private(set) var errorReceivedArguments: (message: String, tag: String?, throwable: Error?)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var errorReceivedInvocations: [String] = []
+    @Atomic public private(set) var errorReceivedInvocations: [(message: String, tag: String?, throwable: Error?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var errorClosure: ((String) -> Void)?
+    public var errorClosure: ((String, String?, Error?) -> Void)?
 
-    /// Mocked function for `error(_ message: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func error(_ message: String) {
+    /// Mocked function for `error(_ message: String, _ tag: String?, _ throwable: Error?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func error(_ message: String, _ tag: String?, _ throwable: Error?) {
         mockCalled = true
         errorCallsCount += 1
-        errorReceivedArguments = message
-        errorReceivedInvocations.append(message)
-        errorClosure?(message)
+        errorReceivedArguments = (message: message, tag: tag, throwable: throwable)
+        errorReceivedInvocations.append((message: message, tag: tag, throwable: throwable))
+        errorClosure?(message, tag, throwable)
     }
 }
 
@@ -2698,6 +2698,57 @@ class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
         mockCalled = true
         cancelCallsCount += 1
         cancelClosure?()
+    }
+}
+
+/**
+ Class to easily create a mocked version of the `SystemLogger` class.
+ This class is equipped with functions and properties ready for you to mock!
+
+ Note: This file is automatically generated. This means the mocks should always be up-to-date and has a consistent API.
+ See the SDK documentation to learn the basics behind using the mock classes in the SDK.
+ */
+public class SystemLoggerMock: SystemLogger, Mock {
+    /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
+    public var mockCalled: Bool = false //
+
+    public init() {
+        Mocks.shared.add(mock: self)
+    }
+
+    public func resetMock() {
+        logCallsCount = 0
+        logReceivedArguments = nil
+        logReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - log
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var logCallsCount = 0
+    /// `true` if the function was ever called.
+    public var logCalled: Bool {
+        logCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var logReceivedArguments: (message: String, level: CioLogLevel)?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var logReceivedInvocations: [(message: String, level: CioLogLevel)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var logClosure: ((String, CioLogLevel) -> Void)?
+
+    /// Mocked function for `log(_ message: String, _ level: CioLogLevel)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func log(_ message: String, _ level: CioLogLevel) {
+        mockCalled = true
+        logCallsCount += 1
+        logReceivedArguments = (message: message, level: level)
+        logReceivedInvocations.append((message: message, level: level))
+        logClosure?(message, level)
     }
 }
 

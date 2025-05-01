@@ -36,7 +36,7 @@ public class DeepLinkUtilImpl: DeepLinkUtil {
          We'll first provide URL to app to process them, which could be done in 2 ways:
          1. explicit `deepLinkCallback` first:
             - This is recommended option for client to use, as it will always work.
-         3. UIKit's `application(_:continue:restorationHandler:)`
+         2. UIKit's `application(_:continue:restorationHandler:)`
             - This is not recommended as it may fail for 3rd party SDK that are using swizzling.
             - Firebase has a known bug on this which is not solved for 3+ years (https://github.com/firebase/firebase-ios-sdk/issues/10417)
 
@@ -45,15 +45,15 @@ public class DeepLinkUtilImpl: DeepLinkUtil {
         var ifHandled = false
         if let deepLinkCallback {
             ifHandled = deepLinkCallback(deepLinkUrl)
+            logger.debug("Handled by deep link callback. Deep link: \(deepLinkUrl)")
         } else {
             ifHandled = uiKit.continueNSUserActivity(webpageURL: deepLinkUrl)
+            logger.debug("Handled by `application(_:continue:restorationHandler:)` call. Deep link: \(deepLinkUrl)")
         }
 
         if !ifHandled {
             logger.debug("Opening deep link through system call. Deep link: \(deepLinkUrl)")
             uiKit.open(url: deepLinkUrl)
-        } else {
-            logger.debug("Handled by deep link callback. Deep link: \(deepLinkUrl)")
         }
     }
 }
