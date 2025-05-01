@@ -36,9 +36,9 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:))
     ]
-    
+
     @_spi(Internal) public var config: ConfigInstance?
-        
+
     private var userNotificationCenter: UserNotificationCenterInstance?
     private let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?

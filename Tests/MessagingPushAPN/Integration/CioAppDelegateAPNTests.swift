@@ -15,7 +15,7 @@ class CioAppDelegateAPNTests: XCTestCase {
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockLogger: LoggerMock!
-    
+
     func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
@@ -60,7 +60,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         appDelegateAPN = nil
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
-        
+
         MessagingPush.appDelegateIntegratedExplicitely = false
 
         super.tearDown()

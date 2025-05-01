@@ -73,7 +73,7 @@ class CioAppDelegateFCMTests: XCTestCase {
 
         Messaging.unswizzleMessaging()
         UNUserNotificationCenter.unswizzleNotificationCenter()
-        
+
         MessagingPush.appDelegateIntegratedExplicitely = false
 
         super.tearDown()
@@ -101,7 +101,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockMessaging.delegate === appDelegateFCM)
     }
-    
+
     func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDesabled_thenMessagingDelegateIsNotSet() {
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
@@ -112,10 +112,10 @@ class CioAppDelegateFCMTests: XCTestCase {
             logger: mockLogger
         )
         mockMessaging.delegate = nil
-        
+
         // Call didFinishLaunching
         let result = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        
+
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
@@ -167,15 +167,15 @@ class CioAppDelegateFCMTests: XCTestCase {
     }
 
     // MARK: - Tests for UNUserNotificationCenterDelegate methods
-    
+
     func testDidRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
         // Setup
         let deviceToken = "device_token".data(using: .utf8)!
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        
+
         // Call the method
         appDelegateFCM.application(UIApplication.shared, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-        
+
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
         XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
