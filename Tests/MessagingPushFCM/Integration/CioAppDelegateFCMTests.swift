@@ -90,7 +90,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         // -- `registerForRemoteNotifications` is called
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.contains("CIO: Registering for remote notifications")
+            $0.message.contains("CIO: Registering for remote notifications")
         })
     }
 

@@ -44,7 +44,7 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
     private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
 
     override public convenience init() {
-        DIGraphShared.shared.logger.error("CIO: This no-argument AppDelegate initializer is not intended to be used. Added for compatibility.")
+        DIGraphShared.shared.logger.error("CIO: This no-argument initializer should not to be used. Added since UIKit's AppDelegate initialization process crashes if for no-arg init is missing.")
         self.init(
             messagingPush: MessagingPush.shared,
             userNotificationCenter: { UNUserNotificationCenter.current() },
