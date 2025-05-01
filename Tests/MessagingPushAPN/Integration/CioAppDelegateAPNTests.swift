@@ -96,7 +96,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertTrue(mockLogger.debugCallsCount == 1)
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.contains("CIO: Registering for remote notifications")
+            $0.message.contains("CIO: Registering for remote notifications")
         })
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }
