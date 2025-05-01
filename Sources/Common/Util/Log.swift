@@ -115,7 +115,6 @@ public class LoggerImpl: Logger {
         if !logLevel.shouldLog(level) { return }
 
         let formattedMessage = formatMessage(message, tag, error)
-//        logDispatcher?(level, message) ?? ConsoleLogger.logMessageToConsole(message, level: level, tag, error)
         logDispatcher?(level, message) ?? systemLogger.log(formattedMessage, level)
     }
 
