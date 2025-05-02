@@ -255,15 +255,30 @@ extension DIGraphShared {
             customSdkClient
     }
 
-    // DeepLinkUtil
+    // DeepLinkUtil (singleton)
     @available(iOSApplicationExtension, unavailable)
     public var deepLinkUtil: DeepLinkUtil {
         getOverriddenInstance() ??
-            newDeepLinkUtil
+            sharedDeepLinkUtil
     }
 
     @available(iOSApplicationExtension, unavailable)
-    private var newDeepLinkUtil: DeepLinkUtil {
+    public var sharedDeepLinkUtil: DeepLinkUtil {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_DeepLinkUtil_singleton_access").sync {
+            if let overridenDep: DeepLinkUtil = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: DeepLinkUtil.self)] as? DeepLinkUtil
+            let instance = existingSingletonInstance ?? _get_deepLinkUtil()
+            self.singletons[String(describing: DeepLinkUtil.self)] = instance
+            return instance
+        }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_deepLinkUtil() -> DeepLinkUtil {
         DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
     }
 
