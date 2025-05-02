@@ -14,7 +14,7 @@ public protocol FirebaseMessagingIntegration {
 extension Messaging: FirebaseMessagingIntegration {}
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegate: CioAppDelegateWithoutTokenRetrieval, MessagingDelegate {
+open class CioAppDelegate: CioProviderAgnosticAppDelegate, MessagingDelegate {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushFCM: MessagingPushFCMInstance? {
         messagingPush as? MessagingPushFCMInstance

@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-@testable import CioMessagingPush
+@_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushFCM
 import FirebaseMessaging
 import SharedTests

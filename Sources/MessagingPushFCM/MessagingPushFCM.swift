@@ -1,5 +1,5 @@
 import CioInternalCommon
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications

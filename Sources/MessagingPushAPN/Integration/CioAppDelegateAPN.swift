@@ -3,7 +3,7 @@ import UIKit
 @_spi(Internal) import CioMessagingPush
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegate: CioAppDelegateWithoutTokenRetrieval {
+open class CioAppDelegate: CioProviderAgnosticAppDelegate {
     /// Temporary solution, until interfaces MessagingPushInstance/MessagingPushAPNInstance/MessagingPushFCMInstance are fixed
     private var messagingPushAPN: MessagingPushAPNInstance? {
         messagingPush as? MessagingPushAPNInstance

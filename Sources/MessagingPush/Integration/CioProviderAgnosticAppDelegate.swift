@@ -22,7 +22,7 @@ private extension UIApplication {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotificationCenterDelegate {
+open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPushInstance
     @_spi(Internal) public let logger: Logger
     @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
@@ -41,7 +41,7 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
 
     private var userNotificationCenter: UserNotificationCenterInstance?
     private let wrappedAppDelegate: UIApplicationDelegate?
-    private var wrappedNoticeCenterDelegate: UNUserNotificationCenterDelegate?
+    private var wrappedNotificationCenterDelegate: UNUserNotificationCenterDelegate?
 
     override public convenience init() {
         DIGraphShared.shared.logger.error("CIO: This no-argument initializer should not to be used. Added since UIKit's AppDelegate initialization process crashes if for no-arg init is missing.")
@@ -83,7 +83,7 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
 
         if config?().autoTrackPushEvents ?? false,
            var center = userNotificationCenter?() {
-            wrappedNoticeCenterDelegate = center.delegate
+            wrappedNotificationCenterDelegate = center.delegate
             center.delegate = self
         }
 
@@ -119,7 +119,7 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
     ) {
         _ = messagingPush.userNotificationCenter(center, didReceive: response)
 
-        if let wrappedNoticeCenterDelegate = wrappedNoticeCenterDelegate,
+        if let wrappedNoticeCenterDelegate = wrappedNotificationCenterDelegate,
            wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
             wrappedNoticeCenterDelegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
         } else {
@@ -155,13 +155,13 @@ open class CioAppDelegateWithoutTokenRetrieval: CioAppDelegateType, UNUserNotifi
 ///     - this is the case with FirebaseMassaging
 /// - for this reason, empty methods are added and forwarding to wrapper is possible
 @available(iOSApplicationExtension, unavailable)
-extension CioAppDelegateWithoutTokenRetrieval {
+extension CioProviderAgnosticAppDelegate {
     open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        wrappedNoticeCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
+        wrappedNotificationCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
     }
 
     open func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
-        wrappedNoticeCenterDelegate?.userNotificationCenter?(center, openSettingsFor: notification)
+        wrappedNotificationCenterDelegate?.userNotificationCenter?(center, openSettingsFor: notification)
     }
 
     @objc

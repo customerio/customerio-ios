@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-@testable import CioMessagingPush
+@_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushAPN
 import SharedTests
 import UIKit

@@ -6,7 +6,7 @@ import Foundation
  So, performing an HTTP request to the API with a device token goes here.
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
-    public static var appDelegateIntegratedExplicitely: Bool = false
+    @_spi(Internal) public static var appDelegateIntegratedExplicitely: Bool = false
 
     @Atomic public private(set) static var shared = MessagingPush()
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()

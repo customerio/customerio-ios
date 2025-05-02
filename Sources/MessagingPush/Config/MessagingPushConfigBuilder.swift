@@ -96,7 +96,7 @@ public class MessagingPushConfigBuilder {
 
     /// Display push notifications sent by Customer.io while app is in foreground. This value is `true` by default.
     @discardableResult
-    @available(*, deprecated, message: "When CioAppDelegate(Wrapper) is used, this method is not needed")
+    @available(*, deprecated, message: "This shouldn't be set if you're using CioAppDelegate(Wrapper). If you are not using CioAppDelegate(Wrapper), it's recommended you upgrade.")
     public func showPushAppInForeground(_ value: Bool) -> MessagingPushConfigBuilder {
         showPushAppInForeground = value
         return self
