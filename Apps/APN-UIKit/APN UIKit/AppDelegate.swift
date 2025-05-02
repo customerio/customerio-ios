@@ -4,6 +4,8 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
+class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
+
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
@@ -104,9 +106,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        // Track custom event with Customer.io.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
         CustomerIO.shared.track(
-            name: "push clicked",
+            name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]
         )
 

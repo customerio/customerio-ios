@@ -7,6 +7,8 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
+class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
+
 class AppDelegate: NSObject, UIApplicationDelegate {
     let anotherPushEventHandler = AnotherPushEventHandler()
 
@@ -24,11 +26,20 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Configure and initialize the Customer.io SDK
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
+            .region(.US)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
-        if let logLevel = appSetSettings?.debugSdkMode, logLevel {
+            .deepLinkCallback { (url: URL) in
+                // You can call any method to process this furhter,
+                // or redirect it to `application(_:continue:restorationHandler:)` for consistency, if you use deep-linking in Firebase
+                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+                openLinkInHostAppActivity.webpageURL = url
+                return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
+            }
+        let logLevel = appSetSettings?.debugSdkMode
+        if logLevel == nil || logLevel == true {
             config.logLevel(CioLogLevel.debug)
         }
         if let apiHost = appSetSettings?.apiHost, !apiHost.isEmpty {
@@ -46,18 +57,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
                 .autoFetchDeviceToken(true)
+                .autoTrackPushEvents(true)
                 .build()
         )
 
         // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
+        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
         Messaging.messaging().delegate = self
 
         /*
-         Next line of code for internal testing purposes only.
-
-         When the host app receives a push notification event such as a push being clicked, the Customer.io SDK forwards these events to all `UNUserNotificationCenterDelegate` instances (including 3rd party SDKs and the host iOS app).
-
-         In order to test that the SDK is able to handle 2+ other push event handlers installed in the app, we install a push event handler class and install the AppDelegate. We expect that when a push event happens in the app, all of the push event handlers are called.
+         Next line of code is testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
+         This is not necessary for the Customer.io SDK to work.
          */
         UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
@@ -76,32 +86,45 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
     }
+
+    // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
+    //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return false
+        }
+        print("universalLinkUrl: \(universalLinkUrl)")
+        // By returning `false` we are indicating to iOS that not no screen is shown in associateion to provided URL.
+        // Same information is used by CIO `deepLinkCallback` to open URL in the browser
+        return false
+    }
 }
 
 extension AppDelegate: MessagingDelegate {
     // Function that is called when a new FCM device token is assigned to device.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // Forward the device token to the Customer.io SDK:
-        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
+        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
+//        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
     // Function called when a push notification is clicked or swiped away.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track a Customer.io event for testing purposes to more easily track when this function is called.
+        // Track custom event with Customer.io.
+        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
         CustomerIO.shared.track(
-            name: "push clicked",
+            name: "custom push-clicked event",
             properties: ["push": response.notification.request.content.userInfo]
         )
 
         completionHandler()
     }
 
-    // For QA testing, it's suggested to not implement this optional function.
-    // The SDK contains logic that handles when this optional function is implemented in a host iOS app, or not. Do not implement it to test the use case.
-    //
-//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .badge, .sound])
+    }
 }
 
 extension AppDelegate: InAppEventListener {
