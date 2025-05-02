@@ -200,7 +200,7 @@ public class SDKConfigBuilder {
         )
 
         if deepLinkCallback == nil {
-            DIGraphShared.shared.logger.info("CIO: Switch to useing explicit `deepLinkCallback` method as it's more reliable")
+            DIGraphShared.shared.logger.info("CIO: Switch to using explicit `deepLinkCallback` method as it's more reliable")
         }
 
         return SDKConfigBuilderResultImpl(
