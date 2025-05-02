@@ -34,19 +34,19 @@ class DeepLinkUtilTest: UnitTest {
         XCTAssertEqual(uiKitMock.continueNSUserActivityCallsCount, 1)
         XCTAssertFalse(uiKitMock.openCalled)
     }
-    
+
     func testHandleDeepLink_whenDLCallbakcIsRegistered_expectDLCallbackToBeCalled() async {
         // Setup
         let callbackExpectation = XCTestExpectation(description: "callback expectation")
-        let deepLinkCallback: DeepLinkCallback =  { _ in
+        let deepLinkCallback: DeepLinkCallback = { _ in
             callbackExpectation.fulfill()
             return true
         }
         deepLinkUtil.setDeepLinkCallback(deepLinkCallback)
-        
+
         // Execution
         deepLinkUtil.handleDeepLink(URL(string: "https://customer.io")!)
-        
+
         // Verification
         await fulfillment(of: [callbackExpectation], timeout: 1.0)
     }
