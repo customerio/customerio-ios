@@ -1,4 +1,4 @@
-@_spi(Internal) import CioInternalCommon
+import CioInternalCommon
 import CioTrackingMigration
 
 public extension CustomerIO {
@@ -10,12 +10,7 @@ public extension CustomerIO {
     static func initialize(withConfig config: SDKConfigBuilderResult) {
         // SdkConfig isn't currently stored anywhere since it wasn't required. If needed later, we
         // can introduce an option to store and retrieve it.
-        let (sdkConfig, cdpConfig, deepLinkCallback) = config.deconstruct()
-
-        // Sets deeplink callback, used by whole of SDK
-        if let deepLinkCallback {
-            DIGraphShared.shared.deepLinkUtil.setDeepLinkCallback(deepLinkCallback)
-        }
+        let (sdkConfig, cdpConfig) = config
 
         // set the logLevel for ConsoleLogger before initializing any module
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
@@ -55,11 +50,4 @@ public extension CustomerIO {
         DataPipeline.resetTestEnvironment()
     }
     #endif
-}
-
-private extension SDKConfigBuilderResult {
-    // swiftlint:disable:next large_tuple - OK for private usage.
-    func deconstruct() -> (CioInternalCommon.SdkConfig, DataPipelineConfigOptions, CioInternalCommon.DeepLinkCallback?) {
-        (sdkConfig, dataPipelineConfig, deepLinkCallback)
-    }
 }

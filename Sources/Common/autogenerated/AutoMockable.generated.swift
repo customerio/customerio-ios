@@ -509,44 +509,11 @@ public class DeepLinkUtilMock: DeepLinkUtil, Mock {
     }
 
     public func resetMock() {
-        setDeepLinkCallbackCallsCount = 0
-        setDeepLinkCallbackReceivedArguments = nil
-        setDeepLinkCallbackReceivedInvocations = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         handleDeepLinkCallsCount = 0
         handleDeepLinkReceivedArguments = nil
         handleDeepLinkReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-    }
-
-    // MARK: - setDeepLinkCallback
-
-    /// Number of times the function was called.
-    @Atomic public private(set) var setDeepLinkCallbackCallsCount = 0
-    /// `true` if the function was ever called.
-    public var setDeepLinkCallbackCalled: Bool {
-        setDeepLinkCallbackCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var setDeepLinkCallbackReceivedArguments: DeepLinkCallback?
-    /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var setDeepLinkCallbackReceivedInvocations: [DeepLinkCallback] = []
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var setDeepLinkCallbackClosure: ((@escaping DeepLinkCallback) -> Void)?
-
-    /// Mocked function for `setDeepLinkCallback(_ callback: @escaping DeepLinkCallback)`. Your opportunity to return a mocked value and check result of mock in test code.
-    @_spi(Internal)
-    public func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback) {
-        mockCalled = true
-        setDeepLinkCallbackCallsCount += 1
-        setDeepLinkCallbackReceivedArguments = callback
-        setDeepLinkCallbackReceivedInvocations.append(callback)
-        setDeepLinkCallbackClosure?(callback)
     }
 
     // MARK: - handleDeepLink
