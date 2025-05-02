@@ -44,6 +44,7 @@ public class SDKConfigBuilder {
     private var autoTrackDeviceAttributes: Bool = true
     private var migrationSiteId: String?
     private var screenViewUse: ScreenView = .all
+    private var deepLinkCallback: DeepLinkCallback?
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -156,6 +157,13 @@ public class SDKConfigBuilder {
         return self
     }
 
+    @discardableResult
+    @available(iOSApplicationExtension, unavailable)
+    public func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder {
+        deepLinkCallback = callback
+        return self
+    }
+
     @available(iOSApplicationExtension, unavailable)
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig` from given configurations
@@ -191,10 +199,28 @@ public class SDKConfigBuilder {
             autoConfiguredPlugins: configuredPlugins
         )
 
-        return (sdkConfig: sdkConfig, dataPipelineConfig: dataPipelineConfig)
+        if deepLinkCallback == nil {
+            DIGraphShared.shared.logger.info("CIO: Switch to using explicit `deepLinkCallback` method as it's more reliable")
+        }
+
+        return SDKConfigBuilderResultImpl(
+            sdkConfig: sdkConfig,
+            dataPipelineConfig: dataPipelineConfig,
+            deepLinkCallback: deepLinkCallback
+        )
+    }
+
+    public struct SDKConfigBuilderResultImpl: SDKConfigBuilderResult {
+        public let sdkConfig: SdkConfig
+        public let dataPipelineConfig: DataPipelineConfigOptions
+        public let deepLinkCallback: DeepLinkCallback?
     }
 }
 
 /// Tuple type for the result of the `SDKConfigBuilder`'s `build` method.
 /// Contains both `SdkConfig` and `DataPipelineConfigOptions` instances.
-public typealias SDKConfigBuilderResult = (sdkConfig: SdkConfig, dataPipelineConfig: DataPipelineConfigOptions)
+public protocol SDKConfigBuilderResult {
+    var sdkConfig: SdkConfig { get }
+    var dataPipelineConfig: DataPipelineConfigOptions { get }
+    var deepLinkCallback: DeepLinkCallback? { get }
+}
