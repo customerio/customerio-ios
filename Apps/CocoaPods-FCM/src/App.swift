@@ -4,13 +4,13 @@ import SwiftUI
 @main
 struct MainApp: App {
     // Default option, without CIO integration
-    //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+//    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // Use this option if you don't have a need to extend `CioAppDelegateWrapper`
-    //    @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
+    @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
 
-    // Use this option if you need to extend `CioAppDelegateWrapper`
-    @UIApplicationDelegateAdaptor(AppDelegateWithCioIntegration.self) private var appDelegate
+    // Use this option if you need to extend `CioAppDelegateWrapper`: class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
+//    @UIApplicationDelegateAdaptor(AppDelegateWithCioIntegration.self) private var appDelegate
 
     @StateObject var userManager: UserManager = .init()
 

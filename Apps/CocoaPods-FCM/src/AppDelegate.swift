@@ -7,8 +7,6 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
-class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
-
 class AppDelegate: NSObject, UIApplicationDelegate {
     let anotherPushEventHandler = AnotherPushEventHandler()
 
