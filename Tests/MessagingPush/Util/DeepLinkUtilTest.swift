@@ -35,7 +35,7 @@ class DeepLinkUtilTest: UnitTest {
         XCTAssertFalse(uiKitMock.openCalled)
     }
 
-    func testHandleDeepLink_whenDLCallbakcIsRegistered_expectDLCallbackToBeCalled() async {
+    func testHandleDeepLink_whenDLCallbackIsRegistered_expectDLCallbackToBeCalled() async {
         // Setup
         let callbackExpectation = XCTestExpectation(description: "callback expectation")
         let deepLinkCallback: DeepLinkCallback = { _ in
