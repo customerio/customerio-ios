@@ -16,7 +16,14 @@ public extension UNNotificationResponse {
     static var testInstance: UNNotificationResponse {
         // OK to use try! as it's utility code used by tests and is rarely edited.
         // swiftlint:disable:next force_try
-        try! XCTUnwrap(UNNotificationResponse(coder: KeyedArchiver()))
+        try! XCTUnwrap(UNNotificationResponse(coder: KeyedArchiver(requiringSecureCoding: false)))
+    }
+}
+
+public extension UNNotification {
+    static var testInstance: UNNotification {
+        // swiftlint:disable:next force_try - Ok in Test code.
+        try! XCTUnwrap(UNNotification(coder: KeyedArchiver(requiringSecureCoding: false)))
     }
 }
 #endif
