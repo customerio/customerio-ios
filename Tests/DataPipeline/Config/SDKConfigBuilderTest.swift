@@ -1,5 +1,6 @@
 @testable import CioAnalytics
 @testable import CioDataPipelines
+import CioInternalCommon
 import SharedTests
 import XCTest
 
@@ -36,6 +37,11 @@ class SDKConfigBuilderTest: UnitTest {
         let givenTrackApplicationLifecycleEvents = false
         let givenAutoTrackDeviceAttributes = false
         let givenSiteId = String.random
+        var deepLinkCallbackCalled = false
+        let deepLinkCallback: DeepLinkCallback = { _ in
+            deepLinkCallbackCalled = true
+            return true
+        }
 
         let result = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
             .logLevel(givenLogLevel)
@@ -51,12 +57,13 @@ class SDKConfigBuilderTest: UnitTest {
             .autoTrackDeviceAttributes(givenAutoTrackDeviceAttributes)
             .autoTrackUIKitScreenViews(enabled: false)
             .migrationSiteId(givenSiteId)
+            .deepLinkCallback(deepLinkCallback)
             .build()
-        let sdkConfig = result.sdkConfig
-        let dataPipelineConfig = result.dataPipelineConfig
 
+        let sdkConfig = result.sdkConfig
         XCTAssertEqual(sdkConfig.logLevel, givenLogLevel)
 
+        let dataPipelineConfig = result.dataPipelineConfig
         XCTAssertEqual(dataPipelineConfig.cdpApiKey, givenCdpApiKey)
         XCTAssertEqual(dataPipelineConfig.apiHost, givenApiHost)
         XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
@@ -68,6 +75,10 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.autoTrackDeviceAttributes, givenAutoTrackDeviceAttributes)
         XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
         XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
+        
+        let deepLinkCallbackResult = result.deepLinkCallback
+        _ = deepLinkCallbackResult?(URL(string: "https://example.com")!)
+        XCTAssertTrue(deepLinkCallbackCalled)
     }
 
     func test_givenRegionUS_expectRegionDefaults() {
