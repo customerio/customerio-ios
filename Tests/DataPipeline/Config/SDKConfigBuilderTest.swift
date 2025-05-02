@@ -75,7 +75,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.autoTrackDeviceAttributes, givenAutoTrackDeviceAttributes)
         XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
         XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
-        
+
         let deepLinkCallbackResult = result.deepLinkCallback
         _ = deepLinkCallbackResult?(URL(string: "https://example.com")!)
         XCTAssertTrue(deepLinkCallbackCalled)
