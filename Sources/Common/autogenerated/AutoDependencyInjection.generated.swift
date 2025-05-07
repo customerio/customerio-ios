@@ -479,28 +479,14 @@ extension DIGraphShared {
         SdkDateUtil()
     }
 
-    // SdkInitializationLogger (singleton)
+    // SdkInitializationLogger
     public var sdkInitializationLogger: SdkInitializationLogger {
         getOverriddenInstance() ??
-            sharedSdkInitializationLogger
+            newSdkInitializationLogger
     }
 
-    public var sharedSdkInitializationLogger: SdkInitializationLogger {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_SdkInitializationLogger_singleton_access").sync {
-            if let overridenDep: SdkInitializationLogger = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: SdkInitializationLogger.self)] as? SdkInitializationLogger
-            let instance = existingSingletonInstance ?? _get_sdkInitializationLogger()
-            self.singletons[String(describing: SdkInitializationLogger.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_sdkInitializationLogger() -> SdkInitializationLogger {
-        SdkInitializationLogger(logger: logger)
+    private var newSdkInitializationLogger: SdkInitializationLogger {
+        SdkInitializationLoggerImpl(logger: logger)
     }
 
     // EventBus (singleton)

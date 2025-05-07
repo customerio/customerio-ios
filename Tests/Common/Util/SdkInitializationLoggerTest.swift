@@ -10,7 +10,7 @@ class SdkInitializationLoggerTest: UnitTest {
     override func setUp() {
         super.setUp()
 
-        initLogger = SdkInitializationLogger(logger: loggerMock)
+        initLogger = SdkInitializationLoggerImpl(logger: loggerMock)
     }
 
     override func tearDown() {

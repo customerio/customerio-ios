@@ -1,6 +1,12 @@
+public protocol SdkInitializationLogger: AutoMockable {
+    func coreSdkInitStart()
+    func coreSdkInitSuccess()
+    func moduleInitStart(_ moduleName: String)
+    func moduleInitSuccess(_ moduleName: String)
+}
+
 // sourcery: InjectRegisterShared = "SdkInitializationLogger"
-// sourcery: InjectSingleton
-public class SdkInitializationLogger {
+public class SdkInitializationLoggerImpl: SdkInitializationLogger {
     private static let TAG = "Init"
 
     private let logger: Logger
@@ -17,11 +23,11 @@ public class SdkInitializationLogger {
         logger.info("CustomerIO SDK is initialized and ready to use", Self.TAG)
     }
 
-    func moduleInitStart(_ moduleName: String) {
+    public func moduleInitStart(_ moduleName: String) {
         logger.debug("Initializing SDK module \(moduleName)...", Self.TAG)
     }
 
-    func moduleInitSuccess(_ moduleName: String) {
+    public func moduleInitSuccess(_ moduleName: String) {
         logger.info("CustomerIO \(moduleName) module is initialized and ready to use", Self.TAG)
     }
 }
