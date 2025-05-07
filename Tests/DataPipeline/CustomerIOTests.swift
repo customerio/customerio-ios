@@ -1,5 +1,5 @@
-@testable import CioInternalCommon
 @testable import CioDataPipelines
+@testable import CioInternalCommon
 import XCTest
 
 class CustomerIOTests: IntegrationTest {
