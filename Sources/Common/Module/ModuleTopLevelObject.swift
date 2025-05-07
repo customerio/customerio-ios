@@ -57,8 +57,10 @@ open class ModuleTopLevelObject<ImplementationClass> {
             return
         }
 
-        logger.debug("Setting up \(moduleName) module...")
+        let initLogger = DIGraphShared.shared.sdkInitializationLogger
+
+        initLogger.moduleInitStart(moduleName)
         _implementation = blockToInitializeModule()
-        logger.info("\(moduleName) module successfully set up with SDK")
+        initLogger.moduleInitSuccess(moduleName)
     }
 }

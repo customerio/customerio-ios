@@ -204,19 +204,12 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     func postInitialize() {
-        let logger = diGraph.logger
-
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
         let globalDataStore = diGraph.globalDataStore
         if let token = globalDataStore.pushDeviceToken {
             registerDeviceToken(token)
         }
-
-        logger
-            .info(
-                "Customer.io SDK \(SdkVersion.version) initialized and ready to use"
-            )
     }
 
     // MARK: - CustomerIOInstance implementation

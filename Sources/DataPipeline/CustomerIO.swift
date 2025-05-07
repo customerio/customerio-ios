@@ -20,8 +20,11 @@ public extension CustomerIO {
         // set the logLevel for ConsoleLogger before initializing any module
         DIGraphShared.shared.logger.setLogLevel(sdkConfig.logLevel)
         // initialize DataPipeline module with the provided configuration
+        let initLogger = DIGraphShared.shared.sdkInitializationLogger
+        initLogger.coreSdkInitStart()
         let implementation = DataPipeline.initialize(moduleConfig: cdpConfig)
         initialize(implementation: implementation)
+        initLogger.coreSdkInitSuccess()
 
         // Handle logged-in user from Journeys to CDP and check
         // if any unprocessed tasks are pending in the background queue.

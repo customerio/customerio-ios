@@ -116,6 +116,9 @@ extension DIGraphShared {
         _ = dateUtil
         countDependenciesResolved += 1
 
+        _ = sdkInitializationLogger
+        countDependenciesResolved += 1
+
         _ = eventBus
         countDependenciesResolved += 1
 
@@ -474,6 +477,16 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
+    }
+
+    // SdkInitializationLogger
+    public var sdkInitializationLogger: SdkInitializationLogger {
+        getOverriddenInstance() ??
+            newSdkInitializationLogger
+    }
+
+    private var newSdkInitializationLogger: SdkInitializationLogger {
+        SdkInitializationLoggerImpl(logger: logger)
     }
 
     // EventBus (singleton)
