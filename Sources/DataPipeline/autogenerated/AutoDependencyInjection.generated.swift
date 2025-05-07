@@ -54,6 +54,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = dataPipelinesLogger
+        countDependenciesResolved += 1
+
         _ = autoTrackingScreenViewStore
         countDependenciesResolved += 1
 
@@ -64,6 +67,16 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // DataPipelinesLogger
+    var dataPipelinesLogger: DataPipelinesLogger {
+        getOverriddenInstance() ??
+            newDataPipelinesLogger
+    }
+
+    private var newDataPipelinesLogger: DataPipelinesLogger {
+        DataPipelinesLoggerImpl(logger: logger)
+    }
+
     // AutoTrackingScreenViewStore (singleton)
     var autoTrackingScreenViewStore: AutoTrackingScreenViewStore {
         getOverriddenInstance() ??

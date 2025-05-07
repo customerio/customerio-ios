@@ -4,6 +4,7 @@ import CioInternalCommon
 class DataPipelineImplementation: DataPipelineInstance {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
+    private let dataPipelinesLogger: DataPipelinesLogger
     let analytics: Analytics
     let eventBusHandler: EventBusHandler
 
@@ -17,6 +18,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
+        self.dataPipelinesLogger = diGraph.dataPipelinesLogger
         self.analytics = .init(configuration: moduleConfig.toSegmentConfiguration())
 
         self.eventBusHandler = diGraph.eventBusHandler
@@ -208,6 +210,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
         if let existingDeviceToken = contextPlugin.deviceToken, existingDeviceToken != deviceToken {
             // token has been refreshed, delete old token to avoid registering same device multiple times
+            dataPipelinesLogger.logPushTokenRefreshed()
             deleteDeviceToken()
         }
         contextPlugin.deviceToken = deviceToken
@@ -227,13 +230,17 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        logger.debug("storing device token to device storage \(deviceToken)")
+        if deviceToken.isBlankOrEmpty() {
+            dataPipelinesLogger.logStoringBlankPushToken()
+            return
+        }
+        dataPipelinesLogger.logStoringDevicePushToken(token: deviceToken, userId: registeredUserId)
         // save the device token for later use.
         // segment plugin doesn't store token anywhere so we need to pass token to it every time
         // storing it so we can reference the token and update device plugin app relaunch
         globalDataStore.pushDeviceToken = deviceToken
 
-        logger.info("registering device token \(deviceToken)")
+        dataPipelinesLogger.logRegisteringPushToken(token: deviceToken, userId: registeredUserId)
         addDeviceAttributes(token: deviceToken)
     }
 
