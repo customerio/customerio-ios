@@ -117,7 +117,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
-           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             wrappedNotificationCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
         } else {
             if #available(iOS 14.0, *) {
