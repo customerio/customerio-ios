@@ -23,7 +23,7 @@ public extension Messaging {
 
     @objc class func messagingMock() -> Messaging {
         let dummyObject = NSObject()
-        let messaging = unsafeBitCast(dummyObject, to: Messaging.self)
+        let messaging = unsafeDowncast(dummyObject, to: Messaging.self)
         return messaging
     }
 }
