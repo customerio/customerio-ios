@@ -111,6 +111,23 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
 
     // MARK: - UNUserNotificationCenterDelegate
 
+    open func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
+           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+            wrappedNotificationCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
+        } else {
+            if #available(iOS 14.0, *) {
+                completionHandler([.list, .banner, .badge, .sound])
+            } else {
+                completionHandler([.alert, .badge, .sound])
+            }
+        }
+    }
+
     // Function called when a push notification is clicked or swiped away.
     open func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -119,9 +136,9 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     ) {
         _ = messagingPush.userNotificationCenter(center, didReceive: response)
 
-        if let wrappedNoticeCenterDelegate = wrappedNotificationCenterDelegate,
-           wrappedNoticeCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
-            wrappedNoticeCenterDelegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
+        if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
+           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+            wrappedNotificationCenterDelegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
         } else {
             completionHandler()
         }
@@ -156,10 +173,6 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
 /// - for this reason, empty methods are added and forwarding to wrapper is possible
 @available(iOSApplicationExtension, unavailable)
 extension CioProviderAgnosticAppDelegate {
-    open func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        wrappedNotificationCenterDelegate?.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
-    }
-
     open func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
         wrappedNotificationCenterDelegate?.userNotificationCenter?(center, openSettingsFor: notification)
     }
