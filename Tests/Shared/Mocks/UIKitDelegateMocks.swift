@@ -84,7 +84,7 @@ public extension UNUserNotificationCenter {
 
     @objc class func currentMock() -> UNUserNotificationCenter {
         let dummyObject = NSObject()
-        let notificationCenter = unsafeDowncast(dummyObject, to: UNUserNotificationCenter.self)
+        let notificationCenter = unsafeBitCast(dummyObject, to: UNUserNotificationCenter.self)
         return notificationCenter
     }
 }
