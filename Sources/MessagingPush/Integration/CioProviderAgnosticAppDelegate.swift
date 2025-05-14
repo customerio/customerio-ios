@@ -120,10 +120,15 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             wrappedNotificationCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
         } else {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
+            if config?().showPushAppInForeground ?? false {
+                if #available(iOS 14.0, *) {
+                    completionHandler([.list, .banner, .badge, .sound])
+                } else {
+                    completionHandler([.alert, .badge, .sound])
+                }
             } else {
-                completionHandler([.alert, .badge, .sound])
+                // Don't show the notification in the foreground
+                completionHandler([])
             }
         }
     }

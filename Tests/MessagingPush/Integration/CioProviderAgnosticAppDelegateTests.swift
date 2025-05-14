@@ -14,14 +14,18 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     var mockLogger: LoggerMock!
     var appDelegate: CioProviderAgnosticAppDelegate!
 
-    func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
+    func createMockConfig(
+        autoFetchDeviceToken: Bool = true,
+        autoTrackPushEvents: Bool = true,
+        showPushAppInForeground: Bool = true
+    ) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
             logLevel: .info,
             cdpApiKey: "test-api-key",
             region: .US,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
-            showPushAppInForeground: false
+            showPushAppInForeground: showPushAppInForeground
         )
     }
 
@@ -204,7 +208,37 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         }
     }
 
-    func testUserNotificationCenterDidReceive_whenNotificationCenterIntegrationIsEnabled_thenWrapperedDelegateAndMessagingPushAreCalled() {
+    func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethodAndShowPushAppInForegroundIsFalse_thenNotificationIsNotShown() {
+        // Setup
+        var presentationOptions: UNNotificationPresentationOptions?
+        let completionHandler: (UNNotificationPresentationOptions) -> Void = { options in
+            presentationOptions = options
+        }
+
+        // Create app delegate with showPushAppInForeground: false
+        appDelegate = CioProviderAgnosticAppDelegate(
+            messagingPush: mockMessagingPush,
+            userNotificationCenter: { self.mockNotificationCenter },
+            appDelegate: mockAppDelegate,
+            config: { self.createMockConfig(showPushAppInForeground: false) },
+            logger: mockLogger
+        )
+
+        // Make sure the delegate doesn't respond to willPresent method
+        mockNotificationCenterDelegate.respondsToSelectors = [
+            #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)): false
+        ]
+
+        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
+        // Call the method
+        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
+
+        // Verify behavior - should not show notification
+        XCTAssertEqual(presentationOptions, [])
+    }
+
+    func testUserNotificationCenterDidReceive_whenNotificationCenterIntegrationIsEnabled_thenWrappedDelegateAndMessagingPushAreCalled() {
         // Configure mock return value
         mockMessagingPush.userNotificationCenterReturnValue = nil
 
@@ -223,7 +257,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(completionHandlerCalled)
     }
 
-    func testUserNotificationCenterDidReceive_whenWrappedNotificationCenterDelegateIsNil_thenNotificationCompletitionHandlerIsCalled() {
+    func testUserNotificationCenterDidReceive_whenWrappedNotificationCenterDelegateIsNil_thenNotificationCompletionHandlerIsCalled() {
         // Create custom app delegate
         appDelegate = CioProviderAgnosticAppDelegate(
             messagingPush: mockMessagingPush,
