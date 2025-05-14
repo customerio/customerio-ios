@@ -8,7 +8,11 @@ import SampleAppsCommon
 import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    let anotherPushEventHandler = AnotherPushEventHandler()
+    /*
+     Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
+     This is not necessary for the Customer.io SDK to work.
+     */
+//    let anotherPushEventHandler = AnotherPushEventHandler()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Follow setup guide for setting up FCM push: https://firebase.google.com/docs/cloud-messaging/ios/client
@@ -56,6 +60,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             withConfig: MessagingPushConfigBuilder()
                 .autoFetchDeviceToken(true)
                 .autoTrackPushEvents(true)
+                .showPushAppInForeground(true)
                 .build()
         )
 
@@ -64,19 +69,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         Messaging.messaging().delegate = self
 
         /*
-         Next line of code is testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
+         Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
          This is not necessary for the Customer.io SDK to work.
          */
-        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
+//        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
-        /**
+        /*
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
          This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
-         Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature. Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
-
-         We register a click handler in this app for testing purposes, only. To test that the Customer.io SDK is compatible with other SDKs that want to process push notifications not sent by Customer.io.
+         Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature.
+         Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
          */
-        UNUserNotificationCenter.current().delegate = self
+//        UNUserNotificationCenter.current().delegate = self
 
         return true
     }
@@ -106,24 +110,31 @@ extension AppDelegate: MessagingDelegate {
     }
 }
 
-extension AppDelegate: UNUserNotificationCenterDelegate {
-    // Function called when a push notification is clicked or swiped away.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Track custom event with Customer.io.
-        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
-        CustomerIO.shared.track(
-            name: "custom push-clicked event",
-            properties: ["push": response.notification.request.content.userInfo]
-        )
-
-        completionHandler()
-    }
-
-    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .badge, .sound])
-    }
-}
+/*
+  The lines of code below are optional and only required if you:
+  - want fine-grained control over whether notifications are shown in the foreground
+  - have custom code that needs to run when a push notification gets clicked on.
+ Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature.
+ Therefore, lines of code below are not required if you only want to handle push notifications sent by Customer.io.
+ */
+// extension AppDelegate: UNUserNotificationCenterDelegate {
+//    // Function called when a push notification is clicked or swiped away.
+//    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+//        // Track custom event with Customer.io.
+//        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
+//        CustomerIO.shared.track(
+//            name: "custom push-clicked event",
+//            properties: ["push": response.notification.request.content.userInfo]
+//        )
+//
+//        completionHandler()
+//    }
+//
+//    // To test sending of local notifications, display the push while app in foreground. So when you press the button to display local push in the app, you are able to see it and click on it.
+//    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+//        completionHandler([.banner, .badge, .sound])
+//    }
+// }
 
 extension AppDelegate: InAppEventListener {
     func messageShown(message: InAppMessage) {
