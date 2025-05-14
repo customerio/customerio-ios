@@ -8,7 +8,7 @@ import SampleAppsCommon
 import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    /**
+    /*
      Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
      This is not necessary for the Customer.io SDK to work.
      */
@@ -68,13 +68,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
         Messaging.messaging().delegate = self
 
-        /**
+        /*
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
          This is not necessary for the Customer.io SDK to work.
          */
 //        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
-        /**
+        /*
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
          This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
          Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature.
@@ -110,7 +110,7 @@ extension AppDelegate: MessagingDelegate {
     }
 }
 
-/**
+/*
   The lines of code below are optional and only required if you:
   - want fine-grained control over whether notifications are shown in the foreground
   - have custom code that needs to run when a push notification gets clicked on.

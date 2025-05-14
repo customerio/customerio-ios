@@ -15,7 +15,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         initializeCioAndInAppListeners()
 
-        /**
+        /*
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
          This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
          Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature.
@@ -102,7 +102,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
-/**
+/*
  The lines of code below are optional and only required if you:
  - want fine-grained control over whether notifications are shown in the foreground
  - have custom code that needs to run when a push notification gets clicked on.
