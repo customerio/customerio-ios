@@ -176,7 +176,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(completionHandlerCalled)
     }
 
-    // New test for when wrapped delegate doesn't implement willPresent
     func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethod_thenDefaultHandlingIsUsed() {
         // Setup
         var completionHandlerCalled = false
