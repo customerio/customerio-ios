@@ -2,30 +2,64 @@
     "tagFormat": "${version}",
     "branches": [
         "main",
-        { "name": "beta", "prerelease": true },
-        { "name": "alpha", "prerelease": true }
+        "ahmed/ci/sem_release",
+        {
+            "name": "beta",
+            "prerelease": true
+        },
+        {
+            "name": "alpha",
+            "prerelease": true
+        }
     ],
     "plugins": [
-        ["@semantic-release/commit-analyzer", {
-            "preset": "conventionalcommits"
-        }],
-        ["@semantic-release/release-notes-generator", {
-            "preset": "conventionalcommits"
-        }],
-        ["@semantic-release/exec", {
-            "verifyReleaseCmd": "./scripts/update-version.sh ${nextRelease.version} && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
-        }],
-        ["@semantic-release/changelog", {
-            "changelogFile": "CHANGELOG.md"
-        }],
-        ["@semantic-release/git", {
-            "assets": ["CHANGELOG.md", "Sources/Common/Version.swift", "*.podspec", "reports/*"],
-            "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}"
-        }],
-        ["@semantic-release/github", {
-            "labels": false,
-            "successComment": false,
-            "failTitle": false
-        }]
+        [
+            "@semantic-release/commit-analyzer",
+            {
+                "preset": "conventionalcommits"
+            }
+        ],
+        [
+            "@semantic-release/release-notes-generator",
+            {
+                "preset": "conventionalcommits"
+            }
+        ],
+        [
+            "@semantic-release/exec",
+            {
+                "verifyReleaseCmd": "./scripts/update-version.sh ${nextRelease.version} && ./scripts/update-version-cocoapods.sh ${nextRelease.version}"
+            }
+        ],
+        [
+            "@semantic-release/changelog",
+            {
+                "changelogFile": "CHANGELOG.md"
+            }
+        ],
+        [
+            "@semantic-release/git",
+            {
+                "assets": [
+                    "CHANGELOG.md",
+                    "Sources/Common/Version.swift",
+                    "*.podspec",
+                    "reports/*"
+                ],
+                "message": "chore: prepare for ${nextRelease.version}\n\n${nextRelease.notes}",
+                "GIT_AUTHOR_NAME": "github-actions[bot]",
+                "GIT_AUTHOR_EMAIL": "github-actions[bot]@users.noreply.github.com",
+                "GIT_COMMITTER_NAME": "github-actions[bot]",
+                "GIT_COMMITTER_EMAIL": "github-actions[bot]@users.noreply.github.com"
+            }
+        ],
+        [
+            "@semantic-release/github",
+            {
+                "labels": false,
+                "successComment": false,
+                "failTitle": false
+            }
+        ]
     ]
 }
