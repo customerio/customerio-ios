@@ -1,3 +1,9 @@
+## [3.9.1](https://github.com/customerio/customerio-ios/compare/3.9.0...3.9.1) (2025-05-15)
+
+### Bug Fixes
+
+* not-real-commit. Testing sem_release. Please ignore ([e7992dc](https://github.com/customerio/customerio-ios/commit/e7992dc5955a3b44cc65794e1e8f88159019969f))
+
 ## [3.9.0](https://github.com/customerio/customerio-ios/compare/3.8.2...3.9.0) (2025-05-15)
 
 ### Features
