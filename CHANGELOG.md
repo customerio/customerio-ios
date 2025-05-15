@@ -1,3 +1,9 @@
+## [3.9.0](https://github.com/customerio/customerio-ios/compare/3.8.2...3.9.0) (2025-05-15)
+
+### Features
+
+* Swizzling removal - Compatibility improvements for `showPushAppInForeground` ([#897](https://github.com/customerio/customerio-ios/issues/897)) ([b99818a](https://github.com/customerio/customerio-ios/commit/b99818a789156248e5c49d7e52985c178522a1f9))
+
 ## [3.8.2](https://github.com/customerio/customerio-ios/compare/3.8.1...3.8.2) (2025-04-22)
 
 ### Bug Fixes
